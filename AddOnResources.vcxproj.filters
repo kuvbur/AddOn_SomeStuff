@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Build\CMakeFiles\2fdca26a6d7108b1bc166a783fb00807\AddOnResources.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Build\CMakeFiles\720e7e2236e9107d6df4a240cab3260d\AddOnResources.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Sources\AddOnResources\RFIX.win\AddOnMain.rc2">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Sources\AddOnResources\RFIX\AddOnFix.grc">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Sources\AddOnResources\RINT\AddOn.grc">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Sources\AddOnResources\Tools\CompileResources.py">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Sources\AddOnResources\RFIX\Images\AddOnIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="C:\Users\kuvbur\YandexDisk\archicad_api\archicad-addon-cmake\Build\CMakeFiles\AddOnResources" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{0763F044-F5D2-3CEA-9407-31CA5B44591E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Images">
+      <UniqueIdentifier>{B2FC12CE-B7BE-3251-AD73-2E6539C03680}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{A035A682-30D0-3FD7-8440-7632F569F452}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
