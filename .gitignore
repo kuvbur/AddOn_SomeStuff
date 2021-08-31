@@ -9,7 +9,8 @@
 *.user
 *.userosscache
 *.sln.docstates
-Sources/AddOnResources/RFIX/AddOnFix.grc
+*Fix.grc
+*Fix.grc.*
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
