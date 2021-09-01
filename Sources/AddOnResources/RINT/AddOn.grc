@@ -1,0 +1,13 @@
+#include "ResourceIds.hpp"
+
+'STR#' ID_ADDON_INFO "Add-on Name and Description" {
+/* [  1] */		"SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов"
+}
+
+'STR#' ID_ADDON_MENU "Strings for the Menu" {
+/* [  ] */	"Синхронизация свойств и параметров GDL"
+/* [  1] */		"Синхронизировать все^ES^EE^ED^EW^EL"
+/* [  2] */		"Синхронизировать выделенные^ES^EE^ED^EW^EL"
+/* [  3] */		"Отслеживать морфы-линии^ES^EE^ED^EW^EL"
+}

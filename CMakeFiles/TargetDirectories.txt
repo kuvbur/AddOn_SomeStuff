@@ -1,3 +1,0 @@
-C:/Users/kuvbur/YandexDisk/archicad_api/archicad-addon-cmake/Build/CMakeFiles/AddOnResources.dir
-C:/Users/kuvbur/YandexDisk/archicad_api/archicad-addon-cmake/Build/CMakeFiles/AddOn.dir
-C:/Users/kuvbur/YandexDisk/archicad_api/archicad-addon-cmake/Build/CMakeFiles/ALL_BUILD.dir

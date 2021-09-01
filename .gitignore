@@ -11,6 +11,9 @@
 *.sln.docstates
 *Fix.grc
 *Fix.grc.*
+Build/*
+.DS_Store
+.vscode
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
