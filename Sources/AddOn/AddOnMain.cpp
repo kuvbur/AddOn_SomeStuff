@@ -9,6 +9,7 @@
 #include "Property_Test_Helpers.hpp"
 #include "APIdefs_Properties.h"
 
+
 #define	 Menu_SyncAll		1
 #define	 Menu_SyncSelect		2
 #define	 Menu_LeghtMorh		3
@@ -51,6 +52,18 @@ static GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, b
 void SyncAll(void) {
 	GS::Array<API_Guid> guidArray;
 	ACAPI_Element_GetElemList(API_ObjectID, &guidArray, APIFilt_IsEditable);
+	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		SyncData(guidArray[i]);
+		ACAPI_Element_AttachObserver(guidArray[i]);
+	}
+
+	ACAPI_Element_GetElemList(API_WindowID, &guidArray, APIFilt_IsEditable);
+	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		SyncData(guidArray[i]);
+		ACAPI_Element_AttachObserver(guidArray[i]);
+	}
+
+	ACAPI_Element_GetElemList(API_DoorID, &guidArray, APIFilt_IsEditable);
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncData(guidArray[i]);
 		ACAPI_Element_AttachObserver(guidArray[i]);
@@ -220,10 +233,55 @@ bool		InvertMenuItemMark(short menuResID, short itemIndex)
 //	ACAPI_Goodies(APIAny_CloseParametersID);
 //}
 
-//bool SyncMorph(const API_Guid& elemGuid, API_Property& property){
-//	bool flag_sync = false;
-//	return flag_sync;
-//}
+bool SyncMorph(const API_Elem_Head &elementHead){
+	GSErrCode        err;
+	API_ElemInfo3D info3D;
+	API_Component3D m_component;
+	char    msgStr[1024];
+	BNZeroMemory(&info3D, sizeof(API_ElemInfo3D));
+	err = ACAPI_Element_Get3DInfo(elementHead, &info3D);
+	BNZeroMemory(&m_component, sizeof(API_Component3D));
+	m_component.header.typeID = API_BodyID;
+	m_component.header.index = info3D.fbody;
+	err = ACAPI_3D_GetComponent(&m_component);
+	long firstEdge = m_component.pgon.fpedg;
+	long lastEdge = m_component.pgon.lpedg;
+	// Walk through the edges
+		m_component.header.typeID = API_PedgID;
+		m_component.header.index = lastEdge;
+		ACAPI_3D_GetComponent(&m_component);
+		long edgeInd = m_component.pedg.pedg;
+		m_component.header.typeID = API_EdgeID;
+		m_component.header.index = abs(edgeInd);
+		ACAPI_3D_GetComponent(&m_component);
+		long vert1 = m_component.edge.vert1;
+		m_component.header.typeID = API_VertID;
+		m_component.header.index = vert1;
+		ACAPI_3D_GetComponent(&m_component);
+		sprintf(msgStr, " vertex 1 index = %d coord (%Lf, %Lf, %Lf)",
+			m_component.header.index,
+			m_component.vert.x, m_component.vert.y, m_component.vert.z);
+		ACAPI_WriteReport(msgStr, false);
+
+		m_component.header.typeID = API_PedgID;
+		m_component.header.index = firstEdge;
+		ACAPI_3D_GetComponent(&m_component);
+		edgeInd = m_component.pedg.pedg;
+		m_component.header.typeID = API_EdgeID;
+		m_component.header.index = abs(edgeInd);
+		ACAPI_3D_GetComponent(&m_component);
+		vert1 = m_component.edge.vert1;
+		m_component.header.typeID = API_VertID;
+		m_component.header.index = vert1;
+		ACAPI_3D_GetComponent(&m_component);
+		sprintf(msgStr, " vertex 1 index = %d coord (%Lf, %Lf, %Lf)",
+			m_component.header.index,
+			m_component.vert.x, m_component.vert.y, m_component.vert.z);
+		ACAPI_WriteReport(msgStr, false);
+
+	bool flag_sync = false;
+	return flag_sync;
+}
 
 bool SyncParamAndProp(const API_Guid &elemGuid, API_Property &property)
 {
@@ -235,6 +293,7 @@ bool SyncParamAndProp(const API_Guid &elemGuid, API_Property &property)
 	if (property_definition.Contains("Sync_from")) param2prop = true;
 	GS::UniString paramName = property_definition.GetSubstring('(', ')', 0);
 	API_AddParType nthParameter;
+	BNZeroMemory(&nthParameter, sizeof(API_AddParType));
 	if (!GetLibParam(elemGuid, paramName, nthParameter))
 	{
 		return flag_sync;
@@ -247,8 +306,8 @@ bool SyncParamAndProp(const API_Guid &elemGuid, API_Property &property)
 		param_string = nthParameter.value.uStr;
 		param_bool = (param_string.GetLength() > 0);
 		} else {
-		param_real = round(nthParameter.value.real * 100) / 100;
-		if (nthParameter.value.real - param_real > 0.001) param_real += 0.01;
+		param_real = round(nthParameter.value.real * 1000) / 1000;
+		if (nthParameter.value.real - param_real > 0.001) param_real += 0.001;
 		param_int = (GS::Int32)param_real;
 		if (param_int / 1 < param_real) param_int += 1;
 		}
@@ -256,7 +315,7 @@ bool SyncParamAndProp(const API_Guid &elemGuid, API_Property &property)
 	if (param_string.GetLength() == 0) {
 		switch (nthParameter.typeID) {
 		case APIParT_Integer:
-			param_string = GS::UniString::Printf("%.0f", param_int);
+			param_string = GS::UniString::Printf("%d", param_int);
 			break;
 		case APIParT_Boolean:
 			if (param_bool){
@@ -305,6 +364,7 @@ bool SyncParamAndProp(const API_Guid &elemGuid, API_Property &property)
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString &paramName, API_AddParType &nthParameter)
 {
 	GSErrCode		err = NoError;
+	API_ElementMemo  memo;
 	API_Element element = {};
 	element.header.guid = elemGuid;
 	err = ACAPI_Element_Get(&element);
@@ -316,9 +376,9 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString &paramName, API_A
 	bool flag_find = false;
 	if (!err)
 	{
-		API_ElementMemo  memo;
 		if (err == NoError && element.header.hasMemo)
 		{
+			BNZeroMemory(&memo, sizeof(API_ElementMemo));
 			err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_AddPars);
 			if (err == NoError)
 			{
@@ -329,6 +389,7 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString &paramName, API_A
 					{
 						nthParameter = (*memo.params)[i];
 						flag_find = true;
+						break;
 					}
 				}
 			}
@@ -388,11 +449,11 @@ static void SyncData(const API_Guid& elemGuid)
 	if (flag_sync) {
 		if (elementHead.typeID == API_MorphID)
 		{
-			//for (UInt32 i = 0; i < properties.GetSize(); i++) {
-			//	if (properties[i].definition.description.Contains("Sync_") && properties[i].definition.description.Contains("(") && properties[i].definition.description.Contains(")")) {
-			//		SyncMorph(elemGuid, properties[i]);
-			//	}
-			//}
+			for (UInt32 i = 0; i < properties.GetSize(); i++) {
+				if (properties[i].definition.description.Contains("Sync_") && properties[i].definition.description.Contains("(") && properties[i].definition.description.Contains(")")) {
+					SyncMorph(elementHead);
+				}
+			}
 		}
 		else {
 			for (UInt32 i = 0; i < properties.GetSize(); i++) {
@@ -443,21 +504,13 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams)
 					if (elementMonitorEnabled) {
 						elementMonitorEnabled = false;
 						Do_ElementMonitor(elementMonitorEnabled);
-						InvertMenuItemMark(32500, Menu_SyncAll);
 					}
 					CallOnSelectedElem(SyncData);
 					if (t_elementMonitorEnabled) {
 						elementMonitorEnabled = true;
 						Do_ElementMonitor(elementMonitorEnabled);
-						InvertMenuItemMark(32500, Menu_SyncAll);
 					}
 					break;
-				case LeghtMorh_CommandID:
-					addMorph = !addMorph;
-					InvertMenuItemMark(32500, Menu_LeghtMorh);
-					break;
-					
-
 			}
 			break;
 	}
