@@ -27,28 +27,10 @@ static const short AddOnMenuID				= ID_ADDON_MENU;
 static	bool	elementMonitorEnabled = false;
 static	bool	allNewElements = false;
 static	bool	addMorph = false;
-static GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/)
-{
-	GSErrCode            err;
-	API_SelectionInfo    selectionInfo;
-	GS::Array<API_Neig>  selNeigs;
-	err = ACAPI_Selection_Get(&selectionInfo, &selNeigs, onlyEditable);
-	BMKillHandle((GSHandle*)&selectionInfo.marquee.coords);
-	if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
-		if (assertIfNoSel) {
-			DGAlert(DG_ERROR, "Error", "Please select an element!", "", "Ok");
-		}
-	}
-	if (err != NoError) {
-		return GS::Array<API_Guid>();
-	}
-	GS::Array<API_Guid> guidArray;
-	for (const API_Neig& neig : selNeigs) {
-		guidArray.Push(neig.guid);
-	}
-	return guidArray;
-}
 
+// -----------------------------------------------------------------------------
+// Запускает обработку всех объектов, окон, дверей
+// -----------------------------------------------------------------------------
 void SyncAll(void) {
 	GS::Array<API_Guid> guidArray;
 	ACAPI_Element_GetElemList(API_ObjectID, &guidArray, APIFilt_IsEditable);
@@ -70,34 +52,8 @@ void SyncAll(void) {
 	}
 }
 
-void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/)
-{
-	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
-
-	if (!guidArray.IsEmpty()) {
-		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			function(guidArray[i]);
-		}
-	}
-	else if (!assertIfNoSel) {
-		function(APINULLGuid);
-	}
-}
-
-bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
-{
-	GS::UniString	ustr;
-	GSErrCode	err = ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)typeID, &ustr);
-	if (err == NoError) {
-		CHTruncate(ustr.ToCStr(), elemStr, ELEMSTR_LEN - 1);
-		return true;
-	}
-	return false;
-}
-
 // -----------------------------------------------------------------------------
-// ElementEventHandlerProc
-//
+// Срабатывает при изменении элемента
 // -----------------------------------------------------------------------------
 GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType)
 {
@@ -174,30 +130,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	}
 	return err;
 }	// ElementEventHandlerProc
-// -----------------------------------------------------------------------------
-// Toggle a checked menu item
-// -----------------------------------------------------------------------------
-bool		InvertMenuItemMark(short menuResID, short itemIndex)
-{
-	API_MenuItemRef		itemRef;
-	GSFlags				itemFlags;
-
-	BNZeroMemory(&itemRef, sizeof(API_MenuItemRef));
-	itemRef.menuResID = menuResID;
-	itemRef.itemIndex = itemIndex;
-	itemFlags = 0;
-
-	ACAPI_Interface(APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
-
-	if ((itemFlags & API_MenuItemChecked) == 0)
-		itemFlags |= API_MenuItemChecked;
-	else
-		itemFlags &= ~API_MenuItemChecked;
-
-	ACAPI_Interface(APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
-
-	return (bool)((itemFlags & API_MenuItemChecked) != 0);
-}
 
 //void WriteParam() 
 //{
@@ -283,182 +215,191 @@ bool SyncMorph(const API_Elem_Head &elementHead){
 	return flag_sync;
 }
 
-bool SyncParamAndProp(const API_Guid &elemGuid, API_Property &property)
-{
-	bool flag_sync = false;
+// -----------------------------------------------------------------------------
+// Запись в свойство строки/целочисленного/дробного/булевого значения
+//  в зависимости от типа данных свойства
+// -----------------------------------------------------------------------------
+GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
 	GSErrCode		err = NoError;
-	bool param2prop = false;
-	GS::UniString property_definition = property.definition.description.ToUStr();
-	property_definition.ReplaceAll(" ", "");
-	if (property_definition.Contains("Sync_from")) param2prop = true;
-	GS::UniString paramName = property_definition.GetSubstring('(', ')', 0);
-	API_AddParType nthParameter;
-	BNZeroMemory(&nthParameter, sizeof(API_AddParType));
-	if (!GetLibParam(elemGuid, paramName, nthParameter))
-	{
-		return flag_sync;
+	bool flag_rec = false;
+	switch (property.definition.valueType) {
+	case API_PropertyIntegerValueType:
+		if (property.value.singleVariant.variant.intValue != param_int){
+			property.value.singleVariant.variant.intValue = param_int;
+			flag_rec = true;
+		}
+		break;
+	case API_PropertyRealValueType:
+		if (property.value.singleVariant.variant.doubleValue != param_real) {
+			property.value.singleVariant.variant.doubleValue = param_real;
+			flag_rec = true;
+		}
+		break;
+	case API_PropertyBooleanValueType:
+		if (property.value.singleVariant.variant.boolValue != param_bool) {
+			property.value.singleVariant.variant.boolValue = param_bool;
+			flag_rec = true;
+		}
+		break;
+	case API_PropertyStringValueType:
+		if (property.value.singleVariant.variant.uniStringValue != param_string) {
+			property.value.singleVariant.variant.uniStringValue = param_string;
+			flag_rec = true;
+		}
+		break;
+	default:
+		break;
 	}
+	if (flag_rec) {
+		property.isDefault = false;
+		err = ACAPI_Element_SetProperty(elemGuid, property);
+	}
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Запись значения параметра библиотечного элемента в свойство
+// -----------------------------------------------------------------------------
+GSErrCode WriteParam2Prop(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName) {
+	GSErrCode		err = NoError;
 	GS::UniString param_string = "";
 	GS::Int32 param_int = 0;
 	bool param_bool = false;
 	double param_real = 0;
-	if (nthParameter.typeID == APIParT_CString) {
-		param_string = nthParameter.value.uStr;
-		param_bool = (param_string.GetLength() > 0);
-		} else {
-		param_real = round(nthParameter.value.real * 1000) / 1000;
-		if (nthParameter.value.real - param_real > 0.001) param_real += 0.001;
-		param_int = (GS::Int32)param_real;
-		if (param_int / 1 < param_real) param_int += 1;
-		}
-	if (param_real > 0) param_bool = true;
-	if (param_string.GetLength() == 0) {
-		switch (nthParameter.typeID) {
-		case APIParT_Integer:
-			param_string = GS::UniString::Printf("%d", param_int);
-			break;
-		case APIParT_Boolean:
-			if (param_bool){
-				param_string = "ИСТИНА";
-			} else { 
-				param_string = "ЛОЖЬ"; 
-			}
-			break;
-		case APIParT_Length:
-			param_string = GS::UniString::Printf("%.0f", param_real*1000);
-			break;
-		case APIParT_Angle:
-			param_string = GS::UniString::Printf("%.1f", param_real);
-			break;
-		case APIParT_RealNum:
-			param_string = GS::UniString::Printf("%.3f", param_real);
-			break;
-		default:
-			return flag_sync;
-			break;
-		}
+	if (GetLibParam(elemGuid, paramName, param_string, param_int, param_bool, param_real))
+	{
+		err = WriteProp(elemGuid, property, param_string, param_int, param_bool, param_real);
 	}
-	property.isDefault = false;
-	switch (property.definition.valueType) {
-	case API_PropertyIntegerValueType:
-		property.value.singleVariant.variant.intValue = param_int;
-		break;
-	case API_PropertyRealValueType:
-		property.value.singleVariant.variant.doubleValue = param_real;
-		break;
-	case API_PropertyBooleanValueType:
-		property.value.singleVariant.variant.boolValue = param_bool;
-		break;
-	case API_PropertyStringValueType:
-		property.value.singleVariant.variant.uniStringValue = param_string;
-		break;
-	default:
-		return flag_sync;
-		break;
+	else {
+		err = APIERR_MISSINGCODE;
 	}
-	err = ACAPI_Element_SetProperty(elemGuid, property);
-	if (!err) flag_sync=true;
-	return flag_sync;
+	return err;
 }
 
-bool GetLibParam(const API_Guid& elemGuid, const GS::UniString &paramName, API_AddParType &nthParameter)
-{
-	GSErrCode		err = NoError;
-	API_ElementMemo  memo;
-	API_Element element = {};
-	element.header.guid = elemGuid;
-	err = ACAPI_Element_Get(&element);
-	Int32 lib_idx = element.object.libInd;
-	API_LibPart libPart;
-	BNZeroMemory(&libPart, sizeof(API_LibPart));
-	libPart.index = lib_idx;
-	err = ACAPI_LibPart_Get(&libPart);
-	bool flag_find = false;
-	if (!err)
-	{
-		if (err == NoError && element.header.hasMemo)
-		{
-			BNZeroMemory(&memo, sizeof(API_ElementMemo));
-			err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_AddPars);
-			if (err == NoError)
+// -----------------------------------------------------------------------------
+// Поиск свойства по имени, включая имя группы
+// Формат имяни ГРУППА/ИМЯ_СВОЙСТВА
+// -----------------------------------------------------------------------------
+GSErrCode GetPropertyByName(const API_Guid& elemGuid, API_Property& property, const GS::UniString& propertyname) {
+	GS::UniString fullnames;
+	GS::Array<API_PropertyGroup> groups;
+	GSErrCode error = ACAPI_Property_GetPropertyGroups(groups);
+	if (error == NoError) {
+		for (UInt32 i = 0; i < groups.GetSize(); i++) {
+			if (groups[i].groupType==API_PropertyCustomGroupType)
 			{
-				UInt32 totalParams = BMGetHandleSize((GSConstHandle)memo.params) / sizeof(API_AddParType);  // number of parameters = handlesize / size of single handle
-				for (UInt32 i = 0; i < totalParams; i++)
-				{
-					if ((*memo.params)[i].name == paramName)
-					{
-						nthParameter = (*memo.params)[i];
-						flag_find = true;
-						break;
+				GS::Array<API_PropertyDefinition> definitions;
+				error = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
+				if (error == NoError) {
+					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+						fullnames = groups[i].name + "/" + definitions[j].name;
+						if (propertyname == fullnames) {
+							GS::Array<API_PropertyDefinition> definitionsList;
+							GS::Array<API_Property> propertyList;
+							definitionsList.Push(definitions[j]);
+							error = ACAPI_Element_GetPropertyValues(elemGuid, definitionsList, propertyList);
+							if (error==NoError) property = propertyList[0];
+							break;
+						}
 					}
 				}
 			}
-			ACAPI_DisposeElemMemoHdls(&memo);
 		}
 	}
-	return flag_find;
+	return error;
 }
 
-/*----------------------------------------------------------------------------**
-** Lists all the visible properties (definition name and value) of an element **
-**----------------------------------------------------------------------------*/
-
-static void SyncData(const API_Guid& elemGuid)
+// -----------------------------------------------------------------------------
+// Запись значения свойства в другое свойство
+// -----------------------------------------------------------------------------
+GSErrCode SyncPropAndProp(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName)
 {
 	GSErrCode		err = NoError;
-	API_Elem_Head elementHead;
-	BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
-	elementHead.guid = elemGuid;
-	err = ACAPI_Element_GetHeader(&elementHead);
-	if (err) {
-		return;
-	}
-	API_PropertyDefinitionFilter filter = API_PropertyDefinitionFilter_UserDefined;
-	GS::Array<API_PropertyDefinition> definitions;
-	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, filter, definitions);
-	if (err) {
-		return;
-	}
-	GS::Array<API_Guid> propertyDefinitionList;
-	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-		if (ACAPI_Element_IsPropertyDefinitionVisible(elemGuid, definitions[i].guid)) {
-			propertyDefinitionList.Push(definitions[i].guid);
+	API_Property propertyfrom;
+	err = GetPropertyByName(elemGuid, propertyfrom, paramName);
+	if (err == NoError) {
+		if (propertyfrom.status == API_Property_HasValue) {
+			if (property.value.singleVariant != propertyfrom.value.singleVariant) {
+				property.isDefault = false;
+				err = ACAPI_Element_SetProperty(elemGuid, property);
+			}
 		}
 	}
-	GS::Array<API_Property> properties;
-	err = ACAPI_Element_GetPropertyValuesByGuid(elemGuid, propertyDefinitionList, properties);
-	if (err) {
-		return;
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Синхронизация значений свойства и параметра
+// -----------------------------------------------------------------------------
+GSErrCode SyncParamAndProp(const API_Guid &elemGuid, API_Property &property, const GS::UniString &paramName,  int &syncdirection)
+{
+	GSErrCode		err = NoError;
+	if (syncdirection==1){
+		err = WriteParam2Prop(elemGuid, property, paramName);
 	}
-	GS::Array<API_Property> properties_to_param;
-	GS::Array<API_Property> param_to_properties;
-	GS::UniString string;
+	return err;
+}
+
+// --------------------------------------------------------------------------------------------------------------------------
+// Ищет свойство со значение "Sync_flag" в описании и по значению определяет - нужно ли синхронизировать параметры элемента
+// --------------------------------------------------------------------------------------------------------------------------
+bool SyncState(const API_Guid& elemGuid) {
 	bool flag_sync = false;
-	for (UInt32 i = 0; i < properties.GetSize(); i++) {
-		if (properties[i].definition.description.Contains("Sync_flag")) {
-			if (properties[i].isDefault)
-			{
-				flag_sync = properties[i].definition.defaultValue.basicValue.singleVariant.variant.boolValue;
-			}
-			else
-			{
-				flag_sync = properties[i].value.singleVariant.variant.boolValue;
-			}
-		}
-	}
-	if (flag_sync) {
-		if (elementHead.typeID == API_MorphID)
-		{
-			for (UInt32 i = 0; i < properties.GetSize(); i++) {
-				if (properties[i].definition.description.Contains("Sync_") && properties[i].definition.description.Contains("(") && properties[i].definition.description.Contains(")")) {
-					SyncMorph(elementHead);
+	GSErrCode err = NoError;
+	GS::Array<API_Property> properties;
+	err = GetPropertyByGuid(elemGuid, properties);
+	if (!err) {
+		for (UInt32 i = 0; i < properties.GetSize(); i++) {
+			if (properties[i].definition.description.Contains("Sync_flag")) {
+				if (properties[i].isDefault)
+				{
+					flag_sync = properties[i].definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+					break;
+				}
+				else
+				{
+					flag_sync = properties[i].value.singleVariant.variant.boolValue;
+					break;
 				}
 			}
 		}
-		else {
-			for (UInt32 i = 0; i < properties.GetSize(); i++) {
-				if (properties[i].definition.description.Contains("Sync_") && properties[i].definition.description.Contains("(") && properties[i].definition.description.Contains(")")) {
-					SyncParamAndProp(elemGuid, properties[i]);
+	}
+	return flag_sync;
+}
+
+// --------------------------------------------------------------------
+// Синхронизация данныъ элемента согласно указаниям в описании свойств
+// --------------------------------------------------------------------
+static void SyncData(const API_Guid& elemGuid) {
+	if (SyncState(elemGuid)) {
+		GSErrCode		err = NoError;
+		GS::Array<API_Property> properties;
+		err = GetPropertyByGuid(elemGuid, properties);
+		if (!err) {
+			API_Elem_Head elementHead;
+			BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
+			elementHead.guid = elemGuid;
+			err = ACAPI_Element_GetHeader(&elementHead);
+			GS::UniString description_string = "";
+			GS::UniString paramName = "";
+			int synctype = 0;
+			int syncdirection = 0;
+			if (!err) {
+				for (UInt32 i = 0; i < properties.GetSize(); i++) {
+					description_string = properties[i].definition.description.ToUStr();
+					if (SyncString(description_string, paramName, synctype, syncdirection)) {
+						switch (synctype) {
+						case 1:
+							SyncParamAndProp(elemGuid, properties[i], paramName, syncdirection);
+							break;
+						case 2:
+							SyncPropAndProp(elemGuid, properties[i], paramName);
+							break;
+						default:
+							break;
+						}
+
+					}
 				}
 			}
 		}
@@ -468,7 +409,6 @@ static void SyncData(const API_Guid& elemGuid)
 
 // ============================================================================
 // Do_ElementMonitor
-//
 //	observe all newly created elements
 // ============================================================================
 void	Do_ElementMonitor(bool switchOn)
@@ -516,7 +456,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams)
 	}
 	return NoError;
 }
-
 
 API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams* envir)
 {

@@ -9,6 +9,214 @@
 #include	"ACAPinc.h"
 #include "Property_Test_Helpers.hpp"
 
+// -----------------------------------------------------------------------------
+// Парсит описание свойства
+// Результат
+//	имя параметра (свойства)
+//	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2)
+//	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
+// -----------------------------------------------------------------------------
+bool SyncString(GS::UniString& description_string, GS::UniString& paramName, int& synctype, int& syncdirection) {
+	bool flag_sync = false;
+	if (description_string.IsEmpty()) {
+		return flag_sync;
+	}
+	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
+		flag_sync = true;
+		synctype = 1;
+		syncdirection = 2;
+		if (description_string.Contains("Sync_from")) syncdirection = 1;
+		if (description_string.Contains("Property:")) {
+			synctype = 2;
+			description_string.ReplaceAll("Property:", "");
+		}
+		paramName = description_string.GetSubstring('{', '}', 0);
+	}
+	return flag_sync;
+}
+
+// -----------------------------------------------------------------------------
+// Получить массив Guid выбьранных элементов
+// -----------------------------------------------------------------------------
+static GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/)
+{
+	GSErrCode            err;
+	API_SelectionInfo    selectionInfo;
+	GS::Array<API_Neig>  selNeigs;
+	err = ACAPI_Selection_Get(&selectionInfo, &selNeigs, onlyEditable);
+	BMKillHandle((GSHandle*)&selectionInfo.marquee.coords);
+	if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
+		if (assertIfNoSel) {
+			DGAlert(DG_ERROR, "Error", "Сначала выберите элементы!", "", "Ok");
+		}
+	}
+	if (err != NoError) {
+		return GS::Array<API_Guid>();
+	}
+	GS::Array<API_Guid> guidArray;
+	for (const API_Neig& neig : selNeigs) {
+		guidArray.Push(neig.guid);
+	}
+	return guidArray;
+}
+
+
+// -----------------------------------------------------------------------------
+// Вызов функции для выбранных элементов
+//	(функция должна принимать в качетве аргумента API_Guid
+// -----------------------------------------------------------------------------
+void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/)
+{
+	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
+	if (!guidArray.IsEmpty()) {
+		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+			function(guidArray[i]);
+		}
+	}
+	else if (!assertIfNoSel) {
+		function(APINULLGuid);
+	}
+}
+
+bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
+{
+	GS::UniString	ustr;
+	GSErrCode	err = ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)typeID, &ustr);
+	if (err == NoError) {
+		CHTruncate(ustr.ToCStr(), elemStr, ELEMSTR_LEN - 1);
+		return true;
+	}
+	return false;
+}
+
+/*----------------------------------------------------------------------------**
+	Lists all the visible properties (definition name and value) of an element
+**----------------------------------------------------------------------------*/
+GSErrCode GetPropertyByGuid(const API_Guid& elemGuid, GS::Array<API_Property>& properties) {
+	GSErrCode		err = NoError;
+	GS::Array<API_PropertyDefinition> definitions;
+	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (!err) {
+		GS::Array<API_Guid> propertyDefinitionList;
+		for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+			if (ACAPI_Element_IsPropertyDefinitionVisible(elemGuid, definitions[i].guid)) {
+				propertyDefinitionList.Push(definitions[i].guid);
+			}
+		}
+		err = ACAPI_Element_GetPropertyValuesByGuid(elemGuid, propertyDefinitionList, properties);
+	}
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Получить значение параметра с конвертацие типа данных
+// -----------------------------------------------------------------------------
+bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real)
+{
+	API_AddParType nthParameter;
+	BNZeroMemory(&nthParameter, sizeof(API_AddParType));
+	GSErrCode		err = NoError;
+	API_ElementMemo  memo;
+	API_Element element = {};
+	element.header.guid = elemGuid;
+	err = ACAPI_Element_Get(&element);
+	Int32 lib_idx = element.object.libInd;
+	API_LibPart libPart;
+	BNZeroMemory(&libPart, sizeof(API_LibPart));
+	libPart.index = lib_idx;
+	err = ACAPI_LibPart_Get(&libPart);
+	bool flag_find = false;
+	if (!err)
+	{
+		if (err == NoError && element.header.hasMemo)
+		{
+			BNZeroMemory(&memo, sizeof(API_ElementMemo));
+			err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_AddPars);
+			if (err == NoError)
+			{
+				UInt32 totalParams = BMGetHandleSize((GSConstHandle)memo.params) / sizeof(API_AddParType);  // number of parameters = handlesize / size of single handle
+				for (UInt32 i = 0; i < totalParams; i++)
+				{
+					if ((*memo.params)[i].name == paramName)
+					{
+						nthParameter = (*memo.params)[i];
+						flag_find = true;
+						break;
+					}
+				}
+			}
+			ACAPI_DisposeElemMemoHdls(&memo);
+		}
+	}
+	if (flag_find) {
+		if (nthParameter.typeID == APIParT_CString) {
+			param_string = nthParameter.value.uStr;
+			param_bool = (param_string.GetLength() > 0);
+		}
+		else {
+			param_real = round(nthParameter.value.real * 1000) / 1000;
+			if (nthParameter.value.real - param_real > 0.001) param_real += 0.001;
+			param_int = (GS::Int32)param_real;
+			if (param_int / 1 < param_real) param_int += 1;
+		}
+		if (param_real > 0) param_bool = true;
+		if (param_string.GetLength() == 0) {
+			switch (nthParameter.typeID) {
+			case APIParT_Integer:
+				param_string = GS::UniString::Printf("%d", param_int);
+				break;
+			case APIParT_Boolean:
+				if (param_bool) {
+					param_string = "ИСТИНА";
+				}
+				else {
+					param_string = "ЛОЖЬ";
+				}
+				break;
+			case APIParT_Length:
+				param_string = GS::UniString::Printf("%.0f", param_real * 1000);
+				break;
+			case APIParT_Angle:
+				param_string = GS::UniString::Printf("%.1f", param_real);
+				break;
+			case APIParT_RealNum:
+				param_string = GS::UniString::Printf("%.3f", param_real);
+				break;
+			default:
+				flag_find = false;
+				break;
+			}
+		}
+	}
+	return flag_find;
+}
+
+// -----------------------------------------------------------------------------
+// Toggle a checked menu item
+// -----------------------------------------------------------------------------
+bool		InvertMenuItemMark(short menuResID, short itemIndex)
+{
+	API_MenuItemRef		itemRef;
+	GSFlags				itemFlags;
+
+	BNZeroMemory(&itemRef, sizeof(API_MenuItemRef));
+	itemRef.menuResID = menuResID;
+	itemRef.itemIndex = itemIndex;
+	itemFlags = 0;
+
+	ACAPI_Interface(APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
+
+	if ((itemFlags & API_MenuItemChecked) == 0)
+		itemFlags |= API_MenuItemChecked;
+	else
+		itemFlags &= ~API_MenuItemChecked;
+
+	ACAPI_Interface(APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
+
+	return (bool)((itemFlags & API_MenuItemChecked) != 0);
+}
+
+
 GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant)
 {
 	switch (variant.type) {
@@ -21,7 +229,6 @@ GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant)
 		default: DBBREAK(); return "Invalid Value";
 	}
 }
-
 
 GS::UniString PropertyTestHelpers::ToString (const API_Property& property)
 {

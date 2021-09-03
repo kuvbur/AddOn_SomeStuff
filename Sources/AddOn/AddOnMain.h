@@ -1,8 +1,8 @@
-#define ELEMSTR_LEN				256
-bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 void	Do_ElementMonitor(bool switchOn);
-bool SyncParamAndProp(const API_Guid& elemGuid, API_Property& property);
+GSErrCode SyncParamAndProp(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName, int& syncdirection);
 GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType);
 static void SyncData(const API_Guid& elemGuid);
-bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, API_AddParType& nthParameter);
-void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
+
+GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
+GSErrCode WriteParam2Prop(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName);
+

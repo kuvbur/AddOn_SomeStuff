@@ -8,7 +8,7 @@
 
 #if !defined (HELPERS_HPP)
 #define	HELPERS_HPP
-
+#define ELEMSTR_LEN				256
 
 #include "APICommon.h"
 #include "DG.h"
@@ -18,6 +18,17 @@
 // -----------------------------------------------------------------------------
 // Helper functions
 // -----------------------------------------------------------------------------
+
+bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
+void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
+static GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/);
+bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
+bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
+bool InvertMenuItemMark(short menuResID, short itemIndex);
+GSErrCode GetPropertyByGuid(const API_Guid& elemGuid, GS::Array<API_Property>& properties);
+bool SyncString(GS::UniString& description_string, GS::UniString& paramName, int& synctype, int& syncdirection);
+
+
 namespace PropertyTestHelpers
 {
 
