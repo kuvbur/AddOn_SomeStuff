@@ -9,10 +9,12 @@
 #include "Property_Test_Helpers.hpp"
 #include "APIdefs_Properties.h"
 
-
 #define	 Menu_SyncAll		1
 #define	 Menu_SyncSelect		2
-#define	 Menu_LeghtMorh		3
+#define	 Menu_wallS	3
+#define	 Menu_widoS	4
+#define	 Menu_objS	5
+Int32 nLib=0;
 
 static const GSResID AddOnInfoID			= ID_ADDON_INFO;
 	static const Int32 AddOnNameID			= 1;
@@ -22,34 +24,112 @@ static const GSResID AddOnInfoID			= ID_ADDON_INFO;
 static const short AddOnMenuID				= ID_ADDON_MENU;
 	static const Int32 SyncAll_CommandID		= 1;
 	static const Int32 SyncSelect_CommandID		= 2;
-	static const Int32 LeghtMorh_CommandID = 3;
+	static const Int32 wallS_CommandID			= 3;
+	static const Int32 widoS_CommandID			= 4;
+	static const Int32 objS_CommandID			= 5;
 
-static	bool	elementMonitorEnabled = false;
-static	bool	allNewElements = false;
-static	bool	addMorph = false;
+static const GSResID AddOnStringsID = ID_ADDON_STRINGS;
+	static const Int32 UndoSyncId = 1;
+	static const Int32 SyncAllId = 2;
+
+// --------------------------------------------------------------------
+// Проверяет - попадает ли тип элемента в под настройки синхронизации
+// --------------------------------------------------------------------
+bool CheckElementType(const API_ElemTypeID& elementType) {
+	SyncPrefs prefsData;
+	GetSyncSettings(prefsData);
+	bool flag_type = false;
+	if ((elementType == API_WallID || elementType == API_ColumnID || elementType == API_BeamID ||elementType == API_SlabID ||
+			elementType == API_RoofID || elementType == API_MeshID || elementType == API_ZoneID || elementType == API_CurtainWallID ||
+			elementType == API_CurtainWallSegmentID || elementType == API_CurtainWallFrameID || elementType == API_CurtainWallPanelID ||
+			elementType == API_CurtainWallJunctionID || elementType == API_CurtainWallAccessoryID || elementType == API_ShellID ||
+			elementType == API_MorphID || elementType == API_StairID || elementType == API_RiserID ||
+			elementType == API_TreadID || elementType == API_StairStructureID ||
+			elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
+			elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
+			elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
+			elementType == API_RailingNodeID ||
+			elementType == API_RailingBalusterSetID ||
+			elementType == API_RailingPatternID ||
+			elementType == API_RailingToprailEndID ||
+			elementType == API_RailingHandrailEndID ||
+			elementType == API_RailingRailEndID ||
+			elementType == API_RailingToprailConnectionID ||
+			elementType == API_RailingHandrailConnectionID ||
+			elementType == API_RailingRailConnectionID ||
+			elementType == API_RailingEndFinishID ||
+			elementType == API_BeamSegmentID ||
+			elementType == API_ColumnSegmentID ||
+			elementType == API_OpeningID) && prefsData.wallS) flag_type = true;
+	if ((elementType == API_ObjectID) && prefsData.objS) flag_type = true;
+	if ((elementType == API_WindowID || elementType == API_DoorID) && prefsData.widoS) flag_type = true;
+	return flag_type;
+}
 
 // -----------------------------------------------------------------------------
-// Запускает обработку всех объектов, окон, дверей
+// Запускает обработку всех элементов заданного типа
+// -----------------------------------------------------------------------------
+bool SyncByType(const API_ElemTypeID& elementType) {
+	GS::UniString	subtitle;
+	if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle) == NoError) {
+		nLib += 1;
+		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &nLib);
+	}
+	GSErrCode		err = NoError;
+	GS::Array<API_Guid> guidArray;
+	bool flag_chanel = false;
+	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable);
+	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		SyncData(guidArray[i]);
+		err = ACAPI_Element_AttachObserver(guidArray[i]);
+		if (err == APIERR_LINKEXIST)
+			err = NoError;
+		ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
+		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+			flag_chanel = true;
+			return flag_chanel;
+		}
+	}
+	return flag_chanel;
+}
+
+// -----------------------------------------------------------------------------
+// Запускает обработку всех объектов, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncAll(void) {
-	GS::Array<API_Guid> guidArray;
-	ACAPI_Element_GetElemList(API_ObjectID, &guidArray, APIFilt_IsEditable);
-	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		SyncData(guidArray[i]);
-		ACAPI_Element_AttachObserver(guidArray[i]);
-	}
+	GS::UniString	title("Sync All");
+	nLib += 1;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
+	bool flag_chanel = false;
+	SyncPrefs prefsData;
+	GetSyncSettings(prefsData);
+	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
+	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+		if (!flag_chanel && prefsData.objS) flag_chanel = SyncByType(API_ObjectID);
+		if (!flag_chanel && prefsData.widoS) flag_chanel = SyncByType(API_WindowID);
+		if (!flag_chanel && prefsData.widoS) flag_chanel = SyncByType(API_DoorID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_WallID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_SlabID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_ColumnID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_BeamID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_RoofID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_MeshID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_ZoneID);
+		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_MorphID);
+		return NoError;
+		});
+}
 
-	ACAPI_Element_GetElemList(API_WindowID, &guidArray, APIFilt_IsEditable);
-	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		SyncData(guidArray[i]);
-		ACAPI_Element_AttachObserver(guidArray[i]);
-	}
-
-	ACAPI_Element_GetElemList(API_DoorID, &guidArray, APIFilt_IsEditable);
-	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		SyncData(guidArray[i]);
-		ACAPI_Element_AttachObserver(guidArray[i]);
-	}
+void AttachObserver(const API_Guid& elemGuid) {
+	ACAPI_Element_AttachObserver(elemGuid);
+}
+void SyncSelected(void) {
+	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
+	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+		CallOnSelectedElem(SyncData);
+		CallOnSelectedElem(AttachObserver);
+		return NoError;
+		});
 }
 
 // -----------------------------------------------------------------------------
@@ -60,8 +140,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	GSErrCode		err = NoError;
 	bool	sync_prop = false;
 
-	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents
-		&& (elemType->elemHead.typeID == API_ObjectID || elemType->elemHead.typeID == API_WindowID || elemType->elemHead.typeID == API_DoorID || (addMorph && elemType->elemHead.typeID == API_MorphID))) {
+	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && CheckElementType(elemType->elemHead.typeID)) {
 		API_Element			parentElement;
 		API_ElementMemo		parentElementMemo;
 		API_ElementUserData	parentUserData;
@@ -71,10 +150,11 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		BNZeroMemory(&parentUserData, sizeof(API_ElementUserData));
 		ACAPI_Notify_GetParentElement(&parentElement, &parentElementMemo, 0, &parentUserData);
 		BMKillHandle(&parentUserData.dataHdl);
-
+		SyncPrefs prefsData;
+		GetSyncSettings(prefsData);
 		switch (elemType->notifID) {
 		case APINotifyElement_New:
-			if (!allNewElements)
+			if (!prefsData.syncMon)
 				break;
 			sync_prop = true;
 			err = ACAPI_Element_AttachObserver(elemType->elemHead.guid);
@@ -82,7 +162,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 				err = NoError;
 			break;
 		case APINotifyElement_Copy:
-			if (!allNewElements)
+			if (!prefsData.syncMon)
 				break;
 			sync_prop = true;
 			if (parentElement.header.guid != APINULLGuid) {
@@ -309,6 +389,7 @@ GSErrCode GetPropertyByName(const API_Guid& elemGuid, API_Property& property, co
 	return error;
 }
 
+
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
@@ -321,6 +402,7 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid, API_Property& property, cons
 		if (propertyfrom.status == API_Property_HasValue) {
 			if (property.value.singleVariant != propertyfrom.value.singleVariant) {
 				property.isDefault = false;
+				property.value.singleVariant = propertyfrom.value.singleVariant;
 				err = ACAPI_Element_SetProperty(elemGuid, property);
 			}
 		}
@@ -348,7 +430,7 @@ bool SyncState(const API_Guid& elemGuid) {
 	GSErrCode err = NoError;
 	GS::Array<API_Property> properties;
 	err = GetPropertyByGuid(elemGuid, properties);
-	if (!err) {
+	if (err == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
 			if (properties[i].definition.description.Contains("Sync_flag")) {
 				if (properties[i].isDefault)
@@ -368,37 +450,45 @@ bool SyncState(const API_Guid& elemGuid) {
 }
 
 // --------------------------------------------------------------------
-// Синхронизация данныъ элемента согласно указаниям в описании свойств
+// Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
 static void SyncData(const API_Guid& elemGuid) {
-	if (SyncState(elemGuid)) {
-		GSErrCode		err = NoError;
-		GS::Array<API_Property> properties;
-		err = GetPropertyByGuid(elemGuid, properties);
-		if (!err) {
-			API_Elem_Head elementHead;
-			BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
-			elementHead.guid = elemGuid;
-			err = ACAPI_Element_GetHeader(&elementHead);
-			GS::UniString description_string = "";
-			GS::UniString paramName = "";
-			int synctype = 0;
-			int syncdirection = 0;
-			if (!err) {
-				for (UInt32 i = 0; i < properties.GetSize(); i++) {
-					description_string = properties[i].definition.description.ToUStr();
-					if (SyncString(description_string, paramName, synctype, syncdirection)) {
-						switch (synctype) {
-						case 1:
-							SyncParamAndProp(elemGuid, properties[i], paramName, syncdirection);
-							break;
-						case 2:
-							SyncPropAndProp(elemGuid, properties[i], paramName);
-							break;
-						default:
-							break;
-						}
+	GSErrCode		err = NoError;
+	API_ElemTypeID elementType;
+	// Получаем тип элемента
+	err = GetTypeByGUID(elemGuid, elementType);
+	if (CheckElementType(elementType)) // Сверяемся с настройками - нужно ли этот тип обрабатывать
+	{
+		bool isSync = SyncState(elemGuid);
+		if (isSync) // Проверяем - не отключена ли синхронизация у данного объекта
+		{
+			GS::Array<API_Property> properties;
+			err = GetPropertyByGuid(elemGuid, properties); // Получаем все пользовательские свойства
+			if (err == NoError) {
+				GS::UniString description_string = "";
+				GS::UniString paramName = "";
+				int synctype = 0;
+				int syncdirection = 0;
+				if (err == NoError) {
+					for (UInt32 i = 0; i < properties.GetSize(); i++) {
+						description_string = properties[i].definition.description.ToUStr();
+						isSync = SyncString(description_string, paramName, synctype, syncdirection);
+						if (isSync) // Парсим описание свойства
+						{
+							switch (synctype) {
+							case 1:
+								if (elementType == API_ObjectID || elementType == API_WindowID || elementType == API_DoorID) {
+									err = SyncParamAndProp(elemGuid, properties[i], paramName, syncdirection); //Синхронизация свойства и параметра
+								}
+								break;
+							case 2:
+									err = SyncPropAndProp(elemGuid, properties[i], paramName); //Синхронизация свойств
+								break;
+							default:
+								break;
+							}
 
+						}
 					}
 				}
 			}
@@ -406,54 +496,111 @@ static void SyncData(const API_Guid& elemGuid) {
 	}
 }
 
-
 // ============================================================================
 // Do_ElementMonitor
 //	observe all newly created elements
 // ============================================================================
-void	Do_ElementMonitor(bool switchOn)
+void	Do_ElementMonitor(void)
 {
-	if (switchOn) {
+	SyncPrefs prefsData;
+	GetSyncSettings(prefsData);
+	if (prefsData.syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);			// observe all newly created elements
-		allNewElements = true;
 	}
 	else {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
-		allNewElements = false;
 	}
-
 	return;
 }	// Do_ElementMonitor
 
+static void SetMenuState(void) {
+	SyncPrefs prefsData;
+	GetSyncSettings(prefsData);
+	CheckACMenuItem(Menu_SyncAll, prefsData.syncMon);
+	CheckACMenuItem(Menu_wallS, prefsData.wallS);
+	CheckACMenuItem(Menu_widoS, prefsData.widoS);
+	CheckACMenuItem(Menu_objS, prefsData.objS);
+}
+
+static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param)
+{
+	switch (notifID) {
+	case APINotify_New:
+		SetMenuState();
+		break;
+	case APINotify_NewAndReset:
+		SetMenuState();
+		break;
+	case APINotify_Open:
+		SetMenuState();
+		Do_ElementMonitor();
+		break;
+	case APINotify_PreSave:
+		break;
+	case APINotify_TempSave:
+		break;
+	case APINotify_Save:
+		break;
+	case APINotify_Close:
+		break;
+	case APINotify_Quit:
+		break;
+	case APINotify_SendChanges:
+		break;
+	case APINotify_ReceiveChanges:
+		break;
+	case APINotify_ChangeProjectDB:
+		break;
+	case APINotify_ChangeWindow:
+		break;
+	case APINotify_ChangeFloor:
+		break;
+	case APINotify_ChangeLibrary:
+		break;
+	default:
+		break;
+	}
+	param = 1;
+	return NoError;
+}	// ProjectEventHandlerProc
+
+
 static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams)
 {
-	bool t_elementMonitorEnabled = false;
+	GSErrCode err = NoError;
+	SyncPrefs prefsData;
+	GetSyncSettings(prefsData);
 	switch (menuParams->menuItemRef.menuResID) {
 		case AddOnMenuID:
 			switch (menuParams->menuItemRef.itemIndex) {
 				case SyncAll_CommandID:
-					elementMonitorEnabled = !elementMonitorEnabled;
-					Do_ElementMonitor(elementMonitorEnabled);
-					InvertMenuItemMark(32500, Menu_SyncAll);
-					if (elementMonitorEnabled) SyncAll();
+					prefsData.syncMon = !prefsData.syncMon;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
+					Do_ElementMonitor();
+					if (prefsData.syncMon) SyncAll();
 					break;
 				case SyncSelect_CommandID:
-					t_elementMonitorEnabled = elementMonitorEnabled;
-					if (elementMonitorEnabled) {
-						elementMonitorEnabled = false;
-						Do_ElementMonitor(elementMonitorEnabled);
-					}
-					CallOnSelectedElem(SyncData);
-					if (t_elementMonitorEnabled) {
-						elementMonitorEnabled = true;
-						Do_ElementMonitor(elementMonitorEnabled);
-					}
+					SyncSelected();
+					break;
+				case wallS_CommandID:
+					prefsData.wallS = !prefsData.wallS;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
+					break;
+				case widoS_CommandID:
+					prefsData.widoS = !prefsData.widoS;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
+					break;
+				case objS_CommandID:
+					prefsData.objS = !prefsData.objS;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					break;
 			}
 			break;
 	}
+	SetMenuState();
+	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 	return NoError;
 }
 
@@ -461,17 +608,20 @@ API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams* envir)
 {
 	RSGetIndString (&envir->addOnInfo.name, AddOnInfoID, AddOnNameID, ACAPI_GetOwnResModule ());
 	RSGetIndString (&envir->addOnInfo.description, AddOnInfoID, AddOnDescriptionID, ACAPI_GetOwnResModule ());
-
-	return APIAddon_Normal;
+	ACAPI_KeepInMemory(true);
+	return APIAddon_Preload;
 }
 
 GSErrCode __ACDLL_CALL RegisterInterface (void)
-{
-	return ACAPI_Register_Menu (AddOnMenuID, 0, MenuCode_Tools, MenuFlag_Default);
+{	
+	GSErrCode err = ACAPI_Register_Menu(AddOnMenuID, 0, MenuCode_Tools, MenuFlag_Default);
+	return err;
 }
 
 GSErrCode __ACENV_CALL Initialize (void)
 {
+	ACAPI_Notify_CatchProjectEvent(API_AllNotificationMask, ProjectEventHandlerProc);
+	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }
 

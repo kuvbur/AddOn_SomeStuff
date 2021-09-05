@@ -9,15 +9,22 @@
 #if !defined (HELPERS_HPP)
 #define	HELPERS_HPP
 #define ELEMSTR_LEN				256
-
+#define	CURR_ADDON_VERS			0x0100
 #include "APICommon.h"
 #include "DG.h"
 #include "StringConversion.hpp"
 
-
 // -----------------------------------------------------------------------------
 // Helper functions
 // -----------------------------------------------------------------------------
+typedef struct {
+	Int32		version;
+	bool		syncNew;
+	bool		syncMon;
+	bool		wallS;
+	bool		widoS;
+	bool		objS;
+} SyncPrefs;
 
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
@@ -27,6 +34,9 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 bool InvertMenuItemMark(short menuResID, short itemIndex);
 GSErrCode GetPropertyByGuid(const API_Guid& elemGuid, GS::Array<API_Property>& properties);
 bool SyncString(GS::UniString& description_string, GS::UniString& paramName, int& synctype, int& syncdirection);
+GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
+void	CheckACMenuItem(short itemInd, bool checked);
+void GetSyncSettings(SyncPrefs& prefsData);
 
 
 namespace PropertyTestHelpers
