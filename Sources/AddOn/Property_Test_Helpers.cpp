@@ -1,4 +1,4 @@
-// *****************************************************************************
+п»ї// *****************************************************************************
 // File:			Property_Test_Helper.cpp
 // Description:		Property_Test add-on helper macros and functions
 // Project:			APITools/Property_Test
@@ -10,11 +10,11 @@
 #include "Property_Test_Helpers.hpp"
 
 // -----------------------------------------------------------------------------
-// Парсит описание свойства
-// Результат
-//	имя параметра (свойства)
-//	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2)
-//	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
+// РџР°СЂСЃРёС‚ РѕРїРёСЃР°РЅРёРµ СЃРІРѕР№СЃС‚РІР°
+// Р РµР·СѓР»СЊС‚Р°С‚
+//	РёРјСЏ РїР°СЂР°РјРµС‚СЂР° (СЃРІРѕР№СЃС‚РІР°)
+//	С‚РёРї СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё (С‡РёС‚Р°РµРј РёР· РїР°СЂР°РјРµС‚СЂР° GDL - 1, РёР· СЃРІРѕР№СЃС‚РІР° - 2)
+//	РЅР°РїСЂР°РІР»РµРЅРёРµ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РґР»СЏ СЂР°Р±РѕС‚С‹ СЃ GDL (С‡РёС‚Р°РµРј РёР· РїР°СЂР°РјРµС‚СЂР° - 1, Р·Р°РїРёСЃС‹РІР°РµРј РІ РїР°СЂР°РјРµС‚СЂ - 2)
 // -----------------------------------------------------------------------------
 bool SyncString(GS::UniString& description_string, GS::UniString& paramName, int& synctype, int& syncdirection) {
 	bool flag_sync = false;
@@ -35,8 +35,64 @@ bool SyncString(GS::UniString& description_string, GS::UniString& paramName, int
 	return flag_sync;
 }
 
+GSErrCode DefultSyncSettings(SyncPrefs& prefsData) {
+	BNZeroMemory(&prefsData, sizeof(SyncPrefs));
+	prefsData.version = CURR_ADDON_VERS;
+	prefsData.syncNew = false;
+	prefsData.syncMon = false;
+	prefsData.wallS = true;
+	prefsData.widoS = true;
+	prefsData.objS = true;
+	GSErrCode err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr) &prefsData);
+	return err;
+}
+
+void GetSyncSettings(SyncPrefs& prefsData)
+{
+	Int32			version;
+	GSSize			nBytes;
+	GSErrCode err = NoError;
+	unsigned short	platformSign = GS::Act_Platform_Sign;
+
+	err = ACAPI_GetPreferences_Platform(&version, &nBytes, NULL, NULL);
+	if (version == CURR_ADDON_VERS) {
+		err = ACAPI_GetPreferences_Platform(&version, &nBytes, (GSPtr)&prefsData, &platformSign);
+		if (platformSign != GS::Act_Platform_Sign) {
+				GS::PlatformSign	inplatform = (GS::PlatformSign)platformSign;
+				IVLong(inplatform, &prefsData.version);
+				IVBool(inplatform, &prefsData.syncNew);
+				IVBool(inplatform, &prefsData.syncMon);
+				IVBool(inplatform, &prefsData.wallS);
+				IVBool(inplatform, &prefsData.widoS);
+				IVBool(inplatform, &prefsData.objS);
+			}
+	}
+	else {
+		err = DefultSyncSettings(prefsData);
+	}
+}
+
+void	CheckACMenuItem(short itemInd, bool checked)
+{
+	API_MenuItemRef itemRef;
+	GSFlags         itemFlags;
+
+	BNZeroMemory(&itemRef, sizeof(API_MenuItemRef));
+	itemRef.menuResID = 32500;
+	itemRef.itemIndex = itemInd;
+
+	itemFlags = 0;
+	ACAPI_Interface(APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
+	if (checked)
+		itemFlags |= API_MenuItemChecked;
+	else
+		itemFlags &= ~API_MenuItemChecked;
+	ACAPI_Interface(APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
+	return;
+}
+
 // -----------------------------------------------------------------------------
-// Получить массив Guid выбьранных элементов
+// РџРѕР»СѓС‡РёС‚СЊ РјР°СЃСЃРёРІ Guid РІС‹Р±СЂР°РЅРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ
 // -----------------------------------------------------------------------------
 static GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/)
 {
@@ -47,7 +103,7 @@ static GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, b
 	BMKillHandle((GSHandle*)&selectionInfo.marquee.coords);
 	if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
 		if (assertIfNoSel) {
-			DGAlert(DG_ERROR, "Error", "Сначала выберите элементы!", "", "Ok");
+			DGAlert(DG_ERROR, "Error", "РЎРЅР°С‡Р°Р»Р° РІС‹Р±РµСЂРёС‚Рµ СЌР»РµРјРµРЅС‚С‹!", "", "Ok");
 		}
 	}
 	if (err != NoError) {
@@ -62,20 +118,40 @@ static GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, b
 
 
 // -----------------------------------------------------------------------------
-// Вызов функции для выбранных элементов
-//	(функция должна принимать в качетве аргумента API_Guid
+// Р’С‹Р·РѕРІ С„СѓРЅРєС†РёРё РґР»СЏ РІС‹Р±СЂР°РЅРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ
+//	(С„СѓРЅРєС†РёСЏ РґРѕР»Р¶РЅР° РїСЂРёРЅРёРјР°С‚СЊ РІ РєР°С‡РµС‚РІРµ Р°СЂРіСѓРјРµРЅС‚Р° API_Guid
 // -----------------------------------------------------------------------------
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/)
 {
+	GS::UniString	title("Sync Selected");
+	Int32 nLib = 0;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			function(guidArray[i]);
+			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+				return;
+			}
 		}
 	}
 	else if (!assertIfNoSel) {
 		function(APINULLGuid);
 	}
+}
+
+// -----------------------------------------------------------------------------
+// РџРѕР»СѓС‡РµРЅРёРµ С‚РёРїР° РѕР±СЉРµРєС‚Р° РїРѕ РµРіРѕ API_Guid
+// -----------------------------------------------------------------------------
+GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
+	GSErrCode		err = NoError;
+	API_Elem_Head elementHead;
+	BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
+	elementHead.guid = elemGuid;
+	err = ACAPI_Element_GetHeader(&elementHead);
+	elementType = elementHead.typeID;
+	return err;
 }
 
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
@@ -109,7 +185,7 @@ GSErrCode GetPropertyByGuid(const API_Guid& elemGuid, GS::Array<API_Property>& p
 }
 
 // -----------------------------------------------------------------------------
-// Получить значение параметра с конвертацие типа данных
+// РџРѕР»СѓС‡РёС‚СЊ Р·РЅР°С‡РµРЅРёРµ РїР°СЂР°РјРµС‚СЂР° СЃ РєРѕРЅРІРµСЂС‚Р°С†РёРµ С‚РёРїР° РґР°РЅРЅС‹С…
 // -----------------------------------------------------------------------------
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real)
 {
@@ -167,10 +243,10 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 				break;
 			case APIParT_Boolean:
 				if (param_bool) {
-					param_string = "ИСТИНА";
+					param_string = "РРЎРўРРќРђ";
 				}
 				else {
-					param_string = "ЛОЖЬ";
+					param_string = "Р›РћР–Р¬";
 				}
 				break;
 			case APIParT_Length:
