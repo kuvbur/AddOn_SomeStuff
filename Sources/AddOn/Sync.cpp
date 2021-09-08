@@ -196,27 +196,31 @@ bool SyncByType(const API_ElemTypeID& elementType) {
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
 	GS::UniString	subtitle;
-	if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle) == NoError) {
-		nLib += 1;
-		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &nLib);
-		msg_rep("SyncByType", subtitle, NoError, APINULLGuid);
-	}
 	GSErrCode		err = NoError;
 	GS::Array<API_Guid> guidArray;
 	bool flag_chanel = false;
 	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable);
-	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		if (prefsData.syncAll) SyncData(guidArray[i]);
-		if (prefsData.syncMon) {
-			err = ACAPI_Element_AttachObserver(guidArray[i]);
-			if (err == APIERR_LINKEXIST)
-				err = NoError;
+
+	if (!guidArray.IsEmpty()) {
+		if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle) == NoError) {
+			nLib += 1;
+			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &nLib);
+			GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
+			msg_rep("SyncByType", subtitle + intString, NoError, APINULLGuid);
 		}
-		ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
-		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-			flag_chanel = true;
-			msg_rep("SyncByType", subtitle + " - отмена", NoError, APINULLGuid);
-			return flag_chanel;
+		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+			if (prefsData.syncAll) SyncData(guidArray[i]);
+			if (prefsData.syncMon) {
+				err = ACAPI_Element_AttachObserver(guidArray[i]);
+				if (err == APIERR_LINKEXIST)
+					err = NoError;
+			}
+			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
+			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+				flag_chanel = true;
+				msg_rep("SyncByType", subtitle + " - отмена", NoError, APINULLGuid);
+				return flag_chanel;
+			}
 		}
 	}
 	return flag_chanel;

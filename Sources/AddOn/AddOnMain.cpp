@@ -11,37 +11,6 @@
 #include "Sync.hpp"
 #include "Log.hpp"
 
-static GS::HashTable<API_Guid, GS::UniString>	objectSetsToReport;
-
-// -----------------------------------------------------------------------------
-// GetTeamworkMembers
-//
-//  collects information of joined Teamwork members
-// -----------------------------------------------------------------------------
-static GSErrCode	GetTeamworkMembers(GS::HashTable<short, API_UserInfo>& userInfoTable, short& myUserId)
-{
-	API_ProjectInfo	projectInfo;
-	BNZeroMemory(&projectInfo, sizeof(API_ProjectInfo));
-	GSErrCode err = ACAPI_Environment(APIEnv_ProjectID, &projectInfo);
-	if (err != NoError)
-		return err;
-
-	myUserId = projectInfo.userId;
-
-	API_SharingInfo	sharingInfo;
-	BNZeroMemory(&sharingInfo, sizeof(API_SharingInfo));
-	err = ACAPI_Environment(APIEnv_ProjectSharingID, &sharingInfo);
-	if (err == NoError && sharingInfo.users != nullptr) {
-		for (Int32 i = 0; i < sharingInfo.nUsers; i++)
-			userInfoTable.Add(((*sharingInfo.users)[i]).userId, (*sharingInfo.users)[i]);
-	}
-	if (sharingInfo.users != nullptr)
-		BMhKill(reinterpret_cast<GSHandle*>(&sharingInfo.users));
-
-	return err;
-}		/* GetTeamworkMembers */
-
-
 // -----------------------------------------------------------------------------
 // Срабатывает при изменении элемента
 // -----------------------------------------------------------------------------
@@ -49,8 +18,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 {
 	GSErrCode		err = NoError;
 	bool	sync_prop = false;
+	SyncPrefs prefsData;
+	SyncSettingsGet(prefsData);
 
-	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && CheckElementType(elemType->elemHead.typeID)) {
+	if (prefsData.syncMon && elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && CheckElementType(elemType->elemHead.typeID)) {
 		API_Element			parentElement;
 		API_ElementMemo		parentElementMemo;
 		API_ElementUserData	parentUserData;
@@ -60,8 +31,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		BNZeroMemory(&parentUserData, sizeof(API_ElementUserData));
 		ACAPI_Notify_GetParentElement(&parentElement, &parentElementMemo, 0, &parentUserData);
 		BMKillHandle(&parentUserData.dataHdl);
-		SyncPrefs prefsData;
-		SyncSettingsGet(prefsData);
+
 		switch (elemType->notifID) {
 		case APINotifyElement_New:
 			if (!prefsData.syncMon && !prefsData.logMon)
@@ -128,37 +98,16 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 //
 //  prints reservation information of a given element
 // -----------------------------------------------------------------------------
-static void		PrintReservationInfo(const GS::HashTable<short, API_UserInfo>& userInfoTable,
-	short										myUserId,
-	const char* actionStr,
-	const API_Guid objectId,
-	short										ownerId = 0)
+static void	SyncReservation(short type, const API_Guid objectId)
 {
-	GS::UniString actionByUserStr(actionStr);
-	if (userInfoTable.ContainsKey(ownerId)) {
-		if (ownerId == myUserId) {
-			actionByUserStr.Append(" by me (");
-			actionByUserStr.Append(userInfoTable[ownerId].fullName);
-			actionByUserStr.Append(")");
-		}
-		else {
-			actionByUserStr.Append(" by ");
-			actionByUserStr.Append(userInfoTable[ownerId].fullName);
+	if (type == 1) {
+		SyncPrefs prefsData;
+		SyncSettingsGet(prefsData);
+		if (prefsData.syncMon || prefsData.logMon) {
+			ACAPI_Element_AttachObserver(objectId);
 		}
 	}
-	API_Guid objectd = objectId;
-	GS::UniString objectSetName = "---";
-	if (!objectSetName.IsEmpty()) {
-		const GS::UniString reportString = GS::UniString::Printf("=  %T got %T", objectSetName.ToPrintf(), actionByUserStr.ToPrintf());
-		ACAPI_WriteReport(reportString, false);
-	}
-	//else {
-	//	GS::UniString elemTypeName = FindElementTypeName(objectId);
-	//	if (!elemTypeName.IsEmpty()) {
-	//		const GS::UniString reportString = GS::UniString::Printf("=  %T {%T} is %T", elemTypeName.ToPrintf(), APIGuidToString(objectId).ToPrintf(), actionByUserStr.ToPrintf());
-	//		ACAPI_WriteReport(reportString, false);
-	//	}
-	//}
+	return;
 }		/* PrintReservationInfo */
 
 
@@ -171,27 +120,16 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_G
 	const GS::HashSet<API_Guid>& released,
 	const GS::HashSet<API_Guid>& deleted)
 {
-	GS::HashTable<short, API_UserInfo> userInfoTable;
-	short myUserId = 0;
-
-	GSErrCode err = GetTeamworkMembers(userInfoTable, myUserId);
-	if (err != NoError)
-		return err;
-
-	ACAPI_WriteReport("=== Attention: Workspace reservation has been changed ===============", false);
-
 	for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs(); it != nullptr; ++it) {
-		PrintReservationInfo(userInfoTable, myUserId, "reserved", *(it->key), *(it->value));
+		SyncReservation(1, *(it->key));
+	}
+	for (GS::HashSet<API_Guid>::ConstIterator it = released.Enumerate(); it != NULL; ++it) {
+		SyncReservation(2, *it);
 	}
 
-	for (GS::HashSet<API_Guid>::ConstIterator it = released.Enumerate(); it != nullptr; ++it) {
-		PrintReservationInfo(userInfoTable, myUserId, "released", *it);
+	for (GS::HashSet<API_Guid>::ConstIterator it = deleted.Enumerate(); it != NULL; ++it) {
+		SyncReservation(3, *it);
 	}
-
-	for (GS::HashSet<API_Guid>::ConstIterator it = deleted.Enumerate(); it != nullptr; ++it) {
-		PrintReservationInfo(userInfoTable, myUserId, "deleted", *it);
-	}
-
 	return NoError;
 }		/* ReservationChangeHandler */
 
@@ -208,8 +146,7 @@ void	Do_ElementMonitor(void)
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);	
 		ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
 	}
-	if (!prefsData.syncMon && !prefsData.logMon) 
-	{
+	if (!prefsData.syncMon && !prefsData.logMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
 		ACAPI_Notify_CatchElementReservationChange(nullptr);
@@ -226,8 +163,7 @@ static void MenuSetState(void) {
 	MenuItemCheckAC(Menu_objS, prefsData.objS);
 }
 
-static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param)
-{
+static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param){
 	switch (notifID) {
 	case APINotify_New:
 		MenuSetState();
@@ -269,8 +205,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 }	// ProjectEventHandlerProc
 
 
-static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams)
-{
+static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 	bool t_flag = false;
 	GSErrCode err = NoError;
 	SyncPrefs prefsData;
@@ -282,8 +217,8 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams)
 					prefsData.syncMon = !prefsData.syncMon;
 					prefsData.syncAll = false;
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
-					SyncAndMonAll();
 					Do_ElementMonitor();
+					SyncAndMonAll();
 					break;
 				case SyncAll_CommandID:
 					t_flag = prefsData.syncMon;
@@ -311,7 +246,12 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams)
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					break;
 				case ReNum_CommandID:
+					t_flag = prefsData.syncMon;
+					if (t_flag) prefsData.syncMon = false;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					err = ReNum_Selected();
+					if (t_flag) prefsData.syncMon = true;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					break;
 				case Sum_CommandID:
 					break;

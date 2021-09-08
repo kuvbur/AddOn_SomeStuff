@@ -343,6 +343,8 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
+		GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
+		msg_rep("Sync Selected", intString, NoError, APINULLGuid);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			function(guidArray[i]);
