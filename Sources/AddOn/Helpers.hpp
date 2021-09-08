@@ -13,7 +13,7 @@
 #define	 Menu_widoS			5
 #define	 Menu_objS			6
 #define	 Menu_ReNum			7
-#define	 Menu_луќ			8
+#define	 Menu_Sum			8
 #define	 Menu_Log			9
 
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
