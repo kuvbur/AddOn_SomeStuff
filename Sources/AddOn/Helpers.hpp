@@ -72,7 +72,7 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 GSErrCode WriteProp2Prop(const API_Guid& elemGuid, API_Property& property, const API_Property& propertyfrom);
 GSErrCode WriteParam2Prop(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName);
 void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid);
-
+void MenuSetState(void);
 
 namespace PropertyTestHelpers
 {

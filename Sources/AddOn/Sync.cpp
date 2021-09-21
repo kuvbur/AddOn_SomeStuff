@@ -8,27 +8,51 @@ Int32 nLib = 0;
 
 
 // -----------------------------------------------------------------------------
+// Отслеживание резервируемых элементов
+// -----------------------------------------------------------------------------
+void	SyncReservation(short type, const API_Guid objectId)
+{
+	if (type == 1) {
+		SyncPrefs prefsData;
+		SyncSettingsGet(prefsData);
+		if (prefsData.syncMon || prefsData.logMon) {
+			ACAPI_Element_AttachObserver(objectId);
+		}
+	}
+	return;
+}		/* PrintReservationInfo */
+
+
+// -----------------------------------------------------------------------------
 // Парсит описание свойства
 // Результат
 //	имя параметра (свойства)
 //	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2)
 //	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
 // -----------------------------------------------------------------------------
-bool SyncString(GS::UniString& description_string, GS::UniString& paramName, int& synctype, int& syncdirection) {
+bool SyncString(GS::UniString& description_string, SyncRule &syncRule) {
 	bool flag_sync = false;
 	if (description_string.IsEmpty()) {
 		return flag_sync;
 	}
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
 		flag_sync = true;
-		synctype = 1;
-		syncdirection = 2;
-		if (description_string.Contains("Sync_from")) syncdirection = 1;
+		syncRule.synctype = 1;
+		syncRule.syncdirection = 2;
+		description_string.Trim('\r');
+		description_string.Trim('\n');
+		description_string.Trim();
+		if (description_string.Contains("Sync_from")) syncRule.syncdirection = 1;
 		if (description_string.Contains("Property:")) {
-			synctype = 2;
+			syncRule.synctype = 2;
 			description_string.ReplaceAll("Property:", "");
 		}
-		paramName = description_string.GetSubstring('{', '}', 0);
+		GS::UniString paramName = description_string.GetSubstring('{', '}', 0);
+		paramName.ReplaceAll("Property:", "");
+		GS::Array<GS::UniString> partstring;
+		//int nparam = StringSplt(paramName, ";", partstring);
+		//TODO Добавить исключаемые значения
+		syncRule.paramName = paramName;
 	}
 	return flag_sync;
 }
@@ -36,11 +60,11 @@ bool SyncString(GS::UniString& description_string, GS::UniString& paramName, int
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
-GSErrCode SyncPropAndProp(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName)
+GSErrCode SyncPropAndProp(const API_Guid& elemGuid, API_Property& property, SyncRule& syncRule)
 {
 	GSErrCode		err = NoError;
 	API_Property propertyfrom;
-	err = GetPropertyByName(elemGuid, paramName, propertyfrom);
+	err = GetPropertyByName(elemGuid, syncRule.paramName, propertyfrom);
 	if (err == NoError) {
 		err = WriteProp2Prop(elemGuid, property, propertyfrom);
 	}
@@ -50,11 +74,11 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid, API_Property& property, cons
 // -----------------------------------------------------------------------------
 // Синхронизация значений свойства и параметра
 // -----------------------------------------------------------------------------
-GSErrCode SyncParamAndProp(const API_Guid& elemGuid, const GS::UniString& paramName, const int& syncdirection, API_Property& property)
+GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Property& property)
 {
 	GSErrCode		err = NoError;
-	if (syncdirection == 1) {
-		err = WriteParam2Prop(elemGuid, property, paramName);
+	if (syncRule.syncdirection == 1) {
+		err = WriteParam2Prop(elemGuid, property, syncRule.paramName);
 	}
 	return err;
 }
@@ -101,22 +125,20 @@ void SyncData(const API_Guid& elemGuid) {
 		if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
 		if (SyncState(elemGuid, definitions)) { // Проверяем - не отключена ли синхронизация у данного объекта
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-				GS::UniString paramName = "";
-				int synctype = 0;
-				int syncdirection = 0;
-				if (SyncString(definitions[i].description, paramName, synctype, syncdirection)) { // Парсим описание свойства
+				SyncRule syncRule;
+				if (SyncString(definitions[i].description, syncRule)) { // Парсим описание свойства
 					API_Property property = {};
 					err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, property);
 					if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
 					if (err == NoError) {
-						switch (synctype) {
+						switch (syncRule.synctype) {
 						case 1:
 							if (elementType == API_ObjectID || elementType == API_WindowID || elementType == API_DoorID || elementType == API_ZoneID) {
-								err = SyncParamAndProp(elemGuid, paramName, syncdirection, property); //Синхронизация свойства и параметра
+								err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
 							}
 							break;
 						case 2:
-							err = SyncPropAndProp(elemGuid, property, paramName); //Синхронизация свойств
+							err = SyncPropAndProp(elemGuid, property, syncRule); //Синхронизация свойств
 							break;
 						default:
 							break;
