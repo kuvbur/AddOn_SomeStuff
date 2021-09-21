@@ -9,6 +9,18 @@
 #include	"ACAPinc.h"
 #include "Helpers.hpp"
 
+// -----------------------------------------------------------------------------
+// Обновление отмеченных в меню пунктов
+// -----------------------------------------------------------------------------
+void MenuSetState(void) {
+	SyncPrefs prefsData;
+	SyncSettingsGet(prefsData);
+	MenuItemCheckAC(Menu_MonAll, prefsData.syncMon);
+	MenuItemCheckAC(Menu_wallS, prefsData.wallS);
+	MenuItemCheckAC(Menu_widoS, prefsData.widoS);
+	MenuItemCheckAC(Menu_objS, prefsData.objS);
+}
+
 void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString, const GSErrCode &err, const API_Guid& elemGuid) {
 	GS::UniString error_type = "";
 	if (err != NoError) {
@@ -567,13 +579,13 @@ GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& prope
 
 // -----------------------------------------------------------------------------
 // Получить значение параметра с конвертацией типа данных
+// TODO добавить обработку массивов
 // -----------------------------------------------------------------------------
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
 	GSErrCode		err = NoError;
 	bool flag_find = false;
 	API_AddParType nthParameter;
 	BNZeroMemory(&nthParameter, sizeof(API_AddParType));
-
 	API_Element element = {};
 	element.header.guid = elemGuid;
 	err = ACAPI_Element_Get(&element);

@@ -2,26 +2,14 @@
 #include	"ACAPinc.h"
 #include "ReNum.hpp"
 #include "Helpers.hpp"
+#include <map>
+#include "alphanum.hpp"
+
+typedef std::map<std::string, SortGUID, doj::alphanum_less<std::string> > Values;
 
 #define RENUM_IGNORE 0
 #define RENUM_ADD 1
 #define RENUM_NORMAL 2
-
-typedef struct {
-	API_Guid		guid;
-	GS::UniString	val;
-	int	state;
-} RenumElement;
-
-typedef struct {
-	bool						state;
-	API_PropertyDefinition		position;
-	API_PropertyDefinition		criteria;
-	API_PropertyDefinition		delimetr;
-	GS::Array <RenumElement>	elemts;
-} RenumRule;
-
-typedef GS::HashTable<API_Guid, RenumRule> Rules;
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Итак, задача, суть такова:
@@ -76,6 +64,7 @@ bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string
 	return flag;
 } // ReNumRule
 
+
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -113,7 +102,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 } // ReNumGetRule
 
 // -----------------------------------------------------------------------------------------------------------------------
-// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом 
+// Функция распределяет элемент в тиблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
 GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules &rules) {
 	GSErrCode err = NoError;
@@ -138,7 +127,7 @@ GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules &rules) {
 						rulecritetia.state = state;
 						rules.Add(definitions[j].guid, rulecritetia);
 					} //rules.ContainsKey(definitions[j].guid)
-					// Дописываем элемен в правило
+					// Дописываем элемент в правило
 					RenumElement el = {};
 					el.guid = elemGuid;
 					el.state = state;
@@ -156,17 +145,37 @@ GSErrCode ReNum_OneRule(const RenumRule& rule) {
 	API_PropertyDefinition		position= rule.position;
 	API_PropertyDefinition		criteria = rule.criteria;
 	API_PropertyDefinition		delimetr = rule.delimetr;
+	API_PropertyDefinition		sort = rule.sort;
+	Values valueList;
 
 	GS::Array<API_PropertyDefinition> definitions;
 	definitions.Push(criteria);
-
+	// Собираем значения свойств из criteria. Нам нужны только уникальные значения.
 	for (UInt32 i = 0; i < elemArray.GetSize(); i++) {
 		GS::Array<API_Property>  properties;
 		err = ACAPI_Element_GetPropertyValues(elemArray[i].guid, definitions, properties);
-		GS::UniString val = PropertyTestHelpers::ToString(properties[0]);
+		std::string val = PropertyTestHelpers::ToString(properties[0]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
 		elemArray[i].val = val;
+		valueList[val].guid.Push(elemArray[i].guid);
 	}
-	// Собираем значения свойств из criteria. Нам нужны только уникальные значения.
+	// Теперь последовательно идём по словарю, вытаскиваем оттуда guid и нумеруем
+	Int32 npos = 0;
+	for (Values::iterator i = valueList.begin(); i != valueList.end(); ++i) {
+		//TODO Добавить обработку исключенных позиций
+		npos += 1;
+		GS::Array<API_Guid> eleminpos = i->second.guid;
+		for (UInt32 i = 0; i < eleminpos.GetSize(); i++) {
+			API_Property positionproperty = {};
+			err = ACAPI_Element_GetPropertyValue (eleminpos[i], position.guid, positionproperty);
+			if (err != NoError) msg_rep("ReNum_OneRule", "ACAPI_Element_GetPropertyValue", err, eleminpos[i]);
+			if (err == NoError) {
+				positionproperty.isDefault = false;
+				positionproperty.value.singleVariant.variant.intValue = npos;
+				err = ACAPI_Element_SetProperty(eleminpos[i], positionproperty);
+				if (err != NoError) msg_rep("ReNum_OneRule", "ACAPI_Element_SetProperty", err, eleminpos[i]);
+			}
+		}
+	}
 	return err;
 }
 
@@ -174,19 +183,26 @@ GSErrCode ReNum_Selected(void) {
 	GSErrCode err = NoError;
 	Rules rules;
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
-	if (!guidArray.IsEmpty()) {
-		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			err = ReNum_GetElement(guidArray[i], rules);
-		}
-		if (rules.IsEmpty()) return APIERR_MISSINGCODE;
-		// Теперь у нас есть списк правил. Можем пройти по каждому правилу и обработать элементы
-		for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
-			const RenumRule& rule = *cIt->value;
-			if (rule.state && !rule.elemts.IsEmpty()) {
-				err = ReNum_OneRule(rule);
+	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
+	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+		if (!guidArray.IsEmpty()) {
+			for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+				err = ReNum_GetElement(guidArray[i], rules);
+			}
+			if (!rules.IsEmpty()) {
+				// Теперь у нас есть списк правил. Можем пройти по каждому правилу и обработать элементы
+				for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
+					const RenumRule& rule = *cIt->value;
+					if (rule.state && !rule.elemts.IsEmpty()) {
+						err = ReNum_OneRule(rule);
+					}
+				}
 			}
 		}
-	}
-	rules.Clear();
+		GS::UniString intString = GS::UniString::Printf("Qty elements - %d", guidArray.GetSize());
+		msg_rep("ReNum_Selected", intString, err, APINULLGuid);
+		rules.Clear();
+		return err;
+		});
 	return err;
 }
