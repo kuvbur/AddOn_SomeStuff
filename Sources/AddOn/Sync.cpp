@@ -37,6 +37,11 @@ bool SyncString(GS::UniString& description_string, SyncRule &syncRule) {
 	}
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
 		flag_sync = true;
+		GS::Array<GS::UniString> rulestring;
+		int nparam = StringSplt(description_string, "Sync_", rulestring); // Проверяем количество правил
+		if (nparam > 1) {
+			nparam = 1;
+		}
 		syncRule.synctype = 1;
 		syncRule.syncdirection = 2;
 		description_string.Trim('\r');

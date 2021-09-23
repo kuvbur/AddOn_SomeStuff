@@ -516,13 +516,15 @@ int StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Ar
 		while (end != MaxUSize)
 		{
 			part = instring.GetSubstring(start, end - start);
-			part.Trim('\r');
-			part.Trim('\n');
-			part.Trim();
-			partstring.Push(part);
+			if (part.GetLength() > 0) {
+				part.Trim('\r');
+				part.Trim('\n');
+				part.Trim();
+				partstring.Push(part);
+				n += 1;
+			}
 			start = end + delim.GetLength();
 			end = instring.FindFirstIn(delim, start);
-			n += 1;
 		}
 		part = instring.GetSubstring(start, instring.GetLength() - start);
 		partstring.Push(part);
@@ -544,14 +546,14 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 	if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < groups.GetSize(); i++) {
-			if (groups[i].groupType == API_PropertyCustomGroupType && groups[i].name.IsEqual(partstring[0]))
+			if (groups[i].groupType == API_PropertyCustomGroupType && groups[i].name.IsEqual(partstring[0], GS::UniString::CaseInsensitive))
 			{
 				GS::Array<API_PropertyDefinition> definitions;
 				err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
 				if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
 				if (err == NoError) {
 					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-						if (definitions[j].name.IsEqual(partstring[1])) {
+						if (definitions[j].name.IsEqual(partstring[1]), GS::UniString::CaseInsensitive) {
 							definition = definitions[j];
 							return err;
 						}
@@ -599,7 +601,7 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 			if (err == NoError){
 				UInt32 totalParams = BMGetHandleSize((GSConstHandle)memo.params) / sizeof(API_AddParType);  // number of parameters = handlesize / size of single handle
 				for (UInt32 i = 0; i < totalParams; i++) {
-					if ((*memo.params)[i].name == paramName) {
+					if (paramName.IsEqual((*memo.params)[i].name, GS::UniString::CaseInsensitive)) {
 						nthParameter = (*memo.params)[i];
 						flag_find = true;
 						break;
