@@ -1,8 +1,0 @@
-'MDID' 32500 "Add-On Identifier" {
-	1 /* Replace with your developer id. */
-	2 /* Replace with your local id. */
-}
-
-'GICN' 10001 "AddOnIcon" {
-	"AddOnIcon"
-}
