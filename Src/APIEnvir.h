@@ -1,5 +1,10 @@
+﻿// *****************************************************************************
+// General settings for AddOn developments
+// *****************************************************************************
+
 #ifndef	_APIENVIR_H_
 #define	_APIENVIR_H_
+
 
 #if defined (_MSC_VER)
 	#if !defined (WINDOWS)
@@ -18,5 +23,6 @@
 #if !defined (ACExtension)
 	#define ACExtension
 #endif
+
 
 #endif
