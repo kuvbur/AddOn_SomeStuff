@@ -20,7 +20,7 @@ typedef std::map<std::string, SortGUID, doj::alphanum_less<std::string> > Values
 //					Renum{*имя свойства-критерия*; *имя свойства-разбивки*}
 //	 				Renum{*имя свойства-критерия*}
 // 2. Записываем для каждого элемента в структуру свойства, участвующие в правиле
-// 3. Откидываем все с вфключенным флагом
+// 3. Откидываем все с выключенным флагом
 // 4. По количеству уникальных имён свойств-правил, взятых из Renum_flag{*имя свойства с правилом*}, разбиваем элементы
 // -----------------------------------------------------------------------------------------------------------------------
 
@@ -80,11 +80,19 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 		err = ACAPI_Element_GetPropertyValues(elemGuid, definitions, propertyflag);
 		if (err == NoError) {
 			if (propertyflag[0].isDefault) {
+#ifdef AC_25
+				state = propertyflag[0].definition.defaultValue.basicValue.singleVariant.variant.uniStringValue;
+#else
 				state = propertyflag[0].definition.defaultValue.basicValue.singleEnumVariant.displayVariant.uniStringValue;
+#endif // AC_25
 			}
 			else
 			{
+#ifdef AC_25
+				state = propertyflag[0].value.singleVariant.variant.uniStringValue;
+#else
 				state = propertyflag[0].value.singleEnumVariant.displayVariant.uniStringValue;
+#endif // AC_25
 			} //propertyrule.isDefault
 			flag = RENUM_NORMAL;
 			if (state.Contains("Исключить") || state.IsEmpty()) flag = RENUM_IGNORE;

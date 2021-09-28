@@ -1,0 +1,4 @@
+#include "SomeStuff.grc.rc2"
+#include "SomeStuffFix.grc.rc2"
+
+1	ICON    LOADONCALL MOVEABLE IMPURE  ACAP.ico

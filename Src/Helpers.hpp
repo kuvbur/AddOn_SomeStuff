@@ -90,7 +90,9 @@ bool operator== (const API_ListVariant& lhs, const API_ListVariant& rhs);
 
 bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumerationVariant& rhs);
 
+#ifndef AC_25
 bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs);
+#endif // !AC_25
 
 bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType);
 

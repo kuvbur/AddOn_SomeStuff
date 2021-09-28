@@ -5,9 +5,11 @@
 // Namespace:		-
 // Contact person:	CSAT
 // *****************************************************************************
+// #include	"AddOnMain.h"
+#include	"ResourceIds.hpp"
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#include "Helpers.hpp"
+#include	"Helpers.hpp"
 
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
@@ -164,12 +166,22 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString,
 		case APIERR_NOACCESSRIGHT:
 			error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
 			break;
+#ifdef AC_23_22
+		case APIERR_BADPROPERTYFORELEM:
+			error_type = "The property for the passed element or attribute is not available.";
+			break;
+		case APIERR_BADCLASSIFICATIONFORELEM:
+			error_type = "Can’t set the classification for the passed element or attribute.";
+			break;
+		
+#else
 		case APIERR_BADPROPERTY:
 			error_type = "The property for the passed element or attribute is not available.";
 			break;
 		case APIERR_BADCLASSIFICATION:
 			error_type = "Can’t set the classification for the passed element or attribute.";
 			break;
+#endif // AC_23_22
 		case APIERR_MODULNOTINSTALLED:
 			error_type = "The referenced add - on is not installed.For more details see the Communication Manager.";
 			break;
@@ -325,7 +337,11 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 {
 	GSErrCode            err;
 	API_SelectionInfo    selectionInfo;
+#ifdef AC_22
+	API_Neig**  selNeigs;
+#else
 	GS::Array<API_Neig>  selNeigs;
+#endif // AC_22
 	err = ACAPI_Selection_Get(&selectionInfo, &selNeigs, onlyEditable);
 	BMKillHandle((GSHandle*)&selectionInfo.marquee.coords);
 	if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
@@ -334,12 +350,23 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 		}
 	}
 	if (err != NoError) {
+#ifdef AC_22
+		BMKillHandle((GSHandle*)&selNeigs);
+#endif
 		return GS::Array<API_Guid>();
 	}
 	GS::Array<API_Guid> guidArray;
+#ifdef AC_22
+	USize nSel = BMGetHandleSize((GSHandle)selNeigs) / sizeof(API_Neig);
+	for (USize i = 0; i < nSel;i++) {
+		guidArray.Push((*selNeigs)[i].guid);
+}
+	BMKillHandle((GSHandle*)&selNeigs);
+#else
 	for (const API_Neig& neig : selNeigs) {
 		guidArray.Push(neig.guid);
 	}
+#endif // AC_22
 	return guidArray;
 }
 
@@ -468,7 +495,11 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, API_Property& property, const
 	GSErrCode		err = NoError;
 	bool write = true;
 	// Есть ли вычисленное/доступное значение?
+#ifdef AC_23_22
+	if (!propertyfrom.isEvaluated  && write) {
+#else
 	if (propertyfrom.status != API_Property_HasValue && write) {
+#endif // AC_23_22
 		msg_rep("WriteProp2Prop", "Property Has not value " + propertyfrom.definition.name, NoError, elemGuid);
 		write = false;
 	}
@@ -689,14 +720,28 @@ GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
 GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
 	GS::UniString string;
 	const API_PropertyValue* value;
+#ifdef AC_23_22
+	if (!property.isEvaluated) {
+		return string;
+	}
+	if (property.isDefault && !property.isEvaluated) {
+		value = &property.definition.defaultValue.basicValue;
+	}
+	else {
+		value = &property.value;
+	}
+#else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
 	}
 	if (property.isDefault && property.status == API_Property_NotEvaluated) {
 		value = &property.definition.defaultValue.basicValue;
-	} else {
+	}
+	else {
 		value = &property.value;
 	}
+#endif // AC_23_22
+
 	switch (property.definition.collectionType) {
 		case API_PropertySingleCollectionType: {
 			string += ToString (value->singleVariant.variant);
@@ -710,15 +755,28 @@ GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
 			}
 		} break;
 		case API_PropertySingleChoiceEnumerationCollectionType: {
+#ifdef AC_25
+			string += ToString(value->singleVariant.variant);
+#else // !AC_25
 			string += ToString (value->singleEnumVariant.displayVariant);
+#endif
 		} break;
 		case API_PropertyMultipleChoiceEnumerationCollectionType: {
-			for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize (); i++) {
-				string += ToString (value->multipleEnumVariant.variants[i].displayVariant);
-				if (i != value->multipleEnumVariant.variants.GetSize () - 1) {
+#ifdef AC_25
+			for (UInt32 i = 0; i < value->listVariant.variants.GetSize (); i++) {
+				string += ToString (value->listVariant.variants[i]);
+				if (i != value->listVariant.variants.GetSize () - 1) {
 					string += "; ";
 				}
 			}
+#else // !AC_25
+			for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
+				string += ToString(value->multipleEnumVariant.variants[i].displayVariant);
+				if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
+					string += "; ";
+				}
+		}
+#endif
 		} break;
 		default: {
 			break;
@@ -768,12 +826,12 @@ bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumer
 	return lhs.keyVariant == rhs.keyVariant && lhs.displayVariant == rhs.displayVariant;
 }
 
-
+#ifndef AC_25
 bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs)
 {
 	return lhs.variants == rhs.variants;
 }
-
+#endif
 
 bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType)
 {
@@ -804,10 +862,17 @@ bool Equals (const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_Pro
 			return lhs.singleVariant == rhs.singleVariant;
 		case API_PropertyListCollectionType:
 			return lhs.listVariant == rhs.listVariant;
+#ifdef AC_25
+		case API_PropertySingleChoiceEnumerationCollectionType:
+			return lhs.singleVariant == rhs.singleVariant;
+		case API_PropertyMultipleChoiceEnumerationCollectionType:
+			return lhs.listVariant == rhs.listVariant;
+#else
 		case API_PropertySingleChoiceEnumerationCollectionType:
 			return lhs.singleEnumVariant == rhs.singleEnumVariant;
 		case API_PropertyMultipleChoiceEnumerationCollectionType:
 			return lhs.multipleEnumVariant == rhs.multipleEnumVariant;
+#endif
 		default:
 			DBBREAK ();
 			return false;

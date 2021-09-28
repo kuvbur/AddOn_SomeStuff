@@ -16,7 +16,13 @@ void	SyncReservation(short type, const API_Guid objectId)
 		SyncPrefs prefsData;
 		SyncSettingsGet(prefsData);
 		if (prefsData.syncMon || prefsData.logMon) {
+#ifdef AC_22
+			API_Elem_Head elemHead;
+			elemHead.guid = objectId;
+			ACAPI_Element_AttachObserver(&elemHead,0);
+#else
 			ACAPI_Element_AttachObserver(objectId);
+#endif
 		}
 	}
 	return;
@@ -180,10 +186,14 @@ bool CheckElementType(const API_ElemTypeID& elementType) {
 		elementType == API_RailingToprailConnectionID ||
 		elementType == API_RailingHandrailConnectionID ||
 		elementType == API_RailingRailConnectionID ||
-		elementType == API_RailingEndFinishID ||
+		elementType == API_RailingEndFinishID 
+#ifndef AC_22
+		||
 		elementType == API_BeamSegmentID ||
 		elementType == API_ColumnSegmentID ||
-		elementType == API_OpeningID) && prefsData.wallS) flag_type = true;
+		elementType == API_OpeningID
+#endif
+		) && prefsData.wallS) flag_type = true;
 	if ((elementType == API_ObjectID || elementType == API_ZoneID) && prefsData.objS) flag_type = true;
 	if ((elementType == API_WindowID || elementType == API_DoorID) && prefsData.widoS) flag_type = true;
 	return flag_type;
@@ -238,7 +248,13 @@ bool SyncByType(const API_ElemTypeID& elementType) {
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (prefsData.syncAll) SyncData(guidArray[i]);
 			if (prefsData.syncMon) {
+#ifdef AC_22
+				API_Elem_Head elemHead;
+				elemHead.guid = guidArray[i];
+				err = ACAPI_Element_AttachObserver(&elemHead,0);
+#else
 				err = ACAPI_Element_AttachObserver(guidArray[i]);
+#endif // AC_22
 				if (err == APIERR_LINKEXIST)
 					err = NoError;
 			}
