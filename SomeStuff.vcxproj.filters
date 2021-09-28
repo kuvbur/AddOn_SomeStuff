@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Src\APICommon.c" />
+    <ClCompile Include="Src\AddOnMain.cpp">
+      <Filter>Файлы Кода</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Helpers.cpp">
+      <Filter>Файлы Кода</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Log.cpp">
+      <Filter>Файлы Кода</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\ReNum.cpp">
+      <Filter>Файлы Кода</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Sync.cpp">
+      <Filter>Файлы Кода</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\APICommon.h" />
+    <ClInclude Include="Src\APIEnvir.h" />
+    <ClInclude Include="Src\AddOnMain.h">
+      <Filter>Файлы Заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\alphanum.hpp">
+      <Filter>Файлы Заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Helpers.hpp">
+      <Filter>Файлы Заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Log.hpp">
+      <Filter>Файлы Заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\ReNum.hpp">
+      <Filter>Файлы Заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\ResourceIds.hpp">
+      <Filter>Файлы Заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Sync.hpp">
+      <Filter>Файлы Заголовков</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="..\..\Support\Modules\DGLib\Win\DGImp.lib" />
+    <Library Include="..\..\Support\Modules\GSRoot\Win\GSRootImp.lib" />
+    <Library Include="..\..\Support\Modules\GSUtils\Win\GSUtilsImp.lib" />
+    <Library Include="..\..\Support\Modules\InputOutput\Win\InputOutputImp.lib" />
+    <Library Include="..\..\Support\Modules\ObjectDatabase\Win\ObjectDatabaseImp.LIB" />
+    <Library Include="..\..\Support\Modules\VectorImage\Win\VectorImageImp.lib" />
+    <Library Include="..\..\Support\Modules\GSXML\Win\GSXMLImp.lib" />
+    <Library Include="..\..\Support\Modules\GSXMLUtils\Win\GSXMLUtilsImp.lib" />
+    <Library Include="..\..\Support\Modules\RS\Win\RSImp.LIB" />
+    <Library Include="..\..\Support\Lib\Win\ACAP_STATD.lib" />
+    <Library Include="..\..\Support\Modules\UCLib\Win\UCImp.LIB" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="RINT\$(ProjectName).grc" />
+    <CustomBuild Include="RFIX\$(ProjectName)Fix.grc" />
+    <CustomBuild Include="RFIX.WIN\$(ProjectName).rc2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Файлы Заголовков">
+      <UniqueIdentifier>{cf000730-f980-4652-9612-80b063f12da4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы Кода">
+      <UniqueIdentifier>{6834b27d-5c48-4132-a587-2ccf9bfe9925}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

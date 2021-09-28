@@ -1,0 +1,10 @@
+
+@ #include "MDIDs_APICD.h"
+'MDID' 32500 "Add-On Identifier" {
+	MDID_APICD
+	MDID_APICD_SomeStuff
+}
+
+'GICN' 10001 "AddOnIcon" {
+	"AddOnIcon"
+}
