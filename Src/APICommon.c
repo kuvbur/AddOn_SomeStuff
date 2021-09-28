@@ -1,6 +1,6 @@
 ﻿// *****************************************************************************
 // Helper functions for Add-On development
-// API Development Kit 24; Mac/Win
+// API Development Kit 23; Mac/Win
 //
 // Namespaces:		Contact person:
 //		-None-
@@ -297,8 +297,8 @@ const char*		ErrID_To_Name (GSErrCode err)
 		case APIERR_INVALFLOOR:					str = "APIERR_INVALFLOOR";					break;
 		case APIERR_NOTMINE:					str = "APIERR_NOTMINE";						break;
 		case APIERR_NOACCESSRIGHT:				str = "APIERR_NOACCESSRIGHT";				break;
-		case APIERR_BADPROPERTY:			str = "APIERR_BADPROPERTY";			break;
-		case APIERR_BADCLASSIFICATION:	str = "APIERR_BADCLASSIFICATION";	break;
+		case APIERR_BADPROPERTYFORELEM:			str = "APIERR_BADPROPERTYFORELEM";			break;
+		case APIERR_BADCLASSIFICATIONFORELEM:	str = "APIERR_BADCLASSIFICATIONFORELEM";	break;
 
 		case APIERR_MODULNOTINSTALLED:			str = "APIERR_MODULNOTINSTALLED";			break;
 		case APIERR_MODULCMDMINE:				str = "APIERR_MODULCMDMINE";				break;
@@ -402,6 +402,7 @@ const char*		AttrID_To_Name (API_AttrTypeID typeID)
 		"MEP System",
 		"Operation Profile",
 		"Building Material",
+		"Markup Style"
 	};
 
 	if (typeID < API_ZombieAttrID || typeID > API_LastAttributeID)
