@@ -1,6 +1,6 @@
 ﻿// *****************************************************************************
 // Helper functions for Add-On development
-// API Development Kit 24; Mac/Win
+// API Development Kit 23; Mac/Win
 //
 // Namespaces:		Contact person:
 //		-None-
@@ -82,7 +82,7 @@ GS::Array<API_Guid>	ClickElements_Guid (const char		*prompt,
 										API_ElemTypeID	needTypeID);
 
 bool		GetMenuItemMark (short menuResID, short itemIndex);
-bool		MenuInvertItemMark (short menuResID, short itemIndex);
+bool		InvertMenuItemMark (short menuResID, short itemIndex);
 void		DisableEnableMenuItem (short menuResID, short itemIndex, bool disable);
 
 
