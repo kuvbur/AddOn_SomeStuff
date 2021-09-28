@@ -1,5 +1,5 @@
-﻿#include "APIEnvir.h"
-#include <stdio.h>
+﻿#include <stdio.h>
+#include "APIEnvir.h"
 #include "ACAPinc.h"
 #include "AddOnMain.h"
 #include "DGModule.hpp"
@@ -83,7 +83,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			if (prefsData.syncMon) {
 				sync_prop = true;
 			}
+#ifdef AC_22
+			API_Elem_Head elemHead;
+			elemHead.guid = elemType->elemHead.guid;
+			err = ACAPI_Element_AttachObserver(&elemHead, 0);
+#else
 			err = ACAPI_Element_AttachObserver(elemType->elemHead.guid);
+#endif
 			if (err == APIERR_LINKEXIST)
 				err = NoError;
 			break;
@@ -94,7 +100,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 				sync_prop = true;
 			}
 			if (parentElement.header.guid != APINULLGuid) {
+#ifdef AC_22
+				API_Elem_Head elemHead;
+				elemHead.guid = elemType->elemHead.guid;
+				err = ACAPI_Element_AttachObserver(&elemHead, 0);
+#else
 				err = ACAPI_Element_AttachObserver(elemType->elemHead.guid);
+#endif
 				if (err == APIERR_LINKEXIST)
 					err = NoError;
 			}
