@@ -1,7 +1,7 @@
 ﻿#include "APIEnvir.h"
 #include <stdio.h>
 #include "ACAPinc.h"
-#include "AddOnMain.h"
+#include "SomeStuff_Main.h"
 #include "DGModule.hpp"
 #include "APICommon.h"
 #include "UniString.hpp"
@@ -83,7 +83,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			if (prefsData.syncMon) {
 				sync_prop = true;
 			}
-			err = ACAPI_Element_AttachObserver(elemType->elemHead.guid);
+			err = AttachObserver(elemType->elemHead.guid);
 			if (err == APIERR_LINKEXIST)
 				err = NoError;
 			break;
@@ -94,7 +94,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 				sync_prop = true;
 			}
 			if (parentElement.header.guid != APINULLGuid) {
-				err = ACAPI_Element_AttachObserver(elemType->elemHead.guid);
+				err = AttachObserver(elemType->elemHead.guid);
 				if (err == APIERR_LINKEXIST)
 					err = NoError;
 			}
@@ -242,6 +242,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 	}
 	MenuSetState();
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+	ACAPI_KeepInMemory(true);
 	return NoError;
 }
 
@@ -261,6 +262,7 @@ GSErrCode __ACDLL_CALL RegisterInterface (void)
 GSErrCode __ACENV_CALL Initialize (void)
 {
 	ACAPI_Notify_CatchProjectEvent(API_AllNotificationMask, ProjectEventHandlerProc);
+	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }
 

@@ -54,8 +54,9 @@ typedef struct {
 	bool		logMon;
 } SyncPrefs;
 
-int StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
-
+GSErrCode AttachObserver(const API_Guid objectId);
+UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
+UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
@@ -90,7 +91,9 @@ bool operator== (const API_ListVariant& lhs, const API_ListVariant& rhs);
 
 bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumerationVariant& rhs);
 
+#if defined(AC_24)
 bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs);
+#endif
 
 bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType);
 
