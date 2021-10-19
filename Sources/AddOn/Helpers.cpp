@@ -7,7 +7,23 @@
 // *****************************************************************************
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#include "Helpers.hpp"
+#include	"Helpers.hpp"
+
+// -----------------------------------------------------------------------------
+// Добавление отслеживания (для разных версий)
+// -----------------------------------------------------------------------------
+GSErrCode	AttachObserver(const API_Guid objectId)
+{
+	GSErrCode		err = NoError;
+#ifdef AC_22
+	API_Elem_Head elemHead;
+	elemHead.guid = objectId;
+	err = ACAPI_Element_AttachObserver(&elemHead, 0);
+#else
+	err = ACAPI_Element_AttachObserver(objectId);
+#endif
+	return err;
+}
 
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
@@ -164,12 +180,21 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString,
 		case APIERR_NOACCESSRIGHT:
 			error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
 			break;
+#if defined(AC_22) || defined(AC_23)
+		case APIERR_BADPROPERTYFORELEM:
+			error_type = "The property for the passed element or attribute is not available.";
+			break;
+		case APIERR_BADCLASSIFICATIONFORELEM:
+			error_type = "Can’t set the classification for the passed element or attribute.";
+			break;
+#else
 		case APIERR_BADPROPERTY:
 			error_type = "The property for the passed element or attribute is not available.";
 			break;
 		case APIERR_BADCLASSIFICATION:
 			error_type = "Can’t set the classification for the passed element or attribute.";
 			break;
+#endif // AC_22 or AC_23
 		case APIERR_MODULNOTINSTALLED:
 			error_type = "The referenced add - on is not installed.For more details see the Communication Manager.";
 			break;
@@ -325,7 +350,11 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 {
 	GSErrCode            err;
 	API_SelectionInfo    selectionInfo;
+#ifdef AC_22
+	API_Neig** selNeigs;
+#else
 	GS::Array<API_Neig>  selNeigs;
+#endif 
 	err = ACAPI_Selection_Get(&selectionInfo, &selNeigs, onlyEditable);
 	BMKillHandle((GSHandle*)&selectionInfo.marquee.coords);
 	if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
@@ -334,13 +363,24 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 		}
 	}
 	if (err != NoError) {
+#ifdef AC_22
+		BMKillHandle((GSHandle*)&selNeigs);
+#endif // AC_22
 		return GS::Array<API_Guid>();
 	}
 	GS::Array<API_Guid> guidArray;
+#ifdef AC_22
+	USize nSel = BMGetHandleSize((GSHandle)selNeigs) / sizeof(API_Neig);
+	for (USize i = 0; i < nSel; i++) {
+		guidArray.Push((*selNeigs)[i].guid);
+	}
+	BMKillHandle((GSHandle*)&selNeigs);
+#else
 	for (const API_Neig& neig : selNeigs) {
 		guidArray.Push(neig.guid);
 	}
 	return guidArray;
+#endif // AC_22
 }
 
 
@@ -468,7 +508,11 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, API_Property& property, const
 	GSErrCode		err = NoError;
 	bool write = true;
 	// Есть ли вычисленное/доступное значение?
+#if defined(AC_22) || defined(AC_23)
+	if (!propertyfrom.isEvaluated && write) {
+#else
 	if (propertyfrom.status != API_Property_HasValue && write) {
+#endif
 		msg_rep("WriteProp2Prop", "Property Has not value " + propertyfrom.definition.name, NoError, elemGuid);
 		write = false;
 	}
@@ -507,28 +551,38 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, API_Property& property, const
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
-int StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring) {
-	int n = 0;
-	UIndex start = 0U;
-	UIndex end = instring.FindFirstIn(delim);
-	if (end != MaxUSize) {
-		GS::UniString part;
-		while (end != MaxUSize)
-		{
-			part = instring.GetSubstring(start, end - start);
-			if (part.GetLength() > 0) {
-				part.Trim('\r');
-				part.Trim('\n');
-				part.Trim();
+UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString> &partstring) {
+	GS::Array<GS::UniString> parts;
+	UInt32 npart = instring.Split(delim, &parts);
+	UInt32 n = 0;
+	for (UInt32 i = 0; i < npart; i++) {
+		GS::UniString part = parts[i];
+		if (!part.IsEmpty()) {
+			part.Trim('\r');
+			part.Trim('\n');
+			part.Trim();
+			if (!part.IsEmpty()) {
 				partstring.Push(part);
 				n += 1;
 			}
-			start = end + delim.GetLength();
-			end = instring.FindFirstIn(delim, start);
 		}
-		part = instring.GetSubstring(start, instring.GetLength() - start);
-		partstring.Push(part);
-		n += 1;
+	}
+	return n;
+}
+
+// -----------------------------------------------------------------------------
+// Делит строку по разделителю, возвращает кол-во частей
+// Записывает в массив только части, содержащие строку filter
+// -----------------------------------------------------------------------------
+UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter) {
+	GS::Array<GS::UniString> parts;
+	UInt32 n = 0;
+	UInt32 npart = StringSplt(instring, delim, parts);
+	for (UInt32 i = 0; i < npart; i++) {
+		if (parts[i].Contains(filter)) {
+			partstring.Push(parts[i]);
+			n += 1;
+		}
 	}
 	return n;
 }
@@ -563,6 +617,20 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 		}
 	}
 	return APIERR_MISSINGCODE;
+}
+
+GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_PropertyDefinition>& visibleProperties)
+{
+	GS::Array<API_PropertyDefinition> definitions;
+	GSErrCode error = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (error == NoError) {
+		for (UInt32 i = 0; i < definitions.GetSize(); ++i) {
+			if (ACAPI_Element_IsPropertyDefinitionVisible(elemGuid, definitions[i].guid)) {
+				visibleProperties.Push(definitions[i]);
+			}
+		}
+	}
+	return error;
 }
 
 // -----------------------------------------------------------------------------
@@ -689,6 +757,17 @@ GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
 GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
 	GS::UniString string;
 	const API_PropertyValue* value;
+#if defined(AC_22) || defined(AC_23)
+	if (!property.isEvaluated) {
+		return string;
+	}
+	if (property.isDefault && !property.isEvaluated) {
+		value = &property.definition.defaultValue.basicValue;
+	}
+	else {
+		value = &property.value;
+	}
+#else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
 	}
@@ -697,6 +776,7 @@ GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
 	} else {
 		value = &property.value;
 	}
+#endif
 	switch (property.definition.collectionType) {
 		case API_PropertySingleCollectionType: {
 			string += ToString (value->singleVariant.variant);
@@ -710,15 +790,28 @@ GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
 			}
 		} break;
 		case API_PropertySingleChoiceEnumerationCollectionType: {
-			string += ToString (value->singleEnumVariant.displayVariant);
+#ifdef AC_25
+			string += ToString(value->singleVariant.variant);
+#else // AC_25
+			string += ToString(value->singleEnumVariant.displayVariant);
+#endif
 		} break;
 		case API_PropertyMultipleChoiceEnumerationCollectionType: {
-			for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize (); i++) {
-				string += ToString (value->multipleEnumVariant.variants[i].displayVariant);
-				if (i != value->multipleEnumVariant.variants.GetSize () - 1) {
+#ifdef AC_25
+			for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
+				string += ToString(value->listVariant.variants[i]);
+				if (i != value->listVariant.variants.GetSize() - 1) {
 					string += "; ";
 				}
 			}
+#else // AC_25
+			for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
+				string += ToString(value->multipleEnumVariant.variants[i].displayVariant);
+				if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
+					string += "; ";
+				}
+			}
+#endif
 		} break;
 		default: {
 			break;
@@ -768,12 +861,12 @@ bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumer
 	return lhs.keyVariant == rhs.keyVariant && lhs.displayVariant == rhs.displayVariant;
 }
 
-
+#ifndef AC_25
 bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs)
 {
 	return lhs.variants == rhs.variants;
 }
-
+#endif
 
 bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType)
 {
@@ -804,10 +897,17 @@ bool Equals (const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_Pro
 			return lhs.singleVariant == rhs.singleVariant;
 		case API_PropertyListCollectionType:
 			return lhs.listVariant == rhs.listVariant;
+#ifdef AC_25
+		case API_PropertySingleChoiceEnumerationCollectionType:
+			return lhs.singleVariant == rhs.singleVariant;
+		case API_PropertyMultipleChoiceEnumerationCollectionType:
+			return lhs.listVariant == rhs.listVariant;
+#else
 		case API_PropertySingleChoiceEnumerationCollectionType:
 			return lhs.singleEnumVariant == rhs.singleEnumVariant;
 		case API_PropertyMultipleChoiceEnumerationCollectionType:
 			return lhs.multipleEnumVariant == rhs.multipleEnumVariant;
+#endif
 		default:
 			DBBREAK ();
 			return false;

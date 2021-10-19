@@ -4,6 +4,7 @@
 #include "Helpers.hpp"
 #include "Log.hpp"
 
+const int ERRIGNOREVAL = 10;
 Int32 nLib = 0;
 
 
@@ -16,7 +17,7 @@ void	SyncReservation(short type, const API_Guid objectId)
 		SyncPrefs prefsData;
 		SyncSettingsGet(prefsData);
 		if (prefsData.syncMon || prefsData.logMon) {
-			ACAPI_Element_AttachObserver(objectId);
+			AttachObserver(objectId);
 		}
 	}
 	return;
@@ -30,7 +31,7 @@ void	SyncReservation(short type, const API_Guid objectId)
 //	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2)
 //	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
 // -----------------------------------------------------------------------------
-bool SyncString(GS::UniString& description_string, SyncRule &syncRule) {
+bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRules) {
 	bool flag_sync = false;
 	if (description_string.IsEmpty()) {
 		return flag_sync;
@@ -38,40 +39,82 @@ bool SyncString(GS::UniString& description_string, SyncRule &syncRule) {
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
 		flag_sync = true;
 		GS::Array<GS::UniString> rulestring;
-		int nparam = StringSplt(description_string, "Sync_", rulestring); // Проверяем количество правил
-		if (nparam > 1) {
-			nparam = 1;
+		UInt32 nrule = StringSplt(description_string, "Sync_", rulestring, "{"); // Проверяем количество правил
+		for (UInt32 i = 0; i < nrule; i++) {
+			GS::UniString rulestring_one = rulestring[i];
+			SyncRule rule;
+			rule.syncdirection = 0;
+			// Копировать параметр в свойство или свойство в параметр
+			if (rulestring_one.Contains("from")) rule.syncdirection = 1;
+			if (rulestring_one.Contains("to")) rule.syncdirection = 2;
+			 //Копировать параметр или свойство
+			rule.synctype = 1;
+			if (rulestring_one.Contains("Property:")) {
+				rule.synctype = 2;
+				rulestring_one.ReplaceAll("Property:", "");
+			}
+			GS::UniString paramName = rulestring_one.GetSubstring('{', '}',0);
+			UInt32 nparam = 0;
+			GS::Array<GS::UniString> params;
+			nparam = StringSplt(paramName, ";", params);
+			if (nparam == 0) rule.syncdirection = 0;
+			if (nparam > 0) rule.paramName = params[0];
+			if (nparam > 1) {
+				for (UInt32 j = 1; j < nparam; j++) {
+					rule.ignorevals.Push(params[j].GetSubstring('"', '"', 0));
+				}
+			}
+			if (rule.syncdirection>0) {
+				syncRules.Push(rule);
+			}
 		}
-		syncRule.synctype = 1;
-		syncRule.syncdirection = 2;
-		description_string.Trim('\r');
-		description_string.Trim('\n');
-		description_string.Trim();
-		if (description_string.Contains("Sync_from")) syncRule.syncdirection = 1;
-		if (description_string.Contains("Property:")) {
-			syncRule.synctype = 2;
-			description_string.ReplaceAll("Property:", "");
-		}
-		GS::UniString paramName = description_string.GetSubstring('{', '}', 0);
-		paramName.ReplaceAll("Property:", "");
-		GS::Array<GS::UniString> partstring;
-		//int nparam = StringSplt(paramName, ";", partstring);
-		//TODO Добавить исключаемые значения
-		syncRule.paramName = paramName;
 	}
 	return flag_sync;
 }
 
 // -----------------------------------------------------------------------------
+// Проверяем - содержит ли строка игнорируемые значения
+// -----------------------------------------------------------------------------
+bool SyncCheckIgnoreVal(const SyncRule& syncRule, GS::UniString& val) {
+	bool ignore_flag = false;
+	if (syncRule.ignorevals.GetSize() > 0) {
+		for (UInt32 i = 0; i < syncRule.ignorevals.GetSize(); i++) {
+			if (val.Compare(syncRule.ignorevals[i]), GS::UniString::CaseInsensitive) {
+				ignore_flag = true;
+				return ignore_flag;
+			}
+		}
+	}
+	return ignore_flag;
+}
+
+// -----------------------------------------------------------------------------
+// Проверяем - содержит ли свойство игнорируемые значеения
+// -----------------------------------------------------------------------------
+bool SyncCheckIgnoreVal(const SyncRule& syncRule, API_Property& property) {
+	bool ignore_flag = false;
+	if (syncRule.ignorevals.GetSize() > 0) {
+		GS::UniString val = PropertyTestHelpers::ToString(property);
+		ignore_flag = SyncCheckIgnoreVal(syncRule, val);
+	}
+	return ignore_flag;
+}
+
+// -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
-GSErrCode SyncPropAndProp(const API_Guid& elemGuid, API_Property& property, SyncRule& syncRule)
+GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule & syncRule, API_Property& property)
 {
 	GSErrCode		err = NoError;
 	API_Property propertyfrom;
 	err = GetPropertyByName(elemGuid, syncRule.paramName, propertyfrom);
 	if (err == NoError) {
-		err = WriteProp2Prop(elemGuid, property, propertyfrom);
+		if (!SyncCheckIgnoreVal(syncRule, property)) {
+			err = WriteProp2Prop(elemGuid, property, propertyfrom);
+		}
+		else {
+			err = APIERR_MISSINGCODE; // Игнорируем значение
+		}
 	}
 	return err;
 }
@@ -82,8 +125,23 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid, API_Property& property, Sync
 GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Property& property)
 {
 	GSErrCode		err = NoError;
+	GS::UniString param_string = "";
+	GS::Int32 param_int = 0;
+	bool param_bool = false;
+	double param_real = 0;
 	if (syncRule.syncdirection == 1) {
-		err = WriteParam2Prop(elemGuid, property, syncRule.paramName);
+		if (GetLibParam(elemGuid, syncRule.paramName, param_string, param_int, param_bool, param_real))
+		{
+			if (!SyncCheckIgnoreVal(syncRule, param_string)) {
+				err = WriteProp(elemGuid, property, param_string, param_int, param_bool, param_real);
+			}
+			else {
+				err = APIERR_MISSINGCODE; // Игнорируем значение
+			}
+		}
+		else {
+			err = APIERR_MISSINGCODE; // Параметр не найден
+		}
 	}
 	return err;
 }
@@ -92,14 +150,14 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Pro
  //Ищет свойство со значение "Sync_flag" в описании и по значению определяет - нужно ли синхронизировать параметры элемента
  //--------------------------------------------------------------------------------------------------------------------------
 bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions) {
-	GSErrCode		err = NoError;
+	GSErrCode	err = NoError;
 	// Проверяем - не отключена ли синхронизация у данного объекта
 	bool isSync = false;
 	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 		if (definitions[i].description.Contains("Sync_flag")) {
 			API_Property propertyflag = {};
 			err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
-			if (err != NoError) msg_rep("SyncState", "CAPI_Element_GetPropertyValue "+ definitions[i].name, err, elemGuid);
+			if (err != NoError) msg_rep("SyncState", "ACAPI_Element_GetPropertyValue "+ definitions[i].name, err, elemGuid);
 			if (err == NoError) {
 				if (propertyflag.isDefault) {
 					isSync = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
@@ -120,7 +178,7 @@ bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
 void SyncData(const API_Guid& elemGuid) {
-	GSErrCode		err = NoError;
+	GSErrCode	err = NoError;
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
 	if (CheckElementType(elementType)) // Сверяемся с настройками - нужно ли этот тип обрабатывать
@@ -130,30 +188,58 @@ void SyncData(const API_Guid& elemGuid) {
 		if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
 		if (SyncState(elemGuid, definitions)) { // Проверяем - не отключена ли синхронизация у данного объекта
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-				SyncRule syncRule;
-				if (SyncString(definitions[i].description, syncRule)) { // Парсим описание свойства
-					API_Property property = {};
-					err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, property);
-					if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
-					if (err == NoError) {
-						switch (syncRule.synctype) {
-						case 1:
-							if (elementType == API_ObjectID || elementType == API_WindowID || elementType == API_DoorID || elementType == API_ZoneID) {
-								err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
-							}
-							break;
-						case 2:
-							err = SyncPropAndProp(elemGuid, property, syncRule); //Синхронизация свойств
-							break;
-						default:
-							break;
-						}//switch (synctype) 
-					} // ACAPI_Element_GetPropertyValue
-				} // if (isSync)
-			} // for
-		} // if (SyncState(elemGuid, definitions))
-	} // if (CheckElementType(elementType))
-} // SyncData
+				err = SyncOneProperty(elemGuid, elementType, definitions[i]);
+			}
+		}
+	}
+}
+
+// --------------------------------------------------------------------
+// Синхронизация правил для одного свойства
+// --------------------------------------------------------------------
+GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition) {
+	GSErrCode	err = NoError;
+	GS::Array <SyncRule> syncRules;
+	if (SyncString(definition.description, syncRules)) { // Парсим описание свойства
+		API_Property property = {};
+		err = ACAPI_Element_GetPropertyValue(elemGuid, definition.guid, property);
+		if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyValue " + definition.name, err, elemGuid);
+		if (err == NoError) {
+			for (UInt32 i = 0; i < syncRules.GetSize(); i++) {
+				err = SyncOneRule(elemGuid, elementType, property, syncRules[i]);
+				if (err == NoError) break; // Если синхронизация успешная - выходим из цикла
+			}
+		}
+	}
+	return err;
+}
+
+// --------------------------------------------------------------------
+// Синхронизация одного правила для свойства
+// Если синхронизация успешна, возвращает True
+// Если свойство или параметр не найдены, либо содержат игнорируемые символы - возращает False
+// --------------------------------------------------------------------
+bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_Property property, SyncRule syncRule) {
+	GSErrCode	err = NoError;
+	switch (syncRule.synctype) {
+	case 1:
+		if (elementType == API_ObjectID || elementType == API_WindowID || elementType == API_DoorID || elementType == API_ZoneID) {
+			err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
+		}
+		break;
+	case 2:
+		err = SyncPropAndProp(elemGuid, syncRule, property); //Синхронизация свойств
+		break;
+	default:
+		break;
+	}
+	if (err != NoError) {
+		return false;
+	}
+	else {
+		return true;
+	}
+}
 
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
@@ -238,7 +324,7 @@ bool SyncByType(const API_ElemTypeID& elementType) {
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (prefsData.syncAll) SyncData(guidArray[i]);
 			if (prefsData.syncMon) {
-				err = ACAPI_Element_AttachObserver(guidArray[i]);
+				err = AttachObserver(guidArray[i]);
 				if (err == APIERR_LINKEXIST)
 					err = NoError;
 			}

@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\SomeStuff_addon\Build_24\CMakeFiles\5df9c58a0899e7df9d73fb7b4d9461bf\AddOnResources.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\SomeStuff_addon\Build_24\CMakeFiles\6675a6cbdcb548e029e07a7839f2a180\AddOnResources.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX.win\AddOnMain.rc2">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX\AddOnFix.grc">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RINT\AddOn.grc">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\Tools\CompileResources.py">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX\Images\AddOnIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Build_24\CMakeFiles\AddOnResources" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{497FA2B8-70F7-3FBC-B7A5-F83454D6AC9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Images">
+      <UniqueIdentifier>{0958A021-3C96-3D67-B4CE-59CADFF132AA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{B0897E22-F7C7-3C0C-B3B8-B08D72090AD7}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

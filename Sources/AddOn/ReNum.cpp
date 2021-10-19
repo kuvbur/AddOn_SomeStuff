@@ -80,11 +80,19 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 		err = ACAPI_Element_GetPropertyValues(elemGuid, definitions, propertyflag);
 		if (err == NoError) {
 			if (propertyflag[0].isDefault) {
+#ifdef AC_25
+				state = propertyflag[0].definition.defaultValue.basicValue.singleVariant.variant.uniStringValue;
+#else
 				state = propertyflag[0].definition.defaultValue.basicValue.singleEnumVariant.displayVariant.uniStringValue;
+#endif
 			}
 			else
 			{
+#ifdef AC_25
+				state = propertyflag[0].value.singleVariant.variant.uniStringValue;
+#else
 				state = propertyflag[0].value.singleEnumVariant.displayVariant.uniStringValue;
+#endif
 			} //propertyrule.isDefault
 			flag = RENUM_NORMAL;
 			if (state.Contains("Исключить") || state.IsEmpty()) flag = RENUM_IGNORE;
