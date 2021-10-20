@@ -1,146 +1,187 @@
 ﻿#include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#include "Log.hpp"
-#include "Helpers.hpp"
+#include	"Log.hpp"
+#include	"Helpers.hpp"
 
-//// Create an own structure which contains all the necessary informations what you want to store in element's user data 
-//typedef struct {
-//	Int32 myNumbers[5];
-//	char timeStr[128];
-//} LogData;
-//
-//// ----------------------------------------------------------------------------- 
-//bool SetElementUserData(const API_Guid& guid, const API_ElemTypeID& typeID) // Add extra parameters if needed 
-//{
-//	API_ElementUserData	userData;
-//	LogData** ulogData = NULL;
-//	API_Elem_Head		elemHead;
-//	GSErrCode			err = NoError;
-//
-//	BNZeroMemory(&userData, sizeof(API_ElementUserData));
-//	userData.dataVersion = 1;
-//	userData.platformSign = GS::Act_Platform_Sign;
-//	// Set flags if you need: 
-//	//  userData.flags = APIUserDataFlag_FillWith | APIUserDataFlag_Pickup | APIUserDataFlag_UndoAble | APIUserDataFlag_SkipRecalcAndDraw; 
-//	userData.dataHdl = BMAllocateHandle(sizeof(LogData), ALLOCATE_CLEAR, 0);
-//	if (userData.dataHdl == NULL)
-//		return false;
-//
-//	myUserData = (LogData**)(userData.dataHdl);
-//	// Fill the allocated userdata as you want: 
-//	for (Int32 ii = 0; ii < 5; ++ii) {
-//		(*ulogData)->myNumbers[ii] = ii + 1;
-//	}
-//	char ttimeStr[128];
-//	TIGetTimeString(TIGetTime(), ttimeStr, TI_SHORT_DATE_FORMAT | TI_SHORT_TIME_FORMAT);
-//	sprintf((*ulogData)->timeStr, ttimeStr);
-//
-//
-//	// Attach userdata to the element: 
-//	BNZeroMemory(&elemHead, sizeof(API_Elem_Head));
-//	elemHead.guid = guid;
-//	elemHead.typeID = typeID;
-//	err = ACAPI_Element_SetUserData(&elemHead, &userData);
-//	if (userData.dataHdl != NULL)
-//		BMKillHandle(&userData.dataHdl);
-//
-//	return err == NoError ? true : false;
-//}
-//
-//// ----------------------------------------------------------------------------- 
-//bool GetElementUserData(const API_Guid& guid, const API_ElemTypeID& typeID, LogData** ulogData)
-//{
-//	API_ElementUserData	userData;
-//	API_Elem_Head		elemHead;
-//	GSErrCode			err = NoError;
-//
-//	BNZeroMemory(&userData, sizeof(API_ElementUserData));
-//	// Get userdata from the element: 
-//	BNZeroMemory(&elemHead, sizeof(API_Elem_Head));
-//	elemHead.guid = guid;
-//	elemHead.typeID = typeID;
-//	err = ACAPI_Element_GetUserData(&elemHead, &userData);
-//	if (err != NoError || userData.dataVersion != 1) {
-//		if (userData.dataHdl != NULL)
-//			BMKillHandle(&userData.dataHdl);
-//		return false;
-//	}
-//	ulogData = (LogData**)(userData.dataHdl);
-//	return true;
-//}
-//
-//// ----------------------------------------------------------------------------- 
-//// Usage example: 
-//bool result = false;
-//result = SetElementUserData(myGuid, myType);
-//
-//// ... 
-//
-//MyElementUserData** myUserData = NULL;
-//result = GetElementUserData(myGuid, myType, myUserData);
-//
-//if (result) {
-//	// read the userdata 
-//	Int32 myFirstNumber = (*myUserData)->myNumbers[0];
-//	msg_rep("LOG", dataStr, NoError, elemGuid);
-//}
-//
-//
-//// Don't forget to release the handle after using! 
-//if (myUserData != NULL)
-//BMKillHandle((GSHandle*)&myUserData);
 
-void Do_ShowSelElems(const API_Guid& elemGuid) {
-	GSErrCode			err;
-	API_Elem_Head		elemHead;
-	API_ElementUserData userData;
+void LogGetEmpty(LogData& logData) {
+	logData.change.current.isempty = true;
+	logData.change.isempty = true;
+	logData.change.old_1 = logData.change.current;
+	logData.change.old_2 = logData.change.current;
+	logData.create = logData.change;
+	logData.edit = logData.change;
+	logData.classification = logData.change;
+	logData.property = logData.change;
+}
 
-	BNZeroMemory(&elemHead, sizeof(API_Elem_Head));
-	elemHead.guid = elemGuid;
-	err = ACAPI_Element_GetHeader(&elemHead);
-	BNZeroMemory(&userData, sizeof(API_ElementUserData));
-	err = ACAPI_Element_GetUserData(&elemHead, &userData);
-	if (err == NoError) {
-		char	dataStr[256];
-		CHTruncate(*userData.dataHdl, dataStr, BMGetHandleSize(userData.dataHdl));
-		msg_rep("LOG", dataStr, NoError, elemGuid);
-		BMKillHandle(&userData.dataHdl);
+GSErrCode LogWriteElement(const API_Guid& guid, const LogData& logData)
+{
+	API_Elem_Head element = {};
+	element.guid = guid;
+	API_ElementUserData userData = {};
+	BNZeroMemory(&userData, sizeof(userData));
+	userData.dataVersion = 1;
+	userData.platformSign = GS::Act_Platform_Sign;
+	userData.dataVersion = 2;
+	userData.dataHdl = BMAllocateHandle(sizeof(LogData), ALLOCATE_CLEAR, 0);
+	*reinterpret_cast<LogData*> (*userData.dataHdl) = logData;
+	GSErrCode err = ACAPI_Element_SetUserData(&element, &userData);
+	BMKillHandle(&userData.dataHdl);
+	return err;
+}
+
+GSErrCode LogReadElement(const API_Guid& guid, LogData& logData)
+{
+	GSErrCode err = NoError;
+	API_Elem_Head element = {};
+	element.guid = guid;
+	API_ElementUserData userData = {};
+	BNZeroMemory(&userData, sizeof(userData));
+	userData.dataHdl = BMAllocateHandle(sizeof(LogData), ALLOCATE_CLEAR, 0);
+	userData.platformSign = GS::Act_Platform_Sign;
+	if (userData.dataHdl != nullptr) {
+		err = ACAPI_Element_GetUserData(&element, &userData);
+		if (err == NoError && userData.dataHdl != nullptr && userData.platformSign == GS::Act_Platform_Sign && userData.dataVersion == 2)
+			logData = *reinterpret_cast<LogData*> (*userData.dataHdl);
+	}
+	BMKillHandle(&userData.dataHdl);
+	return err;
+}
+
+void LogRow(lgL3& record, const GS::HashTable<short, API_UserInfo>& userInfoTable) {
+	GS::UniString actionByUserStr = GS::UniString::Printf("      %s", record.time);
+	if (userInfoTable.ContainsKey(record.userId)) {
+		actionByUserStr.Append(" by ");
+		actionByUserStr.Append(userInfoTable[record.userId].fullName);
+	}
+	ACAPI_WriteReport(actionByUserStr, false);
+}
+
+void LogRow(lgL2& record, const GS::HashTable<short, API_UserInfo>& userInfoTable) {
+	if (!record.current.isempty) {
+		LogRow(record.current, userInfoTable);
+	}
+	if (!record.old_1.isempty) {
+		LogRow(record.old_1, userInfoTable);
+	}
+	if (!record.old_2.isempty) {
+		LogRow(record.old_2, userInfoTable);
 	}
 }
 
-void Do_MarkSelElems(const API_Guid& elemGuid)
-{
-	GSErrCode			err;
-	API_Elem_Head		elemHead;
-	API_ElementUserData userData;
+void LogShowElement(const API_Guid& elemGuid, const GS::HashTable<short, API_UserInfo>& userInfoTable) {
+	LogData logData;
+	LogGetEmpty(logData);
+	if (LogReadElement(elemGuid, logData) == NoError) {;
+		GS::UniString msg = "GUID: " + APIGuid2GSGuid(elemGuid).ToUniString();
+		char    elemStr[32];
+		API_ElemTypeID elementType;
+		GSErrCode err = GetTypeByGUID(elemGuid, elementType);
+		if (err == NoError) {
+			if (GetElementTypeString(elementType, elemStr)) {
+				msg.Append(GS::UniString::Printf(" (%s)", elemStr));
+			}
+		}
+		ACAPI_WriteReport(msg, false);
+		if (!logData.create.isempty) {
+			ACAPI_WriteReport("   Create", false);
+			LogRow(logData.create, userInfoTable);
+		}
+		if (!logData.edit.isempty) {
+			ACAPI_WriteReport("   Edit", false);
+			LogRow(logData.edit, userInfoTable);
+		}
+		if (!logData.change.isempty) {
+			ACAPI_WriteReport("   Change", false);
+			LogRow(logData.change, userInfoTable);
+		}
+		if (!logData.classification.isempty) {
+			ACAPI_WriteReport("   Change Classification", false);
+			LogRow(logData.classification, userInfoTable);
+		}
+		if (!logData.property.isempty) {
+			ACAPI_WriteReport("   Change Property", false);
+			LogRow(logData.property, userInfoTable);
+		}
+		ACAPI_WriteReport("---------------------------------", false);
+	}
+}
 
-	BNZeroMemory(&elemHead, sizeof(API_Elem_Head));
-	elemHead.guid = elemGuid;
-	err = ACAPI_Element_GetHeader(&elemHead);
-	BNZeroMemory(&userData, sizeof(API_ElementUserData));
+void LogShowSelected() {
+	GS::HashTable<short, API_UserInfo> userInfoTable;
+	GSErrCode err = GetTeamworkMembers(userInfoTable);
+	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
+	if (!guidArray.IsEmpty()) {
+		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+			LogShowElement(guidArray[i], userInfoTable);
+		}
+	}
+}
 
-	userData.dataVersion = 1;
-	userData.platformSign = GS::Act_Platform_Sign;
-	userData.dataHdl = BMAllocateHandle(0, ALLOCATE_CLEAR, 0);
-	if (userData.dataHdl == NULL)
-		return;
-
+void LogDataRotate(lgL2 &partlogData) {
 	char	timeStr[128];
 	TIGetTimeString(TIGetTime(), timeStr, TI_SHORT_DATE_FORMAT | TI_SHORT_TIME_FORMAT);
+	bool isteamwork = false;
+	short userid = 0;
+	GSErrCode err = IsTeamwork(isteamwork, userid);
+	partlogData.old_2 = partlogData.old_1;
+	partlogData.old_1 = partlogData.current;
+	CHCopyC(timeStr, partlogData.current.time);
+	partlogData.current.userId = userid;
+	partlogData.current.isempty = false;
+}
 
-	//SpeedTest
-	TIReset(0, "ACAPI_Element_SetUserData - SpeedTest");
-	TIStart(0);
-	Int32 dataLen = Strlen32(timeStr) + 1;
-	userData.dataHdl = BMReallocHandle(userData.dataHdl, dataLen, REALLOC_FULLCLEAR, 0);
-	if (userData.dataHdl != NULL) {					// error handling...
-		CHCopyC(timeStr, *userData.dataHdl);
-		userData.flags = APIUserDataFlag_FillWith | APIUserDataFlag_Pickup;
-		err = ACAPI_Element_SetUserData(&elemHead, &userData);
+void LogWriteElement(const API_NotifyElementType *elemType) {
+	LogData logData;
+	if (LogReadElement(elemType->elemHead.guid, logData) != NoError) LogGetEmpty(logData);
+	switch (elemType->notifID) {
+		case APINotifyElement_New:
+			LogDataRotate(logData.create);
+			logData.create.isempty = false;
+			break;
+		case APINotifyElement_Copy:
+			LogDataRotate(logData.create);
+			logData.create.isempty = false;
+			break;
+		case APINotifyElement_Change:
+			LogDataRotate(logData.change);
+			logData.change.isempty = false;
+			break;
+		case APINotifyElement_Edit:
+			LogDataRotate(logData.edit);
+			logData.edit.isempty = false;
+			break;
+		case APINotifyElement_ClassificationChange:
+			LogDataRotate(logData.classification);
+			logData.classification.isempty = false;
+			break;
+		case APINotifyElement_PropertyValueChange:
+			LogDataRotate(logData.property);
+			logData.property.isempty = false;
+			break;
+		default:
+			break;
 	}
-	//SpeedTest
-	TIStop(0);
-	TIPrintTimers();
+	LogWriteElement(elemType->elemHead.guid, logData);
+	return;
+}
 
-	BMKillHandle(&userData.dataHdl);
-}		// Do_MarkSelElems
+// -----------------------------------------------------------------------------
+// GetTeamworkMembers
+//
+//  collects information of joined Teamwork members
+// -----------------------------------------------------------------------------
+static GSErrCode	GetTeamworkMembers(GS::HashTable<short, API_UserInfo>& userInfoTable)
+{
+	API_SharingInfo	sharingInfo;
+	BNZeroMemory(&sharingInfo, sizeof(API_SharingInfo));
+	GSErrCode err = ACAPI_Environment(APIEnv_ProjectSharingID, &sharingInfo);
+	if (err == NoError && sharingInfo.users != nullptr) {
+		for (Int32 i = 0; i < sharingInfo.nUsers; i++)
+			userInfoTable.Add(((*sharingInfo.users)[i]).userId, (*sharingInfo.users)[i]);
+	}
+	if (sharingInfo.users != nullptr)
+		BMhKill(reinterpret_cast<GSHandle*>(&sharingInfo.users));
+	return err;
+}		/* GetTeamworkMembers */

@@ -1,15 +1,15 @@
-﻿#include "APIEnvir.h"
-#include <stdio.h>
-#include "ACAPinc.h"
-#include "SomeStuff_Main.h"
-#include "DGModule.hpp"
-#include "APICommon.h"
-#include "UniString.hpp"
-#include "Helpers.hpp"
-#include "APIdefs_Properties.h"
-#include "ReNum.hpp"
-#include "Sync.hpp"
-#include "Log.hpp"
+﻿#include	"APIEnvir.h"
+#include	<stdio.h>
+#include	"ACAPinc.h"
+#include	"SomeStuff_Main.h"
+#include	"DGModule.hpp"
+#include	"APICommon.h"
+#include	"UniString.hpp"
+#include	"Helpers.hpp"
+#include	"APIdefs_Properties.h"
+#include	"ReNum.hpp"
+#include	"Sync.hpp"
+#include	"Log.hpp"
 
 // -----------------------------------------------------------------------------
 // Срабатывает при событиях проекта (открытие, сохранение)
@@ -65,6 +65,22 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
 
+	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && prefsData.logMon) {
+		if (elemType->notifID == APINotifyElement_New || elemType->notifID == APINotifyElement_Copy) {
+			err = AttachObserver(elemType->elemHead.guid);
+			if (err == APIERR_LINKEXIST)
+				err = NoError;
+		}
+		if (elemType->notifID == APINotifyElement_New ||
+			elemType->notifID == APINotifyElement_Copy ||
+			elemType->notifID == APINotifyElement_Change ||
+			elemType->notifID == APINotifyElement_Edit ||
+			elemType->notifID == APINotifyElement_ClassificationChange ||
+			elemType->notifID == APINotifyElement_PropertyValueChange) {
+			LogWriteElement(elemType);
+		}
+	}
+
 	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && CheckElementType(elemType->elemHead.typeID)) {
 		API_Element			parentElement;
 		API_ElementMemo		parentElementMemo;
@@ -78,21 +94,17 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 
 		switch (elemType->notifID) {
 		case APINotifyElement_New:
-			if (!prefsData.syncMon && !prefsData.logMon)
+			if (!prefsData.syncMon)
 				break;
-			if (prefsData.syncMon) {
-				sync_prop = true;
-			}
+			sync_prop = true;
 			err = AttachObserver(elemType->elemHead.guid);
 			if (err == APIERR_LINKEXIST)
 				err = NoError;
 			break;
 		case APINotifyElement_Copy:
-			if (!prefsData.syncMon && !prefsData.logMon)
+			if (!prefsData.syncMon)
 				break;
-			if (prefsData.syncMon) {
-				sync_prop = true;
-			}
+			sync_prop = true;
 			if (parentElement.header.guid != APINULLGuid) {
 				err = AttachObserver(elemType->elemHead.guid);
 				if (err == APIERR_LINKEXIST)
@@ -133,13 +145,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		default:
 			break;
 		}
-		if (sync_prop && prefsData.syncMon) {
-			SyncData(elemType->elemHead.guid);
-		}
-		if (prefsData.logMon) {
-
-		}
-		//Do_MarkSelElems(elemType->elemHead.guid);
+		if (sync_prop) SyncData(elemType->elemHead.guid);
 		ACAPI_DisposeElemMemoHdls(&parentElementMemo);
 	}
 	return err;
@@ -229,13 +235,20 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 					t_flag = prefsData.syncMon;
 					if (t_flag) prefsData.syncMon = false;
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
-					err = ReNum_Selected();
+					err = ReNumSelected();
 					if (t_flag) prefsData.syncMon = true;
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					break;
 				case Sum_CommandID:
 					break;
 				case Log_CommandID:
+					prefsData.logMon = !prefsData.logMon;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
+					Do_ElementMonitor();
+					SyncAndMonAll();
+					break;
+				case LogShow_CommandID:
+					LogShowSelected();
 					break;
 			}
 			break;

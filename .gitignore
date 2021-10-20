@@ -8,6 +8,8 @@
 *.suo
 *.pln
 *.bpn
+*.bpn
+*.lck
 *.user
 *.userosscache
 *.sln.docstates
