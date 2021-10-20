@@ -26,11 +26,11 @@ typedef struct {
 
 typedef GS::HashTable<API_Guid, RenumRule> Rules;
 
-GSErrCode ReNum_Selected(void);
+GSErrCode ReNumSelected(void);
 bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string, RenumRule& paramtype);
 UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid& elemGuid, API_PropertyDefinition& propertdefyrule);
 GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules);
-GSErrCode ReNum_OneRule(const RenumRule& rule);
+GSErrCode ReNumOneRule(const RenumRule& rule);
 GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules);
 
 #endif

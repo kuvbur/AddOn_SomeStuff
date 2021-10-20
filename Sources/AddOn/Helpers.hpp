@@ -15,6 +15,7 @@
 #define	 Menu_ReNum			7
 #define	 Menu_Sum			8
 #define	 Menu_Log			9
+#define	 Menu_LogShow		10
 
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
@@ -32,6 +33,8 @@ static const Int32 objS_CommandID = 6;
 static const Int32 ReNum_CommandID = 7;
 static const Int32 Sum_CommandID = 8;
 static const Int32 Log_CommandID = 9;
+static const Int32 LogShow_CommandID = 10;
+
 
 static const Int32 UndoSyncId = 1;
 static const Int32 SyncAllId = 2;
@@ -45,42 +48,42 @@ static const Int32 FalseId = 5;
 // Helper functions
 // -----------------------------------------------------------------------------
 typedef struct {
-	Int32		version;
-	bool		syncAll;
-	bool		syncMon;
-	bool		wallS;
-	bool		widoS;
-	bool		objS;
-	bool		logMon;
+	Int32	version;
+	bool	syncAll;
+	bool	syncMon;
+	bool	wallS;
+	bool	widoS;
+	bool	objS;
+	bool	logMon;
 } SyncPrefs;
 
-GSErrCode AttachObserver(const API_Guid objectId);
+GSErrCode IsTeamwork(bool& isteamwork, short& userid);
+
+GSErrCode AttachObserver(const API_Guid& objectId);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
-bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
+bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 bool MenuInvertItemMark(short menuResID, short itemIndex);
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
-void	MenuItemCheckAC(short itemInd, bool checked);
+void MenuItemCheckAC(short itemInd, bool checked);
 void SyncSettingsGet(SyncPrefs& prefsData);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
-
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
-GSErrCode WriteProp2Prop(const API_Guid& elemGuid, API_Property& property, const API_Property& propertyfrom);
-GSErrCode WriteParam2Prop(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName);
+GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramName, API_Property& property);
+GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyfrom, API_Property& property);
 void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid);
 void MenuSetState(void);
 
 namespace PropertyTestHelpers
 {
 
-GS::UniString			ToString (const API_Variant& variant);
-
-GS::UniString			ToString (const API_Property& property);
+GS::UniString	ToString (const API_Variant& variant);
+GS::UniString	ToString (const API_Property& property);
 }
 
 bool operator== (const API_Variant& lhs, const API_Variant& rhs);

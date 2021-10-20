@@ -10,9 +10,23 @@
 #include	"Helpers.hpp"
 
 // -----------------------------------------------------------------------------
+// Проверка статуса и получение ID пользователя Teamwork
+// -----------------------------------------------------------------------------
+GSErrCode IsTeamwork(bool& isteamwork, short& userid) {
+	isteamwork = false;
+	API_ProjectInfo projectInfo = {};
+	GSErrCode err = ACAPI_Environment(APIEnv_ProjectID, &projectInfo);
+	if (err == NoError) {
+		isteamwork = projectInfo.teamwork;
+		userid = projectInfo.teamwork;
+	}
+	return err;
+}
+
+// -----------------------------------------------------------------------------
 // Добавление отслеживания (для разных версий)
 // -----------------------------------------------------------------------------
-GSErrCode	AttachObserver(const API_Guid objectId)
+GSErrCode	AttachObserver(const API_Guid& objectId)
 {
 	GSErrCode		err = NoError;
 #ifdef AC_22
@@ -35,6 +49,7 @@ void MenuSetState(void) {
 	MenuItemCheckAC(Menu_wallS, prefsData.wallS);
 	MenuItemCheckAC(Menu_widoS, prefsData.widoS);
 	MenuItemCheckAC(Menu_objS, prefsData.objS);
+	MenuItemCheckAC(Menu_Log, prefsData.logMon);
 }
 
 void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString, const GSErrCode &err, const API_Guid& elemGuid) {
@@ -295,7 +310,7 @@ GSErrCode SyncSettingsDefult(SyncPrefs& prefsData) {
 	prefsData.wallS = true;
 	prefsData.widoS = true;
 	prefsData.objS = true;
-	prefsData.logMon = false;
+	prefsData.logMon = true;
 	GSErrCode err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr) &prefsData);
 	return err;
 }
@@ -484,7 +499,7 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 // -----------------------------------------------------------------------------
 // Запись значения параметра библиотечного элемента в свойство
 // -----------------------------------------------------------------------------
-GSErrCode WriteParam2Prop(const API_Guid& elemGuid, API_Property& property, const GS::UniString& paramName) {
+GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramName, API_Property& property) {
 	GSErrCode		err = NoError;
 	GS::UniString param_string = "";
 	GS::Int32 param_int = 0;
@@ -503,9 +518,9 @@ GSErrCode WriteParam2Prop(const API_Guid& elemGuid, API_Property& property, cons
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
-GSErrCode WriteProp2Prop(const API_Guid& elemGuid, API_Property& property, const API_Property& propertyfrom)
+GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyfrom, API_Property& property)
 {
-	GSErrCode		err = NoError;
+	GSErrCode	err = NoError;
 	bool write = true;
 	// Есть ли вычисленное/доступное значение?
 #if defined(AC_22) || defined(AC_23)
@@ -522,7 +537,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, API_Property& property, const
 		write = false;
 	}
 	// Если нужно записать список текста в текст
-	if (property.definition.collectionType != propertyfrom.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write){
+	if (property.definition.collectionType != propertyfrom.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
 		GS::UniString val = PropertyTestHelpers::ToString(propertyfrom);
 		if (!val.IsEqual(property.value.singleVariant.variant.uniStringValue)) {
 			property.value.singleVariant.variant.uniStringValue = val;

@@ -7,7 +7,6 @@
 const int ERRIGNOREVAL = 10;
 Int32 nLib = 0;
 
-
 // -----------------------------------------------------------------------------
 // Отслеживание резервируемых элементов
 // -----------------------------------------------------------------------------
@@ -105,12 +104,12 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, API_Property& property) {
 // -----------------------------------------------------------------------------
 GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule & syncRule, API_Property& property)
 {
-	GSErrCode		err = NoError;
+	GSErrCode	err = NoError;
 	API_Property propertyfrom;
 	err = GetPropertyByName(elemGuid, syncRule.paramName, propertyfrom);
 	if (err == NoError) {
 		if (!SyncCheckIgnoreVal(syncRule, property)) {
-			err = WriteProp2Prop(elemGuid, property, propertyfrom);
+			err = WriteProp2Prop(elemGuid, propertyfrom, property);
 		}
 		else {
 			err = APIERR_MISSINGCODE; // Игнорируем значение
