@@ -110,7 +110,7 @@ void LogShowElement(const API_Guid& elemGuid, const GS::HashTable<short, API_Use
 
 void LogShowSelected() {
 	GS::HashTable<short, API_UserInfo> userInfoTable;
-	GSErrCode err = GetTeamworkMembers(userInfoTable);
+	GetTeamworkMembers(userInfoTable);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
 	if (!guidArray.IsEmpty()) {
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
@@ -119,12 +119,16 @@ void LogShowSelected() {
 	}
 }
 
+void LogDataDelete(const API_Guid& guid, const LogData& logData) {
+
+}
+
 void LogDataRotate(lgL2 &partlogData) {
 	char	timeStr[128];
 	TIGetTimeString(TIGetTime(), timeStr, TI_SHORT_DATE_FORMAT | TI_SHORT_TIME_FORMAT);
 	bool isteamwork = false;
 	short userid = 0;
-	GSErrCode err = IsTeamwork(isteamwork, userid);
+	IsTeamwork(isteamwork, userid);
 	partlogData.old_2 = partlogData.old_1;
 	partlogData.old_1 = partlogData.current;
 	CHCopyC(timeStr, partlogData.current.time);
@@ -160,6 +164,9 @@ void LogWriteElement(const API_NotifyElementType *elemType) {
 			LogDataRotate(logData.property);
 			logData.property.isempty = false;
 			break;
+		case APINotifyElement_Delete:
+			LogDataDelete(elemType->elemHead.guid, logData);
+			break;
 		default:
 			break;
 	}
@@ -169,7 +176,6 @@ void LogWriteElement(const API_NotifyElementType *elemType) {
 
 // -----------------------------------------------------------------------------
 // GetTeamworkMembers
-//
 //  collects information of joined Teamwork members
 // -----------------------------------------------------------------------------
 static GSErrCode	GetTeamworkMembers(GS::HashTable<short, API_UserInfo>& userInfoTable)

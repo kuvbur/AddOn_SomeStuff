@@ -1,0 +1,3 @@
+STR#, 32000, "Add-on Name and Description"
+STR#, 32500, "Strings for the Menu"
+STR#, 32501, "Add-On Strings"

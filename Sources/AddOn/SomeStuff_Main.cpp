@@ -64,7 +64,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	bool	sync_prop = false;
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
-
 	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && prefsData.logMon) {
 		if (elemType->notifID == APINotifyElement_New || elemType->notifID == APINotifyElement_Copy) {
 			err = AttachObserver(elemType->elemHead.guid);
@@ -76,7 +75,9 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			elemType->notifID == APINotifyElement_Change ||
 			elemType->notifID == APINotifyElement_Edit ||
 			elemType->notifID == APINotifyElement_ClassificationChange ||
-			elemType->notifID == APINotifyElement_PropertyValueChange) {
+			elemType->notifID == APINotifyElement_PropertyValueChange ||
+			elemType->notifID == APINotifyElement_Delete
+			) {
 			LogWriteElement(elemType);
 		}
 	}
@@ -145,7 +146,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		default:
 			break;
 		}
-		if (sync_prop) SyncData(elemType->elemHead.guid);
+		if (sync_prop) {
+			SyncData(elemType->elemHead.guid);
+			SyncRelationsElement(elemType->elemHead.guid);
+		}
 		ACAPI_DisposeElemMemoHdls(&parentElementMemo);
 	}
 	return err;
