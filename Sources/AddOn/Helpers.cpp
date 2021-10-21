@@ -317,9 +317,9 @@ GSErrCode SyncSettingsDefult(SyncPrefs& prefsData) {
 
 void SyncSettingsGet(SyncPrefs& prefsData)
 {
+	GSErrCode err = NoError;
 	Int32			version;
 	GSSize			nBytes;
-	GSErrCode err = NoError;
 	unsigned short	platformSign = GS::Act_Platform_Sign;
 	err = ACAPI_GetPreferences_Platform(&version, &nBytes, NULL, NULL);
 	if (version == CURR_ADDON_VERS) {

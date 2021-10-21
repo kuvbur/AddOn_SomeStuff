@@ -16,6 +16,7 @@ typedef std::map<std::string, SortGUID, doj::alphanum_less<std::string> > Values
 // 1. Получаем список объектов, в свойствах которых ищем
 //		Флаг включения нумерации в формате
 //					Renum_flag{*имя свойства с правилом*}
+//						Тип данных свойства-флага: Набор параметров с вариантами "Включить", "Исключить", "Не менять"
 //		Правило нумерации в одном из форматов
 //					Renum{*имя свойства-критерия*; *имя свойства-разбивки*}
 //	 				Renum{*имя свойства-критерия*}
@@ -67,12 +68,47 @@ bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string
 } // ReNumRule
 
 
+Int32 ReNumGetFlag(const API_Property& propertyflag) {
+	UInt32 flag = RENUM_IGNORE;
+	GS::UniString state = "";
+#if defined(AC_22) || defined(AC_23)
+	bool isseval = (!propertyflag.isEvaluated);
+#else
+	bool iseval = (propertyflag.status != API_Property_HasValue);
+#endif
+	if (iseval) {
+		return flag;
+	}
+
+	API_PropertyValue val;
+	if (propertyflag.isDefault) {
+		val = propertyflag.definition.defaultValue.basicValue;
+	}
+	else {
+		val = propertyflag.value;
+	}
+	if (propertyflag.definition.valueType == API_PropertyBooleanValueType && val.singleVariant.variant.boolValue) {
+		flag = RENUM_NORMAL;
+	}
+	else {
+#ifdef AC_25
+		state = val.singleVariant.variant.uniStringValue;
+#else
+		state = val.singleEnumVariant.displayVariant.uniStringValue;
+#endif
+		flag = RENUM_NORMAL;
+		if (state.Contains("Исключить") || state.IsEmpty()) flag = RENUM_IGNORE;
+		if (state.Contains("Не менять")) flag = RENUM_ADD;
+		// Если флаг поднят - ищем свойство с правилом
+	}
+	return flag;
+}
+
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом 
 // -----------------------------------------------------------------------------------------------------------------------
 UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid& elemGuid, API_PropertyDefinition& propertdefyrule) {
 	UInt32 flag = RENUM_IGNORE;
-	GS::UniString state = "";
 	if (definitionflag.description.Contains("{") && definitionflag.description.Contains("}")) {
 		// Получаем значение флага
 		GSErrCode err = NoError;
@@ -81,25 +117,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 		GS::Array<API_Property>  propertyflag;
 		err = ACAPI_Element_GetPropertyValues(elemGuid, definitions, propertyflag);
 		if (err == NoError) {
-			if (propertyflag[0].isDefault) {
-#ifdef AC_25
-				state = propertyflag[0].definition.defaultValue.basicValue.singleVariant.variant.uniStringValue;
-#else
-				state = propertyflag[0].definition.defaultValue.basicValue.singleEnumVariant.displayVariant.uniStringValue;
-#endif
-			}
-			else
-			{
-#ifdef AC_25
-				state = propertyflag[0].value.singleVariant.variant.uniStringValue;
-#else
-				state = propertyflag[0].value.singleEnumVariant.displayVariant.uniStringValue;
-#endif
-			} //propertyrule.isDefault
-			flag = RENUM_NORMAL;
-			if (state.Contains("Исключить") || state.IsEmpty()) flag = RENUM_IGNORE;
-			if (state.Contains("Не менять")) flag = RENUM_ADD;
-			// Если флаг поднят - ищем свойство с правилом
+			flag = ReNumGetFlag(propertyflag[0]);
 			if (flag != RENUM_IGNORE){
 				GS::UniString paramName = definitionflag.description.GetSubstring('{', '}', 0);
 				paramName.ReplaceAll("Property:", "");
@@ -132,8 +150,7 @@ GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules &rules) {
 					if (!rules.ContainsKey(definitions[j].guid)) {
 						RenumRule rulecritetia = {};
 						rulecritetia.position = propertydefrule;
-						bool state = ReNumRule(elemGuid, propertydefrule.description, rulecritetia);
-						rulecritetia.state = state;
+						rulecritetia.state = ReNumRule(elemGuid, propertydefrule.description, rulecritetia);;
 						rules.Add(definitions[j].guid, rulecritetia);
 					} //rules.ContainsKey(definitions[j].guid)
 					// Дописываем элемент в правило
@@ -151,9 +168,9 @@ GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules &rules) {
 GSErrCode ReNumOneRule(const RenumRule& rule) {
 	GSErrCode err = NoError;
 	GS::Array<RenumElement> elemArray = rule.elemts;
-	API_PropertyDefinition		position= rule.position;
-	API_PropertyDefinition		criteria = rule.criteria;
-	API_PropertyDefinition		delimetr = rule.delimetr;
+	API_PropertyDefinition		position= rule.position; // В это свойство ставим позицию
+	API_PropertyDefinition		criteria = rule.criteria; // По значению этого свойства объединяем элементы
+	API_PropertyDefinition		delimetr = rule.delimetr; // Это свойство служит для разделения нумерации
 	API_PropertyDefinition		sort = rule.sort;
 	Values valueList;
 

@@ -58,7 +58,7 @@
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AddOn.dir\Release\</IntDir>
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SomeStuff_AddOn_25 v0.9</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">SomeStuff_AddOn_25 v0.</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.apx</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>

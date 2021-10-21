@@ -340,8 +340,8 @@ bool CheckElementType(const API_ElemTypeID& elementType) {
 		elementType == API_BeamSegmentID ||
 		elementType == API_ColumnSegmentID ||
 		elementType == API_OpeningID) && prefsData.wallS) flag_type = true;
-	if ((elementType == API_ObjectID || elementType == API_ZoneID) && prefsData.objS) flag_type = true;
-	if ((elementType == API_WindowID || elementType == API_DoorID) && prefsData.widoS) flag_type = true;
+	if ((elementType == API_ObjectID || elementType == API_ZoneID || elementType == API_LampID) && prefsData.objS) flag_type = true;
+	if ((elementType == API_WindowID || elementType == API_DoorID || elementType == API_SkylightID) && prefsData.widoS) flag_type = true;
 	return flag_type;
 }
 
