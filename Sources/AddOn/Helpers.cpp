@@ -18,7 +18,7 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid) {
 	GSErrCode err = ACAPI_Environment(APIEnv_ProjectID, &projectInfo);
 	if (err == NoError) {
 		isteamwork = projectInfo.teamwork;
-		userid = projectInfo.teamwork;
+		userid = projectInfo.userId;
 	}
 	return err;
 }
@@ -365,6 +365,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 {
 	GSErrCode            err;
 	API_SelectionInfo    selectionInfo;
+	GS::UniString errorString = RSGetIndString(AddOnStringsID, ErrorSelectID, ACAPI_GetOwnResModule());
 #ifdef AC_22
 	API_Neig** selNeigs;
 #else
@@ -374,7 +375,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 	BMKillHandle((GSHandle*)&selectionInfo.marquee.coords);
 	if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
 		if (assertIfNoSel) {
-			DGAlert(DG_ERROR, "Error", "Сначала выберите элементы!", "", "Ok");
+			DGAlert(DG_ERROR, "Error", errorString, "", "Ok");
 		}
 	}
 	if (err != NoError) {
@@ -514,7 +515,6 @@ GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramNa
 	}
 	return err;
 }
-
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
@@ -524,11 +524,12 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 	bool write = true;
 	// Есть ли вычисленное/доступное значение?
 #if defined(AC_22) || defined(AC_23)
-	if (!propertyfrom.isEvaluated && write) {
+	bool isseval = (!propertyfrom.isEvaluated);
 #else
-	if (propertyfrom.status != API_Property_HasValue && write) {
+	bool iseval = (propertyfrom.status != API_Property_HasValue);
 #endif
-		msg_rep("WriteProp2Prop", "Property Has not value " + propertyfrom.definition.name, NoError, elemGuid);
+	if (iseval && write) {
+		//msg_rep("WriteProp2Prop", "Property Has not value " + propertyfrom.definition.name, NoError, elemGuid);
 		write = false;
 	}
 	// Совпадают ли типы?
@@ -539,7 +540,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 	// Если нужно записать список текста в текст
 	if (property.definition.collectionType != propertyfrom.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
 		GS::UniString val = PropertyTestHelpers::ToString(propertyfrom);
-		if (!val.IsEqual(property.value.singleVariant.variant.uniStringValue)) {
+		if (property.value.singleVariant.variant.uniStringValue != val) {
 			property.value.singleVariant.variant.uniStringValue = val;
 		}
 		else {
@@ -615,14 +616,14 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 	if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < groups.GetSize(); i++) {
-			if (groups[i].groupType == API_PropertyCustomGroupType && groups[i].name.IsEqual(partstring[0], GS::UniString::CaseInsensitive))
+			if (groups[i].groupType == API_PropertyCustomGroupType && groups[i].name.ToLowerCase() == partstring[0].ToLowerCase())
 			{
 				GS::Array<API_PropertyDefinition> definitions;
 				err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
 				if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
 				if (err == NoError) {
 					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-						if (definitions[j].name.IsEqual(partstring[1]), GS::UniString::CaseInsensitive) {
+						if (definitions[j].name.ToLowerCase() == partstring[1].ToLowerCase()) {
 							definition = definitions[j];
 							return err;
 						}

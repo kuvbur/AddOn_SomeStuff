@@ -43,6 +43,7 @@ static const Int32 UndoSumId = 6;
 
 static const Int32 TrueId = 4;
 static const Int32 FalseId = 5;
+static const Int32 ErrorSelectID = 6;
 
 // -----------------------------------------------------------------------------
 // Helper functions

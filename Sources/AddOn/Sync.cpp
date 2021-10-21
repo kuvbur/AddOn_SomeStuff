@@ -60,7 +60,14 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 			if (nparam > 0) rule.paramName = params[0];
 			if (nparam > 1) {
 				for (UInt32 j = 1; j < nparam; j++) {
-					rule.ignorevals.Push(params[j].GetSubstring('"', '"', 0));
+					GS::UniString ignoreval;
+					if (params[j].Contains('"')) {
+						ignoreval = params[j].GetSubstring('"', '"', 0);
+					}
+					else {
+						ignoreval = params[j];
+					}
+					rule.ignorevals.Push(ignoreval);
 				}
 			}
 			if (rule.syncdirection>0) {
@@ -74,11 +81,15 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 // -----------------------------------------------------------------------------
 // Проверяем - содержит ли строка игнорируемые значения
 // -----------------------------------------------------------------------------
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, GS::UniString& val) {
+bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val) {
 	bool ignore_flag = false;
 	if (syncRule.ignorevals.GetSize() > 0) {
 		for (UInt32 i = 0; i < syncRule.ignorevals.GetSize(); i++) {
-			if (val.Compare(syncRule.ignorevals[i]), GS::UniString::CaseInsensitive) {
+			if ((syncRule.ignorevals[i].ToLowerCase()=="empty" || syncRule.ignorevals[i].ToLowerCase() == "пусто") && val.GetLength()<1) {
+				ignore_flag = true;
+				return ignore_flag;
+			}
+			if (val == syncRule.ignorevals[i]) {
 				ignore_flag = true;
 				return ignore_flag;
 			}
@@ -90,7 +101,7 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, GS::UniString& val) {
 // -----------------------------------------------------------------------------
 // Проверяем - содержит ли свойство игнорируемые значеения
 // -----------------------------------------------------------------------------
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, API_Property& property) {
+bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property) {
 	bool ignore_flag = false;
 	if (syncRule.ignorevals.GetSize() > 0) {
 		GS::UniString val = PropertyTestHelpers::ToString(property);
@@ -102,13 +113,13 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, API_Property& property) {
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
-GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule & syncRule, API_Property& property)
+GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, API_Property& property)
 {
 	GSErrCode	err = NoError;
 	API_Property propertyfrom;
 	err = GetPropertyByName(elemGuid, syncRule.paramName, propertyfrom);
 	if (err == NoError) {
-		if (!SyncCheckIgnoreVal(syncRule, property)) {
+		if (!SyncCheckIgnoreVal(syncRule, propertyfrom)) {
 			err = WriteProp2Prop(elemGuid, propertyfrom, property);
 		}
 		else {
@@ -173,6 +184,67 @@ bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>
 	return isSync;
 }
 
+GSErrCode SyncRelationsToWindow (const API_Guid& elemGuid, bool &issuncwall) {
+	GSErrCode			err = NoError;
+	API_Element			element;
+	//Обновляем конструктивные элементы, если их обработка включена
+	if (issuncwall) {
+		BNZeroMemory(&element, sizeof(API_Element));
+		element.header.guid = elemGuid;
+		err = ACAPI_Element_Get(&element);
+		if (err == NoError) SyncData(element.window.owner);
+	}
+	//Обновляем объекты, если их обработка включена
+	API_WindowRelation            relData;
+	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
+	if (err == NoError) {
+		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom);
+		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom);
+	}
+	return err;
+}
+
+GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, bool &issuncwall) {
+	GSErrCode			err = NoError;
+	API_Element			element;
+	//Обновляем конструктивные элементы, если их обработка включена
+	if (issuncwall) {
+		BNZeroMemory(&element, sizeof(API_Element));
+		element.header.guid = elemGuid;
+		err = ACAPI_Element_Get(&element);
+		if (err == NoError) SyncData(element.door.owner);
+	}
+	//Обновляем объекты, если их обработка включена
+	API_DoorRelation            relData;
+	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
+	if (err == NoError) {
+		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom);
+		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom);
+	}
+	return err;
+}
+
+// --------------------------------------------------------------------
+// Поиск и синхронизация свойств связанных элементов
+// --------------------------------------------------------------------
+void SyncRelationsElement(const API_Guid& elemGuid) {
+	GSErrCode	err = NoError;
+	API_ElemTypeID elementType;
+	SyncPrefs prefsData;
+	SyncSettingsGet(prefsData);
+	err = GetTypeByGUID(elemGuid, elementType);
+	switch (elementType) {
+		case API_WindowID:
+			if (prefsData.objS) err = SyncRelationsToWindow(elemGuid, prefsData.wallS);
+			break;
+		case API_DoorID:
+			if (prefsData.objS) err = SyncRelationsToDoor(elemGuid, prefsData.wallS);
+			break;
+		default:
+			break;
+	}
+}
+
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
@@ -205,8 +277,7 @@ GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID element
 		if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyValue " + definition.name, err, elemGuid);
 		if (err == NoError) {
 			for (UInt32 i = 0; i < syncRules.GetSize(); i++) {
-				err = SyncOneRule(elemGuid, elementType, property, syncRules[i]);
-				if (err == NoError) break; // Если синхронизация успешная - выходим из цикла
+				if (SyncOneRule(elemGuid, elementType, property, syncRules[i])) break; // Если синхронизация успешная - выходим из цикла
 			}
 		}
 	}
