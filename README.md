@@ -6,4 +6,5 @@
 
 ### Совместимость с версиями:
 Archicad WIN 25
+
 Archicad WIN 24
