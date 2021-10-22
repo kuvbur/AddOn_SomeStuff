@@ -119,9 +119,9 @@ void LogShowSelected() {
 	}
 }
 
-void LogDataDelete(const API_Guid& guid, const LogData& logData) {
-
-}
+//void LogDataDelete(const API_Guid& guid, const LogData& logData) {
+//	return;
+//}
 
 void LogDataRotate(lgL2 &partlogData) {
 	char	timeStr[128];
@@ -164,9 +164,10 @@ void LogWriteElement(const API_NotifyElementType *elemType) {
 			LogDataRotate(logData.property);
 			logData.property.isempty = false;
 			break;
-		case APINotifyElement_Delete:
-			LogDataDelete(elemType->elemHead.guid, logData);
-			break;
+		// TODO При удалении элемента выводить в примечания и заметки сообщение с именем пользователя
+		//case APINotifyElement_Delete:
+		//	LogDataDelete(elemType->elemHead.guid, logData);
+		//	break;
 		default:
 			break;
 	}

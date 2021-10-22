@@ -332,11 +332,17 @@ void SyncSettingsGet(SyncPrefs& prefsData)
 				IVBool(inplatform, &prefsData.wallS);
 				IVBool(inplatform, &prefsData.widoS);
 				IVBool(inplatform, &prefsData.objS);
+				IVBool(inplatform, &prefsData.logMon);
 			}
 	}
 	else {
 		err = SyncSettingsDefult(prefsData);
 	}
+#ifdef PK_1
+	prefsData.syncMon = true;
+	prefsData.logMon = true;
+#endif // PK_1
+
 }
 
 void	MenuItemCheckAC(short itemInd, bool checked)
@@ -524,17 +530,19 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 	bool write = true;
 	// Есть ли вычисленное/доступное значение?
 #if defined(AC_22) || defined(AC_23)
-	bool isseval = (!propertyfrom.isEvaluated);
+	bool isnoteval = (!propertyfrom.isEvaluated);
 #else
-	bool iseval = (propertyfrom.status != API_Property_HasValue);
+	bool isnoteval = (propertyfrom.status != API_Property_HasValue);
 #endif
-	if (iseval && write) {
-		//msg_rep("WriteProp2Prop", "Property Has not value " + propertyfrom.definition.name, NoError, elemGuid);
+	// Свойство недоступно или содержит невычисленное значение
+	if (isnoteval && write) {
+		err = APIERR_MISSINGCODE;
 		write = false;
 	}
 	// Совпадают ли типы?
 	if (propertyfrom.definition.valueType != property.definition.valueType && write) {
 		msg_rep("WriteProp2Prop", "Diff type " + propertyfrom.definition.name + "<->" + property.definition.name, NoError, elemGuid);
+		err = APIERR_MISSINGCODE;
 		write = false;
 	}
 	// Если нужно записать список текста в текст

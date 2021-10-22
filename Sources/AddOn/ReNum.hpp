@@ -6,9 +6,9 @@
 
 typedef struct {
 	API_Guid		guid;
-	std::string	val;
-	GS::UniString	criteria;
-	UInt32	state;
+	std::string		criteria;
+	std::string		delimetr;
+	UInt32			state;
 } RenumElement;
 
 typedef struct {
@@ -23,6 +23,10 @@ typedef struct {
 typedef struct {
 	GS::Array <API_Guid>	guid;
 } SortGUID;
+
+typedef struct {
+	GS::Array <UInt32>	inx;
+} SortInx;
 
 typedef GS::HashTable<API_Guid, RenumRule> Rules;
 
