@@ -75,6 +75,7 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 			}
 		}
 	}
+	if (syncRules.GetSize() == 0) flag_sync = false;
 	return flag_sync;
 }
 
@@ -184,16 +185,8 @@ bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>
 	return isSync;
 }
 
-GSErrCode SyncRelationsToWindow (const API_Guid& elemGuid, bool &issuncwall) {
+GSErrCode SyncRelationsToWindow (const API_Guid& elemGuid) {
 	GSErrCode			err = NoError;
-	API_Element			element;
-	//Обновляем конструктивные элементы, если их обработка включена
-	if (issuncwall) {
-		BNZeroMemory(&element, sizeof(API_Element));
-		element.header.guid = elemGuid;
-		err = ACAPI_Element_Get(&element);
-		if (err == NoError) SyncData(element.window.owner);
-	}
 	//Обновляем объекты, если их обработка включена
 	API_WindowRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
@@ -204,16 +197,8 @@ GSErrCode SyncRelationsToWindow (const API_Guid& elemGuid, bool &issuncwall) {
 	return err;
 }
 
-GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, bool &issuncwall) {
+GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid) {
 	GSErrCode			err = NoError;
-	API_Element			element;
-	//Обновляем конструктивные элементы, если их обработка включена
-	if (issuncwall) {
-		BNZeroMemory(&element, sizeof(API_Element));
-		element.header.guid = elemGuid;
-		err = ACAPI_Element_Get(&element);
-		if (err == NoError) SyncData(element.door.owner);
-	}
 	//Обновляем объекты, если их обработка включена
 	API_DoorRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
@@ -235,10 +220,10 @@ void SyncRelationsElement(const API_Guid& elemGuid) {
 	err = GetTypeByGUID(elemGuid, elementType);
 	switch (elementType) {
 		case API_WindowID:
-			if (prefsData.objS) err = SyncRelationsToWindow(elemGuid, prefsData.wallS);
+			if (prefsData.objS) err = SyncRelationsToWindow(elemGuid);
 			break;
 		case API_DoorID:
-			if (prefsData.objS) err = SyncRelationsToDoor(elemGuid, prefsData.wallS);
+			if (prefsData.objS) err = SyncRelationsToDoor(elemGuid);
 			break;
 		default:
 			break;
@@ -293,7 +278,7 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API
 	GSErrCode	err = NoError;
 	switch (syncRule.synctype) {
 	case 1:
-		if (elementType == API_ObjectID || elementType == API_WindowID || elementType == API_DoorID || elementType == API_ZoneID) {
+		if (elementType == API_ObjectID || elementType == API_WindowID || elementType == API_DoorID || elementType == API_ZoneID || elementType == API_LampID) {
 			err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
 		}
 		break;
