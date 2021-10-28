@@ -64,22 +64,19 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	bool	sync_prop = false;
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
-	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && prefsData.logMon) {
-		if (elemType->notifID == APINotifyElement_New || elemType->notifID == APINotifyElement_Copy) {
-			err = AttachObserver(elemType->elemHead.guid);
-			if (err == APIERR_LINKEXIST)
-				err = NoError;
-		}
-		if (elemType->notifID == APINotifyElement_New ||
-			elemType->notifID == APINotifyElement_Copy ||
-			elemType->notifID == APINotifyElement_Change ||
-			elemType->notifID == APINotifyElement_Edit ||
-			elemType->notifID == APINotifyElement_ClassificationChange ||
-			elemType->notifID == APINotifyElement_PropertyValueChange ||
-			elemType->notifID == APINotifyElement_Delete
-			) {
+	// Из-за странного бага с отслеживанием при синхронизации придётся ловить все элементы при редактировании
+	if ((elemType->notifID == APINotifyElement_New ||
+		elemType->notifID == APINotifyElement_Copy ||
+		elemType->notifID == APINotifyElement_Change ||
+		elemType->notifID == APINotifyElement_Edit ||
+		elemType->notifID == APINotifyElement_ClassificationChange ||
+		elemType->notifID == APINotifyElement_PropertyValueChange
+		) && prefsData.logMon) {
+		err = AttachObserver(elemType->elemHead.guid);
+		if (err == APIERR_LINKEXIST)
+			err = NoError;
+		if (err == NoError)
 			LogWriteElement(elemType);
-		}
 	}
 
 	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && CheckElementType(elemType->elemHead.typeID)) {
@@ -98,19 +95,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			if (!prefsData.syncMon)
 				break;
 			sync_prop = true;
-			err = AttachObserver(elemType->elemHead.guid);
-			if (err == APIERR_LINKEXIST)
-				err = NoError;
-			break;
 		case APINotifyElement_Copy:
 			if (!prefsData.syncMon)
 				break;
 			sync_prop = true;
-			if (parentElement.header.guid != APINULLGuid) {
-				err = AttachObserver(elemType->elemHead.guid);
-				if (err == APIERR_LINKEXIST)
-					err = NoError;
-			}
 			break;
 		case APINotifyElement_Change:
 			sync_prop = true;
@@ -147,8 +135,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			break;
 		}
 		if (sync_prop) {
-			SyncData(elemType->elemHead.guid);
-			SyncRelationsElement(elemType->elemHead.guid);
+			err = AttachObserver(elemType->elemHead.guid);
+			if (err == APIERR_LINKEXIST)
+				err = NoError;
+			if (err == NoError) {
+				SyncData(elemType->elemHead.guid);
+				SyncRelationsElement(elemType->elemHead.guid);
+			}
 		}
 		ACAPI_DisposeElemMemoHdls(&parentElementMemo);
 	}
@@ -157,23 +150,24 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 
 // -----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
+// // !!Не используется из-за странного бага при резервировании модулей!!
 // -----------------------------------------------------------------------------
-static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
-	const GS::HashSet<API_Guid>& released,
-	const GS::HashSet<API_Guid>& deleted)
-{
-	for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs(); it != nullptr; ++it) {
-		SyncReservation(1, *(it->key));
-	}
-	for (GS::HashSet<API_Guid>::ConstIterator it = released.Enumerate(); it != NULL; ++it) {
-		SyncReservation(2, *it);
-	}
-
-	for (GS::HashSet<API_Guid>::ConstIterator it = deleted.Enumerate(); it != NULL; ++it) {
-		SyncReservation(3, *it);
-	}
-	return NoError;
-}		/* ReservationChangeHandler */
+//static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
+//	const GS::HashSet<API_Guid>& released,
+//	const GS::HashSet<API_Guid>& deleted)
+//{
+//	for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs(); it != nullptr; ++it) {
+//		SyncReservation(1, *(it->key));
+//	}
+//	//for (GS::HashSet<API_Guid>::ConstIterator it = released.Enumerate(); it != NULL; ++it) {
+//	//	SyncReservation(2, *it);
+//	//}
+//
+//	//for (GS::HashSet<API_Guid>::ConstIterator it = deleted.Enumerate(); it != NULL; ++it) {
+//	//	SyncReservation(3, *it);
+//	//}
+//	return NoError;
+//}		/* ReservationChangeHandler */
 
 // -----------------------------------------------------------------------------
 // Включение мониторинга
@@ -185,7 +179,7 @@ void	Do_ElementMonitor(void)
 	if (prefsData.syncMon || prefsData.logMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);	
-		ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
+		//ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
 	}
 	if (!prefsData.syncMon && !prefsData.logMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);

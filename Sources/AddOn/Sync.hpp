@@ -30,5 +30,5 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property);
 bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRule);
 GSErrCode SyncParamAndProp(const API_Guid& elemGuid, const  SyncRule& syncRule, API_Property& property);
 GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule & syncRule, API_Property& property);
-void SyncReservation(short type, const API_Guid objectId);
+//void SyncReservation(short type, const API_Guid objectId);
 #endif

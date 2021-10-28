@@ -90,6 +90,21 @@ GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules) {
 	return err;
 }// ReNum_GetElement
 
+// -----------------------------------------------------------------------------------------------------------------------
+// Запись позиции в свойство
+// -----------------------------------------------------------------------------------------------------------------------
+GSErrCode ReNumSetPos(const Int32 npos, const Int32 maxnpos, API_Property& positionproperty) {
+	GSErrCode	err = NoError;
+	positionproperty.isDefault = false;
+	if (positionproperty.definition.valueType == API_PropertyRealValueType) {
+		positionproperty.value.singleVariant.variant.doubleValue = npos;
+	}
+	if (positionproperty.definition.valueType == API_PropertyIntegerValueType) {
+		positionproperty.value.singleVariant.variant.intValue = npos;
+	}
+	return err;
+}
+
 GSErrCode ReNumOneRule(const RenumRule& rule) {
 	GSErrCode					err = NoError;
 	GS::Array<RenumElement>		elemArray = rule.elemts;
@@ -115,7 +130,6 @@ GSErrCode ReNumOneRule(const RenumRule& rule) {
 				elemArray[i].delimetr = delimetr;
 			}
 			// Ну и чтоб дважды не вставать - сделаем список с уникальными значениями разделителя.
-			//
 			delimetrList[delimetr].inx.Push(i);
 		}
 	}
@@ -131,6 +145,7 @@ GSErrCode ReNumOneRule(const RenumRule& rule) {
 		}
 		// TODO Добавить исключаемые позиции
 		Int32 npos = 0;
+		Int32 maxnpos = 1;
 		bool last_error = false;
 		for (Values::iterator k = criteriaList.begin(); k != criteriaList.end(); ++k) {
 			if (!last_error) npos = npos + 1;
@@ -141,10 +156,10 @@ GSErrCode ReNumOneRule(const RenumRule& rule) {
 				err = ACAPI_Element_GetPropertyValue(eleminpos[m], position.guid, positionproperty);
 				if (err != NoError) msg_rep("ReNumOneRule", "ACAPI_Element_GetPropertyValue", err, eleminpos[m]);
 				if (err == NoError) {
-					positionproperty.isDefault = false;
-					positionproperty.value.singleVariant.variant.intValue = npos;
-					err = ACAPI_Element_SetProperty(eleminpos[m], positionproperty);
-					if (err == NoError) last_error = false;
+					if (ReNumSetPos(npos, maxnpos, positionproperty) == NoError){
+						err = ACAPI_Element_SetProperty(eleminpos[m], positionproperty);
+						if (err == NoError) last_error = false;
+					}
 					if (err != NoError) msg_rep("ReNumOneRule", "ACAPI_Element_SetProperty", err, eleminpos[m]);
 				}
 			}
@@ -205,8 +220,8 @@ Int32 ReNumGetFlag(const API_Property& propertyflag) {
 	else {
 		val = propertyflag.value;
 	}
-	if (propertyflag.definition.valueType == API_PropertyBooleanValueType && val.singleVariant.variant.boolValue) {
-		flag = RENUM_NORMAL;
+	if (propertyflag.definition.valueType == API_PropertyBooleanValueType) {
+		if (val.singleVariant.variant.boolValue) flag = RENUM_NORMAL;
 	}
 	else {
 #ifdef AC_25

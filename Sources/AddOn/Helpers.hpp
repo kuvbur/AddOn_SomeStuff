@@ -61,6 +61,7 @@ typedef struct {
 GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
 GSErrCode AttachObserver(const API_Guid& objectId);
+bool IsElementEditable(const API_Guid& objectId);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);

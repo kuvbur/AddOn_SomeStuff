@@ -9,18 +9,19 @@ Int32 nLib = 0;
 
 // -----------------------------------------------------------------------------
 // Отслеживание резервируемых элементов
+// !!Не используется из-за странного бага при резервировании модулей!!
 // -----------------------------------------------------------------------------
-void	SyncReservation(short type, const API_Guid objectId)
-{
-	if (type == 1) {
-		SyncPrefs prefsData;
-		SyncSettingsGet(prefsData);
-		if (prefsData.syncMon || prefsData.logMon) {
-			AttachObserver(objectId);
-		}
-	}
-	return;
-}		/* PrintReservationInfo */
+//void	SyncReservation(short type, const API_Guid objectId)
+//{
+//	if (type == 1) {
+//		SyncPrefs prefsData;
+//		SyncSettingsGet(prefsData);
+//		if (prefsData.syncMon || prefsData.logMon) {
+//			AttachObserver(objectId);
+//		}
+//	}
+//	return;
+//}		/* PrintReservationInfo */
 
 
 // -----------------------------------------------------------------------------
@@ -197,6 +198,7 @@ GSErrCode SyncRelationsToWindow (const API_Guid& elemGuid) {
 	return err;
 }
 
+
 GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid) {
 	GSErrCode			err = NoError;
 	//Обновляем объекты, если их обработка включена
@@ -235,8 +237,14 @@ void SyncRelationsElement(const API_Guid& elemGuid) {
 // --------------------------------------------------------------------
 void SyncData(const API_Guid& elemGuid) {
 	GSErrCode	err = NoError;
+	if (!IsElementEditable(elemGuid))
+		return;
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
+	if (err != NoError) {
+		msg_rep("SyncData", "GetTypeByGUID", err, elemGuid);
+		return;
+	}
 	if (CheckElementType(elementType)) // Сверяемся с настройками - нужно ли этот тип обрабатывать
 	{
 		GS::Array<API_PropertyDefinition> definitions;

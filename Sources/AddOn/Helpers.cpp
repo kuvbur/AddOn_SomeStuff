@@ -29,15 +29,40 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid) {
 GSErrCode	AttachObserver(const API_Guid& objectId)
 {
 	GSErrCode		err = NoError;
+	if (IsElementEditable(objectId)) {
+
 #ifdef AC_22
-	API_Elem_Head elemHead;
-	elemHead.guid = objectId;
-	err = ACAPI_Element_AttachObserver(&elemHead, 0);
+		API_Elem_Head elemHead;
+		elemHead.guid = objectId;
+		err = ACAPI_Element_AttachObserver(&elemHead, 0);
 #else
-	err = ACAPI_Element_AttachObserver(objectId);
+		err = ACAPI_Element_AttachObserver(objectId);
 #endif
+}
 	return err;
 }
+
+// -----------------------------------------------------------------------------
+// Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
+// -----------------------------------------------------------------------------
+bool IsElementEditable(const API_Guid& objectId) {
+	GSErrCode		err = NoError;
+	// Проверяем - зарезервирован ли объект
+	API_LockableStatus lockableStatus = ACAPI_TeamworkControl_GetLockableStatus(objectId);
+	if (lockableStatus != APILockableStatus_Editable && lockableStatus != APILockableStatus_NotExist)  return false;
+	// Проверяем - на находится ли объект в модуле
+	API_Elem_Head	tElemHead;
+	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
+	tElemHead.guid = objectId;
+	err = ACAPI_Element_GetHeader(&tElemHead);
+	if (err == NoError) {
+		if (tElemHead.typeID == API_HotlinkID) return false;
+		if (tElemHead.hotlinkGuid != APINULLGuid) return false;
+	}
+	if (err != NoError) return false;
+	return true;
+}
+
 
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
