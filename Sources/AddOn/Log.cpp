@@ -137,6 +137,8 @@ void LogDataRotate(lgL2 &partlogData) {
 }
 
 void LogWriteElement(const API_NotifyElementType *elemType) {
+	if (!IsElementEditable(elemType->elemHead.guid))
+		return;
 	LogData logData;
 	if (LogReadElement(elemType->elemHead.guid, logData) != NoError) LogGetEmpty(logData);
 	switch (elemType->notifID) {
