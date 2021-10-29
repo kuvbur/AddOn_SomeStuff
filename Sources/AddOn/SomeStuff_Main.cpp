@@ -80,16 +80,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	}
 
 	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && CheckElementType(elemType->elemHead.typeID)) {
-		API_Element			parentElement;
-		API_ElementMemo		parentElementMemo;
-		API_ElementUserData	parentUserData;
-
-		BNZeroMemory(&parentElement, sizeof(API_Element));
-		BNZeroMemory(&parentElementMemo, sizeof(API_ElementMemo));
-		BNZeroMemory(&parentUserData, sizeof(API_ElementUserData));
-		ACAPI_Notify_GetParentElement(&parentElement, &parentElementMemo, 0, &parentUserData);
-		BMKillHandle(&parentUserData.dataHdl);
-
 		switch (elemType->notifID) {
 		case APINotifyElement_New:
 			if (!prefsData.syncMon)
@@ -135,15 +125,16 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			break;
 		}
 		if (sync_prop) {
-			err = AttachObserver(elemType->elemHead.guid);
-			if (err == APIERR_LINKEXIST)
-				err = NoError;
+			if (prefsData.syncMon) {
+				err = AttachObserver(elemType->elemHead.guid);
+				if (err == APIERR_LINKEXIST)
+					err = NoError;
+			}
 			if (err == NoError) {
 				SyncData(elemType->elemHead.guid);
 				SyncRelationsElement(elemType->elemHead.guid);
 			}
 		}
-		ACAPI_DisposeElemMemoHdls(&parentElementMemo);
 	}
 	return err;
 }	// ElementEventHandlerProc
@@ -249,7 +240,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 #endif
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					Do_ElementMonitor();
-					SyncAndMonAll();
 					break;
 				case LogShow_CommandID:
 					LogShowSelected();
@@ -272,7 +262,7 @@ API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams* envir)
 
 GSErrCode __ACDLL_CALL RegisterInterface (void)
 {	
-	GSErrCode err = ACAPI_Register_Menu(AddOnMenuID, 0, MenuCode_Tools, MenuFlag_Default);
+	GSErrCode err = ACAPI_Register_Menu(AddOnMenuID, AddOnPromtID, MenuCode_Tools, MenuFlag_Default);
 	return err;
 }
 

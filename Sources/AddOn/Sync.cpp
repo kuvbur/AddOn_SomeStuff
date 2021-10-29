@@ -4,6 +4,13 @@
 #include "Helpers.hpp"
 #include "Log.hpp"
 
+typedef struct {
+	API_AttributeIndex	buildingMaterial;
+	GS::UniString		buildingMaterial_name;
+	GS::UniString		fill_name;
+	UInt32				fillThick;
+} LayerConstr;
+
 const int ERRIGNOREVAL = 10;
 Int32 nLib = 0;
 
@@ -52,6 +59,10 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 			if (rulestring_one.Contains("Property:")) {
 				rule.synctype = 2;
 				rulestring_one.ReplaceAll("Property:", "");
+			}
+			if (rulestring_one.Contains("Material:")) {
+				rule.synctype = 3;
+				rulestring_one.ReplaceAll("Material:", "");
 			}
 			GS::UniString paramName = rulestring_one.GetSubstring('{', '}',0);
 			UInt32 nparam = 0;
@@ -277,6 +288,112 @@ GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID element
 	return err;
 }
 
+Int32 DoubleM2IntMM(const double& value) {
+	double param_real = round(value * 1000) / 1000;
+	if (value - param_real > 0.001) param_real += 0.001;
+	param_real = param_real * 1000;
+	Int32 param_int = (GS::Int32)param_real;
+	if (param_int / 1 < param_real) param_int += 1;
+	return param_int;
+}
+
+GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, API_Property property) {
+	if (elementType != API_WallID && elementType != API_SlabID && elementType != API_RoofID && elementType != API_ShellID) return APIERR_MISSINGCODE;
+	GSErrCode					err = NoError;
+	API_Element					element = {};
+	API_ModelElemStructureType	structtype = {};
+	API_AttributeIndex			constrinx = {};
+	double						fillThick = 0;
+	BNZeroMemory(&element, sizeof(API_Element));
+	element.header.guid = elemGuid;
+	err = ACAPI_Element_Get(&element);
+	if (err != NoError){
+		msg_rep("SyncPropAndMat", "ACAPI_Element_Get", err, elemGuid);
+		return err;
+	}
+	switch (elementType) {
+	case API_WallID:
+		structtype = element.wall.modelElemStructureType;
+		if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
+		if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		fillThick = element.wall.thickness;
+		break;
+	case API_SlabID:
+		structtype = element.slab.modelElemStructureType;
+		if (structtype == API_CompositeStructure) constrinx = element.slab.composite;
+		if (structtype == API_BasicStructure) constrinx = element.slab.buildingMaterial;
+		fillThick = element.slab.thickness;
+		break;
+	case API_RoofID:
+		structtype = element.roof.shellBase.modelElemStructureType;
+		if (structtype == API_CompositeStructure) constrinx = element.roof.shellBase.composite;
+		if (structtype == API_BasicStructure) constrinx = element.roof.shellBase.buildingMaterial;
+		fillThick = element.roof.shellBase.thickness;
+		break;
+	case API_ShellID:
+		structtype = element.shell.shellBase.modelElemStructureType;
+		if (structtype == API_CompositeStructure) constrinx = element.shell.shellBase.composite;
+		if (structtype == API_BasicStructure) constrinx = element.shell.shellBase.buildingMaterial;
+		fillThick = element.shell.shellBase.thickness;
+		break;
+	default:
+		return APIERR_MISSINGCODE;
+		break;
+	}
+	GS::Array<LayerConstr>	components;
+	API_Attribute			attrib;
+	API_AttributeDef		defs;
+	BNZeroMemory(&attrib, sizeof(API_Attribute));
+	BNZeroMemory(&defs, sizeof(API_AttributeDef));
+	if (structtype == API_BasicStructure) {
+		LayerConstr l = {};
+		l.buildingMaterial = constrinx;
+		l.fillThick = DoubleM2IntMM(fillThick);
+		components.Push(l);
+	}
+	if (structtype == API_CompositeStructure) {
+		attrib.header.typeID = API_CompWallID;
+		attrib.header.index = constrinx;
+		err = ACAPI_Attribute_Get(&attrib);
+		if (err != NoError) {
+			msg_rep("SyncPropAndMat", " ACAPI_Attribute_Get", err, elemGuid);
+			return err;
+		}
+		err = ACAPI_Attribute_GetDef(attrib.header.typeID, attrib.header.index, &defs);
+		if (err != NoError) {
+			msg_rep("SyncPropAndMat", " ACAPI_Attribute_GetDef", err, elemGuid);
+			return err;
+		}
+		for (short i = 0; i < attrib.compWall.nComps; i++) {
+			LayerConstr l = {};
+			l.buildingMaterial = (*defs.cwall_compItems)[i].buildingMaterial;
+			l.fillThick = DoubleM2IntMM((*defs.cwall_compItems)[i].fillThick);
+			components.Push(l);
+		}
+		ACAPI_DisposeAttrDefsHdls(&defs);
+	}
+	for (UInt32 i = 0; i < components.GetSize(); i++) {
+		BNZeroMemory(&attrib, sizeof(API_Attribute));
+		attrib.header.typeID = API_BuildingMaterialID;
+		attrib.header.index = components[i].buildingMaterial;
+		err = ACAPI_Attribute_Get(&attrib);
+		if (err != NoError) {
+			msg_rep("SyncPropAndMat", " ACAPI_Attribute_Get components", err, elemGuid);
+			return err;
+		}
+		components[i].buildingMaterial_name = GS::UniString::Printf("%s", attrib.header.name);
+	}
+	GS::UniString param_string = "";
+	for (UInt32 i = 0; i < components.GetSize(); i++) {
+		param_string += components[i].buildingMaterial_name;
+		param_string += "$";
+		param_string += GS::UniString::Printf("%d", components[i].fillThick);
+		param_string += "@";
+	}
+	err = WriteProp(elemGuid, property, param_string);
+	return err;
+}
+
 // --------------------------------------------------------------------
 // Синхронизация одного правила для свойства
 // Если синхронизация успешна, возвращает True
@@ -292,6 +409,9 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API
 		break;
 	case 2:
 		err = SyncPropAndProp(elemGuid, syncRule, property); //Синхронизация свойств
+		break;
+	case 3:
+		err = SyncPropAndMat(elemGuid, elementType, syncRule, property); //Синхронизация свойств и данных о конструкции
 		break;
 	default:
 		break;

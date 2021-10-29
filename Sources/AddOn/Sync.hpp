@@ -22,6 +22,7 @@ GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid);
 void SyncRelationsElement(const API_Guid& elemGuid);
 void SyncData(const API_Guid& elemGuid);
 GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition);
+GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, API_Property property);
 bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_Property property, SyncRule syncRule);
 
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val);
