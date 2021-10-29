@@ -21,9 +21,6 @@
     <None Include="D:\SomeStuff_addon\Sources\AddOnResources\Tools\CompileResources.py">
       <Filter>Resources</Filter>
     </None>
-    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX\Images\AddOnIcon_18x18.svg">
-      <Filter>Images</Filter>
-    </None>
     <None Include="D:\SomeStuff_addon\Build_25\CMakeFiles\AddOnResources" />
   </ItemGroup>
   <ItemGroup>
@@ -36,5 +33,37 @@
     <Filter Include="Resources">
       <UniqueIdentifier>{3658D2FC-F8D8-357F-8EC4-9AE18C168122}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\AddOnIcon.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\LogAllIcon.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\LogShowIcon.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\MonAllIcon.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\ReNumIcon.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncAllIcon.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncObject.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncSelectIcon.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncWall.png">
+      <Filter>Images</Filter>
+    </Image>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncWindow.png">
+      <Filter>Images</Filter>
+    </Image>
   </ItemGroup>
 </Project>

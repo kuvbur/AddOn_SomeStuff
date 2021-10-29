@@ -46,20 +46,19 @@ GSErrCode	AttachObserver(const API_Guid& objectId)
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
 bool IsElementEditable(const API_Guid& objectId) {
-	GSErrCode		err = NoError;
 	// Проверяем - зарезервирован ли объект
+	if (!ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) return false;
+	if (!ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) return false;
+	if (!ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) return false;
 	API_LockableStatus lockableStatus = ACAPI_TeamworkControl_GetLockableStatus(objectId);
 	if (lockableStatus != APILockableStatus_Editable && lockableStatus != APILockableStatus_NotExist)  return false;
 	// Проверяем - на находится ли объект в модуле
 	API_Elem_Head	tElemHead;
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = objectId;
-	err = ACAPI_Element_GetHeader(&tElemHead);
-	if (err == NoError) {
-		if (tElemHead.typeID == API_HotlinkID) return false;
-		if (tElemHead.hotlinkGuid != APINULLGuid) return false;
-	}
-	if (err != NoError) return false;
+	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
+	if (tElemHead.typeID == API_HotlinkID) return false;
+	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
 	return true;
 }
 
@@ -489,6 +488,14 @@ bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
 // Запись в свойство строки/целочисленного/дробного/булевого значения
 //  в зависимости от типа данных свойства
 // -----------------------------------------------------------------------------
+GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string) {
+	GS::Int32 param_int = 0;
+	bool param_bool = false;
+	double param_real = 0;
+	GSErrCode err = WriteProp(elemGuid, property, param_string,param_int, param_bool, param_real);
+	return err;
+}
+
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
 	GSErrCode		err = NoError;
 	bool flag_rec = false;

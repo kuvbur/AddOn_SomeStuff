@@ -19,6 +19,8 @@
 
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
+static const short AddOnPromtID = ID_ADDON_PROMT;
+
 static const GSResID AddOnStringsID = ID_ADDON_STRINGS;
 
 static const Int32 AddOnNameID = 1;
@@ -75,6 +77,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 void MenuItemCheckAC(short itemInd, bool checked);
 void SyncSettingsGet(SyncPrefs& prefsData);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
+GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramName, API_Property& property);
 GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyfrom, API_Property& property);

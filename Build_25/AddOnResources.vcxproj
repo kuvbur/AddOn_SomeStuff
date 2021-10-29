@@ -241,12 +241,20 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </None>
     <None Include="D:\SomeStuff_addon\Sources\AddOnResources\Tools\CompileResources.py">
     </None>
-    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX\Images\AddOnIcon_18x18.svg">
-    </None>
     <None Include="D:\SomeStuff_addon\Build_25\CMakeFiles\AddOnResources">
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\AddOnIcon.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\LogAllIcon.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\LogShowIcon.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\MonAllIcon.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\ReNumIcon.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncAllIcon.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncObject.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncSelectIcon.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncWall.png" />
+    <Image Include="..\Sources\AddOnResources\RFIX\Images\SyncWindow.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
