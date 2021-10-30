@@ -9,6 +9,7 @@
 #include	"ACAPinc.h"
 #include	"Helpers.hpp"
 
+
 // --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
@@ -449,10 +450,14 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/)
 {
 	GS::UniString	title("Sync Selected");
+	Prop propname = {};
 	Int32 nLib = 0;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
+		//TODO Возможно, предварительный сбор имён свойств в хэш-таблицу ускорит работу
+		// Надо только прокинуть их в функцию и добававить функцию поиска по ним
+		//GetAllPropertyName(propname);
 		GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
 		msg_rep("Sync Selected", intString, NoError, APINULLGuid);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
@@ -655,10 +660,32 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 	return n;
 }
 
+GSErrCode GetAllPropertyName(Prop& propname) {
+	GSErrCode err = NoError;
+	GS::Array<API_PropertyGroup> groups;
+	err = ACAPI_Property_GetPropertyGroups(groups);
+	if (err == NoError) {
+		for (UInt32 i = 0; i < groups.GetSize(); i++) {
+			if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
+				GS::Array<API_PropertyDefinition> definitions;
+				err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
+				if (err == NoError) {
+					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+						GS::UniString fullname = groups[i].name + "/" + definitions[j].name;
+						if (!propname.ContainsKey(fullname)) propname.Add(fullname, definitions[j]);
+					}
+				}
+			}
+		}
+	}
+	return err;
+}
+
 // -----------------------------------------------------------------------------
 // Получение определения свойства по имени свойства
 // Формат имени ГРУППА/ИМЯ_СВОЙСТВА
 // -----------------------------------------------------------------------------
+
 GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition) {
 	GSErrCode err = GetPropertyDefinitionByName(APINULLGuid, propertyname, definition);
 	return err;
@@ -674,16 +701,17 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 		if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
 		if (err == NoError) {
 			for (UInt32 i = 0; i < groups.GetSize(); i++) {
-				if (groups[i].name.ToLowerCase() == partstring[0].ToLowerCase())
-				{
-					GS::Array<API_PropertyDefinition> definitions;
-					err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
-					if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
-					if (err == NoError) {
-						for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-							if (definitions[j].name.ToLowerCase() == partstring[1].ToLowerCase()) {
-								definition = definitions[j];
-								return err;
+				if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType){
+					if (groups[i].name.ToLowerCase() == partstring[0].ToLowerCase()) {
+						GS::Array<API_PropertyDefinition> definitions;
+						err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
+						if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
+						if (err == NoError) {
+							for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+								if (definitions[j].name.ToLowerCase() == partstring[1].ToLowerCase()) {
+									definition = definitions[j];
+									return err;
+								}
 							}
 						}
 					}

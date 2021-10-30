@@ -10,6 +10,7 @@
 #include	"ReNum.hpp"
 #include	"Sync.hpp"
 #include	"Log.hpp"
+#include	"Summ.hpp"
 
 // -----------------------------------------------------------------------------
 // Срабатывает при событиях проекта (открытие, сохранение)
@@ -232,6 +233,12 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					break;
 				case Sum_CommandID:
+					t_flag = prefsData.syncMon;
+					if (t_flag) prefsData.syncMon = false;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
+					err = SumSelected();
+					if (t_flag) prefsData.syncMon = true;
+					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					break;
 				case Log_CommandID:
 					prefsData.logMon = !prefsData.logMon;

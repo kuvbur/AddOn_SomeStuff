@@ -16,12 +16,18 @@
     <ClCompile Include="..\Sources\AddOn\Sync.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\Summ.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h">
       <Filter>Sources</Filter>
     </ClInclude>
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Sources\AddOn\sort.h">
       <Filter>Sources</Filter>
     </ClInclude>
   </ItemGroup>

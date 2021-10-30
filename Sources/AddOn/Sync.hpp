@@ -21,8 +21,7 @@ typedef struct {
 // Заполнение см. SyncPropAndMatGetComponents
 // --------------------------------------------------------------------
 typedef struct {
-	API_AttributeIndex					buildingMaterial;
-	API_Attr_Head						buildingMaterialhead;
+	API_Attribute					buildingMaterial;
 	GS::Array<API_PropertyDefinition>	definitions;
 	GS::UniString						templatestring;
 	UInt32								fillThick;
