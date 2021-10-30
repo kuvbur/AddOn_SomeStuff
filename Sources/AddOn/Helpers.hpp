@@ -60,6 +60,8 @@ typedef struct {
 	bool	logMon;
 } SyncPrefs;
 
+Int32 DoubleM2IntMM(const double& value);
+
 GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
 GSErrCode AttachObserver(const API_Guid& objectId);
@@ -72,7 +74,9 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
 bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 bool MenuInvertItemMark(short menuResID, short itemIndex);
+GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
+GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 void MenuItemCheckAC(short itemInd, bool checked);
 void SyncSettingsGet(SyncPrefs& prefsData);

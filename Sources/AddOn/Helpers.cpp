@@ -9,6 +9,18 @@
 #include	"ACAPinc.h"
 #include	"Helpers.hpp"
 
+// --------------------------------------------------------------------
+// Перевод метров, заданных типом double в мм Int32
+// --------------------------------------------------------------------
+Int32 DoubleM2IntMM(const double& value) {
+	double param_real = round(value * 1000) / 1000;
+	if (value - param_real > 0.001) param_real += 0.001;
+	param_real = param_real * 1000;
+	Int32 param_int = (GS::Int32)param_real;
+	if (param_int / 1 < param_real) param_int += 1;
+	return param_int;
+}
+
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
 // -----------------------------------------------------------------------------
@@ -647,32 +659,61 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 // Получение определения свойства по имени свойства
 // Формат имени ГРУППА/ИМЯ_СВОЙСТВА
 // -----------------------------------------------------------------------------
+GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition) {
+	GSErrCode err = GetPropertyDefinitionByName(APINULLGuid, propertyname, definition);
+	return err;
+}
+
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition) {
-	GS::UniString fullnames;
-	GS::Array<API_PropertyGroup> groups;
-	GS::Array<GS::UniString> partstring;
-	StringSplt(propertyname, "/", partstring);
-	GSErrCode err = ACAPI_Property_GetPropertyGroups(groups);
-	if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
-	if (err == NoError) {
-		for (UInt32 i = 0; i < groups.GetSize(); i++) {
-			if (groups[i].groupType == API_PropertyCustomGroupType && groups[i].name.ToLowerCase() == partstring[0].ToLowerCase())
-			{
-				GS::Array<API_PropertyDefinition> definitions;
-				err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
-				if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
-				if (err == NoError) {
-					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-						if (definitions[j].name.ToLowerCase() == partstring[1].ToLowerCase()) {
-							definition = definitions[j];
-							return err;
+	GSErrCode err = NoError;
+	if (propertyname.Contains("/")) {
+		GS::Array<API_PropertyGroup> groups;
+		GS::Array<GS::UniString> partstring;
+		StringSplt(propertyname, "/", partstring);
+		err = ACAPI_Property_GetPropertyGroups(groups);
+		if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
+		if (err == NoError) {
+			for (UInt32 i = 0; i < groups.GetSize(); i++) {
+				if (groups[i].name.ToLowerCase() == partstring[0].ToLowerCase())
+				{
+					GS::Array<API_PropertyDefinition> definitions;
+					err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
+					if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
+					if (err == NoError) {
+						for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+							if (definitions[j].name.ToLowerCase() == partstring[1].ToLowerCase()) {
+								definition = definitions[j];
+								return err;
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+	GS::Array<API_PropertyDefinition> definitions;
+	err = ACAPI_Property_GetPropertyDefinitions(APINULLGuid, definitions);
+	if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions All" + propertyname, err, elemGuid);
+	if (err == NoError) {
+		for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+			if (definitions[j].name.ToLowerCase() == propertyname.ToLowerCase()) {
+				definition = definitions[j];
+				return err;
+			}
+		}
+	}
 	return APIERR_MISSINGCODE;
+}
+
+GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name)
+{
+	if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
+	API_PropertyGroup group;
+	group.guid = definision.groupGuid;
+	GSErrCode error = ACAPI_Property_GetPropertyGroup(group);
+	if (error == NoError)
+		name = group.name + "/" + definision.name;
+	return error;
 }
 
 GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_PropertyDefinition>& visibleProperties)
