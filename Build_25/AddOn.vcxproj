@@ -125,6 +125,7 @@
       <ImportLibrary>D:/SomeStuff_addon/Build_25/Debug/ExampleAddOn.lib</ImportLibrary>
       <ProgramDataBaseFile>D:/SomeStuff_addon/Build_25/Debug/ExampleAddOn.pdb</ProgramDataBaseFile>
       <SubSystem>Console</SubSystem>
+      <Profile>true</Profile>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -268,12 +269,14 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Sources\AddOn\sort.h" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp" />
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp" />
     <ClCompile Include="..\Sources\AddOn\Log.cpp" />
     <ClCompile Include="..\Sources\AddOn\ReNum.cpp" />
     <ClCompile Include="..\Sources\AddOn\SomeStuff_Main.cpp" />
+    <ClCompile Include="..\Sources\AddOn\Summ.cpp" />
     <ClCompile Include="..\Sources\AddOn\Sync.cpp" />
   </ItemGroup>
   <ItemGroup>

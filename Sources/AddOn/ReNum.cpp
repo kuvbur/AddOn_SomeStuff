@@ -2,9 +2,7 @@
 #include	"ACAPinc.h"
 #include	"ReNum.hpp"
 #include	"Helpers.hpp"
-#include	<map>
-#include	<unordered_map>
-#include	"alphanum.hpp"
+#include	"sort.h"
 
 typedef std::map<std::string, SortGUID, doj::alphanum_less<std::string> > Values;
 typedef std::unordered_map <std::string, SortInx> Delimetr;
@@ -261,6 +259,3 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 	} // description_string.Contains("Renum_flag")
 	return flag;
 } // ReNumGetRule
-
-
-

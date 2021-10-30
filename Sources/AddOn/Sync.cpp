@@ -38,14 +38,12 @@ void SyncAndMonAll(void) {
 // Запускает обработку всех элементов заданного типа
 // -----------------------------------------------------------------------------
 bool SyncByType(const API_ElemTypeID& elementType) {
-	SyncPrefs prefsData;
-	SyncSettingsGet(prefsData);
-	GS::UniString	subtitle;
-	GSErrCode		err = NoError;
-	GS::Array<API_Guid> guidArray;
+	SyncPrefs			prefsData;
+	GS::UniString		subtitle;
+	GSErrCode			err = NoError;
+	GS::Array<API_Guid>	guidArray;
 	bool flag_chanel = false;
 	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable);
-
 	if (!guidArray.IsEmpty()) {
 		if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle) == NoError) {
 			nLib += 1;
@@ -53,6 +51,7 @@ bool SyncByType(const API_ElemTypeID& elementType) {
 			GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
 			msg_rep("SyncByType", subtitle + intString, NoError, APINULLGuid);
 		}
+		SyncSettingsGet(prefsData);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (prefsData.syncAll) SyncData(guidArray[i]);
 			if (prefsData.syncMon) {
@@ -132,7 +131,6 @@ void SyncRelationsElement(const API_Guid& elemGuid) {
 		break;
 	}
 }
-
 
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
@@ -352,13 +350,12 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Pro
 GS::UniString GetPropertyENGName(GS::UniString& name) {
 	if (name == u8"наименование") return "BuildingMaterialProperties/Building Material Name";
 	if (name == u8"описание") return "BuildingMaterialProperties/Building Material Description";
+	if (name == u8"id") return "BuildingMaterialProperties/Building Material ID";
+	if (name == u8"плотность") return "BuildingMaterialProperties/Building Material Density";
+	if (name == u8"производитель") return "BuildingMaterialProperties/Building Material Manufacturer";
 	//"BuildingMaterialProperties/Attribute Name"
-	//	"BuildingMaterialProperties/Building Material Density"
 	//	"BuildingMaterialProperties/Building Material Description"
 	//	"BuildingMaterialProperties/Building Material Heat Capacity"
-	//	"BuildingMaterialProperties/Building Material ID"
-	//	"BuildingMaterialProperties/Building Material Manufacturer"
-	//	"BuildingMaterialProperties/Building Material Name"
 	return name;
 }
 
@@ -382,21 +379,56 @@ GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::Un
 	outstring.ReplaceAll("@", "%");
 	//Заменяем толщину
 	outstring.ReplaceAll(u8"%толщина%", "@t@");
-
 	UInt32 n_param = 0; // Количество успешно найденных свойств
 	for (UInt32 i = 0; i < templatestring.Count('%') / 2; i++) {
 		part = outstring.GetSubstring('%', '%', 0);
 		//Ищем свойство по названию
-		n_param += 1;
 		API_PropertyDefinition definition = {};
 		if (GetPropertyDefinitionByName(GetPropertyENGName(part), definition) == NoError){
 			outstring.ReplaceAll("%" + part + "%", "@" + GS::UniString::Printf("%d", n_param) + "@");
 			outdefinitions.Push(definition);
+			n_param += 1;
 		}
 		else {
 			outstring.ReplaceAll("%" + part + "%", ""); // Если не нашли - стираем
 		}
 	}
+	return err;
+}
+
+GSErrCode  SyncPropAndMatOneGetComponent(const API_AttributeIndex& constrinx, const double& fillThick, LayerConstr& component) {
+	GSErrCode		err = NoError;
+	API_Attribute	attrib = {};
+	BNZeroMemory(&attrib, sizeof(API_Attribute));
+	attrib.header.typeID = API_BuildingMaterialID;
+	attrib.header.index = constrinx;
+	err = ACAPI_Attribute_Get(&attrib);
+	if (err != NoError) {
+		msg_rep("SyncPropAndMatOneGetComponent", "ACAPI_Attribute_Get", err, APINULLGuid);
+		return err;
+	};
+	// Поищем свойство со строкой-шаблоном
+	GS::Array<API_PropertyDefinition> definitions;
+	err = ACAPI_Attribute_GetPropertyDefinitions(attrib.header, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (err != NoError) {
+		msg_rep("SyncPropAndMatOneGetComponent", "ACAPI_Attribute_GetPropertyDefinitions", err, APINULLGuid);
+		return err;
+	}
+	GS::Array <API_Property> propertys;
+	if (definitions.GetSize() > 0) {
+		err = ACAPI_Attribute_GetPropertyValues(attrib.header, definitions, propertys);
+		if (err != NoError) {
+			msg_rep("SyncPropAndMatOneGetComponent", "ACAPI_Attribute_GetPropertyDefinitions", err, APINULLGuid);
+			return err;
+		}
+		for (UInt32 i = 0; i < propertys.GetSize(); i++) {
+			if (propertys[i].definition.description.Contains("Sync_name")) {
+				if (!propertys[i].isDefault) component.templatestring = propertys[i].value.singleVariant.variant.uniStringValue;
+			}
+		}
+	}
+	component.buildingMaterial = attrib;
+	component.fillThick = DoubleM2IntMM(fillThick);
 	return err;
 }
 
@@ -448,19 +480,18 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<Layer
 		break;
 	}
 	// Получим индексы строительных материалов и толщины
-	API_Attribute						attrib;
-	API_AttributeDef					defs;
-	BNZeroMemory(&attrib, sizeof(API_Attribute));
-	BNZeroMemory(&defs, sizeof(API_AttributeDef));
 	// Для однослойной конструкции
 	if (structtype == API_BasicStructure) {
 		LayerConstr l = {};
-		l.buildingMaterial = constrinx;
-		l.fillThick = DoubleM2IntMM(fillThick);
-		components.Push(l);
+		if (SyncPropAndMatOneGetComponent(constrinx, fillThick, l) == NoError)
+			components.Push(l);
 	}
 	// Для многослойной конструкции
 	if (structtype == API_CompositeStructure) {
+		API_Attribute						attrib;
+		API_AttributeDef					defs;
+		BNZeroMemory(&attrib, sizeof(API_Attribute));
+		BNZeroMemory(&defs, sizeof(API_AttributeDef));
 		attrib.header.typeID = API_CompWallID;
 		attrib.header.index = constrinx;
 		err = ACAPI_Attribute_Get(&attrib);
@@ -475,38 +506,26 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<Layer
 		}
 		for (short i = 0; i < attrib.compWall.nComps; i++) {
 			LayerConstr l = {};
-			l.buildingMaterial = (*defs.cwall_compItems)[i].buildingMaterial;
-			l.fillThick = DoubleM2IntMM((*defs.cwall_compItems)[i].fillThick);
-			components.Push(l);
+			if (SyncPropAndMatOneGetComponent((*defs.cwall_compItems)[i].buildingMaterial, (*defs.cwall_compItems)[i].fillThick, l) == NoError)
+				components.Push(l);
 		}
 		ACAPI_DisposeAttrDefsHdls(&defs);
 	}
-	// Заполняем данные для каждого слоя
-	API_Attr_Head                     attributeHeader;
-	BNZeroMemory(&attributeHeader, sizeof(API_Attr_Head));
-	for (UInt32 i = 0; i < components.GetSize(); i++) {
-		// Запишем шапку
-		attributeHeader.typeID = API_BuildingMaterialID;
-		attributeHeader.index = components[i].buildingMaterial;
-		components[i].buildingMaterialhead = attributeHeader;
-		// Поищем свойство со строкой-шаблоном
-		GS::Array<API_PropertyDefinition> definitions;
-		GSErrCode err = ACAPI_Attribute_GetPropertyDefinitions(attributeHeader, API_PropertyDefinitionFilter_UserDefined, definitions);
-		if (err != NoError) {
-			msg_rep("SyncPropAndMat", " ACAPI_Attribute_Get components", err, elemGuid);
-			return err;
-		}
-		for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-			if (definitions[j].description.Contains("Sync_name")) {
-				API_Property property;
-				BNZeroMemory(&property, sizeof(API_Property));
-				err = ACAPI_Attribute_GetPropertyValue(attributeHeader, definitions[j].guid, property);
-				if (err != NoError) {
-					msg_rep("SyncPropAndMat", " ACAPI_Attribute_GetPropertyValue", err, elemGuid);
-					return err;
-				}
-				if (!property.isDefault) components[i].templatestring = property.value.singleVariant.variant.uniStringValue;
-			}
+	return err;
+}
+
+// --------------------------------------------------------------------
+// Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
+// --------------------------------------------------------------------
+GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const UInt32 fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring) {
+	GSErrCode					err = NoError;
+	GS::Array <API_Property>	propertys;
+	outstring = templatestring;
+	outstring.ReplaceAll("@t@", GS::UniString::Printf("%d", fillThick));
+	if (ACAPI_Attribute_GetPropertyValues(attrib.header, outdefinitions, propertys) == NoError) {
+		for (UInt32 j = 0; j < propertys.GetSize(); j++) {
+			GS::UniString t = PropertyTestHelpers::ToString(propertys[j]);
+			outstring.ReplaceAll("@"+ GS::UniString::Printf("%d", j) + "@", t);
 		}
 	}
 	return err;
@@ -527,13 +546,26 @@ GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementT
 	GS::Array<API_PropertyDefinition> outdefinitions;
 	err = SyncPropAndMatParseString(syncRule.templatestring, outstring, outdefinitions);
 	GS::UniString param_string = "";
-	//for (UInt32 i = 0; i < components.GetSize(); i++) {
-	//	param_string += components[i].buildingMaterial_name;
-	//	param_string += "$";
-	//	param_string += GS::UniString::Printf("%d", components[i].fillThick);
-	//	param_string += "@";
-	//}
-	err = WriteProp(elemGuid, property, param_string);
+	// Финишная прямая, идём по компонентам и подставляем значения в строки
+	for (UInt32 i = 0; i < components.GetSize(); i++) {
+		// Стандартная строка
+		GS::UniString one_string = "";
+		if (components[i].templatestring.IsEmpty()) {
+			if (SyncPropAndMatWriteOneString(components[i].buildingMaterial, components[i].fillThick, outdefinitions, outstring, one_string) == NoError)
+				param_string = param_string + " " + one_string;
+		}
+		// Индивидуальная строка
+		else {
+			GS::UniString uqoutstring = "";
+			GS::Array<API_PropertyDefinition> uqoutdefinitions;
+			if (SyncPropAndMatParseString(syncRule.templatestring, uqoutstring, uqoutdefinitions) == NoError) {
+				if (SyncPropAndMatWriteOneString(components[i].buildingMaterial, components[i].fillThick, uqoutdefinitions, uqoutstring, one_string) == NoError)
+					param_string = param_string + " " + one_string;
+			}
+		}
+	}
+	if(!param_string.IsEmpty())
+		err = WriteProp(elemGuid, property, param_string);
 	return err;
 }
 
