@@ -1,3 +1,4 @@
+#pragma once
 #ifndef ALPHANUM__HPP
 #define ALPHANUM__HPP
 
@@ -172,7 +173,7 @@ namespace doj
      @return negative if left<right, 0 if left==right, positive if left>right.
   */
   template <typename lT, typename rT>
-  int alphanum_comp(const lT& left, const rT& right)
+  static int alphanum_comp(const lT& left, const rT& right)
   {
 #ifdef DOJDEBUG
     std::clog << "alphanum_comp<" << typeid(left).name() << "," << typeid(right).name() << "> " << left << "," << right << std::endl;
@@ -190,7 +191,7 @@ namespace doj
      @return negative if l<r, 0 if l==r, positive if l>r.
   */
   template <>
-  int alphanum_comp<std::string>(const std::string& l, const std::string& r)
+  static int alphanum_comp<std::string>(const std::string& l, const std::string& r)
   {
 #ifdef DOJDEBUG
     std::clog << "alphanum_comp<std::string,std::string> " << l << "," << r << std::endl;
@@ -211,7 +212,7 @@ namespace doj
 
      @return negative if l<r, 0 if l==r, positive if l>r.
   */
-  int alphanum_comp(char* l, char* r)
+  static int alphanum_comp(char* l, char* r)
   {
     assert(l);
     assert(r);
@@ -221,7 +222,7 @@ namespace doj
     return alphanum_impl(l, r);
   }
 
-  int alphanum_comp(const char* l, const char* r)
+  static int alphanum_comp(const char* l, const char* r)
   {
     assert(l);
     assert(r);
@@ -231,7 +232,7 @@ namespace doj
     return alphanum_impl(l, r);
   }
 
-  int alphanum_comp(char* l, const char* r)
+  static int alphanum_comp(char* l, const char* r)
   {
     assert(l);
     assert(r);
@@ -241,7 +242,7 @@ namespace doj
     return alphanum_impl(l, r);
   }
 
-  int alphanum_comp(const char* l, char* r)
+  static int alphanum_comp(const char* l, char* r)
   {
     assert(l);
     assert(r);
@@ -251,7 +252,7 @@ namespace doj
     return alphanum_impl(l, r);
   }
 
-  int alphanum_comp(const std::string& l, char* r)
+  static int alphanum_comp(const std::string& l, char* r)
   {
     assert(r);
 #ifdef DOJDEBUG
@@ -260,7 +261,7 @@ namespace doj
     return alphanum_impl(l.c_str(), r);
   }
 
-  int alphanum_comp(char* l, const std::string& r)
+  static int alphanum_comp(char* l, const std::string& r)
   {
     assert(l);
 #ifdef DOJDEBUG
@@ -269,7 +270,7 @@ namespace doj
     return alphanum_impl(l, r.c_str());
   }
 
-  int alphanum_comp(const std::string& l, const char* r)
+  static int alphanum_comp(const std::string& l, const char* r)
   {
     assert(r);
 #ifdef DOJDEBUG
@@ -278,7 +279,7 @@ namespace doj
     return alphanum_impl(l.c_str(), r);
   }
 
-  int alphanum_comp(const char* l, const std::string& r)
+  static int alphanum_comp(const char* l, const std::string& r)
   {
     assert(l);
 #ifdef DOJDEBUG
@@ -302,7 +303,14 @@ namespace doj
       return alphanum_comp(left, right) < 0;
     }
   };
-
+  template<class Ty>
+  struct alphanum_more : public std::binary_function<Ty, Ty, bool>
+  {
+      bool operator()(const Ty& left, const Ty& right) const
+      {
+          return alphanum_comp(left, right) > 0;
+      }
+  };
 }
 
 #ifdef TESTMAIN

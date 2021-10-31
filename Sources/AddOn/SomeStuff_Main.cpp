@@ -1,15 +1,15 @@
 ﻿#include	"APIEnvir.h"
 #include	<stdio.h>
 #include	"ACAPinc.h"
-#include	"SomeStuff_Main.h"
 #include	"DGModule.hpp"
 #include	"APICommon.h"
 #include	"UniString.hpp"
-#include	"Helpers.hpp"
 #include	"APIdefs_Properties.h"
-#include	"ReNum.hpp"
+#include	"SomeStuff_Main.hpp"
+#include	"Helpers.hpp"
 #include	"Sync.hpp"
 #include	"Log.hpp"
+#include	"ReNum.hpp"
 #include	"Summ.hpp"
 
 // -----------------------------------------------------------------------------

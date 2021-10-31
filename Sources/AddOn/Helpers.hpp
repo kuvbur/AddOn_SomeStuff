@@ -1,3 +1,4 @@
+#pragma once
 #if !defined (HELPERS_HPP)
 #define	HELPERS_HPP
 #include	"APICommon.h"
@@ -61,7 +62,23 @@ typedef struct {
 	bool	logMon;
 } SyncPrefs;
 
-typedef GS::HashTable<GS::UniString, API_PropertyDefinition> Prop;
+typedef struct {
+	GS::Array <API_Guid>	guid;
+} SortGUID;
+
+typedef struct {
+	GS::Array <UInt32>	inx;
+} SortInx;
+
+//typedef GS::HashTable<GS::UniString, API_PropertyDefinition> Prop;
+
+bool is_equal(double x, double y);
+
+bool CheckIgnoreVal(const std::string& ignoreval, const GS::UniString& val);
+
+bool CheckIgnoreVal(const GS::UniString& ignoreval, const GS::UniString& val);
+
+bool CheckIgnoreVal(const GS::Array<GS::UniString>& ignorevals, const GS::UniString& val);
 
 Int32 DoubleM2IntMM(const double& value);
 
@@ -71,7 +88,7 @@ GSErrCode AttachObserver(const API_Guid& objectId);
 bool IsElementEditable(const API_Guid& objectId);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
-GSErrCode GetAllPropertyName(Prop& propname);
+//GSErrCode GetAllPropertyName(Prop& propname);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);

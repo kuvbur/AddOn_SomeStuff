@@ -8,7 +8,41 @@
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Helpers.hpp"
+#include	<cmath>
+#include	<limits>
+bool is_equal(double x, double y) {
+	return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
+}
 
+// --------------------------------------------------------------------
+// Содержит ли значения элементиз списка игнорируемых
+// --------------------------------------------------------------------
+bool CheckIgnoreVal(const std::string& ignoreval, const GS::UniString& val) {
+	GS::UniString unignoreval = GS::UniString(ignoreval.c_str());
+	return CheckIgnoreVal(unignoreval, val);
+}
+bool CheckIgnoreVal(const GS::UniString& ignoreval, const GS::UniString& val) {
+	if (ignoreval.IsEmpty()) return false;
+	if ((ignoreval.ToLowerCase() == "empty" || ignoreval.ToLowerCase() == "пусто") && val.GetLength() < 1) {
+		return true;
+	}
+	if (val == ignoreval) {
+		return true;
+	}
+	return false;
+}
+
+// --------------------------------------------------------------------
+// Содержит ли значения элементиз списка игнорируемых
+// --------------------------------------------------------------------
+bool CheckIgnoreVal(const GS::Array<GS::UniString>& ignorevals, const GS::UniString& val) {
+	if (ignorevals.GetSize() > 0) {
+		for (UInt32 i = 0; i < ignorevals.GetSize(); i++) {
+			if (CheckIgnoreVal(ignorevals[i], val)) return true;
+		}
+	}
+	return false;
+}
 
 // --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
@@ -450,7 +484,6 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/)
 {
 	GS::UniString	title("Sync Selected");
-	Prop propname = {};
 	Int32 nLib = 0;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
@@ -590,9 +623,20 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 	}
 	// Совпадают ли типы?
 	if (propertyfrom.definition.valueType != property.definition.valueType && write) {
-		msg_rep("WriteProp2Prop", "Diff type " + propertyfrom.definition.name + "<->" + property.definition.name, NoError, elemGuid);
-		err = APIERR_MISSINGCODE;
-		write = false;
+		if (property.definition.valueType == API_PropertyStringValueType) {
+			GS::UniString val = PropertyTestHelpers::ToString(propertyfrom);
+			if (property.value.singleVariant.variant.uniStringValue != val) {
+				property.value.singleVariant.variant.uniStringValue = val;
+			}
+			else {
+				write = false;
+			}
+		}
+		else {
+			msg_rep("WriteProp2Prop", "Diff type " + propertyfrom.definition.name + "<->" + property.definition.name, NoError, elemGuid);
+			err = APIERR_MISSINGCODE;
+			write = false;
+		}
 	}
 	// Если нужно записать список текста в текст
 	if (property.definition.collectionType != propertyfrom.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
@@ -660,26 +704,26 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 	return n;
 }
 
-GSErrCode GetAllPropertyName(Prop& propname) {
-	GSErrCode err = NoError;
-	GS::Array<API_PropertyGroup> groups;
-	err = ACAPI_Property_GetPropertyGroups(groups);
-	if (err == NoError) {
-		for (UInt32 i = 0; i < groups.GetSize(); i++) {
-			if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
-				GS::Array<API_PropertyDefinition> definitions;
-				err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
-				if (err == NoError) {
-					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-						GS::UniString fullname = groups[i].name + "/" + definitions[j].name;
-						if (!propname.ContainsKey(fullname)) propname.Add(fullname, definitions[j]);
-					}
-				}
-			}
-		}
-	}
-	return err;
-}
+//GSErrCode GetAllPropertyName(Prop& propname) {
+//	GSErrCode err = NoError;
+//	GS::Array<API_PropertyGroup> groups;
+//	err = ACAPI_Property_GetPropertyGroups(groups);
+//	if (err == NoError) {
+//		for (UInt32 i = 0; i < groups.GetSize(); i++) {
+//			if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
+//				GS::Array<API_PropertyDefinition> definitions;
+//				err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
+//				if (err == NoError) {
+//					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+//						GS::UniString fullname = groups[i].name + "/" + definitions[j].name;
+//						if (!propname.ContainsKey(fullname)) propname.Add(fullname, definitions[j]);
+//					}
+//				}
+//			}
+//		}
+//	}
+//	return err;
+//}
 
 // -----------------------------------------------------------------------------
 // Получение определения свойства по имени свойства
