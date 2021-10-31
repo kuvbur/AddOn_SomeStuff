@@ -1,8 +1,8 @@
 #if !defined (LOGS_HPP)
 #define	LOGS_HPP
-#include "APICommon.h"
-#include "DG.h"
-
+#pragma once
+#include	"APICommon.h"
+#include	"DG.h"
 
 // Структура хранимого лога
 // Тип изменения (создание, модификация, классификация)

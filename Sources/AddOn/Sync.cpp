@@ -1,8 +1,7 @@
-﻿#include "APIEnvir.h"
-#include "ACAPinc.h"
-#include "Sync.hpp"
-#include "Helpers.hpp"
-#include "Log.hpp"
+﻿#include	"APIEnvir.h"
+#include	"ACAPinc.h"
+#include	"Sync.hpp"
+#include	"Helpers.hpp"
 
 const int ERRIGNOREVAL = 10;
 Int32 nLib = 0;
@@ -310,12 +309,32 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, AP
 	API_Property propertyfrom;
 	err = GetPropertyByName(elemGuid, syncRule.paramName, propertyfrom);
 	if (err == NoError) {
-		if (!SyncCheckIgnoreVal(syncRule, propertyfrom)) {
-			err = WriteProp2Prop(elemGuid, propertyfrom, property);
+		if (syncRule.syncdirection == 1) {
+			if (!SyncCheckIgnoreVal(syncRule, propertyfrom)) {
+				err = WriteProp2Prop(elemGuid, propertyfrom, property);
+			}
+			else {
+				err = APIERR_MISSINGCODE; // Игнорируем значение
+			}
 		}
-		else {
-			err = APIERR_MISSINGCODE; // Игнорируем значение
+		if (syncRule.syncdirection == 2) {
+			if (!SyncCheckIgnoreVal(syncRule, property)) {
+				err = WriteProp2Prop(elemGuid, property, propertyfrom);
+			}
+			else {
+				err = APIERR_MISSINGCODE; // Игнорируем значение
+			}
 		}
+	}
+	return err;
+}
+
+GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property) {
+	GSErrCode		err = NoError;
+	if (paramName == "ID") {
+		GS::UniString val = PropertyTestHelpers::ToString(property);
+		err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
+		return err;
 	}
 	return err;
 }
@@ -342,6 +361,14 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Pro
 		}
 		else {
 			err = APIERR_MISSINGCODE; // Параметр не найден
+		}
+	}
+	if (syncRule.syncdirection == 2) {
+		if (!SyncCheckIgnoreVal(syncRule, property)) {
+			err = WriteProp2Param(elemGuid, syncRule.paramName, property);
+		}
+		else {
+			err = APIERR_MISSINGCODE; // Игнорируем значение
 		}
 	}
 	return err;
@@ -558,7 +585,7 @@ GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementT
 		else {
 			GS::UniString uqoutstring = "";
 			GS::Array<API_PropertyDefinition> uqoutdefinitions;
-			if (SyncPropAndMatParseString(syncRule.templatestring, uqoutstring, uqoutdefinitions) == NoError) {
+			if (SyncPropAndMatParseString(components[i].templatestring, uqoutstring, uqoutdefinitions) == NoError) {
 				if (SyncPropAndMatWriteOneString(components[i].buildingMaterial, components[i].fillThick, uqoutdefinitions, uqoutstring, one_string) == NoError)
 					param_string = param_string + " " + one_string;
 			}
@@ -607,19 +634,7 @@ bool CheckElementType(const API_ElemTypeID& elementType) {
 // Проверяем - содержит ли строка игнорируемые значения
 // -----------------------------------------------------------------------------
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val) {
-	bool ignore_flag = false;
-	if (syncRule.ignorevals.GetSize() > 0) {
-		for (UInt32 i = 0; i < syncRule.ignorevals.GetSize(); i++) {
-			if ((syncRule.ignorevals[i].ToLowerCase() == "empty" || syncRule.ignorevals[i].ToLowerCase() == "пусто") && val.GetLength() < 1) {
-				ignore_flag = true;
-				return ignore_flag;
-			}
-			if (val == syncRule.ignorevals[i]) {
-				ignore_flag = true;
-				return ignore_flag;
-			}
-		}
-	}
+	bool ignore_flag = CheckIgnoreVal(syncRule.ignorevals, val);
 	return ignore_flag;
 }
 

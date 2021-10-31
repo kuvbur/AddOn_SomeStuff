@@ -1,8 +1,8 @@
 
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
-#include "APICommon.h"
-#include "DG.h"
+#include	"APICommon.h"
+#include	"DG.h"
 
 // --------------------------------------------------------------------
 // —труктура дл€ хранени€ одного правила

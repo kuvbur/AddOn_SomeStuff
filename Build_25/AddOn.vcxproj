@@ -269,7 +269,6 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\Sources\AddOn\sort.h" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp" />
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp" />

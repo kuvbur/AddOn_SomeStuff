@@ -2,8 +2,6 @@
 #include	"ACAPinc.h"
 #include	"Log.hpp"
 #include	"Helpers.hpp"
-
-
 void LogGetEmpty(LogData& logData) {
 	logData.change.current.isempty = true;
 	logData.change.isempty = true;
