@@ -7,6 +7,9 @@
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp">
       <Filter>Sources</Filter>
     </ClInclude>
+    <ClInclude Include="..\Sources\AddOn\alphanum.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Sources">
@@ -27,6 +30,9 @@
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\Sources\AddOn\Sync.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\Summ.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
   </ItemGroup>

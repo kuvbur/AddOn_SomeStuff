@@ -23,13 +23,13 @@
     <ClCompile Include="..\Sources\AddOn\ReNum.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="..\Sources\AddOn\LogShowPalette.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
     <ClCompile Include="..\Sources\AddOn\Log.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\Summ.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
   </ItemGroup>

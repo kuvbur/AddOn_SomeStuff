@@ -8,14 +8,12 @@
 *.suo
 *.pln
 *.bpn
-*.bpn
 *.lck
 *.user
 *.userosscache
 *.sln.docstates
 *Fix.grc
 *Fix.grc.*
-Build/*
 .DS_Store
 .vscode
 
@@ -370,5 +368,3 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-Sources/AddOnResources/RFIX/AddOnFix.grc
-Build/
