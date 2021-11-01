@@ -207,6 +207,7 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Sources\AddOn\alphanum.hpp" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp" />
   </ItemGroup>
@@ -223,6 +224,7 @@
     <ClCompile Include="..\Sources\AddOn\Log.cpp" />
     <ClCompile Include="..\Sources\AddOn\ReNum.cpp" />
     <ClCompile Include="..\Sources\AddOn\SomeStuff_Main.cpp" />
+    <ClCompile Include="..\Sources\AddOn\Summ.cpp" />
     <ClCompile Include="..\Sources\AddOn\Sync.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

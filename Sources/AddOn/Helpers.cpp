@@ -381,7 +381,7 @@ GSErrCode SyncSettingsDefult(SyncPrefs& prefsData) {
 	prefsData.wallS = true;
 	prefsData.widoS = true;
 	prefsData.objS = true;
-	prefsData.logMon = true;
+	prefsData.logMon = false;
 	GSErrCode err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr) &prefsData);
 	return err;
 }

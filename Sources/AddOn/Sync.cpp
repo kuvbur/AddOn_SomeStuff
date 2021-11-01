@@ -185,7 +185,12 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API
 	GSErrCode	err = NoError;
 	switch (syncRule.synctype) {
 	case 1:
-		if (elementType == API_ObjectID || elementType == API_WindowID || elementType == API_DoorID || elementType == API_ZoneID || elementType == API_LampID) {
+		if (elementType == API_ObjectID ||
+			elementType == API_WindowID ||
+			elementType == API_DoorID ||
+			elementType == API_ZoneID ||
+			elementType == API_LampID ||
+			syncRule.paramName.ToLowerCase() == "id") {
 			err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
 		}
 		break;
@@ -331,9 +336,10 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, AP
 
 GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property) {
 	GSErrCode		err = NoError;
-	if (paramName == "ID") {
+	if (paramName.ToLowerCase() == "id") {
 		GS::UniString val = PropertyTestHelpers::ToString(property);
 		err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
+		if (err != NoError) msg_rep("WriteProp2Param - ID", "ACAPI_Database(APIDb_ChangeElementInfoStringID", err, elemGuid);
 		return err;
 	}
 	return err;

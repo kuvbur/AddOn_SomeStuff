@@ -4,7 +4,7 @@
 #include	"Helpers.hpp"
 #include	<map>
 #include	<unordered_map>
-#include	<alphanum.hpp>
+#include	"alphanum.hpp"
 
 typedef std::map<std::string, int, doj::alphanum_less<std::string> > SumValues;
 typedef std::unordered_map <std::string, SortInx> SumCriteria;
