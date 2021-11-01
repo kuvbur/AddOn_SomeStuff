@@ -403,6 +403,9 @@ GS::UniString GetPropertyENGName(GS::UniString& name) {
 GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions) {
 	GSErrCode					err = NoError;
 	outstring = templatestring;
+	outstring.ReplaceAll("Property:", "");
+	outstring.ReplaceAll("{", "");
+	outstring.ReplaceAll("}", "");
 	GS::UniString part = "";
 	//Переводим все имена свойств в нижний регистр, так потом искать проще
 	for (UInt32 i = 0; i < templatestring.Count('%') / 2; i++) {
