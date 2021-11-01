@@ -22,6 +22,9 @@
       <Filter>Resources</Filter>
     </None>
     <None Include="D:\SomeStuff_addon\Build_25\CMakeFiles\AddOnResources" />
+    <None Include="..\Sources\AddOnResources\RFIX\Images\addonicon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">

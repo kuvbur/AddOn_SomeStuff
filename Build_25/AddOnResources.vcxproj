@@ -233,6 +233,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Sources\AddOnResources\RFIX\Images\addonicon_18x18.svg" />
     <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX.win\AddOnMain.rc2">
     </None>
     <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX\AddOnFix.grc">
