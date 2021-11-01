@@ -830,22 +830,44 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 	err = ACAPI_Element_Get(&element);
 	if (err != NoError) msg_rep("GetLibParam", "ACAPI_Element_GetHeader " + paramName, err, elemGuid);
 	if (err == NoError) {
-		if (element.header.hasMemo) {
-			API_ElementMemo  memo;
-			BNZeroMemory(&memo, sizeof(API_ElementMemo));
-			err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_AddPars);
-			if (err != NoError) msg_rep("GetLibParam", "ACAPI_Element_GetMemo " + paramName, err, elemGuid);
+		API_LibPart libpart;
+		BNZeroMemory(&libpart, sizeof(libpart));
+		libpart.index = element.object.libInd;
+		err = ACAPI_LibPart_Get(&libpart);
+		if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_Get " + paramName, err, elemGuid);
+		if (err == NoError){
+			double aParam = 0.0;
+			double bParam = 0.0;
+			Int32 paramNum = 0;
+			API_AddParType** addPars = NULL;
+			err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &paramNum, &addPars);
+			if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_GetParams " + paramName, err, elemGuid);
 			if (err == NoError){
-				UInt32 totalParams = BMGetHandleSize((GSConstHandle)memo.params) / sizeof(API_AddParType);  // number of parameters = handlesize / size of single handle
-				for (UInt32 i = 0; i < totalParams; i++) {
-					if (paramName.IsEqual((*memo.params)[i].name, GS::UniString::CaseInsensitive)) {
-						nthParameter = (*memo.params)[i];
+				GS::UniString findstr = paramName.ToLowerCase();
+				bool find_by_description = false;
+				if (findstr.Contains("description:")) {
+					find_by_description = true;
+					findstr.ReplaceAll("description:", "");
+					findstr.ReplaceAll(" ", "");
+				}
+				for (Int32 i = 0; i < paramNum; i++){
+					GS::UniString tparamName = "";
+					if (find_by_description == true) {
+						tparamName = (*addPars)[i].uDescname;
+						tparamName.ReplaceAll(" ", "");
+					}
+					else {
+						tparamName = (*addPars)[i].name;
+					}
+					if (findstr.IsEqual(tparamName, GS::UniString::CaseInsensitive)) {
+						nthParameter = (*addPars)[i];
 						flag_find = true;
 						break;
 					}
 				}
 			}
-			ACAPI_DisposeElemMemoHdls(&memo);
+			ACAPI_DisposeAddParHdl(&addPars);
+
 		}
 	}
 	if (flag_find) {
