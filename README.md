@@ -8,6 +8,7 @@
 
 * [Видеообзор от Егора Захарова /1](https://www.youtube.com/watch?v=msOBRXge0ec)
 * [Видеообзор от Егора Захарова /2](https://youtu.be/s541ycUumtI)
+* [Видеообзор версии v1.0b](https://youtu.be/XJ23-R5Rl7Y)
 * [Чат в телеграмм](https://t.me/joinchat/G4VyxoQ9-S1mNDQy)
 
 ### Совместимость с версиями:
