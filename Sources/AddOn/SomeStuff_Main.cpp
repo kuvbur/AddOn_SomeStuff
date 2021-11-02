@@ -239,9 +239,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 					break;
 				case Log_CommandID:
 					prefsData.logMon = !prefsData.logMon;
-#ifdef PK_1
-					prefsData.logMon = true;
-#endif
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
 					Do_ElementMonitor();
 					break;

@@ -409,11 +409,6 @@ void SyncSettingsGet(SyncPrefs& prefsData)
 	else {
 		err = SyncSettingsDefult(prefsData);
 	}
-#ifdef PK_1
-	prefsData.syncMon = true;
-	prefsData.logMon = true;
-#endif // PK_1
-
 }
 
 void	MenuItemCheckAC(short itemInd, bool checked)
@@ -670,6 +665,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 // -----------------------------------------------------------------------------
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString> &partstring) {
 	GS::Array<GS::UniString> parts;
+	GS::UniString tinstring = instring;
 	UInt32 npart = instring.Split(delim, &parts);
 	UInt32 n = 0;
 	for (UInt32 i = 0; i < npart; i++) {
@@ -820,6 +816,7 @@ GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& prope
 // Получить значение параметра с конвертацией типа данных
 // TODO добавить обработку массивов
 // -----------------------------------------------------------------------------
+
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
 	GSErrCode		err = NoError;
 	bool flag_find = false;
@@ -830,44 +827,64 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 	err = ACAPI_Element_Get(&element);
 	if (err != NoError) msg_rep("GetLibParam", "ACAPI_Element_GetHeader " + paramName, err, elemGuid);
 	if (err == NoError) {
-		API_LibPart libpart;
-		BNZeroMemory(&libpart, sizeof(libpart));
-		libpart.index = element.object.libInd;
-		err = ACAPI_LibPart_Get(&libpart);
-		if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_Get " + paramName, err, elemGuid);
-		if (err == NoError){
-			double aParam = 0.0;
-			double bParam = 0.0;
-			Int32 paramNum = 0;
-			API_AddParType** addPars = NULL;
-			err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &paramNum, &addPars);
-			if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_GetParams " + paramName, err, elemGuid);
-			if (err == NoError){
-				GS::UniString findstr = paramName.ToLowerCase();
-				bool find_by_description = false;
-				if (findstr.Contains("description:")) {
-					find_by_description = true;
-					findstr.ReplaceAll("description:", "");
-					findstr.ReplaceAll(" ", "");
+		if (element.header.hasMemo) {
+			// Если ищем по описанию - придётся повозиться.
+			GS::UniString findstr = paramName.ToLowerCase();
+			bool find_by_description = false;
+			UInt32 inx = 0;
+			if (findstr.Contains("description:")) {
+				find_by_description = true;
+				findstr.ReplaceAll("description:", "");
+				findstr.ReplaceAll(" ", "");
+				// Описание я смог добыть только так
+				API_LibPart libpart;
+				BNZeroMemory(&libpart, sizeof(libpart));
+				libpart.index = element.object.libInd;
+				err = ACAPI_LibPart_Get(&libpart);
+				if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_Get " + paramName, err, elemGuid);
+				if (err == NoError) {
+					double aParam = 0.0;
+					double bParam = 0.0;
+					Int32 paramNum = 0;
+					API_AddParType** addPars = NULL;
+					err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &paramNum, &addPars);
+					if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_GetParams " + paramName, err, elemGuid);
+					if (err == NoError) {
+						for (Int32 i = 0; i < paramNum; i++) {
+							GS::UniString tparamName = "";
+							tparamName = (*addPars)[i].uDescname;
+							tparamName.ReplaceAll(" ", "");
+							if (findstr.IsEqual(tparamName, GS::UniString::CaseInsensitive)) {
+								flag_find = true;
+								inx = i;
+								break;
+							}
+						}
+					}
+					ACAPI_DisposeAddParHdl(&addPars);
+
 				}
-				for (Int32 i = 0; i < paramNum; i++){
-					GS::UniString tparamName = "";
-					if (find_by_description == true) {
-						tparamName = (*addPars)[i].uDescname;
-						tparamName.ReplaceAll(" ", "");
-					}
-					else {
-						tparamName = (*addPars)[i].name;
-					}
-					if (findstr.IsEqual(tparamName, GS::UniString::CaseInsensitive)) {
-						nthParameter = (*addPars)[i];
-						flag_find = true;
-						break;
+			}
+			API_ElementMemo  memo;
+			BNZeroMemory(&memo, sizeof(API_ElementMemo));
+			err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_AddPars);
+			if (err != NoError) msg_rep("GetLibParam", "ACAPI_Element_GetMemo " + paramName, err, elemGuid);
+			if (err == NoError) {
+				if (find_by_description && flag_find) {
+					nthParameter = (*memo.params)[inx];
+				} 
+				if (!find_by_description) {
+					UInt32 totalParams = BMGetHandleSize((GSConstHandle)memo.params) / sizeof(API_AddParType);  // number of parameters = handlesize / size of single handle
+					for (UInt32 i = 0; i < totalParams; i++) {
+						if (findstr.IsEqual((*memo.params)[i].name, GS::UniString::CaseInsensitive)) {
+							nthParameter = (*memo.params)[i];
+							flag_find = true;
+							break;
+						}
 					}
 				}
 			}
-			ACAPI_DisposeAddParHdl(&addPars);
-
+			ACAPI_DisposeElemMemoHdls(&memo);
 		}
 	}
 	if (flag_find) {
@@ -912,6 +929,95 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 	}
 	return flag_find;
 }
+
+
+//bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
+//	GSErrCode		err = NoError;
+//	bool flag_find = false;
+//	API_Element element = {};
+//	element.header.guid = elemGuid;
+//	err = ACAPI_Element_Get(&element);
+//	if (err != NoError) msg_rep("GetLibParam", "ACAPI_Element_GetHeader " + paramName, err, elemGuid);
+//	if (err == NoError) {
+//		API_LibPart libpart;
+//		BNZeroMemory(&libpart, sizeof(libpart));
+//		libpart.index = element.object.libInd;
+//		err = ACAPI_LibPart_Get(&libpart);
+//		if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_Get " + paramName, err, elemGuid);
+//		if (err == NoError){
+//			double aParam = 0.0;
+//			double bParam = 0.0;
+//			Int32 paramNum = 0;
+//			API_AddParType** addPars = NULL;
+//			err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &paramNum, &addPars);
+//			if (err != NoError) msg_rep("GetLibParam", "ACAPI_LibPart_GetParams " + paramName, err, elemGuid);
+//			if (err == NoError){
+//				GS::UniString findstr = paramName.ToLowerCase();
+//				bool find_by_description = false;
+//				if (findstr.Contains("description:")) {
+//					find_by_description = true;
+//					findstr.ReplaceAll("description:", "");
+//					findstr.ReplaceAll(" ", "");
+//				}
+//				for (Int32 i = 0; i < paramNum; i++){
+//					GS::UniString tparamName = "";
+//					if (find_by_description == true) {
+//						tparamName = (*addPars)[i].uDescname;
+//						tparamName.ReplaceAll(" ", "");
+//					}
+//					else {
+//						tparamName = (*addPars)[i].name;
+//					}
+//					if (findstr.IsEqual(tparamName, GS::UniString::CaseInsensitive)) {
+//						flag_find = true;
+//						if ((*addPars)[i].typeID == APIParT_CString) {
+//							param_string = (*addPars)[i].value.uStr;
+//							param_bool = (param_string.GetLength() > 0);
+//						}
+//						else {
+//							param_real = round((*addPars)[i].value.real * 1000) / 1000;
+//							if ((*addPars)[i].value.real - param_real > 0.001) param_real += 0.001;
+//							param_int = (GS::Int32)param_real;
+//							if (param_int / 1 < param_real) param_int += 1;
+//						}
+//						if (param_real > 0) param_bool = true;
+//						if (param_string.GetLength() == 0) {
+//							switch ((*addPars)[i].typeID) {
+//							case APIParT_Integer:
+//								param_string = GS::UniString::Printf("%d", param_int);
+//								break;
+//							case APIParT_Boolean:
+//								if (param_bool) {
+//									param_string = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+//								}
+//								else {
+//									param_string = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+//								}
+//								break;
+//							case APIParT_Length:
+//								param_string = GS::UniString::Printf("%.0f", param_real * 1000);
+//								break;
+//							case APIParT_Angle:
+//								param_string = GS::UniString::Printf("%.1f", param_real);
+//								break;
+//							case APIParT_RealNum:
+//								param_string = GS::UniString::Printf("%.3f", param_real);
+//								break;
+//							default:
+//								flag_find = false;
+//								break;
+//							}
+//						}
+//						break;
+//					}
+//				}
+//			}
+//			ACAPI_DisposeAddParHdl(&addPars);
+//
+//		}
+//	}
+//	return flag_find;
+//}
 
 // -----------------------------------------------------------------------------
 // Toggle a checked menu item
