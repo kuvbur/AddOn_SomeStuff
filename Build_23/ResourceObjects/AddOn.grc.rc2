@@ -140,6 +140,8 @@ END
 
 I32500&96	ICON "AddOnIcon&96.ico"
 
+I32500&192	ICON "AddOnIcon&192.ico"
+
 I32602&96	ICON "MonAllIcon&96.ico"
 
 I32603&96	ICON "SyncAllIcon&96.ico"
