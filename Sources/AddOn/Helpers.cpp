@@ -465,6 +465,15 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 	BMKillHandle((GSHandle*)&selNeigs);
 #else
 	for (const API_Neig& neig : selNeigs) {
+		if (neig.neigID == APINeig_CurtainWall) {
+			GS::Array<API_Guid> panelGuid;
+			err = GetCWPanelsForCWall(neig.guid, panelGuid);
+			if (err == NoError) {
+				for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
+					guidArray.Push(panelGuid[i]);
+				}
+			}
+		}
 		guidArray.Push(neig.guid);
 	}
 	return guidArray;
@@ -700,26 +709,34 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 	return n;
 }
 
-//GSErrCode GetAllPropertyName(Prop& propname) {
-//	GSErrCode err = NoError;
-//	GS::Array<API_PropertyGroup> groups;
-//	err = ACAPI_Property_GetPropertyGroups(groups);
-//	if (err == NoError) {
-//		for (UInt32 i = 0; i < groups.GetSize(); i++) {
-//			if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
-//				GS::Array<API_PropertyDefinition> definitions;
-//				err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
-//				if (err == NoError) {
-//					for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-//						GS::UniString fullname = groups[i].name + "/" + definitions[j].name;
-//						if (!propname.ContainsKey(fullname)) propname.Add(fullname, definitions[j]);
-//					}
-//				}
-//			}
-//		}
-//	}
-//	return err;
-//}
+// --------------------------------------------------------------------
+// Получение списка GUID панелей навесной стены
+// --------------------------------------------------------------------
+GSErrCode GetCWPanelsForCWall(const API_Guid& elemGuid, GS::Array<API_Guid>& panelGuid) {
+	GSErrCode			err = NoError;
+	API_Element element = {};
+	element.header.guid = elemGuid;
+	err = ACAPI_Element_Get(&element);
+	if (err != NoError) return err;
+	if (!element.header.hasMemo) return err;
+	API_ElementMemo	memo;
+	BNZeroMemory(&memo, sizeof(API_ElementMemo));
+	bool isDegenerate;
+	err = ACAPI_Element_GetMemo(elemGuid, &memo, APIMemoMask_CWallPanels);
+	if (err != NoError) {
+		ACAPI_DisposeElemMemoHdls(&memo);
+		return err;
+	}
+	GSSize nPanels = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof(API_CWPanelType);
+	for (Int32 idx = 0; idx < nPanels; ++idx) {
+		err = ACAPI_Database(APIDb_IsCWPanelDegenerateID, &memo.cWallPanels[idx].head.guid, &isDegenerate);
+		if (!isDegenerate && memo.cWallPanels[idx].hasSymbol) {
+			panelGuid.Push(memo.cWallPanels[idx].symbolID);
+		}
+	}
+	ACAPI_DisposeElemMemoHdls(&memo);
+	return err;
+}
 
 // -----------------------------------------------------------------------------
 // Получение определения свойства по имени свойства
@@ -816,7 +833,6 @@ GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& prope
 // Получить значение параметра с конвертацией типа данных
 // TODO добавить обработку массивов
 // -----------------------------------------------------------------------------
-
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
 	GSErrCode		err = NoError;
 	bool flag_find = false;

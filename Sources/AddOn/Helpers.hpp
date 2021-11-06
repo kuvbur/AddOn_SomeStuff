@@ -88,7 +88,7 @@ GSErrCode AttachObserver(const API_Guid& objectId);
 bool IsElementEditable(const API_Guid& objectId);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
-//GSErrCode GetAllPropertyName(Prop& propname);
+GSErrCode GetCWPanelsForCWall(const API_Guid& elemGuid, GS::Array<API_Guid>& panelGuid);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
