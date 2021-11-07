@@ -65,5 +65,4 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val);
 
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property);
 
-
 #endif
