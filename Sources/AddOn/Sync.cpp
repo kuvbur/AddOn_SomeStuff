@@ -242,6 +242,7 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API
 	}
 }
 
+
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // Результат
@@ -690,38 +691,3 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property) 
 	}
 	return ignore_flag;
 }
-
-
-//void WriteParam() 
-//{
-//	API_GetParamsType theParams = {};
-//	API_ParamOwnerType paramOwner = {};
-//	GS::uchar_t uStrBuffer[1024];
-//
-//	paramOwner.typeID = API_ObjectID;
-//	paramOwner.libInd = libPartIndex;
-//
-//	GSErrCode err = ACAPI_Goodies(APIAny_OpenParametersID, &paramOwner);
-//	err |= ACAPI_Goodies(APIAny_GetActParametersID, &theParams);
-//	if (err == NoError) {
-//		API_ChangeParamType changeParam = {};
-//
-//		CHTruncate(paramName, changeParam.name, API_NameLen);
-//		GS::ucsncpy(uStrBuffer, newStrValue.ToUStr().Get(), BUFFER_SIZE);
-//		changeParam.uStrValue = uStrBuffer;
-//
-//		err = ACAPI_Goodies(APIAny_ChangeAParameterID, &changeParam);
-//		if (err == NoError) {
-//			API_ElementMemo memo = {};
-//			memo.params = theParams.params;
-//			API_Element	mask;
-//			ACAPI_ELEMENT_MASK_CLEAR(mask);
-//			API_Element	elem = {};
-//			elem.header.guid = elemGuid;
-//			ACAPI_Element_Get(&elem);
-//			err = ACAPI_Element_Change(&elem, &mask, &memo, APIMemoMask_AddPars, true);
-//		}
-//	}
-//	ACAPI_DisposeAddParHdl(&theParams.params);
-//	ACAPI_Goodies(APIAny_CloseParametersID);
-//}
