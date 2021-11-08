@@ -98,7 +98,6 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
 bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 bool MenuInvertItemMark(short menuResID, short itemIndex);
-GSErrCode HandleGDLParameters(API_AddParType** params);
 GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
@@ -106,7 +105,6 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 void MenuItemCheckAC(short itemInd, bool checked);
 void SyncSettingsGet(SyncPrefs& prefsData);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
-GSErrCode GetParametersOfPanel(const API_Guid& symbolGuid, API_AddParType**& params);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramName, API_Property& property);
@@ -116,8 +114,9 @@ void MenuSetState(void);
 
 namespace PropertyTestHelpers
 {
-
-GS::UniString	ToString (const API_Variant& variant);
+	GS::UniString ToString(const API_Variant& variant, const GS::UniString stringformat);
+	GS::UniString	ToString (const API_Variant& variant);
+	GS::UniString ToString(const API_Property& property, const GS::UniString stringformat);
 GS::UniString	ToString (const API_Property& property);
 }
 

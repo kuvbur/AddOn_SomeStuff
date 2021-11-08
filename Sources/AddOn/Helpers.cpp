@@ -725,7 +725,7 @@ GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panel
 	const GSSize nPanels = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof(API_CWPanelType);
 	for (Int32 idx = 0; idx < nPanels; ++idx) {
 		ACAPI_Database(APIDb_IsCWPanelDegenerateID, (void*)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
-		if (!isDegenerate || !memo.cWallPanels[idx].hasSymbol) {
+		if (!isDegenerate && memo.cWallPanels[idx].hasSymbol) {
 			panelSymbolGuids.Push(std::move(memo.cWallPanels[idx].head.guid));
 		}
 	}
@@ -733,18 +733,6 @@ GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panel
 	return err;
 }
 
-
-GSErrCode HandleGDLParameters(API_AddParType** params)
-{
-	Int32	addParNum = BMGetHandleSize((GSHandle)params) / sizeof(API_AddParType);
-	for (Int32 ii = 0; ii < addParNum; ++ii) {
-		API_AddParType& actualParam = (*params)[ii];
-		// Do whatever you want with it
-		UNUSED_VARIABLE(actualParam);
-	}
-
-	return NoError;
-}
 
 // -----------------------------------------------------------------------------
 // Получение определения свойства по имени свойства
@@ -856,14 +844,20 @@ GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& para
 	API_ElemTypeID	elemType;
 	API_Guid		elemGuid;
 	GSErrCode		err = NoError;
-	if (elem_head.typeID == API_CurtainWallPanelID) {
-		API_Element element = {};
+	API_Element element = {};
+	switch (elem_head.typeID) {
+	case API_CurtainWallPanelID:
 		element.header = elem_head;
 		err = ACAPI_Element_Get(&element);
 		if (err == NoError) {
 			elemGuid = element.cwPanel.symbolID;
 			elemType = API_ObjectID;
 		}
+		break;
+	default:
+		elemGuid = elem_head.guid;
+		elemType = elem_head.typeID;
+		break;
 	}
 	if (err == NoError) {
 		err = GetGDLParameters(elemGuid, elemType, params);
@@ -974,6 +968,10 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 		flag_find = FindGDLParameters(paramName, elem_head, nthParameter);
 		if (!flag_find) return false;
 	}
+	else {
+		msg_rep(" GetLibParam", "ACAPI_Element_GetHeader", err, elem_head.guid);
+		return false;
+	}
 	// Что-то нашли. Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
 	if (nthParameter.typeID == APIParT_CString) {
 		param_string = nthParameter.value.uStr;
@@ -1063,20 +1061,27 @@ bool		MenuInvertItemMark(short menuResID, short itemIndex) {
 	return (bool)((itemFlags & API_MenuItemChecked) != 0);
 }
 
-
-GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
+GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS::UniString stringformat) {
 	switch (variant.type) {
-		case API_PropertyIntegerValueType: return GS::ValueToUniString (variant.intValue);
-		case API_PropertyRealValueType: return GS::ValueToUniString (variant.doubleValue);
-		case API_PropertyStringValueType: return variant.uniStringValue;
-		case API_PropertyBooleanValueType: return GS::ValueToUniString (variant.boolValue);
-		case API_PropertyGuidValueType: return APIGuid2GSGuid (variant.guidValue).ToUniString ();
-		case API_PropertyUndefinedValueType: return "Undefined Value";
-		default: DBBREAK(); return "Invalid Value";
+	case API_PropertyIntegerValueType: return GS::ValueToUniString(variant.intValue);
+	case API_PropertyRealValueType: return GS::ValueToUniString(variant.doubleValue);
+	case API_PropertyStringValueType: return variant.uniStringValue;
+	case API_PropertyBooleanValueType: return GS::ValueToUniString(variant.boolValue);
+	case API_PropertyGuidValueType: return APIGuid2GSGuid(variant.guidValue).ToUniString();
+	case API_PropertyUndefinedValueType: return "Undefined Value";
+	default: DBBREAK(); return "Invalid Value";
 	}
 }
 
-GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
+GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
+	return PropertyTestHelpers::ToString(variant, "");
+}
+
+GS::UniString PropertyTestHelpers::ToString(const API_Property& property) {
+	return PropertyTestHelpers::ToString(property, "");
+}
+
+GS::UniString PropertyTestHelpers::ToString (const API_Property& property, const GS::UniString stringformat) {
 	GS::UniString string;
 	const API_PropertyValue* value;
 #if defined(AC_22) || defined(AC_23)
@@ -1101,11 +1106,11 @@ GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
 #endif
 	switch (property.definition.collectionType) {
 		case API_PropertySingleCollectionType: {
-			string += ToString (value->singleVariant.variant);
+			string += ToString (value->singleVariant.variant, stringformat);
 		} break;
 		case API_PropertyListCollectionType: {
 			for (UInt32 i = 0; i < value->listVariant.variants.GetSize (); i++) {
-				string += ToString (value->listVariant.variants[i]);
+				string += ToString (value->listVariant.variants[i], stringformat);
 				if (i != value->listVariant.variants.GetSize () - 1) {
 					string += "; ";
 				}
@@ -1113,22 +1118,22 @@ GS::UniString PropertyTestHelpers::ToString (const API_Property& property) {
 		} break;
 		case API_PropertySingleChoiceEnumerationCollectionType: {
 #ifdef AC_25
-			string += ToString(value->singleVariant.variant);
+			string += ToString(value->singleVariant.variant, stringformat);
 #else // AC_25
-			string += ToString(value->singleEnumVariant.displayVariant);
+			string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
 		} break;
 		case API_PropertyMultipleChoiceEnumerationCollectionType: {
 #ifdef AC_25
 			for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
-				string += ToString(value->listVariant.variants[i]);
+				string += ToString(value->listVariant.variants[i], stringformat);
 				if (i != value->listVariant.variants.GetSize() - 1) {
 					string += "; ";
 				}
 			}
 #else // AC_25
 			for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
-				string += ToString(value->multipleEnumVariant.variants[i].displayVariant);
+				string += ToString(value->multipleEnumVariant.variants[i].displayVariant, stringformat);
 				if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
 					string += "; ";
 				}
