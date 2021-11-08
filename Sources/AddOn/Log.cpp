@@ -2,6 +2,7 @@
 #include	"ACAPinc.h"
 #include	"Log.hpp"
 #include	"Helpers.hpp"
+
 void LogGetEmpty(LogData& logData) {
 	logData.change.current.isempty = true;
 	logData.change.isempty = true;
@@ -109,17 +110,13 @@ void LogShowElement(const API_Guid& elemGuid, const GS::HashTable<short, API_Use
 void LogShowSelected() {
 	GS::HashTable<short, API_UserInfo> userInfoTable;
 	GetTeamworkMembers(userInfoTable);
-	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
+	GS::Array<API_Guid> guidArray = GetSelectedElements(true, false);
 	if (!guidArray.IsEmpty()) {
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			LogShowElement(guidArray[i], userInfoTable);
 		}
 	}
 }
-
-//void LogDataDelete(const API_Guid& guid, const LogData& logData) {
-//	return;
-//}
 
 void LogDataRotate(lgL2 &partlogData) {
 	char	timeStr[128];

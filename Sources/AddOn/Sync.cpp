@@ -418,9 +418,6 @@ GS::UniString GetPropertyENGName(GS::UniString& name) {
 	if (name == u8"id") return "BuildingMaterialProperties/Building Material ID";
 	if (name == u8"плотность") return "BuildingMaterialProperties/Building Material Density";
 	if (name == u8"производитель") return "BuildingMaterialProperties/Building Material Manufacturer";
-	//"BuildingMaterialProperties/Attribute Name"
-	//	"BuildingMaterialProperties/Building Material Description"
-	//	"BuildingMaterialProperties/Building Material Heat Capacity"
 	return name;
 }
 
@@ -592,10 +589,18 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const UInt3
 	outstring.ReplaceAll("@t@", GS::UniString::Printf("%d", fillThick));
 	if (ACAPI_Attribute_GetPropertyValues(attrib.header, outdefinitions, propertys) == NoError) {
 		for (UInt32 j = 0; j < propertys.GetSize(); j++) {
+			GS::UniString stringformat = "";
+			GS::UniString patternstring = "@" + GS::UniString::Printf("%d", j) + "@";
+			//if (outstring.Contains(patternstring + ".")) {
+			//	UIndex startpos = outstring.FindFirst(patternstring + ".")-1;
+			//	UIndex endpos = min(outstring.FindFirst(" ", startpos)+1, outstring.GetLength());
+			//	stringformat = outstring.GetSubstring(startpos, endpos);
+			//}
 			GS::UniString t = PropertyTestHelpers::ToString(propertys[j]);
-			outstring.ReplaceAll("@"+ GS::UniString::Printf("%d", j) + "@", t);
+			outstring.ReplaceAll(patternstring+stringformat, t);
 		}
 	}
+	outstring.Trim();
 	return err;
 }
 
@@ -632,7 +637,8 @@ GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementT
 			}
 		}
 	}
-	if(!param_string.IsEmpty())
+	if (!param_string.IsEmpty())
+		param_string.Trim();
 		err = WriteProp(elemGuid, property, param_string);
 	return err;
 }
