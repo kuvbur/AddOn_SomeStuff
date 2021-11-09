@@ -1061,10 +1061,15 @@ bool		MenuInvertItemMark(short menuResID, short itemIndex) {
 	return (bool)((itemFlags & API_MenuItemChecked) != 0);
 }
 
+GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniString stringformat) {
+	UNUSED_VARIABLE(stringformat);
+	return GS::ValueToUniString(var);
+}
+
 GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS::UniString stringformat) {
 	switch (variant.type) {
-	case API_PropertyIntegerValueType: return GS::ValueToUniString(variant.intValue);
-	case API_PropertyRealValueType: return GS::ValueToUniString(variant.doubleValue);
+	case API_PropertyIntegerValueType: return  NumToString(variant.intValue, stringformat);
+	case API_PropertyRealValueType: return NumToString(variant.doubleValue, stringformat);
 	case API_PropertyStringValueType: return variant.uniStringValue;
 	case API_PropertyBooleanValueType: return GS::ValueToUniString(variant.boolValue);
 	case API_PropertyGuidValueType: return APIGuid2GSGuid(variant.guidValue).ToUniString();

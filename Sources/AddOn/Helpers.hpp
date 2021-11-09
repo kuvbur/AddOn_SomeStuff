@@ -114,6 +114,7 @@ void MenuSetState(void);
 
 namespace PropertyTestHelpers
 {
+	GS::UniString NumToString(const double& var, const GS::UniString stringformat);
 	GS::UniString ToString(const API_Variant& variant, const GS::UniString stringformat);
 	GS::UniString	ToString (const API_Variant& variant);
 	GS::UniString ToString(const API_Property& property, const GS::UniString stringformat);

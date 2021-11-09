@@ -424,9 +424,9 @@ GS::UniString GetPropertyENGName(GS::UniString& name) {
 // -----------------------------------------------------------------------------
 // Ищем в строке - шаблоне свойства и возвращаем массив определений
 // Строка шаблона на входе
-//			%Имя свойства% текст %Имя группы/Имя свойства%
+//			%Имя свойства% текст %Имя группы/Имя свойства.5mm%
 // Строка шаблона на выходе
-//			%1% текст %2%
+//			@1@ текст @2@#.5mm#
 // Если свойство не найдено, %Имя свойства% заменяем на пустоту ("")
 // -----------------------------------------------------------------------------
 GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions) {
@@ -439,7 +439,27 @@ GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::Un
 	//Переводим все имена свойств в нижний регистр, так потом искать проще
 	for (UInt32 i = 0; i < templatestring.Count('%') / 2; i++) {
 		part = outstring.GetSubstring('%', '%', 0);
-		outstring.ReplaceAll("%" + part + "%", "@" + part.ToLowerCase() + "@");
+		part = part.ToLowerCase();
+		//Обработка количества нулей и единиц измерения
+		// TODO Поиск вхождения printf формата
+		GS::UniString formatstring = "";
+		if (part.Contains(".")) {
+			GS::Array<GS::UniString> partstring;
+			UInt32 n = StringSplt(part, ".", partstring);
+			if (StringSplt(part, ".", partstring) > 1) {
+				if (partstring[n - 1].Contains("m") || partstring[n - 1].Contains("м")) {
+					formatstring = partstring[n - 1];
+					formatstring.ReplaceAll("м", "m");
+					formatstring.ReplaceAll("д", "d");
+					formatstring.ReplaceAll("с", "c");
+				}
+			}
+		}
+		if (formatstring.GetLength() > 0) {
+			part.ReplaceAll("."+ formatstring, "");
+			formatstring = "#" + formatstring + "#";
+		}
+		outstring.ReplaceAll("%" + outstring.GetSubstring('%', '%', 0) + "%", "@" + part + "@" + formatstring);
 	}
 	outstring.ReplaceAll("@", "%");
 	//Заменяем толщину
@@ -513,8 +533,8 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<Layer
 		msg_rep("SyncPropAndMatGetComponents", "ACAPI_Element_Get", err, elemGuid);
 		return err;
 	}
-	// Получаем данные о состапве конструкции. Т.к. для разных типов элементов
-	// информация храница в разхных местах - запишем всё в одни переменные
+	// Получаем данные о составе конструкции. Т.к. для разных типов элементов
+	// информация храница в разных местах - запишем всё в одни переменные
 	switch (element.header.typeID) {
 	case API_WallID:
 		structtype = element.wall.modelElemStructureType;
@@ -579,23 +599,34 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<Layer
 	return err;
 }
 
+void SyncPropAndMatReplaceValue(const Int32& var, const GS::UniString& patternstring, GS::UniString& outstring) {
+	GS::UniString stringformat = "";
+	if (outstring.Contains(patternstring + "#")) {
+		UIndex startpos = outstring.FindFirst(patternstring + "#") - 1;
+		UIndex endpos = min(outstring.FindFirst(" ", startpos) + 1, outstring.GetLength());
+	}
+	GS::UniString t = PropertyTestHelpers::NumToString(var, stringformat);
+	outstring.ReplaceAll(patternstring + stringformat, t);
+}
+
+
 // --------------------------------------------------------------------
 // Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
 // --------------------------------------------------------------------
-GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const UInt32 fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring) {
+GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const Int32 fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring) {
 	GSErrCode					err = NoError;
 	GS::Array <API_Property>	propertys;
 	outstring = templatestring;
-	outstring.ReplaceAll("@t@", GS::UniString::Printf("%d", fillThick));
+	SyncPropAndMatReplaceValue(fillThick, "@t@", outstring);
 	if (ACAPI_Attribute_GetPropertyValues(attrib.header, outdefinitions, propertys) == NoError) {
 		for (UInt32 j = 0; j < propertys.GetSize(); j++) {
 			GS::UniString stringformat = "";
 			GS::UniString patternstring = "@" + GS::UniString::Printf("%d", j) + "@";
-			//if (outstring.Contains(patternstring + ".")) {
-			//	UIndex startpos = outstring.FindFirst(patternstring + ".")-1;
-			//	UIndex endpos = min(outstring.FindFirst(" ", startpos)+1, outstring.GetLength());
-			//	stringformat = outstring.GetSubstring(startpos, endpos);
-			//}
+			if (outstring.Contains(patternstring + "#")) {
+				UIndex startpos = outstring.FindFirst(patternstring + ".")-1;
+				UIndex endpos = min(outstring.FindFirst(" ", startpos)+1, outstring.GetLength());
+				stringformat = outstring.GetSubstring(startpos, endpos);
+			}
 			GS::UniString t = PropertyTestHelpers::ToString(propertys[j]);
 			outstring.ReplaceAll(patternstring+stringformat, t);
 		}
