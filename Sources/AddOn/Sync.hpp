@@ -24,7 +24,7 @@ typedef struct {
 	API_Attribute					buildingMaterial;
 	GS::Array<API_PropertyDefinition>	definitions;
 	GS::UniString						templatestring;
-	UInt32								fillThick;
+	double								fillThick;
 } LayerConstr;
 
 void SyncAndMonAll(void);

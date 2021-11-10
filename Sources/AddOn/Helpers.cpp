@@ -743,24 +743,30 @@ GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_Pro
 	return err;
 }
 
-GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition) {
+GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_PropertyDefinition& definition) {
 	GSErrCode err = NoError;
+	GS::UniString propertyname = tpropertyname;
+	propertyname.ReplaceAll("\\/", "@@");
 	if (propertyname.Contains("/")) {
 		GS::Array<API_PropertyGroup> groups;
 		GS::Array<GS::UniString> partstring;
 		StringSplt(propertyname, "/", partstring);
+		GS::UniString gname = partstring[0].ToLowerCase();
+		GS::UniString pname = partstring[1].ToLowerCase();
+		gname.ReplaceAll("@@", "/");
+		pname.ReplaceAll("@@", "/");
 		err = ACAPI_Property_GetPropertyGroups(groups);
 		if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
 		if (err == NoError) {
 			for (UInt32 i = 0; i < groups.GetSize(); i++) {
 				if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType){
-					if (groups[i].name.ToLowerCase() == partstring[0].ToLowerCase()) {
+					if (groups[i].name.ToLowerCase() == gname) {
 						GS::Array<API_PropertyDefinition> definitions;
 						err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
 						if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
 						if (err == NoError) {
 							for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-								if (definitions[j].name.ToLowerCase() == partstring[1].ToLowerCase()) {
+								if (definitions[j].name.ToLowerCase() == pname) {
 									definition = definitions[j];
 									return err;
 								}
@@ -1061,9 +1067,47 @@ bool		MenuInvertItemMark(short menuResID, short itemIndex) {
 	return (bool)((itemFlags & API_MenuItemChecked) != 0);
 }
 
+
+// TODO Придумать более изящную обработку округления
 GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniString stringformat) {
-	UNUSED_VARIABLE(stringformat);
-	return GS::ValueToUniString(var);
+	if (abs(var) < 0.00000001) return "0";
+	GS::UniString printfformat = "%.3g";
+	GS::UniString out = "";
+	double outvar = var;
+	GS::UniString outstringformat = stringformat;
+	if (!stringformat.IsEmpty()) {
+		if (stringformat.Contains("mm")) {
+			outvar = var * 1000;
+			outstringformat.ReplaceAll("mm", "");
+		}
+		if (stringformat.Contains("cm")) {
+			outvar = var * 100;
+			outstringformat.ReplaceAll("mm", "");
+		}
+		if (stringformat.Contains("dm")) {
+			outvar = var * 10;
+			outstringformat.ReplaceAll("mm", "");
+		}
+		if (stringformat.Contains("gm")) {
+			outvar = var / 100;
+			outstringformat.ReplaceAll("mm", "");
+		}
+		if (stringformat.Contains("km")) {
+			outvar = var / 1000;
+			outstringformat.ReplaceAll("mm", "");
+		}
+		// Принудительный вывод заданного кол-ва нулей после запятой
+		// Если нули - то посчитаем их количество и подставим в printf
+		if (outstringformat.Contains("0")) {
+			outstringformat.ReplaceAll("0", "");
+			printfformat = "%." + outstringformat + "f";
+		}
+		else {
+			printfformat = "%." + outstringformat + "g";
+		}
+	}
+	out = GS::UniString::Printf(printfformat, outvar);
+	return out;
 }
 
 GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS::UniString stringformat) {

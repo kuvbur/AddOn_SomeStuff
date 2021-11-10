@@ -1,9 +1,9 @@
-﻿#include	"APIEnvir.h"
+﻿#include	<stdlib.h> /* atoi */
+#include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
 #include	"Helpers.hpp"
 
-const int ERRIGNOREVAL = 10;
 Int32 nLib = 0;
 
 // -----------------------------------------------------------------------------
@@ -513,7 +513,7 @@ GSErrCode  SyncPropAndMatOneGetComponent(const API_AttributeIndex& constrinx, co
 		}
 	}
 	component.buildingMaterial = attrib;
-	component.fillThick = DoubleM2IntMM(fillThick);
+	component.fillThick = fillThick;
 	return err;
 }
 
@@ -599,13 +599,16 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<Layer
 	return err;
 }
 
-void SyncPropAndMatReplaceValue(const Int32& var, const GS::UniString& patternstring, GS::UniString& outstring) {
+void SyncPropAndMatReplaceValue(const double & var, const GS::UniString& patternstring, GS::UniString& outstring) {
 	GS::UniString stringformat = "";
 	if (outstring.Contains(patternstring + "#")) {
-		UIndex startpos = outstring.FindFirst(patternstring + "#") - 1;
-		UIndex endpos = min(outstring.FindFirst(" ", startpos) + 1, outstring.GetLength());
+		UIndex startpos = outstring.FindFirst(patternstring + "#");
+		stringformat = outstring.GetSubstring('#', '#', startpos);
 	}
 	GS::UniString t = PropertyTestHelpers::NumToString(var, stringformat);
+	if (!stringformat.IsEmpty()) {
+		stringformat = "#" + stringformat + "#";
+	}
 	outstring.ReplaceAll(patternstring + stringformat, t);
 }
 
@@ -613,7 +616,7 @@ void SyncPropAndMatReplaceValue(const Int32& var, const GS::UniString& patternst
 // --------------------------------------------------------------------
 // Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
 // --------------------------------------------------------------------
-GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const Int32 fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring) {
+GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring) {
 	GSErrCode					err = NoError;
 	GS::Array <API_Property>	propertys;
 	outstring = templatestring;
@@ -631,7 +634,24 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const Int32
 			outstring.ReplaceAll(patternstring+stringformat, t);
 		}
 	}
-	outstring.Trim();
+	outstring.TrimLeft();
+	//Ищем указание длины строки
+	short stringlen = 0;
+	GS::UniString part = "";
+	if (outstring.Contains('~')) {
+		part = outstring.GetSubstring('~', ' ', 0);
+		if (!part.IsEmpty() && part.GetLength() < 4)
+			stringlen = std::atoi(part.ToCStr());
+		if (stringlen > 0) part = "~" + part;
+	}
+	if (stringlen > 0) {
+		short modlen = (outstring.GetLength() - part.GetLength() - 1);
+		short addspace = stringlen - modlen;
+		if (modlen > stringlen) {
+			short addspace = modlen % stringlen;
+		}
+		outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, " "));
+	}
 	return err;
 }
 
@@ -663,13 +683,14 @@ GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementT
 			GS::UniString uqoutstring = "";
 			GS::Array<API_PropertyDefinition> uqoutdefinitions;
 			if (SyncPropAndMatParseString(components[i].templatestring, uqoutstring, uqoutdefinitions) == NoError) {
-				if (SyncPropAndMatWriteOneString(components[i].buildingMaterial, components[i].fillThick, uqoutdefinitions, uqoutstring, one_string) == NoError)
+				if (SyncPropAndMatWriteOneString(components[i].buildingMaterial, components[i].fillThick, uqoutdefinitions, uqoutstring, one_string) == NoError){
 					param_string = param_string + " " + one_string;
+				}
 			}
 		}
 	}
 	if (!param_string.IsEmpty())
-		param_string.Trim();
+		param_string.TrimLeft();
 		err = WriteProp(elemGuid, property, param_string);
 	return err;
 }
