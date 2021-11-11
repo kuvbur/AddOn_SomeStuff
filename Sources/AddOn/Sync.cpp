@@ -174,7 +174,7 @@ void SyncData(const API_Guid& elemGuid) {
 		msg_rep("SyncData", "GetTypeByGUID", err, elemGuid);
 		return;
 	}
-	if (CheckElementType(elementType)) // Сверяемся с настройками - нужно ли этот тип обрабатывать
+	if (SyncCheckElementType(elementType)) // Сверяемся с настройками - нужно ли этот тип обрабатывать
 	{
 		GS::Array<API_PropertyDefinition> definitions;
 		err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
@@ -698,7 +698,7 @@ GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementT
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
-bool CheckElementType(const API_ElemTypeID& elementType) {
+bool SyncCheckElementType(const API_ElemTypeID& elementType) {
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
 	bool flag_type = false;

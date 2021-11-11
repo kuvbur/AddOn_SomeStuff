@@ -94,6 +94,7 @@ GSErrCode	AttachObserver(const API_Guid& objectId)
 // -----------------------------------------------------------------------------
 bool IsElementEditable(const API_Guid& objectId) {
 	// Проверяем - зарезервирован ли объект
+	if (objectId == APINULLGuid) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) return false;
