@@ -847,9 +847,7 @@ GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemT
 	return err;
 }
 
-GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params) {
-	API_ElemTypeID	elemType;
-	API_Guid		elemGuid;
+GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid) {
 	GSErrCode		err = NoError;
 	API_Element element = {};
 	switch (elem_head.typeID) {
@@ -865,9 +863,6 @@ GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& para
 		elemGuid = elem_head.guid;
 		elemType = elem_head.typeID;
 		break;
-	}
-	if (err == NoError) {
-		err = GetGDLParameters(elemGuid, elemType, params);
 	}
 	return err;
 }
@@ -959,6 +954,48 @@ bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem
 	return true;
 }
 
+GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params) {
+	API_ElemTypeID	elemType;
+	API_Guid		elemGuid;
+	GSErrCode	err = GetGDLParametersHead(elem_head, elemType, elemGuid);
+	if (err == NoError) {
+		err = GetGDLParameters(elemGuid, elemType, params);
+	}
+	return err;
+}
+
+bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter) {
+	API_Element element = {};
+	element.header = elem_head;
+	GSErrCode err = ACAPI_Element_Get(&element);
+	if (err != NoError) return false;
+	double x = 0; double y = 0; double z = 0;
+	switch (elem_head.typeID) {
+	case API_CurtainWallPanelID:
+		x = element.cwPanel.centroid.x;
+		y = element.cwPanel.centroid.y;
+		z = element.cwPanel.centroid.z;
+		break;
+	case API_ObjectID:
+		x = element.object.pos.x;
+		y = element.object.pos.y;
+		z = element.object.level;
+		break;
+	case API_ZoneID:
+		x = element.zone.pos.x;
+		y = element.zone.pos.y;
+		z = 0;
+		break;
+	default:
+		return false;
+	}
+	if (paramName.Contains("symb_pos_x")) nthParameter.value.real = x;
+	if (paramName.Contains("symb_pos_y")) nthParameter.value.real = y;
+	if (paramName.Contains("symb_pos_z")) nthParameter.value.real = z;
+	nthParameter.typeID = APIParT_RealNum;
+	return true;
+}
+
 // -----------------------------------------------------------------------------
 // Получить значение параметра с конвертацией типа данных
 // TODO добавить обработку массивов
@@ -972,7 +1009,11 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 	err = ACAPI_Element_GetHeader(&elem_head);
 	if (err == NoError) {
 		BNZeroMemory(&nthParameter, sizeof(API_AddParType));
-		flag_find = FindGDLParameters(paramName, elem_head, nthParameter);
+		if (paramName.Contains("symb_pos_")) {
+			flag_find = FindLibCoords(paramName, elem_head, nthParameter); //Ищём координаты
+		} else {
+			flag_find = FindGDLParameters(paramName, elem_head, nthParameter); //Ищём пареметры
+		}
 		if (!flag_find) return false;
 	}
 	else {
