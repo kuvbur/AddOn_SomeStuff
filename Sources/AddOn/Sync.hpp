@@ -59,7 +59,7 @@ GSErrCode SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<LayerC
 
 GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, API_Property property);
 
-bool CheckElementType(const API_ElemTypeID& elementType);
+bool SyncCheckElementType(const API_ElemTypeID& elementType);
 
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val);
 

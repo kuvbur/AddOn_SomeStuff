@@ -18,36 +18,15 @@
 static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param) {
 	switch (notifID) {
 	case APINotify_New:
-		MenuSetState();
-		break;
 	case APINotify_NewAndReset:
-		MenuSetState();
-		break;
 	case APINotify_Open:
 		MenuSetState();
 		Do_ElementMonitor();
 		break;
-	case APINotify_PreSave:
-		break;
-	case APINotify_TempSave:
-		break;
-	case APINotify_Save:
-		break;
 	case APINotify_Close:
-		break;
 	case APINotify_Quit:
-		break;
-	case APINotify_SendChanges:
-		break;
-	case APINotify_ReceiveChanges:
-		break;
-	case APINotify_ChangeProjectDB:
-		break;
-	case APINotify_ChangeWindow:
-		break;
-	case APINotify_ChangeFloor:
-		break;
-	case APINotify_ChangeLibrary:
+		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
+		ACAPI_Notify_InstallElementObserver(nullptr);
 		break;
 	default:
 		break;
@@ -62,71 +41,55 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType)
 {
 	GSErrCode		err = NoError;
-	bool	sync_prop = false;
+	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return err;
+
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
-	// Из-за странного бага с отслеживанием при синхронизации придётся ловить все элементы при редактировании
-	if ((elemType->notifID == APINotifyElement_New ||
-		elemType->notifID == APINotifyElement_Copy ||
-		elemType->notifID == APINotifyElement_Change ||
-		elemType->notifID == APINotifyElement_Edit ||
-		elemType->notifID == APINotifyElement_ClassificationChange ||
-		elemType->notifID == APINotifyElement_PropertyValueChange
-		) && prefsData.logMon) {
-		err = AttachObserver(elemType->elemHead.guid);
-		if (err == APIERR_LINKEXIST)
-			err = NoError;
-		if (err == NoError)
-			LogWriteElement(elemType);
-	}
+	if (!prefsData.syncMon && !prefsData.logMon) return err;
 
-	if (elemType->notifID != APINotifyElement_BeginEvents && elemType->notifID != APINotifyElement_EndEvents && CheckElementType(elemType->elemHead.typeID)) {
+
+	bool isAttached = false;
+	if (prefsData.logMon && LogCheckElementType(elemType->elemHead.typeID)) {
+		bool	log_prop = false;
 		switch (elemType->notifID) {
 		case APINotifyElement_New:
-			if (!prefsData.syncMon)
-				break;
-			sync_prop = true;
 		case APINotifyElement_Copy:
-			if (!prefsData.syncMon)
-				break;
-			sync_prop = true;
-			break;
 		case APINotifyElement_Change:
-			sync_prop = true;
-
 		case APINotifyElement_Edit:
-			sync_prop = true;
-			break;
-
-		case APINotifyElement_Undo_Modified:
-			sync_prop = true;
-			break;
-
-		case APINotifyElement_Redo_Created:
-			sync_prop = true;
-			break;
-
-		case APINotifyElement_Redo_Modified:
-			sync_prop = true;
-			break;
-
-		case APINotifyElement_Redo_Deleted:
-			sync_prop = true;
-			break;
-
 		case APINotifyElement_PropertyValueChange:
-			sync_prop = true;
+		case APINotifyElement_ClassificationChange:
+			log_prop = true;
+		default:
 			break;
+		}
+		if (log_prop) {
+			err = AttachObserver(elemType->elemHead.guid);
+			if (err == APIERR_LINKEXIST || err == NoError) isAttached = true;
+			if (err == APIERR_LINKEXIST)
+				err = NoError;
+			if (err == NoError) LogWriteElement(elemType);
+		}
+	}
 
+	if (prefsData.syncMon && SyncCheckElementType(elemType->elemHead.typeID)) {
+		bool	sync_prop = false;
+		switch (elemType->notifID) {
+		case APINotifyElement_New:
+		case APINotifyElement_Copy:
+		case APINotifyElement_Change:
+		case APINotifyElement_Edit:
+		case APINotifyElement_Undo_Modified:
+		case APINotifyElement_Redo_Created:
+		case APINotifyElement_Redo_Modified:
+		case APINotifyElement_Redo_Deleted:
+		//case APINotifyElement_PropertyValueChange:
 		case APINotifyElement_ClassificationChange:
 			sync_prop = true;
-			break;
-
 		default:
 			break;
 		}
 		if (sync_prop) {
-			if (prefsData.syncMon) {
+			if (!isAttached) {
 				err = AttachObserver(elemType->elemHead.guid);
 				if (err == APIERR_LINKEXIST)
 					err = NoError;
@@ -141,27 +104,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 }	// ElementEventHandlerProc
 
 // -----------------------------------------------------------------------------
-// Срабатывает при событиях в тимворк
-// // !!Не используется из-за странного бага при резервировании модулей!!
-// -----------------------------------------------------------------------------
-//static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
-//	const GS::HashSet<API_Guid>& released,
-//	const GS::HashSet<API_Guid>& deleted)
-//{
-//	for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs(); it != nullptr; ++it) {
-//		SyncReservation(1, *(it->key));
-//	}
-//	//for (GS::HashSet<API_Guid>::ConstIterator it = released.Enumerate(); it != NULL; ++it) {
-//	//	SyncReservation(2, *it);
-//	//}
-//
-//	//for (GS::HashSet<API_Guid>::ConstIterator it = deleted.Enumerate(); it != NULL; ++it) {
-//	//	SyncReservation(3, *it);
-//	//}
-//	return NoError;
-//}		/* ReservationChangeHandler */
-
-// -----------------------------------------------------------------------------
 // Включение мониторинга
 // -----------------------------------------------------------------------------
 void	Do_ElementMonitor(void)
@@ -171,12 +113,10 @@ void	Do_ElementMonitor(void)
 	if (prefsData.syncMon || prefsData.logMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);	
-		//ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
 	}
 	if (!prefsData.syncMon && !prefsData.logMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
-		ACAPI_Notify_CatchElementReservationChange(nullptr);
 	}
 	return;
 }	// Do_ElementMonitor
@@ -250,7 +190,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 	}
 	MenuSetState();
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
-	ACAPI_KeepInMemory(true);
 	return NoError;
 }
 
@@ -269,8 +208,7 @@ GSErrCode __ACDLL_CALL RegisterInterface (void)
 
 GSErrCode __ACENV_CALL Initialize (void)
 {
-	ACAPI_Notify_CatchProjectEvent(API_AllNotificationMask, ProjectEventHandlerProc);
-	ACAPI_KeepInMemory(true);
+	ACAPI_Notify_CatchProjectEvent(APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }
 

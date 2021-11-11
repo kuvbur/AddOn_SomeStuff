@@ -32,6 +32,8 @@ typedef struct {
 } LogData;
 
 
+bool LogCheckElementType(const API_ElemTypeID& elementType);
+
 void LogGetEmpty(LogData& logData);
 GSErrCode LogWriteElement(const API_Guid& guid, const LogData& logData);
 GSErrCode LogReadElement(const API_Guid& guid, LogData& logData);
