@@ -994,7 +994,7 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 	// Если параметр не строковое - определяем текстовое значение конвертацией
 	if (param_string.GetLength() == 0) {
 		API_AttrTypeID attrType = API_ZombieAttrID;
-		short attrInx = param_int;
+		short attrInx = (short)param_int;
 		switch (nthParameter.typeID) {
 		case APIParT_Integer:
 			param_string = GS::UniString::Printf("%d", param_int);

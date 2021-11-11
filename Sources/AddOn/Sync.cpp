@@ -636,7 +636,7 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const doubl
 	}
 	outstring.TrimLeft();
 	//Ищем указание длины строки
-	short stringlen = 0;
+	Int32 stringlen = 0;
 	GS::UniString part = "";
 	if (outstring.Contains('~')) {
 		part = outstring.GetSubstring('~', ' ', 0);
@@ -645,10 +645,10 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const doubl
 		if (stringlen > 0) part = "~" + part;
 	}
 	if (stringlen > 0) {
-		short modlen = (outstring.GetLength() - part.GetLength() - 1);
-		short addspace = stringlen - modlen;
+		Int32 modlen = (outstring.GetLength() - part.GetLength() - 1);
+		Int32 addspace = stringlen - modlen;
 		if (modlen > stringlen) {
-			short addspace = modlen % stringlen;
+			addspace = modlen % stringlen;
 		}
 		outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, " "));
 	}
