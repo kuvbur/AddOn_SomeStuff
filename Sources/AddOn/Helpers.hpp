@@ -85,6 +85,7 @@ Int32 DoubleM2IntMM(const double& value);
 GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
 GSErrCode AttachObserver(const API_Guid& objectId);
+bool SyncCheckElementType(const API_ElemTypeID& elementType);
 bool IsElementEditable(const API_Guid& objectId);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);

@@ -220,7 +220,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp" />
-    <ClCompile Include="..\Sources\AddOn\Log.cpp" />
     <ClCompile Include="..\Sources\AddOn\ReNum.cpp" />
     <ClCompile Include="..\Sources\AddOn\SomeStuff_Main.cpp" />
     <ClCompile Include="..\Sources\AddOn\Summ.cpp" />

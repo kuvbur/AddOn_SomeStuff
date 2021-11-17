@@ -4,9 +4,6 @@
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
-    <ClCompile Include="..\Sources\AddOn\Log.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
     <ClCompile Include="..\Sources\AddOn\ReNum.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
