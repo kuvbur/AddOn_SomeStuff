@@ -20,16 +20,20 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AddOnResources", "AddOnReso
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug_mat|x64 = Debug_mat|x64
 		Debug|x64 = Debug|x64
 		PK1_Realese|x64 = PK1_Realese|x64
 		Release|x64 = Release|x64
 		RelWithDebInfo|x64 = RelWithDebInfo|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{82EAC845-9C48-3693-AE57-096C4AE62AB6}.Debug_mat|x64.ActiveCfg = Debug_mat|x64
 		{82EAC845-9C48-3693-AE57-096C4AE62AB6}.Debug|x64.ActiveCfg = Debug|x64
 		{82EAC845-9C48-3693-AE57-096C4AE62AB6}.PK1_Realese|x64.ActiveCfg = PK1_Realese|x64
 		{82EAC845-9C48-3693-AE57-096C4AE62AB6}.Release|x64.ActiveCfg = Release|x64
 		{82EAC845-9C48-3693-AE57-096C4AE62AB6}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
+		{B18AD833-152A-3357-82CD-63E28DAE17FA}.Debug_mat|x64.ActiveCfg = Debug_mat|x64
+		{B18AD833-152A-3357-82CD-63E28DAE17FA}.Debug_mat|x64.Build.0 = Debug_mat|x64
 		{B18AD833-152A-3357-82CD-63E28DAE17FA}.Debug|x64.ActiveCfg = Debug|x64
 		{B18AD833-152A-3357-82CD-63E28DAE17FA}.Debug|x64.Build.0 = Debug|x64
 		{B18AD833-152A-3357-82CD-63E28DAE17FA}.PK1_Realese|x64.ActiveCfg = PK1_Realese|x64
@@ -38,6 +42,8 @@ Global
 		{B18AD833-152A-3357-82CD-63E28DAE17FA}.Release|x64.Build.0 = Release|x64
 		{B18AD833-152A-3357-82CD-63E28DAE17FA}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|x64
 		{B18AD833-152A-3357-82CD-63E28DAE17FA}.RelWithDebInfo|x64.Build.0 = RelWithDebInfo|x64
+		{A4B7D60C-3D82-38AA-BB65-24332C6018CE}.Debug_mat|x64.ActiveCfg = Debug_mat|x64
+		{A4B7D60C-3D82-38AA-BB65-24332C6018CE}.Debug_mat|x64.Build.0 = Debug_mat|x64
 		{A4B7D60C-3D82-38AA-BB65-24332C6018CE}.Debug|x64.ActiveCfg = Debug|x64
 		{A4B7D60C-3D82-38AA-BB65-24332C6018CE}.Debug|x64.Build.0 = Debug|x64
 		{A4B7D60C-3D82-38AA-BB65-24332C6018CE}.PK1_Realese|x64.ActiveCfg = PK1_Realese|x64

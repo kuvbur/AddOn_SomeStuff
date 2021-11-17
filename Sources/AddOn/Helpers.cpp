@@ -1147,10 +1147,11 @@ bool		MenuInvertItemMark(short menuResID, short itemIndex) {
 // TODO Придумать более изящную обработку округления
 GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniString stringformat) {
 	if (abs(var) < 0.00000001) return "0";
-	GS::UniString printfformat = "%.3g";
 	GS::UniString out = "";
 	double outvar = var;
+	Int32 n_zero = 3;
 	GS::UniString outstringformat = stringformat;
+	bool trim_zero = true;
 	if (!stringformat.IsEmpty()) {
 		if (stringformat.Contains("mm")) {
 			outvar = var * 1000;
@@ -1173,16 +1174,19 @@ GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniS
 			outstringformat.ReplaceAll("mm", "");
 		}
 		// Принудительный вывод заданного кол-ва нулей после запятой
-		// Если нули - то посчитаем их количество и подставим в printf
 		if (outstringformat.Contains("0")) {
 			outstringformat.ReplaceAll("0", "");
-			printfformat = "%." + outstringformat + "f";
+			trim_zero = false;
 		}
-		else {
-			printfformat = "%." + outstringformat + "g";
-		}
+		outvar = round(outvar * 100) / 100;
 	}
-	out = GS::UniString::Printf(printfformat, outvar);
+	outvar = round(outvar * pow(10, n_zero)) / pow(10, n_zero);
+	out = GS::UniString::Printf("%f", outvar);
+	if (trim_zero) {
+		out.TrimRight('0');
+		out.TrimRight('.');
+		out.TrimRight(',');
+	}
 	return out;
 }
 
