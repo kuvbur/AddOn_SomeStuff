@@ -8,7 +8,6 @@
 #include	"SomeStuff_Main.hpp"
 #include	"Helpers.hpp"
 #include	"Sync.hpp"
-#include	"Log.hpp"
 #include	"ReNum.hpp"
 #include	"Summ.hpp"
 
@@ -45,31 +44,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
-	if (!prefsData.syncMon && !prefsData.logMon) return err;
-
-
-	bool isAttached = false;
-	if (prefsData.logMon && LogCheckElementType(elemType->elemHead.typeID)) {
-		bool	log_prop = false;
-		switch (elemType->notifID) {
-		case APINotifyElement_New:
-		case APINotifyElement_Copy:
-		case APINotifyElement_Change:
-		case APINotifyElement_Edit:
-		case APINotifyElement_PropertyValueChange:
-		case APINotifyElement_ClassificationChange:
-			log_prop = true;
-		default:
-			break;
-		}
-		if (log_prop) {
-			err = AttachObserver(elemType->elemHead.guid);
-			if (err == APIERR_LINKEXIST || err == NoError) isAttached = true;
-			if (err == APIERR_LINKEXIST)
-				err = NoError;
-			if (err == NoError) LogWriteElement(elemType);
-		}
-	}
+	if (!prefsData.syncMon) return err;
 
 	if (prefsData.syncMon && SyncCheckElementType(elemType->elemHead.typeID)) {
 		bool	sync_prop = false;
@@ -82,18 +57,15 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		case APINotifyElement_Redo_Created:
 		case APINotifyElement_Redo_Modified:
 		case APINotifyElement_Redo_Deleted:
-		//case APINotifyElement_PropertyValueChange:
 		case APINotifyElement_ClassificationChange:
 			sync_prop = true;
 		default:
 			break;
 		}
 		if (sync_prop) {
-			if (!isAttached) {
-				err = AttachObserver(elemType->elemHead.guid);
-				if (err == APIERR_LINKEXIST)
-					err = NoError;
-			}
+			err = AttachObserver(elemType->elemHead.guid);
+			if (err == APIERR_LINKEXIST)
+				err = NoError;
 			if (err == NoError) {
 				SyncData(elemType->elemHead.guid);
 				SyncRelationsElement(elemType->elemHead.guid);
@@ -110,11 +82,11 @@ void	Do_ElementMonitor(void)
 {
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
-	if (prefsData.syncMon || prefsData.logMon) {
+	if (prefsData.syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);	
 	}
-	if (!prefsData.syncMon && !prefsData.logMon) {
+	if (!prefsData.syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
 	}
@@ -176,14 +148,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 					err = SumSelected();
 					if (t_flag) prefsData.syncMon = true;
 					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
-					break;
-				case Log_CommandID:
-					prefsData.logMon = !prefsData.logMon;
-					err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr)&prefsData);
-					Do_ElementMonitor();
-					break;
-				case LogShow_CommandID:
-					LogShowSelected();
 					break;
 			}
 			break;

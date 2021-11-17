@@ -89,6 +89,41 @@ GSErrCode	AttachObserver(const API_Guid& objectId)
 	return err;
 }
 
+// --------------------------------------------------------------------
+// Проверяет - попадает ли тип элемента в под настройки синхронизации
+// --------------------------------------------------------------------
+bool SyncCheckElementType(const API_ElemTypeID& elementType) {
+	SyncPrefs prefsData;
+	SyncSettingsGet(prefsData);
+	bool flag_type = false;
+	if ((elementType == API_WallID || elementType == API_ColumnID || elementType == API_BeamID || elementType == API_SlabID ||
+		elementType == API_RoofID || elementType == API_MeshID || elementType == API_ZoneID ||
+		elementType == API_CurtainWallSegmentID || elementType == API_CurtainWallFrameID ||
+		elementType == API_CurtainWallJunctionID || elementType == API_CurtainWallAccessoryID || elementType == API_ShellID ||
+		elementType == API_MorphID || elementType == API_StairID || elementType == API_RiserID ||
+		elementType == API_TreadID || elementType == API_StairStructureID ||
+		elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
+		elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
+		elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
+		elementType == API_RailingNodeID || elementType == API_RailingBalusterSetID || elementType == API_RailingPatternID ||
+		elementType == API_RailingToprailEndID || elementType == API_RailingHandrailEndID ||
+		elementType == API_RailingRailEndID ||
+		elementType == API_RailingToprailConnectionID ||
+		elementType == API_RailingHandrailConnectionID ||
+		elementType == API_RailingRailConnectionID ||
+		elementType == API_RailingEndFinishID ||
+		elementType == API_BeamSegmentID ||
+		elementType == API_ColumnSegmentID ||
+		elementType == API_OpeningID) && prefsData.wallS) flag_type = true;
+	if ((elementType == API_ObjectID ||
+		elementType == API_ZoneID ||
+		elementType == API_LampID ||
+		elementType == API_CurtainWallID ||
+		elementType == API_CurtainWallPanelID) && prefsData.objS) flag_type = true;
+	if ((elementType == API_WindowID || elementType == API_DoorID || elementType == API_SkylightID) && prefsData.widoS) flag_type = true;
+	return flag_type;
+}
+
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
@@ -105,7 +140,7 @@ bool IsElementEditable(const API_Guid& objectId) {
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = objectId;
 	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
-	if (tElemHead.typeID == API_HotlinkID) return false;
+	if (!SyncCheckElementType(tElemHead.typeID)) return false;
 	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
 	return true;
 }
@@ -121,7 +156,6 @@ void MenuSetState(void) {
 	MenuItemCheckAC(Menu_wallS, prefsData.wallS);
 	MenuItemCheckAC(Menu_widoS, prefsData.widoS);
 	MenuItemCheckAC(Menu_objS, prefsData.objS);
-	MenuItemCheckAC(Menu_Log, prefsData.logMon);
 }
 
 void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString, const GSErrCode &err, const API_Guid& elemGuid) {
