@@ -1159,19 +1159,23 @@ GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniS
 		}
 		if (stringformat.Contains("cm")) {
 			outvar = var * 100;
-			outstringformat.ReplaceAll("mm", "");
+			outstringformat.ReplaceAll("cm", "");
 		}
 		if (stringformat.Contains("dm")) {
 			outvar = var * 10;
-			outstringformat.ReplaceAll("mm", "");
+			outstringformat.ReplaceAll("dm", "");
 		}
 		if (stringformat.Contains("gm")) {
 			outvar = var / 100;
-			outstringformat.ReplaceAll("mm", "");
+			outstringformat.ReplaceAll("gm", "");
 		}
 		if (stringformat.Contains("km")) {
 			outvar = var / 1000;
-			outstringformat.ReplaceAll("mm", "");
+			outstringformat.ReplaceAll("km", "");
+		}
+		if (outstringformat.Contains("m")) {
+			outvar = var;
+			outstringformat.ReplaceAll("m", "");
 		}
 		// Принудительный вывод заданного кол-ва нулей после запятой
 		if (outstringformat.Contains("0")) {

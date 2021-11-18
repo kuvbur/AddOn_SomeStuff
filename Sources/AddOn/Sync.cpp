@@ -611,6 +611,19 @@ void SyncPropAndMatReplaceValue(const double & var, const GS::UniString& pattern
 	outstring.ReplaceAll(patternstring + stringformat, t);
 }
 
+void SyncPropAndMatReplaceValue(const API_Property& property, const GS::UniString& patternstring, GS::UniString& outstring) {
+	GS::UniString stringformat = "";
+	if (outstring.Contains(patternstring + "#")) {
+		UIndex startpos = outstring.FindFirst(patternstring + "#");
+		stringformat = outstring.GetSubstring('#', '#', startpos);
+	}
+	GS::UniString t = PropertyTestHelpers::ToString(property, stringformat);
+	if (!stringformat.IsEmpty()) {
+		stringformat = "#" + stringformat + "#";
+	}
+	outstring.ReplaceAll(patternstring + stringformat, t);
+}
+
 
 // --------------------------------------------------------------------
 // Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
@@ -625,13 +638,7 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const doubl
 		for (UInt32 j = 0; j < propertys.GetSize(); j++) {
 			GS::UniString stringformat = "";
 			GS::UniString patternstring = "@" + GS::UniString::Printf("%d", j) + "@";
-			if (outstring.Contains(patternstring + "#")) {
-				UIndex startpos = outstring.FindFirst(patternstring + ".")-1;
-				UIndex endpos = min(outstring.FindFirst(" ", startpos)+1, outstring.GetLength());
-				stringformat = outstring.GetSubstring(startpos, endpos);
-			}
-			GS::UniString t = PropertyTestHelpers::ToString(propertys[j]);
-			outstring.ReplaceAll(patternstring+stringformat, t);
+			SyncPropAndMatReplaceValue(propertys[j], patternstring, outstring);
 		}
 	}
 	outstring.TrimLeft();
