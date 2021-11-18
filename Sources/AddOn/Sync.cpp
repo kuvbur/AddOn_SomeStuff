@@ -32,6 +32,9 @@ void SyncAndMonAll(void) {
 		if (!flag_chanel && prefsData.objS) flag_chanel = SyncByType(API_CurtainWallID);
 		return NoError;
 		});
+#ifdef PK_1
+	DeleteElementsUserData();
+#endif // DEBUG
 }
 
 // -----------------------------------------------------------------------------

@@ -130,11 +130,12 @@ bool SyncCheckElementType(const API_ElemTypeID& elementType) {
 bool IsElementEditable(const API_Guid& objectId) {
 	// Проверяем - зарезервирован ли объект
 	if (objectId == APINULLGuid) return false;
+#ifdef PK_1
+	DeleteElementUserData(objectId);
+#endif
+	if (!ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) return false;
-	if (!ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) return false;
-	API_LockableStatus lockableStatus = ACAPI_TeamworkControl_GetLockableStatus(objectId);
-	if (lockableStatus != APILockableStatus_Editable && lockableStatus != APILockableStatus_NotExist)  return false;
 	// Проверяем - на находится ли объект в модуле
 	API_Elem_Head	tElemHead;
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
@@ -1416,5 +1417,43 @@ bool operator== (const API_Property& lhs, const API_Property& rhs)
 		return Equals (lhs.value, rhs.value, lhs.definition.collectionType);
 	} else {
 		return true;
+	}
+}
+
+void DeleteElementUserData(const API_Guid& elemguid) {
+	API_Elem_Head	tElemHead = {};
+	tElemHead.guid = elemguid;
+	API_ElementUserData userData = {};
+	GSErrCode err = ACAPI_Element_GetUserData(&tElemHead, &userData);
+	if (err == NoError && userData.dataHdl != nullptr && userData.platformSign == GS::Act_Platform_Sign)
+		err = ACAPI_Element_DeleteUserData(&tElemHead);
+	BMKillHandle(&userData.dataHdl);
+	GS::Array<API_Guid> setGuids;
+	err = ACAPI_ElementSet_Identify(elemguid, &setGuids);
+	if (err == NoError) {
+		USize nSet = setGuids.GetSize();
+		for (UIndex i = 0; i < nSet; i++) {
+			err = ACAPI_ElementSet_Delete(setGuids[i]);
+			if (err != NoError) {
+				DBPRINTF("Delete Element Set error: %d\n", err);
+			}
+		}
+	}
+}
+
+void DeleteElementsUserData()
+{
+	GS::Array<API_Guid> elemList;
+	ACAPI_Element_GetElemList(API_ZombieElemID, &elemList);
+	USize ng = elemList.GetSize();
+	GSErrCode err = NoError;
+	if (err == NoError) {
+		ACAPI_CallUndoableCommand("Delete Element Set",
+			[&]() -> GSErrCode {
+				for (UIndex ii = 0; ii < ng; ii++) {
+					DeleteElementUserData(elemList[ii]);
+				}
+				return NoError;
+			});
 	}
 }
