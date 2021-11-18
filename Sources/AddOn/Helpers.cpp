@@ -1176,16 +1176,26 @@ GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniS
 		// Принудительный вывод заданного кол-ва нулей после запятой
 		if (outstringformat.Contains("0")) {
 			outstringformat.ReplaceAll("0", "");
-			trim_zero = false;
+			outstringformat.Trim();
+			if (!outstringformat.IsEmpty()) trim_zero = false;
 		}
-		outvar = round(outvar * 100) / 100;
+		if (outstringformat.IsEmpty()) { 
+			n_zero = 0;
+		}
+		else {
+			n_zero = std::atoi(outstringformat.ToCStr());
+		}
 	}
 	outvar = round(outvar * pow(10, n_zero)) / pow(10, n_zero);
 	out = GS::UniString::Printf("%f", outvar);
+	out.ReplaceAll(".", ",");
+	out.TrimRight('0');
 	if (trim_zero) {
-		out.TrimRight('0');
-		out.TrimRight('.');
 		out.TrimRight(',');
+	}
+	else {
+		Int32 addzero = n_zero- (out.GetLength() - out.FindFirst(',') - 1);
+		if (addzero>0) out = out + GS::UniString::Printf("%*s", addzero, "0");
 	}
 	return out;
 }

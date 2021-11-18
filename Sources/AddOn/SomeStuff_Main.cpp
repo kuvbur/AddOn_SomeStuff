@@ -41,35 +41,35 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 {
 	GSErrCode		err = NoError;
 	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return err;
-
+	if (!IsElementEditable(elemType->elemHead.guid)) {
+		return err;
+	}
 	SyncPrefs prefsData;
 	SyncSettingsGet(prefsData);
 	if (!prefsData.syncMon) return err;
 
-	if (prefsData.syncMon && SyncCheckElementType(elemType->elemHead.typeID)) {
-		bool	sync_prop = false;
-		switch (elemType->notifID) {
-		case APINotifyElement_New:
-		case APINotifyElement_Copy:
-		case APINotifyElement_Change:
-		case APINotifyElement_Edit:
-		case APINotifyElement_Undo_Modified:
-		case APINotifyElement_Redo_Created:
-		case APINotifyElement_Redo_Modified:
-		case APINotifyElement_Redo_Deleted:
-		case APINotifyElement_ClassificationChange:
-			sync_prop = true;
-		default:
-			break;
-		}
-		if (sync_prop) {
-			err = AttachObserver(elemType->elemHead.guid);
-			if (err == APIERR_LINKEXIST)
-				err = NoError;
-			if (err == NoError) {
-				SyncData(elemType->elemHead.guid);
-				SyncRelationsElement(elemType->elemHead.guid);
-			}
+	bool	sync_prop = false;
+	switch (elemType->notifID) {
+	case APINotifyElement_New:
+	case APINotifyElement_Copy:
+	case APINotifyElement_Change:
+	case APINotifyElement_Edit:
+	case APINotifyElement_Undo_Modified:
+	case APINotifyElement_Redo_Created:
+	case APINotifyElement_Redo_Modified:
+	case APINotifyElement_Redo_Deleted:
+	case APINotifyElement_ClassificationChange:
+		sync_prop = true;
+	default:
+		break;
+	}
+	if (sync_prop) {
+		err = AttachObserver(elemType->elemHead.guid);
+		if (err == APIERR_LINKEXIST)
+			err = NoError;
+		if (err == NoError) {
+			SyncData(elemType->elemHead.guid);
+			SyncRelationsElement(elemType->elemHead.guid);
 		}
 	}
 	return err;
