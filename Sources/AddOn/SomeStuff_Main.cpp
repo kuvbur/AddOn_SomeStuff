@@ -41,6 +41,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 {
 	GSErrCode		err = NoError;
 	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return err;
+
 	if (!IsElementEditable(elemType->elemHead.guid)) {
 		return err;
 	}

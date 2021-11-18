@@ -147,6 +147,10 @@ bool operator== (const API_PropertyDefinition& lhs, const API_PropertyDefinition
 
 bool operator== (const API_Property& lhs, const API_Property& rhs);
 
+void DeleteElementUserData(const API_Guid& elemguid);
+
+void DeleteElementsUserData();
+
 template <typename T>
 bool operator!= (const T& lhs, const T& rhs)
 {
