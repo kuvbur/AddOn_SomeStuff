@@ -645,7 +645,7 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const doubl
 		if (stringlen > 0) part = "~" + part;
 	}
 	if (stringlen > 0) {
-		Int32 modlen = (outstring.GetLength() - part.GetLength() - 1);
+		Int32 modlen = outstring.GetLength() - part.GetLength() - 1;
 		Int32 addspace = stringlen - modlen;
 		if (modlen > stringlen) {
 			addspace = modlen % stringlen;
