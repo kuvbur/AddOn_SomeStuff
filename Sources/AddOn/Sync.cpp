@@ -9,27 +9,25 @@ Int32 nLib = 0;
 // -----------------------------------------------------------------------------
 // Запускает обработку всех объектов, заданных в настройке
 // -----------------------------------------------------------------------------
-void SyncAndMonAll(void) {
+void SyncAndMonAll(const SyncSettings& syncSettings) {
 	GS::UniString	title("Sync All");
 	nLib += 1;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	bool flag_chanel = false;
-	SyncPrefs prefsData;
-	SyncSettingsGet(prefsData);
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		if (!flag_chanel && prefsData.objS) flag_chanel = SyncByType(API_ObjectID);
-		if (!flag_chanel && prefsData.widoS) flag_chanel = SyncByType(API_WindowID);
-		if (!flag_chanel && prefsData.widoS) flag_chanel = SyncByType(API_DoorID);
-		if (!flag_chanel && prefsData.objS) flag_chanel = SyncByType(API_ZoneID);
-		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_WallID);
-		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_SlabID);
-		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_ColumnID);
-		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_BeamID);
-		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_RoofID);
-		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_MeshID);
-		if (!flag_chanel && prefsData.wallS) flag_chanel = SyncByType(API_MorphID);
-		if (!flag_chanel && prefsData.objS) flag_chanel = SyncByType(API_CurtainWallID);
+		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings);
+		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings);
+		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings);
+		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings);
+		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings);
 		return NoError;
 		});
 #ifdef PK_1
@@ -40,8 +38,7 @@ void SyncAndMonAll(void) {
 // -----------------------------------------------------------------------------
 // Запускает обработку всех элементов заданного типа
 // -----------------------------------------------------------------------------
-bool SyncByType(const API_ElemTypeID& elementType) {
-	SyncPrefs			prefsData;
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings) {
 	GS::UniString		subtitle;
 	GSErrCode			err = NoError;
 	GS::Array<API_Guid>	guidArray;
@@ -54,22 +51,21 @@ bool SyncByType(const API_ElemTypeID& elementType) {
 			GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
 			msg_rep("SyncByType", subtitle + intString, NoError, APINULLGuid);
 		}
-		SyncSettingsGet(prefsData);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			if (prefsData.syncAll) {
+			if (syncSettings.syncAll) {
 				if (elementType == API_CurtainWallID) {
 					GS::Array<API_Guid> panelGuid;
 					err = GetCWPanelsForCWall(guidArray[i], panelGuid);
 					if (err == NoError) {
 						for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
-							SyncData(panelGuid[i]);
+							SyncData(panelGuid[i], syncSettings);
 						}
 					}
 				}
-				SyncData(guidArray[i]);
+				SyncData(guidArray[i], syncSettings);
 			}
-			if (prefsData.syncMon) {
-				err = AttachObserver(guidArray[i]);
+			if (syncSettings.syncMon) {
+				err = AttachObserver(guidArray[i], syncSettings);
 				if (err == APIERR_LINKEXIST)
 					err = NoError;
 			}
@@ -87,10 +83,10 @@ bool SyncByType(const API_ElemTypeID& elementType) {
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
-void SyncSelected(void) {
+void SyncSelected(const SyncSettings& syncSettings) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		CallOnSelectedElem(SyncData);
+		CallOnSelectedElemSettings(SyncData, false, true, syncSettings);
 		return NoError;
 		});
 }
@@ -98,14 +94,14 @@ void SyncSelected(void) {
 // --------------------------------------------------------------------
 // Синхронизация привязанных к двери зон
 // --------------------------------------------------------------------
-GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid) {
+GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode			err = NoError;
 	//Обновляем объекты, если их обработка включена
 	API_WindowRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
 	if (err == NoError) {
-		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom);
-		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom);
+		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
+		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
 	}
 	return err;
 }
@@ -113,14 +109,14 @@ GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid) {
 // --------------------------------------------------------------------
 // Синхронизация привязанных к окну зон
 // --------------------------------------------------------------------
-GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid) {
+GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode			err = NoError;
 	//Обновляем объекты, если их обработка включена
 	API_DoorRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
 	if (err == NoError) {
-		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom);
-		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom);
+		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
+		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
 	}
 	return err;
 }
@@ -128,13 +124,13 @@ GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid) {
 // --------------------------------------------------------------------
 // Синхронизация привязанных навесной стене панелей
 // --------------------------------------------------------------------
-GSErrCode SyncRelationsToCWall(const API_Guid& elemGuid) {
+GSErrCode SyncRelationsToCWall(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode			err = NoError;
 	GS::Array<API_Guid> panelGuid;
 	err = GetCWPanelsForCWall(elemGuid, panelGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
-			SyncData(panelGuid[i]);
+			SyncData(panelGuid[i], syncSettings);
 		}
 	}
 	return err;
@@ -143,21 +139,19 @@ GSErrCode SyncRelationsToCWall(const API_Guid& elemGuid) {
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
 // --------------------------------------------------------------------
-void SyncRelationsElement(const API_Guid& elemGuid) {
+void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode	err = NoError;
 	API_ElemTypeID elementType;
-	SyncPrefs prefsData;
-	SyncSettingsGet(prefsData);
 	err = GetTypeByGUID(elemGuid, elementType);
 	switch (elementType) {
 	case API_WindowID:
-		if (prefsData.objS) err = SyncRelationsToWindow(elemGuid);
+		if (syncSettings.objS) err = SyncRelationsToWindow(elemGuid, syncSettings);
 		break;
 	case API_DoorID:
-		if (prefsData.objS) err = SyncRelationsToDoor(elemGuid);
+		if (syncSettings.objS) err = SyncRelationsToDoor(elemGuid, syncSettings);
 		break;
 	case API_CurtainWallID:
-		if (prefsData.objS) err = SyncRelationsToCWall(elemGuid);
+		if (syncSettings.objS) err = SyncRelationsToCWall(elemGuid, syncSettings);
 		break;
 	default:
 		break;
@@ -167,9 +161,9 @@ void SyncRelationsElement(const API_Guid& elemGuid) {
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData(const API_Guid& elemGuid) {
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode	err = NoError;
-	if (!IsElementEditable(elemGuid))
+	if (!IsElementEditable(elemGuid, syncSettings))
 		return;
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
@@ -177,7 +171,7 @@ void SyncData(const API_Guid& elemGuid) {
 		msg_rep("SyncData", "GetTypeByGUID", err, elemGuid);
 		return;
 	}
-	if (SyncCheckElementType(elementType)) // Сверяемся с настройками - нужно ли этот тип обрабатывать
+	if (SyncCheckElementType(elementType, syncSettings)) // Сверяемся с настройками - нужно ли этот тип обрабатывать
 	{
 		GS::Array<API_PropertyDefinition> definitions;
 		err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
