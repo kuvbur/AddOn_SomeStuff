@@ -331,6 +331,7 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Sources\AddOn\SyncSettings.cpp" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp" />
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp" />

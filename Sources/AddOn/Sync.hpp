@@ -3,6 +3,7 @@
 #define	SYNC_HPP
 #include	"APICommon.h"
 #include	"DG.h"
+#include	"SyncSettings.hpp"
 
 // --------------------------------------------------------------------
 // —труктура дл€ хранени€ одного правила
@@ -27,19 +28,19 @@ typedef struct {
 	double								fillThick;
 } LayerConstr;
 
-void SyncAndMonAll(void);
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
-bool SyncByType(const API_ElemTypeID& elementType);
+void SyncAndMonAll(const SyncSettings& syncSettings);
 
-void SyncSelected(void);
+void SyncSelected(const SyncSettings& syncSettings);
 
-GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid);
+GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
-GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid);
+GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
-void SyncRelationsElement(const API_Guid& elemGuid);
+void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
-void SyncData(const API_Guid& elemGuid);
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
 GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition);
 

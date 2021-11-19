@@ -5,6 +5,7 @@
 #include	"DG.h"
 #include	"StringConversion.hpp"
 #include	"ResourceIds.hpp"
+#include	"SyncSettings.hpp"
 
 #define ELEMSTR_LEN				256
 #define	CURR_ADDON_VERS			0x0006
@@ -52,15 +53,6 @@ static const Int32 ErrorSelectID = 6;
 // -----------------------------------------------------------------------------
 // Helper functions
 // -----------------------------------------------------------------------------
-typedef struct {
-	Int32	version;
-	bool	syncAll;
-	bool	syncMon;
-	bool	wallS;
-	bool	widoS;
-	bool	objS;
-	bool	logMon;
-} SyncPrefs;
 
 typedef struct {
 	GS::Array <API_Guid>	guid;
@@ -84,9 +76,9 @@ Int32 DoubleM2IntMM(const double& value);
 
 GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
-GSErrCode AttachObserver(const API_Guid& objectId);
-bool SyncCheckElementType(const API_ElemTypeID& elementType);
-bool IsElementEditable(const API_Guid& objectId);
+GSErrCode AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings);
+bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&  syncSettings);
+bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
@@ -99,6 +91,7 @@ bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_hea
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
+void CallOnSelectedElemSettings(void(*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel, bool onlyEditable, const SyncSettings& syncSettings);
 bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 bool MenuInvertItemMark(short menuResID, short itemIndex);
 GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
@@ -106,7 +99,6 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 void MenuItemCheckAC(short itemInd, bool checked);
-void SyncSettingsGet(SyncPrefs& prefsData);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
 GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemType, API_AddParType**& params);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string);
@@ -114,7 +106,7 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramName, API_Property& property);
 GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyfrom, API_Property& property);
 void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid);
-void MenuSetState(void);
+void MenuSetState(SyncSettings& syncSettings);
 
 namespace PropertyTestHelpers
 {

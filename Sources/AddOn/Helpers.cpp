@@ -10,6 +10,7 @@
 #include	"Helpers.hpp"
 #include	<cmath>
 #include	<limits>
+
 bool is_equal(double x, double y) {
 	return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
 }
@@ -73,10 +74,10 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid) {
 // -----------------------------------------------------------------------------
 // Добавление отслеживания (для разных версий)
 // -----------------------------------------------------------------------------
-GSErrCode	AttachObserver(const API_Guid& objectId)
+GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings)
 {
 	GSErrCode		err = NoError;
-	if (IsElementEditable(objectId)) {
+	if (IsElementEditable(objectId, syncSettings)) {
 
 #ifdef AC_22
 		API_Elem_Head elemHead;
@@ -92,9 +93,7 @@ GSErrCode	AttachObserver(const API_Guid& objectId)
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
-bool SyncCheckElementType(const API_ElemTypeID& elementType) {
-	SyncPrefs prefsData;
-	SyncSettingsGet(prefsData);
+bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&  syncSettings) {
 	bool flag_type = false;
 	if ((elementType == API_WallID || elementType == API_ColumnID || elementType == API_BeamID || elementType == API_SlabID ||
 		elementType == API_RoofID || elementType == API_MeshID || elementType == API_ZoneID ||
@@ -114,20 +113,20 @@ bool SyncCheckElementType(const API_ElemTypeID& elementType) {
 		elementType == API_RailingEndFinishID ||
 		elementType == API_BeamSegmentID ||
 		elementType == API_ColumnSegmentID ||
-		elementType == API_OpeningID) && prefsData.wallS) flag_type = true;
+		elementType == API_OpeningID) && syncSettings.wallS) flag_type = true;
 	if ((elementType == API_ObjectID ||
 		elementType == API_ZoneID ||
 		elementType == API_LampID ||
 		elementType == API_CurtainWallID ||
-		elementType == API_CurtainWallPanelID) && prefsData.objS) flag_type = true;
-	if ((elementType == API_WindowID || elementType == API_DoorID || elementType == API_SkylightID) && prefsData.widoS) flag_type = true;
+		elementType == API_CurtainWallPanelID) && syncSettings.objS) flag_type = true;
+	if ((elementType == API_WindowID || elementType == API_DoorID || elementType == API_SkylightID) && syncSettings.widoS) flag_type = true;
 	return flag_type;
 }
 
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
-bool IsElementEditable(const API_Guid& objectId) {
+bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettings) {
 	// Проверяем - зарезервирован ли объект
 	if (objectId == APINULLGuid) return false;
 #ifdef PK_1
@@ -141,7 +140,7 @@ bool IsElementEditable(const API_Guid& objectId) {
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = objectId;
 	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
-	if (!SyncCheckElementType(tElemHead.typeID)) return false;
+	if (!SyncCheckElementType(tElemHead.typeID, syncSettings)) return false;
 	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
 	return true;
 }
@@ -150,13 +149,11 @@ bool IsElementEditable(const API_Guid& objectId) {
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
 // -----------------------------------------------------------------------------
-void MenuSetState(void) {
-	SyncPrefs prefsData;
-	SyncSettingsGet(prefsData);
-	MenuItemCheckAC(Menu_MonAll, prefsData.syncMon);
-	MenuItemCheckAC(Menu_wallS, prefsData.wallS);
-	MenuItemCheckAC(Menu_widoS, prefsData.widoS);
-	MenuItemCheckAC(Menu_objS, prefsData.objS);
+void MenuSetState(SyncSettings& syncSettings) {
+	MenuItemCheckAC(Menu_MonAll, syncSettings.syncMon);
+	MenuItemCheckAC(Menu_wallS, syncSettings.wallS);
+	MenuItemCheckAC(Menu_widoS, syncSettings.widoS);
+	MenuItemCheckAC(Menu_objS, syncSettings.objS);
 }
 
 void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString, const GSErrCode &err, const API_Guid& elemGuid) {
@@ -409,44 +406,6 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString,
 	ACAPI_WriteReport(msg, false);
 }
 
-GSErrCode SyncSettingsDefult(SyncPrefs& prefsData) {
-	BNZeroMemory(&prefsData, sizeof(SyncPrefs));
-	prefsData.version = CURR_ADDON_VERS;
-	prefsData.syncAll = false;
-	prefsData.syncMon = false;
-	prefsData.wallS = true;
-	prefsData.widoS = true;
-	prefsData.objS = true;
-	prefsData.logMon = false;
-	GSErrCode err = ACAPI_SetPreferences(CURR_ADDON_VERS, sizeof(SyncPrefs), (GSPtr) &prefsData);
-	return err;
-}
-
-void SyncSettingsGet(SyncPrefs& prefsData)
-{
-	GSErrCode err = NoError;
-	Int32			version;
-	GSSize			nBytes;
-	unsigned short	platformSign = GS::Act_Platform_Sign;
-	err = ACAPI_GetPreferences_Platform(&version, &nBytes, NULL, NULL);
-	if (version == CURR_ADDON_VERS) {
-		err = ACAPI_GetPreferences_Platform(&version, &nBytes, (GSPtr)&prefsData, &platformSign);
-		if (platformSign != GS::Act_Platform_Sign) {
-				GS::PlatformSign	inplatform = (GS::PlatformSign)platformSign;
-				IVLong(inplatform, &prefsData.version);
-				IVBool(inplatform, &prefsData.syncAll);
-				IVBool(inplatform, &prefsData.syncMon);
-				IVBool(inplatform, &prefsData.wallS);
-				IVBool(inplatform, &prefsData.widoS);
-				IVBool(inplatform, &prefsData.objS);
-				IVBool(inplatform, &prefsData.logMon);
-			}
-	}
-	else {
-		err = SyncSettingsDefult(prefsData);
-	}
-}
-
 void	MenuItemCheckAC(short itemInd, bool checked)
 {
 	API_MenuItemRef itemRef;
@@ -514,6 +473,29 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 	}
 	return guidArray;
 #endif // AC_22
+}
+
+
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings)
+{
+	GS::UniString	title("Sync Selected");
+	Int32 nLib = 0;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
+	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
+	if (!guidArray.IsEmpty()) {
+		//TODO Возможно, предварительный сбор имён свойств в хэш-таблицу ускорит работу
+		// Надо только прокинуть их в функцию и добававить функцию поиска по ним
+		//GetAllPropertyName(propname);
+		GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
+		msg_rep("Sync Selected", intString, NoError, APINULLGuid);
+		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
+			function(guidArray[i], syncSettings);
+			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+				return;
+			}
+		}
+	}
 }
 
 
@@ -1443,10 +1425,21 @@ void DeleteElementUserData(const API_Guid& elemguid) {
 
 void DeleteElementsUserData()
 {
+	GSErrCode err = NoError;
+	Int32       version;
+	GSSize      nBytes;
+
+	err = ACAPI_GetPreferences(&version, &nBytes, nullptr);
+	if (version == CURR_ADDON_VERS && nBytes>0) {
+		err = ACAPI_SetPreferences(CURR_ADDON_VERS, 0, nullptr);
+	}
+	err = ACAPI_GetPreferences_Platform(&version, &nBytes, NULL, NULL);
+	if (version == CURR_ADDON_VERS && nBytes > 0) {
+		err = ACAPI_SetPreferences(CURR_ADDON_VERS, 0, nullptr);
+	}
 	GS::Array<API_Guid> elemList;
 	ACAPI_Element_GetElemList(API_ZombieElemID, &elemList);
 	USize ng = elemList.GetSize();
-	GSErrCode err = NoError;
 	if (err == NoError) {
 		ACAPI_CallUndoableCommand("Delete Element Set",
 			[&]() -> GSErrCode {
