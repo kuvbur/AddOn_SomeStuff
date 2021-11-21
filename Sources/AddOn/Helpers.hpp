@@ -1,4 +1,3 @@
-#pragma once
 #if !defined (HELPERS_HPP)
 #define	HELPERS_HPP
 #include	"APICommon.h"

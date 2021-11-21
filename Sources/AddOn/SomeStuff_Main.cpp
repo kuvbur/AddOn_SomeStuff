@@ -157,6 +157,9 @@ GSErrCode __ACDLL_CALL RegisterInterface (void)
 
 GSErrCode __ACENV_CALL Initialize (void)
 {
+	SyncSettings syncSettings(false, false, true, true, true, false);
+	LoadSyncSettingsFromPreferences(syncSettings);
+	MenuSetState(syncSettings);
 	ACAPI_Notify_CatchProjectEvent(APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }
