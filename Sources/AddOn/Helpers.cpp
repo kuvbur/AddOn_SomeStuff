@@ -1407,18 +1407,24 @@ void DeleteElementUserData(const API_Guid& elemguid) {
 	tElemHead.guid = elemguid;
 	API_ElementUserData userData = {};
 	GSErrCode err = ACAPI_Element_GetUserData(&tElemHead, &userData);
-	if (err == NoError && userData.dataHdl != nullptr && userData.platformSign == GS::Act_Platform_Sign)
+	if (err == NoError && userData.dataHdl != nullptr){
 		err = ACAPI_Element_DeleteUserData(&tElemHead);
+		msg_rep("Del user data", " ", NoError, APINULLGuid);
+	}
 	BMKillHandle(&userData.dataHdl);
 	GS::Array<API_Guid> setGuids;
 	err = ACAPI_ElementSet_Identify(elemguid, &setGuids);
 	if (err == NoError) {
 		USize nSet = setGuids.GetSize();
-		for (UIndex i = 0; i < nSet; i++) {
-			err = ACAPI_ElementSet_Delete(setGuids[i]);
-			if (err != NoError) {
-				DBPRINTF("Delete Element Set error: %d\n", err);
+		if (nSet > 0) {
+			for (UIndex i = 0; i < nSet; i++) {
+				err = ACAPI_ElementSet_Delete(setGuids[i]);
+				if (err != NoError) {
+					DBPRINTF("Delete Element Set error: %d\n", err);
+				}
 			}
+			GS::UniString intString = GS::UniString::Printf(" %d", nSet);
+			msg_rep("Del set", intString, NoError, APINULLGuid);
 		}
 	}
 }
@@ -1428,14 +1434,15 @@ void DeleteElementsUserData()
 	GSErrCode err = NoError;
 	Int32       version;
 	GSSize      nBytes;
-
-	err = ACAPI_GetPreferences(&version, &nBytes, nullptr);
-	if (version == CURR_ADDON_VERS && nBytes>0) {
-		err = ACAPI_SetPreferences(CURR_ADDON_VERS, 0, nullptr);
-	}
-	err = ACAPI_GetPreferences_Platform(&version, &nBytes, NULL, NULL);
-	if (version == CURR_ADDON_VERS && nBytes > 0) {
-		err = ACAPI_SetPreferences(CURR_ADDON_VERS, 0, nullptr);
+	GS::Array<API_Guid> addonelemList;
+	err = ACAPI_AddOnObject_GetObjectList(&addonelemList);
+	USize ngl = addonelemList.GetSize();
+	if (ngl > 0) {
+		for (UIndex ii = 0; ii < ngl; ii++) {
+			err = ACAPI_AddOnObject_DeleteObject(addonelemList[ii]);
+		}
+		GS::UniString intString = GS::UniString::Printf(" %d", ngl);
+		msg_rep("Del addon obj", intString, NoError, APINULLGuid);
 	}
 	GS::Array<API_Guid> elemList;
 	ACAPI_Element_GetElemList(API_ZombieElemID, &elemList);
