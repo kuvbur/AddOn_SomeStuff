@@ -460,7 +460,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 	BMKillHandle((GSHandle*)&selNeigs);
 #else
 	for (const API_Neig& neig : selNeigs) {
-		if (neig.neigID == APINeig_CurtainWall) {
+		if (neig.neigID == APINeig_CurtainWall || neig.neigID == APINeig_CurtainWallOn) {
 			GS::Array<API_Guid> panelGuid;
 			err = GetCWPanelsForCWall(neig.guid, panelGuid);
 			if (err == NoError) {
@@ -742,8 +742,8 @@ GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panel
 	bool isDegenerate = false;
 	const GSSize nPanels = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof(API_CWPanelType);
 	for (Int32 idx = 0; idx < nPanels; ++idx) {
-		ACAPI_Database(APIDb_IsCWPanelDegenerateID, (void*)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
-		if (!isDegenerate && memo.cWallPanels[idx].hasSymbol) {
+		err = ACAPI_Database(APIDb_IsCWPanelDegenerateID, (void*)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
+		if (!isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
 			panelSymbolGuids.Push(std::move(memo.cWallPanels[idx].head.guid));
 		}
 	}
@@ -1432,8 +1432,6 @@ void DeleteElementUserData(const API_Guid& elemguid) {
 void DeleteElementsUserData()
 {
 	GSErrCode err = NoError;
-	Int32       version;
-	GSSize      nBytes;
 	GS::Array<API_Guid> addonelemList;
 	err = ACAPI_AddOnObject_GetObjectList(&addonelemList);
 	USize ngl = addonelemList.GetSize();
