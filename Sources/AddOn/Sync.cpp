@@ -212,15 +212,7 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API
 	GSErrCode	err = NoError;
 	switch (syncRule.synctype) {
 	case 1:
-		if (elementType == API_ObjectID ||
-			elementType == API_WindowID ||
-			elementType == API_DoorID ||
-			elementType == API_ZoneID ||
-			elementType == API_LampID ||
-			elementType == API_CurtainWallPanelID ||
-			syncRule.paramName.ToLowerCase() == "id") {
-			err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
-		}
+		err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
 		break;
 	case 2:
 		err = SyncPropAndProp(elemGuid, syncRule, property); //Синхронизация свойств
@@ -272,6 +264,10 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 			if (rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
 				rule.synctype = 3;
 				rulestring_one.ReplaceAll("Material:", "");
+			}
+			if (rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
+				rule.synctype = 4;
+				rulestring_one.ReplaceAll("Info:", "");
 			}
 			GS::UniString paramName = rulestring_one.GetSubstring('{', '}',0);
 			// Для материалов вытащим строку с шаблоном, чтоб ненароком не разбить её

@@ -777,7 +777,7 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 		if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
 		if (err == NoError) {
 			for (UInt32 i = 0; i < groups.GetSize(); i++) {
-				if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType){
+				if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
 					if (groups[i].name.ToLowerCase() == gname) {
 						GS::Array<API_PropertyDefinition> definitions;
 						err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
@@ -943,6 +943,12 @@ bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_El
 }
 
 bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter) {
+	if (elem_head.typeID != API_ObjectID &&
+		elem_head.typeID != API_WindowID &&
+		elem_head.typeID != API_DoorID &&
+		elem_head.typeID != API_ZoneID &&
+		elem_head.typeID != API_LampID &&
+		elem_head.typeID != API_CurtainWallPanelID) return false;
 	// Определяемся - как ищем. По имени или описанию?
 	GS::UniString findstr = paramName.ToLowerCase();
 	bool find_by_description = false;
@@ -1001,6 +1007,11 @@ bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_hea
 	case API_ZoneID:
 		x = element.zone.pos.x;
 		y = element.zone.pos.y;
+		z = 0;
+		break;
+	case API_ColumnID:
+		x = element.column.origoPos.x;
+		y = element.column.origoPos.y;
 		z = 0;
 		break;
 	default:
