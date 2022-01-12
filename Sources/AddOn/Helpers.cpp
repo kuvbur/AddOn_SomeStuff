@@ -646,7 +646,12 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 	// Совпадают ли типы?
 	if (propertyfrom.definition.valueType != property.definition.valueType && write) {
 		if (property.definition.valueType == API_PropertyStringValueType) {
-			GS::UniString val = PropertyTestHelpers::ToString(propertyfrom);
+			GS::UniString val;
+#ifdef AC_25
+			err = ACAPI_Property_GetPropertyValueString(propertyfrom, &val);
+#else
+			val = PropertyTestHelpers::ToString(propertyfrom);
+#endif
 			if (property.value.singleVariant.variant.uniStringValue != val) {
 				property.value.singleVariant.variant.uniStringValue = val;
 			}
@@ -662,7 +667,12 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 	}
 	// Если нужно записать список текста в текст
 	if (property.definition.collectionType != propertyfrom.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
-		GS::UniString val = PropertyTestHelpers::ToString(propertyfrom);
+		GS::UniString val;
+#ifdef AC_25
+		err = ACAPI_Property_GetPropertyValueString(propertyfrom, &val);
+#else
+		val = PropertyTestHelpers::ToString(propertyfrom);
+#endif
 		if (property.value.singleVariant.variant.uniStringValue != val) {
 			property.value.singleVariant.variant.uniStringValue = val;
 		}
