@@ -19,6 +19,9 @@
     <ClCompile Include="..\Sources\AddOn\SyncSettings.cpp">
       <Filter>Sources</Filter>
     </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\Dimensions.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h">

@@ -52,6 +52,8 @@ bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>
 
 GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, API_Property& property);
 
+GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, API_Property& property);
+
 GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Property& property);
 
 GSErrCode SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions);
@@ -67,5 +69,7 @@ GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementT
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val);
 
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property);
+
+bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_IFCProperty& property);
 
 #endif

@@ -10,7 +10,7 @@
 #include	"Sync.hpp"
 #include	"ReNum.hpp"
 #include	"Summ.hpp"
-
+#include	"Dimensions.hpp"
 
 // -----------------------------------------------------------------------------
 // Срабатывает при событиях проекта (открытие, сохранение)
@@ -102,10 +102,12 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 		case AddOnMenuID:
 			switch (menuParams->menuItemRef.itemIndex) {
 				case MonAll_CommandID:
-					syncSettings.syncMon = !syncSettings.syncMon;
-					syncSettings.syncAll = false;
-					Do_ElementMonitor(syncSettings.syncMon);
-					SyncAndMonAll(syncSettings);
+					#ifndef PK_1 // Если компилировать с определённой PK_1 то мониторинг не отключается никогда
+						syncSettings.syncMon = !syncSettings.syncMon;
+						syncSettings.syncAll = false;
+						Do_ElementMonitor(syncSettings.syncMon);
+						SyncAndMonAll(syncSettings);
+					#endif
 					break;
 				case SyncAll_CommandID:
 					t_flag = syncSettings.syncMon;
@@ -133,12 +135,16 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 				case Sum_CommandID:
 					err = SumSelected();
 					break;
+				case Log_CommandID:
+					err = DimAddGrid();
+					break;
 			}
 			break;
 	}
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+	ACAPI_KeepInMemory(true);
 	return NoError;
 }
 
@@ -146,7 +152,7 @@ API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams* envir)
 {
 	RSGetIndString (&envir->addOnInfo.name, AddOnInfoID, AddOnNameID, ACAPI_GetOwnResModule ());
 	RSGetIndString (&envir->addOnInfo.description, AddOnInfoID, AddOnDescriptionID, ACAPI_GetOwnResModule ());
-	return APIAddon_Normal;
+	return APIAddon_Preload;
 }
 
 GSErrCode __ACDLL_CALL RegisterInterface (void)
@@ -160,7 +166,9 @@ GSErrCode __ACENV_CALL Initialize (void)
 	SyncSettings syncSettings(false, false, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
 	MenuSetState(syncSettings);
+	Do_ElementMonitor(syncSettings.syncMon);
 	ACAPI_Notify_CatchProjectEvent(APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
+	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }
 
