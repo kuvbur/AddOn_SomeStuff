@@ -49,6 +49,7 @@ static const Int32 TrueId = 4;
 static const Int32 FalseId = 5;
 static const Int32 ErrorSelectID = 6;
 
+static const Int32 UndoDimGridId = 7;
 // -----------------------------------------------------------------------------
 // Helper functions
 // -----------------------------------------------------------------------------
@@ -94,6 +95,7 @@ void CallOnSelectedElemSettings(void(*function)(const API_Guid&, const SyncSetti
 bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 bool MenuInvertItemMark(short menuResID, short itemIndex);
 GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
+GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_IFCProperty& property);
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);

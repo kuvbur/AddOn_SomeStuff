@@ -465,7 +465,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 			err = GetCWPanelsForCWall(neig.guid, panelGuid);
 			if (err == NoError) {
 				for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
-					guidArray.Push(panelGuid[i]);
+					guidArray.Push(panelGuid.Get(i));
 				}
 			}
 		}
@@ -730,7 +730,7 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 	UInt32 npart = StringSplt(instring, delim, parts);
 	for (UInt32 i = 0; i < npart; i++) {
 		if (parts[i].Contains(filter)) {
-			partstring.Push(parts[i]);
+			partstring.Push(parts.Get(i));
 			n += 1;
 		}
 	}
@@ -771,6 +771,59 @@ GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_Pro
 	return err;
 }
 
+// -----------------------------------------------------------------------------
+// Получение значения IFC свойства по имени свойства
+// -----------------------------------------------------------------------------
+GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_IFCProperty& property) {
+	GS::Array<API_IFCProperty>     properties;
+	GSErrCode err = NoError;
+	err = ACAPI_Element_GetIFCProperties(elemGuid, false, &properties);
+	if (err != NoError) msg_rep("GetIFCPropertyByName", "ACAPI_Element_GetIFCProperties " + tpropertyname, err, elemGuid);
+	if (err == NoError) {
+		GS::UniString propertyname = tpropertyname;
+		propertyname.ReplaceAll("\\/", "@@");
+		bool flag_find_gname = false;
+		bool flag_find_pname = false;
+		GS::UniString pname = "";
+		GS::UniString gname = "";
+		if (propertyname.Contains("/")) {
+			GS::Array<GS::UniString> partstring;
+			StringSplt(propertyname, "/", partstring);
+			gname = partstring[0].ToLowerCase();
+			pname = partstring[1].ToLowerCase();
+			gname.ReplaceAll("@@", "/");
+			pname.ReplaceAll("@@", "/");
+			//Сначала ищем по группе/имени
+			for (unsigned int i = 0; i < properties.GetSize(); i++)
+			{
+				API_IFCProperty prop = properties.Get(i);
+				if (prop.head.propertySetName.ToLowerCase() == gname && prop.head.propertyName.ToLowerCase() == pname) {
+					property = prop;
+					return err;
+				}
+			}
+		}
+		else {
+			propertyname.ReplaceAll("@@", "/");
+			pname = propertyname.ToLowerCase();
+			flag_find_pname = true;
+		}
+		//Если не нашли по группе - поищем по имени в других группах (если это имя попадалось, flag_find_pname).
+		//Если имя группы задано не было - просто поищем по имени
+		if (flag_find_pname) {
+			for (unsigned int i = 0; i < properties.GetSize(); i++)
+			{
+				API_IFCProperty prop = properties.Get(i);
+				if (prop.head.propertyName.ToLowerCase() == pname && flag_find_pname) {
+					property = prop;
+					return err;
+				}
+			}
+		}
+	}
+	return APIERR_MISSINGCODE;
+}
+
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_PropertyDefinition& definition) {
 	GSErrCode err = NoError;
 	GS::UniString propertyname = tpropertyname;
@@ -795,7 +848,7 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 						if (err == NoError) {
 							for (UInt32 j = 0; j < definitions.GetSize(); j++) {
 								if (definitions[j].name.ToLowerCase() == pname) {
-									definition = definitions[j];
+									definition = definitions.Get(j);
 									return err;
 								}
 							}
@@ -811,7 +864,7 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 	if (err == NoError) {
 		for (UInt32 j = 0; j < definitions.GetSize(); j++) {
 			if (definitions[j].name.ToLowerCase() == propertyname.ToLowerCase()) {
-				definition = definitions[j];
+				definition = definitions.Get(j);
 				return err;
 			}
 		}
@@ -837,7 +890,7 @@ GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_
 	if (error == NoError) {
 		for (UInt32 i = 0; i < definitions.GetSize(); ++i) {
 			if (ACAPI_Element_IsPropertyDefinitionVisible(elemGuid, definitions[i].guid)) {
-				visibleProperties.Push(definitions[i]);
+				visibleProperties.Push(definitions.Get(i));
 			}
 		}
 	}
@@ -1220,6 +1273,8 @@ GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS
 	}
 }
 
+
+
 GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
 	return PropertyTestHelpers::ToString(variant, "");
 }
@@ -1227,6 +1282,7 @@ GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
 GS::UniString PropertyTestHelpers::ToString(const API_Property& property) {
 	return PropertyTestHelpers::ToString(property, "");
 }
+
 
 GS::UniString PropertyTestHelpers::ToString (const API_Property& property, const GS::UniString stringformat) {
 	GS::UniString string;

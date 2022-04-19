@@ -4,10 +4,14 @@
 #include	"APICommon.h"
 #include	"DG.h"
 
+static const short TextSum = 1;
+static const short NumSum = 2;
+
 typedef struct {
 	API_Guid		guid;
 	std::string		criteria;
-	std::string		value;
+	std::string		string_value;
+	double			num_value;
 } SumElement;
 
 typedef struct {
@@ -16,6 +20,7 @@ typedef struct {
 	API_PropertyDefinition		criteria;
 	std::string					delimetr;
 	std::string					ignore_val;
+	short						sum_type;
 	GS::Array <SumElement>		elemts;
 } SumRule;
 

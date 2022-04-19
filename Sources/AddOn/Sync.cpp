@@ -4,6 +4,16 @@
 #include	"Sync.hpp"
 #include	"Helpers.hpp"
 
+#define SYNC_GDL 1
+#define SYNC_PROPERTY 2
+#define SYNC_MATERIAL 3
+#define SYNC_INFO 4
+#define SYNC_IFC 5
+
+#define SYNC_NO 0
+#define SYNC_FROM 1
+#define SYNC_TO 2
+
 Int32 nLib = 0;
 
 // -----------------------------------------------------------------------------
@@ -211,14 +221,17 @@ GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID element
 bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_Property property, SyncRule syncRule) {
 	GSErrCode	err = NoError;
 	switch (syncRule.synctype) {
-	case 1:
+	case SYNC_GDL:
 		err = SyncParamAndProp(elemGuid, syncRule, property); //Синхронизация свойства и параметра
 		break;
-	case 2:
+	case SYNC_PROPERTY:
 		err = SyncPropAndProp(elemGuid, syncRule, property); //Синхронизация свойств
 		break;
-	case 3:
+	case SYNC_MATERIAL:
 		err = SyncPropAndMat(elemGuid, elementType, syncRule, property); //Синхронизация свойств и данных о конструкции
+		break;
+	case SYNC_IFC:
+		err = SyncIFCAndProp(elemGuid, syncRule, property); //Синхронизация IFC свойств с архикадовскими свойствами
 		break;
 	default:
 		break;
@@ -251,27 +264,31 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 		for (UInt32 i = 0; i < nrule; i++) {
 			GS::UniString rulestring_one = rulestring[i];
 			SyncRule rule;
-			rule.syncdirection = 0;
+			rule.syncdirection = SYNC_NO;
 			// Копировать параметр в свойство или свойство в параметр
-			if (rulestring_one.Contains("from")) rule.syncdirection = 1;
-			if (rulestring_one.Contains("to")) rule.syncdirection = 2;
+			if (rulestring_one.Contains("from")) rule.syncdirection = SYNC_FROM;
+			if (rulestring_one.Contains("to")) rule.syncdirection = SYNC_TO;
 			 //Копировать параметр или свойство
-			rule.synctype = 1;
+			rule.synctype = SYNC_GDL;
 			if (rulestring_one.Contains("Property:")) {
-				rule.synctype = 2;
+				rule.synctype = SYNC_PROPERTY;
 				rulestring_one.ReplaceAll("Property:", "");
 			}
 			if (rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
-				rule.synctype = 3;
+				rule.synctype = SYNC_MATERIAL;
 				rulestring_one.ReplaceAll("Material:", "");
 			}
 			if (rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
-				rule.synctype = 4;
+				rule.synctype = SYNC_INFO;
 				rulestring_one.ReplaceAll("Info:", "");
+			}
+			if (rulestring_one.Contains("IFC:")) {
+				rule.synctype = SYNC_IFC;
+				rulestring_one.ReplaceAll("IFC:", "");
 			}
 			GS::UniString paramName = rulestring_one.GetSubstring('{', '}',0);
 			// Для материалов вытащим строку с шаблоном, чтоб ненароком не разбить её
-			if (rule.synctype == 3) {
+			if (rule.synctype == SYNC_MATERIAL) {
 				GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
 				rule.templatestring = templatestring;
 				rulestring_one.ReplaceAll(templatestring, "");
@@ -279,7 +296,7 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 			UInt32 nparam = 0;
 			GS::Array<GS::UniString> params;
 			nparam = StringSplt(paramName, ";", params);
-			if (nparam == 0) rule.syncdirection = 0;
+			if (nparam == 0) rule.syncdirection = SYNC_NO;
 			if (nparam > 0) rule.paramName = params[0];
 			if (nparam > 1) {
 				for (UInt32 j = 1; j < nparam; j++) {
@@ -293,7 +310,7 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 					rule.ignorevals.Push(ignoreval);
 				}
 			}
-			if (rule.syncdirection>0) {
+			if (rule.syncdirection != SYNC_NO) {
 				syncRules.Push(rule);
 			}
 		}
@@ -339,7 +356,7 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, AP
 	API_Property propertyfrom;
 	err = GetPropertyByName(elemGuid, syncRule.paramName, propertyfrom);
 	if (err == NoError) {
-		if (syncRule.syncdirection == 1) {
+		if (syncRule.syncdirection == SYNC_FROM) {
 			if (!SyncCheckIgnoreVal(syncRule, propertyfrom)) {
 				err = WriteProp2Prop(elemGuid, propertyfrom, property);
 			}
@@ -347,9 +364,54 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, AP
 				err = APIERR_MISSINGCODE; // Игнорируем значение
 			}
 		}
-		if (syncRule.syncdirection == 2) {
+		if (syncRule.syncdirection == SYNC_TO) {
 			if (!SyncCheckIgnoreVal(syncRule, property)) {
 				err = WriteProp2Prop(elemGuid, property, propertyfrom);
+			}
+			else {
+				err = APIERR_MISSINGCODE; // Игнорируем значение
+			}
+		}
+	}
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Запись значения IFC свойства в другое свойство
+// -----------------------------------------------------------------------------
+GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, API_Property& property)
+{
+	GSErrCode	err = NoError;
+	API_IFCProperty propertyfrom;
+	err = GetIFCPropertyByName(elemGuid, syncRule.paramName, propertyfrom);
+	if (err == NoError) {
+		GS::UniString param_string = "";
+		GS::Int32 param_int = 0;
+		bool param_bool = false;
+		double param_real = 0;
+		if (propertyfrom.head.propertyType == API_IFCPropertySingleValueType) {
+			switch (propertyfrom.singleValue.nominalValue.value.primitiveType)
+			{
+			case API_IFCPropertyAnyValueStringType:
+				param_string = propertyfrom.singleValue.nominalValue.value.stringValue;
+				param_bool = (param_string.GetLength() > 0);
+				break;
+			case API_IFCPropertyAnyValueRealType:
+				param_real = round(propertyfrom.singleValue.nominalValue.value.doubleValue * 1000) / 1000;
+				if (propertyfrom.singleValue.nominalValue.value.doubleValue - param_real > 0.001) param_real += 0.001;
+				param_int = (GS::Int32)param_real;
+				if (param_int / 1 < param_real) param_int += 1;
+				param_string = GS::UniString::Printf("%.3f", param_real);
+				break;
+			default:
+				break;
+			}
+		}
+		if (param_real > 0) param_bool = true;
+		// Реализовано только чтение, чтоб не сбивать с толку штатный транслятор
+		if (syncRule.syncdirection == SYNC_FROM) {
+			if (!SyncCheckIgnoreVal(syncRule, propertyfrom)) {
+				err = WriteProp(elemGuid, property, param_string, param_int, param_bool, param_real);
 			}
 			else {
 				err = APIERR_MISSINGCODE; // Игнорируем значение
@@ -380,7 +442,7 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Pro
 	GS::Int32 param_int = 0;
 	bool param_bool = false;
 	double param_real = 0;
-	if (syncRule.syncdirection == 1) {
+	if (syncRule.syncdirection == SYNC_FROM) {
 		if (GetLibParam(elemGuid, syncRule.paramName, param_string, param_int, param_bool, param_real))
 		{
 			if (!SyncCheckIgnoreVal(syncRule, param_string)) {
@@ -394,7 +456,7 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Pro
 			err = APIERR_MISSINGCODE; // Параметр не найден
 		}
 	}
-	if (syncRule.syncdirection == 2) {
+	if (syncRule.syncdirection == SYNC_TO) {
 		if (!SyncCheckIgnoreVal(syncRule, property)) {
 			err = WriteProp2Param(elemGuid, syncRule.paramName, property);
 		}
@@ -712,5 +774,18 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property) 
 		GS::UniString val = PropertyTestHelpers::ToString(property);
 		ignore_flag = SyncCheckIgnoreVal(syncRule, val);
 	}
+	return ignore_flag;
+}
+
+// -----------------------------------------------------------------------------
+// Проверяем - содержит ли свойство игнорируемые значеения
+// -----------------------------------------------------------------------------
+bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_IFCProperty& property) {
+	bool ignore_flag = false;
+	// TODO добавить игнорируемые значения для IFC
+	//if (syncRule.ignorevals.GetSize() > 0) {
+	//	GS::UniString val = PropertyTestHelpers::ToString(property);
+	//	ignore_flag = SyncCheckIgnoreVal(syncRule, val);
+	//}
 	return ignore_flag;
 }

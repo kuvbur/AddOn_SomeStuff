@@ -17,7 +17,7 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 //					Sum{*имя свойства-значения*; *имя свойства-критерия*}
 // 2. Собираем правила суммирования
 // 3. Для каждого правила отбираем элементы
-// 4. Средни них ищем уни кальные значения
+// 4. Средни них ищем уникальные значения
 // 5. Записываем их через разделитель
 // TODO Попробовать сделать диапазоны 1...10 и т.д.
 // -----------------------------------------------------------------------------------------------------------------------
@@ -103,18 +103,23 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 		GS::UniString paramName = description_string.GetSubstring('{', '}', 0);
 		paramName.ReplaceAll("Property:", "");
 		int nparam = StringSplt(paramName, ";", partstring);
-		if (nparam < 2) return false;
 		// Ищём определение свойства-значения
 		err = GetPropertyDefinitionByName(elemGuid, partstring[0], value);
 		if (err != NoError) return false;
-		paramtype.value = value;
-		// Ищём определение свойства-критерия
-		err = GetPropertyDefinitionByName(elemGuid, partstring[1], criteria);
-		if (err != NoError) return false;
-		paramtype.criteria = criteria;
-		//Если дошли сюда - то уже всё хорошо. Отметим этот момент
 		flag = true;
+		paramtype.value = value;
 		paramtype.position = definition.guid;
+		// По типу данных свойства определим тим суммирования
+		// Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
+		paramtype.sum_type = 0;
+		if (definition.valueType == API_PropertyStringValueType) paramtype.sum_type = TextSum;
+		if (definition.valueType == API_PropertyRealValueType) paramtype.sum_type = NumSum;
+		if (!paramtype.sum_type) return false;
+		// Ищём определение свойства-критерия
+		if (nparam > 1) {
+			err = GetPropertyDefinitionByName(elemGuid, partstring[1], criteria);
+			if (err == NoError) paramtype.criteria = criteria;
+		}
 		// Если задан и разделитель - пропишем его
 		if (nparam == 3) delimetr = partstring[3].ToCStr().Get();
 		paramtype.delimetr = delimetr;
@@ -125,15 +130,14 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 	return flag;
 } // ReNumRule
 
-
 GSErrCode Sum_OneRule(const SumRule& rule) {
 	GSErrCode							err = NoError;
 	GS::Array<SumElement>				elemArray = rule.elemts;
 	GS::Array<API_PropertyDefinition>	definitions;
 	SumCriteria							criteriaList;
 	GS::UniString delimetr = GS::UniString(rule.delimetr.c_str());
-	definitions.Push(rule.criteria);
 	definitions.Push(rule.value);
+	if (rule.criteria.guid != APINULLGuid) definitions.Push(rule.criteria);
 	// Прочитаем значения свойств значения и критерия
 	for (UInt32 i = 0; i < elemArray.GetSize(); i++) {
 		GS::Array<API_Property>  properties;
@@ -142,11 +146,28 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 			msg_rep("ReNumOneRule", "ACAPI_Element_GetPropertyValues", err, elemArray[i].guid);
 		}
 		else {
-			GS::UniString val = PropertyTestHelpers::ToString(properties[1]);
-			if (!CheckIgnoreVal(rule.ignore_val, val)) {
-				elemArray[i].criteria = PropertyTestHelpers::ToString(properties[0]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
-				elemArray[i].value = val.ToCStr(0, MaxUSize, CC_Cyrillic).Get();
-				criteriaList[elemArray[i].criteria].inx.Push(i);
+			if (rule.sum_type == TextSum) {
+				GS::UniString val = PropertyTestHelpers::ToString(properties[0]);
+				if (!CheckIgnoreVal(rule.ignore_val, val)) {
+					elemArray[i].string_value = val.ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+					if (rule.criteria.guid != APINULLGuid) {
+						elemArray[i].criteria = PropertyTestHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+						criteriaList[elemArray[i].criteria].inx.Push(i);
+					}
+					else {
+						criteriaList["all"].inx.Push(i);
+					}
+				}
+			}
+			if (rule.sum_type == NumSum) {
+				elemArray[i].num_value = properties[0].value.singleVariant.variant.doubleValue;
+				if (rule.criteria.guid != APINULLGuid) {
+					elemArray[i].criteria = PropertyTestHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+					criteriaList[elemArray[i].criteria].inx.Push(i);
+				}
+				else {
+					criteriaList["all"].inx.Push(i);
+				}
 			}
 		}
 	}
@@ -157,13 +178,13 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 		GS::Array<UInt32> eleminpos = i->second.inx;
 		for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
 			UInt32 elem_inx = eleminpos[j];
-			valueList[elemArray[elem_inx].value];
+			valueList[elemArray[elem_inx].string_value];
 		}
 		GS::UniString param_string;
 		for (SumValues::iterator k = valueList.begin(); k != valueList.end(); ++k) {
 			std::string s = k->first;
 			GS::UniString unis = GS::UniString(s.c_str());
-			if (param_string.IsEmpty()){
+			if (param_string.IsEmpty()) {
 				param_string = unis;
 			}
 			else {
@@ -185,5 +206,3 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 	}
 	return err;
 }
-
-
