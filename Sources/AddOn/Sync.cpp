@@ -9,6 +9,7 @@
 #define SYNC_MATERIAL 3
 #define SYNC_INFO 4
 #define SYNC_IFC 5
+#define SYNC_RESET 6
 
 #define SYNC_NO 0
 #define SYNC_FROM 1
@@ -186,13 +187,23 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		GS::Array<API_PropertyDefinition> definitions;
 		err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
 		if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
-		if (SyncState(elemGuid, definitions)) { // Проверяем - не отключена ли синхронизация у данного объекта
-			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-				err = SyncOneProperty(elemGuid, elementType, definitions[i]);
+		if (err == NoError) {
+			if (SyncState(elemGuid, definitions)) { // Проверяем - не отключена ли синхронизация у данного объекта
+				for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+					err = SyncOneProperty(elemGuid, elementType, definitions[i]);
+				}
 			}
 		}
 	}
 }
+
+//API_PropertyDefinition definition_to_reset;
+//if (SyncResetState(elemGuid, definitions, definition_to_reset)) {
+//	err = ACAPI_Element_GetPropertyValue(elemGuid, definition.guid, property);
+//	property.isDefault = false;
+//	err = ACAPI_Element_SetProperty(elemGuid, property);
+//	if (err != NoError) msg_rep("WriteProp", "ACAPI_Element_SetProperty", err, elemGuid);
+//}
 
 // --------------------------------------------------------------------
 // Синхронизация правил для одного свойства
@@ -317,6 +328,22 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 	}
 	if (syncRules.GetSize() == 0) flag_sync = false;
 	return flag_sync;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+//Ищет свойство со значение "Sync_reset"
+// Если оно есть - значение свойства нужно сборосить к значению по умолчанию
+//--------------------------------------------------------------------------------------------------------------------------
+bool SyncResetState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, API_PropertyDefinition& definition_to_reset) {
+	GSErrCode	err = NoError;
+	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+		GS::UniString description_string = definitions[i].description;
+		if (description_string.Contains("Sync_reset") && description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
+			definition_to_reset = definitions[i];
+			return true;
+		}
+	}
+	return false;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
