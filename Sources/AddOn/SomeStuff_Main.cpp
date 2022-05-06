@@ -23,6 +23,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 	case APINotify_Open:
 		LoadSyncSettingsFromPreferences(syncSettings);
 		MenuSetState(syncSettings);
+		Do_ElementMonitor(syncSettings.syncMon);
 		break;
 	case APINotify_Close:
 	case APINotify_Quit:
@@ -102,12 +103,13 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 		case AddOnMenuID:
 			switch (menuParams->menuItemRef.itemIndex) {
 				case MonAll_CommandID:
-					#ifndef PK_1 // Если компилировать с определённой PK_1 то мониторинг не отключается никогда
-						syncSettings.syncMon = !syncSettings.syncMon;
-						syncSettings.syncAll = false;
-						Do_ElementMonitor(syncSettings.syncMon);
-						SyncAndMonAll(syncSettings);
-					#endif
+					syncSettings.syncMon = !syncSettings.syncMon;
+					syncSettings.syncAll = false;
+#ifdef PK_1
+					syncSettings.syncMon = true;
+#endif
+					Do_ElementMonitor(syncSettings.syncMon);
+					SyncAndMonAll(syncSettings);
 					break;
 				case SyncAll_CommandID:
 					t_flag = syncSettings.syncMon;

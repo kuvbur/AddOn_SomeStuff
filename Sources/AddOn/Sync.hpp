@@ -48,6 +48,8 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API
 
 bool SyncString(GS::UniString& description_string, GS::Array<SyncRule>& syncRules);
 
+bool SyncResetState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, API_PropertyDefinition& definition_to_reset);
+
 bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions);
 
 GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, API_Property& property);
