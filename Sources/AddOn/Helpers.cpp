@@ -129,12 +129,9 @@ bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&
 bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettings) {
 	// Проверяем - зарезервирован ли объект
 	if (objectId == APINULLGuid) return false;
-#ifdef PK_1
-	DeleteElementUserData(objectId);
-#endif
-	if (!ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) return false;
-	if (!ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) return false;
+	if (!ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) return false;
+	if (!ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) return false;
 	// Проверяем - на находится ли объект в модуле
 	API_Elem_Head	tElemHead;
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
@@ -401,6 +398,19 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString,
 	}
 	if (elemGuid != APINULLGuid) {
 		error_type = "GUID: " + APIGuid2GSGuid(elemGuid).ToUniString() + " " + error_type;
+		API_Elem_Head	elem_head = {};
+		elem_head.guid = elemGuid;
+		if (ACAPI_Element_GetHeader(&elem_head) == NoError) {
+			GS::UniString elemName;
+			if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elem_head.typeID, &elemName) == NoError)
+				error_type = error_type + " type:" + elemName;
+			API_Attribute layer;
+			BNZeroMemory(&layer, sizeof(API_Attribute));
+			layer.header.typeID = API_LayerID;
+			layer.header.index = elem_head.layer;
+			if (ACAPI_Attribute_Get(&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
+
+		}
 	}
 	GS::UniString msg = modulename + ": " +  reportString + " " + error_type;
 	ACAPI_WriteReport(msg, false);
@@ -1479,6 +1489,9 @@ bool operator== (const API_Property& lhs, const API_Property& rhs)
 	}
 }
 
+// -----------------------------------------------------------------------------
+// Удаление данных аддона из элемента
+// -----------------------------------------------------------------------------
 void DeleteElementUserData(const API_Guid& elemguid) {
 	API_Elem_Head	tElemHead = {};
 	tElemHead.guid = elemguid;
@@ -1506,6 +1519,9 @@ void DeleteElementUserData(const API_Guid& elemguid) {
 	}
 }
 
+// -----------------------------------------------------------------------------
+// Удаление данных аддона из всех элементов
+// -----------------------------------------------------------------------------
 void DeleteElementsUserData()
 {
 	GSErrCode err = NoError;
@@ -1520,7 +1536,7 @@ void DeleteElementsUserData()
 		msg_rep("Del addon obj", intString, NoError, APINULLGuid);
 	}
 	GS::Array<API_Guid> elemList;
-	ACAPI_Element_GetElemList(API_ZombieElemID, &elemList);
+	ACAPI_Element_GetElemList(API_ZombieElemID, &elemList, APIFilt_IsEditable | APIFilt_HasAccessRight);
 	USize ng = elemList.GetSize();
 	if (err == NoError) {
 		ACAPI_CallUndoableCommand("Delete Element Set",
