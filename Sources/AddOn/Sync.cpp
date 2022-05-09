@@ -3,6 +3,7 @@
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
 #include	"Helpers.hpp"
+#include	"ResetProperty.hpp"
 
 #define SYNC_GDL 1
 #define SYNC_PROPERTY 2
@@ -27,23 +28,23 @@ void SyncAndMonAll(const SyncSettings& syncSettings) {
 	bool flag_chanel = false;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings);
-		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings);
-		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings);
-		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings);
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings);
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings);
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings);
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings);
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings);
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings);
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings);
-		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings);
+		bool skip_sinc = ResetAllProperty();
+		if (!skip_sinc) {
+			if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings);
+			if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings);
+			if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings);
+			if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings);
+			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings);
+			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings);
+			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings);
+			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings);
+			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings);
+			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings);
+			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings);
+			if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings);
+		}
 		return NoError;
 		});
-#ifdef PK_1
-	DeleteElementsUserData();
-#endif // DEBUG
 }
 
 // -----------------------------------------------------------------------------
@@ -54,7 +55,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	GSErrCode			err = NoError;
 	GS::Array<API_Guid>	guidArray;
 	bool flag_chanel = false;
-	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable);
+	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight);
 	if (!guidArray.IsEmpty()) {
 		if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle) == NoError) {
 			nLib += 1;
@@ -64,6 +65,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 		}
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (syncSettings.syncAll) {
+				// Если попадается навесная стена - обработаем также входящие в неё панели
 				if (elementType == API_CurtainWallID) {
 					GS::Array<API_Guid> panelGuid;
 					err = GetCWPanelsForCWall(guidArray[i], panelGuid);
@@ -197,14 +199,6 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	}
 }
 
-//API_PropertyDefinition definition_to_reset;
-//if (SyncResetState(elemGuid, definitions, definition_to_reset)) {
-//	err = ACAPI_Element_GetPropertyValue(elemGuid, definition.guid, property);
-//	property.isDefault = false;
-//	err = ACAPI_Element_SetProperty(elemGuid, property);
-//	if (err != NoError) msg_rep("WriteProp", "ACAPI_Element_SetProperty", err, elemGuid);
-//}
-
 // --------------------------------------------------------------------
 // Синхронизация правил для одного свойства
 // --------------------------------------------------------------------
@@ -266,6 +260,10 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API
 bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRules) {
 	bool flag_sync = false;
 	if (description_string.IsEmpty()) {
+		return flag_sync;
+	}
+	// Если указан сброс данных - синхронизировать не будем
+	if (description_string.Contains("Sync_reset")) {
 		return flag_sync;
 	}
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
@@ -330,21 +328,6 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 	return flag_sync;
 }
 
-//--------------------------------------------------------------------------------------------------------------------------
-//Ищет свойство со значение "Sync_reset"
-// Если оно есть - значение свойства нужно сборосить к значению по умолчанию
-//--------------------------------------------------------------------------------------------------------------------------
-bool SyncResetState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, API_PropertyDefinition& definition_to_reset) {
-	GSErrCode	err = NoError;
-	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-		GS::UniString description_string = definitions[i].description;
-		if (description_string.Contains("Sync_reset") && description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
-			definition_to_reset = definitions[i];
-			return true;
-		}
-	}
-	return false;
-}
 
 //--------------------------------------------------------------------------------------------------------------------------
 //Ищет свойство со значение "Sync_flag" в описании и по значению определяет - нужно ли синхронизировать параметры элемента
