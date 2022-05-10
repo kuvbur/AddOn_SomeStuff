@@ -28,8 +28,7 @@ void SyncAndMonAll(const SyncSettings& syncSettings) {
 	bool flag_chanel = false;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		bool skip_sinc = ResetAllProperty();
-		if (!skip_sinc) {
+		if (!ResetAllProperty()) { //Если ну требуется сброс свойств - синхронизируем
 			if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings);
 			if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings);
 			if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings);
