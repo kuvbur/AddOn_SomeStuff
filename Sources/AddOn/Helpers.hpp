@@ -79,6 +79,7 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 GSErrCode AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings);
 bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&  syncSettings);
 bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings);
+GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);

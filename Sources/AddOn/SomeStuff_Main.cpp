@@ -30,6 +30,8 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
 		break;
+	case APINotify_ChangeWindow:
+		break;
 	default:
 		break;
 	}
@@ -50,7 +52,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	if (!IsElementEditable(elemType->elemHead.guid, syncSettings)) {
 		return err;
 	}
-
 	bool	sync_prop = false;
 	switch (elemType->notifID) {
 	case APINotifyElement_New:
@@ -169,7 +170,7 @@ GSErrCode __ACENV_CALL Initialize (void)
 	LoadSyncSettingsFromPreferences(syncSettings);
 	MenuSetState(syncSettings);
 	Do_ElementMonitor(syncSettings.syncMon);
-	ACAPI_Notify_CatchProjectEvent(APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
+	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }

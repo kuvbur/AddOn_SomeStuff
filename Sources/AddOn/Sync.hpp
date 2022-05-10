@@ -40,21 +40,23 @@ GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& sync
 
 void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
+void SyncGetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+
 void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
 GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition);
 
-bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_Property property, SyncRule syncRule);
+bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition & definition, SyncRule syncRule);
 
 bool SyncString(GS::UniString& description_string, GS::Array<SyncRule>& syncRules);
 
 bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions);
 
-GSErrCode SyncPropAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, API_Property& property);
+GSErrCode SyncPropAndProp(const API_Guid & elemGuid_from, const API_Guid & elemGuid_to, const SyncRule& syncRule, const API_PropertyDefinition & definition);
 
-GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, API_Property& property);
+GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition & definition);
 
-GSErrCode SyncParamAndProp(const API_Guid& elemGuid, SyncRule& syncRule, API_Property& property);
+GSErrCode SyncParamAndProp(const API_Guid & elemGuid_from, const API_Guid & elemGuid_to, SyncRule& syncRule, const API_PropertyDefinition & definition);
 
 GSErrCode SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions);
 
@@ -64,7 +66,7 @@ void SyncPropAndMatReplaceValue(const API_Property& property, const GS::UniStrin
 
 GSErrCode SyncPropAndMatWriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring, UInt32& n);
 
-GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, API_Property property);
+GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, const API_PropertyDefinition & definition);
 
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val);
 
