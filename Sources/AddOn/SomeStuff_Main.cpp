@@ -31,6 +31,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 		ACAPI_Notify_InstallElementObserver(nullptr);
 		break;
 	case APINotify_ChangeWindow:
+		param = 1;
 		break;
 	default:
 		break;
@@ -49,7 +50,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	SyncSettings syncSettings(false, false, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
 	if (!syncSettings.syncMon) return err;
-	if (!IsElementEditable(elemType->elemHead.guid, syncSettings)) {
+	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) {
 		return err;
 	}
 	bool	sync_prop = false;
@@ -72,8 +73,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		if (err == APIERR_LINKEXIST)
 			err = NoError;
 		if (err == NoError) {
-			SyncData(elemType->elemHead.guid, syncSettings);
-			SyncRelationsElement(elemType->elemHead.guid, syncSettings);
+			if (elemType->elemHead.typeID == API_DimensionID) {
+				DimAutoRoundSel(elemType->elemHead.guid, syncSettings);
+			}
+			else {
+				SyncData(elemType->elemHead.guid, syncSettings);
+				SyncRelationsElement(elemType->elemHead.guid, syncSettings);
+			}
 		}
 	}
 	return err;
@@ -117,11 +123,13 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 					if (t_flag) syncSettings.syncMon = false;
 					syncSettings.syncAll = true;
 					SyncAndMonAll(syncSettings);
+					DimAutoRoundAll(syncSettings);
 					syncSettings.syncAll = false;
 					if (t_flag) syncSettings.syncMon = true;
 					break;
 				case SyncSelect_CommandID:
 					SyncSelected(syncSettings);
+					DimAutoRoundSelected(syncSettings);
 					break;
 				case wallS_CommandID:
 					syncSettings.wallS = !syncSettings.wallS;
