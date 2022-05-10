@@ -120,6 +120,7 @@ bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&
 		elementType == API_CurtainWallID ||
 		elementType == API_CurtainWallPanelID) && syncSettings.objS) flag_type = true;
 	if ((elementType == API_WindowID || elementType == API_DoorID || elementType == API_SkylightID) && syncSettings.widoS) flag_type = true;
+	if (elementType == API_DimensionID) flag_type = true;
 	return flag_type;
 }
 
@@ -638,15 +639,15 @@ GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramNa
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
-GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyfrom, API_Property& property)
+GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_from, API_Property& property)
 {
 	GSErrCode	err = NoError;
 	bool write = true;
 	// Есть ли вычисленное/доступное значение?
 #if defined(AC_22) || defined(AC_23)
-	bool isnoteval = (!propertyfrom.isEvaluated);
+	bool isnoteval = (!property_from.isEvaluated);
 #else
-	bool isnoteval = (propertyfrom.status != API_Property_HasValue);
+	bool isnoteval = (property_from.status != API_Property_HasValue);
 #endif
 	// Свойство недоступно или содержит невычисленное значение
 	if (isnoteval && write) {
@@ -654,13 +655,13 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 		write = false;
 	}
 	// Совпадают ли типы?
-	if (propertyfrom.definition.valueType != property.definition.valueType && write) {
+	if (property_from.definition.valueType != property.definition.valueType && write) {
 		if (property.definition.valueType == API_PropertyStringValueType) {
 			GS::UniString val;
 #ifdef AC_25
-			err = ACAPI_Property_GetPropertyValueString(propertyfrom, &val);
+			err = ACAPI_Property_GetPropertyValueString(property_from, &val);
 #else
-			val = PropertyTestHelpers::ToString(propertyfrom);
+			val = PropertyTestHelpers::ToString(property_from);
 #endif
 			if (property.value.singleVariant.variant.uniStringValue != val) {
 				property.value.singleVariant.variant.uniStringValue = val;
@@ -670,18 +671,18 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 			}
 		}
 		else {
-			msg_rep("WriteProp2Prop", "Diff type " + propertyfrom.definition.name + "<->" + property.definition.name, NoError, elemGuid);
+			msg_rep("WriteProp2Prop", "Diff type " + property_from.definition.name + "<->" + property.definition.name, NoError, elemGuid);
 			err = APIERR_MISSINGCODE;
 			write = false;
 		}
 	}
 	// Если нужно записать список текста в текст
-	if (property.definition.collectionType != propertyfrom.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
+	if (property.definition.collectionType != property_from.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
 		GS::UniString val;
 #ifdef AC_25
-		err = ACAPI_Property_GetPropertyValueString(propertyfrom, &val);
+		err = ACAPI_Property_GetPropertyValueString(property_from, &val);
 #else
-		val = PropertyTestHelpers::ToString(propertyfrom);
+		val = PropertyTestHelpers::ToString(property_from);
 #endif
 		if (property.value.singleVariant.variant.uniStringValue != val) {
 			property.value.singleVariant.variant.uniStringValue = val;
@@ -691,9 +692,9 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 		}
 	}
 	// Обычное копирование
-	if (property.definition.collectionType == propertyfrom.definition.collectionType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
-		if (property.value.singleVariant != propertyfrom.value.singleVariant) {
-			property.value.singleVariant = propertyfrom.value.singleVariant;
+	if (property.definition.collectionType == property_from.definition.collectionType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
+		if (property.value.singleVariant != property_from.value.singleVariant) {
+			property.value.singleVariant = property_from.value.singleVariant;
 		}
 		else {
 			write = false; //Значения одинаковые
@@ -703,6 +704,21 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyf
 		property.isDefault = false;
 		err = ACAPI_Element_SetProperty(elemGuid, property);
 		if (err != NoError) msg_rep("WriteProp2Prop", "ACAPI_Element_SetProperty", err, elemGuid);
+	}
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Запись значения свойства в параметры объекта
+// Пока записывает только GLOB_ID
+// -----------------------------------------------------------------------------
+GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property) {
+	GSErrCode		err = NoError;
+	if (paramName.ToLowerCase() == "id") {
+		GS::UniString val = PropertyTestHelpers::ToString(property);
+		err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
+		if (err != NoError) msg_rep("WriteProp2Param - ID", "ACAPI_Database(APIDb_ChangeElementInfoStringID", err, elemGuid);
+		return err;
 	}
 	return err;
 }
