@@ -5,6 +5,7 @@
 #include	"StringConversion.hpp"
 #include	"ResourceIds.hpp"
 #include	"SyncSettings.hpp"
+#include	"calculator.hpp"
 
 #define ELEMSTR_LEN				256
 #define	CURR_ADDON_VERS			0x0006
@@ -78,7 +79,7 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
 GSErrCode AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings);
 bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&  syncSettings);
-bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings);
+bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
 GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);

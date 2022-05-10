@@ -77,7 +77,7 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid) {
 GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings)
 {
 	GSErrCode		err = NoError;
-	if (IsElementEditable(objectId, syncSettings)) {
+	if (IsElementEditable(objectId, syncSettings, true)) {
 
 #ifdef AC_22
 		API_Elem_Head elemHead;
@@ -127,7 +127,7 @@ bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
-bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettings) {
+bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettings, const bool needCheckElementType) {
 	// Проверяем - зарезервирован ли объект
 	if (objectId == APINULLGuid) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) return false;
@@ -138,7 +138,7 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettin
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = objectId;
 	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
-	if (!SyncCheckElementType(tElemHead.typeID, syncSettings)) return false;
+	if (needCheckElementType && !SyncCheckElementType(tElemHead.typeID, syncSettings)) return false;
 	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
 	return true;
 }

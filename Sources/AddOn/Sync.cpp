@@ -198,7 +198,7 @@ void SyncGetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& sube
 // --------------------------------------------------------------------
 void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode	err = NoError;
-	if (!IsElementEditable(elemGuid, syncSettings))
+	if (!IsElementEditable(elemGuid, syncSettings, true))
 		return;
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
