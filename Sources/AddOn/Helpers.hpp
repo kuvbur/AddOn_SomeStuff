@@ -144,6 +144,8 @@ void DeleteElementUserData(const API_Guid& elemguid);
 
 void DeleteElementsUserData();
 
+void UnhideUnlockAllLayer(void);
+
 template <typename T>
 bool operator!= (const T& lhs, const T& rhs)
 {

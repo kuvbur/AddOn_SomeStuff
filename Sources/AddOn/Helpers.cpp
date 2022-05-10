@@ -1548,3 +1548,38 @@ void DeleteElementsUserData()
 			});
 	}
 }
+
+void UnhideUnlockAllLayer(void)
+{
+	API_Attribute		attrib;
+	API_AttributeIndex	count, i;
+	GSErrCode			err;
+	err = ACAPI_Attribute_GetNum(API_LayerID, &count);
+	if (err != NoError) msg_rep("UnhideUnlockAllLayer", "ACAPI_Attribute_GetNum", err, APINULLGuid);
+	if (err == NoError) {
+		for (i = 2; i <= count; i++) {
+			BNZeroMemory(&attrib, sizeof(API_Attribute));
+			attrib.header.typeID = API_LayerID;
+			attrib.header.index = i;
+			err = ACAPI_Attribute_Get(&attrib);
+			if (err != NoError) msg_rep("UnhideUnlockAllLayer", "ACAPI_Attribute_Get", err, APINULLGuid);
+			if (err == NoError) {
+				bool flag_write = false;
+				if (attrib.header.flags & APILay_Hidden) {
+					attrib.layer.head.flags |= !APILay_Hidden;
+					flag_write = true;
+				}
+				if (attrib.header.flags & APILay_Locked) {
+					attrib.layer.head.flags |= !APILay_Locked;
+					flag_write = true;
+				}
+				if (flag_write) {
+					err = ACAPI_Attribute_Modify(&attrib, NULL);
+					if (err != NoError) msg_rep("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
+				}
+
+			}
+		}
+	}
+	return;
+}
