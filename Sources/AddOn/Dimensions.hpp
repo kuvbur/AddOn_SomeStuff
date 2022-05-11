@@ -1,9 +1,10 @@
 #pragma once
-#if !defined (DIM_HPP)
+#ifndef DIM_HPP
 #define	DIM_HPP
 #include	"APICommon.h"
 #include	"DG.h"
 #include	"SyncSettings.hpp"
+#include	"Helpers.hpp"
 
 typedef struct {
 	short	pen_original;
@@ -11,6 +12,7 @@ typedef struct {
 	UInt32	round_value;
 	bool	flag_change;
 	GS::UniString expression;
+	ParamDict paramDict;
 } DimRule;
 
 typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
@@ -27,7 +29,7 @@ void DimAutoRoundSel(const API_Guid& elemGuid, const SyncSettings& syncSettings)
 
 GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules);
 
-bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, UInt32& round_value);
+bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule);
 
 GSErrCode DimAddGrid(void);
 
