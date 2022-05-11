@@ -575,7 +575,6 @@ GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::Un
 		part = outstring.GetSubstring('%', '%', 0);
 		part = part.ToLowerCase();
 		//Обработка количества нулей и единиц измерения
-		// TODO Поиск вхождения printf формата
 		GS::UniString formatstring = "";
 		if (part.Contains(".")) {
 			GS::Array<GS::UniString> partstring;

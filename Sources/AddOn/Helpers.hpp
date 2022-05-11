@@ -1,4 +1,5 @@
-#if !defined (HELPERS_HPP)
+#pragma once
+#ifndef HELPERS_HPP
 #define	HELPERS_HPP
 #include	"APICommon.h"
 #include	"DG.h"
@@ -63,7 +64,26 @@ typedef struct {
 	GS::Array <UInt32>	inx;
 } SortInx;
 
-//typedef GS::HashTable<GS::UniString, API_PropertyDefinition> Prop;
+// Хранение данных параметра
+// type - API_VariantType (как у свойств)
+// name - имя для поиска
+// uniStringValue, intValue, boolValue, doubleValue - значения
+// canCalculate - можно ли использовать в математических вычислениях
+typedef struct {
+	API_VariantType type;
+	GS::UniString name;
+	GS::UniString uniStringValue;
+	GS::Int32 intValue;
+	bool boolValue = false;
+	double doubleValue = 0.0;
+	bool canCalculate = false;
+} ParamValue;
+
+// Словарь с заранее вычисленными данными для калькулятора
+typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
+
+// Словарь с параметрами для вычисления
+typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 bool is_equal(double x, double y);
 
@@ -90,7 +110,27 @@ bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_El
 bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter);
 GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params);
 bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter);
+
+bool GetParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue);
+
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
+bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue);
+
+bool GetPropertyParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue);
+
+bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter);
+bool ConvParamValue(ParamValue& pvalue, const API_Property& property);
+bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue);
+
+GS::UniString GetFormatString(GS::UniString& paramName);
+API_VariantType GetTypeString(GS::UniString& paramName);
+
+bool GetParamNameDict(const GS::UniString& expression, ParamDict& paramDict);
+bool GetParamValueDict(const API_Guid& elemGuid, const ParamDict& paramDict, ParamDictValue& pdictvalue);
+
+bool ReplaceParamInExpression(const ParamDictValue& pdictvalue, GS::UniString& expression);
+bool EvalExpression(GS::UniString& expression);
+
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
 void CallOnSelectedElemSettings(void(*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel, bool onlyEditable, const SyncSettings& syncSettings);

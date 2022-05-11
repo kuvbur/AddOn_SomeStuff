@@ -1,7 +1,6 @@
 ﻿#include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Dimensions.hpp"
-#include	"Helpers.hpp"
 
 #define DIM_NOCHANGE 0
 #define DIM_HIGHLIGHT_ON 1
@@ -55,8 +54,25 @@ bool DimParsePref(GS::UniString rawrule, DimRule& dimrule) {
 		if (StringSplt(partstring_1[1], ",", partstring_2) > 1) {
 			dimrule.round_value = std::atoi(partstring_2[0].ToCStr());
 			dimrule.pen_rounded = std::atoi(partstring_2[1].ToCStr());
-			if (partstring_2.GetSize() == 3) dimrule.flag_change = (std::atoi(partstring_2[2].ToCStr()) > 0);
-			if (partstring_2.GetSize() == 4) dimrule.expression = partstring_2[3];
+			if (partstring_2.GetSize() == 3) {
+				if (partstring_2[2].Contains("<") && partstring_2[2].Contains(">")) {
+					ParamDict paramDict;
+					GetParamNameDict(partstring_2[2], paramDict);
+					dimrule.paramDict = paramDict;
+					dimrule.expression = partstring_2[2];
+				}
+				else {
+					dimrule.flag_change = (std::atoi(partstring_2[2].ToCStr()) > 0);
+				}
+			}
+			if (partstring_2.GetSize() == 4) {
+				if (partstring_2[3].Contains("<") && partstring_2[3].Contains(">")) {
+					ParamDict paramDict;
+					GetParamNameDict(partstring_2[3], paramDict);
+					dimrule.paramDict = paramDict;
+					dimrule.expression = partstring_2[3];
+				}
+			}
 			return true;
 		}
 	}
@@ -108,6 +124,8 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 	short pen_original = 0;
 	short pen_rounded = 0;
 	bool flag_change_rule = false;
+	ParamDict paramDict;
+	GS::UniString expression = "";
 	ACAPI_ELEMENT_MASK_CLEAR(mask);
 	switch (element.header.typeID) {
 	case API_DimensionID:
@@ -141,7 +159,6 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 		break;
 	}
 	if (pen_dimenstion > 0 && dimrules.ContainsKey(pen_dimenstion)) {
-		round_value = dimrules[pen_original].round_value;
 		pen_rounded = dimrules[pen_original].pen_rounded;
 		flag_change_rule = dimrules[pen_original].flag_change;
 	}
@@ -162,7 +179,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 			GS::UniString content = GS::UniString::Printf("%s", (*memo.dimElems)[k].note.content);
 			API_Guid ref_elemGuid = (*memo.dimElems)[k].base.base.guid;
 			API_NoteContentType contentType = (*memo.dimElems)[k].note.contentType;
-			if (DimParse((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, round_value)) {
+			if (DimParse((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrules[pen_original])) {
 				if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
 				if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
 					flag_write = true;
@@ -206,19 +223,34 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, UInt32& round_value) {
+
+bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule) {
 	flag_change = DIM_NOCHANGE;
 	flag_highlight = DIM_NOCHANGE;
+	UInt32 round_value = dimrule.round_value;
 	double round_valuemm = round_value / 1000.0;
 	if (round_value < 1) round_valuemm = 0.001;
 	Int32 dimValmm_round = DoubleM2IntMM(round(dimVal / round_valuemm) * round_valuemm);
 	double dx = abs(dimValmm_round * 1.0 - dimVal * 1000.0); // Разница в размерах в мм
-	GS::UniString dimVal_txt = GS::UniString::Printf("%d", dimValmm_round);
+	GS::UniString custom_txt = GS::UniString::Printf("%d", dimValmm_round);
 	bool flag_expression = false; //В описании найдена формула
-	if (contentType == API_NoteContent_Custom && content.Contains("<") && content.Contains(">")) {
-		flag_expression = true;
+	if (!dimrule.expression.IsEmpty() ) {
+		ParamDictValue pdictvalue;
+		if (elemGuid != APINULLGuid) GetParamValueDict(elemGuid, dimrule.paramDict, pdictvalue); //Получим значения, если размер привязан к элементу
+		// Добавляем в словарь округлённое значение
+		ParamValue pvalue;
+		ConvParamValue(pvalue, "MeasuredValue", dimValmm_round);
+		pdictvalue.Add(pvalue.name, pvalue);
+		GS::UniString expression = dimrule.expression;
+		// Заменяем вычисленное
+		if (ReplaceParamInExpression(pdictvalue, expression)) {
+			// Вычисляем значения
+			if (EvalExpression(expression)) {
+				custom_txt = expression;
+				flag_expression = true;
+			}
+		}
 	}
-	GS::UniString custom_txt = dimVal_txt;
 	//Если указано округление до нуля - просто подсветим кривые размеры
 	if (round_value < 1) {
 		if (contentType == API_NoteContent_Custom) flag_change = DIM_CHANGE_OFF;
@@ -257,6 +289,8 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) content = custom_txt;
 	return (flag_change != DIM_NOCHANGE || flag_highlight != DIM_NOCHANGE);
 }
+
+
 
 GSErrCode DimAddGrid(void) {
 	GSErrCode err = NoError;

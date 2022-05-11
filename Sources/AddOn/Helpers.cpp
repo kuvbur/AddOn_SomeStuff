@@ -1031,6 +1031,9 @@ bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_El
 	return false;
 }
 
+// -----------------------------------------------------------------------------
+// Поиск параметра GDL объекта по описанию или имени
+// -----------------------------------------------------------------------------
 bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter) {
 	if (elem_head.typeID != API_ObjectID &&
 		elem_head.typeID != API_WindowID &&
@@ -1066,6 +1069,7 @@ bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem
 	return true;
 }
 
+
 GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params) {
 	API_ElemTypeID	elemType;
 	API_Guid		elemGuid;
@@ -1076,6 +1080,13 @@ GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& para
 	return err;
 }
 
+// -----------------------------------------------------------------------------
+// Получение координат объекта
+// symb_pos_x , symb_pos_y, symb_pos_z
+// Для панелей навесной стены возвращает центр панели
+// Для колонны или объекта - центр колонны и отм. низа
+// Для зоны - центр зоны (без отметки, symb_pos_z = 0)
+// -----------------------------------------------------------------------------
 bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter) {
 	API_Element element = {};
 	element.header = elem_head;
@@ -1114,10 +1125,46 @@ bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_hea
 }
 
 // -----------------------------------------------------------------------------
-// Получить значение параметра с конвертацией типа данных
-// TODO добавить обработку массивов
+// Получить значение параметра с конвертацией типа данных OLD
 // -----------------------------------------------------------------------------
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
+	ParamValue pvalue;
+	pvalue.name = paramName;
+	if (GetLibParam(elemGuid, paramName, pvalue)) {
+		param_string = pvalue.uniStringValue;
+		param_int = pvalue.intValue;
+		param_bool = pvalue.canCalculate;
+		param_real = pvalue.doubleValue;
+		return true;
+	}
+	return false;
+}
+
+// -----------------------------------------------------------------------------
+// Получить значение свойства или параметра в ParamValue
+// -----------------------------------------------------------------------------
+bool GetParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue) {
+	GS::UniString& paramName_t = paramName.ToLowerCase();
+	paramName_t.ReplaceAll("{", "");
+	paramName_t.ReplaceAll("}", "");
+	GS::UniString formatstring = GetFormatString(paramName_t);
+	API_VariantType type = GetTypeString(paramName_t);
+	if (paramName_t.Contains("property:")) {
+		paramName_t.ReplaceAll("property:", "");
+		bool flag_find = GetPropertyParam(elemGuid, paramName_t, pvalue);
+		return flag_find;
+	}
+	else {
+		bool flag_find = GetPropertyParam(elemGuid, paramName_t, pvalue);
+		return flag_find;
+	}
+	return false;
+}
+
+// -----------------------------------------------------------------------------
+// Получить значение параметра по его имени или описанию в ParamValue
+// -----------------------------------------------------------------------------
+bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue) {
 	GSErrCode		err = NoError;
 	bool			flag_find = false;
 	API_AddParType	nthParameter = {};
@@ -1128,7 +1175,8 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 		BNZeroMemory(&nthParameter, sizeof(API_AddParType));
 		if (paramName.Contains("symb_pos_")) {
 			flag_find = FindLibCoords(paramName, elem_head, nthParameter); //Ищём координаты
-		} else {
+		}
+		else {
 			flag_find = FindGDLParameters(paramName, elem_head, nthParameter); //Ищём пареметры
 		}
 		if (!flag_find) return false;
@@ -1137,10 +1185,47 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 		msg_rep(" GetLibParam", "ACAPI_Element_GetHeader", err, elem_head.guid);
 		return false;
 	}
-	// Что-то нашли. Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
+	flag_find = ConvParamValue(pvalue, nthParameter);
+	return flag_find;
+}
+
+// -----------------------------------------------------------------------------
+// Получить значение свойства по его имени в ParamValue
+// -----------------------------------------------------------------------------
+bool GetPropertyParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue) {
+	API_PropertyDefinition definitions = {};
+	GSErrCode err = GetPropertyDefinitionByName(elemGuid, paramName, definitions);
+	if (err != NoError) {
+		msg_rep("GetParamByName", "GetPropertyDefinitionByName " + paramName, err, elemGuid);
+		return false;
+	}
+	API_Property  property = {};
+	err = ACAPI_Element_GetPropertyValue(elemGuid, definitions.guid, property);
+	if (err != NoError) {
+		msg_rep("GetParamByName", "ACAPI_Element_GetPropertyValue " + definitions.name, err, elemGuid);
+		return false;
+	}
+	bool flag_find = ConvParamValue(pvalue, property);
+	return flag_find;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация параметров библиотечного элемента в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter) {
+	GS::UniString param_string = "";
+	GS::Int32 param_int = 0;
+	double param_real = 0.0;
+	bool param_bool = false;
+	pvalue.canCalculate = false;
+	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
 	if (nthParameter.typeID == APIParT_CString) {
 		param_string = nthParameter.value.uStr;
 		param_bool = (param_string.GetLength() > 0);
+		if (param_bool) {
+			param_int = 1;
+			param_real = 1.0;
+		}
 	}
 	else {
 		param_real = round(nthParameter.value.real * 1000) / 1000;
@@ -1148,7 +1233,7 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 		param_int = (GS::Int32)param_real;
 		if (param_int / 1 < param_real) param_int += 1;
 	}
-	if (param_real > 0) param_bool = true;
+	if (abs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
 	// Если параметр не строковое - определяем текстовое значение конвертацией
 	if (param_string.GetLength() == 0) {
 		API_AttrTypeID attrType = API_ZombieAttrID;
@@ -1156,25 +1241,32 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 		switch (nthParameter.typeID) {
 		case APIParT_Integer:
 			param_string = GS::UniString::Printf("%d", param_int);
+			pvalue.type = API_PropertyIntegerValueType;
 			break;
 		case APIParT_Boolean:
 			if (param_bool) {
 				param_string = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+				param_int = 1;
+				param_real = 1.0;
 			}
 			else {
 				param_string = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
 			}
+			pvalue.type = API_PropertyBooleanValueType;
 			break;
 		case APIParT_Length:
 			param_string = GS::UniString::Printf("%.0f", param_real * 1000);
+			pvalue.type = API_PropertyRealValueType;
 			break;
 		case APIParT_Angle:
 			param_string = GS::UniString::Printf("%.1f", param_real);
+			pvalue.type = API_PropertyRealValueType;
 			break;
 		case APIParT_RealNum:
 			param_string = GS::UniString::Printf("%.3f", param_real);
+			pvalue.type = API_PropertyRealValueType;
 			break;
-		// Для реквезитов в текст выведем имена
+			// Для реквезитов в текст выведем имена
 		case APIParT_Profile:
 			attrType = API_ProfileID;
 			break;
@@ -1188,23 +1280,220 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 			attrType = API_MaterialID;
 			break;
 		default:
-			flag_find = false;
+			return false;
 			break;
 		}
 		if (attrType != API_ZombieAttrID) {
 			API_Attribute	attrib = {};
 			attrib.header.typeID = attrType;
 			attrib.header.index = attrInx;
-			err = ACAPI_Attribute_Get(&attrib);
-			if (err == NoError) {
+			if (ACAPI_Attribute_Get(&attrib) == NoError) {
 				param_string = GS::UniString::Printf("%s", attrib.header.name);
+				pvalue.type = API_PropertyStringValueType;
+				if (param_bool) {
+					param_int = 1;
+					param_real = 1.0;
+				}
 			}
 			else {
-				flag_find = false;
+				return false;
 			}
 		}
 	}
-	return flag_find;
+	pvalue.name = "{" + GS::UniString(nthParameter.name) + "}";
+	pvalue.boolValue = param_bool;
+	pvalue.doubleValue = param_real;
+	pvalue.intValue = param_int;
+	pvalue.uniStringValue = param_string;
+	pvalue.canCalculate = true;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация свойства в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_Property& property) {
+	GS::UniString fname;
+	GetPropertyFullName(property.definition, fname);
+	pvalue.name = "{Property:" + fname + "}";
+	pvalue.uniStringValue = PropertyTestHelpers::ToString(property);
+	pvalue.boolValue = false;
+	pvalue.intValue = 0;
+	pvalue.doubleValue = 0.0;
+	pvalue.canCalculate = false;
+	switch (property.value.singleVariant.variant.type) {
+	case API_PropertyIntegerValueType:
+		pvalue.intValue = property.value.singleVariant.variant.intValue;
+		pvalue.doubleValue = property.value.singleVariant.variant.intValue * 1.0;
+		if (pvalue.intValue > 0) pvalue.boolValue = true;
+		pvalue.type = API_PropertyIntegerValueType;
+		break;
+	case API_PropertyRealValueType:
+		pvalue.doubleValue = round(property.value.singleVariant.variant.doubleValue * 1000) / 1000;
+		if (property.value.singleVariant.variant.doubleValue - pvalue.doubleValue > 0.001) pvalue.doubleValue += 0.001;
+		pvalue.intValue = (GS::Int32)pvalue.doubleValue;
+		if (pvalue.intValue / 1.0 < pvalue.doubleValue) pvalue.intValue += 1;
+		if (abs(pvalue.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.boolValue = true;
+		pvalue.type = API_PropertyRealValueType;
+		break;
+	case API_PropertyBooleanValueType:
+		pvalue.boolValue = property.value.singleVariant.variant.boolValue;
+		if (pvalue.boolValue) {
+			pvalue.intValue = 1;
+			pvalue.doubleValue = 1.0;
+		}
+		pvalue.type = API_PropertyBooleanValueType;
+		break;
+	case API_PropertyStringValueType:
+	case API_PropertyGuidValueType:
+		pvalue.type = API_PropertyStringValueType;
+		pvalue.boolValue = (pvalue.uniStringValue.GetLength() > 0);
+		if (pvalue.boolValue) {
+			pvalue.intValue = 1;
+			pvalue.doubleValue = 1.0;
+		}
+		break;
+	case API_PropertyUndefinedValueType: 
+		return false;
+		break;
+	default: 
+		return false;
+		break;
+	}
+	pvalue.canCalculate = true;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация целого числа в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue) {
+	pvalue.name = paramName;
+	pvalue.type = API_PropertyIntegerValueType;
+	pvalue.canCalculate = true;
+	pvalue.intValue = intValue;
+	pvalue.doubleValue = intValue * 1.0;
+	if (pvalue.intValue > 0) pvalue.boolValue = true;
+	pvalue.uniStringValue = GS::UniString::Printf("%d", intValue);
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Обработка количества нулей и единиц измерения в имени свойства
+// Удаляет из имени paramName найденные единицы измерения
+// Возвращает строку для скармливания функции NumToStig
+// -----------------------------------------------------------------------------
+GS::UniString GetFormatString(GS::UniString& paramName) {
+	GS::UniString formatstring = "";
+	if (!paramName.Contains(".")) return formatstring;
+	GS::Array<GS::UniString> partstring;
+	UInt32 n = StringSplt(paramName, ".", partstring);
+	if (StringSplt(paramName, ".", partstring) > 1) {
+		if (partstring[n - 1].Contains("m") || partstring[n - 1].Contains(u8"м")) {
+			formatstring = partstring[n - 1];
+			paramName.ReplaceAll("." + formatstring, "");
+			formatstring.ReplaceAll(u8"м", "m");
+			formatstring.ReplaceAll(u8"д", "d");
+			formatstring.ReplaceAll(u8"с", "c");
+		}
+	}
+	return formatstring;
+}
+
+// -----------------------------------------------------------------------------
+// Обработка типа данных в имени
+// $ - вернуть строку
+// # - вернуть целое число
+// По умолчанию - double
+// Удаляет из имени paramName найденные указания на тип данных
+// -----------------------------------------------------------------------------
+API_VariantType GetTypeString(GS::UniString& paramName) {
+	API_VariantType type = API_PropertyRealValueType;
+	if (paramName.Contains("$")) {
+		paramName.ReplaceAll("$", "");
+		type = API_PropertyStringValueType;
+	}
+	if (paramName.Contains("#")) {
+		paramName.ReplaceAll("#", "");
+		type = API_PropertyRealValueType;
+	}
+	return type;
+}
+
+// -----------------------------------------------------------------------------
+// Извлекает из строки все имена свойств или параметров, заключенные в знаки %
+// -----------------------------------------------------------------------------
+bool GetParamNameDict(const GS::UniString& expression, ParamDict& paramDict) {
+	GS::UniString outstring = expression;
+	if (!outstring.Contains('{')) return (paramDict.GetSize() > 0);
+	GS::UniString part = "";
+	for (UInt32 i = 0; i < expression.Count('{'); i++) {
+		part = outstring.GetSubstring('{', '}', 0);
+		if (!paramDict.ContainsKey(part)) {
+			paramDict.Add(part, true);
+		}
+		outstring.ReplaceAll("{" + part + "}", "");
+	}
+	return (paramDict.GetSize() > 0);
+}
+
+// -----------------------------------------------------------------------------
+// Получение значений параметров из словаря для заданного элемента
+// Имена в формате %ИМЯ_GDL_ПАРАМЕТРА% или %Property:ИМЯ_СВОЙСТВА%
+// Также можно указывать тип параметра ($ - вывести значение строкой, # - использовать целое)
+// Для перевода в другие единицы использовать %ИМЯ_ПАРАМЕТРА.ЕД_ИЗМ%
+// -----------------------------------------------------------------------------
+bool GetParamValueDict(const API_Guid& elemGuid, const ParamDict& paramDict, ParamDictValue& pdictvalue) {
+	if (elemGuid == APINULLGuid) return false;
+	if (paramDict.GetSize() == 0) return false;
+	UInt32 n = 0;
+	for (GS::HashTable<GS::UniString, bool>::ConstPairIterator cIt = paramDict.EnumeratePairs(); cIt != NULL; ++cIt) {
+		const GS::UniString& paramName = *cIt->key;
+		ParamValue pvalue;
+		if (GetParam(elemGuid, paramName, pvalue)) {
+			if (pvalue.canCalculate) {
+				pdictvalue.Add(paramName, pvalue);
+				n++;
+			}
+		}
+	}
+	return (n > 0);
+}
+
+// -----------------------------------------------------------------------------
+// Замена имен параметров на значения в выражении
+// Значения передаются словарём, вычисление значений см. GetParamValueDict
+// -----------------------------------------------------------------------------
+bool ReplaceParamInExpression(const ParamDictValue& pdictvalue, GS::UniString& expression) {
+	if (pdictvalue.GetSize() == 0) return false;
+	if (expression.IsEmpty()) return false;
+	UInt32 n = 0;
+	for (GS::HashTable<GS::UniString, ParamValue>::ConstPairIterator cIt = pdictvalue.EnumeratePairs(); cIt != NULL; ++cIt) {
+		const ParamValue& pvalue = *cIt->value;
+		if (pvalue.canCalculate) {
+			expression.ReplaceAll(pvalue.name, pvalue.uniStringValue);
+			n++;
+		}
+	}
+	return (n>0);
+}
+
+// -----------------------------------------------------------------------------
+// Вычисление выражений, заключённых в < >
+// Что не может вычислить - заменит на пустоту
+// -----------------------------------------------------------------------------
+bool EvalExpression(GS::UniString& expression) {
+	if (expression.IsEmpty()) return false;
+	if (!expression.Contains('<')) return false;
+	GS::UniString part = "";
+	GS::UniString texpression = expression;
+	for (UInt32 i = 0; i < texpression.Count('<'); i++) {
+		part = expression.GetSubstring('<', '>', 0);
+		int rezult = calculator::eval(part.ToCStr(0, MaxUSize, CC_Cyrillic).Get());
+		GS::UniString rezult_txt = GS::UniString::Printf("%d", rezult);
+		expression.ReplaceAll("<" + part + ">", rezult_txt);
+	}
+	return (!expression.IsEmpty());
 }
 
 // -----------------------------------------------------------------------------
@@ -1298,7 +1587,6 @@ GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS
 	default: DBBREAK(); return "Invalid Value";
 	}
 }
-
 
 
 GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
@@ -1534,6 +1822,7 @@ void DeleteElementUserData(const API_Guid& elemguid) {
 		}
 	}
 }
+
 
 // -----------------------------------------------------------------------------
 // Удаление данных аддона из всех элементов
