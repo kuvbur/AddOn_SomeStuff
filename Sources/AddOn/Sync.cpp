@@ -4,6 +4,7 @@
 #include	"Sync.hpp"
 #include	"Helpers.hpp"
 #include	"ResetProperty.hpp"
+#include	"Dimensions.hpp"
 
 #define SYNC_GDL 1
 #define SYNC_PROPERTY 2
@@ -23,26 +24,26 @@ Int32 nLib = 0;
 // Запускает обработку всех объектов, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncAndMonAll(const SyncSettings& syncSettings) {
+	if (ResetAllProperty()) return;
 	GS::UniString	title("Sync All");
 	nLib += 1;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	bool flag_chanel = false;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		if (!ResetAllProperty()) { //Если ну требуется сброс свойств - синхронизируем
-			if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings);
-			if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings);
-			if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings);
-			if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings);
-			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings);
-			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings);
-			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings);
-			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings);
-			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings);
-			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings);
-			if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings);
-			if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings);
-		}
+		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings);
+		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings);
+		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings);
+		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings);
+		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings);
+		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings);
+		DimRoundAll(syncSettings);
 		return NoError;
 		});
 }
@@ -796,7 +797,7 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const doubl
 }
 
 // -----------------------------------------------------------------------------
-// Синхронизация значений свойства и параметра
+// Запись в свойство данных о материале
 // -----------------------------------------------------------------------------
 GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, const API_PropertyDefinition & definition) {
 	if (elementType != API_WallID && elementType != API_SlabID && elementType != API_RoofID && elementType != API_ShellID) return APIERR_MISSINGCODE;

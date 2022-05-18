@@ -143,6 +143,31 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettin
 	return true;
 }
 
+// -----------------------------------------------------------------------------
+// Резервируем, разблокируем, вообщем - делаем элемент редактируемым
+// Единственное, что может нас остановить - объект находится в модуле.
+// -----------------------------------------------------------------------------
+bool UnlockElement(const API_Guid& objectId, GSErrCode&	err) {
+	// Проверяем - на находится ли объект в модуле
+	API_Elem_Head	tElemHead;
+	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
+	tElemHead.guid = objectId;
+	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
+	if (tElemHead.hotlinkGuid != APINULLGuid) return false; // С объектами в модуле сделать ничего не получится
+	// Проверяем - зарезервирован ли объект и резервируем, если надо
+	if (ACAPI_TeamworkControl_HasConnection() && !ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
+		GS::Array<API_Guid>	elements;
+		GS::HashTable<API_Guid, short>  conflicts;
+		elements.Push(objectId);
+		ACAPI_TeamworkControl_ReserveElements(elements, &conflicts);
+		if (!conflicts.IsEmpty()) return false; // Не получилось зарезервировать
+	}
+	bool u1 = ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight);
+	bool u2 = ACAPI_Element_Filter(objectId, APIFilt_IsEditable);
+	bool u3 = ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace);
+	return (u1 && u2 && u3);
+}
+
 
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов

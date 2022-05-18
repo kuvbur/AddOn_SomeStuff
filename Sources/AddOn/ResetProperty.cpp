@@ -23,7 +23,7 @@ bool ResetAllProperty() {
 	}
 	if (definitions_to_reset.GetSize()>0) {
 		flag_reset = flag_reset + ResetPropertyElement2Defult(definitions_to_reset);
-		bool skip_sinc = true;
+		skip_sinc = true;
 	}
 	return skip_sinc;
 }
@@ -76,8 +76,6 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 		err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 		if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_1", err, APINULLGuid);
 		if (err == NoError) {
-			err = ACAPI_Element_Tool(guidArray, APITool_Unlock, nullptr); // Разблокируем всю выборку элементов
-			if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_Tool", err, APINULLGuid);
 			for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 				if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
 					err = ResetOneElemen(guidArray.Get(i), definitions_to_reset);
@@ -108,8 +106,6 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 					if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
 					if (err == NoError) {
-						err = ACAPI_Element_Tool(guidArray, APITool_Unlock, nullptr);
-						if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_Tool", err, APINULLGuid);
 						for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 							if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
 								err = ResetOneElemen(guidArray.Get(i), definitions_to_reset);
@@ -138,6 +134,7 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 	if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_GetPropertyValues", err, elemGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
+			// Сбрасываем только специальные значения
 			if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
 				properties[i].isDefault = true;
 				properties_to_reset.Push(properties.Get(i));
@@ -145,6 +142,11 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 		}
 		if (properties_to_reset.GetSize() > 0) {
 			err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
+			if (err != NoError){
+				// попробуем разблокировать и повторить
+				if (UnlockElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
+			}
+			// Если не получилось - выведем ошибку.
 			if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
 		}
 		else {

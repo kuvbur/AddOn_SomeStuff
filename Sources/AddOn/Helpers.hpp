@@ -95,12 +95,20 @@ bool CheckIgnoreVal(const GS::Array<GS::UniString>& ignorevals, const GS::UniStr
 
 Int32 DoubleM2IntMM(const double& value);
 
+GSErrCode IsTeamwork(bool& isteamwork);
+
 GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
 GSErrCode AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings);
+
 bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&  syncSettings);
+
 bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
+
+bool UnlockElement(const API_Guid& objectId, GSErrCode& err);
+
 GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property);
+
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
@@ -108,9 +116,9 @@ GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& el
 bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& params, Int32& inx);
 bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_Elem_Head elem_head, Int32& inx);
 bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter);
+GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemType, API_AddParType**& params);
 GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params);
 bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter);
-
 bool GetParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue);
 
 bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
