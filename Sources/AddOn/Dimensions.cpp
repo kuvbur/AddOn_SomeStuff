@@ -1,4 +1,5 @@
-﻿#include	"APIEnvir.h"
+﻿#include	<regex>
+#include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Dimensions.hpp"
 
@@ -30,14 +31,16 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 				for (UInt32 k = 0; k < partstring.GetSize(); k++) {
 					DimRule dimrule;
 					if (DimParsePref(partstring[k], dimrule)) {
-						dimrules.Add(dimrule.pen_original, dimrule);
+						GS::UniString kstr = GS::UniString::Printf("%d", dimrule.pen_original);
+						dimrules.Add(kstr, dimrule);
 					}
 				}
 			}
 			else {
 				DimRule dimrule;
 				if (DimParsePref(autotexts[i][2], dimrule)) {
-					dimrules.Add(dimrule.pen_original, dimrule);
+					GS::UniString kstr = GS::UniString::Printf("%d", dimrule.pen_original);
+					dimrules.Add(kstr, dimrule);
 				}
 			}
 			return err;
@@ -46,6 +49,9 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 	return err;
 }
 
+// -----------------------------------------------------------------------------
+// Обработка одного правила
+// -----------------------------------------------------------------------------
 bool DimParsePref(GS::UniString rawrule, DimRule& dimrule) {
 	GS::Array<GS::UniString> partstring_1;
 	if (StringSplt(rawrule, "-", partstring_1) == 2) {
@@ -77,17 +83,6 @@ bool DimParsePref(GS::UniString rawrule, DimRule& dimrule) {
 		}
 	}
 	return false;
-}
-
-// -----------------------------------------------------------------------------
-// Запускает обработку выбранных размеров, заданных в настройке
-// -----------------------------------------------------------------------------
-void DimAutoRoundSelected(const SyncSettings& syncSettings) {
-	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
-	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		CallOnSelectedElemSettings(DimAutoRoundSel, false, true, syncSettings);
-		return NoError;
-		});
 }
 
 // -----------------------------------------------------------------------------
@@ -158,13 +153,24 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 	default:
 		break;
 	}
-	if (pen_dimenstion > 0 && dimrules.ContainsKey(pen_dimenstion)) {
-		pen_rounded = dimrules[pen_original].pen_rounded;
-		flag_change_rule = dimrules[pen_original].flag_change;
+	bool find_rule = false;
+	GS::UniString kstr = GS::UniString::Printf("%d", pen_dimenstion);
+	if (pen_dimenstion > 0 && dimrules.ContainsKey(kstr)) {
+		pen_rounded = dimrules[kstr].pen_rounded;
+		flag_change_rule = dimrules[kstr].flag_change;
+		find_rule = true;
 	}
-	else {
-		return err;
+	if (find_rule) {
+		kstr = GS::UniString::Printf("%d", pen_dimenstion).ToCStr().Get();
+		for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs(); cIt != NULL; ++cIt) {
+			const GS::UniString& regexpstring = *cIt->key;
+			static const std::regex r(regexpstring.ToCStr().Get());
+			if (std::regex_match(kstr.ToCStr().Get(), r)) {
+
+			}
+		}
 	}
+	if (!find_rule) return err;
 	short pen = pen_rounded;
 	bool flag_write = true;
 	if (element.header.hasMemo) {
@@ -179,7 +185,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 			GS::UniString content = GS::UniString::Printf("%s", (*memo.dimElems)[k].note.content);
 			API_Guid ref_elemGuid = (*memo.dimElems)[k].base.base.guid;
 			API_NoteContentType contentType = (*memo.dimElems)[k].note.contentType;
-			if (DimParse((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrules[pen_original])) {
+			if (DimParse((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrules[kstr])) {
 				if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
 				if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
 					flag_write = true;
@@ -223,7 +229,6 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-
 bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule) {
 	flag_change = DIM_NOCHANGE;
 	flag_highlight = DIM_NOCHANGE;
@@ -290,134 +295,28 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	return (flag_change != DIM_NOCHANGE || flag_highlight != DIM_NOCHANGE);
 }
 
-
-
-GSErrCode DimAddGrid(void) {
-	GSErrCode err = NoError;
-//
-//
-//	API_Element element = {};
-//	API_ElementMemo memo = {};
-//
-//	element.header.typeID = API_DimensionID;
-//	err = ACAPI_Element_GetDefaults(&element, &memo);
-//	if (err != NoError) {
-//		return err;
-//	}
-//
-//	element.dimension.dimAppear = APIApp_Normal;
-//	element.dimension.textPos = APIPos_Above;
-//	element.dimension.textWay = APIDir_Parallel;
-//	element.dimension.defStaticDim = false;
-//	element.dimension.usedIn3D = false;
-//	element.dimension.horizontalText = false;
-//	element.dimension.refC = refPoint;
-//	element.dimension.direction = { 1, 0 };
-//
-//	element.dimension.nDimElem = 1;
-//
-//	//GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoDimGridId, ACAPI_GetOwnResModule());
-//	//ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-//
-//	//	API_Element     element;
-//	//	API_ElementMemo memo;
-//	//	GSErrCode       err;
-//
-//	//	BNZeroMemory(&element, sizeof(API_Element));
-//	//	BNZeroMemory(&memo, sizeof(API_ElementMemo));
-//
-//	//	element.header.typeID = API_ObjectID;
-//	//	element.header.variationID = APIVarId_SymbStair;
-//	//	err = ACAPI_Element_GetDefaults(&element, &memo);
-//	//	if (err == NoError) {
-//	//		/* do what you want */
-//	//	}
-//
-//	ACAPI_DisposeElemMemoHdls(&memo);
-//
-//
-//	//	return err;
-//	//	});
-	return err;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------
-// Сброс свойств во всех БД файла и настройках по умолчанию
-//--------------------------------------------------------------------------------------------------------------------------
-void DimAutoRoundAll(const SyncSettings& syncSettings) {
+// -----------------------------------------------------------------------------
+// Округление всего доступного согласно настроек
+// TODO добавить резервирование
+// -----------------------------------------------------------------------------
+void DimRoundAll(const SyncSettings& syncSettings) {
+	//if (!syncSettings.logMon) return;
+	DoneElemGuid doneelemguid;
 	DimRules dimrules;
 	GSErrCode err = DimReadPref(dimrules);
 	if (dimrules.GetSize() == 0 || err != NoError) return;
-	DoneElemGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
-	API_DatabaseID commandID = APIDb_GetCurrentDatabaseID;
-	API_AttributeIndex layerCombIndex;
-	// Сейчас будем переключаться между БД
-	// Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
-	err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
-	DimAutoRoundInDB(APIDb_GetCurrentDatabaseID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetElevationDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetDetailDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetWorksheetDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetDocumentFrom3DDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetLayoutDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetMasterLayoutDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetSectionDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetElevationDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	DimAutoRoundInDB(APIDb_GetInteriorElevationDatabasesID, layerCombIndex, dimrules, doneelemguid);
-	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &commandID);
-	err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
-	if (doneelemguid.GetSize() > 0) {
-		GS::UniString intString = GS::UniString::Printf(" %d", doneelemguid.GetSize());
-		msg_rep("Dim done - ", intString, NoError, APINULLGuid);
-	}
-	else {
-		msg_rep("DIM", "", NoError, APINULLGuid);
-	}
-	return;
+	DimRoundByType(API_DimensionID, doneelemguid, dimrules);
+	DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules);
+	DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules);
 }
 
-//--------------------------------------------------------------------------------------------------------------------------
-// Обработка размеров в БД
-//--------------------------------------------------------------------------------------------------------------------------
-void DimAutoRoundInDB(const API_DatabaseID& commandID, API_AttributeIndex layerCombIndex, DimRules& dimrules, DoneElemGuid& doneelemguid) {
-	GSErrCode	err = NoError;
-	// Если чистим элементы в текущей БД - переключаться не нужно
-	if (commandID == APIDb_GetCurrentDatabaseID) {
-		err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
-		GetDIMList(doneelemguid, dimrules);
-		return;
-	}
-	GS::Array<API_DatabaseUnId>	dbases;
-	err = ACAPI_Database(commandID, nullptr, &dbases); // Получаем список БД
-	if (err != NoError) msg_rep("DimAutoRoundInDB", "ACAPI_Database", err, APINULLGuid);
-	if (err == NoError) {
-		for (const auto& dbUnId : dbases) {
-			API_DatabaseInfo dbPars = {};
-			dbPars.databaseUnId = dbUnId;
-			err = ACAPI_Database(APIDb_GetDatabaseInfoID, &dbPars);
-			if (err != NoError) msg_rep("DimAutoRoundInDB", "APIDb_GetDatabaseInfoID", err, APINULLGuid);
-			if (err == NoError) {
-				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars);
-				if (err != NoError) msg_rep("DimAutoRoundInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
-				if (err == NoError) {
-					err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
-					GetDIMList(doneelemguid, dimrules);
-				}
-			}
-		}
-	}
-	return;
-}
-
-void GetDIMList(DoneElemGuid& doneelemguid, DimRules& dimrules) {
-	GetElementList(API_DimensionID, doneelemguid, dimrules);
-	GetElementList(API_RadialDimensionID, doneelemguid, dimrules);
-	GetElementList(API_LevelDimensionID, doneelemguid, dimrules);
-}
-
-void GetElementList(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules) {
+// -----------------------------------------------------------------------------
+// Округление одного типа размеров
+// TODO добавить резервирование
+// -----------------------------------------------------------------------------
+void DimRoundByType(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules) {
 	GS::Array<API_Guid>	guidArray;
-	GSErrCode	err = ACAPI_Element_GetElemList(typeID, &guidArray);
+	GSErrCode	err = ACAPI_Element_GetElemList(typeID, &guidArray, APIFilt_OnVisLayer | APIFilt_IsInStructureDisplay);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
@@ -430,3 +329,52 @@ void GetElementList(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, Dim
 		msg_rep("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
 	}
 }
+
+//GSErrCode DimAddGrid(void) {
+//	GSErrCode err = NoError;
+//	//
+//	//
+//	//	API_Element element = {};
+//	//	API_ElementMemo memo = {};
+//	//
+//	//	element.header.typeID = API_DimensionID;
+//	//	err = ACAPI_Element_GetDefaults(&element, &memo);
+//	//	if (err != NoError) {
+//	//		return err;
+//	//	}
+//	//
+//	//	element.dimension.dimAppear = APIApp_Normal;
+//	//	element.dimension.textPos = APIPos_Above;
+//	//	element.dimension.textWay = APIDir_Parallel;
+//	//	element.dimension.defStaticDim = false;
+//	//	element.dimension.usedIn3D = false;
+//	//	element.dimension.horizontalText = false;
+//	//	element.dimension.refC = refPoint;
+//	//	element.dimension.direction = { 1, 0 };
+//	//
+//	//	element.dimension.nDimElem = 1;
+//	//
+//	//	//GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoDimGridId, ACAPI_GetOwnResModule());
+//	//	//ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+//	//
+//	//	//	API_Element     element;
+//	//	//	API_ElementMemo memo;
+//	//	//	GSErrCode       err;
+//	//
+//	//	//	BNZeroMemory(&element, sizeof(API_Element));
+//	//	//	BNZeroMemory(&memo, sizeof(API_ElementMemo));
+//	//
+//	//	//	element.header.typeID = API_ObjectID;
+//	//	//	element.header.variationID = APIVarId_SymbStair;
+//	//	//	err = ACAPI_Element_GetDefaults(&element, &memo);
+//	//	//	if (err == NoError) {
+//	//	//		/* do what you want */
+//	//	//	}
+//	//
+//	//	ACAPI_DisposeElemMemoHdls(&memo);
+//	//
+//	//
+//	//	//	return err;
+//	//	//	});
+//	return err;
+//}

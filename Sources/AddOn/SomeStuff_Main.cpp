@@ -37,6 +37,22 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 		break;
 	}
 	param = 1;
+
+	char    msgStr[256];
+
+	switch (notifID) {
+	case APINotify_PreSave:
+		CHCopyC("APINotify_PreSave", msgStr);
+		break;
+	case APINotify_ChangeProjectDB:
+		CHCopyC("APINotify_ChangeProjectDB", msgStr);
+		break;
+	case APINotify_ChangeWindow:
+		CHCopyC("APINotify_ChangeWindow", msgStr);
+		break;
+	}
+	ACAPI_WriteReport(msgStr, false);
+
 	return NoError;
 }	// ProjectEventHandlerProc
 
@@ -79,6 +95,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			else {
 				SyncData(elemType->elemHead.guid, syncSettings);
 				SyncRelationsElement(elemType->elemHead.guid, syncSettings);
+				DimRoundAll(syncSettings);
 			}
 		}
 	}
@@ -123,13 +140,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 					if (t_flag) syncSettings.syncMon = false;
 					syncSettings.syncAll = true;
 					SyncAndMonAll(syncSettings);
-					DimAutoRoundAll(syncSettings);
 					syncSettings.syncAll = false;
 					if (t_flag) syncSettings.syncMon = true;
 					break;
 				case SyncSelect_CommandID:
 					SyncSelected(syncSettings);
-					DimAutoRoundSelected(syncSettings);
 					break;
 				case wallS_CommandID:
 					syncSettings.wallS = !syncSettings.wallS;
@@ -147,7 +162,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 					err = SumSelected();
 					break;
 				case Log_CommandID:
-					err = DimAddGrid();
 					break;
 			}
 			break;
@@ -178,7 +192,7 @@ GSErrCode __ACENV_CALL Initialize (void)
 	LoadSyncSettingsFromPreferences(syncSettings);
 	MenuSetState(syncSettings);
 	Do_ElementMonitor(syncSettings.syncMon);
-	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
+	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_PreSave | APINotify_ChangeProjectDB | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }
