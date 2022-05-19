@@ -12,6 +12,7 @@ typedef struct {
 	UInt32	round_value;
 	bool	flag_change;
 	GS::UniString expression;
+	GS::UniString layer;
 	ParamDict paramDict;
 } DimRule;
 
@@ -25,12 +26,14 @@ bool DimParsePref(GS::UniString rawrule, DimRule& dimrule);
 
 void DimAutoRoundSel(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
+void DimSelected(const SyncSettings& syncSettings);
+
 GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules);
 
 bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule);
 
 void DimRoundAll(const SyncSettings& syncSettings);
 
-void DimRoundByType(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules);
+bool DimRoundByType(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules);
 
 #endif

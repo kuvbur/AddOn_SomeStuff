@@ -30,7 +30,7 @@ typedef struct {
 
 bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
-void SyncAndMonAll(const SyncSettings& syncSettings);
+void SyncAndMonAll(SyncSettings & syncSettings);
 
 void SyncSelected(const SyncSettings& syncSettings);
 
