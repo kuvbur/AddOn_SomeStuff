@@ -6,11 +6,25 @@
 #include	"UniString.hpp"
 #include	"APIdefs_Properties.h"
 #include	"SomeStuff_Main.hpp"
-#include	"Helpers.hpp"
 #include	"Sync.hpp"
 #include	"ReNum.hpp"
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
+
+ //-----------------------------------------------------------------------------
+ // Срабатывает при событиях в тимворк
+ //-----------------------------------------------------------------------------
+static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
+	const GS::HashSet<API_Guid>& released,
+	const GS::HashSet<API_Guid>& deleted){
+	SyncSettings syncSettings(false, false, true, true, true, false);
+	LoadSyncSettingsFromPreferences(syncSettings);
+	for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs(); it != nullptr; ++it) {
+		Do_Sync(*(it->key), syncSettings);
+	}
+	return NoError;
+}
+
 
 // -----------------------------------------------------------------------------
 // Срабатывает при событиях проекта (открытие, сохранение)
@@ -37,22 +51,6 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 		break;
 	}
 	param = 1;
-
-	char    msgStr[256];
-
-	switch (notifID) {
-	case APINotify_PreSave:
-		CHCopyC("APINotify_PreSave", msgStr);
-		break;
-	case APINotify_ChangeProjectDB:
-		CHCopyC("APINotify_ChangeProjectDB", msgStr);
-		break;
-	case APINotify_ChangeWindow:
-		CHCopyC("APINotify_ChangeWindow", msgStr);
-		break;
-	}
-	ACAPI_WriteReport(msgStr, false);
-
 	return NoError;
 }	// ProjectEventHandlerProc
 
@@ -61,14 +59,12 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 // -----------------------------------------------------------------------------
 GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType)
 {
-	GSErrCode		err = NoError;
-	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return err;
+	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
+	if (elemType->elemHead.typeID == API_GroupID) return NoError;
 	SyncSettings syncSettings(false, false, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
-	if (!syncSettings.syncMon) return err;
-	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) {
-		return err;
-	}
+	if (!syncSettings.syncMon) return NoError;
+	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) return NoError;
 	bool	sync_prop = false;
 	switch (elemType->notifID) {
 	case APINotifyElement_New:
@@ -85,22 +81,26 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		break;
 	}
 	if (sync_prop) {
-		err = AttachObserver(elemType->elemHead.guid, syncSettings);
-		if (err == APIERR_LINKEXIST)
-			err = NoError;
-		if (err == NoError) {
-			if (elemType->elemHead.typeID == API_DimensionID) {
-				DimAutoRoundSel(elemType->elemHead.guid, syncSettings);
-			}
-			else {
-				SyncData(elemType->elemHead.guid, syncSettings);
-				SyncRelationsElement(elemType->elemHead.guid, syncSettings);
-				DimRoundAll(syncSettings);
-			}
-		}
+		return Do_Sync(elemType->elemHead.guid, syncSettings);
+	}
+	else {
+		return NoError;
+	}
+	
+}	// ElementEventHandlerProc
+
+GSErrCode Do_Sync(const API_Guid& objectId, SyncSettings& syncSettings) {
+	GSErrCode		err = NoError;
+	err = AttachObserver(objectId, syncSettings);
+	if (err == APIERR_LINKEXIST)
+		err = NoError;
+	if (err == NoError) {
+		SyncData(objectId, syncSettings);
+		SyncRelationsElement(objectId, syncSettings);
+		DimRoundAll(syncSettings);
 	}
 	return err;
-}	// ElementEventHandlerProc
+}
 
 // -----------------------------------------------------------------------------
 // Включение мониторинга
@@ -110,10 +110,12 @@ void	Do_ElementMonitor(bool& syncMon)
 	if (syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);	
+		ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
 	}
 	if (!syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
+		ACAPI_Notify_CatchElementReservationChange(nullptr);
 	}
 	return;
 }	// Do_ElementMonitor
@@ -134,17 +136,17 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams){
 #endif
 					Do_ElementMonitor(syncSettings.syncMon);
 					SyncAndMonAll(syncSettings);
+					DimRoundAll(syncSettings);
 					break;
 				case SyncAll_CommandID:
-					t_flag = syncSettings.syncMon;
-					if (t_flag) syncSettings.syncMon = false;
 					syncSettings.syncAll = true;
 					SyncAndMonAll(syncSettings);
+					DimRoundAll(syncSettings);
 					syncSettings.syncAll = false;
-					if (t_flag) syncSettings.syncMon = true;
 					break;
 				case SyncSelect_CommandID:
 					SyncSelected(syncSettings);
+					DimSelected(syncSettings);
 					break;
 				case wallS_CommandID:
 					syncSettings.wallS = !syncSettings.wallS;
@@ -192,7 +194,7 @@ GSErrCode __ACENV_CALL Initialize (void)
 	LoadSyncSettingsFromPreferences(syncSettings);
 	MenuSetState(syncSettings);
 	Do_ElementMonitor(syncSettings.syncMon);
-	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_PreSave | APINotify_ChangeProjectDB | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
+	ACAPI_Notify_CatchProjectEvent(APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler (AddOnMenuID, MenuCommandHandler);
 }

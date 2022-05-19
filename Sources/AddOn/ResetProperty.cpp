@@ -52,7 +52,7 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 	flag_reset = flag_reset + ResetElementsInDB(APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 	flag_reset = flag_reset + ResetElementsInDB(APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &commandID);
-	err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
+	if (layerCombIndex != 0 ) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
 	if (doneelemguid.GetSize() > 0) {
 		GS::UniString intString = GS::UniString::Printf(" %d", doneelemguid.GetSize());
 		msg_rep("Reset property done - ", intString, NoError, APINULLGuid);
@@ -71,7 +71,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 	GSErrCode	err = NoError;
 	// Если чистим элементы в текущей БД - переключаться не нужно
 	if (commandID == APIDb_GetCurrentDatabaseID) {
-		err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+		if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 		GS::Array<API_Guid>	guidArray;
 		err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 		if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_1", err, APINULLGuid);
@@ -101,7 +101,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars);
 				if (err != NoError) msg_rep("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
 				if (err == NoError) {
-					err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID,&layerCombIndex); // Устанавливаем комбинацию слоёв
+					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID,&layerCombIndex); // Устанавливаем комбинацию слоёв
 					GS::Array<API_Guid>	guidArray;
 					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 					if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);

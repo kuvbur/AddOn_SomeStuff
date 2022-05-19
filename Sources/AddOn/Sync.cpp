@@ -23,8 +23,8 @@ Int32 nLib = 0;
 // -----------------------------------------------------------------------------
 // Запускает обработку всех объектов, заданных в настройке
 // -----------------------------------------------------------------------------
-void SyncAndMonAll(const SyncSettings& syncSettings) {
-	if (ResetAllProperty()) return;
+void SyncAndMonAll(SyncSettings & syncSettings) {
+	if (ResetAllProperty()) syncSettings.syncAll = false;
 	GS::UniString	title("Sync All");
 	nLib += 1;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
@@ -43,7 +43,6 @@ void SyncAndMonAll(const SyncSettings& syncSettings) {
 		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings);
 		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings);
 		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings);
-		DimRoundAll(syncSettings);
 		return NoError;
 		});
 }

@@ -51,7 +51,7 @@ static const Int32 TrueId = 4;
 static const Int32 FalseId = 5;
 static const Int32 ErrorSelectID = 6;
 
-static const Int32 UndoDimGridId = 7;
+static const Int32 UndoDimRound = 7;
 // -----------------------------------------------------------------------------
 // Helper functions
 // -----------------------------------------------------------------------------
