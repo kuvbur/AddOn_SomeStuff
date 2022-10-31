@@ -5,11 +5,14 @@
 // Namespace:		-
 // Contact person:	CSAT
 // *****************************************************************************
+#include	<math.h>
+#include	<cmath>
+#include	<limits>
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Helpers.hpp"
-#include	<cmath>
-#include	<limits>
+#include	"Model3D/model.h"
+#include	"Model3D/MeshBody.hpp"
 
 bool is_equal(double x, double y) {
 	return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
@@ -663,10 +666,11 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 	default:
 		break;
 	}
-	
+
 	if (flag_rec && property.value.singleVariant.variant.type == API_PropertyGuidValueType && property.definition.collectionType == API_PropertySingleChoiceEnumerationCollectionType) {
 		API_Guid guidValue = APINULLGuid;
 		API_SingleEnumerationVariant possible_value;
+
 		// Для свойств с набором параметров необходимо задавать не само значение, а его GUID
 		for (UInt32 i = 0; i < property.definition.possibleEnumValues.GetSize(); i++) {
 			possible_value = property.definition.possibleEnumValues[i];
@@ -1040,6 +1044,67 @@ GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_
 		}
 	}
 	return error;
+}
+
+GSErrCode GetMorphData(const API_Guid& elemGuid, long double& L, long double& Lx, long double& Ly, long double& Lz, long double& Max_x, long double& Max_y, long double& Max_z, long double& Min_x, long double& Min_y, long double& Min_z
+) {
+	API_Element      element = {};
+	API_ElementMemo  memo;
+	GSErrCode        err;
+	Modeler::MeshBody* mb;
+	element.header.guid = elemGuid;
+	err = ACAPI_Element_Get(&element);
+	if (err == NoError && element.header.hasMemo) {
+		err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_All);
+		if (err == NoError) {
+			mb = memo.morphBody;
+			if (memo.morphBody->IsWireBody() && !memo.morphBody->IsSolidBody()) {
+				Int32 edgeCnt = mb->GetEdgeCount();
+				for (Int32 iEdge = 0; iEdge < edgeCnt; iEdge++) {
+					const EDGE& edge = mb->GetConstEdge(iEdge);
+					const VERT& vtx1 = mb->GetConstVertex(edge.vert1);
+					const VERT& vtx2 = mb->GetConstVertex(edge.vert2);
+					long double x1 = vtx1.x;
+					long double x2 = vtx2.x;
+					long double y1 = vtx1.y;
+					long double y2 = vtx2.y;
+					long double z1 = vtx1.z;
+					long double z2 = vtx2.z;
+					long double dx = powl(x2 - x1, 2);
+					long double dy = powl(y2 - y1, 2);
+					long double dz = powl(z2 - z1, 2);
+					long double dl = DoubleM2IntMM(sqrtl(dx + dy + dz)) / 1000;
+					long double dlx = DoubleM2IntMM(sqrtl(dy + dx)) / 1000;
+					long double dly = DoubleM2IntMM(sqrtl(dx + dz)) / 1000;
+					long double dlz = DoubleM2IntMM(sqrtl(dx + dy)) / 1000;
+					L = L + dl;
+					Lx = Lx + dlx;
+					Ly = Ly + dly;
+					Lz = Lz + dlz;
+					Max_x = max(Max_x, x1);
+					Max_x = max(Max_x, x2);
+					Max_y = max(Max_y, y1);
+					Max_y = max(Max_y, y2);
+					Max_z = max(Max_z, z1);
+					Max_z = max(Max_z, z2);
+					Min_x = min(Min_x, x1);
+					Min_x = min(Min_x, x2);
+					Min_y = min(Min_y, y1);
+					Min_y = min(Min_y, y2);
+					Min_z = min(Min_z, z1);
+					Min_z = min(Min_z, z2);
+				}
+				Max_x = DoubleM2IntMM(Max_x) / 1000;
+				Max_y = DoubleM2IntMM(Max_y) / 1000;
+				Max_z = DoubleM2IntMM(Max_z) / 1000;
+				Min_x = DoubleM2IntMM(Min_x) / 1000;
+				Min_y = DoubleM2IntMM(Min_y) / 1000;
+				Min_z = DoubleM2IntMM(Min_z) / 1000;
+			}
+		}
+		ACAPI_DisposeElemMemoHdls(&memo);
+	}
+	return err;
 }
 
 // -----------------------------------------------------------------------------
@@ -1723,7 +1788,7 @@ GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant) {
 
 GS::UniString PropertyTestHelpers::ToString(const API_Property& property) {
 	return PropertyTestHelpers::ToString(property, "");
-	}
+}
 
 GS::UniString PropertyTestHelpers::ToString(const API_Property& property, const GS::UniString stringformat) {
 	GS::UniString string;
@@ -1788,7 +1853,7 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property& property, const 
 	default: {
 		break;
 	}
-}
+	}
 	return string;
 }
 
@@ -1880,7 +1945,7 @@ bool Equals(const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_Prop
 		DBBREAK();
 		return false;
 	}
-	}
+}
 
 bool operator== (const API_PropertyGroup& lhs, const API_PropertyGroup& rhs)
 {

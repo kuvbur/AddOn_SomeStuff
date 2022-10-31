@@ -11,6 +11,7 @@
 #define SYNC_MATERIAL 3
 #define SYNC_INFO 4
 #define SYNC_IFC 5
+#define SYNC_MORPH 6
 
 #define SYNC_NO 0
 #define SYNC_FROM 1
@@ -209,10 +210,6 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		msg_rep("SyncData", "GetTypeByGUID", err, elemGuid);
 		return;
 	}
-
-	//if (elementType == API_MorphID) {
-	//	SyncMorph(elemGuid);
-	//}
 	GS::Array<API_PropertyDefinition> definitions;
 	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
 	if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
@@ -224,33 +221,6 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		}
 	}
 }
-
-//void SyncMorph(const API_Guid& elemGuid) {
-//
-//	// TODO Добавить вычисление и запись длины морфа
-//	API_Element      element = {};
-//	API_ElementMemo  memo;
-//	GSErrCode        err;
-//	Modeler::MeshBody* mb;
-//	element.header.guid = elemGuid;
-//	err = ACAPI_Element_Get(&element);
-//
-//	//if (err == NoError && element.header.hasMemo) {
-//	//	err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_All);
-//	//	if (err == NoError) {
-//	//		mb = memo.morphBody;
-//	//		{
-//	//			ivcount = mb->GetVertexCount();
-//	//			for (int i = 0; i < ivcount; i++)
-//	//			{
-//	//				vrt = (VERT*)&mb->GetConstVertex(i);
-//	//				vrt->x = 1;
-//	//			}
-//	//		}
-//	//	}
-//	//	ACAPI_DisposeElemMemoHdls(&memo);
-//	//}
-//}
 
 // --------------------------------------------------------------------
 // Синхронизация правил для одного свойства
@@ -395,6 +365,10 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 				if (rule.synctype == SYNC_NO && rulestring_one.Contains("IFC:")) {
 					rule.synctype = SYNC_IFC;
 					rulestring_one.ReplaceAll("IFC:", "");
+				}
+				if (rule.synctype == SYNC_NO && rulestring_one.Contains("Morph:")) {
+					rule.synctype = SYNC_MORPH;
+					rulestring_one.ReplaceAll("Morph:", "");
 				}
 				if (rule.synctype == SYNC_NO) {
 					rule.synctype = SYNC_GDL;
@@ -592,6 +566,26 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGu
 			return APIERR_MISSINGCODE; // Игнорируем значение
 		}
 	}
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Синхронизация данных геометрии морфа и свойства
+// -----------------------------------------------------------------------------
+GSErrCode SyncMorph(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, SyncRule& syncRule, const API_PropertyDefinition& definition)
+{
+	//TODO дописать запись длины морфа
+	long double L = 0;
+	long double Lx = 0;
+	long double Ly = 0;
+	long double Lz = 0;
+	long double Max_x = 0;
+	long double Max_y = 0;
+	long double Max_z = 0;
+	long double Min_x = 0;
+	long double Min_y = 0;
+	long double Min_z = 0;
+	GSErrCode	err = GetMorphData(elemGuid_from, L, Lx, Ly, Lz, Max_x, Max_y, Max_z, Min_x, Min_y, Min_z);
 	return err;
 }
 
