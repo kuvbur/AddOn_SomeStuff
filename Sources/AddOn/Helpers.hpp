@@ -153,6 +153,7 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 void MenuItemCheckAC(short itemInd, bool checked);
+GSErrCode GetMorphData(const API_Guid& elemGuid, long double& L, long double& Lx, long double& Ly, long double& Lz, long double& Max_x, long double& Max_y, long double& Max_z, long double& Min_x, long double& Min_y, long double& Min_z);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
 GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemType, API_AddParType**& params);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string);
