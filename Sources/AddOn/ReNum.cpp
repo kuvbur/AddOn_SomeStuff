@@ -98,7 +98,7 @@ GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules) {
 GSErrCode ReNumSetPos(const Int32 npos, const Int32 maxnpos, API_Property& positionproperty, bool& flag_write) {
 	GSErrCode	err = NoError;
 	if (positionproperty.definition.valueType == API_PropertyRealValueType) {
-		if (!is_equal(positionproperty.value.singleVariant.variant.doubleValue, npos / 1) || positionproperty.isDefault){
+		if (!is_equal(positionproperty.value.singleVariant.variant.doubleValue, npos / 1) || positionproperty.isDefault) {
 			positionproperty.value.singleVariant.variant.doubleValue = npos;
 			flag_write = true;
 		}
@@ -194,7 +194,7 @@ GSErrCode ReNumOneRule(const RenumRule& rule) {
 				if (err != NoError) msg_rep("ReNumOneRule", "ACAPI_Element_GetPropertyValue", err, eleminpos[m]);
 				if (err == NoError) {
 					bool flag_write = false;
-					if (ReNumSetPos(npos, maxnpos, positionproperty, flag_write) == NoError){
+					if (ReNumSetPos(npos, maxnpos, positionproperty, flag_write) == NoError) {
 						if (flag_write == true) {
 							positionproperty.isDefault = false;
 							err = ACAPI_Element_SetProperty(eleminpos[m], positionproperty);
@@ -209,7 +209,7 @@ GSErrCode ReNumOneRule(const RenumRule& rule) {
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
-// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом 
+// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом
 // -----------------------------------------------------------------------------------------------------------------------
 bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string, RenumRule& paramtype) {
 	bool flag = false;
@@ -240,7 +240,7 @@ bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string
 } // ReNumRule
 
 // -----------------------------------------------------------------------------------------------------------------------
-// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом 
+// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом
 // -----------------------------------------------------------------------------------------------------------------------
 Int32 ReNumGetFlag(const API_Property& propertyflag) {
 	UInt32			flag = RENUM_IGNORE;
@@ -278,7 +278,7 @@ Int32 ReNumGetFlag(const API_Property& propertyflag) {
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
-// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом 
+// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом
 // -----------------------------------------------------------------------------------------------------------------------
 UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid& elemGuid, API_PropertyDefinition& propertdefyrule, short& nulltype) {
 	UInt32 flag = RENUM_IGNORE;
@@ -291,7 +291,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 		err = ACAPI_Element_GetPropertyValues(elemGuid, definitions, propertyflag);
 		if (err == NoError) {
 			flag = ReNumGetFlag(propertyflag[0]);
-			if (flag != RENUM_IGNORE){
+			if (flag != RENUM_IGNORE) {
 				GS::UniString paramName = definitionflag.description.GetSubstring('{', '}', 0);
 				paramName.ReplaceAll("Property:", "");
 				if (paramName.Contains(";")) {

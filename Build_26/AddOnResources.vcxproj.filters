@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\SomeStuff_addon\CMakeFiles\dcf926a7e858b69b0c00dae1cb7153bf\AddOnResources.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\SomeStuff_addon\CMakeFiles\c919d2716a69223f5506dd2fe17ccb6c\AddOnResources.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX.win\AddOnMain.rc2">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX\AddOnFix.grc">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RINT\AddOn.grc">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\Tools\CompileResources.py">
+      <Filter>Resources</Filter>
+    </None>
+    <None Include="D:\SomeStuff_addon\CMakeFiles\AddOnResources" />
+    <None Include="..\Sources_icon\addonicon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\LogAllIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\LogShowIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\MonAllIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\ReNumIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\SyncAllIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\SyncObject_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\SyncSelectIcon_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\SyncWall_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+    <None Include="..\Sources_icon\SyncWindow_18x18.svg">
+      <Filter>Images</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{A35A3811-B05C-366A-B937-3FD2A66BD949}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Images">
+      <UniqueIdentifier>{1CF2C3B4-E9F8-343F-9275-D76FC3B3B181}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{D63EF4DA-3FD6-331C-A9D1-920B728268E0}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

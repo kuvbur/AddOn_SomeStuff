@@ -27,7 +27,6 @@ bool DimParsePref(GS::UniString rawrule, DimRule& dimrule);
 void DimAutoRoundSel(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
 void DimSelected(const SyncSettings& syncSettings);
-
 GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules);
 
 bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule);

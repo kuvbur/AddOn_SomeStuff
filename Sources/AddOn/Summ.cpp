@@ -68,7 +68,7 @@ GSErrCode Sum_GetElement(const API_Guid& elemGuid, SumRules& rules) {
 			bool flag_add = false;
 			if (!rules.ContainsKey(definitions[j].guid)) {
 				SumRule paramtype = {};
-				if(Sum_Rule(elemGuid, definitions[j], paramtype)){
+				if (Sum_Rule(elemGuid, definitions[j], paramtype)) {
 					rules.Add(definitions[j].guid, paramtype);
 					flag_add = true;
 				}

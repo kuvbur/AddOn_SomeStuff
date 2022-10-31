@@ -21,7 +21,7 @@ bool ResetAllProperty() {
 			if (definitions[j].description.Contains("Sync_reset")) definitions_to_reset.Push(definitions.Get(j));
 		}
 	}
-	if (definitions_to_reset.GetSize()>0) {
+	if (definitions_to_reset.GetSize() > 0) {
 		flag_reset = flag_reset + ResetPropertyElement2Defult(definitions_to_reset);
 		skip_sinc = true;
 	}
@@ -37,9 +37,10 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 	GSErrCode	err = NoError;
 	API_DatabaseID commandID = APIDb_GetCurrentDatabaseID;
 	API_AttributeIndex layerCombIndex;
+
 	// Сейчас будем переключаться между БД
 	// Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
-	err = ACAPI_Environment(APIEnv_GetCurrLayerCombID,&layerCombIndex);
+	err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
 	flag_reset = flag_reset + ResetElementsDefault(definitions_to_reset);
 	flag_reset = flag_reset + ResetElementsInDB(APIDb_GetCurrentDatabaseID, definitions_to_reset, layerCombIndex, doneelemguid);
 	flag_reset = flag_reset + ResetElementsInDB(APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
@@ -52,7 +53,7 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 	flag_reset = flag_reset + ResetElementsInDB(APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 	flag_reset = flag_reset + ResetElementsInDB(APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &commandID);
-	if (layerCombIndex != 0 ) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
+	err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
 	if (doneelemguid.GetSize() > 0) {
 		GS::UniString intString = GS::UniString::Printf(" %d", doneelemguid.GetSize());
 		msg_rep("Reset property done - ", intString, NoError, APINULLGuid);
@@ -69,6 +70,7 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid) {
 	UInt32 flag_reset = 0;
 	GSErrCode	err = NoError;
+
 	// Если чистим элементы в текущей БД - переключаться не нужно
 	if (commandID == APIDb_GetCurrentDatabaseID) {
 		if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
@@ -101,7 +103,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars);
 				if (err != NoError) msg_rep("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
 				if (err == NoError) {
-					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID,&layerCombIndex); // Устанавливаем комбинацию слоёв
+					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 					GS::Array<API_Guid>	guidArray;
 					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 					if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
@@ -134,6 +136,7 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 	if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_GetPropertyValues", err, elemGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
+
 			// Сбрасываем только специальные значения
 			if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
 				properties[i].isDefault = true;
@@ -142,10 +145,12 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 		}
 		if (properties_to_reset.GetSize() > 0) {
 			err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
-			if (err != NoError){
+			if (err != NoError) {
+
 				// попробуем разблокировать и повторить
-				if (UnlockElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
+				if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
 			}
+
 			// Если не получилось - выведем ошибку.
 			if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
 		}
@@ -161,7 +166,7 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 //--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetElementsDefault(const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
 	UInt32 flag_reset = 0;
-	GSErrCode	err = NoError;
+
 	// Элементы МЕР
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146245920) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1145194016) == NoError);
@@ -185,6 +190,7 @@ UInt32 ResetElementsDefault(const GS::Array<API_PropertyDefinition>& definitions
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1178869792) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1196574028) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146571296) == NoError);
+
 	// Стандартные элементы
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 0) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_WallID, definitions_to_reset, 0) == NoError);
