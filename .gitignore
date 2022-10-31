@@ -11,7 +11,6 @@
 *.lck
 *.user
 *.userosscache
-*.sln.docstates
 *Fix.grc
 *Fix.grc.*
 .DS_Store

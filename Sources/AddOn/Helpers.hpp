@@ -16,10 +16,11 @@
 #define	 Menu_wallS			4
 #define	 Menu_widoS			5
 #define	 Menu_objS			6
-#define	 Menu_ReNum			7
-#define	 Menu_Sum			8
-#define	 Menu_Log			9
-#define	 Menu_LogShow		10
+#define	 Menu_cwallS		7
+#define	 Menu_ReNum			8
+#define	 Menu_Sum			9
+#define	 Menu_Log			10
+#define	 Menu_LogShow		11
 
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
@@ -36,11 +37,11 @@ static const Int32 SyncSelect_CommandID = 3;
 static const Int32 wallS_CommandID = 4;
 static const Int32 widoS_CommandID = 5;
 static const Int32 objS_CommandID = 6;
-static const Int32 ReNum_CommandID = 7;
-static const Int32 Sum_CommandID = 8;
-static const Int32 Log_CommandID = 9;
-static const Int32 LogShow_CommandID = 10;
-
+static const Int32 cwallS_CommandID = 7;
+static const Int32 ReNum_CommandID = 8;
+static const Int32 Sum_CommandID = 9;
+static const Int32 Log_CommandID = 10;
+static const Int32 LogShow_CommandID = 11;
 
 static const Int32 UndoSyncId = 1;
 static const Int32 SyncAllId = 2;
@@ -52,6 +53,7 @@ static const Int32 FalseId = 5;
 static const Int32 ErrorSelectID = 6;
 
 static const Int32 UndoDimRound = 7;
+
 // -----------------------------------------------------------------------------
 // Helper functions
 // -----------------------------------------------------------------------------
@@ -95,23 +97,24 @@ bool CheckIgnoreVal(const GS::Array<GS::UniString>& ignorevals, const GS::UniStr
 
 Int32 DoubleM2IntMM(const double& value);
 
-GSErrCode IsTeamwork(bool& isteamwork);
+Int32 ceil_mod(Int32 n, Int32 k);
 
 GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
 GSErrCode AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings);
 
-bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&  syncSettings);
+bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
 bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
 
-bool UnlockElement(const API_Guid& objectId, GSErrCode& err);
+bool ReserveElement(const API_Guid& objectId, GSErrCode& err);
 
 GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property);
 
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
-GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
+GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
+GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
 GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid);
 bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& params, Int32& inx);
 bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_Elem_Head elem_head, Int32& inx);
@@ -163,9 +166,9 @@ namespace PropertyTestHelpers
 {
 	GS::UniString NumToString(const double& var, const GS::UniString stringformat);
 	GS::UniString ToString(const API_Variant& variant, const GS::UniString stringformat);
-	GS::UniString	ToString (const API_Variant& variant);
+	GS::UniString	ToString(const API_Variant& variant);
 	GS::UniString ToString(const API_Property& property, const GS::UniString stringformat);
-GS::UniString	ToString (const API_Property& property);
+	GS::UniString	ToString(const API_Property& property);
 }
 
 bool operator== (const API_Variant& lhs, const API_Variant& rhs);
@@ -180,9 +183,9 @@ bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumer
 bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs);
 #endif
 
-bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType);
+bool Equals(const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType);
 
-bool Equals (const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_PropertyCollectionType collType);
+bool Equals(const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_PropertyCollectionType collType);
 
 bool operator== (const API_PropertyGroup& lhs, const API_PropertyGroup& rhs);
 

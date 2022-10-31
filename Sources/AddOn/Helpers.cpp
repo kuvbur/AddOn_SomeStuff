@@ -52,9 +52,18 @@ Int32 DoubleM2IntMM(const double& value) {
 	double param_real = round(value * 1000) / 1000;
 	if (value - param_real > 0.001) param_real += 0.001;
 	param_real = param_real * 1000;
-	Int32 param_int = (GS::Int32)param_real;
-	if (param_int / 1 < param_real) param_int += 1;
+	Int32 param_int = ceil_mod((GS::Int32)param_real, 1);
 	return param_int;
+}
+
+// --------------------------------------------------------------------
+// Округлить целое n вверх до ближайшего целого числа, кратного k
+// --------------------------------------------------------------------
+Int32 ceil_mod(Int32 n, Int32 k) {
+	if (!k) return 0;
+	Int32 tmp = abs(n % k);
+	if (tmp) n += (n > -1 ? (abs(k) - tmp) : (tmp));
+	return n;
 }
 
 // -----------------------------------------------------------------------------
@@ -78,7 +87,6 @@ GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSetti
 {
 	GSErrCode		err = NoError;
 	if (IsElementEditable(objectId, syncSettings, true)) {
-
 #ifdef AC_22
 		API_Elem_Head elemHead;
 		elemHead.guid = objectId;
@@ -86,53 +94,68 @@ GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSetti
 #else
 		err = ACAPI_Element_AttachObserver(objectId);
 #endif
-}
+	}
 	return err;
 }
 
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
-bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&  syncSettings) {
-	bool flag_type = false;
-	if ((elementType == API_WallID || elementType == API_ColumnID || elementType == API_BeamID || elementType == API_SlabID ||
-		elementType == API_RoofID || elementType == API_MeshID || elementType == API_ZoneID ||
-		elementType == API_CurtainWallSegmentID || elementType == API_CurtainWallFrameID ||
-		elementType == API_CurtainWallJunctionID || elementType == API_CurtainWallAccessoryID || elementType == API_ShellID ||
-		elementType == API_MorphID || elementType == API_StairID || elementType == API_RiserID ||
-		elementType == API_TreadID || elementType == API_StairStructureID ||
-		elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
-		elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
-		elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
-		elementType == API_RailingNodeID || elementType == API_RailingBalusterSetID || elementType == API_RailingPatternID ||
-		elementType == API_RailingToprailEndID || elementType == API_RailingHandrailEndID ||
-		elementType == API_RailingRailEndID ||
-		elementType == API_RailingToprailConnectionID ||
-		elementType == API_RailingHandrailConnectionID ||
-		elementType == API_RailingRailConnectionID ||
-		elementType == API_RailingEndFinishID ||
-		elementType == API_BeamSegmentID ||
-		elementType == API_ColumnSegmentID ||
-		elementType == API_OpeningID) && syncSettings.wallS) flag_type = true;
-	if ((elementType == API_ObjectID ||
-		elementType == API_ZoneID ||
-		elementType == API_LampID ||
-		elementType == API_CurtainWallID ||
-		elementType == API_CurtainWallPanelID) && syncSettings.objS) flag_type = true;
-	if ((elementType == API_WindowID || elementType == API_DoorID || elementType == API_SkylightID) && syncSettings.widoS) flag_type = true;
-	if (elementType == API_DimensionID) flag_type = true;
-	return flag_type;
+bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings) {
+	if (elementType == API_DimensionID)
+		return true;
+	if (syncSettings.wallS &&
+		(elementType == API_WallID || elementType == API_ColumnID || elementType == API_BeamID || elementType == API_SlabID ||
+			elementType == API_RoofID || elementType == API_MeshID || elementType == API_ShellID ||
+			elementType == API_MorphID ||
+			elementType == API_BeamSegmentID ||
+			elementType == API_ColumnSegmentID))
+		return true;
+	if (syncSettings.objS &&
+		(elementType == API_StairID || elementType == API_RiserID ||
+			elementType == API_TreadID || elementType == API_StairStructureID ||
+			elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
+			elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
+			elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
+			elementType == API_RailingNodeID || elementType == API_RailingBalusterSetID || elementType == API_RailingPatternID ||
+			elementType == API_RailingToprailEndID || elementType == API_RailingHandrailEndID ||
+			elementType == API_RailingRailEndID ||
+			elementType == API_RailingToprailConnectionID ||
+			elementType == API_RailingHandrailConnectionID ||
+			elementType == API_RailingRailConnectionID ||
+			elementType == API_RailingEndFinishID ||
+			elementType == API_ObjectID ||
+			elementType == API_ZoneID ||
+			elementType == API_LampID))
+		return true;
+	if (syncSettings.cwallS &&
+		(elementType == API_CurtainWallSegmentID ||
+			elementType == API_CurtainWallFrameID ||
+			elementType == API_CurtainWallJunctionID ||
+			elementType == API_CurtainWallAccessoryID ||
+			elementType == API_CurtainWallID ||
+			elementType == API_CurtainWallPanelID))
+		return true;
+	if (syncSettings.widoS &&
+		(elementType == API_WindowID ||
+			elementType == API_DoorID ||
+			elementType == API_SkylightID ||
+			elementType == API_OpeningID))
+		return true;
+	return false;
 }
 
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
-bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettings, const bool needCheckElementType) {
+bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType) {
+
 	// Проверяем - зарезервирован ли объект
 	if (objectId == APINULLGuid) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) return false;
 	if (!ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) return false;
+
 	// Проверяем - на находится ли объект в модуле
 	API_Elem_Head	tElemHead;
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
@@ -147,13 +170,15 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings&  syncSettin
 // Резервируем, разблокируем, вообщем - делаем элемент редактируемым
 // Единственное, что может нас остановить - объект находится в модуле.
 // -----------------------------------------------------------------------------
-bool UnlockElement(const API_Guid& objectId, GSErrCode&	err) {
+bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
+
 	// Проверяем - на находится ли объект в модуле
 	API_Elem_Head	tElemHead;
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = objectId;
 	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
 	if (tElemHead.hotlinkGuid != APINULLGuid) return false; // С объектами в модуле сделать ничего не получится
+
 	// Проверяем - зарезервирован ли объект и резервируем, если надо
 	if (ACAPI_TeamworkControl_HasConnection() && !ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
 		GS::Array<API_Guid>	elements;
@@ -162,12 +187,15 @@ bool UnlockElement(const API_Guid& objectId, GSErrCode&	err) {
 		ACAPI_TeamworkControl_ReserveElements(elements, &conflicts);
 		if (!conflicts.IsEmpty()) return false; // Не получилось зарезервировать
 	}
-	bool u1 = ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight);
-	bool u2 = ACAPI_Element_Filter(objectId, APIFilt_IsEditable);
-	bool u3 = ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace);
-	return (u1 && u2 && u3);
+	if (ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) {
+		if (ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) {
+			if (ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
+				return true;; // Зарезервировали
+			}
+		}
+	};
+	return false; // Не получилось зарезервировать
 }
-
 
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
@@ -177,9 +205,10 @@ void MenuSetState(SyncSettings& syncSettings) {
 	MenuItemCheckAC(Menu_wallS, syncSettings.wallS);
 	MenuItemCheckAC(Menu_widoS, syncSettings.widoS);
 	MenuItemCheckAC(Menu_objS, syncSettings.objS);
+	MenuItemCheckAC(Menu_cwallS, syncSettings.cwallS);
 }
 
-void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString, const GSErrCode &err, const API_Guid& elemGuid) {
+void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid) {
 	GS::UniString error_type = "";
 	if (err != NoError) {
 		switch (err)
@@ -435,10 +464,9 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString &reportString,
 			layer.header.typeID = API_LayerID;
 			layer.header.index = elem_head.layer;
 			if (ACAPI_Attribute_Get(&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-
 		}
 	}
-	GS::UniString msg = modulename + ": " +  reportString + " " + error_type;
+	GS::UniString msg = modulename + ": " + reportString + " " + error_type;
 	ACAPI_WriteReport(msg, false);
 }
 
@@ -473,7 +501,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 	API_Neig** selNeigs;
 #else
 	GS::Array<API_Neig>  selNeigs;
-#endif 
+#endif
 	err = ACAPI_Selection_Get(&selectionInfo, &selNeigs, onlyEditable);
 	BMKillHandle((GSHandle*)&selectionInfo.marquee.coords);
 	if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
@@ -498,7 +526,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 	for (const API_Neig& neig : selNeigs) {
 		if (neig.neigID == APINeig_CurtainWall || neig.neigID == APINeig_CurtainWallOn) {
 			GS::Array<API_Guid> panelGuid;
-			err = GetCWPanelsForCWall(neig.guid, panelGuid);
+			err = GetCWElementsForCWall(neig.guid, panelGuid);
 			if (err == NoError) {
 				for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
 					guidArray.Push(panelGuid.Get(i));
@@ -511,7 +539,6 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 #endif // AC_22
 }
 
-
 void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings)
 {
 	GS::UniString	title("Sync Selected");
@@ -519,6 +546,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
+
 		//TODO Возможно, предварительный сбор имён свойств в хэш-таблицу ускорит работу
 		// Надо только прокинуть их в функцию и добававить функцию поиска по ним
 		//GetAllPropertyName(propname);
@@ -534,7 +562,6 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	}
 }
 
-
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid
@@ -546,6 +573,7 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
+
 		//TODO Возможно, предварительный сбор имён свойств в хэш-таблицу ускорит работу
 		// Надо только прокинуть их в функцию и добававить функцию поиска по ним
 		//GetAllPropertyName(propname);
@@ -600,7 +628,7 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 	GS::Int32 param_int = 0;
 	bool param_bool = false;
 	double param_real = 0;
-	GSErrCode err = WriteProp(elemGuid, property, param_string,param_int, param_bool, param_real);
+	GSErrCode err = WriteProp(elemGuid, property, param_string, param_int, param_bool, param_real);
 	return err;
 }
 
@@ -615,7 +643,7 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 		}
 		break;
 	case API_PropertyRealValueType:
-		if (property.value.singleVariant.variant.doubleValue != param_real) {
+		if (!is_equal(property.value.singleVariant.variant.doubleValue, param_real)) {
 			property.value.singleVariant.variant.doubleValue = param_real;
 			flag_rec = true;
 		}
@@ -661,6 +689,7 @@ GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramNa
 	}
 	return err;
 }
+
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
@@ -668,17 +697,20 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 {
 	GSErrCode	err = NoError;
 	bool write = true;
+
 	// Есть ли вычисленное/доступное значение?
 #if defined(AC_22) || defined(AC_23)
 	bool isnoteval = (!property_from.isEvaluated);
 #else
 	bool isnoteval = (property_from.status != API_Property_HasValue);
 #endif
+
 	// Свойство недоступно или содержит невычисленное значение
 	if (isnoteval && write) {
 		err = APIERR_MISSINGCODE;
 		write = false;
 	}
+
 	// Совпадают ли типы?
 	if (property_from.definition.valueType != property.definition.valueType && write) {
 		if (property.definition.valueType == API_PropertyStringValueType) {
@@ -701,6 +733,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 			write = false;
 		}
 	}
+
 	// Если нужно записать список текста в текст
 	if (property.definition.collectionType != property_from.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
 		GS::UniString val;
@@ -716,6 +749,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 			write = false; //Значения одинаковые
 		}
 	}
+
 	// Обычное копирование
 	if (property.definition.collectionType == property_from.definition.collectionType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
 		if (property.value.singleVariant != property_from.value.singleVariant) {
@@ -751,7 +785,7 @@ GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
-UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString> &partstring) {
+UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring) {
 	GS::Array<GS::UniString> parts;
 	GS::UniString tinstring = instring;
 	UInt32 npart = instring.Split(delim, &parts);
@@ -789,13 +823,13 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 }
 
 // --------------------------------------------------------------------
-// Получение списка GUID панелей навесной стены
+// Получение списка GUID панелей, рам и аксессуаров навесной стены
 // --------------------------------------------------------------------
-GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids)
+GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& elementsSymbolGuids)
 {
-	GSErrCode	err = NoError;
 	API_ElementMemo	memo = {};
-	err = ACAPI_Element_GetMemo(cwGuid, &memo, APIMemoMask_CWallPanels);
+	UInt32 mask = APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
+	GSErrCode	err = ACAPI_Element_GetMemo(cwGuid, &memo, mask);
 	if (err != NoError) {
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return err;
@@ -804,14 +838,31 @@ GSErrCode GetCWPanelsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panel
 	const GSSize nPanels = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof(API_CWPanelType);
 	for (Int32 idx = 0; idx < nPanels; ++idx) {
 		err = ACAPI_Database(APIDb_IsCWPanelDegenerateID, (void*)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
-		if (!isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
-			panelSymbolGuids.Push(std::move(memo.cWallPanels[idx].head.guid));
+		if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
+			elementsSymbolGuids.Push(std::move(memo.cWallPanels[idx].head.guid));
+		}
+	}
+	const GSSize nWallFrames = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof(API_CWFrameType);
+	for (Int32 idx = 0; idx < nWallFrames; ++idx) {
+		if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
+			elementsSymbolGuids.Push(std::move(memo.cWallFrames[idx].head.guid));
+		}
+	}
+	const GSSize nWallJunctions = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallJunctions)) / sizeof(API_CWJunctionType);
+	for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
+		if (memo.cWallJunctions[idx].hasSymbol) {
+			elementsSymbolGuids.Push(std::move(memo.cWallJunctions[idx].head.guid));
+		}
+	}
+	const GSSize nWallAccessories = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallAccessories)) / sizeof(API_CWAccessoryType);
+	for (Int32 idx = 0; idx < nWallAccessories; ++idx) {
+		if (memo.cWallAccessories[idx].hasSymbol) {
+			elementsSymbolGuids.Push(std::move(memo.cWallAccessories[idx].head.guid));
 		}
 	}
 	ACAPI_DisposeElemMemoHdls(&memo);
 	return err;
 }
-
 
 // -----------------------------------------------------------------------------
 // Получение определения свойства по имени свойства
@@ -844,6 +895,7 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 			pname = partstring[1].ToLowerCase();
 			gname.ReplaceAll("@@", "/");
 			pname.ReplaceAll("@@", "/");
+
 			//Сначала ищем по группе/имени
 			for (unsigned int i = 0; i < properties.GetSize(); i++)
 			{
@@ -859,6 +911,7 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 			pname = propertyname.ToLowerCase();
 			flag_find_pname = true;
 		}
+
 		//Если не нашли по группе - поищем по имени в других группах (если это имя попадалось, flag_find_pname).
 		//Если имя группы задано не было - просто поищем по имени
 		if (flag_find_pname) {
@@ -1060,12 +1113,20 @@ bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_El
 // Поиск параметра GDL объекта по описанию или имени
 // -----------------------------------------------------------------------------
 bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter) {
+
+	// Ещё раз проверим тип элемента
 	if (elem_head.typeID != API_ObjectID &&
 		elem_head.typeID != API_WindowID &&
 		elem_head.typeID != API_DoorID &&
 		elem_head.typeID != API_ZoneID &&
 		elem_head.typeID != API_LampID &&
-		elem_head.typeID != API_CurtainWallPanelID) return false;
+		elem_head.typeID != API_CurtainWallPanelID &&
+		elem_head.typeID != API_CurtainWallFrameID &&
+		elem_head.typeID != API_CurtainWallJunctionID &&
+		elem_head.typeID != API_CurtainWallAccessoryID) {
+		return false;
+	}
+
 	// Определяемся - как ищем. По имени или описанию?
 	GS::UniString findstr = paramName.ToLowerCase();
 	bool find_by_description = false;
@@ -1077,6 +1138,7 @@ bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem
 	}
 	bool flag_find = false;
 	Int32 inx = 0;
+
 	// Поищем по описанию. Запрашивать список актуальных параметров пока не будем - вдруг по описанию ничего не найдём
 	if (find_by_description) {
 		flag_find = FindGDLParametersByDescription(findstr, elem_head, inx);
@@ -1093,7 +1155,6 @@ bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem
 	ACAPI_DisposeAddParHdl(&addPars);
 	return true;
 }
-
 
 GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params) {
 	API_ElemTypeID	elemType;
@@ -1230,8 +1291,7 @@ bool GetPropertyParam(const API_Guid& elemGuid, const GS::UniString& paramName, 
 		msg_rep("GetParamByName", "ACAPI_Element_GetPropertyValue " + definitions.name, err, elemGuid);
 		return false;
 	}
-	bool flag_find = ConvParamValue(pvalue, property);
-	return flag_find;
+	return ConvParamValue(pvalue, property);
 }
 
 // -----------------------------------------------------------------------------
@@ -1243,6 +1303,7 @@ bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter) {
 	double param_real = 0.0;
 	bool param_bool = false;
 	pvalue.canCalculate = false;
+
 	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
 	if (nthParameter.typeID == APIParT_CString) {
 		param_string = nthParameter.value.uStr;
@@ -1259,6 +1320,7 @@ bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter) {
 		if (param_int / 1 < param_real) param_int += 1;
 	}
 	if (abs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
+
 	// Если параметр не строковое - определяем текстовое значение конвертацией
 	if (param_string.GetLength() == 0) {
 		API_AttrTypeID attrType = API_ZombieAttrID;
@@ -1291,6 +1353,7 @@ bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter) {
 			param_string = GS::UniString::Printf("%.3f", param_real);
 			pvalue.type = API_PropertyRealValueType;
 			break;
+
 			// Для реквезитов в текст выведем имена
 		case APIParT_Profile:
 			attrType = API_ProfileID;
@@ -1378,10 +1441,10 @@ bool ConvParamValue(ParamValue& pvalue, const API_Property& property) {
 			pvalue.doubleValue = 1.0;
 		}
 		break;
-	case API_PropertyUndefinedValueType: 
+	case API_PropertyUndefinedValueType:
 		return false;
 		break;
-	default: 
+	default:
 		return false;
 		break;
 	}
@@ -1500,7 +1563,7 @@ bool ReplaceParamInExpression(const ParamDictValue& pdictvalue, GS::UniString& e
 			n++;
 		}
 	}
-	return (n>0);
+	return (n > 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -1540,7 +1603,6 @@ bool		MenuInvertItemMark(short menuResID, short itemIndex) {
 	return (bool)((itemFlags & API_MenuItemChecked) != 0);
 }
 
-
 // TODO Придумать более изящную обработку округления
 GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniString stringformat) {
 	if (abs(var) < 0.00000001) return "0";
@@ -1574,13 +1636,14 @@ GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniS
 			outvar = var;
 			outstringformat.ReplaceAll("m", "");
 		}
+
 		// Принудительный вывод заданного кол-ва нулей после запятой
 		if (outstringformat.Contains("0")) {
 			outstringformat.ReplaceAll("0", "");
 			outstringformat.Trim();
 			if (!outstringformat.IsEmpty()) trim_zero = false;
 		}
-		if (outstringformat.IsEmpty()) { 
+		if (outstringformat.IsEmpty()) {
 			n_zero = 0;
 		}
 		else {
@@ -1595,8 +1658,8 @@ GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniS
 		out.TrimRight(',');
 	}
 	else {
-		Int32 addzero = n_zero- (out.GetLength() - out.FindFirst(',') - 1);
-		if (addzero>0) out = out + GS::UniString::Printf("%*s", addzero, "0");
+		Int32 addzero = n_zero - (out.GetLength() - out.FindFirst(',') - 1);
+		if (addzero > 0) out = out + GS::UniString::Printf("%*s", addzero, "0");
 	}
 	return out;
 }
@@ -1613,17 +1676,15 @@ GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS
 	}
 }
 
-
-GS::UniString PropertyTestHelpers::ToString (const API_Variant& variant) {
+GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant) {
 	return PropertyTestHelpers::ToString(variant, "");
 }
 
 GS::UniString PropertyTestHelpers::ToString(const API_Property& property) {
 	return PropertyTestHelpers::ToString(property, "");
-}
+	}
 
-
-GS::UniString PropertyTestHelpers::ToString (const API_Property& property, const GS::UniString stringformat) {
+GS::UniString PropertyTestHelpers::ToString(const API_Property& property, const GS::UniString stringformat) {
 	GS::UniString string;
 	const API_PropertyValue* value;
 #if defined(AC_22) || defined(AC_23)
@@ -1642,53 +1703,53 @@ GS::UniString PropertyTestHelpers::ToString (const API_Property& property, const
 	}
 	if (property.isDefault && property.status == API_Property_NotEvaluated) {
 		value = &property.definition.defaultValue.basicValue;
-	} else {
+	}
+	else {
 		value = &property.value;
 	}
 #endif
 	switch (property.definition.collectionType) {
-		case API_PropertySingleCollectionType: {
-			string += ToString (value->singleVariant.variant, stringformat);
-		} break;
-		case API_PropertyListCollectionType: {
-			for (UInt32 i = 0; i < value->listVariant.variants.GetSize (); i++) {
-				string += ToString (value->listVariant.variants[i], stringformat);
-				if (i != value->listVariant.variants.GetSize () - 1) {
-					string += "; ";
-				}
+	case API_PropertySingleCollectionType: {
+		string += ToString(value->singleVariant.variant, stringformat);
+	} break;
+	case API_PropertyListCollectionType: {
+		for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
+			string += ToString(value->listVariant.variants[i], stringformat);
+			if (i != value->listVariant.variants.GetSize() - 1) {
+				string += "; ";
 			}
-		} break;
-		case API_PropertySingleChoiceEnumerationCollectionType: {
-#ifdef AC_25
-			string += ToString(value->singleVariant.variant, stringformat);
-#else // AC_25
-			string += ToString(value->singleEnumVariant.displayVariant, stringformat);
-#endif
-		} break;
-		case API_PropertyMultipleChoiceEnumerationCollectionType: {
-#ifdef AC_25
-			for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
-				string += ToString(value->listVariant.variants[i], stringformat);
-				if (i != value->listVariant.variants.GetSize() - 1) {
-					string += "; ";
-				}
-			}
-#else // AC_25
-			for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
-				string += ToString(value->multipleEnumVariant.variants[i].displayVariant, stringformat);
-				if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
-					string += "; ";
-				}
-			}
-#endif
-		} break;
-		default: {
-			break;
 		}
+	} break;
+	case API_PropertySingleChoiceEnumerationCollectionType: {
+#ifdef AC_25
+		string += ToString(value->singleVariant.variant, stringformat);
+#else // AC_25
+		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
+#endif
+	} break;
+	case API_PropertyMultipleChoiceEnumerationCollectionType: {
+#ifdef AC_25
+		for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
+			string += ToString(value->listVariant.variants[i], stringformat);
+			if (i != value->listVariant.variants.GetSize() - 1) {
+				string += "; ";
+			}
+		}
+#else // AC_25
+		for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
+			string += ToString(value->multipleEnumVariant.variants[i].displayVariant, stringformat);
+			if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
+				string += "; ";
+			}
+		}
+#endif
+	} break;
+	default: {
+		break;
 	}
+}
 	return string;
 }
-
 
 bool operator== (const API_Variant& lhs, const API_Variant& rhs)
 {
@@ -1697,33 +1758,30 @@ bool operator== (const API_Variant& lhs, const API_Variant& rhs)
 	}
 
 	switch (lhs.type) {
-		case API_PropertyIntegerValueType:
-			return lhs.intValue == rhs.intValue;
-		case API_PropertyRealValueType:
-			return lhs.doubleValue == rhs.doubleValue;
-		case API_PropertyStringValueType:
-			return lhs.uniStringValue == rhs.uniStringValue;
-		case API_PropertyBooleanValueType:
-			return lhs.boolValue == rhs.boolValue;
-		case API_PropertyGuidValueType:
-			return lhs.guidValue == rhs.guidValue;
-		default:
-			return false;
+	case API_PropertyIntegerValueType:
+		return lhs.intValue == rhs.intValue;
+	case API_PropertyRealValueType:
+		return lhs.doubleValue == rhs.doubleValue;
+	case API_PropertyStringValueType:
+		return lhs.uniStringValue == rhs.uniStringValue;
+	case API_PropertyBooleanValueType:
+		return lhs.boolValue == rhs.boolValue;
+	case API_PropertyGuidValueType:
+		return lhs.guidValue == rhs.guidValue;
+	default:
+		return false;
 	}
 }
-
 
 bool operator== (const API_SingleVariant& lhs, const API_SingleVariant& rhs)
 {
 	return lhs.variant == rhs.variant;
 }
 
-
 bool operator== (const API_ListVariant& lhs, const API_ListVariant& rhs)
 {
 	return lhs.variants == rhs.variants;
 }
-
 
 bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumerationVariant& rhs)
 {
@@ -1737,21 +1795,21 @@ bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEn
 }
 #endif
 
-bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType)
+bool Equals(const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType)
 {
 	if (lhs.hasExpression != rhs.hasExpression) {
 		return false;
 	}
 
 	if (lhs.hasExpression) {
-		   return lhs.propertyExpressions == rhs.propertyExpressions;
-	} else {
-		   return Equals (lhs.basicValue, rhs.basicValue, collType);
+		return lhs.propertyExpressions == rhs.propertyExpressions;
+	}
+	else {
+		return Equals(lhs.basicValue, rhs.basicValue, collType);
 	}
 }
 
-
-bool Equals (const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_PropertyCollectionType collType)
+bool Equals(const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_PropertyCollectionType collType)
 {
 	if (lhs.variantStatus != rhs.variantStatus) {
 		return false;
@@ -1762,49 +1820,46 @@ bool Equals (const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_Pro
 	}
 
 	switch (collType) {
-		case API_PropertySingleCollectionType:
-			return lhs.singleVariant == rhs.singleVariant;
-		case API_PropertyListCollectionType:
-			return lhs.listVariant == rhs.listVariant;
+	case API_PropertySingleCollectionType:
+		return lhs.singleVariant == rhs.singleVariant;
+	case API_PropertyListCollectionType:
+		return lhs.listVariant == rhs.listVariant;
 #ifdef AC_25
-		case API_PropertySingleChoiceEnumerationCollectionType:
-			return lhs.singleVariant == rhs.singleVariant;
-		case API_PropertyMultipleChoiceEnumerationCollectionType:
-			return lhs.listVariant == rhs.listVariant;
+	case API_PropertySingleChoiceEnumerationCollectionType:
+		return lhs.singleVariant == rhs.singleVariant;
+	case API_PropertyMultipleChoiceEnumerationCollectionType:
+		return lhs.listVariant == rhs.listVariant;
 #else
-		case API_PropertySingleChoiceEnumerationCollectionType:
-			return lhs.singleEnumVariant == rhs.singleEnumVariant;
-		case API_PropertyMultipleChoiceEnumerationCollectionType:
-			return lhs.multipleEnumVariant == rhs.multipleEnumVariant;
+	case API_PropertySingleChoiceEnumerationCollectionType:
+		return lhs.singleEnumVariant == rhs.singleEnumVariant;
+	case API_PropertyMultipleChoiceEnumerationCollectionType:
+		return lhs.multipleEnumVariant == rhs.multipleEnumVariant;
 #endif
-		default:
-			DBBREAK ();
-			return false;
+	default:
+		DBBREAK();
+		return false;
 	}
-}
-
+	}
 
 bool operator== (const API_PropertyGroup& lhs, const API_PropertyGroup& rhs)
 {
 	return lhs.guid == rhs.guid &&
-		   lhs.name == rhs.name;
+		lhs.name == rhs.name;
 }
-
 
 bool operator== (const API_PropertyDefinition& lhs, const API_PropertyDefinition& rhs)
 {
 	return lhs.guid == rhs.guid &&
-		   lhs.groupGuid == rhs.groupGuid &&
-		   lhs.name == rhs.name &&
-		   lhs.description == rhs.description &&
-		   lhs.collectionType == rhs.collectionType &&
-		   lhs.valueType == rhs.valueType &&
-		   lhs.measureType == rhs.measureType &&
-		   Equals (lhs.defaultValue, rhs.defaultValue, lhs.collectionType) &&
-		   lhs.availability == rhs.availability &&
-		   lhs.possibleEnumValues == rhs.possibleEnumValues;
+		lhs.groupGuid == rhs.groupGuid &&
+		lhs.name == rhs.name &&
+		lhs.description == rhs.description &&
+		lhs.collectionType == rhs.collectionType &&
+		lhs.valueType == rhs.valueType &&
+		lhs.measureType == rhs.measureType &&
+		Equals(lhs.defaultValue, rhs.defaultValue, lhs.collectionType) &&
+		lhs.availability == rhs.availability &&
+		lhs.possibleEnumValues == rhs.possibleEnumValues;
 }
-
 
 bool operator== (const API_Property& lhs, const API_Property& rhs)
 {
@@ -1812,8 +1867,9 @@ bool operator== (const API_Property& lhs, const API_Property& rhs)
 		return false;
 	}
 	if (!lhs.isDefault) {
-		return Equals (lhs.value, rhs.value, lhs.definition.collectionType);
-	} else {
+		return Equals(lhs.value, rhs.value, lhs.definition.collectionType);
+	}
+	else {
 		return true;
 	}
 }
@@ -1826,7 +1882,7 @@ void DeleteElementUserData(const API_Guid& elemguid) {
 	tElemHead.guid = elemguid;
 	API_ElementUserData userData = {};
 	GSErrCode err = ACAPI_Element_GetUserData(&tElemHead, &userData);
-	if (err == NoError && userData.dataHdl != nullptr){
+	if (err == NoError && userData.dataHdl != nullptr) {
 		err = ACAPI_Element_DeleteUserData(&tElemHead);
 		msg_rep("Del user data", " ", NoError, APINULLGuid);
 	}
@@ -1847,7 +1903,6 @@ void DeleteElementUserData(const API_Guid& elemguid) {
 		}
 	}
 }
-
 
 // -----------------------------------------------------------------------------
 // Удаление данных аддона из всех элементов
@@ -1907,7 +1962,6 @@ void UnhideUnlockAllLayer(void)
 					err = ACAPI_Attribute_Modify(&attrib, NULL);
 					if (err != NoError) msg_rep("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
 				}
-
 			}
 		}
 	}

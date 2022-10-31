@@ -12,10 +12,9 @@
 
 
 
-
 'STR#' 32000 "Add-on Name and Description" {
 		"SomeStuff"
-		"Синхронизация свойств и параметров GDL элементов v1.3"
+		"Синхронизация свойств и параметров GDL элементов v1.31b"
 }   
 
 'STR#' 32500 "Strings for the Menu" {
@@ -26,6 +25,7 @@
 		"Обрабатывать стены/перекрытия^E3^ES^EE^ED^EW^EL^32605"
 		"Обрабатывать окна/двери^E3^ES^EE^ED^EW^EL^32606"
 		"Обрабатывать объекты/зоны^E3^ES^EE^ED^EW^EL^32607"
+		"Обрабатывать элементы навесных стен^E3^ES^EE^ED^EW^EL^32612"
 		"Перенумеровать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32608"
 		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 		"Вести запись действий^EI^E3^ES^EE^ED^EW^EL^32610"
@@ -89,5 +89,8 @@
     "LogAllIcon"
 }
 'GICN' 32611 "LogShowIcon" {
+    "LogShowIcon"
+}
+'GICN' 32612 "SyncсWall" {
     "LogShowIcon"
 }

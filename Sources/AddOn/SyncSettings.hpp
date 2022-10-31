@@ -11,7 +11,7 @@ class SyncSettings : public GS::Object
 
 public:
 	SyncSettings();
-	SyncSettings(bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool logMon);
+	SyncSettings(bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon);
 
 	virtual	GSErrCode	Read(GS::IChannel& ic) override;
 	virtual	GSErrCode	Write(GS::OChannel& oc) const override;
@@ -21,6 +21,7 @@ public:
 	bool	wallS;
 	bool	widoS;
 	bool	objS;
+	bool	cwallS;
 	bool	logMon;
 };
 

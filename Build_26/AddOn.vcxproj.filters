@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\APICommon.c">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Dimensions.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Helpers.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Log.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\ReNum.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\ResetProperty.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\SomeStuff_Main.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Summ.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Sync.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\SyncSettings.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APICommon.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Dimensions.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Helpers.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Log.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ReNum.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResetProperty.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\SomeStuff_Main.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Summ.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Sync.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\SyncSettings.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\alphanum.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\calculator.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\sort.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Sources">
+      <UniqueIdentifier>{90F3DF30-23B3-36C9-B980-F46C9AF9DA3A}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

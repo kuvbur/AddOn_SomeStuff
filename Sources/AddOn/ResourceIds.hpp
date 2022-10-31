@@ -7,5 +7,4 @@
 #define ID_ADDON_STRINGS	32501
 #define ID_ADDON_DLG		32600
 
-
 #endif
