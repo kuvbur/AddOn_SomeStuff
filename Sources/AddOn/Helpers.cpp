@@ -663,6 +663,47 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 	default:
 		break;
 	}
+	
+	if (flag_rec && property.value.singleVariant.variant.type == API_PropertyGuidValueType && property.definition.collectionType == API_PropertySingleChoiceEnumerationCollectionType) {
+		API_Guid guidValue = APINULLGuid;
+		API_SingleEnumerationVariant possible_value;
+		// Для свойств с набором параметров необходимо задавать не само значение, а его GUID
+		for (UInt32 i = 0; i < property.definition.possibleEnumValues.GetSize(); i++) {
+			possible_value = property.definition.possibleEnumValues[i];
+			switch (property.definition.valueType) {
+			case API_PropertyIntegerValueType:
+				if (property.value.singleVariant.variant.intValue == possible_value.displayVariant.intValue) {
+					guidValue = possible_value.keyVariant.guidValue;
+				}
+				break;
+			case API_PropertyRealValueType:
+				if (!is_equal(property.value.singleVariant.variant.doubleValue, possible_value.displayVariant.doubleValue)) {
+					guidValue = possible_value.keyVariant.guidValue;
+				}
+				break;
+			case API_PropertyBooleanValueType:
+				if (property.value.singleVariant.variant.boolValue == possible_value.displayVariant.boolValue) {
+					guidValue = possible_value.keyVariant.guidValue;
+				}
+				break;
+			case API_PropertyStringValueType:
+				if (property.value.singleVariant.variant.uniStringValue == possible_value.displayVariant.uniStringValue) {
+					guidValue = possible_value.keyVariant.guidValue;
+				}
+				break;
+			default:
+				break;
+			}
+			if (guidValue != APINULLGuid) {
+				property.value.singleVariant.variant.guidValue = guidValue;
+				break;
+			}
+		}
+		if (guidValue == APINULLGuid) {
+			flag_rec = false;
+			msg_rep("WriteProp", "Failed to match values", err, elemGuid);
+		}
+	}
 	if (flag_rec) {
 		property.isDefault = false;
 		err = ACAPI_Element_SetProperty(elemGuid, property);

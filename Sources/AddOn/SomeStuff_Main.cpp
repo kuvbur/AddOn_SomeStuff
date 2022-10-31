@@ -19,6 +19,9 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_G
 	const GS::HashSet<API_Guid>& deleted) {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
+#ifdef PK_1
+	syncSettings.syncMon = true;
+#endif // PK_1
 	for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs(); it != nullptr; ++it) {
 		AttachObserver(*(it->key), syncSettings);
 	}
@@ -31,6 +34,9 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_G
 static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param) {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
+#ifdef PK_1
+	syncSettings.syncMon = true;
+#endif // PK_1
 	MenuSetState(syncSettings);
 	switch (notifID) {
 	case APINotify_New:
@@ -51,6 +57,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 		break;
 	}
 	param = 1;
+	DimRoundAll(syncSettings);
 	return NoError;
 }	// ProjectEventHandlerProc
 
@@ -61,6 +68,9 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
+#ifdef PK_1
+	syncSettings.syncMon = true;
+#endif // PK_1
 	if (!syncSettings.syncMon) return NoError;
 	if (elemType->notifID == APINotifyElement_EndEvents) {
 		DimRoundAll(syncSettings);
@@ -109,6 +119,9 @@ GSErrCode Do_Sync(const API_Guid& objectId, SyncSettings& syncSettings) {
 // -----------------------------------------------------------------------------
 void	Do_ElementMonitor(bool& syncMon)
 {
+#ifdef PK_1
+	syncMon = true;
+#endif
 	if (syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);
@@ -127,15 +140,17 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	GSErrCode err = NoError;
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
+#ifdef PK_1
+	syncSettings.syncMon = true;
+#endif // PK_1
 	switch (menuParams->menuItemRef.menuResID) {
 	case AddOnMenuID:
 		switch (menuParams->menuItemRef.itemIndex) {
 		case MonAll_CommandID:
-			syncSettings.syncMon = !syncSettings.syncMon;
 			syncSettings.syncAll = false;
-#ifdef PK_1
-			syncSettings.syncMon = true;
-#endif
+#ifndef PK_1
+			syncSettings.syncMon = !syncSettings.syncMon;
+#endif // PK_1
 			Do_ElementMonitor(syncSettings.syncMon);
 			SyncAndMonAll(syncSettings);
 			DimRoundAll(syncSettings);
@@ -198,6 +213,9 @@ GSErrCode __ACENV_CALL Initialize(void)
 {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
+#ifdef PK_1
+	syncSettings.syncMon = true;
+#endif // PK_1
 	MenuSetState(syncSettings);
 	Do_ElementMonitor(syncSettings.syncMon);
 	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);

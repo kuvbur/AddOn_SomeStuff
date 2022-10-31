@@ -71,7 +71,7 @@ bool LoadSyncSettingsFromPreferences(SyncSettings& syncSettings)
 		return false;
 	}
 #ifdef PK_1
-	tempsyncSettings.syncAll = true;
+	tempsyncSettings.syncMon = true;
 #endif
 	syncSettings = tempsyncSettings;
 	delete[] data;
