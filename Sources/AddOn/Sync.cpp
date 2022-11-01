@@ -66,9 +66,8 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 		}
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (syncSettings.syncAll) {
-
 				// Если попадается навесная стена - обработаем также входящие в неё панели
-				if (elementType == API_CurtainWallID) {
+				if (elementType == API_CurtainWallID && syncSettings.cwallS) {
 					GS::Array<API_Guid> panelGuid;
 					err = GetCWElementsForCWall(guidArray[i], panelGuid);
 					if (err == NoError) {
@@ -111,7 +110,6 @@ void SyncSelected(const SyncSettings& syncSettings) {
 // --------------------------------------------------------------------
 GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode			err = NoError;
-
 	//Обновляем объекты, если их обработка включена
 	API_WindowRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
@@ -127,7 +125,6 @@ GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& sy
 // --------------------------------------------------------------------
 GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode			err = NoError;
-
 	//Обновляем объекты, если их обработка включена
 	API_DoorRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
@@ -566,26 +563,6 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGu
 			return APIERR_MISSINGCODE; // Игнорируем значение
 		}
 	}
-	return err;
-}
-
-// -----------------------------------------------------------------------------
-// Синхронизация данных геометрии морфа и свойства
-// -----------------------------------------------------------------------------
-GSErrCode SyncMorph(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, SyncRule& syncRule, const API_PropertyDefinition& definition)
-{
-	//TODO дописать запись длины морфа
-	long double L = 0;
-	long double Lx = 0;
-	long double Ly = 0;
-	long double Lz = 0;
-	long double Max_x = 0;
-	long double Max_y = 0;
-	long double Max_z = 0;
-	long double Min_x = 0;
-	long double Min_y = 0;
-	long double Min_z = 0;
-	GSErrCode	err = GetMorphData(elemGuid_from, L, Lx, Ly, Lz, Max_x, Max_y, Max_z, Min_x, Min_y, Min_z);
 	return err;
 }
 
