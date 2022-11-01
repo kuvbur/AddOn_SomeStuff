@@ -27,9 +27,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h">
-      <Filter>Sources</Filter>
-    </ClInclude>
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp">
       <Filter>Sources</Filter>
     </ClInclude>

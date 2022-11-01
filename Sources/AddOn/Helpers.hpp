@@ -1,7 +1,14 @@
 #pragma once
+
 #ifndef HELPERS_HPP
 #define	HELPERS_HPP
-#include	"APICommon.h"
+
+#ifdef AC_25
+#include	"APICommon25.h"
+#endif // AC_25
+#ifdef AC_26
+#include	"APICommon26.h"
+#endif // AC_26
 #include	"DG.h"
 #include	"StringConversion.hpp"
 #include	"ResourceIds.hpp"
@@ -81,11 +88,19 @@ typedef struct {
 	bool canCalculate = false;
 } ParamValue;
 
+typedef struct {
+	GS::Array <API_Property> prop;
+	GS::Array <ParamValue> param;
+} WriteData;
+
 // Словарь с заранее вычисленными данными для калькулятора
 typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
 
 // Словарь с параметрами для вычисления
 typedef GS::HashTable<GS::UniString, bool> ParamDict;
+
+// Словарь с параметрами для записи
+typedef GS::HashTable<API_Guid, WriteData> WriteDict;
 
 bool is_equal(double x, double y);
 
@@ -160,6 +175,8 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
 GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemType, API_AddParType**& params);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string);
+GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, ParamValue& pvalue);
+bool IsEqualPropParamValue(const ParamValue& pvalue, API_Property& property);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramName, API_Property& property);
 GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyfrom, API_Property& property);

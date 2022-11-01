@@ -1,12 +1,16 @@
-
 #if !defined (RENUM_HPP)
 #pragma once
 #define	RENUM_HPP
-#include	"APICommon.h"
+#ifdef AC_25
+#include	"APICommon25.h"
+#endif // AC_25
+#ifdef AC_26
+#include	"APICommon26.h"
+#endif // AC_26
 #include	"DG.h"
 
 // Типы нумерации (см. RenumElement.state)
-#define RENUM_IGNORE 0	// Игнорировать, не менять и не объединять с другими элементами позицию. 
+#define RENUM_IGNORE 0	// Игнорировать, не менять и не объединять с другими элементами позицию.
 #define RENUM_ADD 1		// Позицию не менять, добавить другие элементы при совпадении критерия
 #define RENUM_NORMAL 2	// Обычная нумерация/перенумерация
 

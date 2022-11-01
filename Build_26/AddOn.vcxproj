@@ -207,29 +207,9 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APICommon.h" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Dimensions.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Helpers.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Log.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ReNum.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResetProperty.hpp" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\SomeStuff_Main.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Summ.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\Sync.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\SyncSettings.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\alphanum.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\calculator.hpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\sort.h" />
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\APICommon.c">
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsCpp</CompileAs>
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsCpp</CompileAs>
-      <CompileAs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">CompileAsCpp</CompileAs>
-    </ClCompile>
     <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Dimensions.cpp" />
     <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Helpers.cpp" />
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Log.cpp" />
     <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\ReNum.cpp" />
     <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\ResetProperty.cpp" />
     <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\SomeStuff_Main.cpp" />

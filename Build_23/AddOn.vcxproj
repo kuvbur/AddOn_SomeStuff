@@ -219,11 +219,14 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Sources\AddOn\Dimensions.cpp" />
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp" />
     <ClCompile Include="..\Sources\AddOn\ReNum.cpp" />
+    <ClCompile Include="..\Sources\AddOn\ResetProperty.cpp" />
     <ClCompile Include="..\Sources\AddOn\SomeStuff_Main.cpp" />
     <ClCompile Include="..\Sources\AddOn\Summ.cpp" />
     <ClCompile Include="..\Sources\AddOn\Sync.cpp" />
+    <ClCompile Include="..\Sources\AddOn\SyncSettings.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
