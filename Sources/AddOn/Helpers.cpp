@@ -1046,8 +1046,11 @@ GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_
 	return error;
 }
 
-GSErrCode GetMorphData(const API_Guid& elemGuid, long double& L, long double& Lx, long double& Ly, long double& Lz, long double& Max_x, long double& Max_y, long double& Max_z, long double& Min_x, long double& Min_y, long double& Min_z
-) {
+// -----------------------------------------------------------------------------
+// Получение размеров Морфа
+// Формирует два словаря - ParamDict& paramDict с именами параметров и ParamDictValue& pdictvalue со значениями
+// -----------------------------------------------------------------------------
+GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 	API_Element      element = {};
 	API_ElementMemo  memo;
 	GSErrCode        err;
@@ -1057,6 +1060,16 @@ GSErrCode GetMorphData(const API_Guid& elemGuid, long double& L, long double& Lx
 	if (err == NoError && element.header.hasMemo) {
 		err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_All);
 		if (err == NoError) {
+			double L = 0;
+			double Lx = 0;
+			double Ly = 0;
+			double Lz = 0;
+			double Max_x = 0;
+			double Max_y = 0;
+			double Max_z = 0;
+			double Min_x = 0;
+			double Min_y = 0;
+			double Min_z = 0;
 			mb = memo.morphBody;
 			if (memo.morphBody->IsWireBody() && !memo.morphBody->IsSolidBody()) {
 				Int32 edgeCnt = mb->GetEdgeCount();
@@ -1064,19 +1077,19 @@ GSErrCode GetMorphData(const API_Guid& elemGuid, long double& L, long double& Lx
 					const EDGE& edge = mb->GetConstEdge(iEdge);
 					const VERT& vtx1 = mb->GetConstVertex(edge.vert1);
 					const VERT& vtx2 = mb->GetConstVertex(edge.vert2);
-					long double x1 = vtx1.x;
-					long double x2 = vtx2.x;
-					long double y1 = vtx1.y;
-					long double y2 = vtx2.y;
-					long double z1 = vtx1.z;
-					long double z2 = vtx2.z;
-					long double dx = powl(x2 - x1, 2);
-					long double dy = powl(y2 - y1, 2);
-					long double dz = powl(z2 - z1, 2);
-					long double dl = DoubleM2IntMM(sqrtl(dx + dy + dz)) / 1000;
-					long double dlx = DoubleM2IntMM(sqrtl(dy + dx)) / 1000;
-					long double dly = DoubleM2IntMM(sqrtl(dx + dz)) / 1000;
-					long double dlz = DoubleM2IntMM(sqrtl(dx + dy)) / 1000;
+					double x1 = vtx1.x;
+					double x2 = vtx2.x;
+					double y1 = vtx1.y;
+					double y2 = vtx2.y;
+					double z1 = vtx1.z;
+					double z2 = vtx2.z;
+					double dx = pow(x2 - x1, 2);
+					double dy = pow(y2 - y1, 2);
+					double dz = pow(z2 - z1, 2);
+					double dl = DoubleM2IntMM(sqrt(dx + dy + dz)) / 1000;
+					double dlx = DoubleM2IntMM(sqrt(dy + dx)) / 1000;
+					double dly = DoubleM2IntMM(sqrt(dx + dz)) / 1000;
+					double dlz = DoubleM2IntMM(sqrt(dx + dy)) / 1000;
 					L = L + dl;
 					Lx = Lx + dlx;
 					Ly = Ly + dly;
@@ -1100,12 +1113,16 @@ GSErrCode GetMorphData(const API_Guid& elemGuid, long double& L, long double& Lx
 				Min_x = DoubleM2IntMM(Min_x) / 1000;
 				Min_y = DoubleM2IntMM(Min_y) / 1000;
 				Min_z = DoubleM2IntMM(Min_z) / 1000;
+				AddParam2Dict("Morph:L", L, pdictvalue);
 			}
 		}
 		ACAPI_DisposeElemMemoHdls(&memo);
 	}
 	return err;
 }
+
+
+
 
 // -----------------------------------------------------------------------------
 // Поиск свойства по имени, включая имя группы
@@ -1346,11 +1363,25 @@ bool GetParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamVal
 		bool flag_find = GetPropertyParam(elemGuid, paramName_t, pvalue);
 		return flag_find;
 	}
-	else {
+	if (paramName_t.Contains("Property:")) {
+		paramName_t.ReplaceAll("Property:", "");
 		bool flag_find = GetPropertyParam(elemGuid, paramName_t, pvalue);
 		return flag_find;
 	}
-	return false;
+	if (paramName_t.Contains("Material:")) {
+		paramName_t.ReplaceAll("Material:", "");
+	}
+	if (paramName_t.Contains("Info:")) {
+		paramName_t.ReplaceAll("Info:", "");
+	}
+	if (paramName_t.Contains("IFC:")) {
+		paramName_t.ReplaceAll("IFC:", "");
+	}
+	if (paramName_t.Contains("Morph:")) {
+		paramName_t.ReplaceAll("Morph:", "");
+	}
+	bool flag_find = GetLibParam(elemGuid, paramName_t, pvalue);
+	return flag_find;
 }
 
 // -----------------------------------------------------------------------------
@@ -1573,6 +1604,33 @@ bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const In
 }
 
 // -----------------------------------------------------------------------------
+// Конвертация double в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue) {
+	pvalue.name = paramName;
+	pvalue.type = API_PropertyRealValueType;
+	pvalue.canCalculate = true;
+	pvalue.intValue = (GS::Int32)doubleValue;
+	pvalue.doubleValue = doubleValue;
+	pvalue.boolValue = false;
+	if (abs(pvalue.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.boolValue = true;
+	pvalue.uniStringValue = GS::UniString::Printf("%.3f", doubleValue);
+	return true;
+}
+
+
+// -----------------------------------------------------------------------------------------------------
+// Добавление в словари ParamDict и ParamDictValue параметра с именем paramName и значением doubleValue
+// -----------------------------------------------------------------------------------------------------
+void AddParam2Dict(const GS::UniString& paramName, const double doubleValue, ParamDictValue& pdictvalue) {
+	if (!pdictvalue.ContainsKey(paramName)) {
+		ParamValue pvalue;
+		ConvParamValue(pvalue, paramName, doubleValue);
+		pdictvalue.Add(paramName, pvalue);
+	}
+}
+
+// -----------------------------------------------------------------------------
 // Обработка количества нулей и единиц измерения в имени свойства
 // Удаляет из имени paramName найденные единицы измерения
 // Возвращает строку для скармливания функции NumToStig
@@ -1621,12 +1679,18 @@ bool GetParamNameDict(const GS::UniString& expression, ParamDict& paramDict) {
 	GS::UniString outstring = expression;
 	if (!outstring.Contains('{')) return (paramDict.GetSize() > 0);
 	GS::UniString part = "";
+	bool hasmorph = false;
 	for (UInt32 i = 0; i < expression.Count('{'); i++) {
 		part = outstring.GetSubstring('{', '}', 0);
 		if (!paramDict.ContainsKey(part)) {
 			paramDict.Add(part, true);
 		}
+		if (part.Contains("Morph:")) hasmorph = true;
 		outstring.ReplaceAll("{" + part + "}", "");
+	}
+	if (hasmorph) {
+		paramDict.Add("hasmorph", true);
+		paramDict.Add("Morph:L", true);
 	}
 	return (paramDict.GetSize() > 0);
 }
