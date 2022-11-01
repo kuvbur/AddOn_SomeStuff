@@ -1,7 +1,12 @@
 #pragma once
 #if !defined (SUMM_HPP)
 #define	SUMM_HPP
-#include	"APICommon.h"
+#ifdef AC_25
+#include	"APICommon25.h"
+#endif // AC_25
+#ifdef AC_26
+#include	"APICommon26.h"
+#endif // AC_26
 #include	"DG.h"
 
 static const short TextSum = 1;
@@ -33,6 +38,5 @@ GSErrCode Sum_GetElement(const API_Guid& elemGuid, SumRules& rules);
 bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition, SumRule& paramtype);
 
 GSErrCode Sum_OneRule(const SumRule& rule);
-
 
 #endif

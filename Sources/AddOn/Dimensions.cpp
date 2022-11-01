@@ -9,9 +9,10 @@
 #define DIM_CHANGE_ON 1
 #define DIM_CHANGE_FORCE 2
 #define DIM_CHANGE_OFF 3
+
 // TODO Попробовать добавить все подходящие слои в правила на этапе чтения настроек
 // -----------------------------------------------------------------------------
-// Чтение настроек из инфлрмации о проекте
+// Чтение настроек из информации о проекте
 //	Имя свойства: "Addon_Dimenstions"
 //	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
 //					Слой - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
@@ -68,6 +69,7 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 bool DimParsePref(GS::UniString rawrule, DimRule& dimrule) {
 	GS::Array<GS::UniString> partstring_1;
 	if (StringSplt(rawrule, "-", partstring_1) == 2) {
+
 		//Проверяем - что указано в правиле: слой или номер пера
 		// Слой указываем в кавычках, в regexp формате
 		if (partstring_1[0].Contains('"')) {
@@ -136,22 +138,28 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 		msg_rep("DimAutoRound", "ACAPI_Element_Get", err, elemGuid);
 		return err;
 	}
-	bool flag_round = false;
-	UInt32 round_value = 0;
 	short pen_dimenstion = 0;
 	short pen_original = 0;
 	short pen_rounded = 0;
 	bool flag_change_rule = false;
 	ParamDict paramDict;
 	GS::UniString expression = "";
+
 	//API_Element			mask;
 	//BNZeroMemory(&mask, sizeof(API_Element));
 	//ACAPI_ELEMENT_MASK_CLEAR(mask);
 	//ACAPI_ELEMENT_MASK_SETFULL(mask);
-	switch (element.header.typeID) {
+	API_ElemTypeID eltype;
+#ifdef AC_26
+	eltype = element.header.type.typeID;
+#else
+	eltype = element.header.typeID;
+#endif
+	switch (eltype) {
 	case API_DimensionID:
 		pen_original = element.dimension.defNote.notePen;
 		pen_dimenstion = element.dimension.linPen;
+
 		//element.dimension.defNote.contentType == API_NoteContent_Custom ? element.dimension.defNote.contentType = API_NoteContent_Measured
 		//	: element.dimension.defNote.contentType = API_NoteContent_Custom;
 		//strcpy((char*)&element.dimension.defNote.content, "Custom");
@@ -161,6 +169,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 	case API_RadialDimensionID:
 		pen_original = element.radialDimension.note.notePen;
 		pen_dimenstion = element.radialDimension.linPen;
+
 		//element.radialDimension.note.contentType == API_NoteContent_Custom ? element.radialDimension.note.contentType = API_NoteContent_Measured
 		//	: element.radialDimension.note.contentType = API_NoteContent_Custom;
 		//strcpy((char*)&element.radialDimension.note.content, "Custom");
@@ -170,6 +179,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 	case API_LevelDimensionID:
 		pen_original = element.levelDimension.note1.notePen;
 		pen_dimenstion = element.levelDimension.pen;
+
 		//element.levelDimension.note1.contentType == API_NoteContent_Custom ? element.levelDimension.note1.contentType = API_NoteContent_Measured
 		//	: element.levelDimension.note1.contentType = API_NoteContent_Custom;
 		//strcpy((char*)&element.levelDimension.note1.content, "Custom");
@@ -196,6 +206,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 				find_rule = true;
 			}
 		}
+
 		// TODO добавить regex
 		//kstr = GS::UniString::Printf("%d", pen_dimenstion).ToCStr().Get();
 		//for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -292,13 +303,16 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	if (!dimrule.expression.IsEmpty()) {
 		ParamDictValue pdictvalue;
 		if (elemGuid != APINULLGuid) GetParamValueDict(elemGuid, dimrule.paramDict, pdictvalue); //Получим значения, если размер привязан к элементу
+
 		// Добавляем в словарь округлённое значение
 		ParamValue pvalue;
 		ConvParamValue(pvalue, "MeasuredValue", dimValmm_round);
 		pdictvalue.Add(pvalue.name, pvalue);
 		GS::UniString expression = dimrule.expression;
+
 		// Заменяем вычисленное
 		if (ReplaceParamInExpression(pdictvalue, expression)) {
+
 			// Вычисляем значения
 			if (EvalExpression(expression)) {
 				custom_txt = expression;
@@ -306,6 +320,7 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 			}
 		}
 	}
+
 	//Если указано округление до нуля - просто подсветим кривые размеры
 	if (round_value < 1) {
 		if (contentType == API_NoteContent_Custom) flag_change = DIM_CHANGE_OFF;
@@ -318,6 +333,7 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 		}
 	}
 	else {
+
 		// Если стоит пользовательский текст - сверим с вычисленным значением
 		if (contentType == API_NoteContent_Custom) {
 			if (flag_change == DIM_NOCHANGE && flag_expression == false && dx < 1.0) {
@@ -329,6 +345,7 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 				flag_change = DIM_CHANGE_ON;
 			}
 		}
+
 		// Если стоит автотекст и формул нет - снимем выделение
 		if (contentType == API_NoteContent_Measured) {
 			if (flag_change == DIM_NOCHANGE && (flag_expression == true || dx >= 1.0)) {
@@ -350,7 +367,7 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 // TODO добавить резервирование
 // -----------------------------------------------------------------------------
 void DimRoundAll(const SyncSettings& syncSettings) {
-	//if (!syncSettings.logMon) return;
+	if (!syncSettings.syncAll) return;
 	DoneElemGuid doneelemguid;
 	DimRules dimrules;
 	GSErrCode err = DimReadPref(dimrules);
@@ -367,6 +384,7 @@ void DimRoundAll(const SyncSettings& syncSettings) {
 // -----------------------------------------------------------------------------
 bool DimRoundByType(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules) {
 	GSErrCode	err = NoError;
+
 	// Тут было резервирование всех рахмеров перед обновлением, но оно работает криво и я его отключил
 	//GS::Array<API_Guid>	guidArray_all;
 	//err = ACAPI_Element_GetElemList(typeID, &guidArray_all, APIFilt_OnVisLayer | APIFilt_IsInStructureDisplay);

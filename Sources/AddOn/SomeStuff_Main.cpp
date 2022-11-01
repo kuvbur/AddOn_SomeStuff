@@ -1,8 +1,13 @@
-﻿#include	"APIEnvir.h"
-#include	<stdio.h>
+﻿#include	<stdio.h>
+#include	"APIEnvir.h"
 #include	"ACAPinc.h"
+#ifdef AC_25
+#include	"APICommon25.h"
+#endif // AC_25
+#ifdef AC_26
+#include	"APICommon26.h"
+#endif // AC_26
 #include	"DGModule.hpp"
-#include	"APICommon.h"
 #include	"UniString.hpp"
 #include	"APIdefs_Properties.h"
 #include	"SomeStuff_Main.hpp"
@@ -77,7 +82,11 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		return NoError;
 	}
 	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
+#ifdef AC_26
+	if (elemType->elemHead.type.typeID == API_GroupID) return NoError;
+#else
 	if (elemType->elemHead.typeID == API_GroupID) return NoError;
+#endif
 	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) return NoError;
 	bool	sync_prop = false;
 	switch (elemType->notifID) {
@@ -126,7 +135,7 @@ void	Do_ElementMonitor(bool& syncMon)
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);
 		ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
-	}
+}
 	if (!syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
@@ -187,7 +196,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		}
 		break;
-	}
+}
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);

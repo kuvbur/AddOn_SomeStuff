@@ -37,7 +37,6 @@ bool LogCheckElementType(const API_ElemTypeID& elementType) {
 	return false;
 }
 
-
 void LogGetEmpty(LogData& logData) {
 	logData.change.current.isempty = true;
 	logData.change.isempty = true;
@@ -131,7 +130,8 @@ void LogShowElement(const API_Guid& elemGuid, const GS::HashTable<short, API_Use
 	if (!LogCheckElementType(elementType)) return;
 	LogData logData;
 	LogGetEmpty(logData);
-	if (LogReadElement(elemGuid, logData) == NoError) {;
+	if (LogReadElement(elemGuid, logData) == NoError) {
+		;
 		GS::UniString msg = "GUID: " + APIGuid2GSGuid(elemGuid).ToUniString();
 		char    elemStr[32];
 		if (err == NoError) {
@@ -175,7 +175,7 @@ void LogShowSelected() {
 	}
 }
 
-void LogDataRotate(lgL2 &partlogData) {
+void LogDataRotate(lgL2& partlogData) {
 	char	timeStr[128];
 	TIGetTimeString(TIGetTime(), timeStr, TI_SHORT_DATE_FORMAT | TI_SHORT_TIME_FORMAT);
 	bool isteamwork = false;
@@ -188,42 +188,43 @@ void LogDataRotate(lgL2 &partlogData) {
 	partlogData.current.isempty = false;
 }
 
-void LogWriteElement(const API_NotifyElementType *elemType) {
-	if (!IsElementEditable(elemType->elemHead.guid) || !LogCheckElementType(elemType ->elemHead.typeID))
+void LogWriteElement(const API_NotifyElementType* elemType) {
+	if (!IsElementEditable(elemType->elemHead.guid) || !LogCheckElementType(elemType->elemHead.typeID))
 		return;
 	LogData logData;
 	if (LogReadElement(elemType->elemHead.guid, logData) != NoError) LogGetEmpty(logData);
 	switch (elemType->notifID) {
-		case APINotifyElement_New:
-			LogDataRotate(logData.create);
-			logData.create.isempty = false;
-			break;
-		case APINotifyElement_Copy:
-			LogDataRotate(logData.create);
-			logData.create.isempty = false;
-			break;
-		case APINotifyElement_Change:
-			LogDataRotate(logData.change);
-			logData.change.isempty = false;
-			break;
-		case APINotifyElement_Edit:
-			LogDataRotate(logData.edit);
-			logData.edit.isempty = false;
-			break;
-		case APINotifyElement_ClassificationChange:
-			LogDataRotate(logData.classification);
-			logData.classification.isempty = false;
-			break;
-		case APINotifyElement_PropertyValueChange:
-			LogDataRotate(logData.property);
-			logData.property.isempty = false;
-			break;
+	case APINotifyElement_New:
+		LogDataRotate(logData.create);
+		logData.create.isempty = false;
+		break;
+	case APINotifyElement_Copy:
+		LogDataRotate(logData.create);
+		logData.create.isempty = false;
+		break;
+	case APINotifyElement_Change:
+		LogDataRotate(logData.change);
+		logData.change.isempty = false;
+		break;
+	case APINotifyElement_Edit:
+		LogDataRotate(logData.edit);
+		logData.edit.isempty = false;
+		break;
+	case APINotifyElement_ClassificationChange:
+		LogDataRotate(logData.classification);
+		logData.classification.isempty = false;
+		break;
+	case APINotifyElement_PropertyValueChange:
+		LogDataRotate(logData.property);
+		logData.property.isempty = false;
+		break;
+
 		// TODO При удалении элемента выводить в примечания и заметки сообщение с именем пользователя
 		//case APINotifyElement_Delete:
 		//	LogDataDelete(elemType->elemHead.guid, logData);
 		//	break;
-		default:
-			break;
+	default:
+		break;
 	}
 	LogWriteElement(elemType->elemHead.guid, logData);
 	return;

@@ -52,9 +52,9 @@ bool CheckIgnoreVal(const GS::Array<GS::UniString>& ignorevals, const GS::UniStr
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
 Int32 DoubleM2IntMM(const double& value) {
-	double param_real = round(value * 1000) / 1000;
+	double param_real = round(value * 1000.0) / 1000.0;
 	if (value - param_real > 0.001) param_real += 0.001;
-	param_real = param_real * 1000;
+	param_real = param_real * 1000.0;
 	Int32 param_int = ceil_mod((GS::Int32)param_real, 1);
 	return param_int;
 }
@@ -164,7 +164,13 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSetting
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = objectId;
 	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
-	if (needCheckElementType && !SyncCheckElementType(tElemHead.typeID, syncSettings)) return false;
+	API_ElemTypeID eltype;
+#ifdef AC_26
+	eltype = tElemHead.type.typeID;
+#else
+	eltype = tElemHead.typeID;
+#endif
+	if (needCheckElementType && !SyncCheckElementType(eltype, syncSettings)) return false;
 	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
 	return true;
 }
@@ -184,7 +190,12 @@ bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
 
 	// Проверяем - зарезервирован ли объект и резервируем, если надо
 	if (ACAPI_TeamworkControl_HasConnection() && !ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
+#ifdef AC_24
+		GS::PagedArray<API_Guid>	elements;
+#else
 		GS::Array<API_Guid>	elements;
+#endif // AC_24
+
 		GS::HashTable<API_Guid, short>  conflicts;
 		elements.Push(objectId);
 		ACAPI_TeamworkControl_ReserveElements(elements, &conflicts);
@@ -460,8 +471,13 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 		elem_head.guid = elemGuid;
 		if (ACAPI_Element_GetHeader(&elem_head) == NoError) {
 			GS::UniString elemName;
+#ifdef AC_26
+
+#else
 			if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elem_head.typeID, &elemName) == NoError)
-				error_type = error_type + " type:" + elemName;
+#endif
+				if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elem_head.typeID, &elemName) == NoError)
+					error_type = error_type + " type:" + elemName;
 			API_Attribute layer;
 			BNZeroMemory(&layer, sizeof(API_Attribute));
 			layer.header.typeID = API_LayerID;
@@ -608,7 +624,11 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 		msg_rep("GetTypeByGUID", "", err, elemGuid);
 		return err;
 	}
+#ifdef AC_26
+	elementType = elementHead.type.typeID;
+#else
 	elementType = elementHead.typeID;
+#endif
 	return err;
 }
 
@@ -624,8 +644,7 @@ bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
 }
 
 // -----------------------------------------------------------------------------
-// Запись в свойство строки/целочисленного/дробного/булевого значения
-//  в зависимости от типа данных свойства
+// Запись в свойство строки
 // -----------------------------------------------------------------------------
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string) {
 	GS::Int32 param_int = 0;
@@ -635,6 +654,98 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 	return err;
 }
 
+// -----------------------------------------------------------------------------
+// Запись в свойство ParamValue
+// -----------------------------------------------------------------------------
+GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, ParamValue& pvalue) {
+	GS::UniString param_string = pvalue.uniStringValue;
+	GS::Int32 param_int = pvalue.intValue;
+	bool param_bool = pvalue.boolValue;
+	double param_real = pvalue.doubleValue;
+	GSErrCode err = WriteProp(elemGuid, property, param_string, param_int, param_bool, param_real);
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Синхронизация ParamValue и API_Property
+// Возвращает true и подготовленное для записи свойство в случае отличий
+// TODO Переписать всё под запись ParamValue
+// -----------------------------------------------------------------------------
+bool IsEqualPropParamValue(const ParamValue& pvalue, API_Property& property) {
+	bool flag_rec = false;
+	switch (property.definition.valueType) {
+	case API_PropertyIntegerValueType:
+		if (property.value.singleVariant.variant.intValue != pvalue.intValue) {
+			property.value.singleVariant.variant.intValue = pvalue.intValue;
+			flag_rec = true;
+		}
+		break;
+	case API_PropertyRealValueType:
+		if (!is_equal(property.value.singleVariant.variant.doubleValue, pvalue.doubleValue)) {
+			property.value.singleVariant.variant.doubleValue = pvalue.doubleValue;
+			flag_rec = true;
+		}
+		break;
+	case API_PropertyBooleanValueType:
+		if (property.value.singleVariant.variant.boolValue != pvalue.boolValue) {
+			property.value.singleVariant.variant.boolValue = pvalue.boolValue;
+			flag_rec = true;
+		}
+		break;
+	case API_PropertyStringValueType:
+		if (property.value.singleVariant.variant.uniStringValue != pvalue.uniStringValue) {
+			property.value.singleVariant.variant.uniStringValue = pvalue.uniStringValue;
+			flag_rec = true;
+		}
+		break;
+	default:
+		break;
+	}
+	if (flag_rec && property.value.singleVariant.variant.type == API_PropertyGuidValueType && property.definition.collectionType == API_PropertySingleChoiceEnumerationCollectionType) {
+		API_Guid guidValue = APINULLGuid;
+		API_SingleEnumerationVariant possible_value;
+
+		// Для свойств с набором параметров необходимо задавать не само значение, а его GUID
+		for (UInt32 i = 0; i < property.definition.possibleEnumValues.GetSize(); i++) {
+			switch (property.definition.valueType) {
+			case API_PropertyIntegerValueType:
+				if (property.value.singleVariant.variant.intValue == property.definition.possibleEnumValues[i].displayVariant.intValue) {
+					guidValue = property.definition.possibleEnumValues[i].keyVariant.guidValue;
+				}
+				break;
+			case API_PropertyRealValueType:
+				if (!is_equal(property.value.singleVariant.variant.doubleValue, property.definition.possibleEnumValues[i].displayVariant.doubleValue)) {
+					guidValue = property.definition.possibleEnumValues[i].keyVariant.guidValue;
+				}
+				break;
+			case API_PropertyBooleanValueType:
+				if (property.value.singleVariant.variant.boolValue == property.definition.possibleEnumValues[i].displayVariant.boolValue) {
+					guidValue = property.definition.possibleEnumValues[i].keyVariant.guidValue;
+				}
+				break;
+			case API_PropertyStringValueType:
+				if (property.value.singleVariant.variant.uniStringValue == property.definition.possibleEnumValues[i].displayVariant.uniStringValue) {
+					guidValue = property.definition.possibleEnumValues[i].keyVariant.guidValue;
+				}
+				break;
+			default:
+				break;
+			}
+			if (guidValue != APINULLGuid) {
+				property.value.singleVariant.variant.guidValue = guidValue;
+				break;
+			}
+		}
+		if (guidValue == APINULLGuid) flag_rec = false;
+	}
+	if (flag_rec) property.isDefault = false;
+	return flag_rec;
+}
+
+// -----------------------------------------------------------------------------
+// Запись в свойство строки/целочисленного/дробного/булевого значения
+//  в зависимости от типа данных свойства
+// -----------------------------------------------------------------------------
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
 	GSErrCode		err = NoError;
 	bool flag_rec = false;
@@ -760,7 +871,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 	if (property_from.definition.valueType != property.definition.valueType && write) {
 		if (property.definition.valueType == API_PropertyStringValueType) {
 			GS::UniString val;
-#ifdef AC_25
+#if defined(AC_25) || defined(AC_26)
 			err = ACAPI_Property_GetPropertyValueString(property_from, &val);
 #else
 			val = PropertyTestHelpers::ToString(property_from);
@@ -782,7 +893,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 	// Если нужно записать список текста в текст
 	if (property.definition.collectionType != property_from.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
 		GS::UniString val;
-#ifdef AC_25
+#if defined(AC_25) || defined(AC_26)
 		err = ACAPI_Property_GetPropertyValueString(property_from, &val);
 #else
 		val = PropertyTestHelpers::ToString(property_from);
@@ -1086,10 +1197,11 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 					double dx = pow(x2 - x1, 2);
 					double dy = pow(y2 - y1, 2);
 					double dz = pow(z2 - z1, 2);
-					double dl = DoubleM2IntMM(sqrt(dx + dy + dz)) / 1000;
-					double dlx = DoubleM2IntMM(sqrt(dy + dx)) / 1000;
-					double dly = DoubleM2IntMM(sqrt(dx + dz)) / 1000;
-					double dlz = DoubleM2IntMM(sqrt(dx + dy)) / 1000;
+					double dt = sqrt(dx + dy + dz);
+					double dl = DoubleM2IntMM(sqrt(dx + dy + dz)) / 1000.0;
+					double dlx = DoubleM2IntMM(sqrt(dy + dx)) / 1000.0;
+					double dly = DoubleM2IntMM(sqrt(dx + dz)) / 1000.0;
+					double dlz = DoubleM2IntMM(sqrt(dx + dy)) / 1000.0;
 					L = L + dl;
 					Lx = Lx + dlx;
 					Ly = Ly + dly;
@@ -1107,12 +1219,12 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 					Min_z = min(Min_z, z1);
 					Min_z = min(Min_z, z2);
 				}
-				Max_x = DoubleM2IntMM(Max_x) / 1000;
-				Max_y = DoubleM2IntMM(Max_y) / 1000;
-				Max_z = DoubleM2IntMM(Max_z) / 1000;
-				Min_x = DoubleM2IntMM(Min_x) / 1000;
-				Min_y = DoubleM2IntMM(Min_y) / 1000;
-				Min_z = DoubleM2IntMM(Min_z) / 1000;
+				Max_x = DoubleM2IntMM(Max_x) / 1000.0;
+				Max_y = DoubleM2IntMM(Max_y) / 1000.0;
+				Max_z = DoubleM2IntMM(Max_z) / 1000.0;
+				Min_x = DoubleM2IntMM(Min_x) / 1000.0;
+				Min_y = DoubleM2IntMM(Min_y) / 1000.0;
+				Min_z = DoubleM2IntMM(Min_z) / 1000.0;
 				AddParam2Dict("Morph:L", L, pdictvalue);
 			}
 		}
@@ -1120,9 +1232,6 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 	}
 	return err;
 }
-
-
-
 
 // -----------------------------------------------------------------------------
 // Поиск свойства по имени, включая имя группы
@@ -1144,7 +1253,11 @@ GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemT
 	API_ParamOwnerType	apiOwner = {};
 	API_GetParamsType	apiParams = {};
 	apiOwner.guid = elemGuid;
+#ifdef AC_26
+	apiOwner.type.typeID = elemType;
+#else
 	apiOwner.typeID = elemType;
+#endif
 	err = ACAPI_Goodies(APIAny_OpenParametersID, &apiOwner);
 	if (err != NoError) return err;
 	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
@@ -1157,7 +1270,11 @@ GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemT
 GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid) {
 	GSErrCode		err = NoError;
 	API_Element element = {};
+#ifdef AC_26
+	switch (elem_head.type.typeID) {
+#else
 	switch (elem_head.typeID) {
+#endif
 	case API_CurtainWallPanelID:
 		element.header = elem_head;
 		err = ACAPI_Element_Get(&element);
@@ -1168,7 +1285,11 @@ GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& el
 		break;
 	default:
 		elemGuid = elem_head.guid;
+#ifdef AC_26
+		elemType = elem_head.type.typeID;
+#else
 		elemType = elem_head.typeID;
+#endif
 		break;
 	}
 	return err;
@@ -1177,7 +1298,7 @@ GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& el
 // -----------------------------------------------------------------------------
 // Возвращает индекс параметра по его имени
 // -----------------------------------------------------------------------------
-bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& params, Int32& inx) {
+bool FindGDLParametersByName(const GS::UniString & paramName, API_AddParType * *&params, Int32 & inx) {
 	Int32	addParNum = BMGetHandleSize((GSHandle)params) / sizeof(API_AddParType);
 	for (Int32 ii = 0; ii < addParNum; ++ii) {
 		API_AddParType& actualParam = (*params)[ii];
@@ -1192,7 +1313,7 @@ bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& p
 // -----------------------------------------------------------------------------
 // Возвращает индекс параметра по его описанию
 // -----------------------------------------------------------------------------
-bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_Elem_Head elem_head, Int32& inx) {
+bool FindGDLParametersByDescription(const GS::UniString & paramName, const API_Elem_Head elem_head, Int32 & inx) {
 	API_LibPart libpart;
 	API_Element element = {};
 	element.header = elem_head;
@@ -1235,18 +1356,24 @@ bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_El
 // -----------------------------------------------------------------------------
 // Поиск параметра GDL объекта по описанию или имени
 // -----------------------------------------------------------------------------
-bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter) {
+bool FindGDLParameters(const GS::UniString & paramName, const API_Elem_Head & elem_head, API_AddParType & nthParameter) {
+	API_ElemTypeID eltype;
+#ifdef AC_26
+	eltype = elem_head.type.typeID;
+#else
+	eltype = elem_head.typeID;
+#endif
 
 	// Ещё раз проверим тип элемента
-	if (elem_head.typeID != API_ObjectID &&
-		elem_head.typeID != API_WindowID &&
-		elem_head.typeID != API_DoorID &&
-		elem_head.typeID != API_ZoneID &&
-		elem_head.typeID != API_LampID &&
-		elem_head.typeID != API_CurtainWallPanelID &&
-		elem_head.typeID != API_CurtainWallFrameID &&
-		elem_head.typeID != API_CurtainWallJunctionID &&
-		elem_head.typeID != API_CurtainWallAccessoryID) {
+	if (eltype != API_ObjectID &&
+		eltype != API_WindowID &&
+		eltype != API_DoorID &&
+		eltype != API_ZoneID &&
+		eltype != API_LampID &&
+		eltype != API_CurtainWallPanelID &&
+		eltype != API_CurtainWallFrameID &&
+		eltype != API_CurtainWallJunctionID &&
+		eltype != API_CurtainWallAccessoryID) {
 		return false;
 	}
 
@@ -1254,7 +1381,7 @@ bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem
 	GS::UniString findstr = paramName.ToLowerCase();
 	bool find_by_description = false;
 	if (findstr.Contains("description:")) {
-		if (elem_head.typeID == API_CurtainWallPanelID) return false; // По описанию в панелях не ищет.
+		if (eltype == API_CurtainWallPanelID) return false; // По описанию в панелях не ищет.
 		find_by_description = true;
 		findstr.ReplaceAll("description:", "");
 		findstr.ReplaceAll(" ", "");
@@ -1279,7 +1406,7 @@ bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem
 	return true;
 }
 
-GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params) {
+GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType * *&params) {
 	API_ElemTypeID	elemType;
 	API_Guid		elemGuid;
 	GSErrCode	err = GetGDLParametersHead(elem_head, elemType, elemGuid);
@@ -1296,13 +1423,19 @@ GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& para
 // Для колонны или объекта - центр колонны и отм. низа
 // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 // -----------------------------------------------------------------------------
-bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter) {
+bool FindLibCoords(const GS::UniString & paramName, const API_Elem_Head & elem_head, API_AddParType & nthParameter) {
 	API_Element element = {};
 	element.header = elem_head;
 	GSErrCode err = ACAPI_Element_Get(&element);
 	if (err != NoError) return false;
 	double x = 0; double y = 0; double z = 0;
-	switch (elem_head.typeID) {
+	API_ElemTypeID eltype;
+#ifdef AC_26
+	eltype = elem_head.type.typeID;
+#else
+	eltype = elem_head.typeID;
+#endif
+	switch (eltype) {
 	case API_CurtainWallPanelID:
 		x = element.cwPanel.centroid.x;
 		y = element.cwPanel.centroid.y;
@@ -1336,7 +1469,7 @@ bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_hea
 // -----------------------------------------------------------------------------
 // Получить значение параметра с конвертацией типа данных OLD
 // -----------------------------------------------------------------------------
-bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real) {
+bool GetLibParam(const API_Guid & elemGuid, const GS::UniString & paramName, GS::UniString & param_string, GS::Int32 & param_int, bool& param_bool, double& param_real) {
 	ParamValue pvalue;
 	pvalue.name = paramName;
 	if (GetLibParam(elemGuid, paramName, pvalue)) {
@@ -1352,7 +1485,7 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, GS::U
 // -----------------------------------------------------------------------------
 // Получить значение свойства или параметра в ParamValue
 // -----------------------------------------------------------------------------
-bool GetParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue) {
+bool GetParam(const API_Guid & elemGuid, const GS::UniString & paramName, ParamValue & pvalue) {
 	GS::UniString& paramName_t = paramName.ToLowerCase();
 	paramName_t.ReplaceAll("{", "");
 	paramName_t.ReplaceAll("}", "");
@@ -1387,7 +1520,7 @@ bool GetParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamVal
 // -----------------------------------------------------------------------------
 // Получить значение параметра по его имени или описанию в ParamValue
 // -----------------------------------------------------------------------------
-bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue) {
+bool GetLibParam(const API_Guid & elemGuid, const GS::UniString & paramName, ParamValue & pvalue) {
 	GSErrCode		err = NoError;
 	bool			flag_find = false;
 	API_AddParType	nthParameter = {};
@@ -1415,7 +1548,7 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, Param
 // -----------------------------------------------------------------------------
 // Получить значение свойства по его имени в ParamValue
 // -----------------------------------------------------------------------------
-bool GetPropertyParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue) {
+bool GetPropertyParam(const API_Guid & elemGuid, const GS::UniString & paramName, ParamValue & pvalue) {
 	API_PropertyDefinition definitions = {};
 	GSErrCode err = GetPropertyDefinitionByName(elemGuid, paramName, definitions);
 	if (err != NoError) {
@@ -1434,7 +1567,7 @@ bool GetPropertyParam(const API_Guid& elemGuid, const GS::UniString& paramName, 
 // -----------------------------------------------------------------------------
 // Конвертация параметров библиотечного элемента в ParamValue
 // -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter) {
+bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
 	GS::UniString param_string = "";
 	GS::Int32 param_int = 0;
 	double param_real = 0.0;
@@ -1537,7 +1670,7 @@ bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter) {
 // -----------------------------------------------------------------------------
 // Конвертация свойства в ParamValue
 // -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue& pvalue, const API_Property& property) {
+bool ConvParamValue(ParamValue & pvalue, const API_Property & property) {
 	GS::UniString fname;
 	GetPropertyFullName(property.definition, fname);
 	pvalue.name = "{Property:" + fname + "}";
@@ -1592,7 +1725,7 @@ bool ConvParamValue(ParamValue& pvalue, const API_Property& property) {
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
 // -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue) {
+bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const Int32 intValue) {
 	pvalue.name = paramName;
 	pvalue.type = API_PropertyIntegerValueType;
 	pvalue.canCalculate = true;
@@ -1606,7 +1739,7 @@ bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const In
 // -----------------------------------------------------------------------------
 // Конвертация double в ParamValue
 // -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue) {
+bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const double doubleValue) {
 	pvalue.name = paramName;
 	pvalue.type = API_PropertyRealValueType;
 	pvalue.canCalculate = true;
@@ -1618,11 +1751,10 @@ bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const do
 	return true;
 }
 
-
 // -----------------------------------------------------------------------------------------------------
 // Добавление в словари ParamDict и ParamDictValue параметра с именем paramName и значением doubleValue
 // -----------------------------------------------------------------------------------------------------
-void AddParam2Dict(const GS::UniString& paramName, const double doubleValue, ParamDictValue& pdictvalue) {
+void AddParam2Dict(const GS::UniString & paramName, const double doubleValue, ParamDictValue & pdictvalue) {
 	if (!pdictvalue.ContainsKey(paramName)) {
 		ParamValue pvalue;
 		ConvParamValue(pvalue, paramName, doubleValue);
@@ -1635,7 +1767,7 @@ void AddParam2Dict(const GS::UniString& paramName, const double doubleValue, Par
 // Удаляет из имени paramName найденные единицы измерения
 // Возвращает строку для скармливания функции NumToStig
 // -----------------------------------------------------------------------------
-GS::UniString GetFormatString(GS::UniString& paramName) {
+GS::UniString GetFormatString(GS::UniString & paramName) {
 	GS::UniString formatstring = "";
 	if (!paramName.Contains(".")) return formatstring;
 	GS::Array<GS::UniString> partstring;
@@ -1659,7 +1791,7 @@ GS::UniString GetFormatString(GS::UniString& paramName) {
 // По умолчанию - double
 // Удаляет из имени paramName найденные указания на тип данных
 // -----------------------------------------------------------------------------
-API_VariantType GetTypeString(GS::UniString& paramName) {
+API_VariantType GetTypeString(GS::UniString & paramName) {
 	API_VariantType type = API_PropertyRealValueType;
 	if (paramName.Contains("$")) {
 		paramName.ReplaceAll("$", "");
@@ -1675,7 +1807,7 @@ API_VariantType GetTypeString(GS::UniString& paramName) {
 // -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
 // -----------------------------------------------------------------------------
-bool GetParamNameDict(const GS::UniString& expression, ParamDict& paramDict) {
+bool GetParamNameDict(const GS::UniString & expression, ParamDict & paramDict) {
 	GS::UniString outstring = expression;
 	if (!outstring.Contains('{')) return (paramDict.GetSize() > 0);
 	GS::UniString part = "";
@@ -1701,7 +1833,7 @@ bool GetParamNameDict(const GS::UniString& expression, ParamDict& paramDict) {
 // Также можно указывать тип параметра ($ - вывести значение строкой, # - использовать целое)
 // Для перевода в другие единицы использовать %ИМЯ_ПАРАМЕТРА.ЕД_ИЗМ%
 // -----------------------------------------------------------------------------
-bool GetParamValueDict(const API_Guid& elemGuid, const ParamDict& paramDict, ParamDictValue& pdictvalue) {
+bool GetParamValueDict(const API_Guid & elemGuid, const ParamDict & paramDict, ParamDictValue & pdictvalue) {
 	if (elemGuid == APINULLGuid) return false;
 	if (paramDict.GetSize() == 0) return false;
 	UInt32 n = 0;
@@ -1722,7 +1854,7 @@ bool GetParamValueDict(const API_Guid& elemGuid, const ParamDict& paramDict, Par
 // Замена имен параметров на значения в выражении
 // Значения передаются словарём, вычисление значений см. GetParamValueDict
 // -----------------------------------------------------------------------------
-bool ReplaceParamInExpression(const ParamDictValue& pdictvalue, GS::UniString& expression) {
+bool ReplaceParamInExpression(const ParamDictValue & pdictvalue, GS::UniString & expression) {
 	if (pdictvalue.GetSize() == 0) return false;
 	if (expression.IsEmpty()) return false;
 	UInt32 n = 0;
@@ -1740,7 +1872,7 @@ bool ReplaceParamInExpression(const ParamDictValue& pdictvalue, GS::UniString& e
 // Вычисление выражений, заключённых в < >
 // Что не может вычислить - заменит на пустоту
 // -----------------------------------------------------------------------------
-bool EvalExpression(GS::UniString& expression) {
+bool EvalExpression(GS::UniString & expression) {
 	if (expression.IsEmpty()) return false;
 	if (!expression.Contains('<')) return false;
 	GS::UniString part = "";
@@ -1834,7 +1966,7 @@ GS::UniString PropertyTestHelpers::NumToString(const double& var, const GS::UniS
 	return out;
 }
 
-GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS::UniString stringformat) {
+GS::UniString PropertyTestHelpers::ToString(const API_Variant & variant, const GS::UniString stringformat) {
 	switch (variant.type) {
 	case API_PropertyIntegerValueType: return  NumToString(variant.intValue, stringformat);
 	case API_PropertyRealValueType: return NumToString(variant.doubleValue, stringformat);
@@ -1846,15 +1978,15 @@ GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant, const GS
 	}
 }
 
-GS::UniString PropertyTestHelpers::ToString(const API_Variant& variant) {
+GS::UniString PropertyTestHelpers::ToString(const API_Variant & variant) {
 	return PropertyTestHelpers::ToString(variant, "");
 }
 
-GS::UniString PropertyTestHelpers::ToString(const API_Property& property) {
+GS::UniString PropertyTestHelpers::ToString(const API_Property & property) {
 	return PropertyTestHelpers::ToString(property, "");
 }
 
-GS::UniString PropertyTestHelpers::ToString(const API_Property& property, const GS::UniString stringformat) {
+GS::UniString PropertyTestHelpers::ToString(const API_Property & property, const GS::UniString stringformat) {
 	GS::UniString string;
 	const API_PropertyValue* value;
 #if defined(AC_22) || defined(AC_23)
@@ -1891,14 +2023,14 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property& property, const 
 		}
 	} break;
 	case API_PropertySingleChoiceEnumerationCollectionType: {
-#ifdef AC_25
+#if defined(AC_25) || defined(AC_26)
 		string += ToString(value->singleVariant.variant, stringformat);
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
 	} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType: {
-#ifdef AC_25
+#if defined(AC_25) || defined(AC_26)
 		for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
 			string += ToString(value->listVariant.variants[i], stringformat);
 			if (i != value->listVariant.variants.GetSize() - 1) {
@@ -1921,7 +2053,7 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property& property, const 
 	return string;
 }
 
-bool operator== (const API_Variant& lhs, const API_Variant& rhs)
+bool operator== (const API_Variant & lhs, const API_Variant & rhs)
 {
 	if (lhs.type != rhs.type) {
 		return false;
@@ -1943,29 +2075,29 @@ bool operator== (const API_Variant& lhs, const API_Variant& rhs)
 	}
 }
 
-bool operator== (const API_SingleVariant& lhs, const API_SingleVariant& rhs)
+bool operator== (const API_SingleVariant & lhs, const API_SingleVariant & rhs)
 {
 	return lhs.variant == rhs.variant;
 }
 
-bool operator== (const API_ListVariant& lhs, const API_ListVariant& rhs)
+bool operator== (const API_ListVariant & lhs, const API_ListVariant & rhs)
 {
 	return lhs.variants == rhs.variants;
 }
 
-bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumerationVariant& rhs)
+bool operator== (const API_SingleEnumerationVariant & lhs, const API_SingleEnumerationVariant & rhs)
 {
 	return lhs.keyVariant == rhs.keyVariant && lhs.displayVariant == rhs.displayVariant;
 }
 
-#ifndef AC_25
-bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs)
+#if !defined(AC_25) && !defined(AC_26)
+bool operator== (const API_MultipleEnumerationVariant & lhs, const API_MultipleEnumerationVariant & rhs)
 {
 	return lhs.variants == rhs.variants;
 }
 #endif
 
-bool Equals(const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType)
+bool Equals(const API_PropertyDefaultValue & lhs, const API_PropertyDefaultValue & rhs, API_PropertyCollectionType collType)
 {
 	if (lhs.hasExpression != rhs.hasExpression) {
 		return false;
@@ -1979,7 +2111,7 @@ bool Equals(const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue&
 	}
 }
 
-bool Equals(const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_PropertyCollectionType collType)
+bool Equals(const API_PropertyValue & lhs, const API_PropertyValue & rhs, API_PropertyCollectionType collType)
 {
 	if (lhs.variantStatus != rhs.variantStatus) {
 		return false;
@@ -1994,7 +2126,7 @@ bool Equals(const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_Prop
 		return lhs.singleVariant == rhs.singleVariant;
 	case API_PropertyListCollectionType:
 		return lhs.listVariant == rhs.listVariant;
-#ifdef AC_25
+#if defined(AC_25) || defined(AC_26)
 	case API_PropertySingleChoiceEnumerationCollectionType:
 		return lhs.singleVariant == rhs.singleVariant;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
@@ -2011,13 +2143,13 @@ bool Equals(const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_Prop
 	}
 }
 
-bool operator== (const API_PropertyGroup& lhs, const API_PropertyGroup& rhs)
+bool operator== (const API_PropertyGroup & lhs, const API_PropertyGroup & rhs)
 {
 	return lhs.guid == rhs.guid &&
 		lhs.name == rhs.name;
 }
 
-bool operator== (const API_PropertyDefinition& lhs, const API_PropertyDefinition& rhs)
+bool operator== (const API_PropertyDefinition & lhs, const API_PropertyDefinition & rhs)
 {
 	return lhs.guid == rhs.guid &&
 		lhs.groupGuid == rhs.groupGuid &&
@@ -2031,7 +2163,7 @@ bool operator== (const API_PropertyDefinition& lhs, const API_PropertyDefinition
 		lhs.possibleEnumValues == rhs.possibleEnumValues;
 }
 
-bool operator== (const API_Property& lhs, const API_Property& rhs)
+bool operator== (const API_Property & lhs, const API_Property & rhs)
 {
 	if (lhs.definition != rhs.definition || lhs.isDefault != rhs.isDefault) {
 		return false;
@@ -2047,7 +2179,7 @@ bool operator== (const API_Property& lhs, const API_Property& rhs)
 // -----------------------------------------------------------------------------
 // Удаление данных аддона из элемента
 // -----------------------------------------------------------------------------
-void DeleteElementUserData(const API_Guid& elemguid) {
+void DeleteElementUserData(const API_Guid & elemguid) {
 	API_Elem_Head	tElemHead = {};
 	tElemHead.guid = elemguid;
 	API_ElementUserData userData = {};

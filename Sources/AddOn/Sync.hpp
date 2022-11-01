@@ -1,6 +1,11 @@
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
-#include	"APICommon.h"
+#ifdef AC_25
+#include	"APICommon25.h"
+#endif // AC_25
+#ifdef AC_26
+#include	"APICommon26.h"
+#endif // AC_26
 #include	"DG.h"
 #include	"SyncSettings.hpp"
 
@@ -52,6 +57,8 @@ bool SyncString(GS::UniString& description_string, GS::Array<SyncRule>& syncRule
 bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions);
 
 GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, const SyncRule& syncRule, const API_PropertyDefinition& definition);
+
+GSErrCode SyncMorphAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition);
 
 GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition);
 

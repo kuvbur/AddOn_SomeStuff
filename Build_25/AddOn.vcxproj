@@ -401,7 +401,6 @@
     <ClCompile Include="..\Sources\AddOn\Dimensions.cpp" />
     <ClCompile Include="..\Sources\AddOn\ResetProperty.cpp" />
     <ClCompile Include="..\Sources\AddOn\SyncSettings.cpp" />
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\APIEnvir.h" />
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp" />
     <ClCompile Include="..\Sources\AddOn\Helpers.cpp" />
     <ClCompile Include="..\Sources\AddOn\ReNum.cpp" />

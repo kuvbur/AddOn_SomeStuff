@@ -1,7 +1,9 @@
 #if !defined (LOGS_HPP)
 #define	LOGS_HPP
 #pragma once
-#include	"APICommon.h"
+#ifdef AC_25
+#include	"APICommon_25.h"
+#endif // AC_25
 #include	"DG.h"
 
 // Структура хранимого лога
@@ -16,6 +18,7 @@ typedef struct {
 } lgL3;
 
 typedef struct {
+
 	//TODO Переделать на массивы
 	lgL3 old_2;
 	lgL3 old_1;
@@ -31,7 +34,6 @@ typedef struct {
 	lgL2	property;
 } LogData;
 
-
 bool LogCheckElementType(const API_ElemTypeID& elementType);
 
 void LogGetEmpty(LogData& logData);
@@ -42,7 +44,7 @@ void LogRow(lgL2& record, const GS::HashTable<short, API_UserInfo>& userInfoTabl
 void LogShowElement(const API_Guid& elemGuid, const GS::HashTable<short, API_UserInfo>& userInfoTable);
 void LogShowSelected();
 void LogDataRotate(lgL2& partlogData);
-void LogWriteElement(const API_NotifyElementType *elemType);
+void LogWriteElement(const API_NotifyElementType* elemType);
 
 static GSErrCode GetTeamworkMembers(GS::HashTable<short, API_UserInfo>& userInfoTable);
 

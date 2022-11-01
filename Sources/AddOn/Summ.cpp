@@ -1,13 +1,14 @@
-﻿#include	"APIEnvir.h"
-#include	"ACAPinc.h"
-#include	"Summ.hpp"
-#include	"Helpers.hpp"
-#include	<map>
+﻿#include	<map>
 #include	<unordered_map>
 #include	"alphanum.hpp"
+#include	"APIEnvir.h"
+#include	"ACAPinc.h"
+#include	"Helpers.hpp"
+#include	"Summ.hpp"
 
 typedef std::map<std::string, int, doj::alphanum_less<std::string> > SumValues;
 typedef std::unordered_map <std::string, SortInx> SumCriteria;
+
 // -----------------------------------------------------------------------------------------------------------------------
 // Объединение уникальных значений свойств выделенных элементов
 // Во многом похоже на модуль ReNum
@@ -29,10 +30,12 @@ GSErrCode SumSelected(void) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		if (!guidArray.IsEmpty()) {
+
 			// Получаем список правил суммирования
 			for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 				err = Sum_GetElement(guidArray[i], rules);
 			}
+
 			// Есть список правил, в каждом правиле - список элементов. Прохоим по правилам и обрабатываем каждое
 			if (!rules.IsEmpty()) {
 				for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -63,6 +66,7 @@ GSErrCode Sum_GetElement(const API_Guid& elemGuid, SumRules& rules) {
 		return err;
 	}
 	for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+
 		// Является ли свойство описанием системы суммирования?
 		if (definitions[j].description.Contains("Sum")) {
 			bool flag_add = false;
@@ -77,6 +81,7 @@ GSErrCode Sum_GetElement(const API_Guid& elemGuid, SumRules& rules) {
 				flag_add = true;
 			}
 			if (flag_add == true) {
+
 				// Дописываем элемент в правило
 				SumElement el = {};
 				el.guid = elemGuid;
@@ -103,26 +108,31 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 		GS::UniString paramName = description_string.GetSubstring('{', '}', 0);
 		paramName.ReplaceAll("Property:", "");
 		int nparam = StringSplt(paramName, ";", partstring);
+
 		// Ищём определение свойства-значения
 		err = GetPropertyDefinitionByName(elemGuid, partstring[0], value);
 		if (err != NoError) return false;
 		flag = true;
 		paramtype.value = value;
 		paramtype.position = definition.guid;
+
 		// По типу данных свойства определим тим суммирования
 		// Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
 		paramtype.sum_type = 0;
 		if (definition.valueType == API_PropertyStringValueType) paramtype.sum_type = TextSum;
 		if (definition.valueType == API_PropertyRealValueType) paramtype.sum_type = NumSum;
 		if (!paramtype.sum_type) return false;
+
 		// Ищём определение свойства-критерия
 		if (nparam > 1) {
 			err = GetPropertyDefinitionByName(elemGuid, partstring[1], criteria);
 			if (err == NoError) paramtype.criteria = criteria;
 		}
+
 		// Если задан и разделитель - пропишем его
 		if (nparam == 3) delimetr = partstring[3].ToCStr().Get();
 		paramtype.delimetr = delimetr;
+
 		// Если заданы игнорируемые значения
 		if (nparam == 4) ignore_val = partstring[4].ToCStr().Get();
 		paramtype.ignore_val = ignore_val;
@@ -138,6 +148,7 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 	GS::UniString delimetr = GS::UniString(rule.delimetr.c_str());
 	definitions.Push(rule.value);
 	if (rule.criteria.guid != APINULLGuid) definitions.Push(rule.criteria);
+
 	// Прочитаем значения свойств значения и критерия
 	for (UInt32 i = 0; i < elemArray.GetSize(); i++) {
 		GS::Array<API_Property>  properties;
@@ -171,8 +182,10 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 			}
 		}
 	}
+
 	// Идём по критериям и ищем повторяющиеся свойства
 	for (SumCriteria::iterator i = criteriaList.begin(); i != criteriaList.end(); ++i) {
+
 		// Повторяем процедуру поиска уникальных значений, теперь для значения
 		SumValues valueList;
 		GS::Array<UInt32> eleminpos = i->second.inx;

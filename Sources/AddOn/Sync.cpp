@@ -66,6 +66,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 		}
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (syncSettings.syncAll) {
+
 				// Если попадается навесная стена - обработаем также входящие в неё панели
 				if (elementType == API_CurtainWallID && syncSettings.cwallS) {
 					GS::Array<API_Guid> panelGuid;
@@ -110,6 +111,7 @@ void SyncSelected(const SyncSettings& syncSettings) {
 // --------------------------------------------------------------------
 GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode			err = NoError;
+
 	//Обновляем объекты, если их обработка включена
 	API_WindowRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
@@ -125,6 +127,7 @@ GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& sy
 // --------------------------------------------------------------------
 GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode			err = NoError;
+
 	//Обновляем объекты, если их обработка включена
 	API_DoorRelation            relData;
 	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
@@ -292,6 +295,9 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, co
 	case SYNC_IFC:
 		err = SyncIFCAndProp(elemGuid, syncRule, definition); //Синхронизация IFC свойств с архикадовскими свойствами
 		break;
+	case SYNC_MORPH:
+		err = SyncMorphAndProp(elemGuid, syncRule, definition); //Запись данных о морфе
+		break;
 	default:
 		break;
 	}
@@ -365,7 +371,6 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 				}
 				if (rule.synctype == SYNC_NO && rulestring_one.Contains("Morph:")) {
 					rule.synctype = SYNC_MORPH;
-					rulestring_one.ReplaceAll("Morph:", "");
 				}
 				if (rule.synctype == SYNC_NO) {
 					rule.synctype = SYNC_GDL;
@@ -467,6 +472,24 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGui
 		return APIERR_MISSINGCODE; // Игнорируем значение
 	}
 	return NoError;
+}
+
+// -----------------------------------------------------------------------------
+// Запись данных о морфе в свойство
+// -----------------------------------------------------------------------------
+GSErrCode SyncMorphAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition) {
+	API_Property property;
+	GSErrCode err = ACAPI_Element_GetPropertyValue(elemGuid, definition.guid, property);
+	if (err == NoError) {
+		ParamDictValue pdictvalue;
+		err = GetMorphParam(elemGuid, pdictvalue);
+		if (err == NoError) {
+			if (pdictvalue.ContainsKey(syncRule.paramName)) {
+				err = WriteProp(elemGuid, property, pdictvalue.Get(syncRule.paramName));
+			}
+		}
+	}
+	return err;
 }
 
 // -----------------------------------------------------------------------------
@@ -693,7 +716,13 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<Layer
 
 	// Получаем данные о составе конструкции. Т.к. для разных типов элементов
 	// информация храница в разных местах - запишем всё в одни переменные
-	switch (element.header.typeID) {
+	API_ElemTypeID eltype;
+#ifdef AC_26
+	eltype = element.header.type.typeID;
+#else
+	eltype = elem_head.typeID;
+#endif
+	switch (eltype) {
 	case API_WallID:
 		structtype = element.wall.modelElemStructureType;
 		if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
