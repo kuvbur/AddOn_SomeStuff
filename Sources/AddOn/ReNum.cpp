@@ -1,4 +1,5 @@
-﻿#include	<map>
+﻿//------------ kuvbur 2022 ------------
+#include	<map>
 #include	<unordered_map>
 #include	"alphanum.hpp"
 #include	"APIEnvir.h"
@@ -282,7 +283,7 @@ Int32 ReNumGetFlag(const API_Property& propertyflag) {
 		if (val.singleVariant.variant.boolValue) flag = RENUM_NORMAL;
 	}
 	else {
-#ifdef AC_25
+#if defined(AC_25) || defined(AC_26)
 		state = val.singleVariant.variant.uniStringValue;
 #else
 		state = val.singleEnumVariant.displayVariant.uniStringValue;

@@ -1,3 +1,4 @@
+//------------ kuvbur 2022 ------------
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
 #ifdef AC_25
@@ -14,11 +15,11 @@
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
 typedef struct {
-	GS::UniString paramName;
+	GS::UniString paramName = "";
 	GS::Array<GS::UniString> ignorevals;
-	GS::UniString templatestring;
-	int synctype;
-	int syncdirection;
+	GS::UniString templatestring = "";
+	int synctype = 0;
+	int syncdirection = 0;
 } SyncRule;
 
 // --------------------------------------------------------------------
@@ -28,8 +29,8 @@ typedef struct {
 typedef struct {
 	API_Attribute					buildingMaterial;
 	GS::Array<API_PropertyDefinition>	definitions;
-	GS::UniString						templatestring;
-	double								fillThick;
+	GS::UniString						templatestring = "";
+	double								fillThick = 0.0;
 } LayerConstr;
 
 bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);

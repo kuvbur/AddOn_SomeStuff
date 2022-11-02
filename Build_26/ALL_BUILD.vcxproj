@@ -18,8 +18,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{F9B6134A-F7A1-37AD-92C1-8D4F64A374E1}</ProjectGuid>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <ProjectGuid>{C9EEBC56-9624-3731-A26E-0832D7E7C4FF}</ProjectGuid>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <Keyword>Win32Proj</Keyword>
     <Platform>x64</Platform>
     <ProjectName>ALL_BUILD</ProjectName>
@@ -87,12 +87,12 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="D:\SomeStuff_addon\AddOn.vcxproj">
-      <Project>{CB8FA9A0-8E63-36D9-88BA-DA19F10C1027}</Project>
+    <ProjectReference Include="D:\SomeStuff_addon\Build_26\AddOn.vcxproj">
+      <Project>{3957CD09-EB54-3CCC-A9F2-C9ED8B8A5538}</Project>
       <Name>AddOn</Name>
     </ProjectReference>
-    <ProjectReference Include="D:\SomeStuff_addon\AddOnResources.vcxproj">
-      <Project>{ACF9C195-87F7-3553-8F38-5C3FC97A35BB}</Project>
+    <ProjectReference Include="D:\SomeStuff_addon\Build_26\AddOnResources.vcxproj">
+      <Project>{5B2A7DBB-71FE-34E4-AF3E-7C3F1D481577}</Project>
       <Name>AddOnResources</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

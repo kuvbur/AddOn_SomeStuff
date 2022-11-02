@@ -1,39 +1,34 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Dimensions.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Helpers.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\ReNum.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\ResetProperty.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\SomeStuff_Main.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Summ.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\Sync.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-    <ClCompile Include="D:\SomeStuff_addon\Sources\AddOn\SyncSettings.cpp">
-      <Filter>Sources</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp">
-      <Filter>Sources</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <Filter Include="Sources">
-      <UniqueIdentifier>{90F3DF30-23B3-36C9-B980-F46C9AF9DA3A}</UniqueIdentifier>
+      <UniqueIdentifier>{383482D9-C353-3E05-BD27-2DFBDBBDC806}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Sources\AddOn\Dimensions.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\Helpers.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\ReNum.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\ResetProperty.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\SomeStuff_Main.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\Summ.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\Sync.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sources\AddOn\SyncSettings.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

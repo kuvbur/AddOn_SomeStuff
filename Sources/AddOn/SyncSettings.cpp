@@ -1,3 +1,4 @@
+//------------ kuvbur 2022 ------------
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"SyncSettings.hpp"
@@ -76,7 +77,7 @@ bool LoadSyncSettingsFromPreferences(SyncSettings& syncSettings)
 	syncSettings = tempsyncSettings;
 	delete[] data;
 	return true;
-}
+	}
 
 bool WriteSyncSettingsToPreferences(const SyncSettings& syncSettings)
 {

@@ -1,3 +1,4 @@
+//------------ kuvbur 2022 ------------
 #pragma once
 #ifndef DIM_HPP
 #define	DIM_HPP
@@ -12,12 +13,12 @@
 #include	"Helpers.hpp"
 
 typedef struct {
-	short	pen_original;
-	short	pen_rounded;
-	UInt32	round_value;
-	bool	flag_change;
-	GS::UniString expression;
-	GS::UniString layer;
+	short	pen_original = 0;
+	short	pen_rounded = 0;
+	UInt32	round_value = 0;
+	bool	flag_change = false;
+	GS::UniString expression = "";
+	GS::UniString layer = "";
 	ParamDict paramDict;
 } DimRule;
 

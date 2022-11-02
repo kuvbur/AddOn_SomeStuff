@@ -19,6 +19,7 @@ class ResourceCompiler (object):
 		if self.resConvPath == None:
 			return False
 		if not os.path.exists (self.resConvPath):
+			print(self.resConvPath)
 			return False
 		return True
 
