@@ -1,10 +1,4 @@
-﻿// *****************************************************************************
-// File:			Property_Test_Helper.cpp
-// Description:		Property_Test add-on helper macros and functions
-// Project:			APITools/Property_Test
-// Namespace:		-
-// Contact person:	CSAT
-// *****************************************************************************
+﻿//------------ kuvbur 2022 ------------
 #include	<math.h>
 #include	<cmath>
 #include	<limits>
@@ -472,12 +466,11 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 		if (ACAPI_Element_GetHeader(&elem_head) == NoError) {
 			GS::UniString elemName;
 #ifdef AC_26
-
+			if (ACAPI_Goodies_GetElemTypeName(elem_head.type, elemName) == NoError)
 #else
 			if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elem_head.typeID, &elemName) == NoError)
 #endif
-				if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elem_head.typeID, &elemName) == NoError)
-					error_type = error_type + " type:" + elemName;
+				error_type = error_type + " type:" + elemName;
 			API_Attribute layer;
 			BNZeroMemory(&layer, sizeof(API_Attribute));
 			layer.header.typeID = API_LayerID;
@@ -632,6 +625,18 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	return err;
 }
 
+bool	GetElementTypeString(API_ElemType elemType, char* elemStr)
+{
+	GS::UniString	ustr;
+	GSErrCode	err = ACAPI_Goodies_GetElemTypeName(elemType, ustr);
+	if (err == NoError) {
+		CHTruncate(ustr.ToCStr(), elemStr, ELEMSTR_LEN - 1);
+		return true;
+	}
+	return false;
+}
+
+#ifndef AC_26
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
 {
 	GS::UniString	ustr;
@@ -642,6 +647,7 @@ bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
 	}
 	return false;
 }
+#endif // !AC_26
 
 // -----------------------------------------------------------------------------
 // Запись в свойство строки

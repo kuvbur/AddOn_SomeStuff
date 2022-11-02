@@ -1,27 +1,30 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <CustomBuild Include="D:\SomeStuff_addon\CMakeFiles\dcf926a7e858b69b0c00dae1cb7153bf\AddOnResources.stamp.rule">
+    <CustomBuild Include="D:\SomeStuff_addon\Build_26\CMakeFiles\f32f13bd5c9130d07318d80e5698cfa7\AddOnResources.stamp.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
-    <CustomBuild Include="D:\SomeStuff_addon\CMakeFiles\c919d2716a69223f5506dd2fe17ccb6c\AddOnResources.rule">
+    <CustomBuild Include="D:\SomeStuff_addon\Build_26\CMakeFiles\91e10c9f2c9e2d666940d7a4cbce9fd8\AddOnResources.rule">
       <Filter>CMake Rules</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX.win\AddOnMain.rc2">
+    <None Include="D:\SomeStuff_addon\Build_26\CMakeFiles\AddOnResources" />
+    <None Include="..\Sources\AddOnResources\RFIX\AddOnFix.grc">
       <Filter>Resources</Filter>
     </None>
-    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RFIX\AddOnFix.grc">
+    <None Include="..\Sources\AddOnResources\RFIX.win\AddOnMain.rc2">
       <Filter>Resources</Filter>
     </None>
-    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\RINT\AddOn.grc">
+    <None Include="..\Sources\AddOnResources\RINT\AddOn.grc">
       <Filter>Resources</Filter>
     </None>
-    <None Include="D:\SomeStuff_addon\Sources\AddOnResources\Tools\CompileResources.py">
+    <None Include="..\Sources\AddOnResources\ResourceMDIDIds.hpp.in">
       <Filter>Resources</Filter>
     </None>
-    <None Include="D:\SomeStuff_addon\CMakeFiles\AddOnResources" />
+    <None Include="..\Sources\AddOnResources\Tools\CompileResources.py">
+      <Filter>Resources</Filter>
+    </None>
     <None Include="..\Sources_icon\addonicon_18x18.svg">
       <Filter>Images</Filter>
     </None>
@@ -55,13 +58,18 @@
   </ItemGroup>
   <ItemGroup>
     <Filter Include="CMake Rules">
-      <UniqueIdentifier>{A35A3811-B05C-366A-B937-3FD2A66BD949}</UniqueIdentifier>
+      <UniqueIdentifier>{D3350E76-AAAA-3347-822A-58597852F514}</UniqueIdentifier>
     </Filter>
     <Filter Include="Images">
-      <UniqueIdentifier>{1CF2C3B4-E9F8-343F-9275-D76FC3B3B181}</UniqueIdentifier>
+      <UniqueIdentifier>{45BA4672-882D-3459-8A42-9B817342B8AC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Resources">
-      <UniqueIdentifier>{D63EF4DA-3FD6-331C-A9D1-920B728268E0}</UniqueIdentifier>
+      <UniqueIdentifier>{9FC5CE66-F1E5-373B-81C3-12833FC5D7AF}</UniqueIdentifier>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Sources\AddOnResources\ResourceMDIDIds.hpp">
+      <Filter>Resources</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
-﻿#include	<stdlib.h> /* atoi */
+﻿//------------ kuvbur 2022 ------------
+#include	<stdlib.h> /* atoi */
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
@@ -58,7 +59,13 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	bool flag_chanel = false;
 	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight);
 	if (!guidArray.IsEmpty()) {
+#ifdef AC_26
+		API_ElemType elemType;
+		elemType.typeID = elementType;
+		if (ACAPI_Goodies_GetElemTypeName(elemType, subtitle) == NoError) {
+#else
 		if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle) == NoError) {
+#endif // AC_26
 			nLib += 1;
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &nLib);
 			GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
@@ -98,7 +105,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
-void SyncSelected(const SyncSettings& syncSettings) {
+void SyncSelected(const SyncSettings & syncSettings) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		CallOnSelectedElemSettings(SyncData, false, true, syncSettings);
@@ -109,7 +116,7 @@ void SyncSelected(const SyncSettings& syncSettings) {
 // --------------------------------------------------------------------
 // Синхронизация привязанных к двери зон
 // --------------------------------------------------------------------
-GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+GSErrCode SyncRelationsToWindow(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	GSErrCode			err = NoError;
 
 	//Обновляем объекты, если их обработка включена
@@ -125,7 +132,7 @@ GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& sy
 // --------------------------------------------------------------------
 // Синхронизация привязанных к окну зон
 // --------------------------------------------------------------------
-GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+GSErrCode SyncRelationsToDoor(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	GSErrCode			err = NoError;
 
 	//Обновляем объекты, если их обработка включена
@@ -141,7 +148,7 @@ GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& sync
 // --------------------------------------------------------------------
 // Синхронизация привязанных навесной стене элементов
 // --------------------------------------------------------------------
-GSErrCode SyncRelationsToCWall(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+GSErrCode SyncRelationsToCWall(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	GSErrCode			err = NoError;
 	GS::Array<API_Guid> panelGuid;
 	err = GetCWElementsForCWall(elemGuid, panelGuid);
@@ -156,7 +163,7 @@ GSErrCode SyncRelationsToCWall(const API_Guid& elemGuid, const SyncSettings& syn
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
 // --------------------------------------------------------------------
-void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+void SyncRelationsElement(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	GSErrCode	err = NoError;
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
@@ -178,7 +185,7 @@ void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSett
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
 // --------------------------------------------------------------------
-void SyncGetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid) {
+void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&subelemGuid) {
 	GSErrCode	err = NoError;
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
@@ -200,7 +207,7 @@ void SyncGetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& sube
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	GSErrCode	err = NoError;
 	if (!IsElementEditable(elemGuid, syncSettings, true))
 		return;
@@ -225,7 +232,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 // --------------------------------------------------------------------
 // Синхронизация правил для одного свойства
 // --------------------------------------------------------------------
-GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition) {
+GSErrCode SyncOneProperty(const API_Guid & elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition) {
 	GSErrCode	err = NoError;
 	GS::Array <SyncRule> syncRules;
 	if (SyncString(definition.description, syncRules)) { // Парсим описание свойства
@@ -241,7 +248,7 @@ GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID element
 // Если синхронизация успешна, возвращает True
 // Если свойство или параметр не найдены, либо содержат игнорируемые символы - возращает False
 // --------------------------------------------------------------------
-bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition& definition, SyncRule syncRule) {
+bool SyncOneRule(const API_Guid & elemGuid, const API_ElemTypeID & elementType, const API_PropertyDefinition & definition, SyncRule syncRule) {
 	GSErrCode	err = NoError;
 	GS::Array<API_Guid> elemGuid_from;
 	GS::Array<API_Guid> elemGuid_to;
@@ -316,7 +323,7 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, co
 //	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2, из состава конструкции - 3)
 //	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
 // -----------------------------------------------------------------------------
-bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRules) {
+bool SyncString(GS::UniString & description_string, GS::Array <SyncRule>&syncRules) {
 	if (description_string.IsEmpty()) {
 		return false;
 	}
@@ -415,7 +422,7 @@ bool SyncString(GS::UniString& description_string, GS::Array <SyncRule>& syncRul
 //--------------------------------------------------------------------------------------------------------------------------
 //Ищет свойство со значение "Sync_flag" в описании и по значению определяет - нужно ли синхронизировать параметры элемента
 //--------------------------------------------------------------------------------------------------------------------------
-bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions) {
+bool SyncState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition> definitions) {
 	GSErrCode	err = NoError;
 
 	// Проверяем - не отключена ли синхронизация у данного объекта
@@ -441,7 +448,7 @@ bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство
 // -----------------------------------------------------------------------------
-GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, const SyncRule& syncRule, const API_PropertyDefinition& definition)
+GSErrCode SyncPropAndProp(const API_Guid & elemGuid_from, const API_Guid & elemGuid_to, const SyncRule & syncRule, const API_PropertyDefinition & definition)
 {
 	API_Property property_from;
 	API_Property property_to;
@@ -477,7 +484,7 @@ GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGui
 // -----------------------------------------------------------------------------
 // Запись данных о морфе в свойство
 // -----------------------------------------------------------------------------
-GSErrCode SyncMorphAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition) {
+GSErrCode SyncMorphAndProp(const API_Guid & elemGuid, const SyncRule & syncRule, const API_PropertyDefinition & definition) {
 	API_Property property;
 	GSErrCode err = ACAPI_Element_GetPropertyValue(elemGuid, definition.guid, property);
 	if (err == NoError) {
@@ -495,7 +502,7 @@ GSErrCode SyncMorphAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, c
 // -----------------------------------------------------------------------------
 // Запись значения IFC свойства в другое свойство
 // -----------------------------------------------------------------------------
-GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition)
+GSErrCode SyncIFCAndProp(const API_Guid & elemGuid, const SyncRule & syncRule, const API_PropertyDefinition & definition)
 {
 	API_IFCProperty property_from;
 	API_Property property_to;
@@ -546,7 +553,7 @@ GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, con
 // -----------------------------------------------------------------------------
 // Синхронизация значений свойства и параметра
 // -----------------------------------------------------------------------------
-GSErrCode SyncParamAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, SyncRule& syncRule, const API_PropertyDefinition& definition)
+GSErrCode SyncParamAndProp(const API_Guid & elemGuid_from, const API_Guid & elemGuid_to, SyncRule & syncRule, const API_PropertyDefinition & definition)
 {
 	GSErrCode		err = NoError;
 	GS::UniString param_string = "";
@@ -589,7 +596,7 @@ GSErrCode SyncParamAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGu
 	return err;
 }
 
-GS::UniString GetPropertyENGName(GS::UniString& name) {
+GS::UniString GetPropertyENGName(GS::UniString & name) {
 	if (name == u8"наименование") return "BuildingMaterialProperties/Building Material Name";
 	if (name == u8"описание") return "BuildingMaterialProperties/Building Material Description";
 	if (name == u8"id") return "BuildingMaterialProperties/Building Material ID";
@@ -606,7 +613,7 @@ GS::UniString GetPropertyENGName(GS::UniString& name) {
 //			@1@ текст @2@#.5mm#
 // Если свойство не найдено, %Имя свойства% заменяем на пустоту ("")
 // -----------------------------------------------------------------------------
-GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions) {
+GSErrCode  SyncPropAndMatParseString(const GS::UniString & templatestring, GS::UniString & outstring, GS::Array<API_PropertyDefinition>&outdefinitions) {
 	GSErrCode					err = NoError;
 	outstring = templatestring;
 	outstring.ReplaceAll("Property:", "");
@@ -660,7 +667,7 @@ GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::Un
 	return err;
 }
 
-GSErrCode  SyncPropAndMatOneGetComponent(const API_AttributeIndex& constrinx, const double& fillThick, LayerConstr& component) {
+GSErrCode  SyncPropAndMatOneGetComponent(const API_AttributeIndex & constrinx, const double& fillThick, LayerConstr & component) {
 	GSErrCode		err = NoError;
 	API_Attribute	attrib = {};
 	BNZeroMemory(&attrib, sizeof(API_Attribute));
@@ -700,7 +707,7 @@ GSErrCode  SyncPropAndMatOneGetComponent(const API_AttributeIndex& constrinx, co
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
-GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<LayerConstr>& components) {
+GSErrCode  SyncPropAndMatGetComponents(const API_Guid & elemGuid, GS::Array<LayerConstr>&components) {
 	GSErrCode					err = NoError;
 	API_Element					element = {};
 	API_ModelElemStructureType	structtype = {};
@@ -788,7 +795,7 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<Layer
 	return err;
 }
 
-void SyncPropAndMatReplaceValue(const double& var, const GS::UniString& patternstring, GS::UniString& outstring) {
+void SyncPropAndMatReplaceValue(const double& var, const GS::UniString & patternstring, GS::UniString & outstring) {
 	GS::UniString stringformat = "";
 	if (outstring.Contains(patternstring + "#")) {
 		UIndex startpos = outstring.FindFirst(patternstring + "#");
@@ -801,7 +808,7 @@ void SyncPropAndMatReplaceValue(const double& var, const GS::UniString& patterns
 	outstring.ReplaceAll(patternstring + stringformat, t);
 }
 
-void SyncPropAndMatReplaceValue(const API_Property& property, const GS::UniString& patternstring, GS::UniString& outstring) {
+void SyncPropAndMatReplaceValue(const API_Property & property, const GS::UniString & patternstring, GS::UniString & outstring) {
 	GS::UniString stringformat = "";
 	if (outstring.Contains(patternstring + "#")) {
 		UIndex startpos = outstring.FindFirst(patternstring + "#");
@@ -817,7 +824,7 @@ void SyncPropAndMatReplaceValue(const API_Property& property, const GS::UniStrin
 // --------------------------------------------------------------------
 // Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
 // --------------------------------------------------------------------
-GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring, UInt32& n) {
+GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute & attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>&outdefinitions, const GS::UniString & templatestring, GS::UniString & outstring, UInt32 & n) {
 	GSErrCode					err = NoError;
 	GS::Array <API_Property>	propertys;
 	outstring = templatestring;
@@ -855,7 +862,7 @@ GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const doubl
 // -----------------------------------------------------------------------------
 // Запись в свойство данных о материале
 // -----------------------------------------------------------------------------
-GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, const API_PropertyDefinition& definition) {
+GSErrCode SyncPropAndMat(const API_Guid & elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, const API_PropertyDefinition & definition) {
 	if (elementType != API_WallID && elementType != API_SlabID && elementType != API_RoofID && elementType != API_ShellID) return APIERR_MISSINGCODE;
 	GSErrCode err = NoError;
 	API_Property property;
@@ -905,7 +912,7 @@ GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementT
 // -----------------------------------------------------------------------------
 // Проверяем - содержит ли строка игнорируемые значения
 // -----------------------------------------------------------------------------
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val) {
+bool SyncCheckIgnoreVal(const SyncRule & syncRule, const GS::UniString & val) {
 	bool ignore_flag = CheckIgnoreVal(syncRule.ignorevals, val);
 	return ignore_flag;
 }
@@ -913,7 +920,7 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val) {
 // -----------------------------------------------------------------------------
 // Проверяем - содержит ли свойство игнорируемые значеения
 // -----------------------------------------------------------------------------
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property) {
+bool SyncCheckIgnoreVal(const SyncRule & syncRule, const API_Property & property) {
 	bool ignore_flag = false;
 	if (syncRule.ignorevals.GetSize() > 0) {
 		GS::UniString val = PropertyTestHelpers::ToString(property);
@@ -925,7 +932,7 @@ bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property) 
 // -----------------------------------------------------------------------------
 // Проверяем - содержит ли свойство игнорируемые значеения
 // -----------------------------------------------------------------------------
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_IFCProperty& property) {
+bool SyncCheckIgnoreVal(const SyncRule & syncRule, const API_IFCProperty & property) {
 	bool ignore_flag = false;
 
 	// TODO добавить игнорируемые значения для IFC

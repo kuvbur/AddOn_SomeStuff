@@ -1,4 +1,5 @@
-﻿#include	<stdio.h>
+﻿//------------ kuvbur 2022 ------------
+#include	<stdio.h>
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #ifdef AC_25
@@ -135,7 +136,7 @@ void	Do_ElementMonitor(bool& syncMon)
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);
 		ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
-}
+	}
 	if (!syncMon) {
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
@@ -196,7 +197,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		}
 		break;
-}
+	}
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);

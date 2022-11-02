@@ -1,3 +1,4 @@
+//------------ kuvbur 2022 ------------
 #pragma once
 
 #ifndef HELPERS_HPP
@@ -80,9 +81,9 @@ typedef struct {
 // canCalculate - можно ли использовать в математических вычислениях
 typedef struct {
 	API_VariantType type;
-	GS::UniString name;
-	GS::UniString uniStringValue;
-	GS::Int32 intValue;
+	GS::UniString name = "";
+	GS::UniString uniStringValue = "";
+	GS::Int32 intValue = 0;
 	bool boolValue = false;
 	double doubleValue = 0.0;
 	bool canCalculate = false;
@@ -163,13 +164,16 @@ bool EvalExpression(GS::UniString& expression);
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
 void CallOnSelectedElemSettings(void(*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel, bool onlyEditable, const SyncSettings& syncSettings);
+#ifndef AC_26
 bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
+#endif
 bool MenuInvertItemMark(short menuResID, short itemIndex);
 GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_IFCProperty& property);
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
+bool GetElementTypeString(API_ElemType elemType, char* elemStr);
 void MenuItemCheckAC(short itemInd, bool checked);
 GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
