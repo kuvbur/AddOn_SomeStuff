@@ -13,6 +13,7 @@
 #define SYNC_INFO 4
 #define SYNC_IFC 5
 #define SYNC_MORPH 6
+#define SYNC_CLASS 7
 
 #define SYNC_NO 0
 #define SYNC_FROM 1
@@ -72,24 +73,13 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 			msg_rep("SyncByType", subtitle + intString, NoError, APINULLGuid);
 		}
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			if (syncSettings.syncAll) {
-
-				// Если попадается навесная стена - обработаем также входящие в неё панели
-				if (elementType == API_CurtainWallID && syncSettings.cwallS) {
-					GS::Array<API_Guid> panelGuid;
-					err = GetCWElementsForCWall(guidArray[i], panelGuid);
-					if (err == NoError) {
-						for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
-							SyncData(panelGuid[i], syncSettings);
-						}
-					}
-				}
-				SyncData(guidArray[i], syncSettings);
-			}
 			if (syncSettings.syncMon) {
 				err = AttachObserver(guidArray[i], syncSettings);
 				if (err == APIERR_LINKEXIST)
 					err = NoError;
+			}
+			else {
+				SyncElement(guidArray[i], syncSettings);
 			}
 			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
@@ -102,63 +92,92 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	return flag_chanel;
 }
 
+void SyncElement(const API_Guid & objectId, const SyncSettings & syncSettings) {
+	GSErrCode		err = NoError;
+	if (syncSettings.syncMon) {
+		err = AttachObserver(objectId, syncSettings);
+		if (err == APIERR_LINKEXIST)
+			err = NoError;
+	}
+	if (err == NoError) {
+		SyncData(objectId, syncSettings);
+		SyncRelationsElement(objectId, syncSettings);
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings & syncSettings) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		CallOnSelectedElemSettings(SyncData, false, true, syncSettings);
+		CallOnSelectedElemSettings(SyncElement, false, true, syncSettings);
 		return NoError;
 		});
 }
 
-// --------------------------------------------------------------------
-// Синхронизация привязанных к двери зон
-// --------------------------------------------------------------------
-GSErrCode SyncRelationsToWindow(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
-	GSErrCode			err = NoError;
-
-	//Обновляем объекты, если их обработка включена
-	API_WindowRelation            relData;
-	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
-	if (err == NoError) {
-		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
-		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
-	}
-	return err;
-}
-
-// --------------------------------------------------------------------
-// Синхронизация привязанных к окну зон
-// --------------------------------------------------------------------
-GSErrCode SyncRelationsToDoor(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
-	GSErrCode			err = NoError;
-
-	//Обновляем объекты, если их обработка включена
-	API_DoorRelation            relData;
-	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
-	if (err == NoError) {
-		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
-		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
-	}
-	return err;
-}
-
-// --------------------------------------------------------------------
-// Синхронизация привязанных навесной стене элементов
-// --------------------------------------------------------------------
-GSErrCode SyncRelationsToCWall(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
-	GSErrCode			err = NoError;
-	GS::Array<API_Guid> panelGuid;
-	err = GetCWElementsForCWall(elemGuid, panelGuid);
-	if (err == NoError) {
-		for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
-			SyncData(panelGuid[i], syncSettings);
-		}
-	}
-	return err;
-}
+//// --------------------------------------------------------------------
+//// Синхронизация привязанных к двери зон
+//// --------------------------------------------------------------------
+//GSErrCode SyncRelationsToWindow(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
+//	GSErrCode			err = NoError;
+//
+//	//Обновляем объекты, если их обработка включена
+//	API_WindowRelation            relData;
+//	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
+//	if (err == NoError) {
+//		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
+//		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
+//	}
+//	return err;
+//}
+//
+//// --------------------------------------------------------------------
+//// Синхронизация привязанных к окну зон
+//// --------------------------------------------------------------------
+//GSErrCode SyncRelationsToDoor(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
+//	GSErrCode			err = NoError;
+//
+//	//Обновляем объекты, если их обработка включена
+//	API_DoorRelation            relData;
+//	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
+//	if (err == NoError) {
+//		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
+//		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
+//	}
+//	return err;
+//}
+//
+//// --------------------------------------------------------------------
+//// Синхронизация привязанных навесной стене элементов
+//// --------------------------------------------------------------------
+//GSErrCode SyncRelationsToCWall(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
+//	GSErrCode			err = NoError;
+//	GS::Array<API_Guid> panelGuid;
+//	err = GetCWElementsForCWall(elemGuid, panelGuid);
+//	if (err == NoError) {
+//		for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
+//			SyncData(panelGuid[i], syncSettings);
+//		}
+//	}
+//	return err;
+//}
+//
+//// --------------------------------------------------------------------
+//// Синхронизация привязанных ограждению элементов
+//// --------------------------------------------------------------------
+//GSErrCode SyncRelationsToRailing(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
+//	GSErrCode			err = NoError;
+//
+//	//GS::Array<API_Guid> elsGuid;
+//	//err = GetCWElementsForCWall(elemGuid, elsGuid);
+//	//if (err == NoError) {
+//	//	for (UInt32 i = 0; i < elsGuid.GetSize(); ++i) {
+//	//		SyncData(elsGuid[i], syncSettings);
+//	//	}
+//	//}
+//	return err;
+//}
 
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
@@ -166,42 +185,129 @@ GSErrCode SyncRelationsToCWall(const API_Guid & elemGuid, const SyncSettings & s
 void SyncRelationsElement(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	GSErrCode	err = NoError;
 	API_ElemTypeID elementType;
+	bool flag_sync = false;
 	err = GetTypeByGUID(elemGuid, elementType);
 	switch (elementType) {
 	case API_WindowID:
-		if (syncSettings.objS) err = SyncRelationsToWindow(elemGuid, syncSettings);
-		break;
 	case API_DoorID:
-		if (syncSettings.objS) err = SyncRelationsToDoor(elemGuid, syncSettings);
+		if (syncSettings.objS) flag_sync = true;
 		break;
+	case API_CurtainWallSegmentID:
+	case API_CurtainWallFrameID:
+	case API_CurtainWallJunctionID:
+	case API_CurtainWallAccessoryID:
+	case API_CurtainWallPanelID:
 	case API_CurtainWallID:
-		if (syncSettings.cwallS) err = SyncRelationsToCWall(elemGuid, syncSettings);
+		if (syncSettings.cwallS) flag_sync = true;
 		break;
 	default:
+		if (syncSettings.wallS) flag_sync = true;
 		break;
+	}
+	if (flag_sync) {
+		GS::Array<API_Guid> subelemGuid;
+		SyncGetRelationsElement(elemGuid, subelemGuid);
+		if (subelemGuid.GetSize() > 0) {
+			for (UInt32 i = 0; i < subelemGuid.GetSize(); ++i) {
+				SyncData(subelemGuid[i], syncSettings);
+			}
+		}
 	}
 }
 
 // --------------------------------------------------------------------
-// Поиск и синхронизация свойств связанных элементов
+// Поиск связанных элементов
 // --------------------------------------------------------------------
 void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&subelemGuid) {
 	GSErrCode	err = NoError;
 	API_ElemTypeID elementType;
+	API_RoomRelation	relData;
+	GS::Array<API_ElemTypeID> typeinzone;
 	err = GetTypeByGUID(elemGuid, elementType);
 	switch (elementType) {
+	case API_RailingID:
+		err = GetRElementsForRailing(elemGuid, subelemGuid);
+		break;
 	case API_CurtainWallID:
 		err = GetCWElementsForCWall(elemGuid, subelemGuid);
 		break;
+	case API_CurtainWallSegmentID:
+	case API_CurtainWallFrameID:
+	case API_CurtainWallJunctionID:
+	case API_CurtainWallAccessoryID:
 	case API_CurtainWallPanelID:
-		API_Elem_Head elementHead;
-		BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
-		elementHead.guid = elemGuid;
-		err = ACAPI_Element_GetHeader(&elementHead);
+		API_CWPanelRelation crelData;
+		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &crelData);
+		if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
+		if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
+		break;
+	case API_DoorID:
+		API_DoorRelation drelData;
+		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &drelData);
+		if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
+		if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
+		break;
+	case API_WindowID:
+		API_WindowRelation wrelData;
+		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &wrelData);
+		if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
+		if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
+		break;
+	case API_ZoneID:
+		err = ACAPI_Element_GetRelations(elemGuid, API_ZombieElemID, &relData);
+		typeinzone.Push(API_WallID);
+		typeinzone.Push(API_SlabID);
+		typeinzone.Push(API_ColumnID);
+		typeinzone.Push(API_BeamID);
+		typeinzone.Push(API_RoofID);
+		typeinzone.Push(API_ShellID);
+		typeinzone.Push(API_MorphID);
+
+		typeinzone.Push(API_WindowID);
+		typeinzone.Push(API_DoorID);
+
+		typeinzone.Push(API_ObjectID);
+		typeinzone.Push(API_LampID);
+		typeinzone.Push(API_StairID);
+		typeinzone.Push(API_RiserID);
+		typeinzone.Push(API_TreadID);
+		typeinzone.Push(API_StairStructureID);
+		typeinzone.Push(API_RailingID);
+		typeinzone.Push(API_RailingToprailID);
+		typeinzone.Push(API_RailingHandrailID);
+		typeinzone.Push(API_RailingRailID);
+		typeinzone.Push(API_RailingPostID);
+		typeinzone.Push(API_RailingInnerPostID);
+		typeinzone.Push(API_RailingBalusterID);
+		typeinzone.Push(API_RailingPanelID);
+		typeinzone.Push(API_RailingSegmentID);
+		typeinzone.Push(API_RailingToprailEndID);
+		typeinzone.Push(API_RailingHandrailEndID);
+		typeinzone.Push(API_RailingRailEndID);
+		typeinzone.Push(API_RailingToprailConnectionID);
+		typeinzone.Push(API_RailingHandrailConnectionID);
+		typeinzone.Push(API_RailingRailConnectionID);
+		typeinzone.Push(API_RailingNodeID);
+
+		typeinzone.Push(API_CurtainWallID);
+		typeinzone.Push(API_CurtainWallFrameID);
+		typeinzone.Push(API_CurtainWallPanelID);
+		typeinzone.Push(API_CurtainWallJunctionID);
+		typeinzone.Push(API_CurtainWallAccessoryID);
+		typeinzone.Push(API_CurtainWallSegmentID);
+		typeinzone.Push(API_SkylightID);
+		for (const API_ElemTypeID& typeelem : typeinzone) {
+			if (relData.elementsGroupedByType.ContainsKey(typeelem)) {
+				for (const API_Guid& elGuid : relData.elementsGroupedByType[typeelem]) {
+					subelemGuid.Push(elGuid);
+				}
+			}
+		}
 		break;
 	default:
 		break;
 	}
+	ACAPI_DisposeRoomRelationHdls(&relData);
 }
 
 // --------------------------------------------------------------------
@@ -237,7 +343,7 @@ GSErrCode SyncOneProperty(const API_Guid & elemGuid, const API_ElemTypeID elemen
 	GS::Array <SyncRule> syncRules;
 	if (SyncString(definition.description, syncRules)) { // Парсим описание свойства
 		for (UInt32 i = 0; i < syncRules.GetSize(); i++) {
-			if (SyncOneRule(elemGuid, elementType, definition, syncRules[i])) break; // Если синхронизация успешная - выходим из цикла
+			SyncOneRule(elemGuid, elementType, definition, syncRules[i]); // Если синхронизация успешная - выходим из цикла
 		}
 	}
 	return err;
@@ -327,6 +433,9 @@ bool SyncString(GS::UniString & description_string, GS::Array <SyncRule>&syncRul
 	if (description_string.IsEmpty()) {
 		return false;
 	}
+	if (description_string.Contains("Sync_flag")) {
+		return false;
+	}
 
 	// Если указан сброс данных - синхронизировать не будем
 	if (description_string.Contains("Sync_reset")) {
@@ -341,20 +450,20 @@ bool SyncString(GS::UniString & description_string, GS::Array <SyncRule>&syncRul
 			rule.syncdirection = SYNC_NO;
 
 			// Выбор направления синхронизации
-			// Копировать параметр в свойство или свойство в параметр
-			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("from")) {
-				rule.syncdirection = SYNC_FROM;
-			}
-			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("to")) {
-				rule.syncdirection = SYNC_TO;
-			}
-
 			// Копировать в субэлементы или из субэлементов
-			if (rule.syncdirection == SYNC_TO && rulestring_one.Contains("sub")) {
+			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("to_sub{")) {
 				rule.syncdirection = SYNC_TO_SUB;
 			}
-			if (rule.syncdirection == SYNC_FROM && rulestring_one.Contains("sub")) {
+			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("from_sub{")) {
 				rule.syncdirection = SYNC_FROM_SUB;
+			}
+
+			// Копировать параметр в свойство или свойство в параметр
+			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("from{")) {
+				rule.syncdirection = SYNC_FROM;
+			}
+			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("to{")) {
+				rule.syncdirection = SYNC_TO;
 			}
 			if (rule.syncdirection != SYNC_NO) {
 
@@ -727,7 +836,7 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid & elemGuid, GS::Array<Laye
 #ifdef AC_26
 	eltype = element.header.type.typeID;
 #else
-	eltype = elem_head.typeID;
+	eltype = element.header.typeID;
 #endif
 	switch (eltype) {
 	case API_WallID:

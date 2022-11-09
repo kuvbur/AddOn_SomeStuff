@@ -39,9 +39,13 @@ void SyncAndMonAll(SyncSettings& syncSettings);
 
 void SyncSelected(const SyncSettings& syncSettings);
 
-GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+void SyncElement(const API_Guid& objectId, const SyncSettings& syncSettings);
 
-GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+//GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+//
+//GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+//
+//GSErrCode SyncRelationsToRailing(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
 void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 

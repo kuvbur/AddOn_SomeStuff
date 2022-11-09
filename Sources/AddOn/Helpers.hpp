@@ -14,7 +14,7 @@
 #include	"StringConversion.hpp"
 #include	"ResourceIds.hpp"
 #include	"SyncSettings.hpp"
-#include	"calculator.hpp"
+#include	"exprtk.hpp"
 
 #define ELEMSTR_LEN				256
 #define	CURR_ADDON_VERS			0x0006
@@ -119,7 +119,7 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid);
 
 GSErrCode AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings);
 
-bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
+bool CheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
 bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
 
@@ -130,11 +130,12 @@ GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
-GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
-GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid);
+GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids);
 bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& params, Int32& inx);
 bool FindGDLParametersByDescription(const GS::UniString& paramName, const API_Elem_Head elem_head, Int32& inx);
 bool FindGDLParameters(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter);
+
+GSErrCode GetGDLParametersHead(const API_Elem_Head& elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid);
 GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemType, API_AddParType**& params);
 GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType**& params);
 bool FindLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter);
@@ -159,7 +160,7 @@ bool GetParamNameDict(const GS::UniString& expression, ParamDict& paramDict);
 bool GetParamValueDict(const API_Guid& elemGuid, const ParamDict& paramDict, ParamDictValue& pdictvalue);
 
 bool ReplaceParamInExpression(const ParamDictValue& pdictvalue, GS::UniString& expression);
-bool EvalExpression(GS::UniString& expression);
+bool EvalExpression(GS::UniString& unistring_expression);
 
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
@@ -173,7 +174,11 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
+#ifdef AC_26
 bool GetElementTypeString(API_ElemType elemType, char* elemStr);
+#else
+bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
+#endif
 void MenuItemCheckAC(short itemInd, bool checked);
 GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);

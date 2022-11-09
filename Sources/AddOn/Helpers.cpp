@@ -98,7 +98,7 @@ GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSetti
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
-bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings) {
+bool CheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings) {
 	if (elementType == API_DimensionID)
 		return true;
 	if (syncSettings.wallS &&
@@ -111,7 +111,12 @@ bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&
 	if (syncSettings.objS &&
 		(elementType == API_StairID || elementType == API_RiserID ||
 			elementType == API_TreadID || elementType == API_StairStructureID ||
-			elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
+			elementType == API_ObjectID ||
+			elementType == API_ZoneID ||
+			elementType == API_LampID))
+		return true;
+	if (syncSettings.objS &&
+		(elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
 			elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
 			elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
 			elementType == API_RailingNodeID || elementType == API_RailingBalusterSetID || elementType == API_RailingPatternID ||
@@ -120,10 +125,7 @@ bool SyncCheckElementType(const API_ElemTypeID& elementType, const SyncSettings&
 			elementType == API_RailingToprailConnectionID ||
 			elementType == API_RailingHandrailConnectionID ||
 			elementType == API_RailingRailConnectionID ||
-			elementType == API_RailingEndFinishID ||
-			elementType == API_ObjectID ||
-			elementType == API_ZoneID ||
-			elementType == API_LampID))
+			elementType == API_RailingEndFinishID))
 		return true;
 	if (syncSettings.cwallS &&
 		(elementType == API_CurtainWallSegmentID ||
@@ -158,14 +160,14 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSetting
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = objectId;
 	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
+	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
 	API_ElemTypeID eltype;
 #ifdef AC_26
 	eltype = tElemHead.type.typeID;
 #else
 	eltype = tElemHead.typeID;
 #endif
-	if (needCheckElementType && !SyncCheckElementType(eltype, syncSettings)) return false;
-	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
+	if (needCheckElementType && !CheckElementType(eltype, syncSettings)) return false;
 	return true;
 }
 
@@ -625,22 +627,22 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	return err;
 }
 
-bool	GetElementTypeString(API_ElemType elemType, char* elemStr)
+#ifndef AC_26
+bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
 {
 	GS::UniString	ustr;
-	GSErrCode	err = ACAPI_Goodies_GetElemTypeName(elemType, ustr);
+	GSErrCode	err = ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)typeID, &ustr);
 	if (err == NoError) {
 		CHTruncate(ustr.ToCStr(), elemStr, ELEMSTR_LEN - 1);
 		return true;
 	}
 	return false;
 }
-
-#ifndef AC_26
-bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
+#else
+bool	GetElementTypeString(API_ElemType elemType, char* elemStr)
 {
 	GS::UniString	ustr;
-	GSErrCode	err = ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)typeID, &ustr);
+	GSErrCode	err = ACAPI_Goodies_GetElemTypeName(elemType, ustr);
 	if (err == NoError) {
 		CHTruncate(ustr.ToCStr(), elemStr, ELEMSTR_LEN - 1);
 		return true;
@@ -989,37 +991,122 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 // --------------------------------------------------------------------
 GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& elementsSymbolGuids)
 {
+	API_Element      element = {};
+	element.header.guid = cwGuid;
+	GSErrCode err = ACAPI_Element_Get(&element);
+	if (err != NoError || !element.header.hasMemo) {
+		return err;
+	}
 	API_ElementMemo	memo = {};
-	UInt32 mask = APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
-	GSErrCode	err = ACAPI_Element_GetMemo(cwGuid, &memo, mask);
+	UInt64 mask = APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
+	err = ACAPI_Element_GetMemo(cwGuid, &memo, mask);
 	if (err != NoError) {
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return err;
 	}
 	bool isDegenerate = false;
 	const GSSize nPanels = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof(API_CWPanelType);
-	for (Int32 idx = 0; idx < nPanels; ++idx) {
-		err = ACAPI_Database(APIDb_IsCWPanelDegenerateID, (void*)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
-		if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
-			elementsSymbolGuids.Push(std::move(memo.cWallPanels[idx].head.guid));
+	if (nPanels > 0) {
+		for (Int32 idx = 0; idx < nPanels; ++idx) {
+			err = ACAPI_Database(APIDb_IsCWPanelDegenerateID, (void*)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
+			if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
+				elementsSymbolGuids.Push(std::move(memo.cWallPanels[idx].head.guid));
+			}
 		}
 	}
 	const GSSize nWallFrames = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof(API_CWFrameType);
-	for (Int32 idx = 0; idx < nWallFrames; ++idx) {
-		if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
-			elementsSymbolGuids.Push(std::move(memo.cWallFrames[idx].head.guid));
+	if (nWallFrames > 0) {
+		for (Int32 idx = 0; idx < nWallFrames; ++idx) {
+			if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
+				elementsSymbolGuids.Push(std::move(memo.cWallFrames[idx].head.guid));
+			}
 		}
 	}
 	const GSSize nWallJunctions = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallJunctions)) / sizeof(API_CWJunctionType);
-	for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
-		if (memo.cWallJunctions[idx].hasSymbol) {
-			elementsSymbolGuids.Push(std::move(memo.cWallJunctions[idx].head.guid));
+	if (nWallJunctions > 0) {
+		for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
+			if (memo.cWallJunctions[idx].hasSymbol) {
+				elementsSymbolGuids.Push(std::move(memo.cWallJunctions[idx].head.guid));
+			}
 		}
 	}
 	const GSSize nWallAccessories = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallAccessories)) / sizeof(API_CWAccessoryType);
-	for (Int32 idx = 0; idx < nWallAccessories; ++idx) {
-		if (memo.cWallAccessories[idx].hasSymbol) {
-			elementsSymbolGuids.Push(std::move(memo.cWallAccessories[idx].head.guid));
+	if (nWallAccessories > 0) {
+		for (Int32 idx = 0; idx < nWallAccessories; ++idx) {
+			if (memo.cWallAccessories[idx].hasSymbol) {
+				elementsSymbolGuids.Push(std::move(memo.cWallAccessories[idx].head.guid));
+			}
+		}
+	}
+	ACAPI_DisposeElemMemoHdls(&memo);
+	return err;
+}
+
+// --------------------------------------------------------------------
+// Получение списка GUID элементов ограждения
+// --------------------------------------------------------------------
+GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids)
+{
+	API_Element      element = {};
+	element.header.guid = elemGuid;
+	GSErrCode err = ACAPI_Element_Get(&element);
+	if (err != NoError || !element.header.hasMemo) {
+		return err;
+	}
+	API_ElementMemo	memo = {};
+	UInt64 mask = APIMemoMask_RailingPost | APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail | APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster | APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd | APIMemoMask_RailingRailConnection;
+	err = ACAPI_Element_GetMemo(elemGuid, &memo, mask);
+	if (err != NoError) {
+		ACAPI_DisposeElemMemoHdls(&memo);
+		return err;
+	}
+	GSSize n = 0;
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingPosts)) / sizeof(API_RailingPostType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			elementsGuids.Push(std::move(memo.railingPosts[idx].head.guid));
+		}
+	}
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingRailEnds)) / sizeof(API_RailingRailEndType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			elementsGuids.Push(std::move(memo.railingRailEnds[idx].head.guid));
+		}
+	}
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingRails)) / sizeof(API_RailingRailType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			if (memo.railingRails[idx].visible) elementsGuids.Push(std::move(memo.railingRails[idx].head.guid));
+		}
+	}
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingToprails)) / sizeof(API_RailingToprailType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			if (memo.railingToprails[idx].visible) elementsGuids.Push(std::move(memo.railingToprails[idx].head.guid));
+		}
+	}
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingHandrails)) / sizeof(API_RailingHandrailType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			if (memo.railingHandrails[idx].visible) elementsGuids.Push(std::move(memo.railingHandrails[idx].head.guid));
+		}
+	}
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingInnerPosts)) / sizeof(API_RailingInnerPostType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			elementsGuids.Push(std::move(memo.railingInnerPosts[idx].head.guid));
+		}
+	}
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingBalusters)) / sizeof(API_RailingBalusterType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			elementsGuids.Push(std::move(memo.railingBalusters[idx].head.guid));
+		}
+	}
+	n = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.railingPanels)) / sizeof(API_RailingPanelType);
+	if (n > 0) {
+		for (Int32 idx = 0; idx < n; ++idx) {
+			if (memo.railingPanels[idx].visible) elementsGuids.Push(std::move(memo.railingPanels[idx].head.guid));
 		}
 	}
 	ACAPI_DisposeElemMemoHdls(&memo);
@@ -1169,13 +1256,14 @@ GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_
 // -----------------------------------------------------------------------------
 GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 	API_Element      element = {};
-	API_ElementMemo  memo;
-	GSErrCode        err;
-	Modeler::MeshBody* mb;
 	element.header.guid = elemGuid;
-	err = ACAPI_Element_Get(&element);
+	GSErrCode err = ACAPI_Element_Get(&element);
 	if (err == NoError && element.header.hasMemo) {
-		err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_All);
+		API_ElementMemo  memo;
+		BNZeroMemory(&memo, sizeof(API_ElementMemo));
+		err = ACAPI_Element_GetMemo(element.header.guid, &memo);
+		if (err != NoError || memo.morphBody == nullptr)
+			return APIERR_GENERAL;
 		if (err == NoError) {
 			double L = 0;
 			double Lx = 0;
@@ -1187,13 +1275,12 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 			double Min_x = 0;
 			double Min_y = 0;
 			double Min_z = 0;
-			mb = memo.morphBody;
 			if (memo.morphBody->IsWireBody() && !memo.morphBody->IsSolidBody()) {
-				Int32 edgeCnt = mb->GetEdgeCount();
+				Int32 edgeCnt = memo.morphBody->GetEdgeCount();
 				for (Int32 iEdge = 0; iEdge < edgeCnt; iEdge++) {
-					const EDGE& edge = mb->GetConstEdge(iEdge);
-					const VERT& vtx1 = mb->GetConstVertex(edge.vert1);
-					const VERT& vtx2 = mb->GetConstVertex(edge.vert2);
+					const EDGE& edge = memo.morphBody->GetConstEdge(iEdge);
+					const VERT& vtx1 = memo.morphBody->GetConstVertex(edge.vert1);
+					const VERT& vtx2 = memo.morphBody->GetConstVertex(edge.vert2);
 					double x1 = vtx1.x;
 					double x2 = vtx2.x;
 					double y1 = vtx1.y;
@@ -1253,27 +1340,10 @@ GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& prope
 	return err;
 }
 
-GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemType, API_AddParType**& params)
-{
-	GSErrCode	err = NoError;
-	API_ParamOwnerType	apiOwner = {};
-	API_GetParamsType	apiParams = {};
-	apiOwner.guid = elemGuid;
-#ifdef AC_26
-	apiOwner.type.typeID = elemType;
-#else
-	apiOwner.typeID = elemType;
-#endif
-	err = ACAPI_Goodies(APIAny_OpenParametersID, &apiOwner);
-	if (err != NoError) return err;
-	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
-	if (err != NoError) return err;
-	params = apiParams.params;
-	err = ACAPI_Goodies(APIAny_CloseParametersID);
-	return err;
-}
-
-GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid) {
+// -----------------------------------------------------------------------------
+// Возвращает elemType и elemGuid для корректного чтение параметров элементов навесной стены
+// -----------------------------------------------------------------------------
+GSErrCode GetGDLParametersHead(const API_Elem_Head& elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid) {
 	GSErrCode		err = NoError;
 	API_Element element = {};
 #ifdef AC_26
@@ -1289,6 +1359,22 @@ GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& el
 			elemType = API_ObjectID;
 		}
 		break;
+	case API_RailingBalusterID:
+		element.header = elem_head;
+		err = ACAPI_Element_Get(&element);
+		if (err == NoError) {
+			elemGuid = element.railingBaluster.symbID;
+			elemType = API_ObjectID;
+		}
+		break;
+	case API_RailingHandrailID:
+		element.header = elem_head;
+		err = ACAPI_Element_Get(&element);
+		if (err == NoError) {
+			elemGuid = element.railingHandrail.symbID;
+			elemType = API_ObjectID;
+		}
+		break;
 	default:
 		elemGuid = elem_head.guid;
 #ifdef AC_26
@@ -1297,6 +1383,45 @@ GSErrCode GetGDLParametersHead(const API_Elem_Head elem_head, API_ElemTypeID& el
 		elemType = elem_head.typeID;
 #endif
 		break;
+	}
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Возвращает список параметров API_AddParType
+// -----------------------------------------------------------------------------
+GSErrCode GetGDLParameters(const API_Guid & elemGuid, const API_ElemTypeID & elemType, API_AddParType * *&params)
+{
+	GSErrCode	err = NoError;
+	API_ParamOwnerType	apiOwner = {};
+	API_GetParamsType	apiParams = {};
+	apiOwner.guid = elemGuid;
+#ifdef AC_26
+	apiOwner.type.typeID = elemType;
+#else
+	apiOwner.typeID = elemType;
+#endif
+	err = ACAPI_Goodies(APIAny_OpenParametersID, &apiOwner, nullptr);
+	if (err != NoError) return err;
+	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
+	if (err != NoError) {
+		err = ACAPI_Goodies(APIAny_CloseParametersID);
+		return err;
+	}
+	params = apiParams.params;
+	err = ACAPI_Goodies(APIAny_CloseParametersID);
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Прослойка для подмены API_Elem_Head в случае, если необходимо получить параметр элемента навесной стены
+// -----------------------------------------------------------------------------
+GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType * *&params) {
+	API_ElemTypeID	elemType;
+	API_Guid		elemGuid;
+	GSErrCode	err = GetGDLParametersHead(elem_head, elemType, elemGuid);
+	if (err == NoError) {
+		err = GetGDLParameters(elemGuid, elemType, params);
 	}
 	return err;
 }
@@ -1360,7 +1485,9 @@ bool FindGDLParametersByDescription(const GS::UniString & paramName, const API_E
 }
 
 // -----------------------------------------------------------------------------
-// Поиск параметра GDL объекта по описанию или имени
+// Поиск параметра GDL объекта по описанию или имени, с учётом типа элемента
+// Level 3
+// Возвращает сам параметр в формате API_AddParType
 // -----------------------------------------------------------------------------
 bool FindGDLParameters(const GS::UniString & paramName, const API_Elem_Head & elem_head, API_AddParType & nthParameter) {
 	API_ElemTypeID eltype;
@@ -1379,7 +1506,21 @@ bool FindGDLParameters(const GS::UniString & paramName, const API_Elem_Head & el
 		eltype != API_CurtainWallPanelID &&
 		eltype != API_CurtainWallFrameID &&
 		eltype != API_CurtainWallJunctionID &&
-		eltype != API_CurtainWallAccessoryID) {
+		eltype != API_CurtainWallAccessoryID &&
+		eltype != API_RailingToprailID &&
+		eltype != API_RailingHandrailID &&
+		eltype != API_RailingRailID &&
+		eltype != API_RailingPostID &&
+		eltype != API_RailingInnerPostID &&
+		eltype != API_RailingBalusterID &&
+		eltype != API_RailingPanelID &&
+		eltype != API_RailingToprailEndID &&
+		eltype != API_RailingHandrailEndID &&
+		eltype != API_RailingRailEndID &&
+		eltype != API_RailingToprailConnectionID &&
+		eltype != API_RailingHandrailConnectionID &&
+		eltype != API_RailingRailConnectionID
+		) {
 		return false;
 	}
 
@@ -1412,18 +1553,9 @@ bool FindGDLParameters(const GS::UniString & paramName, const API_Elem_Head & el
 	return true;
 }
 
-GSErrCode GetGDLParameters(const API_Elem_Head elem_head, API_AddParType * *&params) {
-	API_ElemTypeID	elemType;
-	API_Guid		elemGuid;
-	GSErrCode	err = GetGDLParametersHead(elem_head, elemType, elemGuid);
-	if (err == NoError) {
-		err = GetGDLParameters(elemGuid, elemType, params);
-	}
-	return err;
-}
-
 // -----------------------------------------------------------------------------
 // Получение координат объекта
+// Level 3
 // symb_pos_x , symb_pos_y, symb_pos_z
 // Для панелей навесной стены возвращает центр панели
 // Для колонны или объекта - центр колонны и отм. низа
@@ -1474,6 +1606,7 @@ bool FindLibCoords(const GS::UniString & paramName, const API_Elem_Head & elem_h
 
 // -----------------------------------------------------------------------------
 // Получить значение параметра с конвертацией типа данных OLD
+// Level 1
 // -----------------------------------------------------------------------------
 bool GetLibParam(const API_Guid & elemGuid, const GS::UniString & paramName, GS::UniString & param_string, GS::Int32 & param_int, bool& param_bool, double& param_real) {
 	ParamValue pvalue;
@@ -1490,6 +1623,7 @@ bool GetLibParam(const API_Guid & elemGuid, const GS::UniString & paramName, GS:
 
 // -----------------------------------------------------------------------------
 // Получить значение свойства или параметра в ParamValue
+// Level 1
 // -----------------------------------------------------------------------------
 bool GetParam(const API_Guid & elemGuid, const GS::UniString & paramName, ParamValue & pvalue) {
 	GS::UniString& paramName_t = paramName.ToLowerCase();
@@ -1525,6 +1659,8 @@ bool GetParam(const API_Guid & elemGuid, const GS::UniString & paramName, ParamV
 
 // -----------------------------------------------------------------------------
 // Получить значение параметра по его имени или описанию в ParamValue
+// Level 2
+// В зависимости от того, что ищем (координаты или параметры) и типа элемента (объект или элемент навенсной стены/ограждения)
 // -----------------------------------------------------------------------------
 bool GetLibParam(const API_Guid & elemGuid, const GS::UniString & paramName, ParamValue & pvalue) {
 	GSErrCode		err = NoError;
@@ -1878,18 +2014,25 @@ bool ReplaceParamInExpression(const ParamDictValue & pdictvalue, GS::UniString &
 // Вычисление выражений, заключённых в < >
 // Что не может вычислить - заменит на пустоту
 // -----------------------------------------------------------------------------
-bool EvalExpression(GS::UniString & expression) {
-	if (expression.IsEmpty()) return false;
-	if (!expression.Contains('<')) return false;
+bool EvalExpression(GS::UniString & unistring_expression) {
+	if (unistring_expression.IsEmpty()) return false;
+	if (!unistring_expression.Contains('<')) return false;
 	GS::UniString part = "";
-	GS::UniString texpression = expression;
+	GS::UniString texpression = unistring_expression;
 	for (UInt32 i = 0; i < texpression.Count('<'); i++) {
-		part = expression.GetSubstring('<', '>', 0);
-		int rezult = calculator::eval(part.ToCStr(0, MaxUSize, CC_Cyrillic).Get());
-		GS::UniString rezult_txt = GS::UniString::Printf("%d", rezult);
-		expression.ReplaceAll("<" + part + ">", rezult_txt);
+		typedef double T;
+		part = unistring_expression.GetSubstring('<', '>', 0);
+		typedef exprtk::expression<T>   expression_t;
+		typedef exprtk::parser<T>       parser_t;
+		std::string expression_string(part.ToCStr(0, MaxUSize, CC_Cyrillic).Get());
+		expression_t expression;
+		parser_t parser;
+		parser.compile(expression_string, expression);
+		const T result = expression.value();
+		GS::UniString rezult_txt = GS::UniString::Printf("%.3g", result);
+		unistring_expression.ReplaceAll("<" + part + ">", rezult_txt);
 	}
-	return (!expression.IsEmpty());
+	return (!unistring_expression.IsEmpty());
 }
 
 // -----------------------------------------------------------------------------
@@ -2042,7 +2185,7 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property & property, const
 			if (i != value->listVariant.variants.GetSize() - 1) {
 				string += "; ";
 			}
-		}
+			}
 #else // AC_25
 		for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
 			string += ToString(value->multipleEnumVariant.variants[i].displayVariant, stringformat);
@@ -2051,7 +2194,7 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property & property, const
 			}
 		}
 #endif
-	} break;
+		} break;
 	default: {
 		break;
 	}
@@ -2111,11 +2254,11 @@ bool Equals(const API_PropertyDefaultValue & lhs, const API_PropertyDefaultValue
 
 	if (lhs.hasExpression) {
 		return lhs.propertyExpressions == rhs.propertyExpressions;
-	}
+}
 	else {
 		return Equals(lhs.basicValue, rhs.basicValue, collType);
 	}
-}
+	}
 
 bool Equals(const API_PropertyValue & lhs, const API_PropertyValue & rhs, API_PropertyCollectionType collType)
 {
@@ -2153,7 +2296,7 @@ bool operator== (const API_PropertyGroup & lhs, const API_PropertyGroup & rhs)
 {
 	return lhs.guid == rhs.guid &&
 		lhs.name == rhs.name;
-}
+	}
 
 bool operator== (const API_PropertyDefinition & lhs, const API_PropertyDefinition & rhs)
 {

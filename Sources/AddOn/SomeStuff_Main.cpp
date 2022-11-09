@@ -105,24 +105,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		break;
 	}
 	if (sync_prop) {
-		return Do_Sync(elemType->elemHead.guid, syncSettings);
+		SyncElement(elemType->elemHead.guid, syncSettings);
 	}
-	else {
-		return NoError;
-	}
+	return NoError;
 }	// ElementEventHandlerProc
-
-GSErrCode Do_Sync(const API_Guid& objectId, SyncSettings& syncSettings) {
-	GSErrCode		err = NoError;
-	err = AttachObserver(objectId, syncSettings);
-	if (err == APIERR_LINKEXIST)
-		err = NoError;
-	if (err == NoError) {
-		SyncData(objectId, syncSettings);
-		SyncRelationsElement(objectId, syncSettings);
-	}
-	return err;
-}
 
 // -----------------------------------------------------------------------------
 // Включение мониторинга
