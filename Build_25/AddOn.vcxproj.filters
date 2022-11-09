@@ -30,6 +30,9 @@
     <ClInclude Include="D:\SomeStuff_addon\Sources\AddOn\ResourceIds.hpp">
       <Filter>Sources</Filter>
     </ClInclude>
+    <ClInclude Include="..\Sources\AddOn\exprtk.hpp">
+      <Filter>Sources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Sources">

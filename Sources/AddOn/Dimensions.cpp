@@ -368,7 +368,6 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 // TODO добавить резервирование
 // -----------------------------------------------------------------------------
 void DimRoundAll(const SyncSettings& syncSettings) {
-	if (!syncSettings.syncAll) return;
 	DoneElemGuid doneelemguid;
 	DimRules dimrules;
 	GSErrCode err = DimReadPref(dimrules);
@@ -386,7 +385,7 @@ void DimRoundAll(const SyncSettings& syncSettings) {
 bool DimRoundByType(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules) {
 	GSErrCode	err = NoError;
 
-	// Тут было резервирование всех рахмеров перед обновлением, но оно работает криво и я его отключил
+	// Тут было резервирование всех размеров перед обновлением, но оно работает криво и я его отключил
 	//GS::Array<API_Guid>	guidArray_all;
 	//err = ACAPI_Element_GetElemList(typeID, &guidArray_all, APIFilt_OnVisLayer | APIFilt_IsInStructureDisplay);
 	//if (guidArray_all.GetSize() == 0 || err != NoError) return false;
