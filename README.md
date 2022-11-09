@@ -12,6 +12,8 @@
 * [Чат в телеграмм](https://t.me/joinchat/G4VyxoQ9-S1mNDQy)
 
 ### Совместимость с версиями:
+Archicad WIN 26
+
 Archicad WIN 25
 
 Archicad WIN 24
