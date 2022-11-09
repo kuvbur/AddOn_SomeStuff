@@ -116,69 +116,6 @@ void SyncSelected(const SyncSettings & syncSettings) {
 		});
 }
 
-//// --------------------------------------------------------------------
-//// Синхронизация привязанных к двери зон
-//// --------------------------------------------------------------------
-//GSErrCode SyncRelationsToWindow(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
-//	GSErrCode			err = NoError;
-//
-//	//Обновляем объекты, если их обработка включена
-//	API_WindowRelation            relData;
-//	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
-//	if (err == NoError) {
-//		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
-//		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
-//	}
-//	return err;
-//}
-//
-//// --------------------------------------------------------------------
-//// Синхронизация привязанных к окну зон
-//// --------------------------------------------------------------------
-//GSErrCode SyncRelationsToDoor(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
-//	GSErrCode			err = NoError;
-//
-//	//Обновляем объекты, если их обработка включена
-//	API_DoorRelation            relData;
-//	err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &relData);
-//	if (err == NoError) {
-//		if (relData.fromRoom != APINULLGuid) SyncData(relData.fromRoom, syncSettings);
-//		if (relData.toRoom != APINULLGuid) SyncData(relData.toRoom, syncSettings);
-//	}
-//	return err;
-//}
-//
-//// --------------------------------------------------------------------
-//// Синхронизация привязанных навесной стене элементов
-//// --------------------------------------------------------------------
-//GSErrCode SyncRelationsToCWall(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
-//	GSErrCode			err = NoError;
-//	GS::Array<API_Guid> panelGuid;
-//	err = GetCWElementsForCWall(elemGuid, panelGuid);
-//	if (err == NoError) {
-//		for (UInt32 i = 0; i < panelGuid.GetSize(); ++i) {
-//			SyncData(panelGuid[i], syncSettings);
-//		}
-//	}
-//	return err;
-//}
-//
-//// --------------------------------------------------------------------
-//// Синхронизация привязанных ограждению элементов
-//// --------------------------------------------------------------------
-//GSErrCode SyncRelationsToRailing(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
-//	GSErrCode			err = NoError;
-//
-//	//GS::Array<API_Guid> elsGuid;
-//	//err = GetCWElementsForCWall(elemGuid, elsGuid);
-//	//if (err == NoError) {
-//	//	for (UInt32 i = 0; i < elsGuid.GetSize(); ++i) {
-//	//		SyncData(elsGuid[i], syncSettings);
-//	//	}
-//	//}
-//	return err;
-//}
-
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
 // --------------------------------------------------------------------
@@ -327,7 +264,32 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
 	if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
 	if (err == NoError) {
-		if (SyncState(elemGuid, definitions)) { // Проверяем - не отключена ли синхронизация у данного объекта
+		// Установка правильной классификации
+		if (SyncState(elemGuid, definitions, "Sync_class_flag")) { // Проверяем - не отключена ли проставление классификации
+			GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
+			err = ACAPI_Element_GetClassificationItems(elemGuid, systemItemPairs);
+			GS::Array<API_ClassificationSystem> systems;
+			ClassificationDict allclassification;
+			err = ACAPI_Classification_GetClassificationSystems(systems);
+			for (UInt32 i = 0; i < systems.GetSize(); i++) {
+				GS::UniString sname = systems[i].name;
+				API_Guid sguid = systems[i].guid;
+				allclassification.Add(sname, sguid);
+
+				GS::Array<API_ClassificationItem> rootitems;
+				err = ACAPI_Classification_GetClassificationSystemRootItems(sguid, rootitems);
+				for (UInt32 j = 0; j < rootitems.GetSize(); j++) {
+					GS::UniString rname = sname + "@" + rootitems[j].name;
+					API_Guid rguid = rootitems[j].guid;
+					allclassification.Add(rname, sguid);
+					GS::Array<API_ClassificationItem> children;
+					err = ACAPI_Classification_GetClassificationItemChildren(rguid, children);
+					int hh = 1;
+				}
+			}
+		}
+		// Синхронизация данных
+		if (SyncState(elemGuid, definitions, "Sync_flag")) { // Проверяем - не отключена ли синхронизация у данного объекта
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 				err = SyncOneProperty(elemGuid, elementType, definitions[i]);
 			}
@@ -529,14 +491,12 @@ bool SyncString(GS::UniString & description_string, GS::Array <SyncRule>&syncRul
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-//Ищет свойство со значение "Sync_flag" в описании и по значению определяет - нужно ли синхронизировать параметры элемента
+//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool SyncState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition> definitions) {
+bool SyncState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name) {
 	GSErrCode	err = NoError;
-
-	// Проверяем - не отключена ли синхронизация у данного объекта
 	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-		if (definitions[i].description.Contains("Sync_flag")) {
+		if (definitions[i].description.Contains(property_flag_name)) {
 			API_Property propertyflag = {};
 			err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
 			if (err != NoError) msg_rep("SyncState", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
@@ -553,6 +513,7 @@ bool SyncState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition
 	}
 	return false;
 }
+
 
 // -----------------------------------------------------------------------------
 // Запись значения свойства в другое свойство

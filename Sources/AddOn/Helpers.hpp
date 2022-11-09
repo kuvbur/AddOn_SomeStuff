@@ -97,6 +97,9 @@ typedef struct {
 // Словарь с заранее вычисленными данными для калькулятора
 typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
 
+// Словарь для классификаций
+typedef GS::HashTable<GS::UniString, API_Guid> ClassificationDict;
+
 // Словарь с параметрами для вычисления
 typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
