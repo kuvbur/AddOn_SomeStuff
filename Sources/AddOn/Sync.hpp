@@ -41,12 +41,6 @@ void SyncSelected(const SyncSettings& syncSettings);
 
 void SyncElement(const API_Guid& objectId, const SyncSettings& syncSettings);
 
-//GSErrCode SyncRelationsToWindow(const API_Guid& elemGuid, const SyncSettings& syncSettings);
-//
-//GSErrCode SyncRelationsToDoor(const API_Guid& elemGuid, const SyncSettings& syncSettings);
-//
-//GSErrCode SyncRelationsToRailing(const API_Guid& elemGuid, const SyncSettings& syncSettings);
-
 void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
 void SyncGetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
@@ -59,7 +53,7 @@ bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, co
 
 bool SyncString(GS::UniString& description_string, GS::Array<SyncRule>& syncRules);
 
-bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions);
+bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
 
 GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, const SyncRule& syncRule, const API_PropertyDefinition& definition);
 
