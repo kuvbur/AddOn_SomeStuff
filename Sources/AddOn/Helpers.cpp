@@ -1614,7 +1614,7 @@ bool GetLibParam(const API_Guid & elemGuid, const GS::UniString & paramName, GS:
 	if (GetLibParam(elemGuid, paramName, pvalue)) {
 		param_string = pvalue.uniStringValue;
 		param_int = pvalue.intValue;
-		param_bool = pvalue.canCalculate;
+		param_bool = pvalue.boolValue;
 		param_real = pvalue.doubleValue;
 		return true;
 	}
@@ -1750,6 +1750,8 @@ bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
 			}
 			else {
 				param_string = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+				param_int = 0;
+				param_real = 0.0;
 			}
 			pvalue.type = API_PropertyBooleanValueType;
 			break;
