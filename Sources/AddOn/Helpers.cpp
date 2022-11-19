@@ -829,6 +829,7 @@ GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniStr
 	}
 	if (flag_rec) {
 		property.isDefault = false;
+		if (property.value.variantStatus != API_VariantStatusNormal) property.value.variantStatus = API_VariantStatusNormal;
 		err = ACAPI_Element_SetProperty(elemGuid, property);
 		if (err != NoError) msg_rep("WriteProp", "ACAPI_Element_SetProperty", err, elemGuid);
 	}
