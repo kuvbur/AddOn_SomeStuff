@@ -1276,6 +1276,9 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 			double Min_x = 0;
 			double Min_y = 0;
 			double Min_z = 0;
+			double A = 0;
+			double B = 0;
+			double ZZYZX = 0;
 			if (memo.morphBody->IsWireBody() && !memo.morphBody->IsSolidBody()) {
 				Int32 edgeCnt = memo.morphBody->GetEdgeCount();
 				for (Int32 iEdge = 0; iEdge < edgeCnt; iEdge++) {
@@ -1319,7 +1322,22 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 				Min_x = DoubleM2IntMM(Min_x) / 1000.0;
 				Min_y = DoubleM2IntMM(Min_y) / 1000.0;
 				Min_z = DoubleM2IntMM(Min_z) / 1000.0;
+				A = Max_x - Min_x;
+				B = Max_y - Min_y;
+				ZZYZX = Max_z - Min_z;
 				AddParam2Dict("Morph:L", L, pdictvalue);
+				AddParam2Dict("Morph:Lx", Lx, pdictvalue);
+				AddParam2Dict("Morph:Ly", Ly, pdictvalue);
+				AddParam2Dict("Morph:Lz", Lz, pdictvalue);
+				AddParam2Dict("Morph:Max_x", Max_x, pdictvalue);
+				AddParam2Dict("Morph:Max_y", Max_y, pdictvalue);
+				AddParam2Dict("Morph:Max_z", Max_z, pdictvalue);
+				AddParam2Dict("Morph:Min_x", Min_x, pdictvalue);
+				AddParam2Dict("Morph:Min_y", Min_y, pdictvalue);
+				AddParam2Dict("Morph:Min_z", Min_z, pdictvalue);
+				AddParam2Dict("Morph:A", A, pdictvalue);
+				AddParam2Dict("Morph:B", B, pdictvalue);
+				AddParam2Dict("Morph:ZZYZX", ZZYZX, pdictvalue);
 			}
 		}
 		ACAPI_DisposeElemMemoHdls(&memo);
