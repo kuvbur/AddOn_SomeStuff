@@ -10,22 +10,22 @@ jobs:
     - name: Checkout Repo
       uses: actions/checkout@v1
     - name: Download Development Kit
-      run: python archicad-addon/Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC25 }} archicad-addon/Build
+      run: python Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC25 }} Build
     - name: Generate Project
-      run: cmake -B archicad-addon/Build/AC25 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="archicad-addon/Build/API Development Kit 25.3002" archicad-addon
+      run: cmake -B Build/AC25 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="Build/API Development Kit 25.3002"
     - name: Build Debug
-      run: cmake --build archicad-addon/Build/AC25 --config Debug
+      run: cmake --build Build/AC25 --config Debug
     - name: Build RelWithDebInfo
-      run: cmake --build archicad-addon/Build/AC25 --config RelWithDebInfo
+      run: cmake --build Build/AC25 --config RelWithDebInfo
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
         name: SomeStuff_AddOn AC25 Win
-        path: archicad-addon/Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
+        path: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
     - name: Create Release
       uses: ncipollo/release-action@v1
       with:
-        artifacts: archicad-addon/Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
+        artifacts: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
         draft: true
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
