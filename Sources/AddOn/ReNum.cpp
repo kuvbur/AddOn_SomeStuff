@@ -289,8 +289,8 @@ Int32 ReNumGetFlag(const API_Property& propertyflag) {
 		state = val.singleEnumVariant.displayVariant.uniStringValue;
 #endif
 		flag = RENUM_NORMAL;
-		if (state.Contains("Исключить") || state.IsEmpty()) flag = RENUM_IGNORE;
-		if (state.Contains("Не менять")) flag = RENUM_ADD;
+		if (state.Contains(u8"Исключить") || state.IsEmpty()) flag = RENUM_IGNORE;
+		if (state.Contains(u8"Не менять")) flag = RENUM_ADD;
 
 		// Если флаг поднят - ищем свойство с правилом
 	}
