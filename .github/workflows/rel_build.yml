@@ -31,7 +31,7 @@ jobs:
         name: SomeStuff_AddOn AC25 Win
         path: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
     - name: Create Release
-      uses: ncipollo/release-action@v1
+      uses: ncipollo/release-action@v1.12.0
       with:
         artifacts: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
         draft: true
