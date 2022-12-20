@@ -1,17 +1,15 @@
 cmake_minimum_required (VERSION 3.16)
 
-function (SetCompilerOptions target ac_version)
-	if (${ac_version} EQUAL "27")
-		target_compile_features (${target} PUBLIC cxx_std_17)
-	else ()
-		target_compile_features (${target} PUBLIC cxx_std_14)
-	endif ()
+function (SetCompilerOptions target)
+	target_compile_features (${target} PUBLIC cxx_std_14)
 	target_compile_options (${target} PUBLIC "$<$<CONFIG:Debug>:-DDEBUG>")
 	if (WIN32)
-		target_compile_options (${target} PUBLIC /W4 /WX
+		target_compile_options (${target} PUBLIC /W3 /WX
 			/Zc:wchar_t-
 			/wd4499
-			/EHsc
+			/wd4003
+			/wd5208
+			/bigobj
 		)
 	else ()
 		target_compile_options (${target} PUBLIC -Wall -Wextra -Werror
@@ -59,7 +57,8 @@ else ()
 	add_definitions (-Dmacintosh=1)
 endif ()
 add_definitions (-DACExtension)
-
+add_definitions (-DAC_${ARCHICAD_VERSION})
+add_definitions (-D_CRT_SECURE_NO_WARNINGS)
 if (WIN32)
 	set (OutputPostfix Win)
 else ()
@@ -131,10 +130,8 @@ endif ()
 
 file (GLOB AddOnHeaderFiles
 	${AddOnSourcesFolder}/*.h
-	${AddOnSourcesFolder}/*.hpp
 )
 file (GLOB AddOnSourceFiles
-	${AddOnSourcesFolder}/*.c
 	${AddOnSourcesFolder}/*.cpp
 )
 set (

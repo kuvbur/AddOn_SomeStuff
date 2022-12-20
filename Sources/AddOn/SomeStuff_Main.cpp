@@ -2,12 +2,12 @@
 #include	<stdio.h>
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#ifdef ServerMainVers_2500
+#ifdef AC_25
 #include	"APICommon25.h"
-#endif // ServerMainVers_2500
-#ifdef ServerMainVers_2600
+#endif // AC_25
+#ifdef AC_26
 #include	"APICommon26.h"
-#endif // ServerMainVers_2600
+#endif // AC_26
 #include	"DGModule.hpp"
 #include	"UniString.hpp"
 #include	"APIdefs_Properties.h"
@@ -83,7 +83,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		return NoError;
 	}
 	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	if (elemType->elemHead.type.typeID == API_GroupID) return NoError;
 #else
 	if (elemType->elemHead.typeID == API_GroupID) return NoError;
