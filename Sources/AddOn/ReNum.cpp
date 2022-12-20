@@ -263,7 +263,7 @@ bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string
 // -----------------------------------------------------------------------------------------------------------------------
 Int32 ReNumGetFlag(const API_Property& propertyflag) {
 	UInt32			flag = RENUM_IGNORE;
-#if defined(AC_22) || defined(AC_23)
+#if defined(AC_22) || defined(ServerMainVers_2300)
 	bool isnoteval = (!propertyflag.isEvaluated);
 #else
 	bool isnoteval = (propertyflag.status != API_Property_HasValue);
@@ -283,7 +283,7 @@ Int32 ReNumGetFlag(const API_Property& propertyflag) {
 		if (val.singleVariant.variant.boolValue) flag = RENUM_NORMAL;
 	}
 	else {
-#if defined(AC_25) || defined(AC_26)
+#if defined(ServerMainVers_2500) || defined(ServerMainVers_2600)
 		state = val.singleVariant.variant.uniStringValue;
 #else
 		state = val.singleEnumVariant.displayVariant.uniStringValue;

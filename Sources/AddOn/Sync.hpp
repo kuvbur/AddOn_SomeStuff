@@ -1,12 +1,12 @@
 //------------ kuvbur 2022 ------------
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
-#ifdef AC_25
+#ifdef ServerMainVers_2500
 #include	"APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
+#endif // ServerMainVers_2500
+#ifdef ServerMainVers_2600
 #include	"APICommon26.h"
-#endif // AC_26
+#endif // ServerMainVers_2600
 #include	"DG.h"
 #include	"SyncSettings.hpp"
 

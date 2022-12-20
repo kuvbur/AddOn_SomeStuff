@@ -151,7 +151,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 	//ACAPI_ELEMENT_MASK_CLEAR(mask);
 	//ACAPI_ELEMENT_MASK_SETFULL(mask);
 	API_ElemTypeID eltype;
-#ifdef AC_26
+#ifdef ServerMainVers_2600
 	eltype = element.header.type.typeID;
 #else
 	eltype = element.header.typeID;

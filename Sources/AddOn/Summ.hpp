@@ -1,10 +1,10 @@
 #pragma once
 #if !defined (SUMM_HPP)
 #define	SUMM_HPP
-#ifdef AC_25
+#ifdef ServerMainVers_2500
 #include	"APICommon25.h"
 #endif // AC_25
-#ifdef AC_26
+#ifdef ServerMainVers_2600
 #include	"APICommon26.h"
 #endif // AC_26
 #include	"DG.h"
