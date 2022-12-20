@@ -60,13 +60,13 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	bool flag_chanel = false;
 	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight);
 	if (!guidArray.IsEmpty()) {
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 		API_ElemType elemType;
 		elemType.typeID = elementType;
 		if (ACAPI_Goodies_GetElemTypeName(elemType, subtitle) == NoError) {
 #else
 		if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle) == NoError) {
-#endif // ServerMainVers_2600
+#endif // AC_26
 			nLib += 1;
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &nLib);
 			GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
@@ -794,7 +794,7 @@ GSErrCode  SyncPropAndMatGetComponents(const API_Guid & elemGuid, GS::Array<Laye
 	// Получаем данные о составе конструкции. Т.к. для разных типов элементов
 	// информация храница в разных местах - запишем всё в одни переменные
 	API_ElemTypeID eltype;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	eltype = element.header.type.typeID;
 #else
 	eltype = element.header.typeID;

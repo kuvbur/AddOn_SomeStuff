@@ -1,10 +1,10 @@
 #if !defined (RENUM_HPP)
 #pragma once
 #define	RENUM_HPP
-#ifdef ServerMainVers_2500
+#ifdef AC_25
 #include	"APICommon25.h"
 #endif // AC_25
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
 #include	"DG.h"

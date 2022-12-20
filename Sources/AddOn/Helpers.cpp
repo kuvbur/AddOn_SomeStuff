@@ -4,6 +4,12 @@
 #include	<limits>
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
+#ifdef AC_25
+#include	"APICommon25.h"
+#endif // AC_25
+#ifdef AC_26
+#include	"APICommon26.h"
+#endif // AC_26
 #include	"Helpers.hpp"
 #include	"Model3D/model.h"
 #include	"Model3D/MeshBody.hpp"
@@ -162,7 +168,7 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSetting
 	if (ACAPI_Element_GetHeader(&tElemHead) != NoError) return false;
 	if (tElemHead.hotlinkGuid != APINULLGuid) return false;
 	API_ElemTypeID eltype;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	eltype = tElemHead.type.typeID;
 #else
 	eltype = tElemHead.typeID;
@@ -186,11 +192,11 @@ bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
 
 	// Проверяем - зарезервирован ли объект и резервируем, если надо
 	if (ACAPI_TeamworkControl_HasConnection() && !ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
-#ifdef ServerMainVers_2400
+#ifdef AC_24
 		GS::PagedArray<API_Guid>	elements;
 #else
 		GS::Array<API_Guid>	elements;
-#endif // ServerMainVers_2400
+#endif // AC_24
 
 		GS::HashTable<API_Guid, short>  conflicts;
 		elements.Push(objectId);
@@ -361,7 +367,7 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 		case APIERR_NOACCESSRIGHT:
 			error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
 			break;
-#if defined(AC_22) || defined(ServerMainVers_2300)
+#if defined(AC_22) || defined(AC_23)
 		case APIERR_BADPROPERTYFORELEM:
 			error_type = "The property for the passed element or attribute is not available.";
 			break;
@@ -375,7 +381,7 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 		case APIERR_BADCLASSIFICATION:
 			error_type = "Can’t set the classification for the passed element or attribute.";
 			break;
-#endif // AC_22 or ServerMainVers_2300
+#endif // AC_22 or AC_23
 		case APIERR_MODULNOTINSTALLED:
 			error_type = "The referenced add - on is not installed.For more details see the Communication Manager.";
 			break;
@@ -467,7 +473,7 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 		elem_head.guid = elemGuid;
 		if (ACAPI_Element_GetHeader(&elem_head) == NoError) {
 			GS::UniString elemName;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 			if (ACAPI_Goodies_GetElemTypeName(elem_head.type, elemName) == NoError)
 #else
 			if (ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elem_head.typeID, &elemName) == NoError)
@@ -619,7 +625,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 		msg_rep("GetTypeByGUID", "", err, elemGuid);
 		return err;
 	}
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	elementType = elementHead.type.typeID;
 #else
 	elementType = elementHead.typeID;
@@ -627,7 +633,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	return err;
 }
 
-#ifndef ServerMainVers_2600
+#ifndef AC_26
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr)
 {
 	GS::UniString	ustr;
@@ -649,7 +655,7 @@ bool	GetElementTypeString(API_ElemType elemType, char* elemStr)
 	}
 	return false;
 }
-#endif // !ServerMainVers_2600
+#endif // !AC_26
 
 // -----------------------------------------------------------------------------
 // Запись в свойство строки
@@ -864,7 +870,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 	bool write = true;
 
 	// Есть ли вычисленное/доступное значение?
-#if defined(AC_22) || defined(ServerMainVers_2300)
+#if defined(AC_22) || defined(AC_23)
 	bool isnoteval = (!property_from.isEvaluated);
 #else
 	bool isnoteval = (property_from.status != API_Property_HasValue);
@@ -880,7 +886,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 	if (property_from.definition.valueType != property.definition.valueType && write) {
 		if (property.definition.valueType == API_PropertyStringValueType) {
 			GS::UniString val;
-#if defined(ServerMainVers_2500) || defined(ServerMainVers_2600)
+#if defined(AC_25) || defined(AC_26)
 			err = ACAPI_Property_GetPropertyValueString(property_from, &val);
 #else
 			val = PropertyTestHelpers::ToString(property_from);
@@ -902,7 +908,7 @@ GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& property_
 	// Если нужно записать список текста в текст
 	if (property.definition.collectionType != property_from.definition.collectionType && property.definition.valueType == API_PropertyStringValueType && property.definition.collectionType == API_PropertySingleCollectionType && write) {
 		GS::UniString val;
-#if defined(ServerMainVers_2500) || defined(ServerMainVers_2600)
+#if defined(AC_25) || defined(AC_26)
 		err = ACAPI_Property_GetPropertyValueString(property_from, &val);
 #else
 		val = PropertyTestHelpers::ToString(property_from);
@@ -1365,7 +1371,7 @@ GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& prope
 GSErrCode GetGDLParametersHead(const API_Elem_Head& elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid) {
 	GSErrCode		err = NoError;
 	API_Element element = {};
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	switch (elem_head.type.typeID) {
 #else
 	switch (elem_head.typeID) {
@@ -1396,7 +1402,7 @@ GSErrCode GetGDLParametersHead(const API_Elem_Head& elem_head, API_ElemTypeID& e
 		break;
 	default:
 		elemGuid = elem_head.guid;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 		elemType = elem_head.type.typeID;
 #else
 		elemType = elem_head.typeID;
@@ -1415,7 +1421,7 @@ GSErrCode GetGDLParameters(const API_Guid & elemGuid, const API_ElemTypeID & ele
 	API_ParamOwnerType	apiOwner = {};
 	API_GetParamsType	apiParams = {};
 	apiOwner.guid = elemGuid;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	apiOwner.type.typeID = elemType;
 #else
 	apiOwner.typeID = elemType;
@@ -1510,7 +1516,7 @@ bool FindGDLParametersByDescription(const GS::UniString & paramName, const API_E
 // -----------------------------------------------------------------------------
 bool FindGDLParameters(const GS::UniString & paramName, const API_Elem_Head & elem_head, API_AddParType & nthParameter) {
 	API_ElemTypeID eltype;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	eltype = elem_head.type.typeID;
 #else
 	eltype = elem_head.typeID;
@@ -1587,7 +1593,7 @@ bool FindLibCoords(const GS::UniString & paramName, const API_Elem_Head & elem_h
 	if (err != NoError) return false;
 	double x = 0; double y = 0; double z = 0;
 	API_ElemTypeID eltype;
-#ifdef ServerMainVers_2600
+#ifdef AC_26
 	eltype = elem_head.type.typeID;
 #else
 	eltype = elem_head.typeID;
@@ -2159,7 +2165,7 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property & property) {
 GS::UniString PropertyTestHelpers::ToString(const API_Property & property, const GS::UniString stringformat) {
 	GS::UniString string;
 	const API_PropertyValue* value;
-#if defined(AC_22) || defined(ServerMainVers_2300)
+#if defined(AC_22) || defined(AC_23)
 	if (!property.isEvaluated) {
 		return string;
 	}
@@ -2193,21 +2199,21 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property & property, const
 		}
 	} break;
 	case API_PropertySingleChoiceEnumerationCollectionType: {
-#if defined(ServerMainVers_2500) || defined(ServerMainVers_2600)
+#if defined(AC_25) || defined(AC_26)
 		string += ToString(value->singleVariant.variant, stringformat);
-#else // ServerMainVers_2500
+#else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
 	} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType: {
-#if defined(ServerMainVers_2500) || defined(ServerMainVers_2600)
+#if defined(AC_25) || defined(AC_26)
 		for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
 			string += ToString(value->listVariant.variants[i], stringformat);
 			if (i != value->listVariant.variants.GetSize() - 1) {
 				string += "; ";
 			}
 			}
-#else // ServerMainVers_2500
+#else // AC_25
 		for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
 			string += ToString(value->multipleEnumVariant.variants[i].displayVariant, stringformat);
 			if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
@@ -2260,7 +2266,7 @@ bool operator== (const API_SingleEnumerationVariant & lhs, const API_SingleEnume
 	return lhs.keyVariant == rhs.keyVariant && lhs.displayVariant == rhs.displayVariant;
 }
 
-#if !defined(ServerMainVers_2500) && !defined(ServerMainVers_2600)
+#if !defined(AC_25) && !defined(AC_26)
 bool operator== (const API_MultipleEnumerationVariant & lhs, const API_MultipleEnumerationVariant & rhs)
 {
 	return lhs.variants == rhs.variants;
@@ -2296,7 +2302,7 @@ bool Equals(const API_PropertyValue & lhs, const API_PropertyValue & rhs, API_Pr
 		return lhs.singleVariant == rhs.singleVariant;
 	case API_PropertyListCollectionType:
 		return lhs.listVariant == rhs.listVariant;
-#if defined(ServerMainVers_2500) || defined(ServerMainVers_2600)
+#if defined(AC_25) || defined(AC_26)
 	case API_PropertySingleChoiceEnumerationCollectionType:
 		return lhs.singleVariant == rhs.singleVariant;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:

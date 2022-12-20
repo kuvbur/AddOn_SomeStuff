@@ -10,7 +10,7 @@
 
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#include	"APICommon_26.h"
+#include	"APICommon26.h"
 
 
 // =============================================================================
