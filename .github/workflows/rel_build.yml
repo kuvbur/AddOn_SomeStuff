@@ -8,7 +8,12 @@ jobs:
     runs-on: [ windows-2019 ]
     steps:
     - name: Checkout Repo
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
+    - name: Bump version and push tag
+      id: tag_version
+      uses: mathieudutour/github-tag-action@v6.1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
       with:
@@ -31,9 +36,12 @@ jobs:
         name: SomeStuff_AddOn AC25 Win
         path: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
     - name: Create Release
-      uses: ncipollo/release-action@v1.12.0
+      uses: ncipollo/release-action@v1
       with:
         artifacts: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
+        tag: ${{ steps.tag_version.outputs.new_tag }}
+        name: Release ${{ steps.tag_version.outputs.new_tag }}
+        body: ${{ steps.tag_version.outputs.changelog }}
         draft: true
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
