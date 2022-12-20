@@ -9,6 +9,7 @@ function (SetCompilerOptions target)
 			/wd4499
 			/wd4003
 			/wd5208
+			/wd4996
 			/bigobj
 		)
 	else ()
