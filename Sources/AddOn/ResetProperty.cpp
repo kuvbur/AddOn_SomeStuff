@@ -250,14 +250,14 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 	GSErrCode	err = NoError;
 	GS::Array<API_Property>  properties;
 	GS::Array<API_Property>  properties_to_reset;
-#ifdef AC_26
+#ifdef ServerMainVers_2600
 	API_ElemType type;
 	type.typeID = typeId;
 	type.variationID = static_cast<API_ElemVariationID>(variationID);
 	err = ACAPI_Element_GetPropertyValuesOfDefaultElem(type, definitions_to_reset, properties);
 #else
 	err = ACAPI_Element_GetPropertyValuesOfDefaultElem(typeId, static_cast<API_ElemVariationID>(variationID), definitions_to_reset, properties);
-#endif // AC_26
+#endif // ServerMainVers_2600
 	if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_GetPropertyValuesOfDefaultElem", err, APINULLGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
@@ -267,11 +267,11 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 			}
 		}
 		if (properties_to_reset.GetSize() > 0) {
-#ifdef AC_26
+#ifdef ServerMainVers_2600
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(type, properties);
 #else
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
-#endif // AC_26
+#endif // ServerMainVers_2600
 			if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);
 		}
 		else {
