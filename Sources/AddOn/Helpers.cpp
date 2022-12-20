@@ -27,7 +27,7 @@ bool CheckIgnoreVal(const std::string& ignoreval, const GS::UniString& val) {
 }
 bool CheckIgnoreVal(const GS::UniString& ignoreval, const GS::UniString& val) {
 	if (ignoreval.IsEmpty()) return false;
-	if ((ignoreval.ToLowerCase() == "empty" || ignoreval.ToLowerCase() == "пусто") && val.GetLength() < 1) {
+	if ((ignoreval.ToLowerCase() == "empty" || ignoreval.ToLowerCase() == u8"пусто") && val.GetLength() < 1) {
 		return true;
 	}
 	if (val == ignoreval) {

@@ -84,7 +84,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 				flag_chanel = true;
-				msg_rep("SyncByType", subtitle + " - отмена", NoError, APINULLGuid);
+				msg_rep("SyncByType", subtitle + u8" - отмена", NoError, APINULLGuid);
 				return flag_chanel;
 			}
 		}
