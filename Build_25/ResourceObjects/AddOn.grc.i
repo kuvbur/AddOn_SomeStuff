@@ -14,7 +14,7 @@
 
 'STR#' 32000 "Add-on Name and Description" {
 		"SomeStuff"
-		"Синхронизация свойств и параметров GDL элементов v1.31b"
+		"Синхронизация свойств и параметров GDL элементов v1.32"
 }   
 
 'STR#' 32500 "Strings for the Menu" {
