@@ -23,18 +23,13 @@ function (SetCompilerOptions target ac_version)
 			-Wno-reorder
 			-Wno-overloaded-virtual
 			-Wno-unused-parameter
-			-Wno-deprecated)
+			-Wno-deprecated
+			-Wno-unknown-pragmas
+			-Wno-missing-braces
+			-Wno-unused-private-field
+			-Wno-non-c-typedef-for-linkage)
 	endif ()
 endfunction ()
-
-set (API_DEVKIT_DIR $ENV{AC_API_DEVKIT_DIR})
-
-if (CONAN_DEVKIT)
-	include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-	set (CONAN_DISABLE_CHECK_COMPILER true)
-	conan_basic_setup (NO_OUTPUT_DIRS)
-	set (API_DEVKIT_DIR ${CONAN_ARCHICAD-APIDEVKIT_ROOT})
-endif ()
 
 set_property (GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -43,13 +38,12 @@ if (WIN32)
 endif ()
 set (CMAKE_SUPPRESS_REGENERATION 1)
 set (CMAKE_CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
-set (AC_API_DEVKIT_DIR ${API_DEVKIT_DIR} CACHE PATH "API DevKit directory.")
-set (AC_ADDON_NAME "ExampleAddOn" CACHE STRING "Add-On name.")
+set (AC_API_DEVKIT_DIR $ENV{AC_API_DEVKIT_DIR} CACHE PATH "API DevKit directory.")
+set (AC_ADDON_NAME "SomeStuff_AddOn" CACHE STRING "Add-On name.")
 set (AC_ADDON_LANGUAGE "INT" CACHE STRING "Add-On language code.")
-set (AC_MDID_DEV "1" CACHE STRING "Your Developer ID")
-set (AC_MDID_LOC "1" CACHE STRING "Add-On Local ID")
 
-set (ACAPINC_FILE_LOCATION ${AC_API_DEVKIT_DIR}/Inc/ACAPinc.h)
+
+set (ACAPINC_FILE_LOCATION ${AC_API_DEVKIT_DIR}/Support/Inc/ACAPinc.h)
 if (EXISTS ${ACAPINC_FILE_LOCATION})
 	file (READ ${ACAPINC_FILE_LOCATION} ACAPIncContent)
 	string (REGEX MATCHALL "#define[ \t]+ServerMainVers_([0-9][0-9])" VersionList ${ACAPIncContent})
@@ -66,7 +60,14 @@ else ()
 endif ()
 add_definitions (-DACExtension)
 
-project (${AC_ADDON_NAME})
+if (WIN32)
+	set (OutputPostfix Win)
+else ()
+	set (OutputPostfix Mac)
+endif ()
+
+set (OutputName ${AC_ADDON_NAME}_AC${ARCHICAD_VERSION}_${OutputPostfix})
+project (${OutputName})
 
 set (AddOnSourcesFolder Sources/AddOn)
 set (AddOnResourcesFolder Sources/AddOnResources)
@@ -74,8 +75,6 @@ set (AddOnResourcesFolder Sources/AddOnResources)
 # AddOnResources
 
 set (ResourceObjectsDir ${CMAKE_BINARY_DIR}/ResourceObjects)
-
-configure_file (${AddOnResourcesFolder}/ResourceMDIDIds.hpp.in ${ResourceObjectsDir}/ResourceMDIDIds.hpp)
 
 file (GLOB AddOnImageFiles
 	${AddOnResourcesFolder}/RFIX/Images/*.svg
@@ -113,7 +112,7 @@ if (WIN32)
 		DEPENDS ${AddOnResourceFiles} ${AddOnImageFiles}
 		COMMENT "Compiling resources..."
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${ResourceObjectsDir}"
-		COMMAND python "${AddOnResourcesFolderAbsolute}/Tools/CompileResources.py" "${AC_ADDON_LANGUAGE}" "${AC_API_DEVKIT_DIR}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${ResourceObjectsDir}/${AC_ADDON_NAME}.res"
+		COMMAND python "${AddOnResourcesFolderAbsolute}/Tools/CompileResources.py" "${AC_ADDON_LANGUAGE}" "${AC_API_DEVKIT_DIR}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${ResourceObjectsDir}/${OutputName}.res"
 		COMMAND ${CMAKE_COMMAND} -E touch "${ResourceObjectsDir}/AddOnResources.stamp"
 	)
 else ()
@@ -122,8 +121,8 @@ else ()
 		DEPENDS ${AddOnResourceFiles} ${AddOnImageFiles}
 		COMMENT "Compiling resources..."
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${ResourceObjectsDir}"
-		COMMAND python "${AddOnResourcesFolderAbsolute}/Tools/CompileResources.py" "${AC_ADDON_LANGUAGE}" "${AC_API_DEVKIT_DIR}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${AC_ADDON_NAME}.bundle/Contents/Resources"
-		COMMAND ${CMAKE_COMMAND} -E copy "${AC_API_DEVKIT_DIR}/Inc/PkgInfo" "${CMAKE_BINARY_DIR}/$<CONFIG>/${AC_ADDON_NAME}.bundle/Contents/PkgInfo"
+		COMMAND python3 "${AddOnResourcesFolderAbsolute}/Tools/CompileResources.py" "${AC_ADDON_LANGUAGE}" "${AC_API_DEVKIT_DIR}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${OutputName}.bundle/Contents/Resources"
+		COMMAND ${CMAKE_COMMAND} -E copy "${AC_API_DEVKIT_DIR}/Support/Inc/PkgInfo" "${CMAKE_BINARY_DIR}/$<CONFIG>/${OutputName}.bundle/Contents/PkgInfo"
 		COMMAND ${CMAKE_COMMAND} -E touch "${ResourceObjectsDir}/AddOnResources.stamp"
 	)
 endif ()
@@ -150,10 +149,9 @@ else ()
 	add_library (AddOn MODULE ${AddOnFiles})
 endif ()
 
-set_target_properties (AddOn PROPERTIES OUTPUT_NAME ${AC_ADDON_NAME})
+set_target_properties (AddOn PROPERTIES OUTPUT_NAME ${OutputName})
 if (WIN32)
 	set_target_properties (AddOn PROPERTIES SUFFIX ".apx")
-	set_target_properties (AddOn PROPERTIES RUNTIME_OUTPUT_DIRECTORY_$<CONFIG> "${CMAKE_BINARY_DIR}/$<CONFIG>")
 else ()
 	set_target_properties (AddOn PROPERTIES BUNDLE TRUE)
 	set_target_properties (AddOn PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/${AddOnResourcesFolder}/RFIX.mac/Info.plist")
@@ -161,39 +159,39 @@ else ()
 endif ()
 
 if (WIN32)
-	target_link_options (AddOn PUBLIC "${ResourceObjectsDir}/${AC_ADDON_NAME}.res")
+target_link_options (AddOn PUBLIC "${ResourceObjectsDir}/${OutputName}.res")
 	target_link_options (AddOn PUBLIC /export:GetExportedFuncAddrs,@1 /export:SetImportedFuncAddrs,@2)
 endif ()
 
 target_include_directories (AddOn PUBLIC
 	${AddOnSourcesFolder}
-	${AC_API_DEVKIT_DIR}/Inc
+	${AC_API_DEVKIT_DIR}/Support/Inc
 )
 
 if (WIN32)
 	target_link_libraries (AddOn
-		"$<$<CONFIG:Debug>:${AC_API_DEVKIT_DIR}/Lib/Win/ACAP_STATD.lib>"
-		"$<$<CONFIG:Release>:${AC_API_DEVKIT_DIR}/Lib/Win/ACAP_STAT.lib>"
-		"$<$<CONFIG:RelWithDebInfo>:${AC_API_DEVKIT_DIR}/Lib/Win/ACAP_STAT.lib>"
+    "$<$<CONFIG:Debug>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STATD.lib>"
+    "$<$<CONFIG:Release>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STAT.lib>"
+    "$<$<CONFIG:RelWithDebInfo>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STAT.lib>"
 	)
 else ()
 	find_library (CocoaFramework Cocoa)
 	target_link_libraries (AddOn
-		"${AC_API_DEVKIT_DIR}/Lib/Mactel/libACAP_STAT.a"
+    "${AC_API_DEVKIT_DIR}/Support/Lib/Mactel/libACAP_STAT.a"
 		${CocoaFramework}
 	)
 endif ()
 
-SetCompilerOptions (AddOn ARCHICAD_VERSION)
+SetCompilerOptions (AddOn)
 set_source_files_properties (${AddOnSourceFiles} PROPERTIES LANGUAGE CXX)
 
-file (GLOB ModuleFolders ${AC_API_DEVKIT_DIR}/Modules/*)
+file (GLOB ModuleFolders ${AC_API_DEVKIT_DIR}/Support/Modules/*)
 target_include_directories (AddOn PUBLIC ${ModuleFolders})
 if (WIN32)
-	file (GLOB LibFilesInFolder ${AC_API_DEVKIT_DIR}/Modules/*/*/*.lib)
+    file (GLOB LibFilesInFolder ${AC_API_DEVKIT_DIR}/Support/Modules/*/*/*.lib)
 	target_link_libraries (AddOn ${LibFilesInFolder})
 else ()
-	file (GLOB FrameworkFilesInFolder ${AC_API_DEVKIT_DIR}/Frameworks/*.framework)
+    file (GLOB FrameworkFilesInFolder ${AC_API_DEVKIT_DIR}/Support/Frameworks/*.framework)
 	target_link_libraries (AddOn ${FrameworkFilesInFolder})
 endif ()
 add_dependencies (AddOn AddOnResources)
