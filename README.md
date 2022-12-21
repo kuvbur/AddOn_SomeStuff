@@ -1,4 +1,6 @@
 # AddOn_SomeStuff
+![Статус сборки](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/rel_build.yml/badge.svg?branch=master)
+
 ### Возможности
 * Синхронизация свойств и параметров GDL
 * Нумерация элементов
