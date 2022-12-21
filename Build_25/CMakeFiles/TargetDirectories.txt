@@ -1,3 +1,0 @@
-D:/SomeStuff_addon/Build_25/CMakeFiles/AddOnResources.dir
-D:/SomeStuff_addon/Build_25/CMakeFiles/AddOn.dir
-D:/SomeStuff_addon/Build_25/CMakeFiles/ALL_BUILD.dir
