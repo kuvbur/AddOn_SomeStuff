@@ -182,7 +182,7 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSetting
 // Единственное, что может нас остановить - объект находится в модуле.
 // -----------------------------------------------------------------------------
 bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
-
+	(void)err;
 	// Проверяем - на находится ли объект в модуле
 	API_Elem_Head	tElemHead;
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
@@ -1140,7 +1140,6 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 	if (err == NoError) {
 		GS::UniString propertyname = tpropertyname;
 		propertyname.ReplaceAll("\\/", "@@");
-		bool flag_find_gname = false;
 		bool flag_find_pname = false;
 		GS::UniString pname = "";
 		GS::UniString gname = "";
@@ -1300,7 +1299,6 @@ GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 					double dx = pow(x2 - x1, 2);
 					double dy = pow(y2 - y1, 2);
 					double dz = pow(z2 - z1, 2);
-					double dt = sqrt(dx + dy + dz);
 					double dl = DoubleM2IntMM(sqrt(dx + dy + dz)) / 1000.0;
 					double dlx = DoubleM2IntMM(sqrt(dy + dx)) / 1000.0;
 					double dly = DoubleM2IntMM(sqrt(dx + dz)) / 1000.0;
@@ -1651,11 +1649,11 @@ bool GetLibParam(const API_Guid & elemGuid, const GS::UniString & paramName, GS:
 // Level 1
 // -----------------------------------------------------------------------------
 bool GetParam(const API_Guid & elemGuid, const GS::UniString & paramName, ParamValue & pvalue) {
-	GS::UniString& paramName_t = paramName.ToLowerCase();
+	GS::UniString paramName_t = paramName.ToLowerCase();
 	paramName_t.ReplaceAll("{", "");
 	paramName_t.ReplaceAll("}", "");
 	GS::UniString formatstring = GetFormatString(paramName_t);
-	API_VariantType type = GetTypeString(paramName_t);
+	//API_VariantType type = GetTypeString(paramName_t);
 	if (paramName_t.Contains("property:")) {
 		paramName_t.ReplaceAll("property:", "");
 		bool flag_find = GetPropertyParam(elemGuid, paramName_t, pvalue);
