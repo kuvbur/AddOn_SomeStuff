@@ -369,3 +369,13 @@ MigrationBackup/
 FodyWeavers.xsd
 .sync/*
 Build/*
+Build_*/*
+Build*
+Build_24/AddOn.vcxproj
+Build_24/ResourceObjects/AddOn.grc.i
+Build_24/ResourceObjects/AddOn.grc.rc2
+Build_24/ResourceObjects/ExampleAddOn.res
+Build_24/AddOn.vcxproj
+Build_24/ResourceObjects/AddOn.grc.i
+Build_24/ResourceObjects/AddOn.grc.rc2
+Build_24/ResourceObjects/ExampleAddOn.res
