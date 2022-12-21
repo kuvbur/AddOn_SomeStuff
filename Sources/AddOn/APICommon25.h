@@ -23,23 +23,23 @@
 
 /* -- Constants ------------------------------- */
 
-#if !defined (_Geometry_Test_TRANSL_)
-#ifndef PI
-	#define		PI			3.141592653589793		/* The Ludolph's constant	 */
-#endif // !PI
-#ifndef RADDEG
-	#define		RADDEG		57.29577951308232		/* Radian->degree conversion */
-#endif // !RADDEG
-#ifndef DEGRAD
-	#define		DEGRAD		0.017453292519943295	/* Degree->radian conversion */
-#endif // !DEGRAD
-#ifndef EPS
-	#define		EPS			1e-5
-#endif // !EPS
-#ifndef MiddleEps6
-	#define 	MiddleEps6	1e-6
-#endif // !MiddleEps6
-#endif
+//#if !defined (_Geometry_Test_TRANSL_)
+//#ifndef PI
+//	#define		PI			3.141592653589793		/* The Ludolph's constant	 */
+//#endif // !PI
+//#ifndef RADDEG
+//	#define		RADDEG		57.29577951308232		/* Radian->degree conversion */
+//#endif // !RADDEG
+//#ifndef DEGRAD
+//	#define		DEGRAD		0.017453292519943295	/* Degree->radian conversion */
+//#endif // !DEGRAD
+//#ifndef EPS
+//	#define		EPS			1e-5
+//#endif // !EPS
+//#ifndef MiddleEps6
+//	#define 	MiddleEps6	1e-6
+//#endif // !MiddleEps6
+//#endif
 
 
 /* -- Messages ------------------------------- */
