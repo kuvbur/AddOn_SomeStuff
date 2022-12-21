@@ -26,7 +26,7 @@ function (SetCompilerOptions target)
 			-Wno-unknown-pragmas
 			-Wno-missing-braces
 			-Wno-unused-private-field
-			-Wтщ-unused-variable
+			-Wno-unused-variable
 			-Wno-non-c-typedef-for-linkage)
 	endif ()
 endfunction ()
