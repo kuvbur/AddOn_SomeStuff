@@ -4,16 +4,50 @@ on:
   workflow_dispatch:
 
 jobs:
+
+  build_mac_ac25:
+    runs-on: [ macos-12 ]
+    steps:
+    - name: Checkout repo
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install requests
+    - name: Download Development Kit
+      run: python3 Tools/download_and_unzip.py ${{ secrets.MAC_DEVKIT_AC25 }} Build
+    - name: Generate Project
+      run: cmake -B Build/AC25 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 25.3006"
+    - name: Build Debug
+      run: cmake --build Build/AC25 --config Debug
+    - name: Build RelWithDebInfo
+      run: cmake --build Build/AC25 --config RelWithDebInfo
+    - name: Create DMG file
+      run: hdiutil create -format UDZO -srcfolder Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.bundle Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.dmg
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: SomeStuff AddOn AC25 Mac
+        path: Build/AC25/RelWithDebInfo/TapirAddOn_AC25_Mac.dmg
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: Build/AC25/RelWithDebInfo/TapirAddOn_AC25_Mac.dmg
+        draft: true
+        allowUpdates: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+
   build_win_ac25:
     runs-on: [ windows-2019 ]
     steps:
     - name: Checkout Repo
-      uses: actions/checkout@v2
-    - name: Bump version and push tag
-      id: tag_version
-      uses: mathieudutour/github-tag-action@v6.1
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+      uses: actions/checkout@v3
     - name: Set up Python 3.9
       uses: actions/setup-python@v2
       with:
@@ -36,12 +70,10 @@ jobs:
         name: SomeStuff_AddOn AC25 Win
         path: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
     - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
       uses: ncipollo/release-action@v1
       with:
         artifacts: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
-        tag: ${{ steps.tag_version.outputs.new_tag }}
-        name: Release ${{ steps.tag_version.outputs.new_tag }}
-        body: ${{ steps.tag_version.outputs.changelog }}
         draft: true
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
