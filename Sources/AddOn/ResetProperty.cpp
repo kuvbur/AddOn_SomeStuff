@@ -1,12 +1,12 @@
-//------------ kuvbur 2022 ------------
+п»ї//------------ kuvbur 2022 ------------
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Helpers.hpp"
 #include	"ResetProperty.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Ищет свойство со значение "Sync_reset"
-// Если оно есть - значение свойства нужно сборосить к значению по умолчанию
+// РС‰РµС‚ СЃРІРѕР№СЃС‚РІРѕ СЃРѕ Р·РЅР°С‡РµРЅРёРµ "Sync_reset"
+// Р•СЃР»Рё РѕРЅРѕ РµСЃС‚СЊ - Р·РЅР°С‡РµРЅРёРµ СЃРІРѕР№СЃС‚РІР° РЅСѓР¶РЅРѕ СЃР±РѕСЂРѕСЃРёС‚СЊ Рє Р·РЅР°С‡РµРЅРёСЋ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 //--------------------------------------------------------------------------------------------------------------------------
 bool ResetAllProperty() {
 	GSErrCode	err = NoError;
@@ -30,18 +30,18 @@ bool ResetAllProperty() {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Сброс свойств во всех БД файла и настройках по умолчанию
+// РЎР±СЂРѕСЃ СЃРІРѕР№СЃС‚РІ РІРѕ РІСЃРµС… Р‘Р” С„Р°Р№Р»Р° Рё РЅР°СЃС‚СЂРѕР№РєР°С… РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 //--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
-	DoneElemGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
+	DoneElemGuid doneelemguid; // СЃР»РѕРІР°СЂСЊ, РєСѓРґР° Р±СѓРґСѓС‚ РїРѕРїР°РґР°С‚СЊ РѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹Рµ СЌР»РµРјРµРЅС‚С‹
 	UInt32 flag_reset = 0;
 	GSErrCode	err = NoError;
 	API_DatabaseID commandID = APIDb_GetCurrentDatabaseID;
 	API_AttributeIndex layerCombIndex;
-
-	// Сейчас будем переключаться между БД
-	// Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
+	// РЎРµР№С‡Р°СЃ Р±СѓРґРµРј РїРµСЂРµРєР»СЋС‡Р°С‚СЊСЃСЏ РјРµР¶РґСѓ Р‘Р”
+	// Р—Р°РїРѕРјРЅРёРј РЅРѕРјРµСЂ С‚РµРєСѓС‰РµР№ Р‘Р” Рё РєРѕРјР±РёРЅР°С†РёСЋ СЃР»РѕС‘РІ РґР»СЏ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ РїРѕ РѕРєРѕРЅС‡Р°РЅРёСЋ СЂР°Р±РѕС‚С‹
 	err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
+	if (err != NoError) {msg_rep("ResetPropertyElement2Defult", "APIEnv_GetCurrLayerCombID", err, APINULLGuid); }
 	if (err == NoError) {
 		flag_reset = flag_reset + ResetElementsDefault(definitions_to_reset);
 		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetCurrentDatabaseID, definitions_to_reset, layerCombIndex, doneelemguid);
@@ -55,7 +55,9 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &commandID);
-		err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
+		if (err != NoError) { msg_rep("ResetPropertyElement2Defult", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);}
+		if (err == NoError) { err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); }
+		if (err != NoError) { msg_rep("ResetPropertyElement2Defult", "APIEnv_ChangeCurrLayerCombID", err, APINULLGuid);}
 	}
 	if (doneelemguid.GetSize() > 0) {
 		GS::UniString intString = GS::UniString::Printf(" %d", doneelemguid.GetSize());
@@ -68,14 +70,14 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Сброс свойств в выбранной БД
+// РЎР±СЂРѕСЃ СЃРІРѕР№СЃС‚РІ РІ РІС‹Р±СЂР°РЅРЅРѕР№ Р‘Р”
 //--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid) {
 	UInt32 flag_reset = 0;
 	GSErrCode	err = NoError;
-	// Если чистим элементы в текущей БД - переключаться не нужно
+	// Р•СЃР»Рё С‡РёСЃС‚РёРј СЌР»РµРјРµРЅС‚С‹ РІ С‚РµРєСѓС‰РµР№ Р‘Р” - РїРµСЂРµРєР»СЋС‡Р°С‚СЊСЃСЏ РЅРµ РЅСѓР¶РЅРѕ
 	if (commandID == APIDb_GetCurrentDatabaseID) {
-		if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+		if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РєРѕРјР±РёРЅР°С†РёСЋ СЃР»РѕС‘РІ
 		GS::Array<API_Guid>	guidArray;
 		err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 		if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_1", err, APINULLGuid);
@@ -93,7 +95,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 		return flag_reset;
 	}
 	GS::Array<API_DatabaseUnId>	dbases;
-	err = ACAPI_Database(commandID, nullptr, &dbases); // Получаем список БД
+	err = ACAPI_Database(commandID, nullptr, &dbases); // РџРѕР»СѓС‡Р°РµРј СЃРїРёСЃРѕРє Р‘Р”
 	if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Database", err, APINULLGuid);
 	if (err == NoError) {
 		for (const auto& dbUnId : dbases) {
@@ -105,7 +107,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars);
 				if (err != NoError) msg_rep("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
 				if (err == NoError) {
-					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј РєРѕРјР±РёРЅР°С†РёСЋ СЃР»РѕС‘РІ
 					GS::Array<API_Guid>	guidArray;
 					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 					if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
@@ -128,7 +130,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Сброс свойств элемента
+// РЎР±СЂРѕСЃ СЃРІРѕР№СЃС‚РІ СЌР»РµРјРµРЅС‚Р°
 //--------------------------------------------------------------------------------------------------------------------------
 GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
 	GSErrCode	err = NoError;
@@ -139,7 +141,7 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 	if (err == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
 
-			// Сбрасываем только специальные значения
+			// РЎР±СЂР°СЃС‹РІР°РµРј С‚РѕР»СЊРєРѕ СЃРїРµС†РёР°Р»СЊРЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ
 			if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
 				properties[i].isDefault = true;
 				properties_to_reset.Push(properties.Get(i));
@@ -149,11 +151,11 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 			err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
 			if (err != NoError) {
 
-				// попробуем разблокировать и повторить
+				// РїРѕРїСЂРѕР±СѓРµРј СЂР°Р·Р±Р»РѕРєРёСЂРѕРІР°С‚СЊ Рё РїРѕРІС‚РѕСЂРёС‚СЊ
 				if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
 			}
 
-			// Если не получилось - выведем ошибку.
+			// Р•СЃР»Рё РЅРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ - РІС‹РІРµРґРµРј РѕС€РёР±РєСѓ.
 			if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
 		}
 		else {
@@ -164,12 +166,12 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Сброс свойств в настройках по умолчанию
+// РЎР±СЂРѕСЃ СЃРІРѕР№СЃС‚РІ РІ РЅР°СЃС‚СЂРѕР№РєР°С… РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 //--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetElementsDefault(const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
 	UInt32 flag_reset = 0;
 
-	// Элементы МЕР
+	// Р­Р»РµРјРµРЅС‚С‹ РњР•Р 
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146245920) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1145194016) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1145459744) == NoError);
@@ -193,7 +195,7 @@ UInt32 ResetElementsDefault(const GS::Array<API_PropertyDefinition>& definitions
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1196574028) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146571296) == NoError);
 
-	// Стандартные элементы
+	// РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ СЌР»РµРјРµРЅС‚С‹
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 0) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_WallID, definitions_to_reset, 0) == NoError);
 	flag_reset = flag_reset + (ResetOneElemenDefault(API_ColumnID, definitions_to_reset, 0) == NoError);
@@ -244,7 +246,7 @@ UInt32 ResetElementsDefault(const GS::Array<API_PropertyDefinition>& definitions
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Сброс свойств в настройках по умолчанию для одного инструмента
+// РЎР±СЂРѕСЃ СЃРІРѕР№СЃС‚РІ РІ РЅР°СЃС‚СЂРѕР№РєР°С… РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РґР»СЏ РѕРґРЅРѕРіРѕ РёРЅСЃС‚СЂСѓРјРµРЅС‚Р°
 //--------------------------------------------------------------------------------------------------------------------------
 GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_PropertyDefinition>& definitions_to_reset, int variationID)
 {
