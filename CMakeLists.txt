@@ -13,7 +13,7 @@ function (SetCompilerOptions target)
 			/bigobj
 		)
 	else ()
-		target_compile_options (${target} PUBLIC -Wall -Wextra -Werror
+		target_compile_options (${target} PUBLIC -Werror
 			-fvisibility=hidden
 			-Wno-multichar
 			-Wno-ctor-dtor-privacy
