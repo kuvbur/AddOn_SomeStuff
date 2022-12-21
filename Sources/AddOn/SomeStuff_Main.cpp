@@ -57,12 +57,11 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 		break;
 	case APINotify_ChangeWindow:
 	case APINotify_ChangeFloor:
-		param = 1;
 		break;
 	default:
 		break;
 	}
-	param = 1;
+	(void)param;
 	DimRoundAll(syncSettings);
 	return NoError;
 }	// ProjectEventHandlerProc
@@ -132,7 +131,6 @@ void	Do_ElementMonitor(bool& syncMon)
 }	// Do_ElementMonitor
 
 static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
-	bool t_flag = false;
 	GSErrCode err = NoError;
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
@@ -184,6 +182,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 		}
 		break;
 	}
+	(void)err;
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
