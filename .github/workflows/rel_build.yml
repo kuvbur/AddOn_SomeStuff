@@ -22,22 +22,55 @@ jobs:
       run: python3 Tools/download_and_unzip.py ${{ secrets.MAC_DEVKIT_AC25 }} Build
     - name: Generate Project
       run: cmake -B Build/AC25 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 25.3006"
-    - name: Build Debug
-      run: cmake --build Build/AC25 --config Debug
-    - name: Build RelWithDebInfo
-      run: cmake --build Build/AC25 --config RelWithDebInfo
+    - name: Build Release
+      run: cmake --build Build/AC25 --config Release
     - name: Create DMG file
-      run: hdiutil create -format UDZO -srcfolder Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.bundle Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.dmg
+      run: hdiutil create -format UDZO -srcfolder Build/AC25/Release/SomeStuff_AddOn_AC25_Mac.bundle Build/AC25/Release/SomeStuff_AddOn_AC25_Mac.dmg
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
         name: SomeStuff AddOn AC25 Mac
-        path: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.dmg
+        path: Build/AC25/Release/SomeStuff_AddOn_AC25_Mac.dmg
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: ncipollo/release-action@v1
       with:
-        artifacts: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.dmg
+        artifacts: Build/AC25/Release/SomeStuff_AddOn_AC25_Mac.dmg
+        draft: true
+        allowUpdates: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_mac_ac26:
+    runs-on: [ macos-12 ]
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install requests
+    - name: Download Development Kit
+      run: python3 Tools/download_and_unzip.py ${{ secrets.MAC_DEVKIT_AC26 }} Build
+    - name: Generate Project
+      run: cmake -B Build/AC26 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 26.3000"
+    - name: Build Release
+      run: cmake --build Build/AC26 --config Release
+    - name: Create DMG file
+      run: hdiutil create -format UDZO -srcfolder Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.bundle Build/AC25/Release/SomeStuff_AddOn_AC26_Mac.dmg
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: SomeStuff AddOn AC26 Mac
+        path: Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.dmg
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.dmg
         draft: true
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -59,20 +92,84 @@ jobs:
       run: python Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC25 }} Build
     - name: Generate Project
       run: cmake -B Build/AC25 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="Build/API Development Kit 25.3002"
-    - name: Build Debug
-      run: cmake --build Build/AC25 --config Debug
-    - name: Build RelWithDebInfo
-      run: cmake --build Build/AC25 --config RelWithDebInfo
+    - name: Build Release
+      run: cmake --build Build/AC25 --config Release
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
         name: SomeStuff_AddOn AC25 Win
-        path: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
+        path: Build/AC25/Release/SomeStuff_AddOn_AC25_Win.apx
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: ncipollo/release-action@v1
       with:
-        artifacts: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Win.apx
+        artifacts: Build/AC25/Release/SomeStuff_AddOn_AC25_Win.apx
+        draft: true
+        allowUpdates: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_win_ac26:
+    runs-on: [ windows-2019 ]
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install requests
+    - name: Download Development Kit
+      run: python Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC26 }} Build
+    - name: Generate Project
+      run: cmake -B Build/AC26 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="Build/API Development Kit 26.3000"
+    - name: Build Release
+      run: cmake --build Build/AC26 --config Release
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: SomeStuff_AddOn AC26 Win
+        path: Build/AC26/Release/SomeStuff_AddOn_AC26_Win.apx
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: Build/AC26/Release/SomeStuff_AddOn_AC26_Win.apx
+        draft: true
+        allowUpdates: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+  build_win_ac24:
+    runs-on: [ windows-2019 ]
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install requests
+    - name: Download Development Kit
+      run: python Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC24 }} Build
+    - name: Generate Project
+      run: cmake -B Build/AC24 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="Build/API Development Kit 24.3009"
+    - name: Build Release
+      run: cmake --build Build/AC24 --config Release
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: SomeStuff_AddOn AC24 Win
+        path: Build/AC24/Release/SomeStuff_AddOn_AC24_Win.apx
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: Build/AC24/Release/SomeStuff_AddOn_AC24_Win.apx
         draft: true
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
