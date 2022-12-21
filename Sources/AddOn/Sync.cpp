@@ -124,6 +124,7 @@ void SyncRelationsElement(const API_Guid & elemGuid, const SyncSettings & syncSe
 	API_ElemTypeID elementType;
 	bool flag_sync = false;
 	err = GetTypeByGUID(elemGuid, elementType);
+	if (err != NoError) { return; }
 	switch (elementType) {
 	case API_WindowID:
 	case API_DoorID:
@@ -161,6 +162,10 @@ void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&sube
 	API_RoomRelation	relData;
 	GS::Array<API_ElemTypeID> typeinzone;
 	err = GetTypeByGUID(elemGuid, elementType);
+	if (err != NoError) { 
+		ACAPI_DisposeRoomRelationHdls(&relData);
+		return;
+	}
 	switch (elementType) {
 	case API_RailingID:
 		err = GetRElementsForRailing(elemGuid, subelemGuid);
@@ -175,68 +180,76 @@ void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&sube
 	case API_CurtainWallPanelID:
 		API_CWPanelRelation crelData;
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &crelData);
-		if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
-		if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
+		if (err != NoError) {
+			if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
+			if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
+		}
 		break;
 	case API_DoorID:
 		API_DoorRelation drelData;
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &drelData);
-		if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
-		if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
+		if (err != NoError) {
+			if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
+			if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
+		}
 		break;
 	case API_WindowID:
 		API_WindowRelation wrelData;
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &wrelData);
-		if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
-		if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
+		if (err != NoError) {
+			if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
+			if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
+		}
 		break;
 	case API_ZoneID:
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZombieElemID, &relData);
-		typeinzone.Push(API_WallID);
-		typeinzone.Push(API_SlabID);
-		typeinzone.Push(API_ColumnID);
-		typeinzone.Push(API_BeamID);
-		typeinzone.Push(API_RoofID);
-		typeinzone.Push(API_ShellID);
-		typeinzone.Push(API_MorphID);
+		if (err != NoError) {
+			typeinzone.Push(API_WallID);
+			typeinzone.Push(API_SlabID);
+			typeinzone.Push(API_ColumnID);
+			typeinzone.Push(API_BeamID);
+			typeinzone.Push(API_RoofID);
+			typeinzone.Push(API_ShellID);
+			typeinzone.Push(API_MorphID);
 
-		typeinzone.Push(API_WindowID);
-		typeinzone.Push(API_DoorID);
+			typeinzone.Push(API_WindowID);
+			typeinzone.Push(API_DoorID);
 
-		typeinzone.Push(API_ObjectID);
-		typeinzone.Push(API_LampID);
-		typeinzone.Push(API_StairID);
-		typeinzone.Push(API_RiserID);
-		typeinzone.Push(API_TreadID);
-		typeinzone.Push(API_StairStructureID);
-		typeinzone.Push(API_RailingID);
-		typeinzone.Push(API_RailingToprailID);
-		typeinzone.Push(API_RailingHandrailID);
-		typeinzone.Push(API_RailingRailID);
-		typeinzone.Push(API_RailingPostID);
-		typeinzone.Push(API_RailingInnerPostID);
-		typeinzone.Push(API_RailingBalusterID);
-		typeinzone.Push(API_RailingPanelID);
-		typeinzone.Push(API_RailingSegmentID);
-		typeinzone.Push(API_RailingToprailEndID);
-		typeinzone.Push(API_RailingHandrailEndID);
-		typeinzone.Push(API_RailingRailEndID);
-		typeinzone.Push(API_RailingToprailConnectionID);
-		typeinzone.Push(API_RailingHandrailConnectionID);
-		typeinzone.Push(API_RailingRailConnectionID);
-		typeinzone.Push(API_RailingNodeID);
+			typeinzone.Push(API_ObjectID);
+			typeinzone.Push(API_LampID);
+			typeinzone.Push(API_StairID);
+			typeinzone.Push(API_RiserID);
+			typeinzone.Push(API_TreadID);
+			typeinzone.Push(API_StairStructureID);
+			typeinzone.Push(API_RailingID);
+			typeinzone.Push(API_RailingToprailID);
+			typeinzone.Push(API_RailingHandrailID);
+			typeinzone.Push(API_RailingRailID);
+			typeinzone.Push(API_RailingPostID);
+			typeinzone.Push(API_RailingInnerPostID);
+			typeinzone.Push(API_RailingBalusterID);
+			typeinzone.Push(API_RailingPanelID);
+			typeinzone.Push(API_RailingSegmentID);
+			typeinzone.Push(API_RailingToprailEndID);
+			typeinzone.Push(API_RailingHandrailEndID);
+			typeinzone.Push(API_RailingRailEndID);
+			typeinzone.Push(API_RailingToprailConnectionID);
+			typeinzone.Push(API_RailingHandrailConnectionID);
+			typeinzone.Push(API_RailingRailConnectionID);
+			typeinzone.Push(API_RailingNodeID);
 
-		typeinzone.Push(API_CurtainWallID);
-		typeinzone.Push(API_CurtainWallFrameID);
-		typeinzone.Push(API_CurtainWallPanelID);
-		typeinzone.Push(API_CurtainWallJunctionID);
-		typeinzone.Push(API_CurtainWallAccessoryID);
-		typeinzone.Push(API_CurtainWallSegmentID);
-		typeinzone.Push(API_SkylightID);
-		for (const API_ElemTypeID& typeelem : typeinzone) {
-			if (relData.elementsGroupedByType.ContainsKey(typeelem)) {
-				for (const API_Guid& elGuid : relData.elementsGroupedByType[typeelem]) {
-					subelemGuid.Push(elGuid);
+			typeinzone.Push(API_CurtainWallID);
+			typeinzone.Push(API_CurtainWallFrameID);
+			typeinzone.Push(API_CurtainWallPanelID);
+			typeinzone.Push(API_CurtainWallJunctionID);
+			typeinzone.Push(API_CurtainWallAccessoryID);
+			typeinzone.Push(API_CurtainWallSegmentID);
+			typeinzone.Push(API_SkylightID);
+			for (const API_ElemTypeID& typeelem : typeinzone) {
+				if (relData.elementsGroupedByType.ContainsKey(typeelem)) {
+					for (const API_Guid& elGuid : relData.elementsGroupedByType[typeelem]) {
+						subelemGuid.Push(elGuid);
+					}
 				}
 			}
 		}
@@ -284,7 +297,6 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 					allclassification.Add(rname, sguid);
 					GS::Array<API_ClassificationItem> children;
 					err = ACAPI_Classification_GetClassificationItemChildren(rguid, children);
-					int hh = 1;
 				}
 			}
 		}

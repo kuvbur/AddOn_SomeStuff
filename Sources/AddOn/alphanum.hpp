@@ -173,7 +173,7 @@ namespace doj
            @return negative if left<right, 0 if left==right, positive if left>right.
         */
         template <typename lT, typename rT>
-        static int alphanum_comp(const lT& left, const rT& right)
+        int alphanum_comp(const lT& left, const rT& right)
         {
 #ifdef DOJDEBUG
             std::clog << "alphanum_comp<" << typeid(left).name() << "," << typeid(right).name() << "> " << left << "," << right << std::endl;
@@ -191,7 +191,7 @@ namespace doj
            @return negative if l<r, 0 if l==r, positive if l>r.
         */
         template <>
-        static int alphanum_comp<std::string>(const std::string& l, const std::string& r)
+        int alphanum_comp<std::string>(const std::string& l, const std::string& r)
         {
 #ifdef DOJDEBUG
             std::clog << "alphanum_comp<std::string,std::string> " << l << "," << r << std::endl;
