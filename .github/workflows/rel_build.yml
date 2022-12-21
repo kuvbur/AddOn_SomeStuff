@@ -51,7 +51,7 @@ jobs:
     - name: Build Release
       run: cmake --build Build/AC26 --config Release
     - name: Create DMG file
-      run: hdiutil create -format UDZO -srcfolder Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.bundle Build/AC25/Release/SomeStuff_AddOn_AC26_Mac.dmg
+      run: hdiutil create -format UDZO -srcfolder Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.bundle Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.dmg
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
       with:
