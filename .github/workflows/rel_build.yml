@@ -32,12 +32,12 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: SomeStuff AddOn AC25 Mac
-        path: Build/AC25/RelWithDebInfo/TapirAddOn_AC25_Mac.dmg
+        path: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.dmg
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: ncipollo/release-action@v1
       with:
-        artifacts: Build/AC25/RelWithDebInfo/TapirAddOn_AC25_Mac.dmg
+        artifacts: Build/AC25/RelWithDebInfo/SomeStuff_AddOn_AC25_Mac.dmg
         draft: true
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
