@@ -1016,7 +1016,8 @@ bool SyncCheckIgnoreVal(const SyncRule & syncRule, const API_Property & property
 // -----------------------------------------------------------------------------
 bool SyncCheckIgnoreVal(const SyncRule & syncRule, const API_IFCProperty & property) {
 	bool ignore_flag = false;
-
+	(void)property;
+	(void)syncRule;
 	// TODO добавить игнорируемые значения для IFC
 	//if (syncRule.ignorevals.GetSize() > 0) {
 	//	GS::UniString val = PropertyTestHelpers::ToString(property);

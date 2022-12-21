@@ -23,6 +23,8 @@
 static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
 	const GS::HashSet<API_Guid>& released,
 	const GS::HashSet<API_Guid>& deleted) {
+	(void)deleted;
+	(void)released;
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
 #ifdef PK_1

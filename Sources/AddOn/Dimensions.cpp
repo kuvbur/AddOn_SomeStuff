@@ -115,6 +115,7 @@ bool DimParsePref(GS::UniString rawrule, DimRule& dimrule) {
 // Прослойка для чтения настроек
 // -----------------------------------------------------------------------------
 void DimAutoRoundSel(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+	(void)syncSettings;
 	DimRules dimrules;
 	GSErrCode err = DimReadPref(dimrules);
 	if (dimrules.GetSize() == 0 || err != NoError) return;
@@ -368,9 +369,10 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 // TODO добавить резервирование
 // -----------------------------------------------------------------------------
 void DimRoundAll(const SyncSettings& syncSettings) {
+	(void)syncSettings;
 	DoneElemGuid doneelemguid;
 	DimRules dimrules;
-	GSErrCode err = DimReadPref(dimrules);
+	const GSErrCode err = DimReadPref(dimrules);
 	if (dimrules.GetSize() == 0 || err != NoError) return;
 	bool flag_chanel = false;
 	if (!flag_chanel) flag_chanel = DimRoundByType(API_DimensionID, doneelemguid, dimrules);
