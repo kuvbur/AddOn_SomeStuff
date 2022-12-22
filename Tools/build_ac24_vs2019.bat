@@ -1,8 +1,8 @@
 pushd %~dp0
 @echo off
 
-set AC_Version=AC25
-set Dev_Kit_Name=API Development Kit 25.3002
+set AC_Version=AC24
+set Dev_Kit_Name=API Development Kit 24.3009
 set VS_Version=Visual Studio 16 2019
 set VS_Toolset=v142
 
