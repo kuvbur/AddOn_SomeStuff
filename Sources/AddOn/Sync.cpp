@@ -180,7 +180,7 @@ void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&sube
 	case API_CurtainWallPanelID:
 		API_CWPanelRelation crelData;
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &crelData);
-		if (err != NoError) {
+		if (err == NoError) {
 			if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
 			if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
 		}
@@ -188,7 +188,7 @@ void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&sube
 	case API_DoorID:
 		API_DoorRelation drelData;
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &drelData);
-		if (err != NoError) {
+		if (err == NoError) {
 			if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
 			if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
 		}
@@ -196,14 +196,14 @@ void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&sube
 	case API_WindowID:
 		API_WindowRelation wrelData;
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &wrelData);
-		if (err != NoError) {
+		if (err == NoError) {
 			if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
 			if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
 		}
 		break;
 	case API_ZoneID:
 		err = ACAPI_Element_GetRelations(elemGuid, API_ZombieElemID, &relData);
-		if (err != NoError) {
+		if (err == NoError) {
 			typeinzone.Push(API_WallID);
 			typeinzone.Push(API_SlabID);
 			typeinzone.Push(API_ColumnID);
