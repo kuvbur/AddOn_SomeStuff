@@ -1258,7 +1258,7 @@ GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_
 
 // -----------------------------------------------------------------------------
 // Получение размеров Морфа
-// Формирует два словаря - ParamDict& paramDict с именами параметров и ParamDictValue& pdictvalue со значениями
+// Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
 GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue) {
 	API_Element      element = {};
@@ -1919,7 +1919,7 @@ bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const 
 }
 
 // -----------------------------------------------------------------------------------------------------
-// Добавление в словари ParamDict и ParamDictValue параметра с именем paramName и значением doubleValue
+// Добавление в словарь ParamDictValue параметры с именем paramName и значением doubleValue
 // -----------------------------------------------------------------------------------------------------
 void AddParam2Dict(const GS::UniString & paramName, const double doubleValue, ParamDictValue & pdictvalue) {
 	if (!pdictvalue.ContainsKey(paramName)) {
