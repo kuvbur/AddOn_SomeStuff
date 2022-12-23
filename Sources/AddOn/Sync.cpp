@@ -73,14 +73,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 			msg_rep("SyncByType", subtitle + intString, NoError, APINULLGuid);
 		}
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			if (syncSettings.syncMon) {
-				err = AttachObserver(guidArray[i], syncSettings);
-				if (err == APIERR_LINKEXIST)
-					err = NoError;
-			}
-			else {
-				SyncElement(guidArray[i], syncSettings);
-			}
+			SyncElement(guidArray[i], syncSettings);
 			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 				flag_chanel = true;
@@ -94,11 +87,6 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 
 void SyncElement(const API_Guid & objectId, const SyncSettings & syncSettings) {
 	GSErrCode		err = NoError;
-	if (syncSettings.syncMon) {
-		err = AttachObserver(objectId, syncSettings);
-		if (err == APIERR_LINKEXIST)
-			err = NoError;
-	}
 	if (err == NoError) {
 		SyncData(objectId, syncSettings);
 		SyncRelationsElement(objectId, syncSettings);
@@ -265,6 +253,16 @@ void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&sube
 // --------------------------------------------------------------------
 void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	GSErrCode	err = NoError;
+	// Если включён мониторинг - привязываем элемент к отслеживанию
+	if (syncSettings.syncMon) {
+		err = AttachObserver(elemGuid, syncSettings);
+		if (err == APIERR_LINKEXIST)
+			err = NoError;
+		if (err != NoError) {
+			msg_rep("SyncData", "AttachObserver", err, elemGuid);
+			return;
+		}
+	}
 	if (!IsElementEditable(elemGuid, syncSettings, true))
 		return;
 	API_ElemTypeID elementType;
@@ -277,33 +275,14 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
 	if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
 	if (err == NoError) {
-		// Установка правильной классификации
-		if (SyncState(elemGuid, definitions, "Sync_class_flag")) { // Проверяем - не отключена ли проставление классификации
-			GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
-			err = ACAPI_Element_GetClassificationItems(elemGuid, systemItemPairs);
-			GS::Array<API_ClassificationSystem> systems;
-			ClassificationDict allclassification;
-			err = ACAPI_Classification_GetClassificationSystems(systems);
-			for (UInt32 i = 0; i < systems.GetSize(); i++) {
-				GS::UniString sname = systems[i].name;
-				API_Guid sguid = systems[i].guid;
-				allclassification.Add(sname, sguid);
-
-				GS::Array<API_ClassificationItem> rootitems;
-				err = ACAPI_Classification_GetClassificationSystemRootItems(sguid, rootitems);
-				for (UInt32 j = 0; j < rootitems.GetSize(); j++) {
-					GS::UniString rname = sname + "@" + rootitems[j].name;
-					API_Guid rguid = rootitems[j].guid;
-					allclassification.Add(rname, sguid);
-					GS::Array<API_ClassificationItem> children;
-					err = ACAPI_Classification_GetClassificationItemChildren(rguid, children);
-				}
-			}
-		}
 		// Синхронизация данных
 		if (SyncState(elemGuid, definitions, "Sync_flag")) { // Проверяем - не отключена ли синхронизация у данного объекта
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-				err = SyncOneProperty(elemGuid, elementType, definitions[i]);
+				// Получаем список правил синхронизации из всех свойств
+				GS::Array <SyncRule> syncRules;
+				if (SyncString(definitions[i].description, syncRules)) { // Парсим описание свойства
+					int hh = 1;
+				}
 			}
 		}
 	}

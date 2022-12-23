@@ -89,22 +89,23 @@ typedef struct {
 	bool canCalculate = false;
 } ParamValue;
 
+
 typedef struct {
-	GS::Array <API_Property> prop;
-	GS::Array <ParamValue> param;
+	ParamValue fromParam;
+	API_Property toProp;
+	ParamValue toParam;
+	bool needUpdate = false;
 } WriteData;
 
 // Словарь с заранее вычисленными данными для калькулятора
 typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
 
-// Словарь для классификаций
-typedef GS::HashTable<GS::UniString, API_Guid> ClassificationDict;
-
 // Словарь с параметрами для вычисления
+// Служит для формирования уникального списка свойств и параметров
 typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 // Словарь с параметрами для записи
-typedef GS::HashTable<API_Guid, WriteData> WriteDict;
+typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
 
 bool is_equal(double x, double y);
 

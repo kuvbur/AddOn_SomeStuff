@@ -174,6 +174,11 @@ if (WIN32)
     "$<$<CONFIG:Release>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STAT.lib>"
     "$<$<CONFIG:RelWithDebInfo>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STAT.lib>"
 	)
+	set_target_properties(AddOn PROPERTIES
+	VS_DEBUGGER_WORKING_DIRECTORY "$(ProjectDir)"
+	VS_DEBUGGER_COMMAND "$ENV{ProgramFiles}/GRAPHISOFT/ARCHICAD ${ARCHICAD_VERSION}/ARCHICAD.exe"
+	VS_DEBUGGER_COMMAND_ARGUMENTS "$(ProjectDir)test.pln"
+	)
 else ()
 	find_library (CocoaFramework Cocoa)
 	target_link_libraries (AddOn
