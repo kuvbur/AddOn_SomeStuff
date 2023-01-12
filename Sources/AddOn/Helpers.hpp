@@ -87,14 +87,25 @@ typedef struct {
 	bool boolValue = false;
 	double doubleValue = 0.0;
 	bool canCalculate = false;
+	API_PropertyDefinition definition = {}; // Описание свойства, чтоб не искать
+	// Тут храним способ, которым нужно получить значение
+	bool isGDLparam = false; // Найден в гдл параметрах
+	bool isProperty = false; // Найден в свойствах
+	bool isMorph = false; // Найден свойствах морфа
+	bool isInfo = false; // Найден в инфо о проекте
+	bool isIFCProperty = false;
+	bool isMaterial = false;
 } ParamValue;
-
 
 typedef struct {
 	ParamValue fromParam;
 	API_Property toProp;
 	ParamValue toParam;
 	bool needUpdate = false;
+	GS::Array<GS::UniString> ignorevals;
+	GS::UniString templatestring = "";
+	int synctype = 0;
+	int syncdirection = 0;
 } WriteData;
 
 // Словарь с заранее вычисленными данными для калькулятора

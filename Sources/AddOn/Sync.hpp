@@ -15,7 +15,10 @@
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
 typedef struct {
-	GS::UniString paramName = "";
+	GS::UniString paramNameFrom = "";
+	API_PropertyDefinition paramFrom = {};
+	GS::UniString paramNameTo = "";
+	API_PropertyDefinition paramTo = {};
 	GS::Array<GS::UniString> ignorevals;
 	GS::UniString templatestring = "";
 	int synctype = 0;
@@ -51,7 +54,7 @@ GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID element
 
 bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition& definition, SyncRule syncRule);
 
-bool SyncString(GS::UniString& description_string, GS::Array<SyncRule>& syncRules);
+bool SyncString(API_PropertyDefinition & definition, GS::Array<SyncRule>& syncRules);
 
 bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
 

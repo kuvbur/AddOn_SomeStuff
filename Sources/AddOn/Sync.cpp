@@ -277,13 +277,12 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	if (err == NoError) {
 		// Синхронизация данных
 		if (SyncState(elemGuid, definitions, "Sync_flag")) { // Проверяем - не отключена ли синхронизация у данного объекта
+			GS::Array <SyncRule> syncRules;
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 				// Получаем список правил синхронизации из всех свойств
-				GS::Array <SyncRule> syncRules;
-				if (SyncString(definitions[i].description, syncRules)) { // Парсим описание свойства
-					int hh = 1;
-				}
+				SyncString(definitions[i], syncRules); // Парсим описание свойства
 			}
+			int hh = 1;
 		}
 	}
 }
@@ -294,7 +293,7 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 GSErrCode SyncOneProperty(const API_Guid & elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition) {
 	GSErrCode	err = NoError;
 	GS::Array <SyncRule> syncRules;
-	if (SyncString(definition.description, syncRules)) { // Парсим описание свойства
+	if (SyncString(definition, syncRules)) { // Парсим описание свойства
 		for (UInt32 i = 0; i < syncRules.GetSize(); i++) {
 			SyncOneRule(elemGuid, elementType, definition, syncRules[i]); // Если синхронизация успешная - выходим из цикла
 		}
@@ -382,14 +381,14 @@ bool SyncOneRule(const API_Guid & elemGuid, const API_ElemTypeID & elementType, 
 //	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2, из состава конструкции - 3)
 //	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
 // -----------------------------------------------------------------------------
-bool SyncString(GS::UniString & description_string, GS::Array <SyncRule>&syncRules) {
+bool SyncString(API_PropertyDefinition & definition, GS::Array <SyncRule>&syncRules) {
+	GS::UniString description_string = definition.description;
 	if (description_string.IsEmpty()) {
 		return false;
 	}
 	if (description_string.Contains("Sync_flag")) {
 		return false;
 	}
-
 	// Если указан сброс данных - синхронизировать не будем
 	if (description_string.Contains("Sync_reset")) {
 		return false;
@@ -445,7 +444,6 @@ bool SyncString(GS::UniString & description_string, GS::Array <SyncRule>&syncRul
 					rule.synctype = SYNC_GDL;
 				}
 				GS::UniString paramName = rulestring_one.GetSubstring('{', '}', 0);
-
 				// Для материалов вытащим строку с шаблоном, чтоб ненароком не разбить её
 				if (rule.synctype == SYNC_MATERIAL) {
 					GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
@@ -456,7 +454,16 @@ bool SyncString(GS::UniString & description_string, GS::Array <SyncRule>&syncRul
 				GS::Array<GS::UniString> params;
 				nparam = StringSplt(paramName, ";", params);
 				if (nparam == 0) rule.syncdirection = SYNC_NO;
-				if (nparam > 0) rule.paramName = params[0];
+				if (nparam > 0) {
+					if (rule.syncdirection == SYNC_FROM || rule.syncdirection == SYNC_FROM_SUB) {
+						rule.paramNameFrom = params[0];
+						rule.paramFrom = definition;
+					}
+					if (rule.syncdirection == SYNC_TO || rule.syncdirection == SYNC_TO_SUB) {
+						rule.paramNameTo = params[0];
+						rule.paramTo = definition;
+					}
+				}
 				if (nparam > 1) {
 					for (UInt32 j = 1; j < nparam; j++) {
 						GS::UniString ignoreval;
@@ -514,7 +521,7 @@ GSErrCode SyncPropAndProp(const API_Guid & elemGuid_from, const API_Guid & elemG
 	API_Property property_from;
 	API_Property property_to;
 	if (syncRule.syncdirection == SYNC_FROM) {
-		if (GetPropertyByName(elemGuid_from, syncRule.paramName, property_from) != NoError) {
+		if (GetPropertyByName(elemGuid_from, syncRule.paramNameFrom, property_from) != NoError) {
 			msg_rep("SyncParamAndProp", "GetPropertyByName " + definition.name, APIERR_MISSINGCODE, elemGuid_from);
 			return APIERR_MISSINGCODE;
 		}
@@ -524,7 +531,7 @@ GSErrCode SyncPropAndProp(const API_Guid & elemGuid_from, const API_Guid & elemG
 		}
 	}
 	if (syncRule.syncdirection == SYNC_TO) {
-		if (GetPropertyByName(elemGuid_to, syncRule.paramName, property_to) != NoError) {
+		if (GetPropertyByName(elemGuid_to, syncRule.paramNameFrom, property_to) != NoError) {
 			msg_rep("SyncParamAndProp", "GetPropertyByName " + definition.name, APIERR_MISSINGCODE, elemGuid_to);
 			return APIERR_MISSINGCODE;
 		}
@@ -552,8 +559,8 @@ GSErrCode SyncMorphAndProp(const API_Guid & elemGuid, const SyncRule & syncRule,
 		ParamDictValue pdictvalue;
 		err = GetMorphParam(elemGuid, pdictvalue);
 		if (err == NoError) {
-			if (pdictvalue.ContainsKey(syncRule.paramName)) {
-				err = WriteProp(elemGuid, property, pdictvalue.Get(syncRule.paramName));
+			if (pdictvalue.ContainsKey(syncRule.paramNameFrom)) {
+				err = WriteProp(elemGuid, property, pdictvalue.Get(syncRule.paramNameFrom));
 			}
 		}
 	}
@@ -567,7 +574,7 @@ GSErrCode SyncIFCAndProp(const API_Guid & elemGuid, const SyncRule & syncRule, c
 {
 	API_IFCProperty property_from;
 	API_Property property_to;
-	GSErrCode err = GetIFCPropertyByName(elemGuid, syncRule.paramName, property_from);
+	GSErrCode err = GetIFCPropertyByName(elemGuid, syncRule.paramNameFrom, property_from);
 	if (err == NoError) {
 		err = ACAPI_Element_GetPropertyValue(elemGuid, definition.guid, property_to);
 		if (err != NoError) {
@@ -628,7 +635,7 @@ GSErrCode SyncParamAndProp(const API_Guid & elemGuid_from, const API_Guid & elem
 			msg_rep("SyncParamAndProp", "ACAPI_Element_GetPropertyValue " + definition.name, err, elemGuid_to);
 			return APIERR_MISSINGCODE;
 		}
-		if (GetLibParam(elemGuid_from, syncRule.paramName, param_string, param_int, param_bool, param_real))
+		if (GetLibParam(elemGuid_from, syncRule.paramNameFrom, param_string, param_int, param_bool, param_real))
 		{
 			if (!SyncCheckIgnoreVal(syncRule, param_string)) {
 				return WriteProp(elemGuid_to, property, param_string, param_int, param_bool, param_real);
@@ -648,7 +655,7 @@ GSErrCode SyncParamAndProp(const API_Guid & elemGuid_from, const API_Guid & elem
 			return APIERR_MISSINGCODE;
 		}
 		if (!SyncCheckIgnoreVal(syncRule, property)) {
-			return WriteProp2Param(elemGuid_to, syncRule.paramName, property);
+			return WriteProp2Param(elemGuid_to, syncRule.paramNameFrom, property);
 		}
 		else {
 			return APIERR_MISSINGCODE; // Игнорируем значение
