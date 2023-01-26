@@ -30,6 +30,14 @@
 #define	 Menu_Log			10
 #define	 Menu_LogShow		11
 
+#define SYNC_GDL 1
+#define SYNC_PROPERTY 2
+#define SYNC_MATERIAL 3
+#define SYNC_INFO 4
+#define SYNC_IFC 5
+#define SYNC_MORPH 6
+#define SYNC_CLASS 7
+
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
 static const short AddOnPromtID = ID_ADDON_PROMT;
@@ -74,6 +82,8 @@ typedef struct {
 	GS::Array <UInt32>	inx;
 } SortInx;
 
+
+
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
 // name - имя для поиска
@@ -89,23 +99,30 @@ typedef struct {
 	bool canCalculate = false;
 	API_PropertyDefinition definition = {}; // Описание свойства, чтоб не искать
 	// Тут храним способ, которым нужно получить значение
-	bool isGDLparam = false; // Найден в гдл параметрах
-	bool isProperty = false; // Найден в свойствах
-	bool isMorph = false; // Найден свойствах морфа
-	bool isInfo = false; // Найден в инфо о проекте
-	bool isIFCProperty = false;
-	bool isMaterial = false;
+	bool fromGDLparam = false; // Найден в гдл параметрах
+	bool fromProperty = false; // Найден в свойствах
+	bool fromMorph = false; // Найден свойствах морфа
+	bool fromInfo = false; // Найден в инфо о проекте
+	bool fromIFCProperty = false;
+	bool fromMaterial = false; // Взять инфо из состава конструкции
+	API_Guid fromGuid; //Откуда прочитать
 } ParamValue;
 
 typedef struct {
+	API_Guid fromGuid;
+	API_Guid toGuid;
 	ParamValue fromParam;
-	API_Property toProp;
 	ParamValue toParam;
 	bool needUpdate = false;
 	GS::Array<GS::UniString> ignorevals;
-	GS::UniString templatestring = "";
-	int synctype = 0;
-	int syncdirection = 0;
+	// Тут храним способ, куда нужно передать значение
+	bool toGDLparam = false;
+	bool toProperty = false;
+	bool toMorph = false;
+	bool toInfo = false;
+	bool toIFCProperty = false;
+	bool toSub = false;
+	bool fromSub = false;
 } WriteData;
 
 // Словарь с заранее вычисленными данными для калькулятора

@@ -7,14 +7,6 @@
 #include	"ResetProperty.hpp"
 #include	"Dimensions.hpp"
 
-#define SYNC_GDL 1
-#define SYNC_PROPERTY 2
-#define SYNC_MATERIAL 3
-#define SYNC_INFO 4
-#define SYNC_IFC 5
-#define SYNC_MORPH 6
-#define SYNC_CLASS 7
-
 #define SYNC_NO 0
 #define SYNC_FROM 1
 #define SYNC_TO 2
@@ -277,10 +269,10 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	if (err == NoError) {
 		// Синхронизация данных
 		if (SyncState(elemGuid, definitions, "Sync_flag")) { // Проверяем - не отключена ли синхронизация у данного объекта
-			GS::Array <SyncRule> syncRules;
+			WriteDict syncRules;
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 				// Получаем список правил синхронизации из всех свойств
-				SyncString(definitions[i], syncRules); // Парсим описание свойства
+				ParseSyncString(elemGuid, definitions[i], syncRules); // Парсим описание свойства
 			}
 			int hh = 1;
 		}
@@ -293,11 +285,11 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 GSErrCode SyncOneProperty(const API_Guid & elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition) {
 	GSErrCode	err = NoError;
 	GS::Array <SyncRule> syncRules;
-	if (SyncString(definition, syncRules)) { // Парсим описание свойства
-		for (UInt32 i = 0; i < syncRules.GetSize(); i++) {
-			SyncOneRule(elemGuid, elementType, definition, syncRules[i]); // Если синхронизация успешная - выходим из цикла
-		}
-	}
+	//if (SyncString(definition, syncRules)) { // Парсим описание свойства
+	//	for (UInt32 i = 0; i < syncRules.GetSize(); i++) {
+	//		SyncOneRule(elemGuid, elementType, definition, syncRules[i]); // Если синхронизация успешная - выходим из цикла
+	//	}
+	//}
 	return err;
 }
 
@@ -376,12 +368,8 @@ bool SyncOneRule(const API_Guid & elemGuid, const API_ElemTypeID & elementType, 
 
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
-// Результат
-//	имя параметра (свойства)
-//	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2, из состава конструкции - 3)
-//	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
 // -----------------------------------------------------------------------------
-bool SyncString(API_PropertyDefinition & definition, GS::Array <SyncRule>&syncRules) {
+bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, WriteDict& syncRules) {
 	GS::UniString description_string = definition.description;
 	if (description_string.IsEmpty()) {
 		return false;
@@ -393,94 +381,101 @@ bool SyncString(API_PropertyDefinition & definition, GS::Array <SyncRule>&syncRu
 	if (description_string.Contains("Sync_reset")) {
 		return false;
 	}
+	ParamDictValue paramToRead;
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
 		GS::Array<GS::UniString> rulestring;
 		UInt32 nrule = StringSplt(description_string, "Sync_", rulestring, "{"); // Проверяем количество правил
 		for (UInt32 i = 0; i < nrule; i++) {
-			GS::UniString rulestring_one = rulestring[i];
-			SyncRule rule;
-			rule.syncdirection = SYNC_NO;
+			WriteData oneRule;
+			int hh = 1;
+		}
+	}
+	return true;
+}
 
-			// Выбор направления синхронизации
-			// Копировать в субэлементы или из субэлементов
-			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("to_sub{")) {
-				rule.syncdirection = SYNC_TO_SUB;
-			}
-			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("from_sub{")) {
-				rule.syncdirection = SYNC_FROM_SUB;
-			}
+bool SyncString(GS::UniString rulestring_one, WriteData& oneRule, ParamDictValue& paramToRead) {
+	int syncdirection = SYNC_NO;
+	int synctype = SYNC_NO;
+	GS::UniString templatestring = "";
+	GS::UniString paramName = "";
+	GS::Array<GS::UniString> ignorevals;
+	bool state = SyncString(rulestring_one, syncdirection, synctype, templatestring, paramName, ignorevals);
 
-			// Копировать параметр в свойство или свойство в параметр
-			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("from{")) {
-				rule.syncdirection = SYNC_FROM;
-			}
-			if (rule.syncdirection == SYNC_NO && rulestring_one.Contains("to{")) {
-				rule.syncdirection = SYNC_TO;
-			}
-			if (rule.syncdirection != SYNC_NO) {
+}
 
-				//Выбор типа копируемого свойства
-				rule.synctype = SYNC_NO;
-				if (rule.synctype == SYNC_NO && rulestring_one.Contains("Property:")) {
-					rule.synctype = SYNC_PROPERTY;
-					rulestring_one.ReplaceAll("Property:", "");
+
+// -----------------------------------------------------------------------------
+// Парсит описание свойства
+// Результат
+//	имя параметра (свойства)
+//	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2, из состава конструкции - 3)
+//	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
+// -----------------------------------------------------------------------------
+bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype, GS::UniString& templatestring, GS::UniString& paramName, GS::Array<GS::UniString>& ignorevals) {
+	syncdirection = SYNC_NO;
+	// Выбор направления синхронизации
+	// Копировать в субэлементы или из субэлементов
+	if (syncdirection == SYNC_NO && rulestring_one.Contains("to_sub{")) syncdirection = SYNC_TO_SUB;
+
+	if (syncdirection == SYNC_NO && rulestring_one.Contains("from_sub{")) syncdirection = SYNC_FROM_SUB;
+
+	// Копировать параметр в свойство или свойство в параметр
+	if (syncdirection == SYNC_NO && rulestring_one.Contains("from{")) syncdirection = SYNC_FROM;
+
+	if (syncdirection == SYNC_NO && rulestring_one.Contains("to{")) syncdirection = SYNC_TO;
+
+	if (syncdirection != SYNC_NO) {
+		//Выбор типа копируемого свойства
+		synctype = SYNC_NO;
+		if (synctype == SYNC_NO && rulestring_one.Contains("Property:")) {
+			synctype = SYNC_PROPERTY;
+			rulestring_one.ReplaceAll("Property:", "");
+		}
+		if (synctype == SYNC_NO && rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
+			synctype = SYNC_MATERIAL;
+			rulestring_one.ReplaceAll("Material:", "");
+		}
+		if (synctype == SYNC_NO && rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
+			synctype = SYNC_INFO;
+			rulestring_one.ReplaceAll("Info:", "");
+		}
+		if (synctype == SYNC_NO && rulestring_one.Contains("IFC:")) {
+			synctype = SYNC_IFC;
+			rulestring_one.ReplaceAll("IFC:", "");
+		}
+		if (synctype == SYNC_NO && rulestring_one.Contains("Morph:")) {
+			synctype = SYNC_MORPH;
+			rulestring_one.ReplaceAll("Morph:", "");
+		}
+		if (synctype == SYNC_NO && !rulestring_one.Contains(":")) synctype = SYNC_GDL;
+	}
+	if (synctype != SYNC_NO) {
+		GS::UniString tparamName = rulestring_one.GetSubstring('{', '}', 0);
+		// Для материалов вытащим строку с шаблоном, чтоб ненароком не разбить её
+		if (synctype == SYNC_MATERIAL) {
+			GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
+			templatestring = templatestring;
+			rulestring_one.ReplaceAll(templatestring, "");
+		}
+		UInt32 nparam = 0;
+		GS::Array<GS::UniString> params;
+		nparam = StringSplt(tparamName, ";", params);
+		if (nparam == 0) synctype = SYNC_NO;
+		if (nparam > 0) paramName = params[0];
+		if (nparam > 1) {
+			for (UInt32 j = 1; j < nparam; j++) {
+				GS::UniString ignoreval;
+				if (params[j].Contains('"')) {
+					ignoreval = params[j].GetSubstring('"', '"', 0);
 				}
-				if (rule.synctype == SYNC_NO && rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
-					rule.synctype = SYNC_MATERIAL;
-					rulestring_one.ReplaceAll("Material:", "");
+				else {
+					ignoreval = params[j];
 				}
-				if (rule.synctype == SYNC_NO && rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
-					rule.synctype = SYNC_INFO;
-					rulestring_one.ReplaceAll("Info:", "");
-				}
-				if (rule.synctype == SYNC_NO && rulestring_one.Contains("IFC:")) {
-					rule.synctype = SYNC_IFC;
-					rulestring_one.ReplaceAll("IFC:", "");
-				}
-				if (rule.synctype == SYNC_NO && rulestring_one.Contains("Morph:")) {
-					rule.synctype = SYNC_MORPH;
-				}
-				if (rule.synctype == SYNC_NO) {
-					rule.synctype = SYNC_GDL;
-				}
-				GS::UniString paramName = rulestring_one.GetSubstring('{', '}', 0);
-				// Для материалов вытащим строку с шаблоном, чтоб ненароком не разбить её
-				if (rule.synctype == SYNC_MATERIAL) {
-					GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
-					rule.templatestring = templatestring;
-					rulestring_one.ReplaceAll(templatestring, "");
-				}
-				UInt32 nparam = 0;
-				GS::Array<GS::UniString> params;
-				nparam = StringSplt(paramName, ";", params);
-				if (nparam == 0) rule.syncdirection = SYNC_NO;
-				if (nparam > 0) {
-					if (rule.syncdirection == SYNC_FROM || rule.syncdirection == SYNC_FROM_SUB) {
-						rule.paramNameFrom = params[0];
-						rule.paramFrom = definition;
-					}
-					if (rule.syncdirection == SYNC_TO || rule.syncdirection == SYNC_TO_SUB) {
-						rule.paramNameTo = params[0];
-						rule.paramTo = definition;
-					}
-				}
-				if (nparam > 1) {
-					for (UInt32 j = 1; j < nparam; j++) {
-						GS::UniString ignoreval;
-						if (params[j].Contains('"')) {
-							ignoreval = params[j].GetSubstring('"', '"', 0);
-						}
-						else {
-							ignoreval = params[j];
-						}
-						rule.ignorevals.Push(ignoreval);
-					}
-				}
-				syncRules.Push(rule);
+				ignorevals.Push(ignoreval);
 			}
 		}
 	}
-	if (syncRules.GetSize() == 0) {
+	if (syncdirection == SYNC_NO || synctype == SYNC_NO){
 		return false;
 	}
 	else {
