@@ -9,7 +9,7 @@
 #endif // AC_26
 #include	"DG.h"
 #include	"SyncSettings.hpp"
-
+#include	"Helpers.hpp"
 // --------------------------------------------------------------------
 // Структура для хранения одного правила
 // Заполнение см. SyncString
@@ -54,9 +54,11 @@ GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID element
 
 bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition& definition, SyncRule syncRule);
 
-bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, WriteDict& syncRules);
+bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, WriteDict& syncRules, ParamDictElement& paramToRead);
 
-bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype, GS::UniString& templatestring, GS::UniString& paramName, GS::Array<GS::UniString>& ignorevals);
+bool SyncString(GS::UniString rulestring_one, WriteDict& syncRules, ParamDictElement& paramToRead);
+
+bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype, GS::UniString& templatestring, GS::UniString& paramName, GS::Array<GS::UniString>& ignorevals, GS::UniString& rawparamName);
 
 bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
 
