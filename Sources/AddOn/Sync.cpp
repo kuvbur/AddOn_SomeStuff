@@ -3,7 +3,6 @@
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
-#include	"Helpers.hpp"
 #include	"ResetProperty.hpp"
 #include	"Dimensions.hpp"
 
@@ -270,9 +269,10 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 		// Синхронизация данных
 		if (SyncState(elemGuid, definitions, "Sync_flag")) { // Проверяем - не отключена ли синхронизация у данного объекта
 			WriteDict syncRules;
+			ParamDictElement paramToRead;
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 				// Получаем список правил синхронизации из всех свойств
-				ParseSyncString(elemGuid, definitions[i], syncRules); // Парсим описание свойства
+				ParseSyncString(elemGuid, definitions[i], syncRules, paramToRead); // Парсим описание свойства
 			}
 			int hh = 1;
 		}
@@ -369,7 +369,7 @@ bool SyncOneRule(const API_Guid & elemGuid, const API_ElemTypeID & elementType, 
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, WriteDict& syncRules) {
+bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, WriteDict& syncRules, ParamDictElement& paramToRead) {
 	GS::UniString description_string = definition.description;
 	if (description_string.IsEmpty()) {
 		return false;
@@ -381,25 +381,26 @@ bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& def
 	if (description_string.Contains("Sync_reset")) {
 		return false;
 	}
-	ParamDictValue paramToRead;
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
 		GS::Array<GS::UniString> rulestring;
 		UInt32 nrule = StringSplt(description_string, "Sync_", rulestring, "{"); // Проверяем количество правил
+		//Проходим по каждому правилу и извлекаем из него правило синхронизации (WriteDict syncRules) и словарь уникальных параметров для чтения/записи (ParamDictElement paramToRead)
 		for (UInt32 i = 0; i < nrule; i++) {
-			WriteData oneRule;
+			bool hg = SyncString(rulestring[i], syncRules, paramToRead);
 			int hh = 1;
 		}
 	}
 	return true;
 }
 
-bool SyncString(GS::UniString rulestring_one, WriteData& oneRule, ParamDictValue& paramToRead) {
-	int syncdirection = SYNC_NO;
-	int synctype = SYNC_NO;
-	GS::UniString templatestring = "";
-	GS::UniString paramName = "";
-	GS::Array<GS::UniString> ignorevals;
-	bool state = SyncString(rulestring_one, syncdirection, synctype, templatestring, paramName, ignorevals);
+bool SyncString(GS::UniString rulestring_one, WriteDict& syncRules, ParamDictElement& paramToRead) {
+	int syncdirection = SYNC_NO; // Направление синхронизации
+	int synctype = SYNC_NO; // Тип синхронизации
+	GS::UniString templatestring = ""; //Строка шаблона для вытаскивания состава
+	GS::UniString paramName = ""; //Очищенное имя параметра/свойства
+	GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
+	GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
+	bool state = SyncString(rulestring_one, syncdirection, synctype, templatestring, paramName, ignorevals, rawparamName);
 
 }
 
@@ -411,7 +412,7 @@ bool SyncString(GS::UniString rulestring_one, WriteData& oneRule, ParamDictValue
 //	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2, из состава конструкции - 3)
 //	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
 // -----------------------------------------------------------------------------
-bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype, GS::UniString& templatestring, GS::UniString& paramName, GS::Array<GS::UniString>& ignorevals) {
+bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype, GS::UniString& templatestring, GS::UniString& paramName, GS::Array<GS::UniString>& ignorevals, GS::UniString& rawparamName) {
 	syncdirection = SYNC_NO;
 	// Выбор направления синхронизации
 	// Копировать в субэлементы или из субэлементов
@@ -421,8 +422,9 @@ bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype,
 
 	// Копировать параметр в свойство или свойство в параметр
 	if (syncdirection == SYNC_NO && rulestring_one.Contains("from{")) syncdirection = SYNC_FROM;
+	if (syncdirection == SYNC_NO && rulestring_one.Contains("to{")) syncdirection = SYNC_TO; 
 
-	if (syncdirection == SYNC_NO && rulestring_one.Contains("to{")) syncdirection = SYNC_TO;
+	GS::UniString paramNamePrefix = "";
 
 	if (syncdirection != SYNC_NO) {
 		//Выбор типа копируемого свойства
@@ -430,24 +432,32 @@ bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype,
 		if (synctype == SYNC_NO && rulestring_one.Contains("Property:")) {
 			synctype = SYNC_PROPERTY;
 			rulestring_one.ReplaceAll("Property:", "");
+			paramNamePrefix = "Property:";
 		}
 		if (synctype == SYNC_NO && rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
 			synctype = SYNC_MATERIAL;
 			rulestring_one.ReplaceAll("Material:", "");
+			paramNamePrefix = "Material:";
 		}
 		if (synctype == SYNC_NO && rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
 			synctype = SYNC_INFO;
 			rulestring_one.ReplaceAll("Info:", "");
+			paramNamePrefix = "Info:";
 		}
 		if (synctype == SYNC_NO && rulestring_one.Contains("IFC:")) {
 			synctype = SYNC_IFC;
 			rulestring_one.ReplaceAll("IFC:", "");
+			paramNamePrefix = "IFC:";
 		}
 		if (synctype == SYNC_NO && rulestring_one.Contains("Morph:")) {
 			synctype = SYNC_MORPH;
 			rulestring_one.ReplaceAll("Morph:", "");
+			paramNamePrefix = "Morph:";
 		}
-		if (synctype == SYNC_NO && !rulestring_one.Contains(":")) synctype = SYNC_GDL;
+		if (synctype == SYNC_NO && !rulestring_one.Contains(":")) {
+			synctype = SYNC_GDL;
+			paramNamePrefix = "GDL:";
+		}
 	}
 	if (synctype != SYNC_NO) {
 		GS::UniString tparamName = rulestring_one.GetSubstring('{', '}', 0);
@@ -461,7 +471,10 @@ bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype,
 		GS::Array<GS::UniString> params;
 		nparam = StringSplt(tparamName, ";", params);
 		if (nparam == 0) synctype = SYNC_NO;
-		if (nparam > 0) paramName = params[0];
+		if (nparam > 0) {
+			rawparamName = paramNamePrefix + params[0];
+			paramName = params[0];
+		}
 		if (nparam > 1) {
 			for (UInt32 j = 1; j < nparam; j++) {
 				GS::UniString ignoreval;

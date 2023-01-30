@@ -108,6 +108,16 @@ typedef struct {
 	API_Guid fromGuid; //Откуда прочитать
 } ParamValue;
 
+// Словарь с заранее вычисленными данными для калькулятора
+typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
+
+// Словарь с параметрами для вычисления
+// Служит для формирования уникального списка свойств и параметров
+typedef GS::HashTable<GS::UniString, bool> ParamDict;
+
+// Словарь с параметрами для элементов
+typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
+
 typedef struct {
 	API_Guid fromGuid;
 	API_Guid toGuid;
@@ -124,13 +134,6 @@ typedef struct {
 	bool toSub = false;
 	bool fromSub = false;
 } WriteData;
-
-// Словарь с заранее вычисленными данными для калькулятора
-typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
-
-// Словарь с параметрами для вычисления
-// Служит для формирования уникального списка свойств и параметров
-typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 // Словарь с параметрами для записи
 typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
