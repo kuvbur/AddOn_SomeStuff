@@ -25,6 +25,25 @@ typedef struct {
 	int syncdirection = 0;
 } SyncRule;
 
+typedef struct {
+	API_Guid guidTo;
+	API_Guid guidFrom;
+	ParamValue paramFrom;
+	ParamValue paramTo;
+	bool needUpdate = false;
+	GS::Array<GS::UniString> ignorevals;
+	// Тут храним способ, куда нужно передать значение
+	bool toGDLparam = false;
+	bool toProperty = false;
+	bool toInfo = false;
+	bool toIFCProperty = false;
+	bool toSub = false;
+	bool fromSub = false;
+} WriteData;
+
+// Словарь с параметрами для записи
+typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
+
 // --------------------------------------------------------------------
 // Структура для хранения данных ос составе конструкций
 // Заполнение см. SyncPropAndMatGetComponents
@@ -46,21 +65,19 @@ void SyncElement(const API_Guid& objectId, const SyncSettings& syncSettings);
 
 void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
-void SyncGetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
-
 void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+
+void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictElement& paramToRead);
+
+void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead);
 
 GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition);
 
 bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition& definition, SyncRule syncRule);
 
-bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, WriteDict& syncRules, ParamDictElement& paramToRead);
+bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, bool& hasSub);
 
-bool SyncString(GS::UniString rulestring_one, WriteDict& syncRules, ParamDictElement& paramToRead);
-
-bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype, GS::UniString& templatestring, GS::UniString& paramName, GS::Array<GS::UniString>& ignorevals, GS::UniString& rawparamName);
-
-bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
+bool SyncString(GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString> ignorevals);
 
 GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, const SyncRule& syncRule, const API_PropertyDefinition& definition);
 

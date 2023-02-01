@@ -612,6 +612,47 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 	}
 }
 
+//--------------------------------------------------------------------------------------------------------------------------
+//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
+//--------------------------------------------------------------------------------------------------------------------------
+bool GetElemState(const API_Guid& elemGuid, GS::UniString property_flag_name) {
+	GSErrCode	err = NoError;
+	GS::Array<API_PropertyDefinition> definitions;
+	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (err != NoError) msg_rep("GetElemState", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
+	if (err == NoError) {
+		return GetElemState(elemGuid, definitions, property_flag_name);
+	}
+	return false;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
+//--------------------------------------------------------------------------------------------------------------------------
+bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name) {
+	if (definitions.IsEmpty()) return false;
+	GSErrCode	err = NoError;
+	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+		if (!definitions[i].description.IsEmpty()) {
+			if (definitions[i].description.Contains(property_flag_name)) {
+				API_Property propertyflag = {};
+				err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
+				if (err != NoError) msg_rep("GetElemState", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
+				if (err == NoError) {
+					if (propertyflag.isDefault) {
+						return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+					}
+					else
+					{
+						return propertyflag.value.singleVariant.variant.boolValue;
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid
 // -----------------------------------------------------------------------------
@@ -656,6 +697,142 @@ bool	GetElementTypeString(API_ElemType elemType, char* elemStr)
 	return false;
 }
 #endif // !AC_26
+
+
+// --------------------------------------------------------------------
+// Поиск связанных элементов
+// --------------------------------------------------------------------
+void GetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&subelemGuid) {
+	SyncSettings syncSettings(false, false, true, true, true, true, false);
+	LoadSyncSettingsFromPreferences(syncSettings);
+	GetRelationsElement(elemGuid, syncSettings, subelemGuid);
+}
+
+// --------------------------------------------------------------------
+// Поиск связанных элементов
+// --------------------------------------------------------------------
+void GetRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid) {
+	API_ElemTypeID elementType;
+	if (GetTypeByGUID(elemGuid, elementType) != NoError) return;
+	GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuid);
+}
+
+// --------------------------------------------------------------------
+// Поиск связанных элементов
+// --------------------------------------------------------------------
+void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid) {
+	GSErrCode	err = NoError;
+	API_RoomRelation	relData;
+	GS::Array<API_ElemTypeID> typeinzone;
+	switch (elementType) {
+	case API_RailingID:
+		if (syncSettings.cwallS) {
+			err = GetRElementsForRailing(elemGuid, subelemGuid);
+		}
+		break;
+	case API_CurtainWallID:
+		if (syncSettings.cwallS) {
+			err = GetCWElementsForCWall(elemGuid, subelemGuid);
+		}
+		break;
+	case API_CurtainWallSegmentID:
+	case API_CurtainWallFrameID:
+	case API_CurtainWallJunctionID:
+	case API_CurtainWallAccessoryID:
+	case API_CurtainWallPanelID:
+		if (syncSettings.cwallS) {
+			API_CWPanelRelation crelData;
+			err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &crelData);
+			if (err != NoError) {
+				if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
+				if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
+			}
+		}
+		break;
+	case API_DoorID:
+		if (syncSettings.widoS) {
+			API_DoorRelation drelData;
+			err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &drelData);
+			if (err != NoError) {
+				if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
+				if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
+			}
+		}
+		break;
+	case API_WindowID:
+		if (syncSettings.widoS) {
+			API_WindowRelation wrelData;
+			err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &wrelData);
+			if (err != NoError) {
+				if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
+				if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
+			}
+		}
+		break;
+	case API_ZoneID:
+		if (syncSettings.objS) {
+			err = ACAPI_Element_GetRelations(elemGuid, API_ZombieElemID, &relData);
+			if (err != NoError) {
+				typeinzone.Push(API_ObjectID);
+				typeinzone.Push(API_LampID);
+				typeinzone.Push(API_StairID);
+				typeinzone.Push(API_RiserID);
+				typeinzone.Push(API_TreadID);
+				typeinzone.Push(API_StairStructureID);
+				if (syncSettings.wallS) {
+					typeinzone.Push(API_WallID);
+					typeinzone.Push(API_SlabID);
+					typeinzone.Push(API_ColumnID);
+					typeinzone.Push(API_BeamID);
+					typeinzone.Push(API_RoofID);
+					typeinzone.Push(API_ShellID);
+					typeinzone.Push(API_MorphID);
+				}
+				if (syncSettings.widoS) {
+					typeinzone.Push(API_WindowID);
+					typeinzone.Push(API_DoorID);
+				}
+				if (syncSettings.cwallS) {
+					//typeinzone.Push(API_RailingID);
+					//typeinzone.Push(API_RailingToprailID);
+					//typeinzone.Push(API_RailingHandrailID);
+					//typeinzone.Push(API_RailingRailID);
+					//typeinzone.Push(API_RailingPostID);
+					//typeinzone.Push(API_RailingInnerPostID);
+					//typeinzone.Push(API_RailingBalusterID);
+					//typeinzone.Push(API_RailingPanelID);
+					//typeinzone.Push(API_RailingSegmentID);
+					//typeinzone.Push(API_RailingToprailEndID);
+					//typeinzone.Push(API_RailingHandrailEndID);
+					//typeinzone.Push(API_RailingRailEndID);
+					//typeinzone.Push(API_RailingToprailConnectionID);
+					//typeinzone.Push(API_RailingHandrailConnectionID);
+					//typeinzone.Push(API_RailingRailConnectionID);
+					//typeinzone.Push(API_RailingNodeID);
+					typeinzone.Push(API_CurtainWallID);
+					typeinzone.Push(API_CurtainWallFrameID);
+					typeinzone.Push(API_CurtainWallPanelID);
+					typeinzone.Push(API_CurtainWallJunctionID);
+					typeinzone.Push(API_CurtainWallAccessoryID);
+					typeinzone.Push(API_CurtainWallSegmentID);
+				}
+				typeinzone.Push(API_SkylightID);
+				for (const API_ElemTypeID& typeelem : typeinzone) {
+					if (relData.elementsGroupedByType.ContainsKey(typeelem)) {
+						for (const API_Guid& elGuid : relData.elementsGroupedByType[typeelem]) {
+							subelemGuid.Push(elGuid);
+						}
+					}
+				}
+			}
+		}
+		break;
+	default:
+		break;
+	}
+	ACAPI_DisposeRoomRelationHdls(&relData);
+}
+
 
 // -----------------------------------------------------------------------------
 // Запись в свойство строки
@@ -991,6 +1168,43 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 		}
 	}
 	return n;
+}
+
+void ReadParamDict(const API_Guid& elemGuid, ParamDictValue& params) {
+	GS::Array<API_PropertyDefinition> definitions;
+	GSErrCode	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (err != NoError) msg_rep("ReadParamDict", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
+	if (err == NoError) ReadParamDict(elemGuid, definitions, params);
+}
+
+// --------------------------------------------------------------------
+// Заполнение словаря с параметрами
+// --------------------------------------------------------------------
+void ReadParamDict(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params) {
+	// Раскидаем по массивам - что где искать
+	ParamDictValue paramByType;
+	GS::Array<GS::UniString> paramTypesList;
+	GetParamTypeList(paramTypesList);
+	for (UInt32 i = 0; i < paramTypesList.GetSize(); i++) {
+		paramTypesList.Add(paramTypesList[i]
+	}
+	// TODO Продолжить тут
+
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
+		if (!fromProperty) fromProperty = param.fromProperty;
+		if (!fromMorph) fromMorph = param.fromMorph;
+		if (!fromInfo) fromInfo = param.fromInfo;
+		if (!fromIFCProperty) fromGDLparam = param.fromIFCProperty;
+		if (!fromCoord) fromCoord = param.fromCoord;
+		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
+		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
+		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
+		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
+		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
+		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
+	}
 }
 
 // --------------------------------------------------------------------
@@ -1738,7 +1952,6 @@ bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
 	double param_real = 0.0;
 	bool param_bool = false;
 	pvalue.canCalculate = false;
-
 	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
 	if (nthParameter.typeID == APIParT_CString) {
 		param_string = nthParameter.value.uStr;
@@ -1825,7 +2038,9 @@ bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
 			}
 		}
 	}
-	pvalue.name = "{" + GS::UniString(nthParameter.name) + "}";
+	pvalue.rawName = "{GDL:" + GS::UniString(nthParameter.name) + "}";
+	pvalue.name = nthParameter.name;
+	pvalue.fromGDLparam = true;
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
 	pvalue.intValue = param_int;
@@ -1840,7 +2055,9 @@ bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
 bool ConvParamValue(ParamValue & pvalue, const API_Property & property) {
 	GS::UniString fname;
 	GetPropertyFullName(property.definition, fname);
-	pvalue.name = "{Property:" + fname + "}";
+	pvalue.rawName = "{Property:" + fname + "}";
+	pvalue.fromProperty = true;
+	pvalue.name = fname;
 	pvalue.uniStringValue = PropertyTestHelpers::ToString(property);
 	pvalue.boolValue = false;
 	pvalue.intValue = 0;
@@ -1886,6 +2103,19 @@ bool ConvParamValue(ParamValue & pvalue, const API_Property & property) {
 		break;
 	}
 	pvalue.canCalculate = true;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация определения свойства в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition) {
+	GS::UniString fname;
+	GetPropertyFullName(definition, fname);
+	pvalue.rawName = "{Property:" + fname + "}";
+	pvalue.name = fname;
+	pvalue.fromPropertyDefinition = true;
+	pvalue.definition = definition;
 	return true;
 }
 
@@ -2058,6 +2288,17 @@ bool EvalExpression(GS::UniString & unistring_expression) {
 		unistring_expression.ReplaceAll("<" + part + ">", rezult_txt);
 	}
 	return (!unistring_expression.IsEmpty());
+}
+
+void GetParamTypeList(GS::Array<GS::UniString>& paramTypesList) {
+	if (!paramTypesList.IsEmpty()) paramTypesList.Clear();
+	paramTypesList.Push("symb_pos_");
+	paramTypesList.Push("GDL");
+	paramTypesList.Push("Property");
+	paramTypesList.Push("Material");
+	paramTypesList.Push("Info");
+	paramTypesList.Push("IFC");
+	paramTypesList.Push("Morph");
 }
 
 // -----------------------------------------------------------------------------

@@ -80,7 +80,7 @@ void SyncElement(const API_Guid & objectId, const SyncSettings & syncSettings) {
 	GSErrCode		err = NoError;
 	if (err == NoError) {
 		SyncData(objectId, syncSettings);
-		SyncRelationsElement(objectId, syncSettings);
+		//SyncRelationsElement(objectId, syncSettings);
 	}
 }
 
@@ -105,25 +105,25 @@ void SyncRelationsElement(const API_Guid & elemGuid, const SyncSettings & syncSe
 	err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) { return; }
 	switch (elementType) {
-	case API_WindowID:
-	case API_DoorID:
-		if (syncSettings.objS) flag_sync = true;
-		break;
-	case API_CurtainWallSegmentID:
-	case API_CurtainWallFrameID:
-	case API_CurtainWallJunctionID:
-	case API_CurtainWallAccessoryID:
-	case API_CurtainWallPanelID:
-	case API_CurtainWallID:
-		if (syncSettings.cwallS) flag_sync = true;
-		break;
-	default:
-		if (syncSettings.wallS) flag_sync = true;
-		break;
+		case API_WindowID:
+		case API_DoorID:
+			if (syncSettings.widoS) flag_sync = true;
+			break;
+		case API_CurtainWallSegmentID:
+		case API_CurtainWallFrameID:
+		case API_CurtainWallJunctionID:
+		case API_CurtainWallAccessoryID:
+		case API_CurtainWallPanelID:
+		case API_CurtainWallID:
+			if (syncSettings.cwallS) flag_sync = true;
+			break;
+		default:
+			if (syncSettings.wallS) flag_sync = true;
+			break;
 	}
 	if (flag_sync) {
 		GS::Array<API_Guid> subelemGuid;
-		SyncGetRelationsElement(elemGuid, subelemGuid);
+		GetRelationsElement(elemGuid, subelemGuid);
 		if (subelemGuid.GetSize() > 0) {
 			for (UInt32 i = 0; i < subelemGuid.GetSize(); ++i) {
 				SyncData(subelemGuid[i], syncSettings);
@@ -132,112 +132,6 @@ void SyncRelationsElement(const API_Guid & elemGuid, const SyncSettings & syncSe
 	}
 }
 
-// --------------------------------------------------------------------
-// Поиск связанных элементов
-// --------------------------------------------------------------------
-void SyncGetRelationsElement(const API_Guid & elemGuid, GS::Array<API_Guid>&subelemGuid) {
-	GSErrCode	err = NoError;
-	API_ElemTypeID elementType;
-	API_RoomRelation	relData;
-	GS::Array<API_ElemTypeID> typeinzone;
-	err = GetTypeByGUID(elemGuid, elementType);
-	if (err != NoError) { 
-		ACAPI_DisposeRoomRelationHdls(&relData);
-		return;
-	}
-	switch (elementType) {
-	case API_RailingID:
-		err = GetRElementsForRailing(elemGuid, subelemGuid);
-		break;
-	case API_CurtainWallID:
-		err = GetCWElementsForCWall(elemGuid, subelemGuid);
-		break;
-	case API_CurtainWallSegmentID:
-	case API_CurtainWallFrameID:
-	case API_CurtainWallJunctionID:
-	case API_CurtainWallAccessoryID:
-	case API_CurtainWallPanelID:
-		API_CWPanelRelation crelData;
-		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &crelData);
-		if (err != NoError) {
-			if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
-			if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
-		}
-		break;
-	case API_DoorID:
-		API_DoorRelation drelData;
-		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &drelData);
-		if (err != NoError) {
-			if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
-			if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
-		}
-		break;
-	case API_WindowID:
-		API_WindowRelation wrelData;
-		err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &wrelData);
-		if (err != NoError) {
-			if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
-			if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
-		}
-		break;
-	case API_ZoneID:
-		err = ACAPI_Element_GetRelations(elemGuid, API_ZombieElemID, &relData);
-		if (err != NoError) {
-			typeinzone.Push(API_WallID);
-			typeinzone.Push(API_SlabID);
-			typeinzone.Push(API_ColumnID);
-			typeinzone.Push(API_BeamID);
-			typeinzone.Push(API_RoofID);
-			typeinzone.Push(API_ShellID);
-			typeinzone.Push(API_MorphID);
-
-			typeinzone.Push(API_WindowID);
-			typeinzone.Push(API_DoorID);
-
-			typeinzone.Push(API_ObjectID);
-			typeinzone.Push(API_LampID);
-			typeinzone.Push(API_StairID);
-			typeinzone.Push(API_RiserID);
-			typeinzone.Push(API_TreadID);
-			typeinzone.Push(API_StairStructureID);
-			typeinzone.Push(API_RailingID);
-			typeinzone.Push(API_RailingToprailID);
-			typeinzone.Push(API_RailingHandrailID);
-			typeinzone.Push(API_RailingRailID);
-			typeinzone.Push(API_RailingPostID);
-			typeinzone.Push(API_RailingInnerPostID);
-			typeinzone.Push(API_RailingBalusterID);
-			typeinzone.Push(API_RailingPanelID);
-			typeinzone.Push(API_RailingSegmentID);
-			typeinzone.Push(API_RailingToprailEndID);
-			typeinzone.Push(API_RailingHandrailEndID);
-			typeinzone.Push(API_RailingRailEndID);
-			typeinzone.Push(API_RailingToprailConnectionID);
-			typeinzone.Push(API_RailingHandrailConnectionID);
-			typeinzone.Push(API_RailingRailConnectionID);
-			typeinzone.Push(API_RailingNodeID);
-
-			typeinzone.Push(API_CurtainWallID);
-			typeinzone.Push(API_CurtainWallFrameID);
-			typeinzone.Push(API_CurtainWallPanelID);
-			typeinzone.Push(API_CurtainWallJunctionID);
-			typeinzone.Push(API_CurtainWallAccessoryID);
-			typeinzone.Push(API_CurtainWallSegmentID);
-			typeinzone.Push(API_SkylightID);
-			for (const API_ElemTypeID& typeelem : typeinzone) {
-				if (relData.elementsGroupedByType.ContainsKey(typeelem)) {
-					for (const API_Guid& elGuid : relData.elementsGroupedByType[typeelem]) {
-						subelemGuid.Push(elGuid);
-					}
-				}
-			}
-		}
-		break;
-	default:
-		break;
-	}
-	ACAPI_DisposeRoomRelationHdls(&relData);
-}
 
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
@@ -267,30 +161,97 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 	if (err != NoError) msg_rep("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
 	if (err == NoError) {
 		// Синхронизация данных
-		if (SyncState(elemGuid, definitions, "Sync_flag")) { // Проверяем - не отключена ли синхронизация у данного объекта
-			WriteDict syncRules;
-			ParamDictElement paramToRead;
+		if (GetElemState(elemGuid, definitions, "Sync_flag")) { // Проверяем - не отключена ли синхронизация у данного объекта
+			GS::Array <WriteData> mainsyncRules;
+			WriteDict syncRules; // Словарь с правилами для каждого элемента
+			ParamDictElement paramToRead; // Словарь с параметрами для чтения
+			bool hasSub = false;
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 				// Получаем список правил синхронизации из всех свойств
-				ParseSyncString(elemGuid, definitions[i], syncRules, paramToRead); // Парсим описание свойства
+				ParseSyncString(elemGuid, definitions[i], mainsyncRules, hasSub); // Парсим описание свойства
 			}
-			int hh = 1;
+			GS::Array<API_Guid> subelemGuids;
+			GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuids);
+			if (hasSub) {
+				// Добавим правила для субэлементов
+				if (!subelemGuids.IsEmpty()) {
+					for (UInt32 i = 0; i < mainsyncRules.GetSize(); i++) {
+						if (!mainsyncRules[i].fromSub && !mainsyncRules[i].toSub) {
+							WriteData writeSub = mainsyncRules.Get(i);
+							SyncAddRule(writeSub, syncRules, paramToRead);
+						}
+						if (mainsyncRules[i].fromSub) {
+							for (UInt32 j = 0; j < subelemGuids.GetSize(); j++){
+								WriteData writeSub = mainsyncRules.Get(i);
+								API_Guid subelemGuid = subelemGuids.Get(j);
+								writeSub.fromSub = false;
+								writeSub.guidFrom = subelemGuid;
+								writeSub.paramFrom.fromGuid = subelemGuid;
+								SyncAddRule(writeSub, syncRules, paramToRead);
+							}
+						}
+						if (mainsyncRules[i].toSub) {
+							for (UInt32 j = 0; j < subelemGuids.GetSize(); j++) {
+								WriteData writeSub = mainsyncRules.Get(i);
+								API_Guid subelemGuid = subelemGuids.Get(j);
+								writeSub.toSub = false;
+								writeSub.guidTo = subelemGuid;
+								writeSub.paramTo.fromGuid = subelemGuid;
+								SyncAddRule(writeSub, syncRules, paramToRead);
+							}
+						}
+					}
+				}
+				else {
+					// Субэлементы не найдены
+					syncRules.Add(elemGuid, mainsyncRules);
+				}
+				mainsyncRules.Clear();
+				subelemGuids.Push(elemGuid); // Это теперь список всех элементов для синхронизации
+				// Выбираем по-элементно параметры для чтения и записи, формируем словарь
+				for (UInt32 i = 0; i < subelemGuids.GetSize(); i++) {
+					API_Guid elemGuid = subelemGuids[i];
+					ParamDictValue params = paramToRead.Get(elemGuid);
+					ReadParamDict(elemGuid, definitions, params);
+				}
+			}
 		}
 	}
 }
 
 // --------------------------------------------------------------------
-// Синхронизация правил для одного свойства
+// Запись правила в словарь
 // --------------------------------------------------------------------
-GSErrCode SyncOneProperty(const API_Guid & elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition) {
-	GSErrCode	err = NoError;
-	GS::Array <SyncRule> syncRules;
-	//if (SyncString(definition, syncRules)) { // Парсим описание свойства
-	//	for (UInt32 i = 0; i < syncRules.GetSize(); i++) {
-	//		SyncOneRule(elemGuid, elementType, definition, syncRules[i]); // Если синхронизация успешная - выходим из цикла
-	//	}
-	//}
-	return err;
+void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictElement& paramToRead) {
+	API_Guid elemGuid = writeSub.guidTo;
+	if (syncRules.ContainsKey(elemGuid)) {
+		syncRules.Get(elemGuid).Push(writeSub);
+	}
+	else {
+		GS::Array <WriteData> rules;
+		rules.Push(writeSub);
+		syncRules.Add(elemGuid, rules);
+	}
+	SyncAddParam(writeSub.paramFrom, paramToRead);
+	SyncAddParam(writeSub.paramTo, paramToRead);
+}
+
+// --------------------------------------------------------------------
+// Запись параметра в словарь
+// --------------------------------------------------------------------
+void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead) {
+	API_Guid elemGuid = param.fromGuid;
+	GS::UniString rawName = param.rawName;
+	if (paramToRead.ContainsKey(elemGuid)) {
+		if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
+			paramToRead.Get(elemGuid).Add(rawName, param);
+		}
+	}
+	else {
+		ParamDictValue params;
+		params.Add(rawName, param);
+		paramToRead.Add(elemGuid, params);
+	}
 }
 
 // --------------------------------------------------------------------
@@ -313,7 +274,7 @@ bool SyncOneRule(const API_Guid & elemGuid, const API_ElemTypeID & elementType, 
 		elemGuid_to.Push(elemGuid);
 		break;
 	case SYNC_FROM_SUB:
-		SyncGetRelationsElement(elemGuid, elemGuid_from);
+		GetRelationsElement(elemGuid, elemGuid_from);
 		if (elemGuid_from.GetSize() > 0) {
 			for (UInt32 i = 0; i < elemGuid_from.GetSize(); i++) {
 				elemGuid_to.Push(elemGuid);
@@ -322,7 +283,7 @@ bool SyncOneRule(const API_Guid & elemGuid, const API_ElemTypeID & elementType, 
 		}
 		break;
 	case SYNC_TO_SUB:
-		SyncGetRelationsElement(elemGuid, elemGuid_to);
+		GetRelationsElement(elemGuid, elemGuid_to);
 		if (elemGuid_to.GetSize() > 0) {
 			for (UInt32 i = 0; i < elemGuid_to.GetSize(); i++) {
 				elemGuid_from.Push(elemGuid);
@@ -369,7 +330,7 @@ bool SyncOneRule(const API_Guid & elemGuid, const API_ElemTypeID & elementType, 
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, WriteDict& syncRules, ParamDictElement& paramToRead) {
+bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, bool& hasSub) {
 	GS::UniString description_string = definition.description;
 	if (description_string.IsEmpty()) {
 		return false;
@@ -381,143 +342,169 @@ bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& def
 	if (description_string.Contains("Sync_reset")) {
 		return false;
 	}
+	bool hasRule = false;
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
 		GS::Array<GS::UniString> rulestring;
 		UInt32 nrule = StringSplt(description_string, "Sync_", rulestring, "{"); // Проверяем количество правил
 		//Проходим по каждому правилу и извлекаем из него правило синхронизации (WriteDict syncRules) и словарь уникальных параметров для чтения/записи (ParamDictElement paramToRead)
 		for (UInt32 i = 0; i < nrule; i++) {
-			bool hg = SyncString(rulestring[i], syncRules, paramToRead);
-			int hh = 1;
+			ParamValue param;
+			int syncdirection = SYNC_NO; // Направление синхронизации
+			GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
+			GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
+			if (SyncString(rulestring[i], syncdirection, param, ignorevals)) {
+				hasRule = true;
+				ParamValue paramdef; //Свойство, из которого получено правило
+				ConvParamValue(paramdef, definition);
+				paramdef.fromGuid = elemGuid;
+				WriteData writeOne;
+				writeOne.ignorevals = ignorevals;
+				if (syncdirection == SYNC_TO || syncdirection == SYNC_TO_SUB) {
+					if (syncdirection == SYNC_TO_SUB) {
+						hasSub = true;
+						writeOne.toSub = true;
+					}
+					else {
+						writeOne.guidTo = elemGuid;
+						param.fromGuid = elemGuid;
+					}
+					writeOne.guidFrom = elemGuid;
+					writeOne.paramFrom = paramdef;
+					writeOne.paramTo = param;
+				}
+				if (syncdirection == SYNC_FROM || syncdirection == SYNC_FROM_SUB) {
+					if (syncdirection == SYNC_FROM_SUB) {
+						hasSub = true;
+						writeOne.fromSub = true;
+					}
+					else {
+						writeOne.guidFrom = elemGuid;
+						param.fromGuid = elemGuid;
+					}
+					writeOne.guidTo = elemGuid;
+					writeOne.paramTo = paramdef;
+					writeOne.paramFrom = param;
+				}
+				// Тип записи определим по месту, куда необходимо записать
+				writeOne.toProperty = writeOne.paramTo.fromPropertyDefinition || writeOne.paramTo.fromProperty || writeOne.paramTo.fromMaterial || writeOne.paramTo.fromMorph || writeOne.paramTo.fromCoord;
+				writeOne.toGDLparam = writeOne.paramTo.fromGDLparam;
+				writeOne.toInfo = writeOne.paramTo.fromInfo;
+				writeOne.toIFCProperty = writeOne.paramTo.fromIFCProperty;
+				syncRules.Push(writeOne);
+			}
 		}
 	}
-	return true;
+	return hasRule;
 }
-
-bool SyncString(GS::UniString rulestring_one, WriteDict& syncRules, ParamDictElement& paramToRead) {
-	int syncdirection = SYNC_NO; // Направление синхронизации
-	int synctype = SYNC_NO; // Тип синхронизации
-	GS::UniString templatestring = ""; //Строка шаблона для вытаскивания состава
-	GS::UniString paramName = ""; //Очищенное имя параметра/свойства
-	GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
-	GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
-	bool state = SyncString(rulestring_one, syncdirection, synctype, templatestring, paramName, ignorevals, rawparamName);
-
-}
-
 
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
-// Результат
-//	имя параметра (свойства)
-//	тип синхронизации (читаем из параметра GDL - 1, из свойства - 2, из состава конструкции - 3)
-//	направление синхронизации для работы с GDL (читаем из параметра - 1, записываем в параметр - 2)
 // -----------------------------------------------------------------------------
-bool SyncString(GS::UniString rulestring_one, int& syncdirection, int& synctype, GS::UniString& templatestring, GS::UniString& paramName, GS::Array<GS::UniString>& ignorevals, GS::UniString& rawparamName) {
+bool SyncString(GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString> ignorevals) {
 	syncdirection = SYNC_NO;
 	// Выбор направления синхронизации
 	// Копировать в субэлементы или из субэлементов
 	if (syncdirection == SYNC_NO && rulestring_one.Contains("to_sub{")) syncdirection = SYNC_TO_SUB;
-
 	if (syncdirection == SYNC_NO && rulestring_one.Contains("from_sub{")) syncdirection = SYNC_FROM_SUB;
 
 	// Копировать параметр в свойство или свойство в параметр
 	if (syncdirection == SYNC_NO && rulestring_one.Contains("from{")) syncdirection = SYNC_FROM;
 	if (syncdirection == SYNC_NO && rulestring_one.Contains("to{")) syncdirection = SYNC_TO; 
 
+	//Если направление синхронизации не нашли - выходим
+	if (syncdirection == SYNC_NO) return false;
+
 	GS::UniString paramNamePrefix = "";
+	//Выбор типа копируемого свойства
+	bool synctypefind = false;
 
-	if (syncdirection != SYNC_NO) {
-		//Выбор типа копируемого свойства
-		synctype = SYNC_NO;
-		if (synctype == SYNC_NO && rulestring_one.Contains("Property:")) {
-			synctype = SYNC_PROPERTY;
+	GS::Array<GS::UniString> paramTypesList;
+	GetParamTypeList(paramTypesList);
+	//Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать ненужного поиска по строке
+	if (synctypefind == false) {
+		if (!rulestring_one.Contains(":")) {
+			if (rulestring_one.Contains("symb_pos_")) {
+				param.fromCoord = true;
+				paramNamePrefix = "{Coord:";
+			} else{
+				paramNamePrefix = "{GDL:";
+				param.fromGDLparam = true;
+			}
+			synctypefind = true;
+		}
+	}
+	if (synctypefind == false) {
+		if (rulestring_one.Contains("Property:")) {
+			synctypefind = true;
 			rulestring_one.ReplaceAll("Property:", "");
-			paramNamePrefix = "Property:";
+			paramNamePrefix = "{Property:";
+			param.fromProperty = true;
 		}
-		if (synctype == SYNC_NO && rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
-			synctype = SYNC_MATERIAL;
+	}
+	if (synctypefind == false) {
+		if (rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
+			//TODO Проверить на файле из видео обработку материалов
+			synctypefind = true;
 			rulestring_one.ReplaceAll("Material:", "");
-			paramNamePrefix = "Material:";
-		}
-		if (synctype == SYNC_NO && rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
-			synctype = SYNC_INFO;
-			rulestring_one.ReplaceAll("Info:", "");
-			paramNamePrefix = "Info:";
-		}
-		if (synctype == SYNC_NO && rulestring_one.Contains("IFC:")) {
-			synctype = SYNC_IFC;
-			rulestring_one.ReplaceAll("IFC:", "");
-			paramNamePrefix = "IFC:";
-		}
-		if (synctype == SYNC_NO && rulestring_one.Contains("Morph:")) {
-			synctype = SYNC_MORPH;
-			rulestring_one.ReplaceAll("Morph:", "");
-			paramNamePrefix = "Morph:";
-		}
-		if (synctype == SYNC_NO && !rulestring_one.Contains(":")) {
-			synctype = SYNC_GDL;
-			paramNamePrefix = "GDL:";
-		}
-	}
-	if (synctype != SYNC_NO) {
-		GS::UniString tparamName = rulestring_one.GetSubstring('{', '}', 0);
-		// Для материалов вытащим строку с шаблоном, чтоб ненароком не разбить её
-		if (synctype == SYNC_MATERIAL) {
+			paramNamePrefix = "{Material:";
 			GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
-			templatestring = templatestring;
+			param.uniStringValue = templatestring;
 			rulestring_one.ReplaceAll(templatestring, "");
-		}
-		UInt32 nparam = 0;
-		GS::Array<GS::UniString> params;
-		nparam = StringSplt(tparamName, ";", params);
-		if (nparam == 0) synctype = SYNC_NO;
-		if (nparam > 0) {
-			rawparamName = paramNamePrefix + params[0];
-			paramName = params[0];
-		}
-		if (nparam > 1) {
-			for (UInt32 j = 1; j < nparam; j++) {
-				GS::UniString ignoreval;
-				if (params[j].Contains('"')) {
-					ignoreval = params[j].GetSubstring('"', '"', 0);
-				}
-				else {
-					ignoreval = params[j];
-				}
-				ignorevals.Push(ignoreval);
-			}
+			param.fromMaterial = true;
 		}
 	}
-	if (syncdirection == SYNC_NO || synctype == SYNC_NO){
-		return false;
+	if (synctypefind == false) {
+		if (rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
+			synctypefind = true;
+			rulestring_one.ReplaceAll("Info:", "");
+			paramNamePrefix = "{Info:";
+			param.fromInfo = true;
+		}
 	}
-	else {
-		return true;
+	if (synctypefind == false) {
+		if (rulestring_one.Contains("IFC:")) {
+			synctypefind = true;
+			rulestring_one.ReplaceAll("IFC:", "");
+			paramNamePrefix = "{IFC:";
+			param.fromIFCProperty = true;
+		}
 	}
-}
+	if (synctypefind == false) {
+		if (rulestring_one.Contains("Morph:")) {
+			synctypefind = true;
+			rulestring_one.ReplaceAll("{Morph:", "");
+			paramNamePrefix = "Morph:";
+			param.fromMorph = true;
+		}
+	}
 
-//--------------------------------------------------------------------------------------------------------------------------
-//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
-//--------------------------------------------------------------------------------------------------------------------------
-bool SyncState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name) {
-	GSErrCode	err = NoError;
-	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-		if (definitions[i].description.Contains(property_flag_name)) {
-			API_Property propertyflag = {};
-			err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
-			if (err != NoError) msg_rep("SyncState", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
-			if (err == NoError) {
-				if (propertyflag.isDefault) {
-					return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
-				}
-				else
-				{
-					return propertyflag.value.singleVariant.variant.boolValue;
-				}
+	//Если тип свойства не нашли - выходим
+	if (synctypefind == false) return false;
+
+	GS::UniString tparamName = rulestring_one.GetSubstring('{', '}', 0);
+	UInt32 nparam = 0;
+	GS::Array<GS::UniString> params;
+	nparam = StringSplt(tparamName, ";", params);
+
+	// Параметры не найдены - выходим
+	if (nparam == 0) return false;
+
+	param.rawName = paramNamePrefix + params[0] + "}";
+	param.name = params[0];
+
+	if (nparam > 1) {
+		for (UInt32 j = 1; j < nparam; j++) {
+			GS::UniString ignoreval;
+			if (params[j].Contains('"')) {
+				ignoreval = params[j].GetSubstring('"', '"', 0);
 			}
+			else {
+				ignoreval = params[j];
+			}
+			ignorevals.Push(ignoreval);
 		}
 	}
-	return false;
+	return true;
 }
 
 

@@ -82,8 +82,6 @@ typedef struct {
 	GS::Array <UInt32>	inx;
 } SortInx;
 
-
-
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
 // name - имя для поиска
@@ -91,7 +89,8 @@ typedef struct {
 // canCalculate - можно ли использовать в математических вычислениях
 typedef struct {
 	API_VariantType type;
-	GS::UniString name = "";
+	GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
+	GS::UniString name = ""; //Очищенное имя для поиска
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
 	bool boolValue = false;
@@ -104,11 +103,13 @@ typedef struct {
 	bool fromMorph = false; // Найден свойствах морфа
 	bool fromInfo = false; // Найден в инфо о проекте
 	bool fromIFCProperty = false;
+	bool fromCoord = false; //Координаты
+	bool fromPropertyDefinition = false; //Задан определением, искать не нужно
 	bool fromMaterial = false; // Взять инфо из состава конструкции
 	API_Guid fromGuid; //Откуда прочитать
 } ParamValue;
 
-// Словарь с заранее вычисленными данными для калькулятора
+// Словарь с заранее вычисленными данными в пределах обного элемента
 typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
 
 // Словарь с параметрами для вычисления
@@ -117,26 +118,6 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
-
-typedef struct {
-	API_Guid fromGuid;
-	API_Guid toGuid;
-	ParamValue fromParam;
-	ParamValue toParam;
-	bool needUpdate = false;
-	GS::Array<GS::UniString> ignorevals;
-	// Тут храним способ, куда нужно передать значение
-	bool toGDLparam = false;
-	bool toProperty = false;
-	bool toMorph = false;
-	bool toInfo = false;
-	bool toIFCProperty = false;
-	bool toSub = false;
-	bool fromSub = false;
-} WriteData;
-
-// Словарь с параметрами для записи
-typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
 
 bool is_equal(double x, double y);
 
@@ -164,6 +145,8 @@ GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API
 
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
+void ReadParamDict(const API_Guid& elemGuid, ParamDictValue& params);
+void ReadParamDict(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params);
 GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
 GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids);
 bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& params, Int32& inx);
@@ -183,6 +166,7 @@ bool GetPropertyParam(const API_Guid& elemGuid, const GS::UniString& paramName, 
 
 bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter);
 bool ConvParamValue(ParamValue& pvalue, const API_Property& property);
+bool ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition);
 bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue);
 bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue);
 
@@ -197,7 +181,13 @@ bool GetParamValueDict(const API_Guid& elemGuid, const ParamDict& paramDict, Par
 bool ReplaceParamInExpression(const ParamDictValue& pdictvalue, GS::UniString& expression);
 bool EvalExpression(GS::UniString& unistring_expression);
 
+void GetParamTypeList(GS::Array<GS::UniString>& paramTypesList);
+
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = true, bool onlyEditable = true);
+
+bool GetElemState(const API_Guid& elemGuid, GS::UniString property_flag_name);
+bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
+
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
 void CallOnSelectedElemSettings(void(*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel, bool onlyEditable, const SyncSettings& syncSettings);
 #ifndef AC_26
@@ -214,6 +204,9 @@ bool GetElementTypeString(API_ElemType elemType, char* elemStr);
 #else
 bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 #endif
+void GetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+void GetRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid);
+void GetRelationsElement(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid);
 void MenuItemCheckAC(short itemInd, bool checked);
 GSErrCode GetMorphParam(const API_Guid& elemGuid, ParamDictValue& pdictvalue);
 GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_Property& property);
