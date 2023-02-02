@@ -145,8 +145,8 @@ GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API
 
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
-void ReadParamDict(const API_Guid& elemGuid, ParamDictValue& params);
-void ReadParamDict(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params);
+void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params);
+void ParamDictRead(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params);
 GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
 GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids);
 bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& params, Int32& inx);
@@ -197,6 +197,7 @@ bool MenuInvertItemMark(short menuResID, short itemIndex);
 GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_IFCProperty& property);
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
+void ParamDictPropertyDefinitionByName(ParamDictValue& propertyParams);
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 #ifdef AC_26

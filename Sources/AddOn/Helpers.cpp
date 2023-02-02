@@ -612,47 +612,6 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 	}
 }
 
-//--------------------------------------------------------------------------------------------------------------------------
-//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
-//--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState(const API_Guid& elemGuid, GS::UniString property_flag_name) {
-	GSErrCode	err = NoError;
-	GS::Array<API_PropertyDefinition> definitions;
-	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
-	if (err != NoError) msg_rep("GetElemState", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
-	if (err == NoError) {
-		return GetElemState(elemGuid, definitions, property_flag_name);
-	}
-	return false;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------
-//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
-//--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name) {
-	if (definitions.IsEmpty()) return false;
-	GSErrCode	err = NoError;
-	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-		if (!definitions[i].description.IsEmpty()) {
-			if (definitions[i].description.Contains(property_flag_name)) {
-				API_Property propertyflag = {};
-				err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
-				if (err != NoError) msg_rep("GetElemState", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
-				if (err == NoError) {
-					if (propertyflag.isDefault) {
-						return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
-					}
-					else
-					{
-						return propertyflag.value.singleVariant.variant.boolValue;
-					}
-				}
-			}
-		}
-	}
-	return false;
-}
-
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid
 // -----------------------------------------------------------------------------
@@ -1170,43 +1129,6 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 	return n;
 }
 
-void ReadParamDict(const API_Guid& elemGuid, ParamDictValue& params) {
-	GS::Array<API_PropertyDefinition> definitions;
-	GSErrCode	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
-	if (err != NoError) msg_rep("ReadParamDict", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
-	if (err == NoError) ReadParamDict(elemGuid, definitions, params);
-}
-
-// --------------------------------------------------------------------
-// Заполнение словаря с параметрами
-// --------------------------------------------------------------------
-void ReadParamDict(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params) {
-	// Раскидаем по массивам - что где искать
-	ParamDictValue paramByType;
-	GS::Array<GS::UniString> paramTypesList;
-	GetParamTypeList(paramTypesList);
-	for (UInt32 i = 0; i < paramTypesList.GetSize(); i++) {
-		paramTypesList.Add(paramTypesList[i]
-	}
-	// TODO Продолжить тут
-
-	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
-		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
-		if (!fromProperty) fromProperty = param.fromProperty;
-		if (!fromMorph) fromMorph = param.fromMorph;
-		if (!fromInfo) fromInfo = param.fromInfo;
-		if (!fromIFCProperty) fromGDLparam = param.fromIFCProperty;
-		if (!fromCoord) fromCoord = param.fromCoord;
-		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
-		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
-		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
-		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
-		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
-		if (!fromGDLparam) fromGDLparam = param.fromGDLparam;
-	}
-}
-
 // --------------------------------------------------------------------
 // Получение списка GUID панелей, рам и аксессуаров навесной стены
 // --------------------------------------------------------------------
@@ -1343,6 +1265,54 @@ GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_Pro
 	return err;
 }
 
+GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_PropertyDefinition& definition) {
+	GSErrCode err = NoError;
+	GS::UniString propertyname = tpropertyname;
+	propertyname.ReplaceAll("\\/", "@@");
+	if (propertyname.Contains("/")) {
+		GS::Array<API_PropertyGroup> groups;
+		GS::Array<GS::UniString> partstring;
+		StringSplt(propertyname, "/", partstring);
+		GS::UniString gname = partstring[0].ToLowerCase();
+		GS::UniString pname = partstring[1].ToLowerCase();
+		gname.ReplaceAll("@@", "/");
+		pname.ReplaceAll("@@", "/");
+		err = ACAPI_Property_GetPropertyGroups(groups);
+		if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
+		if (err == NoError) {
+			for (UInt32 i = 0; i < groups.GetSize(); i++) {
+				if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
+					if (groups[i].name.ToLowerCase() == gname) {
+						GS::Array<API_PropertyDefinition> definitions;
+						err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
+						if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
+						if (err == NoError) {
+							for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+								if (definitions[j].name.ToLowerCase() == pname) {
+									definition = definitions.Get(j);
+									return err;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	GS::Array<API_PropertyDefinition> definitions;
+	err = ACAPI_Property_GetPropertyDefinitions(APINULLGuid, definitions);
+	if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions All" + propertyname, err, elemGuid);
+	if (err == NoError) {
+		for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+			if (definitions[j].name.ToLowerCase() == propertyname.ToLowerCase()) {
+				definition = definitions.Get(j);
+				return err;
+			}
+		}
+	}
+	return APIERR_MISSINGCODE;
+}
+
 // -----------------------------------------------------------------------------
 // Получение значения IFC свойства по имени свойства
 // -----------------------------------------------------------------------------
@@ -1395,65 +1365,6 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 		}
 	}
 	return APIERR_MISSINGCODE;
-}
-
-GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_PropertyDefinition& definition) {
-	GSErrCode err = NoError;
-	GS::UniString propertyname = tpropertyname;
-	propertyname.ReplaceAll("\\/", "@@");
-	if (propertyname.Contains("/")) {
-		GS::Array<API_PropertyGroup> groups;
-		GS::Array<GS::UniString> partstring;
-		StringSplt(propertyname, "/", partstring);
-		GS::UniString gname = partstring[0].ToLowerCase();
-		GS::UniString pname = partstring[1].ToLowerCase();
-		gname.ReplaceAll("@@", "/");
-		pname.ReplaceAll("@@", "/");
-		err = ACAPI_Property_GetPropertyGroups(groups);
-		if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyGroups " + propertyname, err, elemGuid);
-		if (err == NoError) {
-			for (UInt32 i = 0; i < groups.GetSize(); i++) {
-				if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
-					if (groups[i].name.ToLowerCase() == gname) {
-						GS::Array<API_PropertyDefinition> definitions;
-						err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
-						if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions " + propertyname, err, elemGuid);
-						if (err == NoError) {
-							for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-								if (definitions[j].name.ToLowerCase() == pname) {
-									definition = definitions.Get(j);
-									return err;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	GS::Array<API_PropertyDefinition> definitions;
-	err = ACAPI_Property_GetPropertyDefinitions(APINULLGuid, definitions);
-	if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions All" + propertyname, err, elemGuid);
-	if (err == NoError) {
-		for (UInt32 j = 0; j < definitions.GetSize(); j++) {
-			if (definitions[j].name.ToLowerCase() == propertyname.ToLowerCase()) {
-				definition = definitions.Get(j);
-				return err;
-			}
-		}
-	}
-	return APIERR_MISSINGCODE;
-}
-
-GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name)
-{
-	if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
-	API_PropertyGroup group;
-	group.guid = definision.groupGuid;
-	GSErrCode error = ACAPI_Property_GetPropertyGroup(group);
-	if (error == NoError)
-		name = group.name + "/" + definision.name;
-	return error;
 }
 
 GSErrCode GetVisiblePropertyDefinitions(const API_Guid& elemGuid, GS::Array<API_PropertyDefinition>& visibleProperties)
@@ -2038,7 +1949,7 @@ bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
 			}
 		}
 	}
-	pvalue.rawName = "{GDL:" + GS::UniString(nthParameter.name) + "}";
+	pvalue.rawName = "{GDL:" + GS::UniString(nthParameter.name).ToLowerCase() + "}";
 	pvalue.name = nthParameter.name;
 	pvalue.fromGDLparam = true;
 	pvalue.boolValue = param_bool;
@@ -2055,7 +1966,7 @@ bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
 bool ConvParamValue(ParamValue & pvalue, const API_Property & property) {
 	GS::UniString fname;
 	GetPropertyFullName(property.definition, fname);
-	pvalue.rawName = "{Property:" + fname + "}";
+	pvalue.rawName = "{Property:" + fname.ToLowerCase() + "}";
 	pvalue.fromProperty = true;
 	pvalue.name = fname;
 	pvalue.uniStringValue = PropertyTestHelpers::ToString(property);
@@ -2112,7 +2023,7 @@ bool ConvParamValue(ParamValue & pvalue, const API_Property & property) {
 bool ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition) {
 	GS::UniString fname;
 	GetPropertyFullName(definition, fname);
-	pvalue.rawName = "{Property:" + fname + "}";
+	pvalue.rawName = "{Property:" + fname.ToLowerCase() + "}";
 	pvalue.name = fname;
 	pvalue.fromPropertyDefinition = true;
 	pvalue.definition = definition;
@@ -2124,6 +2035,7 @@ bool ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition
 // -----------------------------------------------------------------------------
 bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const Int32 intValue) {
 	pvalue.name = paramName;
+	pvalue.rawName = "{GDL:" + paramName.ToLowerCase() + "}";
 	pvalue.type = API_PropertyIntegerValueType;
 	pvalue.canCalculate = true;
 	pvalue.intValue = intValue;
@@ -2138,6 +2050,7 @@ bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const 
 // -----------------------------------------------------------------------------
 bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const double doubleValue) {
 	pvalue.name = paramName;
+	pvalue.rawName = "{GDL:" + paramName.ToLowerCase() + "}";
 	pvalue.type = API_PropertyRealValueType;
 	pvalue.canCalculate = true;
 	pvalue.intValue = (GS::Int32)doubleValue;
@@ -2219,7 +2132,7 @@ bool GetParamNameDict(const GS::UniString & expression, ParamDict & paramDict) {
 	}
 	if (hasmorph) {
 		paramDict.Add("hasmorph", true);
-		paramDict.Add("Morph:L", true);
+		paramDict.Add("Morph:l", true);
 	}
 	return (paramDict.GetSize() > 0);
 }
@@ -2683,4 +2596,125 @@ void UnhideUnlockAllLayer(void)
 		}
 	}
 	return;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------------------------------
+//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
+//--------------------------------------------------------------------------------------------------------------------------
+bool GetElemState(const API_Guid& elemGuid, GS::UniString property_flag_name) {
+	GSErrCode	err = NoError;
+	GS::Array<API_PropertyDefinition> definitions;
+	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (err != NoError) msg_rep("GetElemState", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
+	if (err == NoError) {
+		return GetElemState(elemGuid, definitions, property_flag_name);
+	}
+	return false;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
+//--------------------------------------------------------------------------------------------------------------------------
+bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name) {
+	if (definitions.IsEmpty()) return false;
+	GSErrCode	err = NoError;
+	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+		if (!definitions[i].description.IsEmpty()) {
+			if (definitions[i].description.Contains(property_flag_name)) {
+				API_Property propertyflag = {};
+				err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
+				if (err != NoError) msg_rep("GetElemState", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
+				if (err == NoError) {
+					if (propertyflag.isDefault) {
+						return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+					}
+					else
+					{
+						return propertyflag.value.singleVariant.variant.boolValue;
+					}
+				}
+			}
+		}
+	}
+	return false;
+}
+
+
+// --------------------------------------------------------------------
+// Заполнение словаря с параметрами
+// --------------------------------------------------------------------
+void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params) {
+	GS::Array<API_PropertyDefinition> definitions;
+	GSErrCode	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (err != NoError) msg_rep("ParamDictRead", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
+	if (err == NoError) ParamDictRead(elemGuid, definitions, params);
+}
+
+// --------------------------------------------------------------------
+// Заполнение словаря с параметрами
+// --------------------------------------------------------------------
+void ParamDictRead(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params) {
+	// Раскидаем по массивам - что где искать
+	ParamDictValue paramByType;
+	GS::Array<GS::UniString> paramTypesList;
+	GetParamTypeList(paramTypesList);
+	// Для каждого типа - свой способ получения данных. Поэтому разбиваем по типам и обрабатываем по-отдельности
+	for (UInt32 i = 0; i < paramTypesList.GetSize(); i++) {
+		GS::UniString paramType = paramTypesList[i];
+		ParamDictValue paramByType;
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+			ParamValue& param = *cIt->value;
+			if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
+		}
+		if (!paramByType.IsEmpty()) {
+
+		}
+	}
+}
+
+void ParamDictPropertyDefinitionByName(ParamDictValue& propertyParams) {
+	GSErrCode err = NoError;
+	GS::Array<API_PropertyGroup> groups;
+	err = ACAPI_Property_GetPropertyGroups(groups);
+	if (err != NoError) {
+		msg_rep("ParamDictPropertyDefinitionByName", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
+		return;
+	}
+	// Созданим словарь с определением всех свойств
+	for (UInt32 i = 0; i < groups.GetSize(); i++) {
+		if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
+			GS::Array<API_PropertyDefinition> definitions;
+			err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
+			if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
+			if (err == NoError) {
+				for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+					GS::UniString rawName = "{Property:" + groups[i].name.ToLowerCase() + "/" + definitions[j].name.ToLowerCase() +"}";
+					if (!propertyParams.ContainsKey(rawName)) {
+						ParamValue pvalue;
+						pvalue.rawName = rawName;
+						pvalue.name = groups[i].name + "/" + definitions[j].name;
+						pvalue.fromPropertyDefinition = true;
+						pvalue.definition = definitions.Get(j);
+						propertyParams.Add(rawName, pvalue);
+					}
+				}
+			}
+		}
+	}
+	INT HH = 1;
+}
+
+GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name)
+{
+	if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
+	API_PropertyGroup group;
+	group.guid = definision.groupGuid;
+	GSErrCode error = ACAPI_Property_GetPropertyGroup(group);
+	if (error == NoError)
+		name = group.name + "/" + definision.name;
+	return error;
 }
