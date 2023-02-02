@@ -165,6 +165,7 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 			GS::Array <WriteData> mainsyncRules;
 			WriteDict syncRules; // Словарь с правилами для каждого элемента
 			ParamDictElement paramToRead; // Словарь с параметрами для чтения
+			ParamDictValue paramsPropery; // Определения свойств лучше собрать отдельно - их искать проще
 			bool hasSub = false;
 			for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 				// Получаем список правил синхронизации из всех свойств
@@ -172,6 +173,20 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 			}
 			GS::Array<API_Guid> subelemGuids;
 			GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuids);
+
+			ParamDictValue propertyParams;
+			ParamDictPropertyDefinitionByName(propertyParams);
+			// Сразу найдём все определения для свойств
+			for (UInt32 i = 0; i < mainsyncRules.GetSize(); i++) {
+				WriteData writeSub = mainsyncRules.Get(i);
+				if (!writeSub.paramFrom.fromPropertyDefinition && writeSub.paramFrom.fromProperty) {
+					if (!paramsPropery.ContainsKey(writeSub.paramFrom.rawName)) paramsPropery.Add(writeSub.paramFrom.rawName, writeSub.paramFrom);
+				}
+				if (!writeSub.paramTo.fromPropertyDefinition && writeSub.paramTo.fromProperty) {
+					if (!paramsPropery.ContainsKey(writeSub.paramTo.rawName)) paramsPropery.Add(writeSub.paramTo.rawName, writeSub.paramFrom);
+				}
+			}
+			bool hh = propertyParams.ContainsKey(mainsyncRules.Get(0).paramTo.rawName);
 			if (hasSub) {
 				// Добавим правила для субэлементов
 				if (!subelemGuids.IsEmpty()) {
@@ -212,7 +227,7 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 				for (UInt32 i = 0; i < subelemGuids.GetSize(); i++) {
 					API_Guid elemGuid = subelemGuids[i];
 					ParamDictValue params = paramToRead.Get(elemGuid);
-					ReadParamDict(elemGuid, definitions, params);
+					ParamDictRead(elemGuid, definitions, params);
 				}
 			}
 		}
@@ -425,7 +440,7 @@ bool SyncString(GS::UniString rulestring_one, int& syncdirection, ParamValue& pa
 		if (!rulestring_one.Contains(":")) {
 			if (rulestring_one.Contains("symb_pos_")) {
 				param.fromCoord = true;
-				paramNamePrefix = "{Coord:";
+				paramNamePrefix = "{symb_pos_:";
 			} else{
 				paramNamePrefix = "{GDL:";
 				param.fromGDLparam = true;
@@ -472,8 +487,8 @@ bool SyncString(GS::UniString rulestring_one, int& syncdirection, ParamValue& pa
 	if (synctypefind == false) {
 		if (rulestring_one.Contains("Morph:")) {
 			synctypefind = true;
-			rulestring_one.ReplaceAll("{Morph:", "");
-			paramNamePrefix = "Morph:";
+			rulestring_one.ReplaceAll("Morph:", "");
+			paramNamePrefix = "{Morph:";
 			param.fromMorph = true;
 		}
 	}
@@ -489,7 +504,7 @@ bool SyncString(GS::UniString rulestring_one, int& syncdirection, ParamValue& pa
 	// Параметры не найдены - выходим
 	if (nparam == 0) return false;
 
-	param.rawName = paramNamePrefix + params[0] + "}";
+	param.rawName = paramNamePrefix + params[0].ToLowerCase() + "}";
 	param.name = params[0];
 
 	if (nparam > 1) {
