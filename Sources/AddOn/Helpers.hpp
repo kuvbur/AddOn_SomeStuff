@@ -88,15 +88,19 @@ typedef struct {
 // uniStringValue, intValue, boolValue, doubleValue - значения
 // canCalculate - можно ли использовать в математических вычислениях
 typedef struct {
-	API_VariantType type;
+	API_VariantType type = API_PropertyUndefinedValueType;
 	GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
 	GS::UniString name = ""; //Очищенное имя для поиска
+	// Собственно значения
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
 	bool boolValue = false;
 	double doubleValue = 0.0;
-	bool canCalculate = false;
-	API_PropertyDefinition definition = {}; // Описание свойства, чтоб не искать
+	// -----------------
+	bool canCalculate = false; // Может быть использован в формулах
+	bool isValid = false; // Валидность (был считан без ошибок)
+	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
+	API_Property property = {}; // Само свойство, для упрощения чтения/записи
 	// Тут храним способ, которым нужно получить значение
 	bool fromGDLparam = false; // Найден в гдл параметрах
 	bool fromProperty = false; // Найден в свойствах
@@ -106,7 +110,7 @@ typedef struct {
 	bool fromCoord = false; //Координаты
 	bool fromPropertyDefinition = false; //Задан определением, искать не нужно
 	bool fromMaterial = false; // Взять инфо из состава конструкции
-	API_Guid fromGuid; //Откуда прочитать
+	API_Guid fromGuid = APINULLGuid; //Откуда прочитать
 } ParamValue;
 
 // Словарь с заранее вычисленными данными в пределах обного элемента
@@ -146,7 +150,6 @@ GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
 void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params);
-void ParamDictRead(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params);
 GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& panelSymbolGuids);
 GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids);
 bool FindGDLParametersByName(const GS::UniString& paramName, API_AddParType**& params, Int32& inx);
@@ -188,6 +191,14 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel = 
 bool GetElemState(const API_Guid& elemGuid, GS::UniString property_flag_name);
 bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
 
+void ParamDictElementWrite(ParamDictElement& paramToWrite);
+
+void ParamDictWrite(const API_Guid& elemGuid, ParamDictValue& params);
+
+void ParamDictSetPropertyValues(ParamDictValue& params);
+
+void ParamDictElementRead(ParamDictElement& paramToRead);
+
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel, bool onlyEditable);
 void CallOnSelectedElemSettings(void(*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel, bool onlyEditable, const SyncSettings& syncSettings);
 #ifndef AC_26
@@ -197,7 +208,10 @@ bool MenuInvertItemMark(short menuResID, short itemIndex);
 GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
 GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_IFCProperty& property);
 GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& propertyname, API_PropertyDefinition& definition);
-void ParamDictPropertyDefinitionByName(ParamDictValue& propertyParams);
+void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams);
+void ParamDictGetPropertyDefinition(ParamDictValue& params);
+void ParamDictCompare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo);
+void ParamDictGetPropertyValues(ParamDictValue& params);
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name);
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 #ifdef AC_26
@@ -229,6 +243,8 @@ namespace PropertyTestHelpers
 	GS::UniString ToString(const API_Property& property, const GS::UniString stringformat);
 	GS::UniString	ToString(const API_Property& property);
 }
+
+bool operator== (const ParamValue& lhs, const ParamValue& rhs);
 
 bool operator== (const API_Variant& lhs, const API_Variant& rhs);
 
