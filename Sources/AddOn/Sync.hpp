@@ -26,17 +26,11 @@ typedef struct {
 } SyncRule;
 
 typedef struct {
-	API_Guid guidTo;
-	API_Guid guidFrom;
+	API_Guid guidTo = APINULLGuid;
+	API_Guid guidFrom = APINULLGuid;
 	ParamValue paramFrom;
 	ParamValue paramTo;
-	bool needUpdate = false;
 	GS::Array<GS::UniString> ignorevals;
-	// “ут храним способ, куда нужно передать значение
-	bool toGDLparam = false;
-	bool toProperty = false;
-	bool toInfo = false;
-	bool toIFCProperty = false;
 	bool toSub = false;
 	bool fromSub = false;
 } WriteData;

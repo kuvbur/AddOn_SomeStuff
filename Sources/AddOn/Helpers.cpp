@@ -566,12 +566,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
-
-		//TODO Возможно, предварительный сбор имён свойств в хэш-таблицу ускорит работу
-		// Надо только прокинуть их в функцию и добававить функцию поиска по ним
-		//GetAllPropertyName(propname);
-		GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
-		msg_rep("Sync Selected", intString, NoError, APINULLGuid);
+		long time_start = clock();
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			function(guidArray[i], syncSettings);
@@ -579,6 +574,10 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 				return;
 			}
 		}
+		long time_end = clock();
+		GS::UniString time = GS::UniString::Printf(" %d ms", time_end - time_start);
+		GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
+		msg_rep("Sync Selected", intString + time, NoError, APINULLGuid);
 	}
 }
 
@@ -593,12 +592,7 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
-
-		//TODO Возможно, предварительный сбор имён свойств в хэш-таблицу ускорит работу
-		// Надо только прокинуть их в функцию и добававить функцию поиска по ним
-		//GetAllPropertyName(propname);
-		GS::UniString intString = GS::UniString::Printf(" %d", guidArray.GetSize());
-		msg_rep("Sync Selected", intString, NoError, APINULLGuid);
+		long time_start = clock();
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			function(guidArray[i]);
@@ -606,6 +600,10 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 				return;
 			}
 		}
+		long time_end = clock();
+		GS::UniString time = GS::UniString::Printf(" %d ms", time_end - time_start);
+		GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
+		msg_rep("Sync Selected", intString + time, NoError, APINULLGuid);
 	}
 	else if (!assertIfNoSel) {
 		function(APINULLGuid);
@@ -1854,213 +1852,6 @@ bool GetPropertyParam(const API_Guid & elemGuid, const GS::UniString & paramName
 	return ConvParamValue(pvalue, property);
 }
 
-// -----------------------------------------------------------------------------
-// Конвертация параметров библиотечного элемента в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
-	GS::UniString param_string = "";
-	GS::Int32 param_int = 0;
-	double param_real = 0.0;
-	bool param_bool = false;
-	pvalue.canCalculate = false;
-	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
-	if (nthParameter.typeID == APIParT_CString) {
-		param_string = nthParameter.value.uStr;
-		param_bool = (param_string.GetLength() > 0);
-		if (param_bool) {
-			param_int = 1;
-			param_real = 1.0;
-		}
-	}
-	else {
-		param_real = round(nthParameter.value.real * 1000) / 1000;
-		if (nthParameter.value.real - param_real > 0.001) param_real += 0.001;
-		param_int = (GS::Int32)param_real;
-		if (param_int / 1 < param_real) param_int += 1;
-	}
-	if (abs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
-
-	// Если параметр не строковое - определяем текстовое значение конвертацией
-	if (param_string.GetLength() == 0) {
-		API_AttrTypeID attrType = API_ZombieAttrID;
-		short attrInx = (short)param_int;
-		switch (nthParameter.typeID) {
-		case APIParT_Integer:
-			param_string = GS::UniString::Printf("%d", param_int);
-			pvalue.type = API_PropertyIntegerValueType;
-			break;
-		case APIParT_Boolean:
-			if (param_bool) {
-				param_string = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
-				param_int = 1;
-				param_real = 1.0;
-			}
-			else {
-				param_string = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
-				param_int = 0;
-				param_real = 0.0;
-			}
-			pvalue.type = API_PropertyBooleanValueType;
-			break;
-		case APIParT_Length:
-			param_string = GS::UniString::Printf("%.0f", param_real * 1000);
-			pvalue.type = API_PropertyRealValueType;
-			break;
-		case APIParT_Angle:
-			param_string = GS::UniString::Printf("%.1f", param_real);
-			pvalue.type = API_PropertyRealValueType;
-			break;
-		case APIParT_RealNum:
-			param_string = GS::UniString::Printf("%.3f", param_real);
-			pvalue.type = API_PropertyRealValueType;
-			break;
-
-			// Для реквезитов в текст выведем имена
-		case APIParT_Profile:
-			attrType = API_ProfileID;
-			break;
-		case APIParT_BuildingMaterial:
-			attrType = API_BuildingMaterialID;
-			break;
-		case APIParT_FillPat:
-			attrType = API_FilltypeID;
-			break;
-		case APIParT_Mater:
-			attrType = API_MaterialID;
-			break;
-		default:
-			return false;
-			break;
-		}
-		if (attrType != API_ZombieAttrID) {
-			API_Attribute	attrib = {};
-			attrib.header.typeID = attrType;
-			attrib.header.index = attrInx;
-			if (ACAPI_Attribute_Get(&attrib) == NoError) {
-				param_string = GS::UniString::Printf("%s", attrib.header.name);
-				pvalue.type = API_PropertyStringValueType;
-				if (param_bool) {
-					param_int = 1;
-					param_real = 1.0;
-				}
-			}
-			else {
-				return false;
-			}
-		}
-	}
-	pvalue.rawName = "{GDL:" + GS::UniString(nthParameter.name).ToLowerCase() + "}";
-	pvalue.name = nthParameter.name;
-	pvalue.fromGDLparam = true;
-	pvalue.boolValue = param_bool;
-	pvalue.doubleValue = param_real;
-	pvalue.intValue = param_int;
-	pvalue.uniStringValue = param_string;
-	pvalue.canCalculate = true;
-	return true;
-}
-
-// -----------------------------------------------------------------------------
-// Конвертация свойства в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue & pvalue, const API_Property & property) {
-	GS::UniString fname;
-	GetPropertyFullName(property.definition, fname);
-	pvalue.rawName = "{Property:" + fname.ToLowerCase() + "}";
-	pvalue.fromProperty = true;
-	pvalue.name = fname;
-	pvalue.uniStringValue = PropertyTestHelpers::ToString(property);
-	pvalue.boolValue = false;
-	pvalue.intValue = 0;
-	pvalue.doubleValue = 0.0;
-	pvalue.canCalculate = false;
-	switch (property.value.singleVariant.variant.type) {
-	case API_PropertyIntegerValueType:
-		pvalue.intValue = property.value.singleVariant.variant.intValue;
-		pvalue.doubleValue = property.value.singleVariant.variant.intValue * 1.0;
-		if (pvalue.intValue > 0) pvalue.boolValue = true;
-		pvalue.type = API_PropertyIntegerValueType;
-		break;
-	case API_PropertyRealValueType:
-		pvalue.doubleValue = round(property.value.singleVariant.variant.doubleValue * 1000) / 1000;
-		if (property.value.singleVariant.variant.doubleValue - pvalue.doubleValue > 0.001) pvalue.doubleValue += 0.001;
-		pvalue.intValue = (GS::Int32)pvalue.doubleValue;
-		if (pvalue.intValue / 1.0 < pvalue.doubleValue) pvalue.intValue += 1;
-		if (abs(pvalue.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.boolValue = true;
-		pvalue.type = API_PropertyRealValueType;
-		break;
-	case API_PropertyBooleanValueType:
-		pvalue.boolValue = property.value.singleVariant.variant.boolValue;
-		if (pvalue.boolValue) {
-			pvalue.intValue = 1;
-			pvalue.doubleValue = 1.0;
-		}
-		pvalue.type = API_PropertyBooleanValueType;
-		break;
-	case API_PropertyStringValueType:
-	case API_PropertyGuidValueType:
-		pvalue.type = API_PropertyStringValueType;
-		pvalue.boolValue = (pvalue.uniStringValue.GetLength() > 0);
-		if (pvalue.boolValue) {
-			pvalue.intValue = 1;
-			pvalue.doubleValue = 1.0;
-		}
-		break;
-	case API_PropertyUndefinedValueType:
-		return false;
-		break;
-	default:
-		return false;
-		break;
-	}
-	pvalue.canCalculate = true;
-	return true;
-}
-
-// -----------------------------------------------------------------------------
-// Конвертация определения свойства в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition) {
-	GS::UniString fname;
-	GetPropertyFullName(definition, fname);
-	pvalue.rawName = "{Property:" + fname.ToLowerCase() + "}";
-	pvalue.name = fname;
-	pvalue.fromPropertyDefinition = true;
-	pvalue.definition = definition;
-	return true;
-}
-
-// -----------------------------------------------------------------------------
-// Конвертация целого числа в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const Int32 intValue) {
-	pvalue.name = paramName;
-	pvalue.rawName = "{GDL:" + paramName.ToLowerCase() + "}";
-	pvalue.type = API_PropertyIntegerValueType;
-	pvalue.canCalculate = true;
-	pvalue.intValue = intValue;
-	pvalue.doubleValue = intValue * 1.0;
-	if (pvalue.intValue > 0) pvalue.boolValue = true;
-	pvalue.uniStringValue = GS::UniString::Printf("%d", intValue);
-	return true;
-}
-
-// -----------------------------------------------------------------------------
-// Конвертация double в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvParamValue(ParamValue & pvalue, const GS::UniString & paramName, const double doubleValue) {
-	pvalue.name = paramName;
-	pvalue.rawName = "{GDL:" + paramName.ToLowerCase() + "}";
-	pvalue.type = API_PropertyRealValueType;
-	pvalue.canCalculate = true;
-	pvalue.intValue = (GS::Int32)doubleValue;
-	pvalue.doubleValue = doubleValue;
-	pvalue.boolValue = false;
-	if (abs(pvalue.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.boolValue = true;
-	pvalue.uniStringValue = GS::UniString::Printf("%.3f", doubleValue);
-	return true;
-}
-
 // -----------------------------------------------------------------------------------------------------
 // Добавление в словарь ParamDictValue параметры с именем paramName и значением doubleValue
 // -----------------------------------------------------------------------------------------------------
@@ -2381,6 +2172,23 @@ GS::UniString PropertyTestHelpers::ToString(const API_Property & property, const
 	return string;
 }
 
+bool operator== (const ParamValue& lhs, const ParamValue& rhs)
+{
+	if (!lhs.isValid || !rhs.isValid) return false;
+	switch (lhs.type) {
+	case API_PropertyIntegerValueType:
+		return lhs.intValue == rhs.intValue;
+	case API_PropertyRealValueType:
+		return lhs.doubleValue == rhs.doubleValue;
+	case API_PropertyStringValueType:
+		return lhs.uniStringValue == rhs.uniStringValue;
+	case API_PropertyBooleanValueType:
+		return lhs.boolValue == rhs.boolValue;
+	default:
+		return false;
+	}
+}
+
 bool operator== (const API_Variant & lhs, const API_Variant & rhs)
 {
 	if (lhs.type != rhs.type) {
@@ -2643,25 +2451,30 @@ bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefiniti
 	return false;
 }
 
-
 // --------------------------------------------------------------------
-// Заполнение словаря с параметрами
+// Запись словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params) {
-	GS::Array<API_PropertyDefinition> definitions;
-	GSErrCode	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
-	if (err != NoError) msg_rep("ParamDictRead", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
-	if (err == NoError) ParamDictRead(elemGuid, definitions, params);
+void ParamDictElementWrite(ParamDictElement& paramToWrite) {
+	if (paramToWrite.IsEmpty()) return;
+	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamDictValue& params = *cIt->value;
+		API_Guid elemGuid = *cIt->key;
+		if (!params.IsEmpty()) {
+			ParamDictWrite(elemGuid, params);
+		}
+	}
 }
 
 // --------------------------------------------------------------------
-// Заполнение словаря с параметрами
+// Запись параметров в один элемент
 // --------------------------------------------------------------------
-void ParamDictRead(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, ParamDictValue& params) {
-	// Раскидаем по массивам - что где искать
+void ParamDictWrite(const API_Guid& elemGuid, ParamDictValue& params) {
+	if (params.IsEmpty()) return;
+	// Получаем список возможных префиксов
 	ParamDictValue paramByType;
 	GS::Array<GS::UniString> paramTypesList;
 	GetParamTypeList(paramTypesList);
+
 	// Для каждого типа - свой способ получения данных. Поэтому разбиваем по типам и обрабатываем по-отдельности
 	for (UInt32 i = 0; i < paramTypesList.GetSize(); i++) {
 		GS::UniString paramType = paramTypesList[i];
@@ -2671,22 +2484,107 @@ void ParamDictRead(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinit
 			if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
 		}
 		if (!paramByType.IsEmpty()) {
-
+			// Проходим поиском, специфичным для каждого типа
+			// TODO переписать без использования сравнения с текстом!
+			if (paramType.IsEqual("Property")) {
+				ParamDictSetPropertyValues(paramByType);
+			}
+			//if (paramType.IsEqual("symb_pos_")){}
+			//if (paramType.IsEqual("GDL")) {}
+			//if (paramType.IsEqual("Material")) {}
+			//if (paramType.IsEqual("Info")) {}
+			//if (paramType.IsEqual("IFC")) {}
+			//if (paramType.IsEqual("Morph")) {}
 		}
 	}
 }
 
-void ParamDictPropertyDefinitionByName(ParamDictValue& propertyParams) {
+void ParamDictSetPropertyValues(ParamDictValue& params) {
+	if (params.IsEmpty()) return;
+	GS::Array<API_PropertyDefinition> propertyDefinitions;
+	GS::Array<API_Property> properties;
+	API_Guid elemGuid = APINULLGuid;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (param.fromPropertyDefinition) {
+			propertyDefinitions.Push(param.definition);
+			if (elemGuid != APINULLGuid && elemGuid != param.fromGuid) msg_rep("Nonequal Guid", param.rawName, NoError, elemGuid);
+			elemGuid = param.fromGuid;
+		}
+	}
+}
+
+// --------------------------------------------------------------------
+// Заполнение словаря параметров для множества элементов
+// --------------------------------------------------------------------
+void ParamDictElementRead(ParamDictElement& paramToRead) {
+	if (paramToRead.IsEmpty()) return;
+	ParamDictValue propertyParams;
+	GetAllPropertyDefinitionToParamDict(propertyParams);
+	// Выбираем по-элементно параметры для чтения
+	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamDictValue& params = *cIt->value;
+		API_Guid elemGuid = *cIt->key;
+		if (!params.IsEmpty()) {
+			ParamDictCompare(propertyParams, params); // Сопоставляем свойства
+			ParamDictRead(elemGuid, params);
+		}
+	}
+}
+
+// --------------------------------------------------------------------
+// Заполнение словаря с параметрами
+// --------------------------------------------------------------------
+void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params) {
+	if (params.IsEmpty()) return;
+	// Получаем список возможных префиксов
+	ParamDictValue paramByType;
+	GS::Array<GS::UniString> paramTypesList;
+	GetParamTypeList(paramTypesList);
+
+	// Проверим - для всех ли свойств подобраны определения
+	ParamDictGetPropertyDefinition(params);
+
+	// Для каждого типа - свой способ получения данных. Поэтому разбиваем по типам и обрабатываем по-отдельности
+	for (UInt32 i = 0; i < paramTypesList.GetSize(); i++) {
+		GS::UniString paramType = paramTypesList[i];
+		ParamDictValue paramByType;
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+			ParamValue& param = *cIt->value;
+			if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
+		}
+		if (!paramByType.IsEmpty()) {
+			// Проходим поиском, специфичным для каждого типа
+			// TODO переписать без использования сравнения с текстом!
+			if (paramType.IsEqual("Property")) {
+				ParamDictGetPropertyValues(paramByType);
+			}
+			//if (paramType.IsEqual("symb_pos_")){}
+			//if (paramType.IsEqual("GDL")) {}
+
+			//if (paramType.IsEqual("Material")) {}
+			//if (paramType.IsEqual("Info")) {}
+			//if (paramType.IsEqual("IFC")) {}
+			//if (paramType.IsEqual("Morph")) {}
+			ParamDictCompare(paramByType, params);
+		}
+	}
+}
+
+// --------------------------------------------------------------------
+// Получить все доступные свойства в формарте ParamDictValue
+// --------------------------------------------------------------------
+void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams) {
 	GSErrCode err = NoError;
 	GS::Array<API_PropertyGroup> groups;
 	err = ACAPI_Property_GetPropertyGroups(groups);
 	if (err != NoError) {
-		msg_rep("ParamDictPropertyDefinitionByName", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
+		msg_rep("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
 		return;
 	}
 	// Созданим словарь с определением всех свойств
 	for (UInt32 i = 0; i < groups.GetSize(); i++) {
-		if (groups[i].groupType == API_PropertyStaticBuiltInGroupType || groups[i].groupType == API_PropertyCustomGroupType) {
+		if (groups[i].groupType == API_PropertyCustomGroupType) {
 			GS::Array<API_PropertyDefinition> definitions;
 			err = ACAPI_Property_GetPropertyDefinitions(groups[i].guid, definitions);
 			if (err != NoError) msg_rep("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
@@ -2705,7 +2603,95 @@ void ParamDictPropertyDefinitionByName(ParamDictValue& propertyParams) {
 			}
 		}
 	}
-	INT HH = 1;
+}
+
+// --------------------------------------------------------------------
+// Пакетный поиск определений свойств
+// --------------------------------------------------------------------
+void ParamDictGetPropertyDefinition(ParamDictValue& params) {
+	// Выберем записи, для которых не подобрано определение
+	if (params.IsEmpty()) return;
+	ParamDictValue paramByType;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (param.fromProperty) paramByType.Add(param.rawName, param);
+	}
+	if (!paramByType.IsEmpty()) {
+		ParamDictValue propertyParams;
+		GetAllPropertyDefinitionToParamDict(propertyParams);
+		ParamDictCompare(propertyParams, paramByType);
+		ParamDictCompare(paramByType, params);
+	}
+}
+
+// --------------------------------------------------------------------
+// Сопоставление двух словарей ParamDictValue
+// --------------------------------------------------------------------
+void ParamDictCompare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo) {
+	// Думаю, быстрее всего будет проходить циклом по меньшему словарю, ищя по ключу в большем
+	if (paramsFrom.IsEmpty()) return;
+	if (paramsTo.IsEmpty()) return;
+	ParamDictValue params_b;
+	ParamDictValue params_l;
+	if (paramsFrom.GetSize() > paramsTo.GetSize()) {
+		params_b = paramsFrom;
+		params_l = paramsTo;
+	}
+	else {
+		params_b = paramsTo;
+		params_l = paramsFrom;
+	}
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params_l.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (params_b.ContainsKey(param.rawName)) {
+			API_Guid fromGuid = paramsTo.Get(param.rawName).fromGuid; // Чтоб GUID не перезаписался
+			paramsTo.Get(param.rawName) = paramsFrom.Get(param.rawName);
+			paramsTo.Get(param.rawName).fromGuid = fromGuid;
+		}
+	}
+}
+
+// --------------------------------------------------------------------
+// Чтение значений свойств в ParamDictValue
+// --------------------------------------------------------------------
+void ParamDictGetPropertyValues(ParamDictValue& params) {
+	if (params.IsEmpty()) return;
+	GS::Array<API_PropertyDefinition> propertyDefinitions;
+	GS::Array<API_Property> properties;
+	API_Guid elemGuid = APINULLGuid;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (param.fromPropertyDefinition) {
+			propertyDefinitions.Push(param.definition);
+			if (elemGuid != APINULLGuid && elemGuid != param.fromGuid) msg_rep("Nonequal Guid", param.rawName, NoError, elemGuid);
+			elemGuid = param.fromGuid;
+		}
+	}
+	if (!propertyDefinitions.IsEmpty()) {
+		GSErrCode error = ACAPI_Element_GetPropertyValues(elemGuid, propertyDefinitions, properties);
+		if (error == NoError) {
+			for (UInt32 i = 0; i < properties.GetSize(); i++) {
+				ParamValue pvalue;
+				if (ConvParamValue(pvalue, properties.Get(i))){
+					if (params.ContainsKey(pvalue.rawName)) {
+						params.Get(pvalue.rawName) = pvalue;
+					}
+					else {
+						msg_rep("ParamDictGetPropertyValues", "No keys " + pvalue.rawName, NoError, elemGuid);
+					}
+				}
+				else {
+					// Вероятно, в свойстве ошибочное значение
+					msg_rep("ParamDictGetPropertyValues", "ConvParamValue " + pvalue.rawName, NoError, elemGuid);
+				}
+
+			}
+		}
+		else {
+			msg_rep("ParamDictGetPropertyValues", "ACAPI_Element_GetPropertyValues", error, elemGuid);
+		}
+	}
+
 }
 
 GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniString& name)
@@ -2714,7 +2700,231 @@ GSErrCode GetPropertyFullName(const API_PropertyDefinition& definision, GS::UniS
 	API_PropertyGroup group;
 	group.guid = definision.groupGuid;
 	GSErrCode error = ACAPI_Property_GetPropertyGroup(group);
-	if (error == NoError)
+	if (error == NoError) {
 		name = group.name + "/" + definision.name;
+	}
+	else {
+		msg_rep("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup "+ definision.name, error, APINULLGuid);
+	}
 	return error;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация параметров библиотечного элемента в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter) {
+	GS::UniString param_string = "";
+	GS::Int32 param_int = 0;
+	double param_real = 0.0;
+	bool param_bool = false;
+	pvalue.canCalculate = false;
+	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
+	if (nthParameter.typeID == APIParT_CString) {
+		param_string = nthParameter.value.uStr;
+		param_bool = (param_string.GetLength() > 0);
+		if (param_bool) {
+			param_int = 1;
+			param_real = 1.0;
+		}
+	}
+	else {
+		param_real = round(nthParameter.value.real * 1000) / 1000;
+		if (nthParameter.value.real - param_real > 0.001) param_real += 0.001;
+		param_int = (GS::Int32)param_real;
+		if (param_int / 1 < param_real) param_int += 1;
+	}
+	if (abs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
+
+	// Если параметр не строковое - определяем текстовое значение конвертацией
+	if (param_string.GetLength() == 0) {
+		API_AttrTypeID attrType = API_ZombieAttrID;
+		short attrInx = (short)param_int;
+		switch (nthParameter.typeID) {
+		case APIParT_Integer:
+			param_string = GS::UniString::Printf("%d", param_int);
+			pvalue.type = API_PropertyIntegerValueType;
+			break;
+		case APIParT_Boolean:
+			if (param_bool) {
+				param_string = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+				param_int = 1;
+				param_real = 1.0;
+			}
+			else {
+				param_string = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+				param_int = 0;
+				param_real = 0.0;
+			}
+			pvalue.type = API_PropertyBooleanValueType;
+			break;
+		case APIParT_Length:
+			param_string = GS::UniString::Printf("%.0f", param_real * 1000);
+			pvalue.type = API_PropertyRealValueType;
+			break;
+		case APIParT_Angle:
+			param_string = GS::UniString::Printf("%.1f", param_real);
+			pvalue.type = API_PropertyRealValueType;
+			break;
+		case APIParT_RealNum:
+			param_string = GS::UniString::Printf("%.3f", param_real);
+			pvalue.type = API_PropertyRealValueType;
+			break;
+
+			// Для реквезитов в текст выведем имена
+		case APIParT_Profile:
+			attrType = API_ProfileID;
+			break;
+		case APIParT_BuildingMaterial:
+			attrType = API_BuildingMaterialID;
+			break;
+		case APIParT_FillPat:
+			attrType = API_FilltypeID;
+			break;
+		case APIParT_Mater:
+			attrType = API_MaterialID;
+			break;
+		default:
+			return false;
+			break;
+		}
+		if (attrType != API_ZombieAttrID) {
+			API_Attribute	attrib = {};
+			attrib.header.typeID = attrType;
+			attrib.header.index = attrInx;
+			if (ACAPI_Attribute_Get(&attrib) == NoError) {
+				param_string = GS::UniString::Printf("%s", attrib.header.name);
+				pvalue.type = API_PropertyStringValueType;
+				if (param_bool) {
+					param_int = 1;
+					param_real = 1.0;
+				}
+			}
+			else {
+				return false;
+			}
+		}
+	}
+	pvalue.rawName = "{GDL:" + GS::UniString(nthParameter.name).ToLowerCase() + "}";
+	pvalue.name = nthParameter.name;
+	pvalue.fromGDLparam = true;
+	pvalue.boolValue = param_bool;
+	pvalue.doubleValue = param_real;
+	pvalue.intValue = param_int;
+	pvalue.uniStringValue = param_string;
+	pvalue.canCalculate = true;
+	pvalue.isValid = true;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация свойства в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_Property& property) {
+	GS::UniString fname;
+	GetPropertyFullName(property.definition, fname);
+	pvalue.rawName = "{Property:" + fname.ToLowerCase() + "}";
+#if defined(AC_22) || defined(AC_23)
+	pvalue.isValid = property_from.isEvaluated;
+#else
+	pvalue.isValid = (property.status == API_Property_HasValue);
+#endif
+	if (!pvalue.isValid) {
+		return false;
+	}
+	pvalue.fromProperty = true;
+	pvalue.fromPropertyDefinition = true;
+	pvalue.definition = property.definition;
+	pvalue.name = fname;
+	pvalue.uniStringValue = PropertyTestHelpers::ToString(property);
+	pvalue.boolValue = false;
+	pvalue.intValue = 0;
+	pvalue.doubleValue = 0.0;
+	pvalue.canCalculate = false;
+	switch (property.value.singleVariant.variant.type) {
+	case API_PropertyIntegerValueType:
+		pvalue.intValue = property.value.singleVariant.variant.intValue;
+		pvalue.doubleValue = property.value.singleVariant.variant.intValue * 1.0;
+		if (pvalue.intValue > 0) pvalue.boolValue = true;
+		pvalue.type = API_PropertyIntegerValueType;
+		break;
+	case API_PropertyRealValueType:
+		pvalue.doubleValue = round(property.value.singleVariant.variant.doubleValue * 1000) / 1000;
+		if (property.value.singleVariant.variant.doubleValue - pvalue.doubleValue > 0.001) pvalue.doubleValue += 0.001;
+		pvalue.intValue = (GS::Int32)pvalue.doubleValue;
+		if (pvalue.intValue / 1.0 < pvalue.doubleValue) pvalue.intValue += 1;
+		if (abs(pvalue.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.boolValue = true;
+		pvalue.type = API_PropertyRealValueType;
+		break;
+	case API_PropertyBooleanValueType:
+		pvalue.boolValue = property.value.singleVariant.variant.boolValue;
+		if (pvalue.boolValue) {
+			pvalue.intValue = 1;
+			pvalue.doubleValue = 1.0;
+		}
+		pvalue.type = API_PropertyBooleanValueType;
+		break;
+	case API_PropertyStringValueType:
+	case API_PropertyGuidValueType:
+		pvalue.type = API_PropertyStringValueType;
+		pvalue.boolValue = (pvalue.uniStringValue.GetLength() > 0);
+		if (pvalue.boolValue) {
+			pvalue.intValue = 1;
+			pvalue.doubleValue = 1.0;
+		}
+		break;
+	case API_PropertyUndefinedValueType:
+		return false;
+		break;
+	default:
+		return false;
+		break;
+	}
+	pvalue.canCalculate = true;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация определения свойства в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition) {
+	GS::UniString fname;
+	GetPropertyFullName(definition, fname);
+	pvalue.rawName = "{Property:" + fname.ToLowerCase() + "}";
+	pvalue.name = fname;
+	pvalue.fromPropertyDefinition = true;
+	pvalue.definition = definition;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация целого числа в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue) {
+	pvalue.name = paramName;
+	pvalue.rawName = "{GDL:" + paramName.ToLowerCase() + "}";
+	pvalue.type = API_PropertyIntegerValueType;
+	pvalue.canCalculate = true;
+	pvalue.intValue = intValue;
+	pvalue.doubleValue = intValue * 1.0;
+	if (pvalue.intValue > 0) pvalue.boolValue = true;
+	pvalue.uniStringValue = GS::UniString::Printf("%d", intValue);
+	pvalue.isValid = true;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация double в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue) {
+	pvalue.name = paramName;
+	pvalue.rawName = "{GDL:" + paramName.ToLowerCase() + "}";
+	pvalue.type = API_PropertyRealValueType;
+	pvalue.canCalculate = true;
+	pvalue.intValue = (GS::Int32)doubleValue;
+	pvalue.doubleValue = doubleValue;
+	pvalue.boolValue = false;
+	if (abs(pvalue.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.boolValue = true;
+	pvalue.uniStringValue = GS::UniString::Printf("%.3f", doubleValue);
+	pvalue.isValid = true;
+	return true;
 }
