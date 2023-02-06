@@ -308,7 +308,7 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 
 		// Добавляем в словарь округлённое значение
 		ParamValue pvalue;
-		ConvParamValue(pvalue, "MeasuredValue", dimValmm_round);
+		, ConvParamValue(pvalue, "MeasuredValue", dimValmm_round);
 		pdictvalue.Add(pvalue.name, pvalue);
 		GS::UniString expression = dimrule.expression;
 

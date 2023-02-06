@@ -167,13 +167,15 @@ bool GetLibParam(const API_Guid& elemGuid, const GS::UniString& paramName, Param
 
 bool GetPropertyParam(const API_Guid& elemGuid, const GS::UniString& paramName, ParamValue& pvalue);
 
-bool ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter);
-bool ConvParamValue(ParamValue& pvalue, const API_Property& property);
-bool ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition);
-bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue);
-bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue);
+bool , ConvParamValue(ParamValue& pvalue, const API_AddParType& nthParameter);
+bool , ConvParamValue(ParamValue& pvalue, const API_Property& property);
+bool , ConvParamValue(ParamValue& pvalue, const API_PropertyDefinition& definition);
+bool , ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue);
+bool , ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue);
 
-void AddParam2Dict(const GS::UniString& paramName, const double doubleValue, ParamDictValue& pdictvalue);
+bool ParamValueToProperty(ParamValue& pvalue);
+
+void ConvParamValue(ParamDictValue& pdictvalue, const GS::UniString& paramName, const double doubleValue);
 
 GS::UniString GetFormatString(GS::UniString& paramName);
 API_VariantType GetTypeString(GS::UniString& paramName);
@@ -228,7 +230,7 @@ GSErrCode GetPropertyByName(const API_Guid& elemGuid, const GS::UniString& prope
 GSErrCode GetGDLParameters(const API_Guid& elemGuid, const API_ElemTypeID& elemType, API_AddParType**& params);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, ParamValue& pvalue);
-bool IsEqualPropParamValue(const ParamValue& pvalue, API_Property& property);
+bool ParamValueToProperty(const ParamValue& pvalue, API_Property& property);
 GSErrCode WriteProp(const API_Guid& elemGuid, API_Property& property, GS::UniString& param_string, GS::Int32& param_int, bool& param_bool, double& param_real);
 GSErrCode WriteParam2Prop(const API_Guid& elemGuid, const GS::UniString& paramName, API_Property& property);
 GSErrCode WriteProp2Prop(const API_Guid& elemGuid, const API_Property& propertyfrom, API_Property& property);
