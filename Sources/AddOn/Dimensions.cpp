@@ -304,11 +304,10 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	bool flag_expression = false; //В описании найдена формула
 	if (!dimrule.expression.IsEmpty()) {
 		ParamDictValue pdictvalue;
-		if (elemGuid != APINULLGuid) GetParamValueDict(elemGuid, dimrule.paramDict, pdictvalue); //Получим значения, если размер привязан к элементу
-
+		//if (elemGuid != APINULLGuid) GetParamValueDict(elemGuid, dimrule.paramDict, pdictvalue); //Получим значения, если размер привязан к элементу
 		// Добавляем в словарь округлённое значение
 		ParamValue pvalue;
-		, ConvParamValue(pvalue, "MeasuredValue", dimValmm_round);
+		ConvParamValue(pvalue, "MeasuredValue", dimValmm_round);
 		pdictvalue.Add(pvalue.name, pvalue);
 		GS::UniString expression = dimrule.expression;
 

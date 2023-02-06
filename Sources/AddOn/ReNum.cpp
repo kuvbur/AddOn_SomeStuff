@@ -325,7 +325,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 						if (partstring[1].ToLowerCase() == "allnull") nulltype = ADDMAXZEROS;
 					};
 				}
-				err = GetPropertyDefinitionByName(elemGuid, paramName, propertdefyrule);
+				//err = GetPropertyDefinitionByName(elemGuid, paramName, propertdefyrule);
 				if (err != NoError) flag = RENUM_IGNORE;
 			}// flag != RENUM_IGNORE
 		}// ACAPI_Element_GetPropertyValues

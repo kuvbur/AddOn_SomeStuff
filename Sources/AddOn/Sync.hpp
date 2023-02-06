@@ -49,52 +49,108 @@ typedef struct {
 	double								fillThick = 0.0;
 } LayerConstr;
 
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
+// -----------------------------------------------------------------------------
+// Запускает обработку всех объектов, заданных в настройке
+// -----------------------------------------------------------------------------
 void SyncAndMonAll(SyncSettings& syncSettings);
 
-void SyncSelected(const SyncSettings& syncSettings);
+// -----------------------------------------------------------------------------
+// Запускает обработку всех элементов заданного типа
+// -----------------------------------------------------------------------------
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
 void SyncElement(const API_Guid& objectId, const SyncSettings& syncSettings);
 
+// -----------------------------------------------------------------------------
+// Запускает обработку выбранных, заданных в настройке
+// -----------------------------------------------------------------------------
+void SyncSelected(const SyncSettings& syncSettings);
+
+// --------------------------------------------------------------------
+// Поиск и синхронизация свойств связанных элементов
+// --------------------------------------------------------------------
 void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
+// --------------------------------------------------------------------
+// Синхронизация данных элемента согласно указаниям в описании свойств
+// --------------------------------------------------------------------
 void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
+void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array <WriteData>& mainsyncRules, WriteDict& syncRules, ParamDictElement& paramToRead);
+
+// --------------------------------------------------------------------
+// Запись правила в словарь
+// --------------------------------------------------------------------
 void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictElement& paramToRead);
 
+// --------------------------------------------------------------------
+// Запись параметра в словарь
+// --------------------------------------------------------------------
 void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead);
 
-GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition);
-
-bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition& definition, SyncRule syncRule);
-
+// -----------------------------------------------------------------------------
+// Парсит описание свойства
+// -----------------------------------------------------------------------------
 bool ParseSyncString(const API_Guid& elemGuid, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, bool& hasSub);
 
+// -----------------------------------------------------------------------------
+// Парсит описание свойства
+// -----------------------------------------------------------------------------
 bool SyncString(GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString> ignorevals);
 
-GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, const SyncRule& syncRule, const API_PropertyDefinition& definition);
-
-GSErrCode SyncMorphAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition);
-
+// -----------------------------------------------------------------------------
+// Запись значения IFC свойства в другое свойство
+// -----------------------------------------------------------------------------
 GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition);
 
-GSErrCode SyncParamAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, SyncRule& syncRule, const API_PropertyDefinition& definition);
+GS::UniString GetPropertyENGName(GS::UniString& name);
 
-GSErrCode SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions);
+// -----------------------------------------------------------------------------
+// Ищем в строке - шаблоне свойства и возвращаем массив определений
+// Строка шаблона на входе
+//			%Имя свойства% текст %Имя группы/Имя свойства.5mm%
+// Строка шаблона на выходе
+//			@1@ текст @2@#.5mm#
+// Если свойство не найдено, %Имя свойства% заменяем на пустоту ("")
+// -----------------------------------------------------------------------------
+GSErrCode  SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions);
 
-GSErrCode SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<LayerConstr>& components);
+GSErrCode  SyncPropAndMatOneGetComponent(const API_AttributeIndex& constrinx, const double& fillThick, LayerConstr& component);
+
+// --------------------------------------------------------------------
+// Вытаскивает всё, что может, из информации о составе элемента
+// --------------------------------------------------------------------
+GSErrCode  SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<LayerConstr>& components);
+
+void SyncPropAndMatReplaceValue(const double& var, const GS::UniString& patternstring, GS::UniString& outstring);
 
 void SyncPropAndMatReplaceValue(const API_Property& property, const GS::UniString& patternstring, GS::UniString& outstring);
 
-GSErrCode SyncPropAndMatWriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring, UInt32& n);
+// --------------------------------------------------------------------
+// Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
+// --------------------------------------------------------------------
+GSErrCode  SyncPropAndMatWriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring, UInt32& n);
 
+// -----------------------------------------------------------------------------
+// Запись в свойство данных о материале
+// -----------------------------------------------------------------------------
 GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, const API_PropertyDefinition& definition);
 
+// -----------------------------------------------------------------------------
+// Проверяем - содержит ли строка игнорируемые значения
+// -----------------------------------------------------------------------------
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val);
 
+// -----------------------------------------------------------------------------
+// Проверяем - содержит ли свойство игнорируемые значеения
+// -----------------------------------------------------------------------------
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property);
 
+// -----------------------------------------------------------------------------
+// Проверяем - содержит ли свойство игнорируемые значеения
+// -----------------------------------------------------------------------------
 bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_IFCProperty& property);
+
 
 #endif
