@@ -213,7 +213,7 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 				msg_rep("Sum_OneRule", "ACAPI_Element_GetPropertyValues", err, elemGuid);
 			}
 			else {
-				err = WriteProp(elemGuid, positionproperty, param_string);
+				//err = WriteProp(elemGuid, positionproperty, param_string);
 				if (err != NoError) msg_rep("Sum_OneRule", "WriteProp", err, elemGuid);
 			}
 		}
