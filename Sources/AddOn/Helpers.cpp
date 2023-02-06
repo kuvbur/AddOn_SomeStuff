@@ -561,15 +561,16 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 
 void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings)
 {
-	GS::UniString	title("Sync Selected");
-	Int32 nLib = 0;
-	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
+		GS::UniString title("Sync Selected");
+		GS::UniString subtitle("working...");
+		short nPhase = 1;
+		ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nPhase);
 		long time_start = clock();
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
 			function(guidArray[i], syncSettings);
+			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 				return;
 			}
@@ -578,6 +579,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 		GS::UniString time = GS::UniString::Printf(" %d ms", time_end - time_start);
 		GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
 		msg_rep("Sync Selected", intString + time, NoError, APINULLGuid);
+		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 	}
 }
 
@@ -587,14 +589,15 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 // -----------------------------------------------------------------------------
 void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/)
 {
-	GS::UniString	title("Sync Selected");
-	Int32 nLib = 0;
-	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nLib);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
 		long time_start = clock();
+		GS::UniString	title("Sync Selected");
+		GS::UniString subtitle("working...");
+		short nPhase = 1;
+		ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nPhase);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			ACAPI_Interface(APIIo_SetProcessValueID, &i, nullptr);
+			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 			function(guidArray[i]);
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 				return;
@@ -604,6 +607,7 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 		GS::UniString time = GS::UniString::Printf(" %d ms", time_end - time_start);
 		GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
 		msg_rep("Sync Selected", intString + time, NoError, APINULLGuid);
+		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 	}
 	else if (!assertIfNoSel) {
 		function(APINULLGuid);
@@ -2189,10 +2193,12 @@ void ParamDictCompare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo
 	}
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params_l.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
-		if (params_b.ContainsKey(param.rawName)) {
-			API_Guid fromGuid = paramsTo.Get(param.rawName).fromGuid; // Чтоб GUID не перезаписался
-			paramsTo.Get(param.rawName) = paramsFrom.Get(param.rawName);
-			paramsTo.Get(param.rawName).fromGuid = fromGuid;
+		GS::UniString k = param.rawName;
+		if (params_b.ContainsKey(k)) {
+			API_Guid fromGuid = paramsTo.Get(k).fromGuid;// Чтоб GUID не перезаписался
+			ParamValue paramFrom = paramsFrom.Get(param.rawName);
+			paramFrom.fromGuid = fromGuid;
+			paramsTo.Set(k, paramFrom);
 		}
 	}
 }
@@ -2207,7 +2213,8 @@ bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
 		if (param.fromPropertyDefinition) {
-			propertyDefinitions.Push(param.definition);
+			API_PropertyDefinition definition = param.definition;
+			propertyDefinitions.Push(definition);
 		}
 	}
 	if (propertyDefinitions.IsEmpty()) return false;
@@ -2216,9 +2223,11 @@ bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params
 	if (error == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
 			ParamValue pvalue;
-			if (ConvParamValue(pvalue, properties.Get(i))){
-				if (params.ContainsKey(pvalue.rawName)) {
-					params.Get(pvalue.rawName) = pvalue;
+			API_Property property = properties.Get(i);
+			if (ConvParamValue(pvalue, property)){
+				GS::UniString rawName = pvalue.rawName;
+				if (params.ContainsKey(rawName)) {
+					params.Get(rawName) = pvalue;
 					flag_find = true;
 				}
 				else {
@@ -2266,10 +2275,8 @@ bool ParamDictGetGDLValues(const API_Element& element, const API_Elem_Head& elem
 		}
 	}
 	if (paramBydescription.IsEmpty() && paramByName.IsEmpty()) return false;
-
 	// Поиск по описанию
 	bool flag_find_desc = false;
-
 	if (!paramBydescription.IsEmpty()) {
 		flag_find_desc = FindGDLParamByDescription(element, paramBydescription);
 		if (flag_find_desc) ParamDictCompare(paramBydescription, params);
@@ -2286,7 +2293,7 @@ bool ParamDictGetGDLValues(const API_Element& element, const API_Elem_Head& elem
 	else {
 		flag_find_name = true;
 	}
-	return (flag_find_desc || flag_find_desc);
+	return (flag_find_desc || flag_find_name);
 }
 
 // -----------------------------------------------------------------------------
@@ -2304,24 +2311,23 @@ bool FindGDLParamByDescription(const API_Element& element, ParamDictValue& param
 	}
 	double aParam = 0.0;
 	double bParam = 0.0;
-	Int32 paramNum = 0;
+	Int32 addParNum = 0;
 	API_AddParType** addPars = NULL;
-	err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &paramNum, &addPars);
+	err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &addParNum, &addPars);
 	if (err != NoError) {
 		msg_rep("FindGDLParametersByDescription", "ACAPI_LibPart_GetParams", err, element.header.guid);
 		return false;
 	}
 	bool flagFind = false;
-	//for (Int32 i = 0; i < paramNum; i++) {
-	//	GS::UniString tparamName = "";
-	//	tparamName = (*addPars)[i].uDescname;
-	//	tparamName.ReplaceAll(" ", "");
-	//	if (paramName.IsEqual(tparamName, GS::UniString::CaseInsensitive)) {
-	//		inx = i;
-	//		ACAPI_DisposeAddParHdl(&addPars);
-	//		return true;
-	//	}
-	//}
+	for (Int32 i = 0; i < addParNum; ++i) {
+		API_AddParType& actualParam = (*addPars)[i];
+		GS::UniString name = actualParam.uDescname;
+		GS::UniString rawname = "{GDL:" + name.ToLowerCase() + "}";
+		if (params.ContainsKey(rawname)) {
+			ConvParamValue(params.Get(rawname), actualParam);
+			if (params.Get(rawname).isValid) flagFind = true;
+		}
+	}
 	return true;
 }
 
@@ -2339,7 +2345,16 @@ bool FindGDLParamByName(const API_Element& element, const API_Elem_Head& elem_he
 		return false;
 	}
 	bool flagFind = false;
-
+	Int32	addParNum = BMGetHandleSize((GSHandle)addPars) / sizeof(API_AddParType);
+	for (Int32 i = 0; i < addParNum; ++i) {
+		API_AddParType& actualParam = (*addPars)[i];
+		GS::UniString name = actualParam.name;
+		GS::UniString rawname = "{GDL:" + name.ToLowerCase() + "}";
+		if (params.ContainsKey(rawname)) {
+			ConvParamValue(params.Get(rawname), actualParam);
+			if (params.Get(rawname).isValid) flagFind = true;
+		}
+	}
 	ACAPI_DisposeAddParHdl(&addPars);
 	return flagFind;
 }

@@ -58,9 +58,9 @@ void SyncAndMonAll(SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 // Запускает обработку всех элементов заданного типа
 // -----------------------------------------------------------------------------
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase);
 
-void SyncElement(const API_Guid& objectId, const SyncSettings& syncSettings);
+void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
@@ -70,12 +70,12 @@ void SyncSelected(const SyncSettings& syncSettings);
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
 // --------------------------------------------------------------------
-void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids);
 
 void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array <WriteData>& mainsyncRules, WriteDict& syncRules, ParamDictElement& paramToRead);
 
