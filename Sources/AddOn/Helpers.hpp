@@ -267,7 +267,7 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 // Получение размеров Морфа
 // Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
-GSErrCode GetMorphParam(const API_Element& element, ParamDictValue& pdictvalue);
+bool FindMorphParam(const API_Elem_Head& elem_head, ParamDictValue& pdictvalue);
 
 // -----------------------------------------------------------------------------
 // Возвращает elemType и elemGuid для корректного чтение параметров элементов навесной стены
@@ -440,11 +440,6 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniStr
 // Получить все доступные свойства в формарте ParamDictValue
 // --------------------------------------------------------------------
 void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams);
-
-// --------------------------------------------------------------------
-// Пакетный поиск определений свойств
-// --------------------------------------------------------------------
-void ParamDictGetPropertyDefinition(ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Сопоставление двух словарей ParamDictValue

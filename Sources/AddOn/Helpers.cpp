@@ -1003,7 +1003,6 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 			pname = propertyname.ToLowerCase();
 			flag_find_pname = true;
 		}
-
 		//Если не нашли по группе - поищем по имени в других группах (если это имя попадалось, flag_find_pname).
 		//Если имя группы задано не было - просто поищем по имени
 		if (flag_find_pname) {
@@ -1025,14 +1024,14 @@ GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tp
 // Получение размеров Морфа
 // Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
-GSErrCode GetMorphParam(const API_Element& element, ParamDictValue& pdictvalue) {
-	if (!element.header.hasMemo) return NoError;
+bool FindMorphParam(const API_Elem_Head& elem_head, ParamDictValue& pdictvalue) {
+	if (!elem_head.hasMemo) return NoError;
 	API_ElementMemo  memo;
 	BNZeroMemory(&memo, sizeof(API_ElementMemo));
-	GSErrCode err = ACAPI_Element_GetMemo(element.header.guid, &memo);
+	GSErrCode err = ACAPI_Element_GetMemo(elem_head.guid, &memo);
 	if (err != NoError || memo.morphBody == nullptr) {
 		ACAPI_DisposeElemMemoHdls(&memo);
-		return err;
+		return false;
 	}
 	double L = 0;
 	double Lx = 0;
@@ -1146,9 +1145,13 @@ GSErrCode GetMorphParam(const API_Element& element, ParamDictValue& pdictvalue) 
 		pvalue_ZZYZX.name = "zzyzx";
 		ConvParamValue(pvalue_ZZYZX, "", ZZYZX);
 		pdictvalue.Add(pvalue_ZZYZX.rawName, pvalue_ZZYZX);
+
+		ACAPI_DisposeElemMemoHdls(&memo);
+		return true;
+	}else {
+		ACAPI_DisposeElemMemoHdls(&memo);
+		return false;
 	}
-	ACAPI_DisposeElemMemoHdls(&memo);
-	return err;
 }
 
 
@@ -1194,6 +1197,8 @@ GSErrCode GetGDLParameters(const API_ElemTypeID& elemType, const API_Guid& elemG
 	GSErrCode	err = NoError;
 	API_ParamOwnerType	apiOwner = {};
 	API_GetParamsType	apiParams = {};
+	BNZeroMemory(&apiOwner, sizeof(API_ParamOwnerType));
+	BNZeroMemory(&apiParams, sizeof(API_GetParamsType));
 	apiOwner.guid = elemGuid;
 #ifdef AC_26
 	apiOwner.type.typeID = elemType;
@@ -1943,12 +1948,8 @@ void ParamDictWrite(const API_Guid& elemGuid, ParamDictValue& params) {
 			if (paramType.IsEqual("Property")) {
 				ParamDictSetPropertyValues(elemGuid, paramByType);
 			}
-			//if (paramType.IsEqual("symb_pos_")){}
 			//if (paramType.IsEqual("GDL")) {}
-			//if (paramType.IsEqual("Material")) {}
-			//if (paramType.IsEqual("Info")) {}
 			//if (paramType.IsEqual("IFC")) {}
-			//if (paramType.IsEqual("Morph")) {}
 		}
 	}
 }
@@ -1959,8 +1960,9 @@ void ParamDictSetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params
 	GS::Array<API_Property> properties;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
-		if (ParamValueToProperty(param)) {
-			properties.Push(param.property);
+		if (param.isValid && param.fromPropertyDefinition) {
+			API_Property property = param.property;
+			if (ParamValueToProperty(param, property)) properties.Push(property);
 		}
 	}
 	if (properties.IsEmpty()) return;
@@ -2011,7 +2013,9 @@ void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params) {
 			if (param.fromProperty && !param.fromPropertyDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
 		}
 	}
-	if (needGetAllDefinitions) ParamDictGetPropertyDefinition(params); // Проверим - для всех ли свойств подобраны определения
+	if (needGetAllDefinitions) {
+		GetAllPropertyDefinitionToParamDict(params);
+	} // Проверим - для всех ли свойств подобраны определения
 
 	API_Element element = {};
 	if (needGetElement) {
@@ -2045,12 +2049,14 @@ void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params) {
 			if (paramType.IsEqual("GDL")) {
 				needCompare = ParamDictGetGDLValues(element, elem_head, paramByType);
 			}
-			//if (paramType.IsEqual("Material")) {}
+			if (paramType.IsEqual("Material")) {
+
+			}
 			//if (paramType.IsEqual("Info")) {}
 			//if (paramType.IsEqual("IFC")) {}
 			if (paramType.IsEqual("Morph")) {
 				ParamDictValue pdictvaluempoph;
-				needCompare = GetMorphParam(element, pdictvaluempoph);
+				needCompare = FindMorphParam(elem_head, pdictvaluempoph);
 				if (needCompare) ParamDictCompare(pdictvaluempoph, paramByType);
 			}
 			if (needCompare) ParamDictCompare(paramByType, params);
@@ -2130,6 +2136,8 @@ void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams) {
 		msg_rep("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
 		return;
 	}
+	UInt32 nparams = propertyParams.GetSize();
+	bool needAddNew = (nparams == 0);
 	// Созданим словарь с определением всех свойств
 	for (UInt32 i = 0; i < groups.GetSize(); i++) {
 		if (groups[i].groupType == API_PropertyCustomGroupType) {
@@ -2139,38 +2147,27 @@ void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams) {
 			if (err == NoError) {
 				for (UInt32 j = 0; j < definitions.GetSize(); j++) {
 					GS::UniString rawName = "{Property:" + groups[i].name.ToLowerCase() + "/" + definitions[j].name.ToLowerCase() +"}";
-					if (!propertyParams.ContainsKey(rawName)) {
+					bool changeExs = propertyParams.ContainsKey(rawName);
+					if (needAddNew && !changeExs) {
 						ParamValue pvalue;
 						pvalue.rawName = rawName;
 						pvalue.name = groups[i].name + "/" + definitions[j].name;
-						pvalue.fromPropertyDefinition = true;
-						pvalue.definition = definitions.Get(j);
+						ConvParamValue(pvalue, definitions[j]);
 						propertyParams.Add(rawName, pvalue);
 					} else {
-						propertyParams.Get(rawName).rawName = rawName;
-						propertyParams.Get(rawName).name = groups[i].name + "/" + definitions[j].name;
-						propertyParams.Get(rawName).fromPropertyDefinition = true;
-						propertyParams.Get(rawName).definition = definitions.Get(j);
+						ParamValue pvalue = propertyParams.Get(rawName);
+						pvalue.rawName = rawName;
+						pvalue.name = groups[i].name + "/" + definitions[j].name;
+						ConvParamValue(pvalue, definitions[j]);
+						propertyParams.Get(rawName) = pvalue;
+						nparams--;
+						if (nparams == 0) {
+							return;
+						}
 					}
 				}
 			}
 		}
-	}
-}
-
-// --------------------------------------------------------------------
-// Пакетный поиск определений свойств
-// --------------------------------------------------------------------
-void ParamDictGetPropertyDefinition(ParamDictValue& params) {
-	// Выберем записи, для которых не подобрано определение
-	if (params.IsEmpty()) return;
-	ParamDictValue paramByType;
-	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
-		if (param.fromProperty) paramByType.Add(param.rawName, param);
-	}
-	if (!paramByType.IsEmpty()) {
-		GetAllPropertyDefinitionToParamDict(params);
 	}
 }
 
@@ -2191,14 +2188,19 @@ void ParamDictCompare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo
 		params_b = paramsTo;
 		params_l = paramsFrom;
 	}
+	UInt32 nparams = params_l.GetSize();
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params_l.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
 		GS::UniString k = param.rawName;
 		if (params_b.ContainsKey(k)) {
+			nparams--;
 			API_Guid fromGuid = paramsTo.Get(k).fromGuid;// Чтоб GUID не перезаписался
-			ParamValue paramFrom = paramsFrom.Get(param.rawName);
+			ParamValue paramFrom = paramsFrom.Get(k);
 			paramFrom.fromGuid = fromGuid;
 			paramsTo.Set(k, paramFrom);
+			if (nparams == 0) {
+				return;
+			}
 		}
 	}
 }
@@ -2207,7 +2209,8 @@ void ParamDictCompare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo
 // Чтение значений свойств в ParamDictValue
 // --------------------------------------------------------------------
 bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params) {
-	if (params.IsEmpty()) return false;
+	UInt32 nparams = params.GetSize();
+	if (nparams == 0) return false;
 	GS::Array<API_PropertyDefinition> propertyDefinitions;
 	GS::Array<API_Property> properties;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -2217,8 +2220,8 @@ bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params
 			propertyDefinitions.Push(definition);
 		}
 	}
-	if (propertyDefinitions.IsEmpty()) return false;
 	bool flag_find = false;
+	if (propertyDefinitions.IsEmpty()) return false;
 	GSErrCode error = ACAPI_Element_GetPropertyValues(elemGuid, propertyDefinitions, properties);
 	if (error == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
@@ -2228,7 +2231,9 @@ bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params
 				GS::UniString rawName = pvalue.rawName;
 				if (params.ContainsKey(rawName)) {
 					params.Get(rawName) = pvalue;
+					nparams--;
 					flag_find = true;
+					if (nparams == 0) return flag_find;
 				}
 				else {
 					msg_rep("ParamDictGetPropertyValues", "No keys " + pvalue.rawName, NoError, elemGuid);
@@ -2238,7 +2243,6 @@ bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params
 				// Вероятно, в свойстве ошибочное значение
 				msg_rep("ParamDictGetPropertyValues", "ConvParamValue " + pvalue.rawName, NoError, elemGuid);
 			}
-
 		}
 	}
 	else {
@@ -2271,7 +2275,7 @@ bool ParamDictGetGDLValues(const API_Element& element, const API_Elem_Head& elem
 			paramBydescription.Add(param.rawName, param);
 		}
 		else {
-			paramByName.Add(param.rawName, param);
+			if (param.fromGDLparam) paramByName.Add(param.rawName, param);
 		}
 	}
 	if (paramBydescription.IsEmpty() && paramByName.IsEmpty()) return false;
@@ -2315,19 +2319,31 @@ bool FindGDLParamByDescription(const API_Element& element, ParamDictValue& param
 	API_AddParType** addPars = NULL;
 	err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &addParNum, &addPars);
 	if (err != NoError) {
+		ACAPI_DisposeAddParHdl(&addPars);
 		msg_rep("FindGDLParametersByDescription", "ACAPI_LibPart_GetParams", err, element.header.guid);
 		return false;
 	}
 	bool flagFind = false;
+	Int32 nfind = params.GetSize();
 	for (Int32 i = 0; i < addParNum; ++i) {
 		API_AddParType& actualParam = (*addPars)[i];
 		GS::UniString name = actualParam.uDescname;
 		GS::UniString rawname = "{GDL:" + name.ToLowerCase() + "}";
 		if (params.ContainsKey(rawname)) {
-			ConvParamValue(params.Get(rawname), actualParam);
-			if (params.Get(rawname).isValid) flagFind = true;
+			nfind--;
+			ParamValue pvalue = params.Get(rawname);
+			ConvParamValue(pvalue, actualParam);
+			if (pvalue.isValid) {
+				params.Get(rawname) = pvalue;
+				flagFind = true;
+			}
+			if (nfind == 0) {
+				ACAPI_DisposeAddParHdl(&addPars);
+				return flagFind;
+			}
 		}
 	}
+	ACAPI_DisposeAddParHdl(&addPars);
 	return true;
 }
 
@@ -2346,13 +2362,23 @@ bool FindGDLParamByName(const API_Element& element, const API_Elem_Head& elem_he
 	}
 	bool flagFind = false;
 	Int32	addParNum = BMGetHandleSize((GSHandle)addPars) / sizeof(API_AddParType);
+	Int32 nfind = params.GetSize();
 	for (Int32 i = 0; i < addParNum; ++i) {
 		API_AddParType& actualParam = (*addPars)[i];
 		GS::UniString name = actualParam.name;
 		GS::UniString rawname = "{GDL:" + name.ToLowerCase() + "}";
 		if (params.ContainsKey(rawname)) {
-			ConvParamValue(params.Get(rawname), actualParam);
-			if (params.Get(rawname).isValid) flagFind = true;
+			nfind--;
+			ParamValue pvalue = params.Get(rawname);
+			ConvParamValue(pvalue, actualParam);
+			if (pvalue.isValid) {
+				params.Get(rawname) = pvalue;
+				flagFind = true;
+			}
+			if (nfind == 0) {
+				ACAPI_DisposeAddParHdl(&addPars);
+				return flagFind;
+			}
 		}
 	}
 	ACAPI_DisposeAddParHdl(&addPars);
