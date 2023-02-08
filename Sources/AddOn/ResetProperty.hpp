@@ -1,4 +1,4 @@
-#if !defined (RESET_HPP)
+﻿#if !defined (RESET_HPP)
 #define	RESET_HPP
 #ifdef AC_25
 #include	"APICommon25.h"

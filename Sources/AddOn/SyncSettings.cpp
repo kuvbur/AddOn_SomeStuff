@@ -1,4 +1,4 @@
-//------------ kuvbur 2022 ------------
+﻿//------------ kuvbur 2022 ------------
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"SyncSettings.hpp"

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #if !defined (SUMM_HPP)
 #define	SUMM_HPP
 //#ifdef ServerMainVers_2500
