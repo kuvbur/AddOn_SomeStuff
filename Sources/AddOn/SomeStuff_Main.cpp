@@ -181,6 +181,9 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		case Log_CommandID:
 			break;
+		case RunParam_CommandID:
+			RunParamSelected(syncSettings);
+			break;
 		}
 		break;
 	}

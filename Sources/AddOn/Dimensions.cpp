@@ -124,7 +124,8 @@ void DimAutoRoundSel(const API_Guid& elemGuid, const SyncSettings& syncSettings)
 }
 
 void DimSelected(const SyncSettings& syncSettings) {
-	CallOnSelectedElemSettings(DimAutoRoundSel, false, true, syncSettings);
+	GS::UniString fmane = "Round dim";
+	CallOnSelectedElemSettings(DimAutoRoundSel, false, true, syncSettings, fmane);
 }
 
 // -----------------------------------------------------------------------------

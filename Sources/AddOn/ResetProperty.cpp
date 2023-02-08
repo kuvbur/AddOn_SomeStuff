@@ -110,7 +110,6 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 					GS::Array<API_Guid>	guidArray;
 					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
-					if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
 					if (err == NoError) {
 						for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 							if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
@@ -121,6 +120,9 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 								}
 							}
 						}
+					}
+					else {
+						msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
 					}
 				}
 			}
@@ -140,14 +142,15 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 	if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_GetPropertyValues", err, elemGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
-
+			API_Property property = properties.Get(i);
 			// Сбрасываем только специальные значения
-			if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
-				properties[i].isDefault = true;
-				properties_to_reset.Push(properties.Get(i));
+			if (!property.isDefault) {
+				property.isDefault = true;
+				property.value.variantStatus = API_VariantStatusNormal;
+				properties_to_reset.Push(property);
 			}
 		}
-		if (properties_to_reset.GetSize() > 0) {
+		if (!properties_to_reset.IsEmpty()) {
 			err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
 			if (err != NoError) {
 

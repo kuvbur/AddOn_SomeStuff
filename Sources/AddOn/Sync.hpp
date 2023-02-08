@@ -67,6 +67,17 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings& syncSettings);
 
+void RunParamSelected(const SyncSettings& syncSettings);
+
+void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+
+void BruteForceSelected(const SyncSettings& syncSettings);
+
+void BruteForce(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+
+bool BruteForceTest(Int32& nSection, API_LibPartSection** sectList, Int32& libInd, GS::UniString& password);
+
+
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
 // --------------------------------------------------------------------
