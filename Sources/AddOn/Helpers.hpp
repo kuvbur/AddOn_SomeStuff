@@ -29,14 +29,7 @@
 #define	 Menu_Sum			9
 #define	 Menu_Log			10
 #define	 Menu_LogShow		11
-
-#define SYNC_GDL 1
-#define SYNC_PROPERTY 2
-#define SYNC_MATERIAL 3
-#define SYNC_INFO 4
-#define SYNC_IFC 5
-#define SYNC_MORPH 6
-#define SYNC_CLASS 7
+#define	 Menu_RunParam		12
 
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
@@ -58,6 +51,7 @@ static const Int32 ReNum_CommandID = 8;
 static const Int32 Sum_CommandID = 9;
 static const Int32 Log_CommandID = 10;
 static const Int32 LogShow_CommandID = 11;
+static const Int32 RunParam_CommandID = 12;
 
 static const Int32 UndoSyncId = 1;
 static const Int32 SyncAllId = 2;
@@ -67,7 +61,6 @@ static const Int32 UndoSumId = 6;
 static const Int32 TrueId = 4;
 static const Int32 FalseId = 5;
 static const Int32 ErrorSelectID = 6;
-
 static const Int32 UndoDimRound = 7;
 
 // -----------------------------------------------------------------------------
@@ -88,16 +81,19 @@ typedef struct {
 // uniStringValue, intValue, boolValue, doubleValue - значения
 // canCalculate - можно ли использовать в математических вычислениях
 typedef struct {
-	API_VariantType type = API_PropertyUndefinedValueType;
-	GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
-	GS::UniString name = ""; //Очищенное имя для поиска
 	// Собственно значения
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
 	bool boolValue = false;
 	double doubleValue = 0.0;
-	// -----------------
 	bool canCalculate = false; // Может быть использован в формулах
+} ParamValueData;
+
+typedef struct {
+	API_VariantType type = API_PropertyUndefinedValueType;
+	GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
+	GS::UniString name = ""; //Очищенное имя для поиска
+	ParamValueData val = {};
 	bool isValid = false; // Валидность (был считан без ошибок)
 	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
 	API_Property property = {}; // Само свойство, для упрощения чтения/записи
@@ -202,13 +198,12 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid SyncSettings
 // -----------------------------------------------------------------------------
-void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings);
-
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString funcname /* = ""*/);
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid
 // -----------------------------------------------------------------------------
-void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/);
+void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString funcname /* = ""*/);
 
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid

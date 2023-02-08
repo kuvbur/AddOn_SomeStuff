@@ -1,6 +1,7 @@
 ﻿//------------ kuvbur 2022 ------------
 #include	<stdlib.h> /* atoi */
 #include <time.h>
+#include <vector>
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
@@ -52,7 +53,7 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 		nPhase = nPhase + 1;
 		if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings, nPhase);
 		long time_end = clock();
-		GS::UniString time = GS::UniString::Printf(" %d ms", time_end - time_start);
+		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start)/1000);
 		msg_rep("SyncAll", time, NoError, APINULLGuid);
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
@@ -88,7 +89,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 		}
 		GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
 		long time_end = clock();
-		GS::UniString time = GS::UniString::Printf(" %d ms", time_end - time_start);
+		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start)/1000);
 		msg_rep("SyncByType", subtitle + intString + time, NoError, APINULLGuid);
 	}
 	return flag_chanel;
@@ -118,10 +119,102 @@ void SyncElement(const API_Guid & elemGuid, const SyncSettings & syncSettings) {
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings & syncSettings) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
+	GS::UniString fmane = "Sync";
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		CallOnSelectedElemSettings(SyncElement, false, true, syncSettings);
+		CallOnSelectedElemSettings(SyncElement, false, true, syncSettings, fmane);
 		return NoError;
 		});
+}
+
+// -----------------------------------------------------------------------------
+// Запускает обработку выбранных, заданных в настройке
+// -----------------------------------------------------------------------------
+void RunParamSelected(const SyncSettings& syncSettings) {
+	GS::UniString fmane = "Run parameter script";
+	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane);
+}
+
+void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+	API_Elem_Head	tElemHead;
+	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
+	tElemHead.guid = elemGuid;
+	GSErrCode	err = ACAPI_Element_GetHeader(&tElemHead);
+	if (err != NoError) return;
+	err = ACAPI_Goodies(APIAny_RunGDLParScriptID, &tElemHead, 0);
+	BruteForce(elemGuid, syncSettings);
+	if (err != NoError) {
+		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
+		return;
+	}
+}
+
+
+// -----------------------------------------------------------------------------
+// Запускает обработку выбранных, заданных в настройке
+// -----------------------------------------------------------------------------
+void BruteForceSelected(const SyncSettings& syncSettings) {
+	GS::UniString fmane = "Brute force";
+	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane);
+}
+
+void BruteForce(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
+	API_Element      element = {};
+	element.header.guid = elemGuid;
+	GSErrCode err = ACAPI_Element_Get(&element);
+	if (err != NoError) return;
+	Int32                nSection = 0;
+	API_LibPartSection** sectList;
+	Int32                libInd = element.object.libInd;
+	err = ACAPI_LibPart_GetSectionList(libInd, &nSection, &sectList);
+	if (err != NoError) {
+		msg_rep("BruteForce", "ACAPI_LibPart_GetSectionList", err, elemGuid);
+		return;
+	}
+	Int32 min_len = 1;
+	Int32 max_len = 6;
+	std::string s = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	for (Int32 n = min_len; n < max_len; n++) {
+		std::vector<int> a(n + 1, 0);
+		for (;;)
+		{
+			for (int i = 1; i < a.size(); ++i) {
+				GS::UniString password;
+				for (int k = 0; k < a.size(); ++k) {
+					password = password + GS::UniString::Printf("%c", s[a[k]]);
+				}
+				
+				if (BruteForceTest(nSection, sectList, libInd, password)) {
+					msg_rep("BruteForce", password, NoError, elemGuid);
+					BMKillHandle((GSHandle*)&sectList);
+					return;
+				}
+			}
+			int j;
+			for (j = n; a[j] == (j ? 61 : 1); --j)
+			{
+				a[j] = 0;
+			}
+			if (j == 0) break;
+			a[j]++;
+		}
+	}
+	msg_rep("BruteForce", "failed", NoError, elemGuid);
+	BMKillHandle((GSHandle*)&sectList);
+}
+
+bool BruteForceTest(Int32& nSection, API_LibPartSection** sectList, Int32& libInd,  GS::UniString& password) {
+	GSHandle sectionHdl;
+	for (Int32 i = 1; i < nSection; i++) {
+		API_LibPartSection* sectionPtr = *sectList + i;
+		GS::UniString sectionStr = "";
+		GSErrCode err = ACAPI_LibPart_GetSection(libInd, sectionPtr, &sectionHdl, &sectionStr, &password);
+		if (err == NoError) {
+			return true;
+			BMKillHandle(&sectionHdl);
+		}
+		BMKillHandle(&sectionHdl);
+	}
+	return false;
 }
 
 // --------------------------------------------------------------------
@@ -201,34 +294,31 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings, GS::
 			if (!writeSubs.IsEmpty()) {
 				// Заполняем значения параметров чтения/записи из словаря
 				for (UInt32 j = 0; j < writeSubs.GetSize(); j++) {
-					WriteData writeSub = writeSubs.Get(i);
-					bool flagfindFrom = false;
-					if (paramToRead.ContainsKey(writeSub.paramTo.fromGuid)) {
-						if(paramToRead.Get(writeSub.paramTo.fromGuid).ContainsKey(writeSub.paramFrom.rawName)) {
-							ParamValue param = paramToRead.Get(writeSub.paramTo.fromGuid).Get(writeSub.paramFrom.rawName);
-							if (param.isValid) { // Записываем только корректные значения
-								writeSubs[i].paramFrom = param;
-								flagfindFrom = true;
-							}
+					WriteData writeSub = writeSubs.Get(j);
+					API_Guid elemGuidTo = writeSub.guidTo;
+					API_Guid elemGuidFrom = writeSub.guidFrom;
+					// Проверяем - есть ли вообще эти элементы в словаре параметров
+					if (paramToRead.ContainsKey(elemGuidTo) && paramToRead.ContainsKey(elemGuidFrom)) {
+						GS::UniString rawNameFrom = writeSub.paramFrom.rawName;
+						GS::UniString rawNameTo = writeSub.paramTo.rawName;
+						ParamDictValue paramsTo = paramToRead.Get(elemGuidTo);
+						ParamDictValue paramsFrom;
+						if (elemGuidFrom == elemGuidTo) {
+							paramsFrom = paramsTo;
 						}
-					}
-					if (flagfindFrom) {
-						elemGuid = writeSub.paramTo.fromGuid;
-						if (paramToRead.ContainsKey(writeSub.paramTo.fromGuid)) {
-							if (paramToRead.Get(writeSub.paramTo.fromGuid).ContainsKey(writeSub.paramTo.rawName)) {
-								writeSubs[i].paramTo = paramToRead.Get(writeSub.paramTo.fromGuid).Get(writeSub.paramTo.rawName);
-							}
+						else {
+							paramsFrom = paramToRead.Get(elemGuidFrom);
 						}
-					}
-					// Если оба свойства были найдены - сверим их значения и установим флаг записи
-					if (flagfindFrom){
-						if (writeSubs[i].paramTo != writeSubs[i].paramFrom) {
-							ParamValue param = writeSubs[i].paramTo;
-							param.uniStringValue = writeSubs[i].paramFrom.uniStringValue;
-							param.intValue = writeSubs[i].paramFrom.intValue;
-							param.boolValue = writeSubs[i].paramFrom.boolValue;
-							param.doubleValue = writeSubs[i].paramFrom.doubleValue;
-							SyncAddParam(param, paramToWrite);
+						// Проверяем наличие имён в словаре параметров
+						if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
+							ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
+							ParamValue paramTo = paramsTo.Get(rawNameTo);
+							//Сопоставляем и записываем, если значения отличаются
+							if (paramFrom.isValid && paramFrom != paramTo) {
+								paramTo.val = paramFrom.val; // Записываем только значения
+								paramTo.isValid = true;
+								SyncAddParam(paramTo, paramToWrite);
+							}
 						}
 					}
 				}
@@ -423,7 +513,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			rulestring_one.ReplaceAll("Material:", "");
 			paramNamePrefix = "{Material:";
 			GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
-			param.uniStringValue = templatestring;
+			param.val.uniStringValue = templatestring;
 			rulestring_one.ReplaceAll(templatestring, "");
 			param.fromMaterial = true;
 			syncdirection = SYNC_FROM;
@@ -475,6 +565,9 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			elementType == API_RoofID ||
 			elementType == API_ShellID ||
 			elementType == API_MorphID) synctypefind = false;
+	}
+	if (param.fromGDLdescription) {
+		if (elementType != API_ObjectID) synctypefind = false;
 	}
 	if (param.fromMaterial) {
 		if (elementType != API_WallID &&
