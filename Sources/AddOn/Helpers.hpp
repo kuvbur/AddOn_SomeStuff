@@ -254,11 +254,6 @@ GSErrCode GetCWElementsForCWall(const API_Guid& cwGuid, GS::Array<API_Guid>& ele
 GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids);
 
 // -----------------------------------------------------------------------------
-// Получение значения IFC свойства по имени свойства
-// -----------------------------------------------------------------------------
-GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_IFCProperty& property);
-
-// -----------------------------------------------------------------------------
 // Получение размеров Морфа
 // Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
@@ -299,6 +294,11 @@ GS::UniString GetFormatString(GS::UniString& paramName);
 // Удаляет из имени paramName найденные указания на тип данных
 // -----------------------------------------------------------------------------
 API_VariantType GetTypeString(GS::UniString& paramName);
+
+// -----------------------------------------------------------------------------
+// Получение имени внутренних свойств по русскому имени
+// -----------------------------------------------------------------------------
+GS::UniString GetPropertyENGName(GS::UniString& name);
 
 // -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
@@ -447,13 +447,18 @@ void ParamDictCompare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo
 bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
+// Получение значения IFC свойств в ParamDictValue
+// -----------------------------------------------------------------------------
+bool ParamDictGetIFCValues(const API_Guid& elemGuid, ParamDictValue& params);
+
+// -----------------------------------------------------------------------------
 // Получить значение GDL параметра по его имени или описанию в ParamValue
 // -----------------------------------------------------------------------------
 bool ParamDictGetGDLValues(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
 // Поиск по описанию GDL параметра
-// Данный способ не работает с элементами навесных стен
+// Данный способ работат только с объектами
 // -----------------------------------------------------------------------------
 bool FindGDLParamByDescription(const API_Element& element, ParamDictValue& params);
 
@@ -491,5 +496,10 @@ bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const In
 // Конвертация double в ParamValue
 // -----------------------------------------------------------------------------
 bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue);
+
+// -----------------------------------------------------------------------------
+// Конвертация API_IFCProperty в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_IFCProperty& property);
 
 #endif

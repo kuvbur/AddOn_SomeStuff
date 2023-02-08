@@ -31,6 +31,7 @@ typedef struct {
 	ParamValue paramFrom;
 	ParamValue paramTo;
 	GS::Array<GS::UniString> ignorevals;
+	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью #mm или #0)
 	bool toSub = false;
 	bool fromSub = false;
 } WriteData;
@@ -71,13 +72,6 @@ void RunParamSelected(const SyncSettings& syncSettings);
 
 void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
-void BruteForceSelected(const SyncSettings& syncSettings);
-
-void BruteForce(const API_Guid& elemGuid, const SyncSettings& syncSettings);
-
-bool BruteForceTest(Int32& nSection, API_LibPartSection** sectList, Int32& libInd, GS::UniString& password);
-
-
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
 // --------------------------------------------------------------------
@@ -108,14 +102,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString(const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString> ignorevals);
-
-// -----------------------------------------------------------------------------
-// Запись значения IFC свойства в другое свойство
-// -----------------------------------------------------------------------------
-GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition);
-
-GS::UniString GetPropertyENGName(GS::UniString& name);
+bool SyncString(const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, GS::UniString& stringformat);
 
 // -----------------------------------------------------------------------------
 // Ищем в строке - шаблоне свойства и возвращаем массив определений

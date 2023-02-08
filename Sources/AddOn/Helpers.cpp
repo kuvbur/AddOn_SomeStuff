@@ -965,60 +965,6 @@ GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& 
 }
 
 // -----------------------------------------------------------------------------
-// Получение значения IFC свойства по имени свойства
-// -----------------------------------------------------------------------------
-GSErrCode GetIFCPropertyByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_IFCProperty& property) {
-	GS::Array<API_IFCProperty>     properties;
-	GSErrCode err = NoError;
-	err = ACAPI_Element_GetIFCProperties(elemGuid, false, &properties);
-	if (err != NoError) msg_rep("GetIFCPropertyByName", "ACAPI_Element_GetIFCProperties " + tpropertyname, err, elemGuid);
-	if (err == NoError) {
-		GS::UniString propertyname = tpropertyname;
-		propertyname.ReplaceAll("\\/", "@@");
-		bool flag_find_pname = false;
-		GS::UniString pname = "";
-		GS::UniString gname = "";
-		if (propertyname.Contains("/")) {
-			GS::Array<GS::UniString> partstring;
-			StringSplt(propertyname, "/", partstring);
-			gname = partstring[0].ToLowerCase();
-			pname = partstring[1].ToLowerCase();
-			gname.ReplaceAll("@@", "/");
-			pname.ReplaceAll("@@", "/");
-
-			//Сначала ищем по группе/имени
-			for (unsigned int i = 0; i < properties.GetSize(); i++)
-			{
-				API_IFCProperty prop = properties.Get(i);
-				if (prop.head.propertySetName.ToLowerCase() == gname && prop.head.propertyName.ToLowerCase() == pname) {
-					property = prop;
-					return err;
-				}
-			}
-		}
-		else {
-			propertyname.ReplaceAll("@@", "/");
-			pname = propertyname.ToLowerCase();
-			flag_find_pname = true;
-		}
-		//Если не нашли по группе - поищем по имени в других группах (если это имя попадалось, flag_find_pname).
-		//Если имя группы задано не было - просто поищем по имени
-		if (flag_find_pname) {
-			for (unsigned int i = 0; i < properties.GetSize(); i++)
-			{
-				API_IFCProperty prop = properties.Get(i);
-				if (prop.head.propertyName.ToLowerCase() == pname && flag_find_pname) {
-					property = prop;
-					return err;
-				}
-			}
-		}
-	}
-	return APIERR_MISSINGCODE;
-}
-
-
-// -----------------------------------------------------------------------------
 // Получение размеров Морфа
 // Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
@@ -1309,6 +1255,18 @@ API_VariantType GetTypeString(GS::UniString & paramName) {
 }
 
 // -----------------------------------------------------------------------------
+// Получение имени внутренних свойств по русскому имени
+// -----------------------------------------------------------------------------
+GS::UniString GetPropertyENGName(GS::UniString& name) {
+	if (name == u8"наименование") return "BuildingMaterialProperties/Building Material Name";
+	if (name == u8"описание") return "BuildingMaterialProperties/Building Material Description";
+	if (name == u8"id") return "BuildingMaterialProperties/Building Material ID";
+	if (name == u8"плотность") return "BuildingMaterialProperties/Building Material Density";
+	if (name == u8"производитель") return "BuildingMaterialProperties/Building Material Manufacturer";
+	return name;
+}
+
+// -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
 // -----------------------------------------------------------------------------
 bool GetParamNameDict(const GS::UniString & expression, ParamDict & paramDict) {
@@ -1370,6 +1328,9 @@ bool EvalExpression(GS::UniString & unistring_expression) {
 	return (!unistring_expression.IsEmpty());
 }
 
+// -----------------------------------------------------------------------------
+// Список возможных префиксов полных имён параметров
+// -----------------------------------------------------------------------------
 void GetParamTypeList(GS::Array<GS::UniString>& paramTypesList) {
 	if (!paramTypesList.IsEmpty()) paramTypesList.Clear();
 	paramTypesList.Push("Coord");
@@ -2053,7 +2014,9 @@ void ParamDictRead(const API_Guid& elemGuid, ParamDictValue& params) {
 
 			}
 			//if (paramType.IsEqual("Info")) {}
-			//if (paramType.IsEqual("IFC")) {}
+			if (paramType.IsEqual("IFC")) {
+				needCompare = ParamDictGetIFCValues(elemGuid, paramByType);
+			}
 			if (paramType.IsEqual("Morph")) {
 				ParamDictValue pdictvaluempoph;
 				needCompare = FindMorphParam(elem_head, pdictvaluempoph);
@@ -2224,35 +2187,70 @@ bool ParamDictGetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params
 			propertyDefinitions.Push(definition);
 		}
 	}
-	bool flag_find = false;
 	if (propertyDefinitions.IsEmpty()) return false;
 	GSErrCode error = ACAPI_Element_GetPropertyValues(elemGuid, propertyDefinitions, properties);
-	if (error == NoError) {
-		for (UInt32 i = 0; i < properties.GetSize(); i++) {
-			ParamValue pvalue;
-			API_Property property = properties.Get(i);
-			if (ConvParamValue(pvalue, property)){
-				GS::UniString rawName = pvalue.rawName;
-				if (params.ContainsKey(rawName)) {
-					params.Get(rawName) = pvalue;
-					nparams--;
-					flag_find = true;
-					if (nparams == 0) {
-						return flag_find;
-					}
-				}
-				else {
-					msg_rep("ParamDictGetPropertyValues", "No keys " + pvalue.rawName, NoError, elemGuid);
+	if (error != NoError) {
+		msg_rep("ParamDictGetPropertyValues", "ACAPI_Element_GetPropertyValues", error, elemGuid);
+		return false;
+	}
+	bool flag_find = false;
+	for (UInt32 i = 0; i < properties.GetSize(); i++) {
+		ParamValue pvalue;
+		API_Property property = properties.Get(i);
+		if (ConvParamValue(pvalue, property)){
+			GS::UniString rawName = pvalue.rawName;
+			if (params.ContainsKey(rawName)) {
+				params.Get(rawName) = pvalue;
+				nparams--;
+				flag_find = true;
+				if (nparams == 0) {
+					return flag_find;
 				}
 			}
 			else {
-				// Вероятно, в свойстве ошибочное значение
-				msg_rep("ParamDictGetPropertyValues", "ConvParamValue " + pvalue.rawName, NoError, elemGuid);
+				msg_rep("ParamDictGetPropertyValues", "No keys " + pvalue.rawName, NoError, elemGuid);
 			}
 		}
+		else {
+			// Вероятно, в свойстве ошибочное значение
+			// TODO Добавить вывод только при отладке
+			msg_rep("ParamDictGetPropertyValues", "ConvParamValue " + pvalue.rawName, NoError, elemGuid);
+		}
 	}
-	else {
-		msg_rep("ParamDictGetPropertyValues", "ACAPI_Element_GetPropertyValues", error, elemGuid);
+	return flag_find;
+}
+
+
+// -----------------------------------------------------------------------------
+// Получение значения IFC свойств
+// -----------------------------------------------------------------------------
+bool ParamDictGetIFCValues(const API_Guid& elemGuid, ParamDictValue& params) {
+	UInt32 nparams = params.GetSize();
+	if (nparams == 0) return false;
+	GS::Array<API_IFCProperty> properties;
+	GSErrCode err = ACAPI_Element_GetIFCProperties(elemGuid, false, &properties);
+	if (err != NoError) {
+		msg_rep("ParamDictGetIFCValues", "ACAPI_Element_GetIFCProperties", err, elemGuid);
+		return false;
+	}
+	bool flag_find = false;
+	for (UInt32 i = 0; i < properties.GetSize(); i++) {
+		API_IFCProperty prop = properties.Get(i);
+		GS::UniString fname = properties[i].head.propertySetName + "/" + properties[i].head.propertyName;
+		GS::UniString rawName = "{IFC:" + fname.ToLowerCase() + "}";
+		if (params.ContainsKey(rawName)) {
+			ParamValue pvalue;
+			API_IFCProperty property = properties.Get(i);
+			if (ConvParamValue(pvalue, property)) {
+				params.Get(rawName) = pvalue;
+				flag_find = true;
+			}
+			nparams--;
+			if (nparams == 0) {
+				return flag_find;
+			}
+		}
+
 	}
 	return flag_find;
 }
@@ -2626,4 +2624,79 @@ bool ConvParamValue(ParamValue& pvalue, const GS::UniString& paramName, const do
 	pvalue.val.uniStringValue = GS::UniString::Printf("%.3f", doubleValue);
 	pvalue.isValid = true;
 	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация API_IFCProperty в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvParamValue(ParamValue& pvalue, const API_IFCProperty& property) {
+	if (pvalue.rawName.IsEmpty() || pvalue.name.IsEmpty()) {
+		GS::UniString fname = property.head.propertySetName + "/" + property.head.propertyName;
+		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{IFC:" + fname.ToLowerCase() + "}";
+		if (pvalue.name.IsEmpty()) pvalue.name = fname;
+	}
+	pvalue.val.canCalculate = true;
+	pvalue.isValid = true;
+	if (property.head.propertyType == API_IFCPropertySingleValueType) {
+		switch (property.singleValue.nominalValue.value.primitiveType) {
+			case API_IFCPropertyAnyValueStringType:
+				pvalue.type = API_PropertyStringValueType;
+				pvalue.val.uniStringValue = property.singleValue.nominalValue.value.stringValue;
+				pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty();
+				if (pvalue.val.boolValue) {
+					pvalue.val.intValue = 1;
+					pvalue.val.doubleValue = 1.0;
+				}
+				break;
+			case API_IFCPropertyAnyValueRealType:
+				pvalue.type = API_PropertyRealValueType;
+				pvalue.val.doubleValue = round(property.singleValue.nominalValue.value.doubleValue * 1000) / 1000;
+				if (property.singleValue.nominalValue.value.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
+				pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+				if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
+				if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
+				pvalue.val.uniStringValue = GS::UniString::Printf("%.3f", pvalue.val.doubleValue);
+				break;
+			case API_IFCPropertyAnyValueIntegerType:
+				pvalue.type = API_PropertyIntegerValueType;
+				pvalue.val.intValue = (GS::Int32)property.singleValue.nominalValue.value.intValue;
+				pvalue.val.doubleValue = pvalue.val.intValue * 1.0;
+				if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
+				pvalue.val.uniStringValue = GS::UniString::Printf("%d", pvalue.val.intValue);
+				break;
+			case API_IFCPropertyAnyValueBooleanType:
+				pvalue.type = API_PropertyBooleanValueType;
+				pvalue.val.boolValue = property.singleValue.nominalValue.value.boolValue;
+				if (pvalue.val.boolValue) {
+					pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+					pvalue.val.intValue = 1;
+					pvalue.val.doubleValue = 1.0;
+				} else {
+					pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+					pvalue.val.intValue = 0;
+					pvalue.val.doubleValue = 0.0;
+				}
+				break;
+			case API_IFCPropertyAnyValueLogicalType:
+				pvalue.type = API_PropertyBooleanValueType;
+				if (property.singleValue.nominalValue.value.intValue == 0) pvalue.val.boolValue = false;
+				if (property.singleValue.nominalValue.value.intValue == 1) pvalue.isValid = false;
+				if (property.singleValue.nominalValue.value.intValue == 2) pvalue.val.boolValue = true;
+				if (pvalue.val.boolValue) {
+					pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+					pvalue.val.intValue = 1;
+					pvalue.val.doubleValue = 1.0;
+				} else {
+					pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+					pvalue.val.intValue = 0;
+					pvalue.val.doubleValue = 0.0;
+				}
+				break;
+			default:
+				pvalue.val.canCalculate = false;
+				pvalue.isValid = false;
+				break;
+		}
+	}
+	return pvalue.isValid;
 }

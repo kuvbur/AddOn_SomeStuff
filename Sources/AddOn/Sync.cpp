@@ -1,13 +1,11 @@
 ﻿//------------ kuvbur 2022 ------------
 #include	<stdlib.h> /* atoi */
-#include <time.h>
-#include <vector>
+#include	<time.h>
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
 #include	"ResetProperty.hpp"
 #include	"Dimensions.hpp"
-
 
 #define SYNC_NO 0
 #define SYNC_FROM 1
@@ -141,80 +139,10 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	GSErrCode	err = ACAPI_Element_GetHeader(&tElemHead);
 	if (err != NoError) return;
 	err = ACAPI_Goodies(APIAny_RunGDLParScriptID, &tElemHead, 0);
-	BruteForce(elemGuid, syncSettings);
 	if (err != NoError) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
 		return;
 	}
-}
-
-
-// -----------------------------------------------------------------------------
-// Запускает обработку выбранных, заданных в настройке
-// -----------------------------------------------------------------------------
-void BruteForceSelected(const SyncSettings& syncSettings) {
-	GS::UniString fmane = "Brute force";
-	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane);
-}
-
-void BruteForce(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
-	API_Element      element = {};
-	element.header.guid = elemGuid;
-	GSErrCode err = ACAPI_Element_Get(&element);
-	if (err != NoError) return;
-	Int32                nSection = 0;
-	API_LibPartSection** sectList;
-	Int32                libInd = element.object.libInd;
-	err = ACAPI_LibPart_GetSectionList(libInd, &nSection, &sectList);
-	if (err != NoError) {
-		msg_rep("BruteForce", "ACAPI_LibPart_GetSectionList", err, elemGuid);
-		return;
-	}
-	Int32 min_len = 1;
-	Int32 max_len = 6;
-	std::string s = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-	for (Int32 n = min_len; n < max_len; n++) {
-		std::vector<int> a(n + 1, 0);
-		for (;;)
-		{
-			for (int i = 1; i < a.size(); ++i) {
-				GS::UniString password;
-				for (int k = 0; k < a.size(); ++k) {
-					password = password + GS::UniString::Printf("%c", s[a[k]]);
-				}
-				
-				if (BruteForceTest(nSection, sectList, libInd, password)) {
-					msg_rep("BruteForce", password, NoError, elemGuid);
-					BMKillHandle((GSHandle*)&sectList);
-					return;
-				}
-			}
-			int j;
-			for (j = n; a[j] == (j ? 61 : 1); --j)
-			{
-				a[j] = 0;
-			}
-			if (j == 0) break;
-			a[j]++;
-		}
-	}
-	msg_rep("BruteForce", "failed", NoError, elemGuid);
-	BMKillHandle((GSHandle*)&sectList);
-}
-
-bool BruteForceTest(Int32& nSection, API_LibPartSection** sectList, Int32& libInd,  GS::UniString& password) {
-	GSHandle sectionHdl;
-	for (Int32 i = 1; i < nSection; i++) {
-		API_LibPartSection* sectionPtr = *sectList + i;
-		GS::UniString sectionStr = "";
-		GSErrCode err = ACAPI_LibPart_GetSection(libInd, sectionPtr, &sectionHdl, &sectionStr, &password);
-		if (err == NoError) {
-			return true;
-			BMKillHandle(&sectionHdl);
-		}
-		BMKillHandle(&sectionHdl);
-	}
-	return false;
 }
 
 // --------------------------------------------------------------------
@@ -241,7 +169,6 @@ bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings 
 	}
 	return flag_sync;
 }
-
 
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
@@ -314,6 +241,7 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings, GS::
 							ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
 							ParamValue paramTo = paramsTo.Get(rawNameTo);
 							//Сопоставляем и записываем, если значения отличаются
+							//TODO Добавить обработку writeOne.stringformat
 							if (paramFrom.isValid && paramFrom != paramTo) {
 								paramTo.val = paramFrom.val; // Записываем только значения
 								paramTo.isValid = true;
@@ -419,12 +347,14 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 			int syncdirection = SYNC_NO; // Направление синхронизации
 			GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
 			GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
-			if (SyncString(elementType, rulestring[i], syncdirection, param, ignorevals)) {
+			GS::UniString stringformat = ""; //Строка с форматом числа
+			if (SyncString(elementType, rulestring[i], syncdirection, param, ignorevals, stringformat)) {
 				hasRule = true;
 				ParamValue paramdef; //Свойство, из которого получено правило
 				ConvParamValue(paramdef, definition);
 				paramdef.fromGuid = elemGuid;
 				WriteData writeOne;
+				writeOne.stringformat = stringformat;
 				writeOne.ignorevals = ignorevals;
 				if (syncdirection == SYNC_TO || syncdirection == SYNC_TO_SUB) {
 					if (syncdirection == SYNC_TO_SUB) {
@@ -462,7 +392,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString> ignorevals) {
+bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, GS::UniString& stringformat) {
 	syncdirection = SYNC_NO;
 	// Выбор направления синхронизации
 	// Копировать в субэлементы или из субэлементов
@@ -584,13 +514,21 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	if (synctypefind == false) return false;
 
 	GS::UniString tparamName = rulestring_one.GetSubstring('{', '}', 0);
-	UInt32 nparam = 0;
 	GS::Array<GS::UniString> params;
-	nparam = StringSplt(tparamName, ";", params);
+	UInt32 nparam = StringSplt(tparamName, ";", params);
 
 	// Параметры не найдены - выходим
 	if (nparam == 0) return false;
 	GS::UniString paramName = params[0];
+	GS::UniString stringformat = "";
+	if (paramName.Contains("#")) {
+		GS::Array<GS::UniString> tparams;
+		UInt32 tnparam = StringSplt(paramName, "#", tparams);
+		if (tnparam == 2) {
+			paramName = tparams[0];
+			stringformat = tparams[1];
+		}
+	}
 	paramName.ReplaceAll("\\/", "/");
 	param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
 	param.name = paramName;
@@ -607,67 +545,6 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		}
 	}
 	return true;
-}
-
-
-// -----------------------------------------------------------------------------
-// Запись значения IFC свойства в другое свойство
-// -----------------------------------------------------------------------------
-GSErrCode SyncIFCAndProp(const API_Guid & elemGuid, const SyncRule & syncRule, const API_PropertyDefinition & definition)
-{
-	API_IFCProperty property_from;
-	API_Property property_to;
-	GSErrCode err = GetIFCPropertyByName(elemGuid, syncRule.paramNameFrom, property_from);
-	if (err == NoError) {
-		err = ACAPI_Element_GetPropertyValue(elemGuid, definition.guid, property_to);
-		if (err != NoError) {
-			msg_rep("SyncParamAndProp", "ACAPI_Element_GetPropertyValue " + definition.name, err, elemGuid);
-			return APIERR_MISSINGCODE;
-		}
-		GS::UniString param_string = "";
-		GS::Int32 param_int = 0;
-		bool param_bool = false;
-		double param_real = 0;
-		if (property_from.head.propertyType == API_IFCPropertySingleValueType) {
-			switch (property_from.singleValue.nominalValue.value.primitiveType)
-			{
-			case API_IFCPropertyAnyValueStringType:
-				param_string = property_from.singleValue.nominalValue.value.stringValue;
-				param_bool = (param_string.GetLength() > 0);
-				break;
-			case API_IFCPropertyAnyValueRealType:
-				param_real = round(property_from.singleValue.nominalValue.value.doubleValue * 1000) / 1000;
-				if (property_from.singleValue.nominalValue.value.doubleValue - param_real > 0.001) param_real += 0.001;
-				param_int = (GS::Int32)param_real;
-				if (param_int / 1 < param_real) param_int += 1;
-				param_string = GS::UniString::Printf("%.3f", param_real);
-				break;
-			default:
-				break;
-			}
-		}
-		if (param_real > 0) param_bool = true;
-
-		// Реализовано только чтение, чтоб не сбивать с толку штатный транслятор
-		//if (syncRule.syncdirection == SYNC_FROM) {
-		//	if (!SyncCheckIgnoreVal(syncRule, property_from)) {
-		//		return  WriteProp(elemGuid, property_to, param_string, param_int, param_bool, param_real);
-		//	}
-		//	else {
-		//		return  APIERR_MISSINGCODE; // Игнорируем значение
-		//	}
-		//}
-	}
-	return err;
-}
-
-GS::UniString GetPropertyENGName(GS::UniString & name) {
-	if (name == u8"наименование") return "BuildingMaterialProperties/Building Material Name";
-	if (name == u8"описание") return "BuildingMaterialProperties/Building Material Description";
-	if (name == u8"id") return "BuildingMaterialProperties/Building Material ID";
-	if (name == u8"плотность") return "BuildingMaterialProperties/Building Material Density";
-	if (name == u8"производитель") return "BuildingMaterialProperties/Building Material Manufacturer";
-	return name;
 }
 
 // -----------------------------------------------------------------------------
