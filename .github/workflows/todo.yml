@@ -10,7 +10,8 @@ on:
         description: Enable, if you want to import all TODOs. Runs on checked out branch! Only use if you're sure what you are doing.
   push:
     branches: # do not set multiple branches, todos might be added and then get referenced by themselves in case of a merge
-      - beta-testing
+      - 'beta-testing'
+
 
 permissions:
   issues: write
@@ -23,6 +24,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: beta-testing
       - name: Run Issue Bot
         uses: derjuulsn/todo-issue@main
         env:
