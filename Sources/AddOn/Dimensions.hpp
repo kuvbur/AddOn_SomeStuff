@@ -1,4 +1,4 @@
-//------------ kuvbur 2022 ------------
+﻿//------------ kuvbur 2022 ------------
 #pragma once
 #ifndef DIM_HPP
 #define	DIM_HPP
