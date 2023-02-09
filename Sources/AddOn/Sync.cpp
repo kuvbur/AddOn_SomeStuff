@@ -211,7 +211,7 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings, GS::
 		mainsyncRules.Clear();
 		subelemGuids.Push(elemGuid); // Это теперь список всех элементов для синхронизации
 		// Читаем все возможные свойства
-		ParamDictElementRead(paramToRead);
+		ParamHelpers::ElementRead(paramToRead);
 		ParamDictElement paramToWrite; // Словарь с параметрами для записи
 		// Выбираем по-элементно параметры для чтения и записи, формируем словарь
 		for (UInt32 i = 0; i < subelemGuids.GetSize(); i++) {
@@ -253,7 +253,7 @@ void SyncData(const API_Guid & elemGuid, const SyncSettings & syncSettings, GS::
 			}
 		}
 		if (!paramToWrite.IsEmpty()) {
-			ParamDictElementWrite(paramToWrite);
+			ParamHelpers::ElementWrite(paramToWrite);
 		}
 	}
 }
@@ -351,7 +351,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 			if (SyncString(elementType, rulestring[i], syncdirection, param, ignorevals, stringformat)) {
 				hasRule = true;
 				ParamValue paramdef; //Свойство, из которого получено правило
-				ConvParamValue(paramdef, definition);
+				ParamHelpers::ConvValue(paramdef, definition);
 				paramdef.fromGuid = elemGuid;
 				WriteData writeOne;
 				writeOne.stringformat = stringformat;
@@ -520,7 +520,6 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	// Параметры не найдены - выходим
 	if (nparam == 0) return false;
 	GS::UniString paramName = params[0];
-	GS::UniString stringformat = "";
 	if (paramName.Contains("#")) {
 		GS::Array<GS::UniString> tparams;
 		UInt32 tnparam = StringSplt(paramName, "#", tparams);
@@ -743,7 +742,7 @@ void SyncPropAndMatReplaceValue(const double& var, const GS::UniString & pattern
 		UIndex startpos = outstring.FindFirst(patternstring + "#");
 		stringformat = outstring.GetSubstring('#', '#', startpos);
 	}
-	GS::UniString t = PropertyTestHelpers::NumToString(var, stringformat);
+	GS::UniString t = PropertyHelpers::NumToString(var, stringformat);
 	if (!stringformat.IsEmpty()) {
 		stringformat = "#" + stringformat + "#";
 	}
@@ -756,7 +755,7 @@ void SyncPropAndMatReplaceValue(const API_Property & property, const GS::UniStri
 		UIndex startpos = outstring.FindFirst(patternstring + "#");
 		stringformat = outstring.GetSubstring('#', '#', startpos);
 	}
-	GS::UniString t = PropertyTestHelpers::ToString(property, stringformat);
+	GS::UniString t = PropertyHelpers::ToString(property, stringformat);
 	if (!stringformat.IsEmpty()) {
 		stringformat = "#" + stringformat + "#";
 	}
@@ -865,7 +864,7 @@ bool SyncCheckIgnoreVal(const SyncRule & syncRule, const GS::UniString & val) {
 bool SyncCheckIgnoreVal(const SyncRule & syncRule, const API_Property & property) {
 	bool ignore_flag = false;
 	if (syncRule.ignorevals.GetSize() > 0) {
-		GS::UniString val = PropertyTestHelpers::ToString(property);
+		GS::UniString val = PropertyHelpers::ToString(property);
 		ignore_flag = SyncCheckIgnoreVal(syncRule, val);
 	}
 	return ignore_flag;
