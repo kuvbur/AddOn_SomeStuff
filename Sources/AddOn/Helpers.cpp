@@ -2656,3 +2656,299 @@ GS::UniString ParamHelpers::ToString(const ParamValue & pvalue, const GS::UniStr
 		default: DBBREAK(); return "Invalid Value";
 	}
 }
+
+// -----------------------------------------------------------------------------
+// Получание строки с составом конструкции (слоями)
+// -----------------------------------------------------------------------------
+bool MaterialString::GetComponentString(const API_Element & element, ParamValue & pvalue) {
+
+	// Получаем данные о компонентах элемента
+	GS::Array<LayerConstr>	components;
+	GSErrCode err = MaterialString::GetComponents(element, components);
+	if (err != NoError) return false;
+
+	// Разбираем основную строку-шаблон
+	GS::UniString outstring = "";
+	GS::Array<API_PropertyDefinition> outdefinitions;
+	err = MaterialString::ParseString(pvalue.val.uniStringValue, outstring, outdefinitions);
+	GS::UniString param_string = "";
+
+	// Финишная прямая, идём по компонентам и подставляем значения в строки
+	for (UInt32 i = 0; i < components.GetSize(); i++) {
+
+		// Стандартная строка
+		GS::UniString one_string = "";
+		if (components[i].templatestring.IsEmpty()) {
+			if (MaterialString::WriteOneString(components[i].buildingMaterial, components[i].fillThick, outdefinitions, outstring, one_string, i) == NoError)
+				param_string = param_string + " " + one_string;
+		}
+
+		// Индивидуальная строка
+		else {
+			GS::UniString uqoutstring = "";
+			GS::Array<API_PropertyDefinition> uqoutdefinitions;
+			if (MaterialString::ParseString(components[i].templatestring, uqoutstring, uqoutdefinitions) == NoError) {
+				if (MaterialString::WriteOneString(components[i].buildingMaterial, components[i].fillThick, uqoutdefinitions, uqoutstring, one_string, i) == NoError) {
+					param_string = param_string + " " + one_string;
+				}
+			}
+		}
+	}
+	if (!param_string.IsEmpty())
+		param_string.TrimLeft();
+
+	//err = WriteProp(elemGuid, property, param_string);
+	if (err != NoError) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+// --------------------------------------------------------------------
+// Вытаскивает всё, что может, из информации о составе элемента
+// --------------------------------------------------------------------
+GSErrCode MaterialString::GetComponents(const API_Element & element, GS::Array<LayerConstr>&components) {
+	GSErrCode					err = NoError;
+	API_ModelElemStructureType	structtype = {};
+	API_AttributeIndex			constrinx = {};
+	double						fillThick = 0;
+
+	// Получаем данные о составе конструкции. Т.к. для разных типов элементов
+	// информация храница в разных местах - запишем всё в одни переменные
+	API_ElemTypeID eltype;
+#ifdef AC_26
+	eltype = element.header.type.typeID;
+#else
+	eltype = element.header.typeID;
+#endif
+	switch (eltype) {
+		case API_WallID:
+			structtype = element.wall.modelElemStructureType;
+			if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
+			if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+			fillThick = element.wall.thickness;
+			break;
+		case API_SlabID:
+			structtype = element.slab.modelElemStructureType;
+			if (structtype == API_CompositeStructure) constrinx = element.slab.composite;
+			if (structtype == API_BasicStructure) constrinx = element.slab.buildingMaterial;
+			fillThick = element.slab.thickness;
+			break;
+		case API_RoofID:
+			structtype = element.roof.shellBase.modelElemStructureType;
+			if (structtype == API_CompositeStructure) constrinx = element.roof.shellBase.composite;
+			if (structtype == API_BasicStructure) constrinx = element.roof.shellBase.buildingMaterial;
+			fillThick = element.roof.shellBase.thickness;
+			break;
+		case API_ShellID:
+			structtype = element.shell.shellBase.modelElemStructureType;
+			if (structtype == API_CompositeStructure) constrinx = element.shell.shellBase.composite;
+			if (structtype == API_BasicStructure) constrinx = element.shell.shellBase.buildingMaterial;
+			fillThick = element.shell.shellBase.thickness;
+			break;
+		default:
+			return APIERR_MISSINGCODE;
+			break;
+	}
+
+	// Получим индексы строительных материалов и толщины
+	// Для однослойной конструкции
+	if (structtype == API_BasicStructure) {
+		LayerConstr l = {};
+		if (MaterialString::GetOneComponent(constrinx, fillThick, l) == NoError)
+			components.Push(l);
+	}
+
+	// Для многослойной конструкции
+	if (structtype == API_CompositeStructure) {
+		API_Attribute						attrib;
+		API_AttributeDef					defs;
+		BNZeroMemory(&attrib, sizeof(API_Attribute));
+		BNZeroMemory(&defs, sizeof(API_AttributeDef));
+		attrib.header.typeID = API_CompWallID;
+		attrib.header.index = constrinx;
+		err = ACAPI_Attribute_Get(&attrib);
+		if (err != NoError) {
+			msg_rep("MaterialString::GetComponents", " ACAPI_Attribute_Get", err, element.header.guid);
+			return err;
+		}
+		err = ACAPI_Attribute_GetDef(attrib.header.typeID, attrib.header.index, &defs);
+		if (err != NoError) {
+			msg_rep("MaterialString::GetComponents", " ACAPI_Attribute_GetDef", err, element.header.guid);
+			return err;
+		}
+		for (short i = 0; i < attrib.compWall.nComps; i++) {
+			LayerConstr l = {};
+			if (MaterialString::GetOneComponent((*defs.cwall_compItems)[i].buildingMaterial, (*defs.cwall_compItems)[i].fillThick, l) == NoError)
+				components.Push(l);
+		}
+		ACAPI_DisposeAttrDefsHdls(&defs);
+	}
+	return err;
+}
+
+// --------------------------------------------------------------------
+// Заполнение данных для одного слоя
+// --------------------------------------------------------------------
+GSErrCode  MaterialString::GetOneComponent(const API_AttributeIndex & constrinx, const double& fillThick, LayerConstr & component) {
+	GSErrCode		err = NoError;
+	API_Attribute	attrib = {};
+	BNZeroMemory(&attrib, sizeof(API_Attribute));
+	attrib.header.typeID = API_BuildingMaterialID;
+	attrib.header.index = constrinx;
+	err = ACAPI_Attribute_Get(&attrib);
+	if (err != NoError) {
+		msg_rep("MaterialString::GetOneComponent", "ACAPI_Attribute_Get", err, APINULLGuid);
+		return err;
+	};
+
+	// Поищем свойство со строкой-шаблоном
+	GS::Array<API_PropertyDefinition> definitions;
+	err = ACAPI_Attribute_GetPropertyDefinitions(attrib.header, API_PropertyDefinitionFilter_UserDefined, definitions);
+	if (err != NoError) {
+		msg_rep("MaterialString::GetOneComponent", "ACAPI_Attribute_GetPropertyDefinitions", err, APINULLGuid);
+		return err;
+	}
+	GS::Array <API_Property> propertys;
+	if (definitions.GetSize() > 0) {
+		err = ACAPI_Attribute_GetPropertyValues(attrib.header, definitions, propertys);
+		if (err != NoError) {
+			msg_rep("MaterialString::GetOneComponent", "ACAPI_Attribute_GetPropertyDefinitions", err, APINULLGuid);
+			return err;
+		}
+		for (UInt32 i = 0; i < propertys.GetSize(); i++) {
+			if (propertys[i].definition.description.Contains("Sync_name")) {
+				if (!propertys[i].isDefault) component.templatestring = propertys[i].value.singleVariant.variant.uniStringValue;
+			}
+		}
+	}
+	component.buildingMaterial = attrib;
+	component.fillThick = fillThick;
+	return err;
+}
+
+// -----------------------------------------------------------------------------
+// Ищем в строке - шаблоне свойства и возвращаем массив определений
+// Строка шаблона на входе
+//			%Имя свойства% текст %Имя группы/Имя свойства.5mm%
+// Строка шаблона на выходе
+//			@1@ текст @2@#.5mm#
+// Если свойство не найдено, %Имя свойства% заменяем на пустоту ("")
+// -----------------------------------------------------------------------------
+GSErrCode  MaterialString::ParseString(const GS::UniString & templatestring, GS::UniString & outstring, GS::Array<API_PropertyDefinition>&outdefinitions) {
+	GSErrCode					err = NoError;
+	outstring = templatestring;
+	outstring.ReplaceAll("Property:", "");
+	outstring.ReplaceAll("{", "");
+	outstring.ReplaceAll("}", "");
+	GS::UniString part = "";
+
+	//Переводим все имена свойств в нижний регистр, так потом искать проще
+	for (UInt32 i = 0; i < templatestring.Count('%') / 2; i++) {
+		part = outstring.GetSubstring('%', '%', 0);
+		part = part.ToLowerCase();
+
+		//Обработка количества нулей и единиц измерения
+		GS::UniString formatstring = "";
+		if (part.Contains(".")) {
+			GS::Array<GS::UniString> partstring;
+			UInt32 n = StringSplt(part, ".", partstring);
+			if (StringSplt(part, ".", partstring) > 1) {
+				if (partstring[n - 1].Contains("m") || partstring[n - 1].Contains(u8"м")) {
+					formatstring = partstring[n - 1];
+					part.ReplaceAll("." + formatstring, "");
+					formatstring.ReplaceAll(u8"м", "m");
+					formatstring.ReplaceAll(u8"д", "d");
+					formatstring.ReplaceAll(u8"с", "c");
+					formatstring = "#" + formatstring + "#";
+				}
+			}
+		}
+		outstring.ReplaceAll("%" + outstring.GetSubstring('%', '%', 0) + "%", "@" + part + "@" + formatstring);
+	}
+	outstring.ReplaceAll("@", "%");
+
+	//Заменяем толщину
+	outstring.ReplaceAll(u8"%толщина%", "@t@");
+	outstring.ReplaceAll("%n%", "@n@");
+	UInt32 n_param = 0; // Количество успешно найденных свойств
+	for (UInt32 i = 0; i < templatestring.Count('%') / 2; i++) {
+		part = outstring.GetSubstring('%', '%', 0);
+
+		//Ищем свойство по названию
+		API_PropertyDefinition definition = {};
+		if (GetPropertyDefinitionByName(GetPropertyENGName(part), definition) == NoError) {
+			outstring.ReplaceAll("%" + part + "%", "@" + GS::UniString::Printf("%d", n_param) + "@");
+			outdefinitions.Push(definition);
+			n_param += 1;
+		} else {
+			outstring.ReplaceAll("%" + part + "%", ""); // Если не нашли - стираем
+		}
+	}
+	return err;
+}
+
+// --------------------------------------------------------------------
+// Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
+// --------------------------------------------------------------------
+GSErrCode  MaterialString::WriteOneString(const API_Attribute & attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>&outdefinitions, const GS::UniString & templatestring, GS::UniString & outstring, UInt32 & n) {
+	GSErrCode					err = NoError;
+	GS::Array <API_Property>	propertys;
+	outstring = templatestring;
+	MaterialString::ReplaceValue(fillThick, "@t@", outstring);
+	MaterialString::ReplaceValue(n + 1, "@n@", outstring);
+	if (ACAPI_Attribute_GetPropertyValues(attrib.header, outdefinitions, propertys) == NoError) {
+		for (UInt32 j = 0; j < propertys.GetSize(); j++) {
+			GS::UniString stringformat = "";
+			GS::UniString patternstring = "@" + GS::UniString::Printf("%d", j) + "@";
+			MaterialString::ReplaceValue(propertys[j], patternstring, outstring);
+		}
+	}
+	outstring.TrimLeft();
+
+	//Ищем указание длины строки
+	Int32 stringlen = 0;
+	GS::UniString part = "";
+	if (outstring.Contains('~')) {
+		part = outstring.GetSubstring('~', ' ', 0);
+		if (!part.IsEmpty() && part.GetLength() < 4)
+			stringlen = std::atoi(part.ToCStr());
+		if (stringlen > 0) part = "~" + part;
+	}
+	if (stringlen > 0) {
+		Int32 modlen = outstring.GetLength() - part.GetLength() - 1;
+		Int32 addspace = stringlen - modlen;
+		if (modlen > stringlen) {
+			addspace = modlen % stringlen;
+		}
+		outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, " "));
+	}
+	return err;
+}
+
+void MaterialString::ReplaceValue(const double& var, const GS::UniString & patternstring, GS::UniString & outstring) {
+	GS::UniString stringformat = "";
+	if (outstring.Contains(patternstring + "#")) {
+		UIndex startpos = outstring.FindFirst(patternstring + "#");
+		stringformat = outstring.GetSubstring('#', '#', startpos);
+	}
+	GS::UniString t = PropertyHelpers::NumToString(var, stringformat);
+	if (!stringformat.IsEmpty()) {
+		stringformat = "#" + stringformat + "#";
+	}
+	outstring.ReplaceAll(patternstring + stringformat, t);
+}
+
+void MaterialString::ReplaceValue(const API_Property & property, const GS::UniString & patternstring, GS::UniString & outstring) {
+	GS::UniString stringformat = "";
+	if (outstring.Contains(patternstring + "#")) {
+		UIndex startpos = outstring.FindFirst(patternstring + "#");
+		stringformat = outstring.GetSubstring('#', '#', startpos);
+	}
+	GS::UniString t = PropertyHelpers::ToString(property, stringformat);
+	if (!stringformat.IsEmpty()) {
+		stringformat = "#" + stringformat + "#";
+	}
+	outstring.ReplaceAll(patternstring + stringformat, t);
+}

@@ -63,7 +63,6 @@ static const Int32 FalseId = 5;
 static const Int32 ErrorSelectID = 6;
 static const Int32 UndoDimRound = 7;
 
-
 typedef struct {
 	GS::Array <API_Guid>	guid;
 } SortGUID;
@@ -72,12 +71,24 @@ typedef struct {
 	GS::Array <UInt32>	inx;
 } SortInx;
 
+// --------------------------------------------------------------------
+// Структура для хранения данных о составе конструкций
+// Заполнение см. SyncPropAndMatGetComponents
+// --------------------------------------------------------------------
+typedef struct {
+	API_Attribute					buildingMaterial;
+	GS::Array<API_PropertyDefinition>	definitions;
+	GS::UniString						templatestring = "";
+	double								fillThick = 0.0;
+} LayerConstr;
+
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
 // name - имя для поиска
 // uniStringValue, intValue, boolValue, doubleValue - значения
 // canCalculate - можно ли использовать в математических вычислениях
 typedef struct {
+
 	// Собственно значения
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
@@ -96,6 +107,7 @@ typedef struct {
 	bool isValid = false; // Валидность (был считан без ошибок)
 	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
 	API_Property property = {}; // Само свойство, для упрощения чтения/записи
+
 	// Тут храним способ, которым нужно получить значение
 	bool fromGDLparam = false; // Найден в гдл параметрах
 	bool fromGDLdescription = false; // Найден по описанию
@@ -118,7 +130,6 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
-
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -201,6 +212,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 //	(функция должна принимать в качетве аргумента API_Guid SyncSettings
 // -----------------------------------------------------------------------------
 void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString funcname /* = ""*/);
+
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid
@@ -265,7 +277,6 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 // -----------------------------------------------------------------------------
 GSErrCode GetGDLParameters(const API_ElemTypeID& elemType, const API_Guid& elemGuid, API_AddParType**& params);
 
-
 // -----------------------------------------------------------------------------
 // Обработка количества нулей и единиц измерения в имени свойства
 // Удаляет из имени paramName найденные единицы измерения
@@ -298,8 +309,7 @@ bool EvalExpression(GS::UniString& unistring_expression);
 // -----------------------------------------------------------------------------
 bool MenuInvertItemMark(short menuResID, short itemIndex);
 
-namespace PropertyHelpers
-{
+namespace PropertyHelpers {
 	GS::UniString	NumToString(const double& var, const GS::UniString stringformat);
 	GS::UniString	ToString(const API_Variant& variant, const GS::UniString stringformat);
 	GS::UniString	ToString(const API_Variant& variant);
@@ -443,14 +453,19 @@ namespace ParamHelpers {
 
 	// -----------------------------------------------------------------------------
 	// Поиск по описанию GDL параметра
-	// Данный способ работат только с объектами
+	// Данный способ работат только с объектами (только чтение)
 	// -----------------------------------------------------------------------------
 	bool GDLParamByDescription(const API_Element& element, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
-	// Поиск по имени GDL параметра
+	// Поиск по имени GDL параметра (чтение/запись)
 	// -----------------------------------------------------------------------------
 	bool GDLParamByName(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
+
+	// -----------------------------------------------------------------------------
+	// Получание строки с составом конструкции (слоями)
+	// -----------------------------------------------------------------------------
+	bool GetComponentString(const API_Element& element, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
 	// Перевод значения в строку в соответсвии с stringformat
@@ -458,6 +473,46 @@ namespace ParamHelpers {
 	GS::UniString ToString(const ParamValue& pvalue, const GS::UniString stringformat);
 }
 
+// -----------------------------------------------------------------------------
+// Функции для получения состава конструкции в текстовом виде
+// -----------------------------------------------------------------------------
+namespace MaterialString {
+
+	// -----------------------------------------------------------------------------
+	// ОСНОВНАЯ ФУНКЦИЯ
+	// Получание строки с составом конструкции (слоями)
+	// -----------------------------------------------------------------------------
+	bool GetComponentString(const API_Element& element, ParamValue& pvalue);
+
+	// --------------------------------------------------------------------
+	// Вытаскивает всё, что может, из информации о составе элемента
+	// --------------------------------------------------------------------
+	GSErrCode GetComponents(const API_Element& element, GS::Array<LayerConstr>& components);
+
+	// --------------------------------------------------------------------
+	// Заполнение данных для одного слоя
+	// --------------------------------------------------------------------
+	GSErrCode  GetOneComponent(const API_AttributeIndex& constrinx, const double& fillThick, LayerConstr& component);
+
+	// -----------------------------------------------------------------------------
+	// Ищем в строке - шаблоне свойства и возвращаем массив определений
+	// Строка шаблона на входе
+	//			%Имя свойства% текст %Имя группы/Имя свойства.5mm%
+	// Строка шаблона на выходе
+	//			@1@ текст @2@#.5mm#
+	// Если свойство не найдено, %Имя свойства% заменяем на пустоту ("")
+	// -----------------------------------------------------------------------------
+	GSErrCode  ParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions);
+
+	// --------------------------------------------------------------------
+	// Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
+	// --------------------------------------------------------------------
+	GSErrCode  WriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring, UInt32& n);
+
+	void ReplaceValue(const double& var, const GS::UniString& patternstring, GS::UniString& outstring);
+
+	void ReplaceValue(const API_Property& property, const GS::UniString& patternstring, GS::UniString& outstring);
+}
 
 bool operator== (const ParamValue& lhs, const ParamValue& rhs);
 
@@ -484,8 +539,7 @@ bool operator== (const API_PropertyDefinition& lhs, const API_PropertyDefinition
 bool operator== (const API_Property& lhs, const API_Property& rhs);
 
 template <typename T>
-bool operator!= (const T& lhs, const T& rhs)
-{
+bool operator!= (const T& lhs, const T& rhs) {
 	return !(lhs == rhs);
 }
 
