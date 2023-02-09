@@ -159,11 +159,11 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 		}
 		else {
 			if (rule.sum_type == TextSum) {
-				GS::UniString val = PropertyTestHelpers::ToString(properties[0]);
+				GS::UniString val = PropertyHelpers::ToString(properties[0]);
 				if (!CheckIgnoreVal(rule.ignore_val, val)) {
 					elemArray[i].string_value = val.ToCStr(0, MaxUSize, CC_Cyrillic).Get();
 					if (rule.criteria.guid != APINULLGuid) {
-						elemArray[i].criteria = PropertyTestHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+						elemArray[i].criteria = PropertyHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
 						criteriaList[elemArray[i].criteria].inx.Push(i);
 					}
 					else {
@@ -174,7 +174,7 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 			if (rule.sum_type == NumSum) {
 				elemArray[i].num_value = properties[0].value.singleVariant.variant.doubleValue;
 				if (rule.criteria.guid != APINULLGuid) {
-					elemArray[i].criteria = PropertyTestHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+					elemArray[i].criteria = PropertyHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
 					criteriaList[elemArray[i].criteria].inx.Push(i);
 				}
 				else {

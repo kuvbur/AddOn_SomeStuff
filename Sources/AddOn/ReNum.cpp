@@ -38,7 +38,6 @@ GSErrCode ReNumSelected(void) {
 				err = ReNum_GetElement(guidArray[i], rules);
 			}
 			if (!rules.IsEmpty()) {
-
 				// Теперь у нас есть списк правил. Можем пройти по каждому правилу и обработать элементы
 				for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
 					const RenumRule& rule = *cIt->value;
@@ -156,9 +155,9 @@ GSErrCode ReNumOneRule(const RenumRule& rule) {
 		err = ACAPI_Element_GetPropertyValues(elemArray[i].guid, definitions, properties);
 		if (err != NoError) msg_rep("ReNumOneRule", "ACAPI_Element_GetPropertyValues", err, elemArray[i].guid);
 		if (err == NoError) {
-			elemArray[i].criteria = PropertyTestHelpers::ToString(properties[0]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+			elemArray[i].criteria = PropertyHelpers::ToString(properties[0]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
 			if (hasdelimetr) {
-				delimetr = PropertyTestHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+				delimetr = PropertyHelpers::ToString(properties[1]).ToCStr(0, MaxUSize, CC_Cyrillic).Get();
 				elemArray[i].delimetr = delimetr;
 			}
 

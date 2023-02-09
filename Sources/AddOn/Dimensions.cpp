@@ -88,8 +88,8 @@ bool DimParsePref(GS::UniString rawrule, DimRule& dimrule) {
 			dimrule.pen_rounded = std::atoi(partstring_2[1].ToCStr());
 			if (partstring_2.GetSize() == 3) {
 				if (partstring_2[2].Contains("<") && partstring_2[2].Contains(">")) {
-					ParamDict paramDict;
-					GetParamNameDict(partstring_2[2], paramDict);
+					ParamDictValue paramDict;
+					ParamHelpers::ParseParamName(partstring_2[2], paramDict);
 					dimrule.paramDict = paramDict;
 					dimrule.expression = partstring_2[2];
 				}
@@ -99,8 +99,8 @@ bool DimParsePref(GS::UniString rawrule, DimRule& dimrule) {
 			}
 			if (partstring_2.GetSize() == 4) {
 				if (partstring_2[3].Contains("<") && partstring_2[3].Contains(">")) {
-					ParamDict paramDict;
-					GetParamNameDict(partstring_2[3], paramDict);
+					ParamDictValue paramDict;
+					ParamHelpers::ParseParamName(partstring_2[3], paramDict);
 					dimrule.paramDict = paramDict;
 					dimrule.expression = partstring_2[3];
 				}
@@ -308,13 +308,11 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 		//if (elemGuid != APINULLGuid) GetParamValueDict(elemGuid, dimrule.paramDict, pdictvalue); //Получим значения, если размер привязан к элементу
 		// Добавляем в словарь округлённое значение
 		ParamValue pvalue;
-		ConvParamValue(pvalue, "MeasuredValue", dimValmm_round);
+		ParamHelpers::ConvValue(pvalue, "MeasuredValue", dimValmm_round);
 		pdictvalue.Add(pvalue.name, pvalue);
 		GS::UniString expression = dimrule.expression;
-
 		// Заменяем вычисленное
-		if (ReplaceParamInExpression(pdictvalue, expression)) {
-
+		if (ParamHelpers::ReplaceParamInExpression(pdictvalue, expression)) {
 			// Вычисляем значения
 			if (EvalExpression(expression)) {
 				custom_txt = expression;
