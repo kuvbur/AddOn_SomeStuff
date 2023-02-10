@@ -41,6 +41,16 @@ typedef struct {
 typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
 
 // -----------------------------------------------------------------------------
+// Подключение мониторинга
+// -----------------------------------------------------------------------------
+void MonAll(SyncSettings& syncSettings);
+
+// -----------------------------------------------------------------------------
+// Подключение мониторинга по типам
+// -----------------------------------------------------------------------------
+void MonByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
+
+// -----------------------------------------------------------------------------
 // Запускает обработку всех объектов, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncAndMonAll(SyncSettings& syncSettings);
@@ -48,12 +58,12 @@ void SyncAndMonAll(SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
 // -----------------------------------------------------------------------------
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase);
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase, ParamDictValue& propertyParams);
 
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
 // -----------------------------------------------------------------------------
-void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
@@ -78,7 +88,7 @@ bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings&
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids);
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
 // --------------------------------------------------------------------
 // Добавление подэлементов и их параметров в правила синхорнизации

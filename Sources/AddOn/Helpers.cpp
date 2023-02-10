@@ -559,7 +559,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 #endif // AC_22
 }
 
-void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString funcname /* = ""*/) {
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname) {
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
 		GS::UniString subtitle("working...");
@@ -581,11 +581,40 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	}
 }
 
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&, ParamDictValue& propertyParams, ParamDictElement& paramToWrite), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname) {
+	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
+	if (guidArray.IsEmpty()) return;
+	ParamDictValue propertyParams = {};
+	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	ParamDictElement paramToWrite;
+	GS::UniString subtitle("working...");
+	short nPhase = 1;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
+	long time_start = clock();
+	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		function(guidArray[i], syncSettings, propertyParams, paramToWrite);
+		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+			return;
+		}
+	}
+	if (!paramToWrite.IsEmpty()) {
+		ParamHelpers::ElementsWrite(paramToWrite);
+	} else {
+		msg_rep(funcname, "No data to write", NoError, APINULLGuid);
+	}
+	long time_end = clock();
+	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
+	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
+	msg_rep(funcname + " Selected", intString + time, NoError, APINULLGuid);
+	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+}
+
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid
 // -----------------------------------------------------------------------------
-void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString funcname /* = ""*/) {
+void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString& funcname) {
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable);
 	if (!guidArray.IsEmpty()) {
 		long time_start = clock();
@@ -628,7 +657,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	elementType = elementHead.typeID;
 #endif
 	return err;
-}
+	}
 
 #ifndef AC_26
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr) {
@@ -1095,7 +1124,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 			break;
 	}
 	return;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1414,7 +1443,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 		value = &property.definition.defaultValue.basicValue;
 	} else {
 		value = &property.value;
-	}
+}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -1713,6 +1742,12 @@ bool ParamHelpers::ToProperty(ParamValue & pvalue) {
 // TODO Переписать всё под запись ParamValue
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ToProperty(const ParamValue & pvalue, API_Property & property) {
+	if (property.definition.canValueBeEditable == false) {
+		return false;
+	}
+	if (pvalue.isValid == false) {
+		return false;
+	}
 	bool flag_rec = false;
 	switch (property.definition.valueType) {
 		case API_PropertyIntegerValueType:
@@ -1804,7 +1839,6 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 						return propertyflag.value.singleVariant.variant.boolValue;
 					}
 				} else {
-					msg_rep("GetElemState", "ACAPI_Element_GetPropertyValue " + definitions[i].name, err, elemGuid);
 					return false;
 				}
 			}
@@ -1816,10 +1850,10 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ParamHelpers::ElementWrite(ParamDictElement & paramToWrite) {
+void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue& params = *cIt->value;
+		ParamDictValue params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
 		if (!params.IsEmpty()) {
 			ParamHelpers::Write(elemGuid, params);
@@ -1871,24 +1905,27 @@ void ParamHelpers::SetPropertyValues(const API_Guid & elemGuid, ParamDictValue &
 		ParamValue& param = *cIt->value;
 		if (param.isValid && param.fromPropertyDefinition) {
 			API_Property property = param.property;
-			if (ParamHelpers::ToProperty(param, property)) properties.Push(property);
+
+			//if (ParamHelpers::ToProperty(param, property)) properties.Push(property);
+			if (ParamHelpers::ToProperty(param, property)) {
+				GSErrCode error = ACAPI_Element_SetProperty(elemGuid, property);
+				if (error != NoError) msg_rep("SetPropertyValues", "ACAPI_Element_SetProperty", error, elemGuid);
+			}
 		}
 	}
-	if (properties.IsEmpty()) return;
-	GSErrCode error = ACAPI_Element_SetProperties(elemGuid, properties);
-#ifdef DEBUG
-	GS::UniString intString = GS::UniString::Printf(" %d qty", properties.GetSize());
-	msg_rep("SetProperties ", intString, error, APINULLGuid);
-#endif
+
+	//if (properties.IsEmpty()) return;
+	//GSErrCode error = ACAPI_Element_SetProperties(elemGuid, properties);
 }
 
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ParamHelpers::ElementRead(ParamDictElement & paramToRead) {
+void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	if (paramToRead.IsEmpty()) return;
-	ParamDictValue propertyParams;
-	GetAllPropertyDefinitionToParamDict(propertyParams);
+
+	// Словарь со всеми возможными определениями свойств
+	if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 
 	// Выбираем по-элементно параметры для чтения
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -2042,6 +2079,27 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid & elemGuid, const GS::UniSt
 		}
 	}
 	return APIERR_MISSINGCODE;
+}
+
+void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, GS::Array<API_PropertyDefinition>&definitions) {
+	if (definitions.IsEmpty()) return;
+	UInt32 nparams = propertyParams.GetSize();
+	bool needAddNew = (nparams == 0);
+	for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+		ParamValue pvalue;
+		ParamHelpers::ConvValue(pvalue, definitions[j]);
+		bool changeExs = propertyParams.ContainsKey(pvalue.rawName);
+		if (needAddNew && !changeExs) {
+			propertyParams.Add(pvalue.rawName, pvalue);
+		} else {
+			pvalue.fromGuid = propertyParams.Get(pvalue.rawName).fromGuid;
+			propertyParams.Get(pvalue.rawName) = pvalue;
+			nparams--;
+			if (nparams == 0) {
+				return;
+			}
+		}
+	}
 }
 
 // --------------------------------------------------------------------
@@ -2243,7 +2301,7 @@ bool ParamHelpers::GetGDLValues(const API_Element & element, const API_Elem_Head
 	bool flag_find_name = false;
 	if (!paramByName.IsEmpty()) {
 		flag_find_name = ParamHelpers::GDLParamByName(element, elem_head, paramByName);
-		if (flag_find_name) ParamHelpers::Compare(paramBydescription, params);
+		if (flag_find_name) ParamHelpers::Compare(paramByName, params);
 	} else {
 		flag_find_name = true;
 	}
@@ -2522,7 +2580,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.property = property;
 	pvalue.val.canCalculate = true;
 	return true;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
