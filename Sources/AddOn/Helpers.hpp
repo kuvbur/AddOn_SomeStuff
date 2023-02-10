@@ -31,6 +31,9 @@
 #define	 Menu_LogShow		11
 #define	 Menu_RunParam		12
 
+#define	 SYNC_RESET	1
+#define	 SYNC	2
+
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
 static const short AddOnPromtID = ID_ADDON_PROMT;
@@ -211,13 +214,15 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid SyncSettings
 // -----------------------------------------------------------------------------
-void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString funcname /* = ""*/);
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname);
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid
 // -----------------------------------------------------------------------------
-void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString funcname /* = ""*/);
+void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString& funcname /* = ""*/);
+
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&, ParamDictValue& propertyParams, ParamDictElement& paramToWrite), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname);
 
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid
@@ -394,7 +399,7 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Запись словаря параметров для множества элементов
 	// --------------------------------------------------------------------
-	void ElementWrite(ParamDictElement& paramToWrite);
+	void ElementsWrite(ParamDictElement& paramToWrite);
 
 	// --------------------------------------------------------------------
 	// Запись параметров в один элемент
@@ -409,7 +414,7 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Заполнение словаря параметров для множества элементов
 	// --------------------------------------------------------------------
-	void ElementRead(ParamDictElement& paramToRead);
+	void ElementsRead(ParamDictElement& paramToRead, ParamDictValue& propertyParams);
 
 	// --------------------------------------------------------------------
 	// Заполнение словаря с параметрами
@@ -446,6 +451,8 @@ namespace ParamHelpers {
 	// -----------------------------------------------------------------------------
 	bool ConvValue(ParamValue& pvalue, const API_IFCProperty& property);
 
+	void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams, GS::Array<API_PropertyDefinition>& definitions);
+
 	// --------------------------------------------------------------------
 	// Получить все доступные свойства в формарте ParamDictValue
 	// --------------------------------------------------------------------
@@ -461,11 +468,6 @@ namespace ParamHelpers {
 	// Поиск по имени GDL параметра (чтение/запись)
 	// -----------------------------------------------------------------------------
 	bool GDLParamByName(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
-
-	// -----------------------------------------------------------------------------
-	// Получание строки с составом конструкции (слоями)
-	// -----------------------------------------------------------------------------
-	bool GetComponentString(const API_Element& element, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
 	// Перевод значения в строку в соответсвии с stringformat

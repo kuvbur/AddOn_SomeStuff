@@ -21,8 +21,8 @@
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
 static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
-	const GS::HashSet<API_Guid>& released,
-	const GS::HashSet<API_Guid>& deleted) {
+														 const GS::HashSet<API_Guid>& released,
+														 const GS::HashSet<API_Guid>& deleted) {
 	(void)deleted;
 	(void)released;
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
@@ -47,21 +47,21 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 #endif // PK_1
 	MenuSetState(syncSettings);
 	switch (notifID) {
-	case APINotify_New:
-	case APINotify_NewAndReset:
-	case APINotify_Open:
-		Do_ElementMonitor(syncSettings.syncMon);
-		break;
-	case APINotify_Close:
-	case APINotify_Quit:
-		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
-		ACAPI_Notify_InstallElementObserver(nullptr);
-		break;
-	case APINotify_ChangeWindow:
-	case APINotify_ChangeFloor:
-		break;
-	default:
-		break;
+		case APINotify_New:
+		case APINotify_NewAndReset:
+		case APINotify_Open:
+			Do_ElementMonitor(syncSettings.syncMon);
+			break;
+		case APINotify_Close:
+		case APINotify_Quit:
+			ACAPI_Notify_CatchNewElement(nullptr, nullptr);
+			ACAPI_Notify_InstallElementObserver(nullptr);
+			break;
+		case APINotify_ChangeWindow:
+		case APINotify_ChangeFloor:
+			break;
+		default:
+			break;
 	}
 	(void)param;
 	DimRoundAll(syncSettings);
@@ -71,8 +71,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 // -----------------------------------------------------------------------------
 // Срабатывает при изменении элемента
 // -----------------------------------------------------------------------------
-GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType)
-{
+GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType) {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
 #ifdef PK_1
@@ -90,23 +89,24 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	if (elemType->elemHead.typeID == API_GroupID) return NoError;
 #endif
 	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) return NoError;
-	bool	sync_prop = false;
+	ParamDictValue propertyParams = {};
+	ParamDictElement paramToWrite = {};
 	switch (elemType->notifID) {
-	case APINotifyElement_New:
-	case APINotifyElement_Copy:
-	case APINotifyElement_Change:
-	case APINotifyElement_Edit:
-	case APINotifyElement_Undo_Modified:
-	case APINotifyElement_Redo_Created:
-	case APINotifyElement_Redo_Modified:
-	case APINotifyElement_Redo_Deleted:
-	case APINotifyElement_ClassificationChange:
-		sync_prop = true;
-	default:
-		break;
-	}
-	if (sync_prop) {
-		SyncElement(elemType->elemHead.guid, syncSettings);
+		case APINotifyElement_New:
+		case APINotifyElement_Copy:
+		case APINotifyElement_Change:
+		case APINotifyElement_Edit:
+		case APINotifyElement_Undo_Modified:
+		case APINotifyElement_Redo_Created:
+		case APINotifyElement_Redo_Modified:
+		case APINotifyElement_Redo_Deleted:
+		case APINotifyElement_ClassificationChange:
+			SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite);
+			if (!paramToWrite.IsEmpty()) {
+				ParamHelpers::ElementsWrite(paramToWrite);
+			}
+		default:
+			break;
 	}
 	return NoError;
 }	// ElementEventHandlerProc
@@ -114,8 +114,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 // -----------------------------------------------------------------------------
 // Включение мониторинга
 // -----------------------------------------------------------------------------
-void	Do_ElementMonitor(bool& syncMon)
-{
+void	Do_ElementMonitor(bool& syncMon) {
 #ifdef PK_1
 	syncMon = true;
 #endif
@@ -140,52 +139,52 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	syncSettings.syncMon = true;
 #endif // PK_1
 	switch (menuParams->menuItemRef.menuResID) {
-	case AddOnMenuID:
-		switch (menuParams->menuItemRef.itemIndex) {
-		case MonAll_CommandID:
-			syncSettings.syncAll = false;
+		case AddOnMenuID:
+			switch (menuParams->menuItemRef.itemIndex) {
+				case MonAll_CommandID:
+					syncSettings.syncAll = false;
 #ifndef PK_1
-			syncSettings.syncMon = !syncSettings.syncMon;
+					syncSettings.syncMon = !syncSettings.syncMon;
 #endif // PK_1
-			Do_ElementMonitor(syncSettings.syncMon);
-			SyncAndMonAll(syncSettings);
-			DimRoundAll(syncSettings);
+					Do_ElementMonitor(syncSettings.syncMon);
+					MonAll(syncSettings);
+					DimRoundAll(syncSettings);
+					break;
+				case SyncAll_CommandID:
+					syncSettings.syncAll = true;
+					SyncAndMonAll(syncSettings);
+					DimRoundAll(syncSettings);
+					syncSettings.syncAll = false;
+					break;
+				case SyncSelect_CommandID:
+					SyncSelected(syncSettings);
+					DimSelected(syncSettings);
+					break;
+				case wallS_CommandID:
+					syncSettings.wallS = !syncSettings.wallS;
+					break;
+				case widoS_CommandID:
+					syncSettings.widoS = !syncSettings.widoS;
+					break;
+				case objS_CommandID:
+					syncSettings.objS = !syncSettings.objS;
+					break;
+				case cwallS_CommandID:
+					syncSettings.cwallS = !syncSettings.cwallS;
+					break;
+				case ReNum_CommandID:
+					err = ReNumSelected();
+					break;
+				case Sum_CommandID:
+					err = SumSelected();
+					break;
+				case Log_CommandID:
+					break;
+				case RunParam_CommandID:
+					RunParamSelected(syncSettings);
+					break;
+			}
 			break;
-		case SyncAll_CommandID:
-			syncSettings.syncAll = true;
-			SyncAndMonAll(syncSettings);
-			DimRoundAll(syncSettings);
-			syncSettings.syncAll = false;
-			break;
-		case SyncSelect_CommandID:
-			SyncSelected(syncSettings);
-			DimSelected(syncSettings);
-			break;
-		case wallS_CommandID:
-			syncSettings.wallS = !syncSettings.wallS;
-			break;
-		case widoS_CommandID:
-			syncSettings.widoS = !syncSettings.widoS;
-			break;
-		case objS_CommandID:
-			syncSettings.objS = !syncSettings.objS;
-			break;
-		case cwallS_CommandID:
-			syncSettings.cwallS = !syncSettings.cwallS;
-			break;
-		case ReNum_CommandID:
-			err = ReNumSelected();
-			break;
-		case Sum_CommandID:
-			err = SumSelected();
-			break;
-		case Log_CommandID:
-			break;
-		case RunParam_CommandID:
-			RunParamSelected(syncSettings);
-			break;
-		}
-		break;
 	}
 	(void)err;
 	WriteSyncSettingsToPreferences(syncSettings);
@@ -195,22 +194,19 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	return NoError;
 }
 
-API_AddonType __ACDLL_CALL CheckEnvironment(API_EnvirParams* envir)
-{
+API_AddonType __ACDLL_CALL CheckEnvironment(API_EnvirParams* envir) {
 	RSGetIndString(&envir->addOnInfo.name, AddOnInfoID, AddOnNameID, ACAPI_GetOwnResModule());
 	RSGetIndString(&envir->addOnInfo.description, AddOnInfoID, AddOnDescriptionID, ACAPI_GetOwnResModule());
 	ACAPI_KeepInMemory(true);
 	return APIAddon_Preload;
 }
 
-GSErrCode __ACDLL_CALL RegisterInterface(void)
-{
+GSErrCode __ACDLL_CALL RegisterInterface(void) {
 	GSErrCode err = ACAPI_Register_Menu(AddOnMenuID, AddOnPromtID, MenuCode_Tools, MenuFlag_Default);
 	return err;
 }
 
-GSErrCode __ACENV_CALL Initialize(void)
-{
+GSErrCode __ACENV_CALL Initialize(void) {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
 #ifdef PK_1
@@ -218,12 +214,12 @@ GSErrCode __ACENV_CALL Initialize(void)
 #endif // PK_1
 	MenuSetState(syncSettings);
 	Do_ElementMonitor(syncSettings.syncMon);
+	MonAll(syncSettings);
 	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler(AddOnMenuID, MenuCommandHandler);
 }
 
-GSErrCode __ACENV_CALL FreeData(void)
-{
+GSErrCode __ACENV_CALL FreeData(void) {
 	return NoError;
 }

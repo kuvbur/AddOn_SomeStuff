@@ -1,4 +1,5 @@
-﻿#if !defined (RESET_HPP)
+﻿//------------ kuvbur 2022 ------------
+#if !defined (RESET_HPP)
 #define	RESET_HPP
 #ifdef AC_25
 #include	"APICommon25.h"
@@ -11,8 +12,14 @@
 
 typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
 
-bool ResetAllProperty();
+//--------------------------------------------------------------------------------------------------------------------------
+// Сброс свойств
+//--------------------------------------------------------------------------------------------------------------------------
+bool ResetProperty(ParamDictValue& propertyParams);
 
+//--------------------------------------------------------------------------------------------------------------------------
+// Сброс свойств во всех БД файла и настройках по умолчанию
+//--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& definitions_to_reset);
 
 UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid);
