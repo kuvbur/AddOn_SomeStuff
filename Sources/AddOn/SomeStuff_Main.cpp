@@ -158,7 +158,6 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 					break;
 				case SyncSelect_CommandID:
 					SyncSelected(syncSettings);
-					DimSelected(syncSettings);
 					break;
 				case wallS_CommandID:
 					syncSettings.wallS = !syncSettings.wallS;

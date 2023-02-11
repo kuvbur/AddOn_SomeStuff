@@ -28,11 +28,7 @@ typedef GS::HashTable<GS::UniString, DimRule> DimRules;
 
 GSErrCode DimReadPref(DimRules& dimrules);
 
-bool DimParsePref(GS::UniString rawrule, DimRule& dimrule);
-
-void DimAutoRoundSel(const API_Guid& elemGuid, const SyncSettings& syncSettings);
-
-void DimSelected(const SyncSettings& syncSettings);
+bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression);
 
 GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules);
 
@@ -40,6 +36,6 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 
 void DimRoundAll(const SyncSettings& syncSettings);
 
-bool DimRoundByType(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules);
+bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules);
 
 #endif
