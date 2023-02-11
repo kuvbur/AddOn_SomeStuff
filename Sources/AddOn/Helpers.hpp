@@ -354,9 +354,14 @@ namespace ParamHelpers {
 	bool ParseParamName(const GS::UniString& expression, ParamDictValue& paramDict);
 
 	// -----------------------------------------------------------------------------
+	// Добавление пустого значения в словарь ParamDictValue
+	// -----------------------------------------------------------------------------
+	void AddVal(ParamDictValue& params, const GS::UniString& rawName);
+
+	// -----------------------------------------------------------------------------
 	// Добавление значения в словарь ParamDictValue
 	// -----------------------------------------------------------------------------
-	void AddVal(ParamDictValue& params, const GS::UniString& rawName_prefix, const GS::UniString& name, const double& val);
+	void AddVal(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double& val);
 
 	// -----------------------------------------------------------------------------
 	// Список возможных префиксов типов параметров
@@ -451,6 +456,14 @@ namespace ParamHelpers {
 	// -----------------------------------------------------------------------------
 	bool ConvValue(ParamValue& pvalue, const API_IFCProperty& property);
 
+	// --------------------------------------------------------------------
+	// Заполнение свойств для элемента
+	// --------------------------------------------------------------------
+	void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams, const API_Guid& elemGuid);
+
+	// --------------------------------------------------------------------
+	// Перевод GS::Array<API_PropertyDefinition> в ParamDictValue
+	// --------------------------------------------------------------------
 	void GetAllPropertyDefinitionToParamDict(ParamDictValue& propertyParams, GS::Array<API_PropertyDefinition>& definitions);
 
 	// --------------------------------------------------------------------

@@ -5,7 +5,6 @@
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
 #include	"ResetProperty.hpp"
-#include	"Dimensions.hpp"
 
 #define SYNC_NO 0
 #define SYNC_FROM 1
@@ -182,6 +181,13 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 void SyncSelected(const SyncSettings& syncSettings) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	GS::UniString fmane = "Sync";
+
+	API_DatabaseInfo    databaseInfo;
+	GSErrCode           err;
+
+	BNZeroMemory(&databaseInfo, sizeof(API_DatabaseInfo));
+	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
+
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		CallOnSelectedElemSettings(SyncElement, false, true, syncSettings, fmane);
 		return NoError;

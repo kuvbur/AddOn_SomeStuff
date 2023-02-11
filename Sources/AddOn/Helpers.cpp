@@ -13,6 +13,7 @@
 #include	"Helpers.hpp"
 #include	"Model3D/model.h"
 #include	"Model3D/MeshBody.hpp"
+#include	"Dimensions.hpp"
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -591,8 +592,14 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	short nPhase = 1;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
 	long time_start = clock();
+
+	DimRules dimrules = {};
+	GSErrCode err = DimReadPref(dimrules);
+	bool needdimround = (!dimrules.IsEmpty() && err == NoError);
+
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		function(guidArray[i], syncSettings, propertyParams, paramToWrite);
+		if (needdimround) err = DimAutoRound(guidArray[i], dimrules);
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 			return;
@@ -657,7 +664,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	elementType = elementHead.typeID;
 #endif
 	return err;
-	}
+}
 
 #ifndef AC_26
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr) {
@@ -1059,19 +1066,19 @@ bool ParamHelpers::GetMorphParam(const API_Element& element, ParamDictValue& pdi
 		B = Max_y - Min_y;
 		ZZYZX = Max_z - Min_z;
 		ParamDictValue pdictvaluemorph;
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "l", L);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "lx", Lx);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "ly", Ly);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "lz", Lz);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "max_x", Max_x);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "min_x", Min_x);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "max_y", Max_y);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "min_y", Min_y);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "max_z", Max_z);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "min_z", Min_z);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "a", A);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "b", B);
-		ParamHelpers::AddVal(pdictvaluemorph, "Morph:", "zzyzx", ZZYZX);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "l", L);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "lx", Lx);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "ly", Ly);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "lz", Lz);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "max_x", Max_x);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "min_x", Min_x);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "max_y", Max_y);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "min_y", Min_y);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "max_z", Max_z);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "min_z", Min_z);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "a", A);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "b", B);
+		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "Morph:", "zzyzx", ZZYZX);
 		ParamHelpers::Compare(pdictvaluemorph, pdictvalue);
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return true;
@@ -1082,9 +1089,31 @@ bool ParamHelpers::GetMorphParam(const API_Element& element, ParamDictValue& pdi
 }
 
 // -----------------------------------------------------------------------------
+// Добавление пустого значения в словарь ParamDictValue
+// -----------------------------------------------------------------------------
+void ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& rawName) {
+	if (!params.ContainsKey(rawName)) {
+		ParamValue pvalue;
+		pvalue.rawName = rawName;
+		if (rawName.Contains("Coord")) pvalue.fromCoord = true;
+		if (rawName.Contains("GDL")) pvalue.fromGDLparam = true;
+		if (rawName.Contains("escription:") || rawName.Contains("esc:")) {
+			pvalue.fromGDLparam = true;
+			pvalue.fromGDLdescription = true;
+		}
+		if (rawName.Contains("Property")) pvalue.fromProperty = true;
+		if (rawName.Contains("Material")) pvalue.fromMaterial = true;
+		if (rawName.Contains("Info")) pvalue.fromInfo = true;
+		if (rawName.Contains("IFC")) pvalue.fromIFCProperty = true;
+		if (rawName.Contains("Morph")) pvalue.fromMorph = true;
+		params.Add(rawName, pvalue);
+	}
+}
+
+// -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
-void ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& rawName_prefix, const GS::UniString& name, const  double& val) {
+void ParamHelpers::AddVal(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double& val) {
 	ParamValue pvalue;
 	pvalue.rawName = "{" + rawName_prefix + name + "}";
 	pvalue.name = name;
@@ -1124,7 +1153,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 			break;
 	}
 	return;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1264,16 +1293,28 @@ bool ParamHelpers::ParseParamName(const GS::UniString & expression, ParamDictVal
 	GS::UniString outstring = expression;
 
 	//TODO переписать парсинг свойств из строки
-	//if (!outstring.Contains('{')) return (!paramDict.IsEmpty());
-	//GS::UniString part = "";
-	//bool hasmorph = false;
-	//for (UInt32 i = 0; i < expression.Count('{'); i++) {
-	//	part = outstring.GetSubstring('{', '}', 0);
-	//	if (!paramDict.ContainsKey(part)) {
-	//		paramDict.Add(part, true);
-	//	}
-	//	outstring.ReplaceAll("{" + part + "}", "");
-	//}
+	if (!outstring.Contains('{')) return (!paramDict.IsEmpty());
+	GS::Array<GS::UniString> paramTypesList;
+	GetParamTypeList(paramTypesList);
+	GS::UniString part = "";
+	for (UInt32 i = 0; i < expression.Count('{'); i++) {
+		part = outstring.GetSubstring('{', '}', 0);
+		bool flagfindprefix = false;
+		for (UInt32 j = 0; j < paramTypesList.GetSize(); j++) {
+			if (part.Contains(paramTypesList[j])) {
+				flagfindprefix = true;
+				break;
+			}
+		}
+		GS::UniString rawname = "";
+		if (flagfindprefix) {
+			rawname = "{" + part + "}";
+		} else {
+			rawname = "{GDL:" + part + "}";
+		}
+		ParamHelpers::AddVal(paramDict, rawname);
+		outstring.ReplaceAll("{" + part + "}", "");
+	}
 	return (!paramDict.IsEmpty());
 }
 
@@ -1443,7 +1484,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 		value = &property.definition.defaultValue.basicValue;
 	} else {
 		value = &property.value;
-}
+	}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -1967,7 +2008,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params) {
 		}
 	}
 	if (needGetAllDefinitions) {
-		GetAllPropertyDefinitionToParamDict(params);
+		GetAllPropertyDefinitionToParamDict(params, elemGuid);
 	} // Проверим - для всех ли свойств подобраны определения
 
 	API_Element element = {};
@@ -1999,14 +2040,15 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params) {
 				needCompare = ParamHelpers::GetPropertyValues(elemGuid, paramByType);
 			}
 
-			//if (paramType.IsEqual("symb_pos_")){}
+			if (paramType.IsEqual("Coord")) {
+
+				// Добавить сихнронизации координат
+			}
 			if (paramType.IsEqual("GDL")) {
 				needCompare = ParamHelpers::GetGDLValues(element, elem_head, paramByType);
 			}
 			if (paramType.IsEqual("Material")) {
 			}
-
-			//if (paramType.IsEqual("Info")) {}
 			if (paramType.IsEqual("IFC")) {
 				needCompare = ParamHelpers::GetIFCValues(elemGuid, paramByType);
 			}
@@ -2081,6 +2123,27 @@ GSErrCode GetPropertyDefinitionByName(const API_Guid & elemGuid, const GS::UniSt
 	return APIERR_MISSINGCODE;
 }
 
+// --------------------------------------------------------------------
+// Заполнение свойств для элемента
+// --------------------------------------------------------------------
+void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, const API_Guid & elemGuid) {
+	if (elemGuid == APINULLGuid) {
+		ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	} else {
+		GS::Array<API_PropertyDefinition> definitions;
+		GSErrCode err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+		if (err != NoError) {
+			msg_rep("GetAllPropertyDefinitionToParamDict", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
+			return;
+		}
+		if (definitions.IsEmpty()) return;
+		ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
+	}
+}
+
+// --------------------------------------------------------------------
+// Перевод GS::Array<API_PropertyDefinition> в ParamDictValue
+// --------------------------------------------------------------------
 void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, GS::Array<API_PropertyDefinition>&definitions) {
 	if (definitions.IsEmpty()) return;
 	UInt32 nparams = propertyParams.GetSize();
@@ -2106,9 +2169,8 @@ void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & property
 // Получить все доступные свойства в формарте ParamDictValue
 // --------------------------------------------------------------------
 void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & propertyParams) {
-	GSErrCode err = NoError;
 	GS::Array<API_PropertyGroup> groups;
-	err = ACAPI_Property_GetPropertyGroups(groups);
+	GSErrCode err = ACAPI_Property_GetPropertyGroups(groups);
 	if (err != NoError) {
 		msg_rep("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
 		return;
@@ -2580,7 +2642,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.property = property;
 	pvalue.val.canCalculate = true;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
