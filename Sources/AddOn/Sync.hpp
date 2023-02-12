@@ -105,10 +105,12 @@ void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictEleme
 // --------------------------------------------------------------------
 void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead);
 
+void SyncAddParam(ParamDictValue& params, const API_Guid& elemGuid, ParamDictElement& paramToRead);
+
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, bool& hasSub);
+bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub);
 
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
