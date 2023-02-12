@@ -84,22 +84,24 @@ bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
 			dimrule.round_value = std::atoi(partstring_2[0].ToCStr());
 			dimrule.pen_rounded = std::atoi(partstring_2[1].ToCStr());
 			if (partstring_2.GetSize() == 3) {
-				if (partstring_2[2].Contains("<") && partstring_2[2].Contains(">")) {
+				if (partstring_2[2].Contains("{") && partstring_2[2].Contains("}")) {
 					ParamDictValue paramDict;
-					ParamHelpers::ParseParamName(partstring_2[2], paramDict);
+					GS::UniString expression = partstring_2[2];
+					ParamHelpers::ParseParamName(expression, paramDict);
 					dimrule.paramDict = paramDict;
-					dimrule.expression = partstring_2[2];
+					dimrule.expression = expression;
 					if (!hasexpression) hasexpression = !paramDict.IsEmpty();
 				} else {
 					dimrule.flag_change = (std::atoi(partstring_2[2].ToCStr()) > 0);
 				}
 			}
 			if (partstring_2.GetSize() == 4) {
-				if (partstring_2[3].Contains("<") && partstring_2[3].Contains(">")) {
+				if (partstring_2[3].Contains("{") && partstring_2[3].Contains("}")) {
 					ParamDictValue paramDict;
-					ParamHelpers::ParseParamName(partstring_2[3], paramDict);
+					GS::UniString expression = partstring_2[3];
+					ParamHelpers::ParseParamName(expression, paramDict);
 					dimrule.paramDict = paramDict;
-					dimrule.expression = partstring_2[3];
+					dimrule.expression = expression;
 					if (!hasexpression) hasexpression = !paramDict.IsEmpty();
 				}
 			}
@@ -204,7 +206,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 				if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
 					flag_write = true;
 					(*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
-					strcpy((char*)&(dimElem.note.content), content.ToCStr());
+					strcpy((char*)&(dimElem.note.content), content.ToCStr(CC_Cyrillic).Get());
 					*dimElem.note.contentUStr = content;
 				}
 				if (flag_change == DIM_CHANGE_OFF && dimElem.note.contentType != API_NoteContent_Measured) {
@@ -227,13 +229,23 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 				return ACAPI_Element_ChangeMemo(elemGuid_n, APIMemoMask_AdditionalPolygon, &memo);
 											});
 			if (err == APIERR_REFUSEDCMD) { // Я сказал надо!
-				if (!ACAPI_Element_Filter(elemGuid, APIFilt_InMyWorkspace)) return err;
-				if (!ACAPI_Element_Filter(elemGuid, APIFilt_HasAccessRight)) return err;
-				if (!ACAPI_Element_Filter(elemGuid, APIFilt_IsEditable)) return err;
+				if (!ACAPI_Element_Filter(elemGuid, APIFilt_InMyWorkspace)) {
+					ACAPI_DisposeElemMemoHdls(&memo);
+					return err;
+				}
+				if (!ACAPI_Element_Filter(elemGuid, APIFilt_HasAccessRight)) {
+					ACAPI_DisposeElemMemoHdls(&memo);
+					return err;
+				}
+				if (!ACAPI_Element_Filter(elemGuid, APIFilt_IsEditable)) {
+					ACAPI_DisposeElemMemoHdls(&memo);
+					return err;
+				}
 				err = ACAPI_Element_ChangeMemo(elemGuid_n, APIMemoMask_AdditionalPolygon, &memo);
 			}
 		}
 		if (err != NoError) {
+			ACAPI_DisposeElemMemoHdls(&memo);
 			msg_rep("DimAutoRound", "ACAPI_Element_Change_1", err, elemGuid);
 			return err;
 		}
@@ -273,12 +285,13 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 
 		// Заменяем вычисленное
 		if (ParamHelpers::ReplaceParamInExpression(pdictvalue, expression)) {
-
 			// Вычисляем значения
-			if (EvalExpression(expression)) {
-				custom_txt = expression;
-				flag_expression = true;
+			flag_expression = true;
+			if (expression.Contains("<") && expression.Contains(">")) {
+				flag_expression = EvalExpression(expression);
 			}
+			ReplaceCR(expression);
+			custom_txt = expression;
 		}
 	}
 

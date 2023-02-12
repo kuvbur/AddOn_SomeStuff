@@ -66,6 +66,12 @@ static const Int32 FalseId = 5;
 static const Int32 ErrorSelectID = 6;
 static const Int32 UndoDimRound = 7;
 
+static const Int32 BuildingMaterialNameID = 8;
+static const Int32 BuildingMaterialDescriptionID = 9;
+static const Int32 BuildingMaterialDensityID = 10;
+static const Int32 BuildingMaterialManufacturerID = 11;
+static const Int32 ThicknessID = 12;
+
 typedef struct {
 	GS::Array <API_Guid>	guid;
 } SortGUID;
@@ -98,6 +104,7 @@ typedef struct {
 	bool boolValue = false;
 	double doubleValue = 0.0;
 	bool canCalculate = false; // Может быть использован в формулах
+	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью #mm или #0)
 } ParamValueData;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
@@ -121,6 +128,7 @@ typedef struct {
 	bool fromCoord = false; //Координаты
 	bool fromPropertyDefinition = false; //Задан определением, искать не нужно
 	bool fromMaterial = false; // Взять инфо из состава конструкции
+	bool fromAttribDefinition = false; // Взять инфо из свойств аттрибута
 	API_Guid fromGuid = APINULLGuid; //Откуда прочитать
 } ParamValue;
 
@@ -163,6 +171,11 @@ Int32 DoubleM2IntMM(const double& value);
 // Округлить целое n вверх до ближайшего целого числа, кратного k
 // --------------------------------------------------------------------
 Int32 ceil_mod(Int32 n, Int32 k);
+
+// -----------------------------------------------------------------------------
+// Замена \n на перенос строки
+// -----------------------------------------------------------------------------
+void ReplaceCR(GS::UniString& val, bool clear = false);
 
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
@@ -290,15 +303,6 @@ GSErrCode GetGDLParameters(const API_ElemTypeID& elemType, const API_Guid& elemG
 GS::UniString GetFormatString(GS::UniString& paramName);
 
 // -----------------------------------------------------------------------------
-// Обработка типа данных в имени
-// $ - вернуть строку
-// # - вернуть целое число
-// По умолчанию - double
-// Удаляет из имени paramName найденные указания на тип данных
-// -----------------------------------------------------------------------------
-API_VariantType GetTypeString(GS::UniString& paramName);
-
-// -----------------------------------------------------------------------------
 // Получение имени внутренних свойств по русскому имени
 // -----------------------------------------------------------------------------
 GS::UniString GetPropertyENGName(GS::UniString& name);
@@ -340,7 +344,7 @@ namespace ParamHelpers {
 	// Для колонны или объекта - центр колонны и отм. низа
 	// Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 	// -----------------------------------------------------------------------------
-	bool GetLibCoords(const GS::UniString& paramName, const API_Elem_Head& elem_head, API_AddParType& nthParameter);
+	bool GetCoords(const API_Element& element, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
 	// Замена имен параметров на значения в выражении
@@ -351,12 +355,23 @@ namespace ParamHelpers {
 	// -----------------------------------------------------------------------------
 	// Извлекает из строки все имена свойств или параметров, заключенные в знаки %
 	// -----------------------------------------------------------------------------
-	bool ParseParamName(const GS::UniString& expression, ParamDictValue& paramDict);
+	bool ParseParamNameMaterial(GS::UniString& expression, ParamDictValue& paramDict);
+
+	// -----------------------------------------------------------------------------
+	// Извлекает из строки все имена свойств или параметров, заключенные в знаки {}
+	// -----------------------------------------------------------------------------
+	bool ParseParamName(GS::UniString& expression, ParamDictValue& paramDict);
 
 	// -----------------------------------------------------------------------------
 	// Добавление пустого значения в словарь ParamDictValue
+	// Возвращает rawName
 	// -----------------------------------------------------------------------------
-	void AddVal(ParamDictValue& params, const GS::UniString& rawName);
+	GS::UniString AddVal(ParamDictValue& params, const GS::UniString& name);
+
+	// -----------------------------------------------------------------------------
+	// Добавление массива свойств в словарь
+	// -----------------------------------------------------------------------------
+	bool AddProperty(ParamDictValue& params, GS::Array<API_Property>& properties);
 
 	// -----------------------------------------------------------------------------
 	// Добавление значения в словарь ParamDictValue
@@ -414,7 +429,7 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Запись ParamDictValue в свойства
 	// --------------------------------------------------------------------
-	void SetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
+	void WritePropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
 
 	// --------------------------------------------------------------------
 	// Заполнение словаря параметров для множества элементов
@@ -483,9 +498,19 @@ namespace ParamHelpers {
 	bool GDLParamByName(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
+	// Получение информации о материалах и составе конструкции
+	// -----------------------------------------------------------------------------
+	bool GetMaterial(const API_Element& element, ParamDictValue& params);
+
+	// -----------------------------------------------------------------------------
 	// Перевод значения в строку в соответсвии с stringformat
 	// -----------------------------------------------------------------------------
 	GS::UniString ToString(const ParamValue& pvalue, const GS::UniString stringformat);
+
+	// -----------------------------------------------------------------------------
+	// Перевод значения в строку в соответсвии с stringformat
+	// -----------------------------------------------------------------------------
+	GS::UniString ToString(const ParamValue& pvalue);
 }
 
 // -----------------------------------------------------------------------------

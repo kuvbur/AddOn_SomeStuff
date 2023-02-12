@@ -274,11 +274,12 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) { return; }
 	GS::Array <WriteData> mainsyncRules;
+	ParamDictElement paramToRead; // Словарь с параметрами для чтения
 	bool hasSub = false;
 	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
 
 		// Получаем список правил синхронизации из всех свойств
-		ParseSyncString(elemGuid, elementType, definitions[i], mainsyncRules, hasSub); // Парсим описание свойства
+		ParseSyncString(elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub); // Парсим описание свойства
 	}
 	if (mainsyncRules.IsEmpty()) return;
 	if (propertyParams.IsEmpty()) {
@@ -292,7 +293,6 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 
 	// Заполняем правила синхронизации с учётом субэлементов, попутно заполняем словарь параметров для чтения/записи
 	WriteDict syncRules; // Словарь с правилами для каждого элемента
-	ParamDictElement paramToRead; // Словарь с параметрами для чтения
 	SyncAddSubelement(subelemGuids, mainsyncRules, syncRules, paramToRead);
 	mainsyncRules.Clear();
 	subelemGuids.Push(elemGuid); // Это теперь список всех элементов для синхронизации
@@ -329,12 +329,15 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 					if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
 						ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
 						ParamValue paramTo = paramsTo.Get(rawNameTo);
+						if (paramTo.type != paramFrom.type && paramTo.type == API_PropertyStringValueType) {
+							paramFrom.val.uniStringValue = ParamHelpers::ToString(paramFrom, writeSub.stringformat);
+						}
 
 						//Сопоставляем и записываем, если значения отличаются
-						//TODO Добавить обработку writeOne.stringformat
 						if (paramFrom.isValid && paramFrom != paramTo) {
 							paramTo.val = paramFrom.val; // Записываем только значения
 							paramTo.isValid = true;
+							paramTo.val.stringformat = writeSub.stringformat;
 							SyncAddParam(paramTo, paramToWrite);
 						}
 					}
@@ -409,10 +412,26 @@ void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead) {
 	}
 }
 
+// --------------------------------------------------------------------
+// Запись параметра в словарь
+// --------------------------------------------------------------------
+void SyncAddParam(ParamDictValue& params, const API_Guid& elemGuid, ParamDictElement& paramToRead) {
+	if (paramToRead.ContainsKey(elemGuid)) {
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+			GS::UniString rawName = *cIt->key;
+			if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
+				paramToRead.Get(elemGuid).Add(rawName, *cIt->value);
+			}
+		}
+	} else {
+		paramToRead.Add(elemGuid, params);
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, bool& hasSub) {
+bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub) {
 	GS::UniString description_string = definition.description;
 	if (description_string.IsEmpty()) {
 		return false;
@@ -445,6 +464,17 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 				WriteData writeOne;
 				writeOne.stringformat = stringformat;
 				writeOne.ignorevals = ignorevals;
+
+				// Вытаскиваем параметры для материалов, если такие есть
+				if (param.fromMaterial) {
+					ParamDictValue paramDict;
+					GS::UniString templatestring = param.val.uniStringValue; //Строка с форматом числа
+					if (ParamHelpers::ParseParamNameMaterial(templatestring, paramDict)) {
+						param.val.uniStringValue = templatestring;
+						SyncAddParam(paramDict, elemGuid, paramToRead);
+						hasSub = true; // Нужно будет прочитать все свойства
+					}
+				}
 				if (syncdirection == SYNC_TO || syncdirection == SYNC_TO_SUB) {
 					if (syncdirection == SYNC_TO_SUB) {
 						hasSub = true;
@@ -612,14 +642,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	// Параметры не найдены - выходим
 	if (nparam == 0) return false;
 	GS::UniString paramName = params[0];
-	if (paramName.Contains("#")) {
-		GS::Array<GS::UniString> tparams;
-		UInt32 tnparam = StringSplt(paramName, "#", tparams);
-		if (tnparam == 2) {
-			paramName = tparams[0];
-			stringformat = tparams[1];
-		}
-	}
+	stringformat = GetFormatString(paramName);
 	paramName.ReplaceAll("\\/", "/");
 	param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
 	param.name = paramName;
