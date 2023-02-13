@@ -420,7 +420,9 @@ void SyncAddParam(ParamDictValue& params, const API_Guid& elemGuid, ParamDictEle
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 			GS::UniString rawName = *cIt->key;
 			if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
-				paramToRead.Get(elemGuid).Add(rawName, *cIt->value);
+				ParamValue param = *cIt->value;
+				if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
+				paramToRead.Get(elemGuid).Add(rawName, param);
 			}
 		}
 	} else {
@@ -471,6 +473,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					GS::UniString templatestring = param.val.uniStringValue; //Строка с форматом числа
 					if (ParamHelpers::ParseParamNameMaterial(templatestring, paramDict)) {
 						param.val.uniStringValue = templatestring;
+						ParamHelpers::AddVal(paramDict, "Property:sync_name");
 						SyncAddParam(paramDict, elemGuid, paramToRead);
 						hasSub = true; // Нужно будет прочитать все свойства
 					}

@@ -97,7 +97,6 @@ typedef struct {
 // uniStringValue, intValue, boolValue, doubleValue - значения
 // canCalculate - можно ли использовать в математических вычислениях
 typedef struct {
-
 	// Собственно значения
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
@@ -107,6 +106,17 @@ typedef struct {
 	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью #mm или #0)
 } ParamValueData;
 
+typedef struct {
+	API_AttrTypeID type = API_ZombieAttrID;
+	API_AttributeIndex inx = 0;
+	GS::UniString templatestring = "";
+} ParamValueAttr;
+
+typedef struct {
+	API_AttributeIndex inx = 0;
+	double fillThick = 0.0;
+} ParamValueComposite;
+
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
 typedef struct {
@@ -114,10 +124,11 @@ typedef struct {
 	GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
 	GS::UniString name = ""; //Очищенное имя для поиска
 	ParamValueData val = {};
+	ParamValueAttr attr = {};
 	bool isValid = false; // Валидность (был считан без ошибок)
 	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
 	API_Property property = {}; // Само свойство, для упрощения чтения/записи
-
+	GS::Array <ParamValueComposite> composite = {};
 	// Тут храним способ, которым нужно получить значение
 	bool fromGDLparam = false; // Найден в гдл параметрах
 	bool fromGDLdescription = false; // Найден по описанию
@@ -527,12 +538,12 @@ namespace MaterialString {
 	// --------------------------------------------------------------------
 	// Вытаскивает всё, что может, из информации о составе элемента
 	// --------------------------------------------------------------------
-	GSErrCode GetComponents(const API_Element& element, GS::Array<LayerConstr>& components);
+	GSErrCode GetComponents(const API_Element& element, ParamDictValue& params);
 
 	// --------------------------------------------------------------------
 	// Заполнение данных для одного слоя
 	// --------------------------------------------------------------------
-	GSErrCode  GetOneComponent(const API_AttributeIndex& constrinx, const double& fillThick, LayerConstr& component);
+	GSErrCode  GetAttributeValues(const API_AttributeIndex& constrinx, const double& fillThick, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
 	// Ищем в строке - шаблоне свойства и возвращаем массив определений
