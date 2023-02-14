@@ -1123,6 +1123,7 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 	GS::UniString stringformat = GetFormatString(name_);
 
 	name_ = GetPropertyENGName(name_).ToLowerCase();
+
 	// Проверяем - есть лу указатель на тип параметра (GDL, Property, IFC)
 	if (name_.Contains(":")) {
 		GS::Array<GS::UniString> partstring;
@@ -1133,6 +1134,7 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 		}
 	}
 	if (rawname_prefix.IsEmpty()) rawname_prefix = "gdl:";
+
 	// Ищём строку с указанием формата вывода (метры/миллиметры)
 	GS::UniString rawName = "{" + rawname_prefix + name_ + "}";
 	if (!params.ContainsKey(rawName)) {
@@ -1244,7 +1246,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1590,7 +1592,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-}
+	}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -1901,6 +1903,28 @@ bool ParamHelpers::ToProperty(const ParamValue & pvalue, API_Property & property
 	}
 	bool flag_rec = false;
 	GS::UniString val = "";
+	// TODO добавить обработку isDefault
+//#if defined(AC_22) || defined(AC_23)
+//	if (!property.isEvaluated) {
+//		return string;
+//	}
+//	if (property.isDefault && !property.isEvaluated) {
+//		value = &property.definition.defaultValue.basicValue;
+//	}
+//	else {
+//		value = &property.value;
+//	}
+//#else
+//	if (property.status == API_Property_NotAvailable) {
+//		return string;
+//	}
+//	if (property.isDefault && property.status == API_Property_NotEvaluated) {
+//		value = &property.definition.defaultValue.basicValue;
+//	}
+//	else {
+//		value = &property.value;
+//	}
+//#endif
 	switch (property.definition.valueType) {
 	case API_PropertyIntegerValueType:
 		if (property.value.singleVariant.variant.intValue != pvalue.val.intValue) {
@@ -2586,6 +2610,7 @@ bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & par
 	GSErrCode err = MaterialString::GetComponents(element, params);
 	if (params.ContainsKey("{material:layers}")) {
 		ParamValue param_composite = params.Get("{material:layers}");
+
 		// Если есть строка-шаблон - заполним её
 		bool flag = false;
 		GS::UniString outstring = "";
@@ -2594,6 +2619,7 @@ bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & par
 			for (Int32 i = 0; i < nlayers; ++i) {
 				GS::UniString templatestring = param_composite.val.uniStringValue;
 				API_AttributeIndex constrinx = param_composite.composite[i].inx;
+
 				// Если нужно заполнить толщину
 				if (params.ContainsKey("{material:layer thickness}")) {
 					double fillThick = param_composite.composite[i].fillThick;
@@ -2601,10 +2627,11 @@ bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & par
 					GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
 					templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
 				}
-				templatestring.ReplaceAll("{material:n}", GS::UniString::Printf("%d", i+1));
+				templatestring.ReplaceAll("{material:n}", GS::UniString::Printf("%d", i + 1));
+
 				// Если для материала было указано уникальное наименование - заменим его
-				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx)+"}";
-				if (params.ContainsKey("{property:sync_name"+ attribsuffix)) {
+				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
+				if (params.ContainsKey("{property:sync_name" + attribsuffix)) {
 					if (params.Get("{property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
 				}
 				templatestring.ReplaceAll("}", attribsuffix);
@@ -2629,7 +2656,8 @@ GSErrCode GetPropertyFullName(const API_PropertyDefinition & definision, GS::Uni
 	GSErrCode error = NoError;
 	if (definision.name.Contains("ync_name")) {
 		name = definision.name;
-	}else{
+	}
+	else {
 		API_PropertyGroup group;
 		group.guid = definision.groupGuid;
 		error = ACAPI_Property_GetPropertyGroup(group);
@@ -2826,7 +2854,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.property = property;
 	pvalue.val.canCalculate = true;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -3054,6 +3082,7 @@ GSErrCode MaterialString::GetComponents(const API_Element & element, ParamDictVa
 	ParamValue param_composite = params.Get("{material:layers}");
 	param_composite.isValid = true;
 	param_composite.val.canCalculate = true;
+
 	// Получаем данные о составе конструкции. Т.к. для разных типов элементов
 	// информация храница в разных местах - запишем всё в одни переменные
 	API_ElemTypeID eltype;
@@ -3179,6 +3208,11 @@ GSErrCode  MaterialString::GetAttributeValues(const API_AttributeIndex & constri
 		}
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
 			properties[i].definition.name = properties[i].definition.name + CharENTER + attribsuffix;
+			GS::UniString val = PropertyHelpers::ToString(properties[i]);
+			if (val.Count("%") > 1 || (val.Contains("{") && val.Contains("}"))) {
+
+
+			}
 		}
 		return (ParamHelpers::AddProperty(params, properties));
 	}
