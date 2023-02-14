@@ -238,7 +238,7 @@ bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string
 		API_PropertyDefinition		delimetr = {};
 		GSErrCode					err = NoError;
 		GS::UniString paramName = description_string.GetSubstring('{', '}', 0);
-		paramName.ReplaceAll("Property:", "");
+		paramName.ReplaceAll("property:", "");
 		int nparam = StringSplt(paramName, ";", partstring);
 		if (nparam == 0) return flag;
 		err = GetPropertyDefinitionByName(elemGuid, partstring[0], criteria);
@@ -301,7 +301,7 @@ Int32 ReNumGetFlag(const API_Property& propertyflag) {
 // -----------------------------------------------------------------------------------------------------------------------
 UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid& elemGuid, API_PropertyDefinition& propertdefyrule, short& nulltype) {
 	UInt32 flag = RENUM_IGNORE;
-	if (definitionflag.description.Contains("{") && definitionflag.description.Contains("}") && definitionflag.description.Contains("Property:")) {
+	if (definitionflag.description.Contains("{") && definitionflag.description.Contains("}") && definitionflag.description.Contains("property:")) {
 
 		// Получаем значение флага
 		GSErrCode err = NoError;
@@ -313,7 +313,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 			flag = ReNumGetFlag(propertyflag[0]);
 			if (flag != RENUM_IGNORE) {
 				GS::UniString paramName = definitionflag.description.GetSubstring('{', '}', 0);
-				paramName.ReplaceAll("Property:", "");
+				paramName.ReplaceAll("property:", "");
 				if (paramName.Contains(";")) {
 					GS::Array<GS::UniString>	partstring;
 					int nparam = StringSplt(paramName, ";", partstring);

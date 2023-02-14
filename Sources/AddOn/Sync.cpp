@@ -473,7 +473,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					GS::UniString templatestring = param.val.uniStringValue; //Строка с форматом числа
 					if (ParamHelpers::ParseParamNameMaterial(templatestring, paramDict)) {
 						param.val.uniStringValue = templatestring;
-						ParamHelpers::AddVal(paramDict, "Property:sync_name");
+						ParamHelpers::AddVal(paramDict, "property:sync_name");
 						SyncAddParam(paramDict, elemGuid, paramToRead);
 						hasSub = true; // Нужно будет прочитать все свойства
 					}
@@ -545,7 +545,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 				rulestring_one.ReplaceAll("desc:", "");
 				rulestring_one.ReplaceAll("Desc:", "");
 			}
-			paramNamePrefix = "{GDL:";
+			paramNamePrefix = "{gdl:";
 			param.fromGDLparam = true;
 			synctypefind = true;
 		}
@@ -554,7 +554,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		if (rulestring_one.Contains("Property:")) {
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Property:", "");
-			paramNamePrefix = "{Property:";
+			paramNamePrefix = "{property:";
 			param.fromProperty = true;
 		}
 	}
@@ -564,7 +564,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			//TODO Проверить на файле из видео обработку материалов
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Material:", "");
-			paramNamePrefix = "{Material:";
+			paramNamePrefix = "{material:";
 			GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
 			param.val.uniStringValue = templatestring;
 			rulestring_one.ReplaceAll(templatestring, "");
@@ -576,7 +576,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		if (rulestring_one.Contains("Morph:")) {
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Morph:", "");
-			paramNamePrefix = "{Morph:";
+			paramNamePrefix = "{morph:";
 			param.fromMorph = true;
 			syncdirection = SYNC_FROM;
 		}
@@ -585,7 +585,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		if (rulestring_one.Contains("Coord:")) {
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Coord:", "");
-			paramNamePrefix = "{Coord:";
+			paramNamePrefix = "{coord:";
 			param.fromCoord = true;
 			syncdirection = SYNC_FROM;
 		}
@@ -594,7 +594,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		if (rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Info:", "");
-			paramNamePrefix = "{Info:";
+			paramNamePrefix = "{info:";
 			param.fromInfo = true;
 			syncdirection = SYNC_FROM;
 		}
@@ -603,7 +603,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		if (rulestring_one.Contains("IFC:")) {
 			synctypefind = true;
 			rulestring_one.ReplaceAll("IFC:", "");
-			paramNamePrefix = "{IFC:";
+			paramNamePrefix = "{ifc:";
 			param.fromIFCProperty = true;
 			syncdirection = SYNC_FROM;
 		}

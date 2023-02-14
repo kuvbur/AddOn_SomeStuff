@@ -107,7 +107,7 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 		std::string					ignore_val = "";
 		GSErrCode					err = NoError;
 		GS::UniString paramName = description_string.GetSubstring('{', '}', 0);
-		paramName.ReplaceAll("Property:", "");
+		paramName.ReplaceAll("property:", "");
 		int nparam = StringSplt(paramName, ";", partstring);
 
 		// Ищём определение свойства-значения
