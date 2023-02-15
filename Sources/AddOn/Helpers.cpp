@@ -14,6 +14,9 @@
 #include	"Model3D/model.h"
 #include	"Model3D/MeshBody.hpp"
 #include	"Dimensions.hpp"
+#include	"VectorImageIterator.hpp"
+#include	"ProfileVectorImageOperations.hpp"
+#include	"ProfileAdditionalInfo.hpp"
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -94,6 +97,7 @@ void ReplaceCR(GS::UniString& val, bool clear) {
 }
 
 void AddSpace(GS::UniString& outstring) {
+
 	//Ищем указание длины строки
 	Int32 stringlen = 0;
 	GS::UniString part = "";
@@ -111,6 +115,7 @@ void AddSpace(GS::UniString& outstring) {
 		}
 		outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, " "));
 	}
+
 	// TODO добавить вставку TAB
 	//stringlen = 0;
 	//part = "";
@@ -1416,7 +1421,7 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ParseParamNameMaterial(GS::UniString & expression, ParamDictValue & paramDict) {
 	GS::UniString part = "";
-	while (expression.Count('%')>1) {
+	while (expression.Count('%') > 1) {
 		part = expression.GetSubstring('%', '%', 0);
 		if (!part.IsEmpty()) expression.ReplaceAll('%' + part + '%', "{property:" + part.ToLowerCase() + '}');
 	}
@@ -1451,14 +1456,14 @@ bool ParamHelpers::ReplaceParamInExpression(const ParamDictValue & pdictvalue, G
 	if (!expression.Contains('{')) return true;
 	bool flag_find = false;
 	GS::UniString attribsuffix = "";
-	if (expression.Contains(CharENTER)) attribsuffix = CharENTER + expression.GetSubstring(CharENTER, '}',0)+'}';
+	if (expression.Contains(CharENTER)) attribsuffix = CharENTER + expression.GetSubstring(CharENTER, '}', 0) + '}';
 	GS::UniString part = "";
 	GS::UniString partc = "";
 	GS::UniString parts = "";
 	GS::UniString val = "";
 	while (expression.Contains('{') && expression.Contains('}')) {
 		part = expression.GetSubstring('{', '}', 0);
-		partc = '{'+ part +'}';
+		partc = '{' + part + '}';
 		parts = '{' + part + attribsuffix;
 		val = "";
 		if (pdictvalue.ContainsKey(parts)) {
@@ -1477,7 +1482,7 @@ bool ParamHelpers::ReplaceParamInExpression(const ParamDictValue & pdictvalue, G
 				}
 			}
 		}
-		expression.ReplaceAll('{'+ part +'}', val);
+		expression.ReplaceAll('{' + part + '}', val);
 	}
 	return flag_find;
 }
@@ -1957,6 +1962,7 @@ bool ParamHelpers::ToProperty(const ParamValue & pvalue, API_Property & property
 	}
 	bool flag_rec = false;
 	GS::UniString val = "";
+
 	// TODO добавить обработку isDefault
 //#if defined(AC_22) || defined(AC_23)
 //	if (!property.isEvaluated) {
@@ -2175,7 +2181,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 // --------------------------------------------------------------------
 // Заполнение словаря с параметрами
 // --------------------------------------------------------------------
-void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue& params, ParamDictValue& propertyParams) {
+void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, ParamDictValue & propertyParams) {
 	if (params.IsEmpty()) return;
 	API_Elem_Head elem_head = {};
 	elem_head.guid = elemGuid;
@@ -2657,11 +2663,12 @@ bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_He
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
-bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & params, ParamDictValue& propertyParams) {
+bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & params, ParamDictValue & propertyParams) {
 
 	// Получим состав элемента, добавив в словарь требуемые параметры
 	ParamDictValue paramsAdd;
 	if (!ParamHelpers::GetComponents(element, params, paramsAdd)) return false;
+
 	// В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
 	if (!paramsAdd.IsEmpty()) {
 		if (params.ContainsKey("{material:layers}")) {
@@ -2699,6 +2706,10 @@ bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & par
 			if (params.ContainsKey("{material:layer thickness}")) {
 				double fillThick = param_composite.composite[i].fillThick;
 				GS::UniString formatsting = params.Get("{material:layer thickness}").val.stringformat;
+				if (formatsting.IsEmpty()) {
+					formatsting = "1mm";
+					params.Get("{material:layer thickness}").val.stringformat = formatsting;
+				}
 				GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
 				templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
 			}
@@ -2722,7 +2733,6 @@ bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & par
 		params.Get("{material:layers}").val.canCalculate = true;
 		params.Get("{material:layers}").isValid = true;
 		params.Get("{material:layers}").type = API_PropertyStringValueType;
-
 	}
 	return flag;
 }
@@ -3092,11 +3102,10 @@ GS::UniString ParamHelpers::ToString(const ParamValue & pvalue, const GS::UniStr
 	}
 }
 
-
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
-bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & params, ParamDictValue& paramsAdd) {
+bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & params, ParamDictValue & paramsAdd) {
 	API_ModelElemStructureType	structtype = {};
 	API_AttributeIndex			constrinx = {};
 	double						fillThick = 0;
@@ -3120,20 +3129,21 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 #endif
 
 	switch (eltype) {
-	//case API_ColumnID:
-	//	structtype = element.wall.modelElemStructureType;
-	//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
-	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
-	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
-	//	fillThick = element.wall.thickness;
-	//	break;
-	//case API_BeamID:
-	//	structtype = element.wall.modelElemStructureType;
-	//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
-	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
-	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
-	//	fillThick = element.wall.thickness;
-	//	break;
+
+		//case API_ColumnID:
+		//	structtype = element.wall.modelElemStructureType;
+		//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
+		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		//	fillThick = element.wall.thickness;
+		//	break;
+		//case API_BeamID:
+		//	structtype = element.wall.modelElemStructureType;
+		//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
+		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		//	fillThick = element.wall.thickness;
+		//	break;
 	case API_WallID:
 		structtype = element.wall.modelElemStructureType;
 		if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
@@ -3182,6 +3192,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	API_Attribute attrib;
 	BNZeroMemory(&attrib, sizeof(API_Attribute));
 	attrib.header.index = constrinx;
+
 	// Для многослойной конструкции
 	if (structtype == API_CompositeStructure) attrib.header.typeID = API_CompWallID;
 	if (structtype == API_ProfileStructure) attrib.header.typeID = API_ProfileID;
@@ -3190,20 +3201,16 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 		msg_rep("materialString::GetComponents", " ACAPI_Attribute_Get", err, element.header.guid);
 		return false;
 	}
-	API_AttributeDef defs;
-	BNZeroMemory(&defs, sizeof(API_AttributeDef));
-	err = ACAPI_Attribute_GetDef(attrib.header.typeID, attrib.header.index, &defs);
-	if (err == APIERR_BADID) {
-		BNZeroMemory(&defs, sizeof(API_AttributeDefExt));
-		err = NoError;
-	}
-	if (err != NoError) {
-		msg_rep("materialString::GetComponents", " ACAPI_Attribute_GetDef", err, element.header.guid);
-		ACAPI_DisposeAttrDefsHdls(&defs);
-		return false;
-	}
 
 	if (structtype == API_CompositeStructure) {
+		API_AttributeDef defs;
+		BNZeroMemory(&defs, sizeof(API_AttributeDef));
+		err = ACAPI_Attribute_GetDef(attrib.header.typeID, attrib.header.index, &defs);
+		if (err != NoError) {
+			msg_rep("materialString::GetComponents", " ACAPI_Attribute_GetDef", err, element.header.guid);
+			ACAPI_DisposeAttrDefsHdls(&defs);
+			return false;
+		}
 		for (short i = 0; i < attrib.compWall.nComps; i++) {
 			API_AttributeIndex	constrinxL = (*defs.cwall_compItems)[i].buildingMaterial;
 			double	fillThickL = (*defs.cwall_compItems)[i].fillThick;
@@ -3216,23 +3223,52 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 				existsmaterial.Add(constrinxL, true);
 			}
 		}
+		ACAPI_DisposeAttrDefsHdls(&defs);
 	}
-	//if (structtype == API_ProfileStructure) {
-	//	API_Attribute						attrib;
-	//	API_AttributeDef					defs;
-	//	BNZeroMemory(&attrib, sizeof(API_Attribute));
 
-	//	err = ACAPI_Attribute_Get(&attrib);
-	//	if (err == NoError) {
-	//		err = ACAPI_Attribute_GetDefExt(API_ProfileID, attrib.header.index, &defs);
-	//		if (err == APIERR_BADID) {
-	//			BNZeroMemory(&defs, sizeof(API_AttributeDefExt));
-	//			err = NoError;
-	//		}
-	//		ACAPI_DisposeAttrDefsHdlsExt(&defs);
-	//	}
-	//}
-	ACAPI_DisposeAttrDefsHdls(&defs);
+	if (structtype == API_ProfileStructure) {
+		API_AttributeDefExt	defs;
+		err = ACAPI_Attribute_GetDefExt(attrib.header.typeID, attrib.header.index, &defs);
+		if (err == APIERR_BADID) {
+			BNZeroMemory(&defs, sizeof(API_AttributeDefExt));
+			err = NoError;
+		}
+		if (err != NoError) {
+			msg_rep("materialString::GetComponents", " ACAPI_Attribute_GetDefExt", err, element.header.guid);
+			return false;
+		}
+		ProfileVectorImage profileDescription = *defs.profile_vectorImageItems;
+		ConstProfileVectorImageIterator profileDescriptionIt(profileDescription);
+		while (!profileDescriptionIt.IsEOI()) {
+			switch (profileDescriptionIt->item_Typ) {
+			//TODO добавить вывод состава в месте пересечения профиля линией с определеённым пером
+			case SyHatch:
+				const HatchObject& syHatch = profileDescriptionIt;
+				double max_t = 0;
+				double min_t = 0;
+				for (Coord coord : syHatch.GetCoords()) {
+					if (fabs(coord.y) < 0.001) {
+						max_t = fmax(coord.x, max_t);
+						min_t = fmin(coord.x, min_t);
+					}
+				}
+				double	fillThickL = max_t - min_t;
+				API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
+				ParamValueComposite layer = {};
+				layer.inx = constrinxL;
+				layer.fillThick = fillThickL;
+				param_composite.composite.Push(layer);
+				if (!existsmaterial.ContainsKey(constrinxL)) {
+					ParamHelpers::GetAttributeValues(constrinxL, params, paramsAdd);
+					existsmaterial.Add(constrinxL, true);
+				};
+				int hh = 1;
+				break;
+			}
+			++profileDescriptionIt;
+		}
+		ACAPI_DisposeAttrDefsHdlsExt(&defs);
+	}
 	params.Set("{material:layers}", param_composite);
 	return true;
 }
@@ -3241,7 +3277,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
 // --------------------------------------------------------------------
-bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue& paramsAdd) {
+bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue & paramsAdd) {
 	API_Attribute	attrib = {};
 	BNZeroMemory(&attrib, sizeof(API_Attribute));
 	attrib.header.typeID = API_BuildingMaterialID;
@@ -3281,7 +3317,6 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 					properties[i].value.singleVariant.variant.uniStringValue = val;
 					properties[i].isDefault = false;
 				}
-
 			}
 		}
 		return (ParamHelpers::AddProperty(params, properties));
