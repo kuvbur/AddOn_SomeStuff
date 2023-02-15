@@ -275,7 +275,8 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	bool flag_expression = false; //В описании найдена формула
 	if (!dimrule.expression.IsEmpty()) {
 		ParamDictValue pdictvalue = dimrule.paramDict;
-		if (elemGuid != APINULLGuid) ParamHelpers::Read(elemGuid, pdictvalue); //Получим значения, если размер привязан к элементу
+		ParamDictValue propertyParams = {};
+		if (elemGuid != APINULLGuid) ParamHelpers::Read(elemGuid, pdictvalue, propertyParams); //Получим значения, если размер привязан к элементу
 
 		// Добавляем в словарь округлённое значение
 		ParamValue pvalue;

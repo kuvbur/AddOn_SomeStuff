@@ -103,14 +103,9 @@ typedef struct {
 	bool boolValue = false;
 	double doubleValue = 0.0;
 	bool canCalculate = false; // Может быть использован в формулах
-	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью #mm или #0)
+	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью .mm или .0)
 } ParamValueData;
 
-typedef struct {
-	API_AttrTypeID type = API_ZombieAttrID;
-	API_AttributeIndex inx = 0;
-	GS::UniString templatestring = "";
-} ParamValueAttr;
 
 typedef struct {
 	API_AttributeIndex inx = 0;
@@ -124,7 +119,6 @@ typedef struct {
 	GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
 	GS::UniString name = ""; //Очищенное имя для поиска
 	ParamValueData val = {};
-	ParamValueAttr attr = {};
 	bool isValid = false; // Валидность (был считан без ошибок)
 	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
 	API_Property property = {}; // Само свойство, для упрощения чтения/записи
@@ -187,6 +181,9 @@ Int32 ceil_mod(Int32 n, Int32 k);
 // Замена \n на перенос строки
 // -----------------------------------------------------------------------------
 void ReplaceCR(GS::UniString& val, bool clear = false);
+
+
+void AddSpace(GS::UniString& outstring);
 
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
@@ -452,7 +449,7 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Заполнение словаря с параметрами
 	// --------------------------------------------------------------------
-	void Read(const API_Guid& elemGuid, ParamDictValue& params);
+	void Read(const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams);
 
 	// -----------------------------------------------------------------------------
 	// Конвертация параметров библиотечного элемента в ParamValue
@@ -513,7 +510,17 @@ namespace ParamHelpers {
 	// -----------------------------------------------------------------------------
 	// Получение информации о материалах и составе конструкции
 	// -----------------------------------------------------------------------------
-	bool GetMaterial(const API_Element& element, ParamDictValue& params);
+	bool GetMaterial(const API_Element& element, ParamDictValue& params, ParamDictValue& propertyParams);
+
+	// --------------------------------------------------------------------
+	// Вытаскивает всё, что может, из информации о составе элемента
+	// --------------------------------------------------------------------
+	bool GetComponents(const API_Element& element, ParamDictValue& params, ParamDictValue& paramsAdd);
+
+	// --------------------------------------------------------------------
+	// Заполнение данных для одного слоя
+	// --------------------------------------------------------------------
+	bool GetAttributeValues(const API_AttributeIndex& constrinx, ParamDictValue& params, ParamDictValue& paramsAdd);
 
 	// -----------------------------------------------------------------------------
 	// Перевод значения в строку в соответсвии с stringformat
@@ -526,46 +533,6 @@ namespace ParamHelpers {
 	GS::UniString ToString(const ParamValue& pvalue);
 }
 
-// -----------------------------------------------------------------------------
-// Функции для получения состава конструкции в текстовом виде
-// -----------------------------------------------------------------------------
-namespace MaterialString {
-
-	// -----------------------------------------------------------------------------
-	// ОСНОВНАЯ ФУНКЦИЯ
-	// Получание строки с составом конструкции (слоями)
-	// -----------------------------------------------------------------------------
-	bool GetComponentString(const API_Element& element, ParamValue& pvalue);
-
-	// --------------------------------------------------------------------
-	// Вытаскивает всё, что может, из информации о составе элемента
-	// --------------------------------------------------------------------
-	GSErrCode GetComponents(const API_Element& element, ParamDictValue& params);
-
-	// --------------------------------------------------------------------
-	// Заполнение данных для одного слоя
-	// --------------------------------------------------------------------
-	GSErrCode  GetAttributeValues(const API_AttributeIndex& constrinx, const double& fillThick, ParamDictValue& params);
-
-	// -----------------------------------------------------------------------------
-	// Ищем в строке - шаблоне свойства и возвращаем массив определений
-	// Строка шаблона на входе
-	//			%Имя свойства% текст %Имя группы/Имя свойства.5mm%
-	// Строка шаблона на выходе
-	//			@1@ текст @2@#.5mm#
-	// Если свойство не найдено, %Имя свойства% заменяем на пустоту ("")
-	// -----------------------------------------------------------------------------
-	GSErrCode  ParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions);
-
-	// --------------------------------------------------------------------
-	// Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
-	// --------------------------------------------------------------------
-	GSErrCode  WriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring, UInt32& n);
-
-	void ReplaceValue(const double& var, const GS::UniString& patternstring, GS::UniString& outstring);
-
-	void ReplaceValue(const API_Property& property, const GS::UniString& patternstring, GS::UniString& outstring);
-}
 
 bool operator== (const ParamValue& lhs, const ParamValue& rhs);
 

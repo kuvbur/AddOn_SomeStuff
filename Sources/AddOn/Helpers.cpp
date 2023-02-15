@@ -93,6 +93,43 @@ void ReplaceCR(GS::UniString& val, bool clear) {
 	}
 }
 
+void AddSpace(GS::UniString& outstring) {
+	//Ищем указание длины строки
+	Int32 stringlen = 0;
+	GS::UniString part = "";
+	if (outstring.Contains('~')) {
+		part = outstring.GetSubstring('~', ' ', 0);
+		if (!part.IsEmpty() && part.GetLength() < 4)
+			stringlen = std::atoi(part.ToCStr());
+		if (stringlen > 0) part = "~" + part;
+	}
+	if (stringlen > 0) {
+		Int32 modlen = outstring.GetLength() - part.GetLength() - 1;
+		Int32 addspace = stringlen - modlen;
+		if (modlen > stringlen) {
+			addspace = modlen % stringlen;
+		}
+		outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, " "));
+	}
+	// TODO добавить вставку TAB
+	//stringlen = 0;
+	//part = "";
+	//if (outstring.Contains('$')) {
+	//	part = outstring.GetSubstring('$', ' ', 0);
+	//	if (!part.IsEmpty() && part.GetLength() < 4)
+	//		stringlen = std::atoi(part.ToCStr());
+	//	if (stringlen > 0) part = "$" + part;
+	//}
+	//if (stringlen > 0) {
+	//	Int32 modlen = outstring.GetLength() - part.GetLength() - 1;
+	//	Int32 addspace = stringlen - modlen;
+	//	if (modlen > stringlen) {
+	//		addspace = modlen % stringlen;
+	//	}
+	//	outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, CharTAB));
+	//}
+}
+
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
 // -----------------------------------------------------------------------------
@@ -1283,7 +1320,7 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 // -----------------------------------------------------------------------------
 bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & params) {
-	double x = 0; double y = 0; double z = 0;
+	double x = 0; double y = 0; double z = 0; double angz = 0;
 	API_ElemTypeID eltype;
 #ifdef AC_26
 	eltype = element.header.type.typeID;
@@ -1312,6 +1349,8 @@ bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & param
 		z = 0;
 		break;
 	case API_WallID:
+		break;
+	case API_BeamID:
 		break;
 	default:
 		return false;
@@ -1377,8 +1416,7 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ParseParamNameMaterial(GS::UniString & expression, ParamDictValue & paramDict) {
 	GS::UniString part = "";
-	UInt32 n = expression.Count('%');
-	for (UInt32 i = 0; i < n; i++) {
+	while (expression.Count('%')>1) {
 		part = expression.GetSubstring('%', '%', 0);
 		if (!part.IsEmpty()) expression.ReplaceAll('%' + part + '%', "{property:" + part.ToLowerCase() + '}');
 	}
@@ -1394,7 +1432,7 @@ bool ParamHelpers::ParseParamName(GS::UniString & expression, ParamDictValue & p
 	//TODO переписать парсинг свойств из строки
 	if (!tempstring.Contains('{')) return (!paramDict.IsEmpty());
 	GS::UniString part = "";
-	for (UInt32 i = 0; i < expression.Count('{'); i++) {
+	while (tempstring.Contains('{') && tempstring.Contains('}')) {
 		part = tempstring.GetSubstring('{', '}', 0);
 		GS::UniString part_ = ParamHelpers::AddVal(paramDict, part);
 		expression.ReplaceAll('{' + part + '}', part_);
@@ -1410,20 +1448,36 @@ bool ParamHelpers::ParseParamName(GS::UniString & expression, ParamDictValue & p
 bool ParamHelpers::ReplaceParamInExpression(const ParamDictValue & pdictvalue, GS::UniString & expression) {
 	if (pdictvalue.IsEmpty()) return false;
 	if (expression.IsEmpty()) return false;
+	if (!expression.Contains('{')) return true;
 	bool flag_find = false;
-	for (GS::HashTable<GS::UniString, ParamValue>::ConstPairIterator cIt = pdictvalue.EnumeratePairs(); cIt != NULL; ++cIt) {
-		const ParamValue& pvalue = *cIt->value;
-		if (pvalue.val.canCalculate) {
-			GS::UniString val = ParamHelpers::ToString(pvalue);
-			expression.ReplaceAll(pvalue.rawName, val);
-			flag_find = true;
-		}
-	}
-	if (!expression.Contains('{')) return (!flag_find);
+	GS::UniString attribsuffix = "";
+	if (expression.Contains(CharENTER)) attribsuffix = CharENTER + expression.GetSubstring(CharENTER, '}',0)+'}';
 	GS::UniString part = "";
-	for (UInt32 i = 0; i < expression.Count('{'); i++) {
+	GS::UniString partc = "";
+	GS::UniString parts = "";
+	GS::UniString val = "";
+	while (expression.Contains('{') && expression.Contains('}')) {
 		part = expression.GetSubstring('{', '}', 0);
-		expression.ReplaceAll('{' + part + '}', "");
+		partc = '{'+ part +'}';
+		parts = '{' + part + attribsuffix;
+		val = "";
+		if (pdictvalue.ContainsKey(parts)) {
+			ParamValue pvalue = pdictvalue.Get(parts);
+			if (pvalue.isValid && pvalue.val.canCalculate) {
+				val = ParamHelpers::ToString(pvalue);
+				flag_find = true;
+			}
+		}
+		else {
+			if (pdictvalue.ContainsKey(partc)) {
+				ParamValue pvalue = pdictvalue.Get(partc);
+				if (pvalue.isValid && pvalue.val.canCalculate) {
+					val = ParamHelpers::ToString(pvalue);
+					flag_find = true;
+				}
+			}
+		}
+		expression.ReplaceAll('{'+ part +'}', val);
 	}
 	return flag_find;
 }
@@ -1437,7 +1491,7 @@ bool EvalExpression(GS::UniString & unistring_expression) {
 	if (!unistring_expression.Contains('<')) return false;
 	GS::UniString part = "";
 	GS::UniString texpression = unistring_expression;
-	for (UInt32 i = 0; i < texpression.Count('<'); i++) {
+	while (texpression.Contains('<') && texpression.Contains('>')) {
 		typedef double T;
 		part = unistring_expression.GetSubstring('<', '>', 0);
 		typedef exprtk::expression<T>   expression_t;
@@ -2113,7 +2167,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 		API_Guid elemGuid = *cIt->key;
 		if (!params.IsEmpty()) {
 			ParamHelpers::Compare(propertyParams, params); // Сопоставляем свойства
-			ParamHelpers::Read(elemGuid, params);
+			ParamHelpers::Read(elemGuid, params, propertyParams);
 		}
 	}
 }
@@ -2121,7 +2175,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 // --------------------------------------------------------------------
 // Заполнение словаря с параметрами
 // --------------------------------------------------------------------
-void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params) {
+void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue& params, ParamDictValue& propertyParams) {
 	if (params.IsEmpty()) return;
 	API_Elem_Head elem_head = {};
 	elem_head.guid = elemGuid;
@@ -2176,7 +2230,6 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params) {
 			ParamValue& param = *cIt->value;
 			if (param.fromGuid == elemGuid) {
 				if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
-				if (paramType.IsEqual("material") && param.fromAttribDefinition) paramByType.Add(param.rawName, param);
 			}
 		}
 		if (!paramByType.IsEmpty()) {
@@ -2193,8 +2246,8 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params) {
 			if (paramType.IsEqual("gdl")) {
 				needCompare = ParamHelpers::GetGDLValues(element, elem_head, paramByType);
 			}
-			if (paramType.IsEqual("material")) {
-				needCompare = ParamHelpers::GetMaterial(element, paramByType);
+			if (paramType.IsEqual("material") && !paramByType.IsEmpty()) {
+				ParamHelpers::GetMaterial(element, params, propertyParams);
 			}
 			if (paramType.IsEqual("ifc")) {
 				needCompare = ParamHelpers::GetIFCValues(elemGuid, paramByType);
@@ -2407,7 +2460,7 @@ bool ParamHelpers::GetPropertyValues(const API_Guid & elemGuid, ParamDictValue &
 			propertyDefinitions.Push(definition);
 		}
 	}
-	if (propertyDefinitions.IsEmpty()) {
+	if (!propertyDefinitions.IsEmpty()) {
 		GS::Array<API_Property> properties;
 		GSErrCode error = ACAPI_Element_GetPropertyValues(elemGuid, propertyDefinitions, properties);
 		if (error != NoError) {
@@ -2604,51 +2657,74 @@ bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_He
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
-bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & params) {
+bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & params, ParamDictValue& propertyParams) {
 
 	// Получим состав элемента, добавив в словарь требуемые параметры
-	GSErrCode err = MaterialString::GetComponents(element, params);
-	if (params.ContainsKey("{material:layers}")) {
-		ParamValue param_composite = params.Get("{material:layers}");
-
-		// Если есть строка-шаблон - заполним её
-		bool flag = false;
-		GS::UniString outstring = "";
-		if (param_composite.val.uniStringValue.Contains("{")) {
-			Int32 nlayers = param_composite.composite.GetSize();
-			for (Int32 i = 0; i < nlayers; ++i) {
-				GS::UniString templatestring = param_composite.val.uniStringValue;
-				API_AttributeIndex constrinx = param_composite.composite[i].inx;
-
-				// Если нужно заполнить толщину
-				if (params.ContainsKey("{material:layer thickness}")) {
-					double fillThick = param_composite.composite[i].fillThick;
-					GS::UniString formatsting = params.Get("{material:layer thickness}").val.stringformat;
-					GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
-					templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
+	ParamDictValue paramsAdd;
+	if (!ParamHelpers::GetComponents(element, params, paramsAdd)) return false;
+	// В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
+	if (!paramsAdd.IsEmpty()) {
+		if (params.ContainsKey("{material:layers}")) {
+			ParamHelpers::Compare(propertyParams, paramsAdd);
+			ParamValue param_composite = params.Get("{material:layers}");
+			ParamDictValue paramsAdd_1;
+			if (param_composite.val.uniStringValue.Contains("{")) {
+				Int32 nlayers = param_composite.composite.GetSize();
+				bool flag = false;
+				for (Int32 i = 0; i < nlayers; ++i) {
+					API_AttributeIndex constrinx = param_composite.composite[i].inx;
+					if (ParamHelpers::GetAttributeValues(constrinx, paramsAdd, paramsAdd_1)) flag = true;
 				}
-				templatestring.ReplaceAll("{material:n}", GS::UniString::Printf("%d", i + 1));
-
-				// Если для материала было указано уникальное наименование - заменим его
-				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
-				if (params.ContainsKey("{property:sync_name" + attribsuffix)) {
-					if (params.Get("{property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
-				}
-				templatestring.ReplaceAll("}", attribsuffix);
-				if (ParamHelpers::ReplaceParamInExpression(params, templatestring)) {
-					flag = true;
-					outstring = outstring + templatestring;
+				if (flag) {
+					for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd.EnumeratePairs(); cIt != NULL; ++cIt) {
+						params.Add(*cIt->key, *cIt->value);
+					}
 				}
 			}
 		}
-		if (flag) {
-			params.Get("{material:layers}").val.uniStringValue = outstring;
-			params.Get("{material:layers}").val.canCalculate = true;
-			params.Get("{material:layers}").isValid = true;
-		}
-		return flag;
 	}
-	return false;
+	if (!params.ContainsKey("{material:layers}")) return true;
+
+	// Если есть строка-шаблон - заполним её
+	ParamValue param_composite = params.Get("{material:layers}");
+	bool flag = false;
+	GS::UniString outstring = "";
+	if (param_composite.val.uniStringValue.Contains("{")) {
+		Int32 nlayers = param_composite.composite.GetSize();
+		for (Int32 i = 0; i < nlayers; ++i) {
+			GS::UniString templatestring = param_composite.val.uniStringValue;
+			API_AttributeIndex constrinx = param_composite.composite[i].inx;
+
+			// Если нужно заполнить толщину
+			if (params.ContainsKey("{material:layer thickness}")) {
+				double fillThick = param_composite.composite[i].fillThick;
+				GS::UniString formatsting = params.Get("{material:layer thickness}").val.stringformat;
+				GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
+				templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
+			}
+			templatestring.ReplaceAll("{material:n}", GS::UniString::Printf("%d", i + 1));
+
+			// Если для материала было указано уникальное наименование - заменим его
+			GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
+			if (params.ContainsKey("{property:sync_name" + attribsuffix)) {
+				if (params.Get("{property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
+			}
+			templatestring.ReplaceAll("}", attribsuffix);
+			if (ParamHelpers::ReplaceParamInExpression(params, templatestring)) {
+				flag = true;
+				AddSpace(templatestring);
+				outstring = outstring + templatestring;
+			}
+		}
+	}
+	if (flag) {
+		params.Get("{material:layers}").val.uniStringValue = outstring;
+		params.Get("{material:layers}").val.canCalculate = true;
+		params.Get("{material:layers}").isValid = true;
+		params.Get("{material:layers}").type = API_PropertyStringValueType;
+
+	}
+	return flag;
 }
 
 GSErrCode GetPropertyFullName(const API_PropertyDefinition & definision, GS::UniString & name) {
@@ -3016,60 +3092,11 @@ GS::UniString ParamHelpers::ToString(const ParamValue & pvalue, const GS::UniStr
 	}
 }
 
-// -----------------------------------------------------------------------------
-// Получание строки с составом конструкции (слоями)
-// -----------------------------------------------------------------------------
-bool MaterialString::GetComponentString(const API_Element & element, ParamValue & pvalue) {
-	GSErrCode err = NoError;
-
-	// Получаем данные о компонентах элемента
-	//GS::Array<LayerConstr>	components;
-	//GSErrCode err = MaterialString::GetComponents(element, components);
-	//if (err != NoError) return false;
-
-	//// Разбираем основную строку-шаблон
-	//GS::UniString outstring = "";
-	//GS::Array<API_PropertyDefinition> outdefinitions;
-	//err = MaterialString::ParseString(pvalue.val.uniStringValue, outstring, outdefinitions);
-	//GS::UniString param_string = "";
-
-	//// Финишная прямая, идём по компонентам и подставляем значения в строки
-	//for (UInt32 i = 0; i < components.GetSize(); i++) {
-	//	// Стандартная строка
-	//	GS::UniString one_string = "";
-	//	if (components[i].templatestring.IsEmpty()) {
-	//		if (MaterialString::WriteOneString(components[i].buildingMaterial, components[i].fillThick, outdefinitions, outstring, one_string, i) == NoError)
-	//			param_string = param_string + " " + one_string;
-	//	}
-
-	//	// Индивидуальная строка
-	//	else {
-	//		GS::UniString uqoutstring = "";
-	//		GS::Array<API_PropertyDefinition> uqoutdefinitions;
-	//		if (MaterialString::ParseString(components[i].templatestring, uqoutstring, uqoutdefinitions) == NoError) {
-	//			if (MaterialString::WriteOneString(components[i].buildingMaterial, components[i].fillThick, uqoutdefinitions, uqoutstring, one_string, i) == NoError) {
-	//				param_string = param_string + " " + one_string;
-	//			}
-	//		}
-	//	}
-	//}
-	//if (!param_string.IsEmpty())
-	//	param_string.TrimLeft();
-
-	//err = WriteProp(elemGuid, property, param_string);
-	if (err != NoError) {
-		return false;
-	}
-	else {
-		return true;
-	}
-}
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
-GSErrCode MaterialString::GetComponents(const API_Element & element, ParamDictValue & params) {
-	GSErrCode					err = NoError;
+bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & params, ParamDictValue& paramsAdd) {
 	API_ModelElemStructureType	structtype = {};
 	API_AttributeIndex			constrinx = {};
 	double						fillThick = 0;
@@ -3091,11 +3118,27 @@ GSErrCode MaterialString::GetComponents(const API_Element & element, ParamDictVa
 #else
 	eltype = element.header.typeID;
 #endif
+
 	switch (eltype) {
+	//case API_ColumnID:
+	//	structtype = element.wall.modelElemStructureType;
+	//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
+	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+	//	fillThick = element.wall.thickness;
+	//	break;
+	//case API_BeamID:
+	//	structtype = element.wall.modelElemStructureType;
+	//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
+	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+	//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+	//	fillThick = element.wall.thickness;
+	//	break;
 	case API_WallID:
 		structtype = element.wall.modelElemStructureType;
 		if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
 		if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		if (structtype == API_ProfileStructure) constrinx = element.wall.profileAttr;
 		fillThick = element.wall.thickness;
 		break;
 	case API_SlabID:
@@ -3117,7 +3160,7 @@ GSErrCode MaterialString::GetComponents(const API_Element & element, ParamDictVa
 		fillThick = element.shell.shellBase.thickness;
 		break;
 	default:
-		return APIERR_MISSINGCODE;
+		return false;
 		break;
 	}
 
@@ -3129,29 +3172,38 @@ GSErrCode MaterialString::GetComponents(const API_Element & element, ParamDictVa
 		layer.fillThick = fillThick;
 		param_composite.composite.Push(layer);
 		if (!existsmaterial.ContainsKey(constrinx)) {
-			MaterialString::GetAttributeValues(constrinx, fillThick, params);
+			ParamHelpers::GetAttributeValues(constrinx, params, paramsAdd);
 			existsmaterial.Add(constrinx, true);
 		}
+		params.Set("{material:layers}", param_composite);
+		return true;
 	}
 
+	API_Attribute attrib;
+	BNZeroMemory(&attrib, sizeof(API_Attribute));
+	attrib.header.index = constrinx;
 	// Для многослойной конструкции
+	if (structtype == API_CompositeStructure) attrib.header.typeID = API_CompWallID;
+	if (structtype == API_ProfileStructure) attrib.header.typeID = API_ProfileID;
+	GSErrCode err = ACAPI_Attribute_Get(&attrib);
+	if (err != NoError) {
+		msg_rep("materialString::GetComponents", " ACAPI_Attribute_Get", err, element.header.guid);
+		return false;
+	}
+	API_AttributeDef defs;
+	BNZeroMemory(&defs, sizeof(API_AttributeDef));
+	err = ACAPI_Attribute_GetDef(attrib.header.typeID, attrib.header.index, &defs);
+	if (err == APIERR_BADID) {
+		BNZeroMemory(&defs, sizeof(API_AttributeDefExt));
+		err = NoError;
+	}
+	if (err != NoError) {
+		msg_rep("materialString::GetComponents", " ACAPI_Attribute_GetDef", err, element.header.guid);
+		ACAPI_DisposeAttrDefsHdls(&defs);
+		return false;
+	}
+
 	if (structtype == API_CompositeStructure) {
-		API_Attribute						attrib;
-		API_AttributeDef					defs;
-		BNZeroMemory(&attrib, sizeof(API_Attribute));
-		BNZeroMemory(&defs, sizeof(API_AttributeDef));
-		attrib.header.typeID = API_CompWallID;
-		attrib.header.index = constrinx;
-		GSErrCode err = ACAPI_Attribute_Get(&attrib);
-		if (err != NoError) {
-			msg_rep("materialString::GetComponents", " ACAPI_Attribute_Get", err, element.header.guid);
-			return err;
-		}
-		err = ACAPI_Attribute_GetDef(attrib.header.typeID, attrib.header.index, &defs);
-		if (err != NoError) {
-			msg_rep("materialString::GetComponents", " ACAPI_Attribute_GetDef", err, element.header.guid);
-			return err;
-		}
 		for (short i = 0; i < attrib.compWall.nComps; i++) {
 			API_AttributeIndex	constrinxL = (*defs.cwall_compItems)[i].buildingMaterial;
 			double	fillThickL = (*defs.cwall_compItems)[i].fillThick;
@@ -3160,21 +3212,36 @@ GSErrCode MaterialString::GetComponents(const API_Element & element, ParamDictVa
 			layer.fillThick = fillThickL;
 			param_composite.composite.Push(layer);
 			if (!existsmaterial.ContainsKey(constrinxL)) {
-				MaterialString::GetAttributeValues(constrinxL, fillThickL, params);
+				ParamHelpers::GetAttributeValues(constrinxL, params, paramsAdd);
 				existsmaterial.Add(constrinxL, true);
 			}
 		}
-		ACAPI_DisposeAttrDefsHdls(&defs);
 	}
+	//if (structtype == API_ProfileStructure) {
+	//	API_Attribute						attrib;
+	//	API_AttributeDef					defs;
+	//	BNZeroMemory(&attrib, sizeof(API_Attribute));
+
+	//	err = ACAPI_Attribute_Get(&attrib);
+	//	if (err == NoError) {
+	//		err = ACAPI_Attribute_GetDefExt(API_ProfileID, attrib.header.index, &defs);
+	//		if (err == APIERR_BADID) {
+	//			BNZeroMemory(&defs, sizeof(API_AttributeDefExt));
+	//			err = NoError;
+	//		}
+	//		ACAPI_DisposeAttrDefsHdlsExt(&defs);
+	//	}
+	//}
+	ACAPI_DisposeAttrDefsHdls(&defs);
 	params.Set("{material:layers}", param_composite);
-	return NoError;
+	return true;
 }
 
 // TODO Переписать как-то эту часть для ускорения
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
 // --------------------------------------------------------------------
-GSErrCode  MaterialString::GetAttributeValues(const API_AttributeIndex & constrinx, const double& fillThick, ParamDictValue & params) {
+bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue& paramsAdd) {
 	API_Attribute	attrib = {};
 	BNZeroMemory(&attrib, sizeof(API_Attribute));
 	attrib.header.typeID = API_BuildingMaterialID;
@@ -3183,7 +3250,7 @@ GSErrCode  MaterialString::GetAttributeValues(const API_AttributeIndex & constri
 	GSErrCode error = ACAPI_Attribute_Get(&attrib);
 	if (error != NoError) {
 		msg_rep("materialString::GetAttributeValues", "ACAPI_Attribute_Get", error, APINULLGuid);
-		return error;
+		return false;
 	};
 
 	// Определения и свойста для элементов
@@ -3200,7 +3267,7 @@ GSErrCode  MaterialString::GetAttributeValues(const API_AttributeIndex & constri
 		error = ACAPI_Attribute_GetPropertyValues(attrib.header, propertyDefinitions, properties);
 		if (error != NoError) {
 			msg_rep("materialString::GetAttributeValues", "ACAPI_Attribute_GetPropertyValues", error, APINULLGuid);
-			return error;
+			return false;
 		};
 		if (error != NoError) {
 			msg_rep("ParamDictGetPropertyValues", "ACAPI_Attribute_GetPropertyValues", error, APINULLGuid);
@@ -3210,137 +3277,14 @@ GSErrCode  MaterialString::GetAttributeValues(const API_AttributeIndex & constri
 			properties[i].definition.name = properties[i].definition.name + CharENTER + attribsuffix;
 			GS::UniString val = PropertyHelpers::ToString(properties[i]);
 			if (val.Count("%") > 1 || (val.Contains("{") && val.Contains("}"))) {
-
+				if (ParamHelpers::ParseParamNameMaterial(val, paramsAdd)) {
+					properties[i].value.singleVariant.variant.uniStringValue = val;
+					properties[i].isDefault = false;
+				}
 
 			}
 		}
 		return (ParamHelpers::AddProperty(params, properties));
 	}
-	return error;
-}
-
-// -----------------------------------------------------------------------------
-// Ищем в строке - шаблоне свойства и возвращаем массив определений
-// Строка шаблона на входе
-//			%Имя свойства% текст %Имя группы/Имя свойства.5mm%
-// Строка шаблона на выходе
-//			@1@ текст @2@#.5mm#
-// Если свойство не найдено, %Имя свойства% заменяем на пустоту ("")
-// -----------------------------------------------------------------------------
-GSErrCode  MaterialString::ParseString(const GS::UniString & templatestring, GS::UniString & outstring, GS::Array<API_PropertyDefinition>&outdefinitions) {
-	GSErrCode					err = NoError;
-	outstring = templatestring;
-	outstring.ReplaceAll("property:", "");
-	outstring.ReplaceAll("{", "");
-	outstring.ReplaceAll("}", "");
-	GS::UniString part = "";
-
-	//Переводим все имена свойств в нижний регистр, так потом искать проще
-	for (UInt32 i = 0; i < templatestring.Count('%') / 2; i++) {
-		part = outstring.GetSubstring('%', '%', 0);
-		part = part.ToLowerCase();
-
-		//Обработка количества нулей и единиц измерения
-		GS::UniString formatstring = "";
-		if (part.Contains(".")) {
-			GS::Array<GS::UniString> partstring;
-			UInt32 n = StringSplt(part, ".", partstring);
-			if (StringSplt(part, ".", partstring) > 1) {
-				if (partstring[n - 1].Contains("m") || partstring[n - 1].Contains(u8"м")) {
-					formatstring = partstring[n - 1];
-					part.ReplaceAll("." + formatstring, "");
-					formatstring.ReplaceAll(u8"м", "m");
-					formatstring.ReplaceAll(u8"д", "d");
-					formatstring.ReplaceAll(u8"с", "c");
-					formatstring = "#" + formatstring + "#";
-				}
-			}
-		}
-		outstring.ReplaceAll("%" + outstring.GetSubstring('%', '%', 0) + "%", "@" + part + "@" + formatstring);
-	}
-	outstring.ReplaceAll("@", "%");
-
-	//Заменяем толщину
-	outstring.ReplaceAll(u8"%толщина%", "@t@");
-	outstring.ReplaceAll("%n%", "@n@");
-	UInt32 n_param = 0; // Количество успешно найденных свойств
-	for (UInt32 i = 0; i < templatestring.Count('%') / 2; i++) {
-		part = outstring.GetSubstring('%', '%', 0);
-
-		//Ищем свойство по названию
-		API_PropertyDefinition definition = {};
-		if (GetPropertyDefinitionByName(GetPropertyENGName(part), definition) == NoError) {
-			outstring.ReplaceAll("%" + part + "%", "@" + GS::UniString::Printf("%d", n_param) + "@");
-			outdefinitions.Push(definition);
-			n_param += 1;
-		}
-		else {
-			outstring.ReplaceAll("%" + part + "%", ""); // Если не нашли - стираем
-		}
-	}
-	return err;
-}
-
-// --------------------------------------------------------------------
-// Заменяем в строке templatestring все вхождения @1@...@n@ на значения свойств
-// --------------------------------------------------------------------
-GSErrCode  MaterialString::WriteOneString(const API_Attribute & attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>&outdefinitions, const GS::UniString & templatestring, GS::UniString & outstring, UInt32 & n) {
-	GSErrCode					err = NoError;
-	GS::Array <API_Property>	propertys;
-	outstring = templatestring;
-	MaterialString::ReplaceValue(fillThick, "@t@", outstring);
-	MaterialString::ReplaceValue(n + 1, "@n@", outstring);
-	if (ACAPI_Attribute_GetPropertyValues(attrib.header, outdefinitions, propertys) == NoError) {
-		for (UInt32 j = 0; j < propertys.GetSize(); j++) {
-			GS::UniString stringformat = "";
-			GS::UniString patternstring = "@" + GS::UniString::Printf("%d", j) + "@";
-			MaterialString::ReplaceValue(propertys[j], patternstring, outstring);
-		}
-	}
-	outstring.TrimLeft();
-
-	//Ищем указание длины строки
-	Int32 stringlen = 0;
-	GS::UniString part = "";
-	if (outstring.Contains('~')) {
-		part = outstring.GetSubstring('~', ' ', 0);
-		if (!part.IsEmpty() && part.GetLength() < 4)
-			stringlen = std::atoi(part.ToCStr());
-		if (stringlen > 0) part = "~" + part;
-	}
-	if (stringlen > 0) {
-		Int32 modlen = outstring.GetLength() - part.GetLength() - 1;
-		Int32 addspace = stringlen - modlen;
-		if (modlen > stringlen) {
-			addspace = modlen % stringlen;
-		}
-		outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, " "));
-	}
-	return err;
-}
-
-void MaterialString::ReplaceValue(const double& var, const GS::UniString & patternstring, GS::UniString & outstring) {
-	GS::UniString stringformat = "";
-	if (outstring.Contains(patternstring + "#")) {
-		UIndex startpos = outstring.FindFirst(patternstring + "#");
-		stringformat = outstring.GetSubstring('#', '#', startpos);
-	}
-	GS::UniString t = PropertyHelpers::NumToString(var, stringformat);
-	if (!stringformat.IsEmpty()) {
-		stringformat = "#" + stringformat + "#";
-	}
-	outstring.ReplaceAll(patternstring + stringformat, t);
-}
-
-void MaterialString::ReplaceValue(const API_Property & property, const GS::UniString & patternstring, GS::UniString & outstring) {
-	GS::UniString stringformat = "";
-	if (outstring.Contains(patternstring + "#")) {
-		UIndex startpos = outstring.FindFirst(patternstring + "#");
-		stringformat = outstring.GetSubstring('#', '#', startpos);
-	}
-	GS::UniString t = PropertyHelpers::ToString(property, stringformat);
-	if (!stringformat.IsEmpty()) {
-		stringformat = "#" + stringformat + "#";
-	}
-	outstring.ReplaceAll(patternstring + stringformat, t);
+	return false;
 }
