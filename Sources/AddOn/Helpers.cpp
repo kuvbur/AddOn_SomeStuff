@@ -279,17 +279,6 @@ bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
 	return false; // Не получилось зарезервировать
 }
 
-// -----------------------------------------------------------------------------
-// Обновление отмеченных в меню пунктов
-// -----------------------------------------------------------------------------
-void MenuSetState(SyncSettings& syncSettings) {
-	MenuItemCheckAC(Menu_MonAll, syncSettings.syncMon);
-	MenuItemCheckAC(Menu_wallS, syncSettings.wallS);
-	MenuItemCheckAC(Menu_widoS, syncSettings.widoS);
-	MenuItemCheckAC(Menu_objS, syncSettings.objS);
-	MenuItemCheckAC(Menu_cwallS, syncSettings.cwallS);
-}
-
 void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid) {
 	GS::UniString error_type = "";
 	if (err != NoError) {
@@ -3241,7 +3230,8 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 		ConstProfileVectorImageIterator profileDescriptionIt(profileDescription);
 		while (!profileDescriptionIt.IsEOI()) {
 			switch (profileDescriptionIt->item_Typ) {
-			//TODO добавить вывод состава в месте пересечения профиля линией с определеённым пером
+
+				//TODO добавить вывод состава в месте пересечения профиля линией с определеённым пером
 			case SyHatch:
 				const HatchObject& syHatch = profileDescriptionIt;
 				double max_t = 0;
