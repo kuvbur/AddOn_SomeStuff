@@ -17,19 +17,8 @@
 #include	"exprtk.hpp"
 
 #define ELEMSTR_LEN				256
-#define	CURR_ADDON_VERS			0x0006
-#define	 Menu_MonAll		1
-#define	 Menu_SyncAll		2
-#define	 Menu_SyncSelect	3
-#define	 Menu_wallS			4
-#define	 Menu_widoS			5
-#define	 Menu_objS			6
-#define	 Menu_cwallS		7
-#define	 Menu_ReNum			8
-#define	 Menu_Sum			9
-#define	 Menu_Log			10
-#define	 Menu_LogShow		11
-#define	 Menu_RunParam		12
+
+//#define	CURR_ADDON_VERS			0x0006
 
 #define	 SYNC_RESET	1
 #define	 SYNC	2
@@ -42,19 +31,6 @@ static const GSResID AddOnStringsID = ID_ADDON_STRINGS;
 
 static const Int32 AddOnNameID = 1;
 static const Int32 AddOnDescriptionID = 2;
-
-static const Int32 MonAll_CommandID = 1;
-static const Int32 SyncAll_CommandID = 2;
-static const Int32 SyncSelect_CommandID = 3;
-static const Int32 wallS_CommandID = 4;
-static const Int32 widoS_CommandID = 5;
-static const Int32 objS_CommandID = 6;
-static const Int32 cwallS_CommandID = 7;
-static const Int32 ReNum_CommandID = 8;
-static const Int32 Sum_CommandID = 9;
-static const Int32 Log_CommandID = 10;
-static const Int32 LogShow_CommandID = 11;
-static const Int32 RunParam_CommandID = 12;
 
 static const Int32 UndoSyncId = 1;
 static const Int32 SyncAllId = 2;
@@ -97,6 +73,7 @@ typedef struct {
 // uniStringValue, intValue, boolValue, doubleValue - значения
 // canCalculate - можно ли использовать в математических вычислениях
 typedef struct {
+
 	// Собственно значения
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
@@ -105,7 +82,6 @@ typedef struct {
 	bool canCalculate = false; // Может быть использован в формулах
 	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью .mm или .0)
 } ParamValueData;
-
 
 typedef struct {
 	API_AttributeIndex inx = 0;
@@ -123,6 +99,7 @@ typedef struct {
 	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
 	API_Property property = {}; // Само свойство, для упрощения чтения/записи
 	GS::Array <ParamValueComposite> composite = {};
+
 	// Тут храним способ, которым нужно получить значение
 	bool fromGDLparam = false; // Найден в гдл параметрах
 	bool fromGDLdescription = false; // Найден по описанию
@@ -182,7 +159,6 @@ Int32 ceil_mod(Int32 n, Int32 k);
 // -----------------------------------------------------------------------------
 void ReplaceCR(GS::UniString& val, bool clear = false);
 
-
 void AddSpace(GS::UniString& outstring);
 
 // -----------------------------------------------------------------------------
@@ -210,11 +186,6 @@ bool IsElementEditable(const API_Guid& objectId, const SyncSettings& syncSetting
 // Единственное, что может нас остановить - объект находится в модуле.
 // -----------------------------------------------------------------------------
 bool ReserveElement(const API_Guid& objectId, GSErrCode& err);
-
-// -----------------------------------------------------------------------------
-// Обновление отмеченных в меню пунктов
-// -----------------------------------------------------------------------------
-void MenuSetState(SyncSettings& syncSettings);
 
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
@@ -532,7 +503,6 @@ namespace ParamHelpers {
 	// -----------------------------------------------------------------------------
 	GS::UniString ToString(const ParamValue& pvalue);
 }
-
 
 bool operator== (const ParamValue& lhs, const ParamValue& rhs);
 
