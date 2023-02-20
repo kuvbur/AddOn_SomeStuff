@@ -39,7 +39,7 @@ void AddHoleToSelectedCWall(const SyncSettings& syncSettings) {
 #endif // AC_22
 	if (guidArray.IsEmpty()) return;
 	GS::Array<API_Guid> cWallguidArray;
-	GS::Array<BoxElem> elemsCoord = {};
+	GS::Array<API_Box3D> elemsCoord = {};
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		API_Elem_Head elementHead;
 		BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
@@ -64,17 +64,13 @@ void AddHoleToSelectedCWall(const SyncSettings& syncSettings) {
 		if (needGetElem) {
 			API_Box3D coord;
 			err = ACAPI_Database(APIDb_CalcBoundsID, &elementHead, &coord);
-			if (err != NoError) return;
-			BoxElem box;
-			box.coord = coord;
-			box.ang = 0;
-			elemsCoord.Push(box);
+			if (err != NoError) elemsCoord.Push(coord);
 		}
 	}
 	if (!cWallguidArray.IsEmpty() && !elemsCoord.IsEmpty()) Do_ChangeCWallWithUndo(cWallguidArray, elemsCoord);
-	}
+}
 
-void Do_ChangeCWallWithUndo(const GS::Array<API_Guid>& elemsGuid, const GS::Array<BoxElem>& elemsCoord) {
+void Do_ChangeCWallWithUndo(const GS::Array<API_Guid>& elemsGuid, const GS::Array<API_Box3D>& elemsCoord) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		for (UInt32 i = 0; i < elemsGuid.GetSize(); i++) {
@@ -84,33 +80,19 @@ void Do_ChangeCWallWithUndo(const GS::Array<API_Guid>& elemsGuid, const GS::Arra
 							  });
 }
 
-void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<BoxElem>& elemsCoord) {
-	API_Element element, mask = {};
+void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<API_Box3D>& elemsCoord) {
+	API_Element element = {};
 	API_ElementMemo	memo = {};
 	BNZeroMemory(&element, sizeof(API_Element));
-	BNZeroMemory(&mask, sizeof(API_Element));
 	BNZeroMemory(&memo, sizeof(API_ElementMemo));
 	element.header.guid = elemGuid;
 	GSErrCode err = ACAPI_Element_Get(&element);
-	if (err != NoError) return;
-	API_Box3D coord;
-	err = ACAPI_Database(APIDb_CalcBoundsID, &element.header, &coord);
 	if (err != NoError) return;
 	err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_CWallFrames);
 	if (err != NoError) {
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return;
 	}
-	API_CWFrameType CustomFrames = memo.cWallFrames[0];
-	const UInt32 nCustomFrames = 8 * element.curtainWall.nSegments;
-	BNZeroMemory(&memo, sizeof(API_ElementMemo));
-	memo.cWallFrames = reinterpret_cast<API_CWFrameType*> (BMpAll(sizeof(API_CWFrameType) * nCustomFrames));
-	for (UInt32 i = 0; i < nCustomFrames; ++i) {
-		memo.cWallFrames[i] = CustomFrames;
-		memo.cWallFrames[i].segmentID = i / 8;
-		memo.cWallFrames[i].cellID = 0;
-	}
-
 	for (UInt32 i = 0; i < element.curtainWall.nSegments; ++i) {
 		memo.cWallFrames[0 + i * 8].endRel.x = memo.cWallFrames[1 + i * 8].begRel.x = 0.2;
 		memo.cWallFrames[0 + i * 8].endRel.y = memo.cWallFrames[1 + i * 8].begRel.y = 0.5;
@@ -130,39 +112,8 @@ void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<BoxElem>& elemsCo
 		memo.cWallFrames[7 + i * 8].endRel.y = memo.cWallFrames[0 + i * 8].begRel.y = 0.4;
 	}
 
-	//const GSSize nWallFrames = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof(API_CWFrameType);
-	//if (nWallFrames > 0) {
-	//	for (Int32 idx = 0; idx < nWallFrames; ++idx) {
-	//		API_Element frameElem = {};
-	//		frameElem.header.guid = memo.cWallFrames[idx].head.guid;
-	//		err = ACAPI_Element_Get(&frameElem);
-	//		if (err != NoError) continue;
-	//		if (frameElem.cwFrame.classID != APICWFrameClass_Boundary) {
-	//			frameElem.cwFrame.classID = APICWFrameClass_Merged;
-	//			frameElem.cwFrame.deleteFlag = true;
-	//			API_Element frameMask = {};
-	//			ACAPI_ELEMENT_MASK_SET(frameMask, API_CWFrameType, classID);
-	//			ACAPI_ELEMENT_MASK_SET(frameMask, API_CWFrameType, deleteFlag);
-	//			err = ACAPI_Element_Change(&frameElem, &frameMask, nullptr, 0UL, true);
-	//			if (err != NoError) {
-	//				ACAPI_WriteReport("ACAPI_Element_Change (CW Panel) returned "
-	//								  "with error value %ld!", false, err);
-	//			}
-	//		}
-	//	}
-	//}
-
-	//const GSSize nWallFrames = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof(API_CWFrameType);
-	//if (nWallFrames > 0) {
-	//	for (Int32 idx = 0; idx < nWallFrames; ++idx) {
-	//		bool isContour = memo.cWallFrames[idx].contourID != 0;
-	//		if (!isContour) {
-	//			memo.cWallFrames[idx].deleteFlag = true;
-	//		}
-	//	}
-	//}
-	ACAPI_ELEMENT_MASK_SETFULL(mask);
-	err = ACAPI_Element_Change(&element, &mask, &memo, APIMemoMask_CWallFrames, true);
+	//ACAPI_ELEMENT_MASK_SETFULL(mask);
+	//err = ACAPI_Element_Change(&element, &mask, &memo, APIMemoMask_CWallFrames, true);
 	ACAPI_DisposeElemMemoHdls(&memo);
 	if (err != NoError) {
 		return;
