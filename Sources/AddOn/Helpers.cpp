@@ -3121,16 +3121,14 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 
 		//case API_ColumnID:
 		//	structtype = element.wall.modelElemStructureType;
-		//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
 		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
-		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		//	if (structtype == API_ProfileStructure) constrinx = element.wall.buildingMaterial;
 		//	fillThick = element.wall.thickness;
 		//	break;
 		//case API_BeamID:
 		//	structtype = element.wall.modelElemStructureType;
-		//	if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
 		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
-		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		//	if (structtype == API_ProfileStructure) constrinx = element.wall.buildingMaterial;
 		//	fillThick = element.wall.thickness;
 		//	break;
 	case API_WallID:
@@ -3228,10 +3226,23 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 		}
 		ProfileVectorImage profileDescription = *defs.profile_vectorImageItems;
 		ConstProfileVectorImageIterator profileDescriptionIt(profileDescription);
+
+		// Ищем полилинию с нужным цветом
+		const Sy_PolyLinType* sectionpoly = {};
 		while (!profileDescriptionIt.IsEOI()) {
 			switch (profileDescriptionIt->item_Typ) {
-
-				//TODO добавить вывод состава в месте пересечения профиля линией с определеённым пером
+			case SyPolyLine: 
+				const Sy_PolyLinType* pSyPolyLine = static_cast <const Sy_PolyLinType*> (profileDescriptionIt);
+				sectionpoly = pSyPolyLine;
+				pSyPolyLine->GetExtendedPen();
+				WriteReport("\tLine");
+				break;
+			}
+			++profileDescriptionIt;
+		}
+		while (!profileDescriptionIt.IsEOI()) {
+			switch (profileDescriptionIt->item_Typ) {
+			//TODO добавить вывод состава в месте пересечения профиля линией с определеённым пером
 			case SyHatch:
 				const HatchObject& syHatch = profileDescriptionIt;
 				double max_t = 0;
@@ -3252,7 +3263,6 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 					ParamHelpers::GetAttributeValues(constrinxL, params, paramsAdd);
 					existsmaterial.Add(constrinxL, true);
 				};
-				int hh = 1;
 				break;
 			}
 			++profileDescriptionIt;
