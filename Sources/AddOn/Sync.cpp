@@ -132,7 +132,8 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 			if (!paramToWrite.IsEmpty()) {
 				ParamHelpers::ElementsWrite(paramToWrite);
-			} else {
+			}
+			else {
 				msg_rep("SyncByType", "No data to write", NoError, APINULLGuid);
 			}
 			flag_chanel = true;
@@ -142,7 +143,8 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	}
 	if (!paramToWrite.IsEmpty()) {
 		ParamHelpers::ElementsWrite(paramToWrite);
-	} else {
+	}
+	else {
 		msg_rep("SyncByType", "No data to write", NoError, APINULLGuid);
 	}
 	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
@@ -224,21 +226,21 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings& syncSettings) {
 	bool flag_sync = false;
 	switch (elementType) {
-		case API_WindowID:
-		case API_DoorID:
-			if (syncSettings.widoS) flag_sync = true;
-			break;
-		case API_CurtainWallSegmentID:
-		case API_CurtainWallFrameID:
-		case API_CurtainWallJunctionID:
-		case API_CurtainWallAccessoryID:
-		case API_CurtainWallPanelID:
-		case API_CurtainWallID:
-			if (syncSettings.cwallS) flag_sync = true;
-			break;
-		default:
-			if (syncSettings.wallS) flag_sync = true;
-			break;
+	case API_WindowID:
+	case API_DoorID:
+		if (syncSettings.widoS) flag_sync = true;
+		break;
+	case API_CurtainWallSegmentID:
+	case API_CurtainWallFrameID:
+	case API_CurtainWallJunctionID:
+	case API_CurtainWallAccessoryID:
+	case API_CurtainWallPanelID:
+	case API_CurtainWallID:
+		if (syncSettings.cwallS) flag_sync = true;
+		break;
+	default:
+		if (syncSettings.wallS) flag_sync = true;
+		break;
 	}
 	return flag_sync;
 }
@@ -285,7 +287,8 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	if (propertyParams.IsEmpty()) {
 		if (hasSub) {
 			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
-		} else {
+		}
+		else {
 			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
 		}
 	}
@@ -321,7 +324,8 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 					ParamDictValue paramsFrom;
 					if (elemGuidFrom == elemGuidTo) {
 						paramsFrom = paramsTo;
-					} else {
+					}
+					else {
 						paramsFrom = paramToRead.Get(elemGuidFrom);
 					}
 
@@ -386,7 +390,8 @@ void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictEleme
 	API_Guid elemGuid = writeSub.guidTo;
 	if (syncRules.ContainsKey(elemGuid)) {
 		syncRules.Get(elemGuid).Push(writeSub);
-	} else {
+	}
+	else {
 		GS::Array <WriteData> rules;
 		rules.Push(writeSub);
 		syncRules.Add(elemGuid, rules);
@@ -405,7 +410,8 @@ void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead) {
 		if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
 			paramToRead.Get(elemGuid).Add(rawName, param);
 		}
-	} else {
+	}
+	else {
 		ParamDictValue params;
 		params.Add(rawName, param);
 		paramToRead.Add(elemGuid, params);
@@ -425,7 +431,8 @@ void SyncAddParam(ParamDictValue& params, const API_Guid& elemGuid, ParamDictEle
 				paramToRead.Get(elemGuid).Add(rawName, param);
 			}
 		}
-	} else {
+	}
+	else {
 		paramToRead.Add(elemGuid, params);
 	}
 }
@@ -482,7 +489,8 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					if (syncdirection == SYNC_TO_SUB) {
 						hasSub = true;
 						writeOne.toSub = true;
-					} else {
+					}
+					else {
 						writeOne.guidTo = elemGuid;
 						param.fromGuid = elemGuid;
 					}
@@ -494,7 +502,8 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					if (syncdirection == SYNC_FROM_SUB) {
 						hasSub = true;
 						writeOne.fromSub = true;
-					} else {
+					}
+					else {
 						writeOne.guidFrom = elemGuid;
 						param.fromGuid = elemGuid;
 					}
@@ -654,7 +663,8 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			GS::UniString ignoreval;
 			if (params[j].Contains('"')) {
 				ignoreval = params[j].GetSubstring('"', '"', 0);
-			} else {
+			}
+			else {
 				ignoreval = params[j];
 			}
 			ignorevals.Push(ignoreval);

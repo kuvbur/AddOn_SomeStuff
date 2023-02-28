@@ -38,6 +38,7 @@ GSErrCode ReNumSelected(void) {
 				err = ReNum_GetElement(guidArray[i], rules);
 			}
 			if (!rules.IsEmpty()) {
+
 				// Теперь у нас есть списк правил. Можем пройти по каждому правилу и обработать элементы
 				for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
 					const RenumRule& rule = *cIt->value;
@@ -51,7 +52,7 @@ GSErrCode ReNumSelected(void) {
 		msg_rep("ReNumSelected", intString, err, APINULLGuid);
 		rules.Clear();
 		return err;
-		});
+							  });
 	return err;
 }
 
@@ -109,7 +110,7 @@ GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules) {
 GSErrCode ReNumSetPos(const Int32 npos, const Int32 maxnpos, API_Property& positionproperty, bool& flag_write) {
 	GSErrCode	err = NoError;
 	if (positionproperty.definition.valueType == API_PropertyRealValueType) {
-		if (!is_equal(positionproperty.value.singleVariant.variant.doubleValue, npos / 1) || positionproperty.isDefault) {
+		if (!is_equal(positionproperty.value.singleVariant.variant.doubleValue, npos / 1.0) || positionproperty.isDefault) {
 			positionproperty.value.singleVariant.variant.doubleValue = npos;
 			flag_write = true;
 		}
@@ -324,6 +325,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 						if (partstring[1].ToLowerCase() == "allnull") nulltype = ADDMAXZEROS;
 					};
 				}
+
 				//err = GetPropertyDefinitionByName(elemGuid, paramName, propertdefyrule);
 				if (err != NoError) flag = RENUM_IGNORE;
 			}// flag != RENUM_IGNORE
