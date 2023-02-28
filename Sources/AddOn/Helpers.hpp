@@ -56,16 +56,15 @@ typedef struct {
 	GS::Array <UInt32>	inx;
 } SortInx;
 
-// --------------------------------------------------------------------
-// Структура для хранения данных о составе конструкций
-// Заполнение см. SyncPropAndMatGetComponents
-// --------------------------------------------------------------------
 typedef struct {
-	API_Attribute					buildingMaterial;
-	GS::Array<API_PropertyDefinition>	definitions;
-	GS::UniString						templatestring = "";
-	double								fillThick = 0.0;
-} LayerConstr;
+	double x;
+	double y;
+} Point;
+
+typedef struct {
+	Point p1;
+	Point p2;
+} Segment;
 
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
@@ -86,6 +85,8 @@ typedef struct {
 typedef struct {
 	API_AttributeIndex inx = 0;
 	double fillThick = 0.0;
+	bool isCore = false;
+	int num = 0;
 } ParamValueComposite;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
@@ -129,6 +130,12 @@ typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 // --------------------------------------------------------------------
 bool is_equal(double x, double y);
 
+bool intersection(Segment& s1, Segment& s2, Point& res);
+
+double length(Point& a1, Point& a2);
+
+double length(Segment& s1);
+
 // --------------------------------------------------------------------
 // Содержит ли значения элементиз списка игнорируемых
 // --------------------------------------------------------------------
@@ -159,7 +166,9 @@ Int32 ceil_mod(Int32 n, Int32 k);
 // -----------------------------------------------------------------------------
 void ReplaceCR(GS::UniString& val, bool clear = false);
 
-void AddSpace(GS::UniString& outstring);
+void GetNumSymbSpase(GS::UniString& outstring, GS::UniChar symb, char charrepl);
+
+void ReplaceSymbSpase(GS::UniString& outstring);
 
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork

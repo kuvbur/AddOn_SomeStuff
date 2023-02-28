@@ -17,12 +17,41 @@
 #include	"VectorImageIterator.hpp"
 #include	"ProfileVectorImageOperations.hpp"
 #include	"ProfileAdditionalInfo.hpp"
+#include	"basicgeometry.h"
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
 // --------------------------------------------------------------------
 bool is_equal(double x, double y) {
 	return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
+}
+
+bool intersection(Segment& s1, Segment& s2, Point& res) {
+	Point a1 = s1.p1;
+	Point a2 = s1.p2;
+	Point b1 = s2.p1;
+	Point b2 = s2.p2;
+	double d = (a1.x - a2.x) * (b2.y - b1.y) - (a1.y - a2.y) * (b2.x - b1.x);
+	double da = (a1.x - b1.x) * (b2.y - b1.y) - (a1.y - b1.y) * (b2.x - b1.x);
+	double db = (a1.x - a2.x) * (a1.y - b1.y) - (a1.y - a2.y) * (a1.x - b1.x);
+	if (std::abs(d) < 1e-9) {
+		return false;
+	}
+	double ta = da / d;
+	double tb = db / d;
+	if (0 <= ta && ta <= 1 && 0 <= tb && tb <= 1) {
+		res = { a1.x + ta * (a2.x - a1.x), a1.y + ta * (a2.y - a1.y) };
+		return true;
+	}
+	return false;
+}
+
+double length(Point& a1, Point& a2) {
+	return std::sqrt(std::pow(a2.x - a1.x, 2) + std::pow(a2.y - a1.y, 2));
+}
+
+double length(Segment& s1) {
+	return length(s1.p1, s1.p2);
 }
 
 // --------------------------------------------------------------------
@@ -96,16 +125,16 @@ void ReplaceCR(GS::UniString& val, bool clear) {
 	}
 }
 
-void AddSpace(GS::UniString& outstring) {
+void GetNumSymbSpase(GS::UniString& outstring, GS::UniChar symb, char charrepl) {
 
 	//Ищем указание длины строки
 	Int32 stringlen = 0;
 	GS::UniString part = "";
-	if (outstring.Contains('~')) {
-		part = outstring.GetSubstring('~', ' ', 0);
+	if (outstring.Contains(symb)) {
+		part = outstring.GetSubstring(symb, ' ', 0);
 		if (!part.IsEmpty() && part.GetLength() < 4)
 			stringlen = std::atoi(part.ToCStr());
-		if (stringlen > 0) part = "~" + part;
+		if (stringlen > 0) part = symb + part;
 	}
 	if (stringlen > 0) {
 		Int32 modlen = outstring.GetLength() - part.GetLength() - 1;
@@ -113,26 +142,21 @@ void AddSpace(GS::UniString& outstring) {
 		if (modlen > stringlen) {
 			addspace = modlen % stringlen;
 		}
-		outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, " "));
+		outstring.ReplaceAll(part + ' ', GS::UniString::Printf("%s", std::string(addspace, charrepl).c_str()));
 	}
+}
 
-	// TODO добавить вставку TAB
-	//stringlen = 0;
-	//part = "";
-	//if (outstring.Contains('$')) {
-	//	part = outstring.GetSubstring('$', ' ', 0);
-	//	if (!part.IsEmpty() && part.GetLength() < 4)
-	//		stringlen = std::atoi(part.ToCStr());
-	//	if (stringlen > 0) part = "$" + part;
-	//}
-	//if (stringlen > 0) {
-	//	Int32 modlen = outstring.GetLength() - part.GetLength() - 1;
-	//	Int32 addspace = stringlen - modlen;
-	//	if (modlen > stringlen) {
-	//		addspace = modlen % stringlen;
-	//	}
-	//	outstring.ReplaceAll(part + " ", GS::UniString::Printf("%*s", addspace, CharTAB));
-	//}
+void ReplaceSymbSpase(GS::UniString& outstring) {
+	GetNumSymbSpase(outstring, '~', u8' ');
+	GetNumSymbSpase(outstring, '@', CharTAB);
+	outstring.ReplaceAll("\\TAB", u8"\u0009");
+	outstring.ReplaceAll("\\CRLF", u8"\u000D\u000A");
+	outstring.ReplaceAll("\\CR", u8"\u000D");
+	outstring.ReplaceAll("\\LF", u8"\u000A");
+	outstring.ReplaceAll("\\PS", u8"\u2029");
+	outstring.ReplaceAll("\\LS", u8"\u2028");
+	outstring.ReplaceAll("\\NEL", u8"\u0085");
+	outstring.ReplaceAll("\\NL", u8"\u2424");
 }
 
 // -----------------------------------------------------------------------------
@@ -2658,18 +2682,35 @@ bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & par
 	ParamDictValue paramsAdd;
 	if (!ParamHelpers::GetComponents(element, params, paramsAdd)) return false;
 
+	ParamDictValue paramlayers;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (param.fromMaterial) {
+			if (param.rawName.Contains("{material:layers")) {
+				paramlayers.Add(param.rawName, param);
+			}
+		}
+	}
+	if (paramlayers.IsEmpty()) return true;
+
 	// В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
 	if (!paramsAdd.IsEmpty()) {
-		if (params.ContainsKey("{material:layers}")) {
-			ParamHelpers::Compare(propertyParams, paramsAdd);
-			ParamValue param_composite = params.Get("{material:layers}");
+		ParamHelpers::Compare(propertyParams, paramsAdd);
+		GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
+			ParamValue param_composite = *cIt->value;
 			ParamDictValue paramsAdd_1;
 			if (param_composite.val.uniStringValue.Contains("{")) {
 				Int32 nlayers = param_composite.composite.GetSize();
 				bool flag = false;
 				for (Int32 i = 0; i < nlayers; ++i) {
 					API_AttributeIndex constrinx = param_composite.composite[i].inx;
-					if (ParamHelpers::GetAttributeValues(constrinx, paramsAdd, paramsAdd_1)) flag = true;
+					if (!existsmaterial.ContainsKey(constrinx)) {
+						if (ParamHelpers::GetAttributeValues(constrinx, paramsAdd, paramsAdd_1)) {
+							flag = true;
+							existsmaterial.Add(constrinx, true);
+						}
+					}
 				}
 				if (flag) {
 					for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -2679,51 +2720,55 @@ bool ParamHelpers::GetMaterial(const API_Element & element, ParamDictValue & par
 			}
 		}
 	}
-	if (!params.ContainsKey("{material:layers}")) return true;
+	bool flag_add = false;
 
 	// Если есть строка-шаблон - заполним её
-	ParamValue param_composite = params.Get("{material:layers}");
-	bool flag = false;
-	GS::UniString outstring = "";
-	if (param_composite.val.uniStringValue.Contains("{")) {
-		Int32 nlayers = param_composite.composite.GetSize();
-		for (Int32 i = 0; i < nlayers; ++i) {
-			GS::UniString templatestring = param_composite.val.uniStringValue;
-			API_AttributeIndex constrinx = param_composite.composite[i].inx;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
+		bool flag = false;
+		ParamValue param_composite = *cIt->value;
+		GS::UniString rawName = *cIt->key;
+		GS::UniString outstring = "";
+		if (param_composite.val.uniStringValue.Contains("{")) {
+			Int32 nlayers = param_composite.composite.GetSize();
+			for (Int32 i = 0; i < nlayers; ++i) {
+				GS::UniString templatestring = param_composite.val.uniStringValue;
+				API_AttributeIndex constrinx = param_composite.composite[i].inx;
 
-			// Если нужно заполнить толщину
-			if (params.ContainsKey("{material:layer thickness}")) {
-				double fillThick = param_composite.composite[i].fillThick;
-				GS::UniString formatsting = params.Get("{material:layer thickness}").val.stringformat;
-				if (formatsting.IsEmpty()) {
-					formatsting = "1mm";
-					params.Get("{material:layer thickness}").val.stringformat = formatsting;
+				// Если нужно заполнить толщину
+				if (params.ContainsKey("{material:layer thickness}")) {
+					double fillThick = param_composite.composite[i].fillThick;
+					GS::UniString formatsting = params.Get("{material:layer thickness}").val.stringformat;
+					if (formatsting.IsEmpty()) {
+						formatsting = "1mm";
+						params.Get("{material:layer thickness}").val.stringformat = formatsting;
+					}
+					GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
+					templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
 				}
-				GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
-				templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
-			}
-			templatestring.ReplaceAll("{material:n}", GS::UniString::Printf("%d", i + 1));
+				templatestring.ReplaceAll("{material:n}", GS::UniString::Printf("%d", i + 1));
 
-			// Если для материала было указано уникальное наименование - заменим его
-			GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
-			if (params.ContainsKey("{property:sync_name" + attribsuffix)) {
-				if (params.Get("{property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
-			}
-			templatestring.ReplaceAll("}", attribsuffix);
-			if (ParamHelpers::ReplaceParamInExpression(params, templatestring)) {
-				flag = true;
-				AddSpace(templatestring);
-				outstring = outstring + templatestring;
+				// Если для материала было указано уникальное наименование - заменим его
+				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
+				if (params.ContainsKey("{property:sync_name" + attribsuffix)) {
+					if (params.Get("{property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
+				}
+				templatestring.ReplaceAll("}", attribsuffix);
+				if (ParamHelpers::ReplaceParamInExpression(params, templatestring)) {
+					flag = true;
+					flag_add = true;
+					ReplaceSymbSpase(templatestring);
+					outstring = outstring + templatestring;
+				}
 			}
 		}
+		if (flag) {
+			params.Get(rawName).val.uniStringValue = outstring;
+			params.Get(rawName).val.canCalculate = true;
+			params.Get(rawName).isValid = true;
+			params.Get(rawName).type = API_PropertyStringValueType;
+		}
 	}
-	if (flag) {
-		params.Get("{material:layers}").val.uniStringValue = outstring;
-		params.Get("{material:layers}").val.canCalculate = true;
-		params.Get("{material:layers}").isValid = true;
-		params.Get("{material:layers}").type = API_PropertyStringValueType;
-	}
-	return flag;
+	return flag_add;
 }
 
 GSErrCode GetPropertyFullName(const API_PropertyDefinition & definision, GS::UniString & name) {
@@ -3098,15 +3143,28 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	API_ModelElemStructureType	structtype = {};
 	API_AttributeIndex			constrinx = {};
 	double						fillThick = 0;
-	GS::HashTable<API_AttributeIndex, bool> existsmaterial;
-	if (!params.ContainsKey("{material:layers}")) {
+	GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
+
+	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
+	// Получим словарь исключительно с определениями состава
+	ParamDictValue paramlayers;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (param.fromMaterial) {
+			if (param.rawName.Contains("{material:layers")) {
+				paramlayers.Add(param.rawName, param);
+			}
+		}
+	}
+
+	// Если ничего нет - слои нам всё равно нужны
+	if (paramlayers.IsEmpty()) {
 		ParamValue param_composite = {};
 		param_composite.fromGuid = element.header.guid;
-		params.Add("{material:layers}", param_composite);
+		param_composite.isValid = true;
+		param_composite.val.canCalculate = true;
+		paramlayers.Add("{material:layers}", param_composite);
 	}
-	ParamValue param_composite = params.Get("{material:layers}");
-	param_composite.isValid = true;
-	param_composite.val.canCalculate = true;
 
 	// Получаем данные о составе конструкции. Т.к. для разных типов элементов
 	// информация храница в разных местах - запишем всё в одни переменные
@@ -3121,7 +3179,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 
 		//case API_ColumnID:
 		//	structtype = element.wall.modelElemStructureType;
-		//	if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
+		//	if (structtype == API_BasicStructure) constrinx = element.column.buildingMaterial;
 		//	if (structtype == API_ProfileStructure) constrinx = element.wall.buildingMaterial;
 		//	fillThick = element.wall.thickness;
 		//	break;
@@ -3164,6 +3222,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	// Получим индексы строительных материалов и толщины
 	// Для однослойной конструкции
 	if (structtype == API_BasicStructure) {
+		ParamValue param_composite = {};
 		ParamValueComposite layer = {};
 		layer.inx = constrinx;
 		layer.fillThick = fillThick;
@@ -3172,7 +3231,10 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 			ParamHelpers::GetAttributeValues(constrinx, params, paramsAdd);
 			existsmaterial.Add(constrinx, true);
 		}
-		params.Set("{material:layers}", param_composite);
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
+			paramlayers.Get(*cIt->key).composite = param_composite.composite;
+		}
+		ParamHelpers::Compare(paramlayers, params);
 		return true;
 	}
 
@@ -3198,6 +3260,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 			ACAPI_DisposeAttrDefsHdls(&defs);
 			return false;
 		}
+		ParamValue param_composite = {};
 		for (short i = 0; i < attrib.compWall.nComps; i++) {
 			API_AttributeIndex	constrinxL = (*defs.cwall_compItems)[i].buildingMaterial;
 			double	fillThickL = (*defs.cwall_compItems)[i].fillThick;
@@ -3210,67 +3273,144 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 				existsmaterial.Add(constrinxL, true);
 			}
 		}
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
+			paramlayers.Get(*cIt->key).composite = param_composite.composite;
+		}
+		ParamHelpers::Compare(paramlayers, params);
 		ACAPI_DisposeAttrDefsHdls(&defs);
+		return true;
 	}
 
 	if (structtype == API_ProfileStructure) {
-		API_AttributeDefExt	defs;
-		err = ACAPI_Attribute_GetDefExt(attrib.header.typeID, attrib.header.index, &defs);
-		if (err == APIERR_BADID) {
-			BNZeroMemory(&defs, sizeof(API_AttributeDefExt));
-			err = NoError;
-		}
+		API_ElementMemo	memo = {};
+		UInt64 mask = APIMemoMask_StretchedProfile;
+		err = ACAPI_Element_GetMemo(element.header.guid, &memo, mask);
 		if (err != NoError) {
-			msg_rep("materialString::GetComponents", " ACAPI_Attribute_GetDefExt", err, element.header.guid);
+			ACAPI_DisposeElemMemoHdls(&memo);
 			return false;
 		}
-		ProfileVectorImage profileDescription = *defs.profile_vectorImageItems;
+		ProfileVectorImage profileDescription = *memo.stretchedProfile;
 		ConstProfileVectorImageIterator profileDescriptionIt(profileDescription);
+		GS::HashTable<short, GS::Array<Segment>> lines;
+		GS::HashTable<short, ParamValue> param_composite;
+
+		// Получаем список перьев в параметрах
+
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
+			GS::UniString rawName = *cIt->key;
+			rawName.ReplaceAll(" ", "");
+			if (rawName.Contains(",")) {
+				GS::Array<GS::UniString> partstring;
+				UInt32 n = StringSplt(rawName, ",", partstring);
+				if (n > 0) {
+					short pen = std::atoi(partstring[1].ToCStr());
+					GS::Array<Segment> d;
+					lines.Add(pen, d);
+					ParamValue p;
+					param_composite.Add(pen, p);
+					paramlayers.Get(*cIt->key).val.intValue = pen;
+				}
+			}
+		}
+		bool hasLine = !lines.IsEmpty();
+		bool profilehasLine = false;
 
 		// Ищем полилинию с нужным цветом
-		const Sy_PolyLinType* sectionpoly = {};
 		while (!profileDescriptionIt.IsEOI()) {
 			switch (profileDescriptionIt->item_Typ) {
-			case SyPolyLine: 
-				const Sy_PolyLinType* pSyPolyLine = static_cast <const Sy_PolyLinType*> (profileDescriptionIt);
-				sectionpoly = pSyPolyLine;
-				pSyPolyLine->GetExtendedPen();
-				WriteReport("\tLine");
+			case SyLine:
+				const Sy_LinType* pSyPolyLine = static_cast <const Sy_LinType*> (profileDescriptionIt);
+				short pen = pSyPolyLine->GetExtendedPen().GetIndex();
+				if (lines.ContainsKey(pen)) {
+					Point p1 = { pSyPolyLine->begC.GetX(), pSyPolyLine->begC.GetY() };
+					Point p2 = { pSyPolyLine->endC.GetX(), pSyPolyLine->endC.GetY() };
+					Segment line = { p1, p2 };
+					lines.Get(pen).Push(line);
+					profilehasLine = true;
+				}
 				break;
 			}
 			++profileDescriptionIt;
 		}
-		while (!profileDescriptionIt.IsEOI()) {
-			switch (profileDescriptionIt->item_Typ) {
-			//TODO добавить вывод состава в месте пересечения профиля линией с определеённым пером
+		if (!profilehasLine) {
+			Point p1 = { -1000, 0 };
+			Point p2 = { 1000, 0 };
+			Segment line = { p1, p2 };
+			GS::Array<Segment> d;
+			d.Push(line);
+			lines.Add(20, d);
+			p1 = { 0, -1000 };
+			p2 = { 0, 1000 };
+			line = { p1, p2 };
+			GS::Array<Segment> d2;
+			d2.Push(line);
+			lines.Add(6, d2);
+			ParamValue p;
+			param_composite.Add(20, p);
+			param_composite.Add(6, p);
+		}
+		bool hasData = false;
+		ConstProfileVectorImageIterator profileDescriptionIt1(profileDescription);
+		while (!profileDescriptionIt1.IsEOI()) {
+			switch (profileDescriptionIt1->item_Typ) {
 			case SyHatch:
-				const HatchObject& syHatch = profileDescriptionIt;
-				double max_t = 0;
-				double min_t = 0;
-				for (Coord coord : syHatch.GetCoords()) {
-					if (fabs(coord.y) < 0.001) {
-						max_t = fmax(coord.x, max_t);
-						min_t = fmin(coord.x, min_t);
+				const HatchObject& syHatch = profileDescriptionIt1;
+
+				GS::Array<Segment> cont;
+				GS::Array<Point2D> coords = syHatch.GetCoords();
+				Point p1 = { coords[0].GetX(), coords[0].GetY() };
+				Point p2 = { 0,0 };
+				for (UInt32 i = 1; i < coords.GetSize(); i++) {
+					p2 = { coords[i].GetX(), coords[i].GetY() };
+					Segment line = { p1, p2 };
+					cont.Push(line);
+					p1 = p2;
+				}
+				for (GS::HashTable<short, GS::Array<Segment>>::PairIterator cIt = lines.EnumeratePairs(); cIt != NULL; ++cIt) {
+					GS::Array<Segment> l = *cIt->value;
+					GS::Array<Point> points;
+					for (UInt32 i = 0; i < l.GetSize(); i++) {
+						Point res = { 0,0 };
+						for (UInt32 j = 1; j < cont.GetSize(); j++) {
+							if (intersection(l[i], cont[j], res)) points.Push(res);
+						}
+					}
+					if (points.GetSize() == 2) {
+						double fillThickL = length(points[0], points[1]);
+						API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
+						ParamValueComposite layer = {};
+						layer.inx = constrinxL;
+						layer.fillThick = fillThickL;
+						param_composite.Get(*cIt->key).composite.Push(layer);
+						if (!existsmaterial.ContainsKey(constrinxL)) {
+							ParamHelpers::GetAttributeValues(constrinxL, params, paramsAdd);
+							existsmaterial.Add(constrinxL, true);
+						};
+						hasData = true;
 					}
 				}
-				double	fillThickL = max_t - min_t;
-				API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
-				ParamValueComposite layer = {};
-				layer.inx = constrinxL;
-				layer.fillThick = fillThickL;
-				param_composite.composite.Push(layer);
-				if (!existsmaterial.ContainsKey(constrinxL)) {
-					ParamHelpers::GetAttributeValues(constrinxL, params, paramsAdd);
-					existsmaterial.Add(constrinxL, true);
-				};
 				break;
 			}
-			++profileDescriptionIt;
+			++profileDescriptionIt1;
 		}
-		ACAPI_DisposeAttrDefsHdlsExt(&defs);
+		if (hasData) {
+			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
+				if (!hasLine) {
+					paramlayers.Get(*cIt->key).composite = param_composite.Get(20).composite;
+				}
+				else {
+					short pen = paramlayers.Get(*cIt->key).val.intValue;
+					if (param_composite.ContainsKey(pen)) {
+						paramlayers.Get(*cIt->key).composite = param_composite.Get(pen).composite;
+					}
+				}
+			}
+			ParamHelpers::Compare(paramlayers, params);
+		}
+		ACAPI_DisposeElemMemoHdls(&memo);
+		return hasData;
 	}
-	params.Set("{material:layers}", param_composite);
-	return true;
+	return false;
 }
 
 // TODO Переписать как-то эту часть для ускорения
