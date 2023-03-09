@@ -57,14 +57,19 @@ typedef struct {
 } SortInx;
 
 typedef struct {
-	double x;
-	double y;
+	double x = 0.0;
+	double y = 0.0;
 } Point;
 
 typedef struct {
-	Point p1;
-	Point p2;
+	Point p1 = { 0,0 };
+	Point p2 = { 0,0 };
 } Segment;
+
+typedef struct {
+	GS::Array<Segment> segments;
+	Point start;
+} OrientedSegments;
 
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
@@ -74,6 +79,7 @@ typedef struct {
 typedef struct {
 
 	// Собственно значения
+	API_VariantType type = API_PropertyUndefinedValueType; //Прочитанный тип данных
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
 	bool boolValue = false;
@@ -85,6 +91,7 @@ typedef struct {
 typedef struct {
 	API_AttributeIndex inx = 0;
 	double fillThick = 0.0;
+	double rfromstart = 0.0;
 	bool isCore = false;
 	int num = 0;
 } ParamValueComposite;
@@ -92,7 +99,7 @@ typedef struct {
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
 typedef struct {
-	API_VariantType type = API_PropertyUndefinedValueType;
+	API_VariantType type = API_PropertyUndefinedValueType; // Тип данных для записи
 	GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
 	GS::UniString name = ""; //Очищенное имя для поиска
 	ParamValueData val = {};
@@ -133,6 +140,8 @@ bool is_equal(double x, double y);
 bool intersection(Segment& s1, Segment& s2, Point& res);
 
 double length(Point& a1, Point& a2);
+
+Point halfpoint(Point& a1, Point& a2);
 
 double length(Segment& s1);
 
@@ -412,9 +421,14 @@ namespace ParamHelpers {
 	void ElementsWrite(ParamDictElement& paramToWrite);
 
 	// --------------------------------------------------------------------
-	// Запись параметров в один элемент
+	// Запись ParamDictValue в один элемент
 	// --------------------------------------------------------------------
 	void Write(const API_Guid& elemGuid, ParamDictValue& params);
+
+	// --------------------------------------------------------------------
+	// Запись ParamDictValue в GDL параметры и ID
+	// --------------------------------------------------------------------
+	void WriteGDLValues(const API_Guid& elemGuid, ParamDictValue& params);
 
 	// --------------------------------------------------------------------
 	// Запись ParamDictValue в свойства
@@ -491,6 +505,21 @@ namespace ParamHelpers {
 	// Получение информации о материалах и составе конструкции
 	// -----------------------------------------------------------------------------
 	bool GetMaterial(const API_Element& element, ParamDictValue& params, ParamDictValue& propertyParams);
+
+	// --------------------------------------------------------------------
+	// Получение данных из однородной конструкции
+	// --------------------------------------------------------------------
+	bool GetComponentsBasicStructure(const API_AttributeIndex& constrinx, const double& fillThick, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd);
+
+	// --------------------------------------------------------------------
+	// Получение данных из многослойной конструкции
+	// --------------------------------------------------------------------
+	bool GetComponentsCompositeStructure(const API_Guid& elemguid, API_AttributeIndex& constrinx, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial);
+
+	// --------------------------------------------------------------------
+	// Получение данных из сложного профиля
+	// --------------------------------------------------------------------
+	bool GetComponentsProfileStructure(ProfileVectorImage& profileDescription, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial);
 
 	// --------------------------------------------------------------------
 	// Вытаскивает всё, что может, из информации о составе элемента

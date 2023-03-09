@@ -627,6 +627,8 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			elementType == API_BeamID ||
 			elementType == API_RoofID ||
 			elementType == API_ShellID ||
+			elementType == API_BeamSegmentID ||
+			elementType == API_ColumnSegmentID ||
 			elementType == API_MorphID) synctypefind = false;
 	}
 	if (param.fromGDLdescription) {
@@ -638,6 +640,8 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			elementType != API_ColumnID &&
 			elementType != API_BeamID &&
 			elementType != API_RoofID &&
+			elementType != API_BeamSegmentID &&
+			elementType != API_ColumnSegmentID &&
 			elementType != API_ShellID) synctypefind = false;
 	}
 	if (param.fromMorph) {
