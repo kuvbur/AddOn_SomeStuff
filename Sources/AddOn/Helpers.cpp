@@ -1346,6 +1346,9 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 // -----------------------------------------------------------------------------
 bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & params) {
 	double x = 0; double y = 0; double z = 0; double angz = 0;
+	double sx = 0; double sy = 0;
+	double ex = 0; double ey = 0;
+	bool hasSymbpos = false; bool hasLine = false;
 	API_ElemTypeID eltype;
 #ifdef AC_26
 	eltype = element.header.type.typeID;
@@ -1357,34 +1360,68 @@ bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & param
 		x = element.cwPanel.centroid.x;
 		y = element.cwPanel.centroid.y;
 		z = element.cwPanel.centroid.z;
+		hasSymbpos = true;
 		break;
 	case API_ObjectID:
 		x = element.object.pos.x;
 		y = element.object.pos.y;
 		z = element.object.level;
+		angz = element.object.angle;
+		hasSymbpos = true;
 		break;
 	case API_ZoneID:
 		x = element.zone.pos.x;
 		y = element.zone.pos.y;
 		z = 0;
+		angz = element.zone.stampAngle;
+		hasSymbpos = true;
 		break;
 	case API_ColumnID:
 		x = element.column.origoPos.x;
 		y = element.column.origoPos.y;
+		angz = element.column.slantAngle;
 		z = 0;
+		hasSymbpos = true;
 		break;
 	case API_WallID:
+		sx = element.wall.begC.x;
+		sy = element.wall.begC.x;
+		ex = element.wall.endC.x;
+		ey = element.wall.endC.x;
+
+		double dx = ex - sx;
+		double dy = ey - sy;
+		//TODO дописать определение угла стены
+		if (dx > 0.0 && dy >= 0.0) angz = atanh(dy / dx);
+		if (dx > 0 && dy < 0) angz = atn(dy / dx) + 360;
+		if (dx < 0) angz = atn(dy / dx) + 180;
+		if (dx == 0 && dy > 0) angz = 90;
+		if (dx == 0 && dy < 0) angz = 270;
+		if (dx==0 && abs(dy) < EPS) angz = 0;
+
+		hasLine = true;
 		break;
 	case API_BeamID:
+		hasLine = true;
 		break;
 	default:
 		return false;
 	}
 	ParamDictValue pdictvaluecoord;
-	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
-	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
-	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
+	if (hasSymbpos) {
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
+	}
+	if (hasLine) {
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
+	}
 
+	if (angz > 0.00001) angz = angz * 180 / PI;
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
 	ParamHelpers::Compare(pdictvaluecoord, params);
 	return true;
 }
@@ -2276,7 +2313,6 @@ void ParamHelpers::WriteGDLValues(const API_Guid& elemGuid, ParamDictValue & par
 	err = ACAPI_Element_ChangeMemo(elemGuidt, APIMemoMask_AddPars, &elemMemo);
 	if (err != NoError) msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
 	ACAPI_DisposeAddParHdl(&apiParams.params);
-	int hh = 1;
 }
 
 // --------------------------------------------------------------------
