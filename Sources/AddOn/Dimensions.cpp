@@ -68,7 +68,6 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression) {
 	GS::Array<GS::UniString> partstring_1;
 	if (StringSplt(rawrule, "-", partstring_1) == 2) {
-
 		//Проверяем - что указано в правиле: слой или номер пера
 		// Слой указываем в кавычках, в regexp формате
 		if (partstring_1[0].Contains('"')) {
@@ -87,6 +86,7 @@ bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
 				if (partstring_2[2].Contains("{") && partstring_2[2].Contains("}")) {
 					ParamDictValue paramDict;
 					GS::UniString expression = partstring_2[2];
+					expression.ReplaceAll("<MeasuredValue>", "{MeasuredValue}");
 					ParamHelpers::ParseParamName(expression, paramDict);
 					dimrule.paramDict = paramDict;
 					dimrule.expression = expression;
@@ -99,6 +99,7 @@ bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
 				if (partstring_2[3].Contains("{") && partstring_2[3].Contains("}")) {
 					ParamDictValue paramDict;
 					GS::UniString expression = partstring_2[3];
+					expression.ReplaceAll("<MeasuredValue>", "{MeasuredValue}");
 					ParamHelpers::ParseParamName(expression, paramDict);
 					dimrule.paramDict = paramDict;
 					dimrule.expression = expression;
@@ -114,7 +115,7 @@ bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
+GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams) {
 	API_ElemTypeID elementType;
 	if (GetTypeByGUID(elemGuid, elementType) != NoError) return NoError;
 	if (elementType != API_DimensionID && elementType != API_RadialDimensionID && elementType != API_LevelDimensionID) return NoError;
@@ -192,6 +193,8 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 			msg_rep("DimAutoRound", "ACAPI_Element_GetMemo", err, elemGuid);
 			return err;
 		}
+		if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+		API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
 		const UInt32 nDimElem = BMGetHandleSize((GSHandle)memo.dimElems) / sizeof(API_DimElem);
 		for (UInt32 k = 1; k < nDimElem; k++) {
 			UInt32 flag_change = DIM_NOCHANGE;
@@ -200,8 +203,9 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 			if (dimElem.dimVal == 0) continue;
 			GS::UniString content = GS::UniString::Printf("%s", dimElem.note.content);
 			API_Guid ref_elemGuid = dimElem.base.base.guid;
+			if (ref_elemGuid != bef_elemGuid) ref_elemGuid = APINULLGuid;
 			API_NoteContentType contentType = dimElem.note.contentType;
-			if (DimParse(dimElem.dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule)) {
+			if (DimParse(dimElem.dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
 				if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
 				if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
 					flag_write = true;
@@ -222,6 +226,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 					dimElem.note.notePen = pen;
 				}
 			}
+			bef_elemGuid = dimElem.base.base.guid;
 		}
 		if (flag_write) {
 			API_Guid elemGuid_n = elemGuid;
@@ -249,8 +254,6 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 			msg_rep("DimAutoRound", "ACAPI_Element_Change_1", err, elemGuid);
 			return err;
 		}
-
-		// TODO растиражировать очистку на return
 		ACAPI_DisposeElemMemoHdls(&memo);
 	} else {
 		return err;
@@ -263,7 +266,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules) {
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule) {
+bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule, ParamDictValue& propertyParams) {
 	flag_change = DIM_NOCHANGE;
 	flag_highlight = DIM_NOCHANGE;
 	Int32 round_value = dimrule.round_value;
@@ -275,15 +278,15 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	bool flag_expression = false; //В описании найдена формула
 	if (!dimrule.expression.IsEmpty()) {
 		ParamDictValue pdictvalue = dimrule.paramDict;
-		ParamDictValue propertyParams = {};
-		if (elemGuid != APINULLGuid) ParamHelpers::Read(elemGuid, pdictvalue, propertyParams); //Получим значения, если размер привязан к элементу
-
 		// Добавляем в словарь округлённое значение
-		ParamValue pvalue;
-		ParamHelpers::ConvValue(pvalue, "MeasuredValue", dimValmm_round);
-		pdictvalue.Add(pvalue.name, pvalue);
+		if (pdictvalue.ContainsKey("{gdl:measuredvalue}")) {
+			ParamValue pvalue;
+			ParamHelpers::ConvValue(pvalue, "MeasuredValue", dimValmm_round);
+			pdictvalue.Get("{gdl:measuredvalue}").val = pvalue.val;
+			pdictvalue.Get("{gdl:measuredvalue}").isValid = true;
+		}
+		if (elemGuid != APINULLGuid) ParamHelpers::Read(elemGuid, pdictvalue, propertyParams); //Получим значения, если размер привязан к элементу
 		GS::UniString expression = dimrule.expression;
-
 		// Заменяем вычисленное
 		if (ParamHelpers::ReplaceParamInExpression(pdictvalue, expression)) {
 			// Вычисляем значения
@@ -336,7 +339,6 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 
 // -----------------------------------------------------------------------------
 // Округление всего доступного согласно настроек
-// TODO добавить резервирование
 // -----------------------------------------------------------------------------
 void DimRoundAll(const SyncSettings& syncSettings) {
 	(void)syncSettings;
@@ -345,16 +347,17 @@ void DimRoundAll(const SyncSettings& syncSettings) {
 	const GSErrCode err = DimReadPref(dimrules);
 	if (dimrules.GetSize() == 0 || err != NoError) return;
 	bool flag_chanel = false;
-	if (!flag_chanel) flag_chanel = DimRoundByType(API_DimensionID, doneelemguid, dimrules);
-	if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules);
-	if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules);
+	ParamDictValue propertyParams;
+	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	if (!flag_chanel) flag_chanel = DimRoundByType(API_DimensionID, doneelemguid, dimrules, propertyParams);
+	if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
+	if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
 }
 
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
-// TODO добавить резервирование
 // -----------------------------------------------------------------------------
-bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules) {
+bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams) {
 	GSErrCode	err = NoError;
 
 	// Тут было резервирование всех размеров перед обновлением, но оно работает криво и я его отключил
@@ -370,12 +373,13 @@ bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, Di
 	//	ACAPI_TeamworkControl_ReserveElements(elements, &conflicts);
 	//}
 	GS::Array<API_Guid>	guidArray;
-	err = ACAPI_Element_GetElemList(typeID, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_OnVisLayer | APIFilt_IsInStructureDisplay);
+	err = ACAPI_Element_GetElemList(typeID, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight);
 	if (guidArray.GetSize() == 0 || err != NoError) return false;
 	if (err == NoError) {
+		if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
-				err = DimAutoRound(guidArray.Get(i), dimrules);
+				err = DimAutoRound(guidArray.Get(i), dimrules, propertyParams);
 				if (err == NoError) doneelemguid.Add(guidArray.Get(i), false);
 			}
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;

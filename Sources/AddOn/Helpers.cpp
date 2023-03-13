@@ -119,8 +119,7 @@ void ReplaceCR(GS::UniString& val, bool clear) {
 			for (UInt32 i = 0; i < val.Count(p); i++) {
 				UIndex inx = val.FindFirst(p);
 				val.ReplaceFirst(p, "");
-				val.Delete(inx);
-				val.SetChar(inx - 1, CharCR);
+				val.SetChar(inx, CharCR);
 			}
 		}
 		else {
@@ -678,7 +677,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		function(guidArray[i], syncSettings, propertyParams, paramToWrite);
-		if (needdimround) err = DimAutoRound(guidArray[i], dimrules);
+		if (needdimround) err = DimAutoRound(guidArray[i], dimrules, propertyParams);
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 			return;
@@ -1346,8 +1345,10 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 // -----------------------------------------------------------------------------
 bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & params) {
 	double x = 0; double y = 0; double z = 0; double angz = 0;
-	double sx = 0; double sy = 0;
+	double sx = 0; double sy = 0; 
+	double dx = 0; double dy = 0; 
 	double ex = 0; double ey = 0;
+	double tolerance_coord = 0.01;
 	bool hasSymbpos = false; bool hasLine = false;
 	API_ElemTypeID eltype;
 #ifdef AC_26
@@ -1372,36 +1373,26 @@ bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & param
 	case API_ZoneID:
 		x = element.zone.pos.x;
 		y = element.zone.pos.y;
-		z = 0;
-		angz = element.zone.stampAngle;
 		hasSymbpos = true;
 		break;
 	case API_ColumnID:
 		x = element.column.origoPos.x;
 		y = element.column.origoPos.y;
 		angz = element.column.slantAngle;
-		z = 0;
 		hasSymbpos = true;
 		break;
 	case API_WallID:
 		sx = element.wall.begC.x;
-		sy = element.wall.begC.x;
+		sy = element.wall.begC.y;
 		ex = element.wall.endC.x;
-		ey = element.wall.endC.x;
-
-		double dx = ex - sx;
-		double dy = ey - sy;
-		//TODO дописать определение угла стены
-		if (dx > 0.0 && dy >= 0.0) angz = atanh(dy / dx);
-		if (dx > 0 && dy < 0) angz = atn(dy / dx) + 360;
-		if (dx < 0) angz = atn(dy / dx) + 180;
-		if (dx == 0 && dy > 0) angz = 90;
-		if (dx == 0 && dy < 0) angz = 270;
-		if (dx==0 && abs(dy) < EPS) angz = 0;
-
+		ey = element.wall.endC.y;
 		hasLine = true;
 		break;
 	case API_BeamID:
+		sx = element.beam.begC.x;
+		sy = element.beam.begC.y;
+		ex = element.beam.endC.x;
+		ey = element.beam.endC.y;
 		hasLine = true;
 		break;
 	default:
@@ -1412,16 +1403,65 @@ bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & param
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
+		double k = 10000.0;
+		double symb_pos_x_correct = abs(abs(x * k) - floor(abs(x * k)));
+		double symb_pos_y_correct = abs(abs(y * k) - floor(abs(y * k)));
+		double symb_pos_correct = (symb_pos_x_correct < tolerance_coord&& symb_pos_y_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", symb_pos_x_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", symb_pos_y_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", symb_pos_correct);
 	}
 	if (hasLine) {
+		dx = ex - sx;
+		dy = ey - sy;
+		if (dx > 0 && dy >= 0) {
+			angz = atan(dy / dx);
+		}
+		if (dx > 0 && dy < 0) {
+			angz = atan(dy / dx) + 2 * PI;
+		}
+		if (dx < 0) {
+			angz = atan(dy / dx) + PI;
+		}
+		if (dx == 0 && dy > 0) {
+			angz = PI / 2;
+		}
+		if (dx == 0 && dy < 0) {
+			angz = 3 * PI / 2;
+		}
+		if (dx == 0 && dy < 0) {
+			angz = 0;
+		}
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
+		double k = 100000.0;
+		double symb_pos_sx_correct = abs(abs(sx * k) - floor(abs(sx * k)));
+		double symb_pos_sy_correct = abs(abs(sy * k) - floor(abs(sy * k)));
+		double symb_pos_ex_correct = abs(abs(ex * k) - floor(abs(ex * k)));
+		double symb_pos_ey_correct = abs(abs(ey * k) - floor(abs(ey * k)));
+		double symb_pos_correct = (symb_pos_sx_correct < tolerance_coord && symb_pos_sy_correct < tolerance_coord&& symb_pos_ex_correct < tolerance_coord&& symb_pos_ey_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", symb_pos_sx_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", symb_pos_sy_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", symb_pos_ex_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", symb_pos_ey_correct < tolerance_coord);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", symb_pos_correct);
 	}
 
-	if (angz > 0.00001) angz = angz * 180 / PI;
+	if (abs(angz) > 0.000001) {
+		angz = angz * 180 / PI;
+	} else {
+		angz = 0; 
+	}
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", angz-floor(angz));
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", abs(abs(angz) - floor(abs(angz)))< 0.000001);
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz,5.0));
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod(angz, 180.0));
 	ParamHelpers::Compare(pdictvaluecoord, params);
 	return true;
 }
@@ -1490,8 +1530,6 @@ bool ParamHelpers::ParseParamNameMaterial(GS::UniString & expression, ParamDictV
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ParseParamName(GS::UniString & expression, ParamDictValue & paramDict) {
 	GS::UniString tempstring = expression;
-
-	//TODO переписать парсинг свойств из строки
 	if (!tempstring.Contains('{')) return (!paramDict.IsEmpty());
 	GS::UniString part = "";
 	while (tempstring.Contains('{') && tempstring.Contains('}')) {
@@ -1553,7 +1591,7 @@ bool EvalExpression(GS::UniString & unistring_expression) {
 	if (!unistring_expression.Contains('<')) return false;
 	GS::UniString part = "";
 	GS::UniString texpression = unistring_expression;
-	while (texpression.Contains('<') && texpression.Contains('>')) {
+	while (unistring_expression.Contains('<') && unistring_expression.Contains('>')) {
 		typedef double T;
 		part = unistring_expression.GetSubstring('<', '>', 0);
 		typedef exprtk::expression<T>   expression_t;
@@ -2008,7 +2046,6 @@ bool ParamHelpers::ToProperty(ParamValue & pvalue) {
 // -----------------------------------------------------------------------------
 // Синхронизация ParamValue и API_Property
 // Возвращает true и подготовленное для записи свойство в случае отличий
-// TODO Переписать всё под запись ParamValue
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ToProperty(const ParamValue & pvalue, API_Property & property) {
 	if (property.definition.canValueBeEditable == false) {
@@ -3069,6 +3106,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 	}
 	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{gdl:" + GS::UniString(nthParameter.name).ToLowerCase() + "}";
 	if (pvalue.name.IsEmpty()) pvalue.name = nthParameter.name;
+	pvalue.type = pvalue.val.type;
 	pvalue.fromGDLparam = true;
 	pvalue.val.boolValue = param_bool;
 	pvalue.val.doubleValue = param_real;
@@ -3147,6 +3185,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	if (!pvalue.fromAttribDefinition) {
 		if (pvalue.rawName.Contains("component")) pvalue.fromAttribDefinition = true;
 	}
+	pvalue.type = pvalue.val.type;
 	pvalue.fromProperty = true;
 	pvalue.fromPropertyDefinition = !pvalue.fromAttribDefinition;
 	pvalue.definition = property.definition;
@@ -3665,7 +3704,6 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	return hasData;
 }
 
-// TODO Переписать как-то эту часть для ускорения
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
 // --------------------------------------------------------------------
