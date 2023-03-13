@@ -26,6 +26,9 @@ bool is_equal(double x, double y) {
 	return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
 }
 
+// -----------------------------------------------------------------------------
+// Пересечение отрезков
+// -----------------------------------------------------------------------------
 bool intersection(Segment& s1, Segment& s2, Point& res) {
 	Point a1 = s1.p1;
 	Point a2 = s1.p2;
@@ -46,14 +49,23 @@ bool intersection(Segment& s1, Segment& s2, Point& res) {
 	return false;
 }
 
+// -----------------------------------------------------------------------------
+// Расстояние между точками
+// -----------------------------------------------------------------------------
 double length(Point& a1, Point& a2) {
 	return std::sqrt(std::pow(a2.x - a1.x, 2) + std::pow(a2.y - a1.y, 2));
 }
 
+// -----------------------------------------------------------------------------
+// Середина отрезка по точкам
+// -----------------------------------------------------------------------------
 Point halfpoint(Point& a1, Point& a2) {
 	return { (a1.x + a2.x) / 2, (a1.y + a2.y) / 2 };
 }
 
+// -----------------------------------------------------------------------------
+// Длина отрезка
+// -----------------------------------------------------------------------------
 double length(Segment& s1) {
 	return length(s1.p1, s1.p2);
 }
@@ -1345,8 +1357,8 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 // -----------------------------------------------------------------------------
 bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & params) {
 	double x = 0; double y = 0; double z = 0; double angz = 0;
-	double sx = 0; double sy = 0; 
-	double dx = 0; double dy = 0; 
+	double sx = 0; double sy = 0;
+	double dx = 0; double dy = 0;
 	double ex = 0; double ey = 0;
 	double tolerance_coord = 0.01;
 	bool hasSymbpos = false; bool hasLine = false;
@@ -1441,7 +1453,7 @@ bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & param
 		double symb_pos_sy_correct = abs(abs(sy * k) - floor(abs(sy * k)));
 		double symb_pos_ex_correct = abs(abs(ex * k) - floor(abs(ex * k)));
 		double symb_pos_ey_correct = abs(abs(ey * k) - floor(abs(ey * k)));
-		double symb_pos_correct = (symb_pos_sx_correct < tolerance_coord && symb_pos_sy_correct < tolerance_coord&& symb_pos_ex_correct < tolerance_coord&& symb_pos_ey_correct < tolerance_coord);
+		double symb_pos_correct = (symb_pos_sx_correct < tolerance_coord&& symb_pos_sy_correct < tolerance_coord&& symb_pos_ex_correct < tolerance_coord&& symb_pos_ey_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", symb_pos_sx_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", symb_pos_sy_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", symb_pos_ex_correct < tolerance_coord);
@@ -1451,13 +1463,14 @@ bool ParamHelpers::GetCoords(const API_Element & element, ParamDictValue & param
 
 	if (abs(angz) > 0.000001) {
 		angz = angz * 180 / PI;
-	} else {
-		angz = 0; 
+	}
+	else {
+		angz = 0;
 	}
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
-	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", angz-floor(angz));
-	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", abs(abs(angz) - floor(abs(angz)))< 0.000001);
-	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz,5.0));
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", angz - floor(angz));
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", abs(abs(angz) - floor(abs(angz))) < 0.000001);
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz, 5.0));
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
@@ -2233,9 +2246,10 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 // --------------------------------------------------------------------
 // Запись ParamDictValue в GDL параметры и ID
 // --------------------------------------------------------------------
-void ParamHelpers::WriteGDLValues(const API_Guid& elemGuid, ParamDictValue & params) {
+void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
+
 	// Поиск и запись ID
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
@@ -2295,6 +2309,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid& elemGuid, ParamDictValue & par
 			return;
 		}
 	}
+
 	// TODO Оптимизировать, разнести по функциям
 	bool flagFind = false;
 	Int32	addParNum = BMGetHandleSize((GSHandle)apiParams.params) / sizeof(API_AddParType);
@@ -2778,7 +2793,8 @@ bool ParamHelpers::GetGDLValues(const API_Element & element, const API_Elem_Head
 				params.Get(param.rawName).val.uniStringValue = infoString;
 				flag_find_ID = true;
 			}
-		} else {
+		}
+		else {
 			if (param.fromGDLdescription && eltype == API_ObjectID) {
 				paramBydescription.Add(param.rawName, param);
 			}
@@ -2788,6 +2804,7 @@ bool ParamHelpers::GetGDLValues(const API_Element & element, const API_Elem_Head
 		}
 	}
 	if (paramBydescription.IsEmpty() && paramByName.IsEmpty() && !flag_find_ID) return false;
+
 	// Поиск по описанию
 	bool flag_find_desc = false;
 	if (!paramBydescription.IsEmpty()) {
@@ -3585,6 +3602,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	API_ElementMemo	memo = {};
 	switch (eltype) {
 	case API_ColumnID:
+
 		// TODO Добавить поддержку многосегментных колонн
 		if (element.column.nSegments == 1) {
 			BNZeroMemory(&memo, sizeof(API_ElementMemo));
@@ -3609,6 +3627,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 		}
 		break;
 	case API_BeamID:
+
 		// TODO Добавить поддержку многосегментных балок
 		if (element.beam.nSegments == 1) {
 			BNZeroMemory(&memo, sizeof(API_ElementMemo));
