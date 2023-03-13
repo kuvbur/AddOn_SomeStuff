@@ -1,12 +1,11 @@
 ﻿//------------ kuvbur 2022 ------------
 #include	<map>
 #include	<unordered_map>
-#include	"alphanum.hpp"
+#include	"3dpart/alphanum.hpp"
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Helpers.hpp"
 #include	"Summ.hpp"
-
 typedef std::map<std::string, int, doj::alphanum_less<std::string> > SumValues;
 typedef std::unordered_map <std::string, SortInx> SumCriteria;
 
@@ -51,7 +50,7 @@ GSErrCode SumSelected(void) {
 		msg_rep("SumSelected", intString, err, APINULLGuid);
 		rules.Clear();
 		return err;
-		});
+							  });
 	return err;
 }
 
@@ -213,6 +212,7 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 				msg_rep("Sum_OneRule", "ACAPI_Element_GetPropertyValues", err, elemGuid);
 			}
 			else {
+
 				//TODO добавить запись в свойство
 				//err = WriteProp(elemGuid, positionproperty, param_string);
 				if (err != NoError) msg_rep("Sum_OneRule", "WriteProp", err, elemGuid);

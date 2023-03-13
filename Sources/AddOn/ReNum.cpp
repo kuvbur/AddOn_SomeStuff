@@ -1,7 +1,7 @@
 ﻿//------------ kuvbur 2022 ------------
 #include	<map>
 #include	<unordered_map>
-#include	"alphanum.hpp"
+#include	"3dpart/alphanum.hpp"
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"ReNum.hpp"
@@ -325,6 +325,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 						if (partstring[1].ToLowerCase() == "allnull") nulltype = ADDMAXZEROS;
 					};
 				}
+
 				// TODO вернуть функцию GetPropertyDefinitionByName
 				//err = GetPropertyDefinitionByName(elemGuid, paramName, propertdefyrule);
 				if (err != NoError) flag = RENUM_IGNORE;
