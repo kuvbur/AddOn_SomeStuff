@@ -333,7 +333,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 					if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
 						ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
 						ParamValue paramTo = paramsTo.Get(rawNameTo);
-						if (paramTo.type != paramFrom.type && paramTo.type == API_PropertyStringValueType) {
+						if (paramTo.type != paramFrom.val.type && paramTo.type == API_PropertyStringValueType) {
 							paramFrom.val.uniStringValue = ParamHelpers::ToString(paramFrom, writeSub.stringformat);
 						}
 
@@ -544,7 +544,6 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	//GS::Array<GS::UniString> paramTypesList;
 	//GetParamTypeList(paramTypesList);
 	//Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать ненужного поиска по строке
-	//TODO переписать всё это с использованием GetParamTypeList
 	if (synctypefind == false) {
 		if (!rulestring_one.Contains(":") || rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {
 			if (rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {

@@ -30,12 +30,12 @@ GSErrCode DimReadPref(DimRules& dimrules);
 
 bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression);
 
-GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules);
+GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams);
 
-bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule);
+bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule, ParamDictValue& propertyParams);
 
 void DimRoundAll(const SyncSettings& syncSettings);
 
-bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules);
+bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams);
 
 #endif
