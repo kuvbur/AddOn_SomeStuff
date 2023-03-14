@@ -99,39 +99,31 @@ void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<SegmentBox>& elem
 	element.header.guid = elemGuid;
 	GSErrCode err = ACAPI_Element_Get(&element);
 	if (err != NoError) return;
-	err = ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_CWallSegments | APIMemoMask_CWallFrames);
+	err = ACAPI_Element_GetMemo(element.header.guid, &memo);
 	if (err != NoError) {
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return;
 	}
 	API_ElementMemo	memo_poly = {};
 	for (UInt32 i = 0; i < element.curtainWall.nSegments; ++i) {
-		const API_CWSegmentType& segment = memo.cWallSegments[i];
+		API_CWSegmentType& segment = memo.cWallSegments[i];
 		BNZeroMemory(&memo_poly, sizeof(API_ElementMemo));
 		err = ACAPI_Element_GetMemo(segment.head.guid, &memo_poly, APIMemoMask_CWSegContour);
-		if (err != NoError) {
+		if (err != NoError || !memo.coords) {
 			ACAPI_DisposeElemMemoHdls(&memo_poly);
 			return;
 		}
-
-		//Geometry::Plane cwplane;
-		//GS::PagedArray<Point3D> points;
-		//Point3D p1; p1.Set(coord.xMin, coord.yMin, coord.zMin); points.Push(p1);
-		//Point3D p2; p2.Set(coord.xMin, coord.yMax, coord.zMin); points.Push(p2);
-		//Point3D p3; p3.Set(coord.xMin, coord.yMax, coord.zMax); points.Push(p3);
-		//Point3D p4; p4.Set(coord.xMin, coord.yMin, coord.zMax); points.Push(p4);
-		//if (Geometry::CreatePlane(points, out_p)) sg.edges.Push(out_p);
-
-		//for (UInt32 j = 0; j < segment.contourNum; ++j) {
-			//const API_CWContourData& countur = memo_poly.cWSegContour[j];
-			//for (Int32 k = 0; k < countur.polygon.nCoords; ++k) {
-			//	double x = countur.coords[k]->x;
-			//	double y = countur.coords[k]->y;
-			//	int hh = 1;
-			//}
-		//}
-
-		// Надо помнить, что система координат полигона навесной стены повёрнута.
+		Geometry::Plane cwplane;
+		GS::PagedArray<Point3D> points;
+		for (UInt32 j = 0; j < segment.contourNum; ++j) {
+			const API_CWContourData& countur = memo_poly.cWSegContour[j];
+			for (Int32 k = 0; k < countur.polygon.nCoords; ++k) {
+				Point3D p1; p1.Set((*countur.coords)[k].x, (*countur.coords)[k].y, 0); points.Push(p1);
+				int hh = 1;
+			}
+		}
+		Sector3D s;
+		bool isSect = Geometry::XPlanes(cwplane, elems[0].edges[0], &s);
 		int hh = 1;
 	}
 	ACAPI_DisposeElemMemoHdls(&memo_poly);
