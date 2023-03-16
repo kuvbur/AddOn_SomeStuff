@@ -342,7 +342,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 							paramTo.val = paramFrom.val; // Записываем только значения
 							paramTo.isValid = true;
 							paramTo.val.stringformat = writeSub.stringformat;
-							SyncAddParam(paramTo, paramToWrite);
+							ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
 						}
 					}
 				}
@@ -396,45 +396,8 @@ void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictEleme
 		rules.Push(writeSub);
 		syncRules.Add(elemGuid, rules);
 	}
-	SyncAddParam(writeSub.paramFrom, paramToRead);
-	SyncAddParam(writeSub.paramTo, paramToRead);
-}
-
-// --------------------------------------------------------------------
-// Запись параметра в словарь
-// --------------------------------------------------------------------
-void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead) {
-	API_Guid elemGuid = param.fromGuid;
-	GS::UniString rawName = param.rawName;
-	if (paramToRead.ContainsKey(elemGuid)) {
-		if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
-			paramToRead.Get(elemGuid).Add(rawName, param);
-		}
-	}
-	else {
-		ParamDictValue params;
-		params.Add(rawName, param);
-		paramToRead.Add(elemGuid, params);
-	}
-}
-
-// --------------------------------------------------------------------
-// Запись параметра в словарь
-// --------------------------------------------------------------------
-void SyncAddParam(ParamDictValue& params, const API_Guid& elemGuid, ParamDictElement& paramToRead) {
-	if (paramToRead.ContainsKey(elemGuid)) {
-		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-			GS::UniString rawName = *cIt->key;
-			if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
-				ParamValue param = *cIt->value;
-				if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
-				paramToRead.Get(elemGuid).Add(rawName, param);
-			}
-		}
-	}
-	else {
-		paramToRead.Add(elemGuid, params);
-	}
+	ParamHelpers::AddParamValue2ParamDictElement(writeSub.paramFrom, paramToRead);
+	ParamHelpers::AddParamValue2ParamDictElement(writeSub.paramTo, paramToRead);
 }
 
 // -----------------------------------------------------------------------------
@@ -481,7 +444,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					if (ParamHelpers::ParseParamNameMaterial(templatestring, paramDict)) {
 						param.val.uniStringValue = templatestring;
 						ParamHelpers::AddVal(paramDict, "property:sync_name");
-						SyncAddParam(paramDict, elemGuid, paramToRead);
+						ParamHelpers::AddParamDictValue2ParamDictElement(paramDict, elemGuid, paramToRead);
 						hasSub = true; // Нужно будет прочитать все свойства
 					}
 				}
