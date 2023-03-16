@@ -38,7 +38,7 @@ void AddHoleToSelectedCWall(const SyncSettings& syncSettings) {
 #endif // AC_22
 	if (guidArray.IsEmpty()) return;
 	GS::Array<API_Guid> cWallguidArray;
-	GS::Array<SegmentBox> elems = {};
+	GS::Array<Geometry::Polygon3D> elems = {};
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		API_Elem_Head elementHead;
 		BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
@@ -64,24 +64,20 @@ void AddHoleToSelectedCWall(const SyncSettings& syncSettings) {
 			API_Box3D coord;
 			err = ACAPI_Database(APIDb_CalcBoundsID, &elementHead, &coord);
 			if (err == NoError) {
-				SegmentBox sg;
-
-				// Каждая сторона будет плоскостью. Всего плоскостей 4. Затем мы будлем искать линию пересечения это плоскости с плоскостью навесной стены.
-				Geometry::Plane out_p;
 				GS::PagedArray<Point3D> points;
 				Point3D p1; p1.Set(coord.xMin, coord.yMin, coord.zMin); points.Push(p1);
-				Point3D p2; p2.Set(coord.xMin, coord.yMax, coord.zMin); points.Push(p2);
-				Point3D p3; p3.Set(coord.xMin, coord.yMax, coord.zMax); points.Push(p3);
+				Point3D p2; p2.Set(coord.xMax, coord.yMax, coord.zMin); points.Push(p2);
+				Point3D p3; p3.Set(coord.xMax, coord.yMax, coord.zMax); points.Push(p3);
 				Point3D p4; p4.Set(coord.xMin, coord.yMin, coord.zMax); points.Push(p4);
-				if (Geometry::CreatePlane(points, out_p)) sg.edges.Push(out_p);
-				if (!sg.edges.IsEmpty()) elems.Push(sg);
+				Geometry::Polygon3D polytyn = CreatePolygon3D(points);
+				elems.Push(polytyn);
 			}
 		}
 	}
 	if (!cWallguidArray.IsEmpty() && !elems.IsEmpty()) Do_ChangeCWallWithUndo(cWallguidArray, elems);
 }
 
-void Do_ChangeCWallWithUndo(const GS::Array<API_Guid>& elemsGuid, const GS::Array<SegmentBox>& elems) {
+void Do_ChangeCWallWithUndo(const GS::Array<API_Guid>& elemsGuid, const GS::Array<Geometry::Polygon3D>& elems) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		for (UInt32 i = 0; i < elemsGuid.GetSize(); i++) {
@@ -91,7 +87,7 @@ void Do_ChangeCWallWithUndo(const GS::Array<API_Guid>& elemsGuid, const GS::Arra
 							  });
 }
 
-void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<SegmentBox>& elems) {
+void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<Geometry::Polygon3D>& elems) {
 	API_Element element = {};
 	API_ElementMemo	memo = {};
 	BNZeroMemory(&element, sizeof(API_Element));
@@ -107,29 +103,79 @@ void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<SegmentBox>& elem
 	API_ElementMemo	memo_poly = {};
 	for (UInt32 i = 0; i < element.curtainWall.nSegments; ++i) {
 		API_CWSegmentType& segment = memo.cWallSegments[i];
+		Sector3D baseLine = GetSector3DFromCoord(segment.begC, segment.endC);
 		BNZeroMemory(&memo_poly, sizeof(API_ElementMemo));
 		err = ACAPI_Element_GetMemo(segment.head.guid, &memo_poly, APIMemoMask_CWSegContour);
 		if (err != NoError || !memo.coords) {
 			ACAPI_DisposeElemMemoHdls(&memo_poly);
 			return;
 		}
-		Geometry::Plane cwplane;
 		GS::PagedArray<Point3D> points;
 		for (UInt32 j = 0; j < segment.contourNum; ++j) {
 			const API_CWContourData& countur = memo_poly.cWSegContour[j];
 			for (Int32 k = 0; k < countur.polygon.nCoords; ++k) {
-				Point3D p1; p1.Set((*countur.coords)[k].x, (*countur.coords)[k].y, 0); points.Push(p1);
-				int hh = 1;
+				double x = (*countur.coords)[k].x;
+				double y = (*countur.coords)[k].y;
+				Point3D p; p.Set(x, 0, y);
+				TransformPoint3D(baseLine, p);
+				if (!points.Contains(p)) points.Push(p);
 			}
 		}
-		Sector3D s;
-		bool isSect = Geometry::XPlanes(cwplane, elems[0].edges[0], &s);
-		int hh = 1;
+		Geometry::Polygon3D polywall = CreatePolygon3D(points);
+		Geometry::Polygon3D rezult;
+		bool hasIntersect = IntersectPolygon3D(polywall, elems[0], rezult);
+		if (hasIntersect) {
+			const Int32 nCustomFrames = rezult.GetCoord3DCount();
+			const UInt32 nFrameClasses = BMpGetSize(reinterpret_cast<GSPtr> (memo.cWallFrameDefaults)) / sizeof(API_CWFrameType);
+			memo.cWallFrames = reinterpret_cast<API_CWFrameType*> (BMpAll(sizeof(API_CWFrameType) * nCustomFrames));
+			for (Int32 ii = 0; ii < nCustomFrames; ++ii) {
+				Sector3D s;
+				rezult.GetSector3D(ii, s);
+				memo.cWallFrames[ii] = memo.cWallFrameDefaults[nFrameClasses - 1];
+				memo.cWallFrames[ii].begC.x = 0.2;//s.c1.x;
+				memo.cWallFrames[ii].begC.y = 0.3; //s.c1.z;
+				memo.cWallFrames[ii].endC.x = 0.5;//s.c2.x;
+				memo.cWallFrames[ii].endC.y = 0.6;// s.c2.z;
+				memo.cWallFrames[ii].segmentID = 0;
+				memo.cWallFrames[ii].cellID = 0;
+			}
+		}
 	}
 	ACAPI_DisposeElemMemoHdls(&memo_poly);
 
-	//ACAPI_ELEMENT_MASK_SETFULL(mask);
-	//err = ACAPI_Element_Change(&element, &mask, &memo, APIMemoMask_CWallFrames, true);
+	{
+		const UInt32 nFrameClasses = BMpGetSize(reinterpret_cast<GSPtr> (memo.cWallFrameDefaults)) / sizeof(API_CWFrameType);
+		DBASSERT(nFrameClasses > 0);
+		const UInt32 nCustomFrames = 8 * element.curtainWall.nSegments;
+		memo.cWallFrames = reinterpret_cast<API_CWFrameType*> (BMpAll(sizeof(API_CWFrameType) * nCustomFrames));
+		for (UInt32 i = 0; i < nCustomFrames; ++i) {
+			memo.cWallFrames[i] = memo.cWallFrameDefaults[nFrameClasses - 1];
+			memo.cWallFrames[i].segmentID = i / 8;
+			memo.cWallFrames[i].cellID = 0;
+		}
+		for (UInt32 i = 0; i < element.curtainWall.nSegments; ++i) {
+			memo.cWallFrames[0 + i * 8].endRel.x = memo.cWallFrames[1 + i * 8].begRel.x = 0.2;
+			memo.cWallFrames[0 + i * 8].endRel.y = memo.cWallFrames[1 + i * 8].begRel.y = 0.5;
+			memo.cWallFrames[1 + i * 8].endRel.x = memo.cWallFrames[2 + i * 8].begRel.x = 0.4;
+			memo.cWallFrames[1 + i * 8].endRel.y = memo.cWallFrames[2 + i * 8].begRel.y = 0.6;
+			memo.cWallFrames[2 + i * 8].endRel.x = memo.cWallFrames[3 + i * 8].begRel.x = 0.5;
+			memo.cWallFrames[2 + i * 8].endRel.y = memo.cWallFrames[3 + i * 8].begRel.y = 0.8;
+			memo.cWallFrames[3 + i * 8].endRel.x = memo.cWallFrames[4 + i * 8].begRel.x = 0.6;
+			memo.cWallFrames[3 + i * 8].endRel.y = memo.cWallFrames[4 + i * 8].begRel.y = 0.6;
+			memo.cWallFrames[4 + i * 8].endRel.x = memo.cWallFrames[5 + i * 8].begRel.x = 0.8;
+			memo.cWallFrames[4 + i * 8].endRel.y = memo.cWallFrames[5 + i * 8].begRel.y = 0.5;
+			memo.cWallFrames[5 + i * 8].endRel.x = memo.cWallFrames[6 + i * 8].begRel.x = 0.6;
+			memo.cWallFrames[5 + i * 8].endRel.y = memo.cWallFrames[6 + i * 8].begRel.y = 0.4;
+			memo.cWallFrames[6 + i * 8].endRel.x = memo.cWallFrames[7 + i * 8].begRel.x = 0.5;
+			memo.cWallFrames[6 + i * 8].endRel.y = memo.cWallFrames[7 + i * 8].begRel.y = 0.2;
+			memo.cWallFrames[7 + i * 8].endRel.x = memo.cWallFrames[0 + i * 8].begRel.x = 0.4;
+			memo.cWallFrames[7 + i * 8].endRel.y = memo.cWallFrames[0 + i * 8].begRel.y = 0.4;
+		}
+	}
+
+	API_Element mask = {};
+	ACAPI_ELEMENT_MASK_SETFULL(mask);
+	err = ACAPI_Element_Change(&element, &mask, &memo, APIMemoMask_CWallFrames, true);
 	ACAPI_DisposeElemMemoHdls(&memo);
 	if (err != NoError) {
 		return;

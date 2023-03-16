@@ -17,7 +17,6 @@
 #include	"VectorImageIterator.hpp"
 #include	"ProfileVectorImageOperations.hpp"
 #include	"ProfileAdditionalInfo.hpp"
-#include	"basicgeometry.h"
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -26,49 +25,49 @@ bool is_equal(double x, double y) {
 	return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
 }
 
-// -----------------------------------------------------------------------------
-// Пересечение отрезков
-// -----------------------------------------------------------------------------
-bool intersection(Segment& s1, Segment& s2, Point& res) {
-	Point a1 = s1.p1;
-	Point a2 = s1.p2;
-	Point b1 = s2.p1;
-	Point b2 = s2.p2;
-	double d = (a1.x - a2.x) * (b2.y - b1.y) - (a1.y - a2.y) * (b2.x - b1.x);
-	double da = (a1.x - b1.x) * (b2.y - b1.y) - (a1.y - b1.y) * (b2.x - b1.x);
-	double db = (a1.x - a2.x) * (a1.y - b1.y) - (a1.y - a2.y) * (a1.x - b1.x);
-	if (std::abs(d) < 1e-9) {
-		return false;
-	}
-	double ta = da / d;
-	double tb = db / d;
-	if (0 <= ta && ta <= 1 && 0 <= tb && tb <= 1) {
-		res = { a1.x + ta * (a2.x - a1.x), a1.y + ta * (a2.y - a1.y) };
-		return true;
-	}
-	return false;
-}
-
-// -----------------------------------------------------------------------------
-// Расстояние между точками
-// -----------------------------------------------------------------------------
-double length(Point& a1, Point& a2) {
-	return std::sqrt(std::pow(a2.x - a1.x, 2) + std::pow(a2.y - a1.y, 2));
-}
-
-// -----------------------------------------------------------------------------
-// Середина отрезка по точкам
-// -----------------------------------------------------------------------------
-Point halfpoint(Point& a1, Point& a2) {
-	return { (a1.x + a2.x) / 2, (a1.y + a2.y) / 2 };
-}
-
-// -----------------------------------------------------------------------------
-// Длина отрезка
-// -----------------------------------------------------------------------------
-double length(Segment& s1) {
-	return length(s1.p1, s1.p2);
-}
+//// -----------------------------------------------------------------------------
+//// Пересечение отрезков
+//// -----------------------------------------------------------------------------
+//bool intersection(Segment& s1, Segment& s2, Point& res) {
+//	Point a1 = s1.p1;
+//	Point a2 = s1.p2;
+//	Point b1 = s2.p1;
+//	Point b2 = s2.p2;
+//	double d = (a1.x - a2.x) * (b2.y - b1.y) - (a1.y - a2.y) * (b2.x - b1.x);
+//	double da = (a1.x - b1.x) * (b2.y - b1.y) - (a1.y - b1.y) * (b2.x - b1.x);
+//	double db = (a1.x - a2.x) * (a1.y - b1.y) - (a1.y - a2.y) * (a1.x - b1.x);
+//	if (std::abs(d) < 1e-9) {
+//		return false;
+//	}
+//	double ta = da / d;
+//	double tb = db / d;
+//	if (0 <= ta && ta <= 1 && 0 <= tb && tb <= 1) {
+//		res = { a1.x + ta * (a2.x - a1.x), a1.y + ta * (a2.y - a1.y) };
+//		return true;
+//	}
+//	return false;
+//}
+//
+//// -----------------------------------------------------------------------------
+//// Расстояние между точками
+//// -----------------------------------------------------------------------------
+//double length(Point& a1, Point& a2) {
+//	return std::sqrt(std::pow(a2.x - a1.x, 2) + std::pow(a2.y - a1.y, 2));
+//}
+//
+//// -----------------------------------------------------------------------------
+//// Середина отрезка по точкам
+//// -----------------------------------------------------------------------------
+//Point halfpoint(Point& a1, Point& a2) {
+//	return { (a1.x + a2.x) / 2, (a1.y + a2.y) / 2 };
+//}
+//
+//// -----------------------------------------------------------------------------
+//// Длина отрезка
+//// -----------------------------------------------------------------------------
+//double length(Segment& s1) {
+//	return length(s1.p1, s1.p2);
+//}
 
 // --------------------------------------------------------------------
 // Содержит ли значения элементиз списка игнорируемых
@@ -3469,7 +3468,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 			const Sy_ArcType* pSyArc = static_cast <const Sy_ArcType*> (profileDescriptionIt);
 			short pen = pSyArc->GetExtendedPen().GetIndex();
 			if (lines.ContainsKey(pen)) {
-				Point s = { pSyArc->origC.GetX(), pSyArc->origC.GetY() };
+				Point3D s = GetPoint3DFromCoord(pSyArc->origC);
 				lines.Get(pen).start = s;
 			}
 		}
@@ -3479,9 +3478,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 			const Sy_LinType* pSyPolyLine = static_cast <const Sy_LinType*> (profileDescriptionIt);
 			short pen = pSyPolyLine->GetExtendedPen().GetIndex();
 			if (lines.ContainsKey(pen)) {
-				Point p1 = { pSyPolyLine->begC.GetX(), pSyPolyLine->begC.GetY() };
-				Point p2 = { pSyPolyLine->endC.GetX(), pSyPolyLine->endC.GetY() };
-				Segment line = { p1, p2 };
+				Sector3D line = GetSector3DFromCoord(pSyPolyLine->begC, pSyPolyLine->endC);
 				lines.Get(pen).segments.Push(line);
 				profilehasLine = true;
 			}
@@ -3493,17 +3490,13 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 
 	// Если линии сечения не найдены - создадим парочку - вертикальную и горизонтальную
 	if (!profilehasLine) {
-		Point p1 = { -1000, 0 };
-		Point p2 = { 1000, 0 };
-		Segment line = { p1, p2 };
+		Sector3D line = GetSector3DFromCoord(-1000, 0, 1000, 0);
 		OrientedSegments d;
 		d.segments.Push(line);
 		lines.Add(20, d);
-		p1 = { 0, -1000 };
-		p2 = { 0, 1000 };
-		line = { p1, p2 };
+		Sector3D line2 = GetSector3DFromCoord(0, 1000, 0, -1000);
 		OrientedSegments d2;
-		d2.segments.Push(line);
+		d2.segments.Push(line2);
 		lines.Add(6, d2);
 		ParamValue p;
 		param_composite.Add(20, p);
@@ -3516,13 +3509,13 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 		case SyHatch:
 			const HatchObject& syHatch = profileDescriptionIt1;
 
-			GS::Array<Segment> cont;
+			GS::Array<Sector3D> cont;
 			GS::Array<Point2D> coords = syHatch.GetCoords();
-			Point p1 = { coords[0].GetX(), coords[0].GetY() };
-			Point p2 = { 0,0 };
+			Point3D p1 = GetPoint3DFromCoord(coords[0]);
+			Point3D p2;
 			for (UInt32 i = 1; i < coords.GetSize(); i++) {
-				p2 = { coords[i].GetX(), coords[i].GetY() };
-				Segment line = { p1, p2 };
+				Point3D p2 = GetPoint3DFromCoord(coords[i]);
+				Sector3D line(p1, p2);
 				cont.Push(line);
 				p1 = p2;
 			}
@@ -3530,16 +3523,18 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 			// Проходим по всем линиям - сечениям
 			for (GS::HashTable<short, OrientedSegments>::PairIterator cIt = lines.EnumeratePairs(); cIt != NULL; ++cIt) {
 				OrientedSegments l = *cIt->value;
-				GS::Array<Point> points;
+				GS::Array<Point3D> points;
 				for (UInt32 i = 0; i < l.segments.GetSize(); i++) {
-					Point res = { 0,0 };
+					Point3D res;
 					for (UInt32 j = 1; j < cont.GetSize(); j++) {
-						if (intersection(l.segments[i], cont[j], res)) points.Push(res);
+						if (XLines3D(&l.segments[i], &cont[j], &res)) points.Push(res);
 					}
 				}
 				if (points.GetSize() == 2) {
-					double fillThickL = length(points[0], points[1]);
-					double rfromstart = length(l.start, halfpoint(points[0], points[1]));
+					Sector3D sfillThickL(points[0], points[1]);
+					Sector3D srfromstart(l.start, sfillThickL.GetMidPoint());
+					double fillThickL = sfillThickL.GetLength();
+					double rfromstart = srfromstart.GetLength();
 					API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
 					ParamValueComposite layer = {};
 					layer.inx = constrinxL;
