@@ -195,7 +195,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			RunParamSelected(syncSettings);
 			break;
 		case AddHole_CommandID:
-			AddHoleToSelectedCWall(syncSettings);
+			//AddHoleToSelectedCWall(syncSettings);
 			break;
 		}
 		break;

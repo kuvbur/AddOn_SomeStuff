@@ -100,13 +100,6 @@ void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array 
 // --------------------------------------------------------------------
 void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictElement& paramToRead);
 
-// --------------------------------------------------------------------
-// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
-// --------------------------------------------------------------------
-void SyncAddParam(const ParamValue& param, ParamDictElement& paramToRead);
-
-void SyncAddParam(ParamDictValue& params, const API_Guid& elemGuid, ParamDictElement& paramToRead);
-
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------

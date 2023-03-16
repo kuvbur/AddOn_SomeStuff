@@ -27,16 +27,29 @@ GSErrCode SumSelected(void) {
 	GSErrCode err = NoError;
 	SumRules rules;
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
+	if (guidArray.IsEmpty()) return err;
+	ParamDictElement paramToRead;
+	// Получаем список правил суммирования
+	bool hasSum = false;
+	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		GS::Array<API_PropertyDefinition>	definitions;
+		err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
+		if (err == NoError && !definitions.IsEmpty()) {
+			ParamDictValue propertyParams;
+			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
+			if (!propertyParams.IsEmpty()) {
+				if (Sum_GetElement(guidArray[i], propertyParams, rules)) {
+					ParamHelpers::AddParamDictValue2ParamDictElement(propertyParams, guidArray[i], paramToRead);
+					hasSum = true;
+				}
+			}
+		}
+	}
+	if (!hasSum) return err;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		if (!guidArray.IsEmpty()) {
-
-			// Получаем список правил суммирования
-			for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-				err = Sum_GetElement(guidArray[i], rules);
-			}
-
-			// Есть список правил, в каждом правиле - список элементов. Прохоим по правилам и обрабатываем каждое
+			// Есть список правил, в каждом правиле - список элементов. Прохдоим по правилам и обрабатываем каждое
 			if (!rules.IsEmpty()) {
 				for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
 					const SumRule& rule = *cIt->value;
@@ -57,87 +70,69 @@ GSErrCode SumSelected(void) {
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-GSErrCode Sum_GetElement(const API_Guid& elemGuid, SumRules& rules) {
-	GSErrCode							err = NoError;
-	GS::Array<API_PropertyDefinition>	definitions;
+bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, SumRules& rules) {
 	SumElement el = {};
-	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
-	if (err != NoError) {
-		return err;
-	}
-	for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+	bool has_sum = false;
 
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		API_PropertyDefinition& definition = param.definition;
 		// Является ли свойство описанием системы суммирования?
-		if (definitions[j].description.Contains("Sum")) {
+		if (param.definition.description.Contains("Sum") && param.definition.description.Contains("{") && param.definition.description.Contains("}")) {
 			bool flag_add = false;
-			if (!rules.ContainsKey(definitions[j].guid)) {
+			if (!rules.ContainsKey(definition.guid)) {
 				SumRule paramtype = {};
-				if (Sum_Rule(elemGuid, definitions[j], paramtype)) {
-					rules.Add(definitions[j].guid, paramtype);
+				if (Sum_Rule(elemGuid, definition, propertyParams, paramtype)) {
+					paramtype.position = param.rawName;
+					rules.Add(definition.guid, paramtype);
 					flag_add = true;
 				}
 			}
 			else {
 				flag_add = true;
 			}
-			if (flag_add == true) {
-
-				// Дописываем элемент в правило
+			if (flag_add == true) {// Дописываем элемент в правило
 				SumElement el = {};
 				el.guid = elemGuid;
-				rules.Get(definitions[j].guid).elemts.Push(el);
+				rules.Get(definition.guid).elemts.Push(el);
+				has_sum = true;
 			}
 		} // definitions[j].description.Contains("Sumnum")
-	}//for
-	return err;
+	}
+	return has_sum;
 }// Sum_GetElement
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция возвращает заполненное правило суммирования
 // -----------------------------------------------------------------------------------------------------------------------
-bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition, SumRule& paramtype) {
-	bool flag = false;
-	GS::UniString description_string = definition.description;
-	if (description_string.Contains("{") && description_string.Contains("}")) {
-		GS::Array<GS::UniString>	partstring;
-		API_PropertyDefinition		value = {};
-		API_PropertyDefinition		criteria = {};
-		std::string					delimetr = "; ";
-		std::string					ignore_val = "";
-		GSErrCode					err = NoError;
-		GS::UniString paramName = description_string.GetSubstring('{', '}', 0);
-		paramName.ReplaceAll("property:", "");
-		int nparam = StringSplt(paramName, ";", partstring);
+bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype) {
+	// По типу данных свойства определим тим суммирования
+	// Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
+	paramtype.sum_type = 0;
+	if (definition.valueType == API_PropertyStringValueType) paramtype.sum_type = TextSum;
+	if (definition.valueType == API_PropertyRealValueType || definition.valueType == API_PropertyIntegerValueType) paramtype.sum_type = NumSum;
+	if (!paramtype.sum_type) return false;
 
-		// Ищём определение свойства-значения
-		err = GetPropertyDefinitionByName(elemGuid, partstring[0], value);
-		if (err != NoError) return false;
-		flag = true;
-		paramtype.value = value;
-		paramtype.position = definition.guid;
+	GS::UniString paramName = definition.description.GetSubstring('{', '}', 0);
+	GS::Array<GS::UniString>	partstring;
+	int nparam = StringSplt(paramName.ToLowerCase(), ";", partstring);
+	if (nparam==0) return false;
 
-		// По типу данных свойства определим тим суммирования
-		// Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
-		paramtype.sum_type = 0;
-		if (definition.valueType == API_PropertyStringValueType) paramtype.sum_type = TextSum;
-		if (definition.valueType == API_PropertyRealValueType) paramtype.sum_type = NumSum;
-		if (!paramtype.sum_type) return false;
-
-		// Ищём определение свойства-критерия
-		if (nparam > 1) {
-			err = GetPropertyDefinitionByName(elemGuid, partstring[1], criteria);
-			if (err == NoError) paramtype.criteria = criteria;
-		}
-
-		// Если задан и разделитель - пропишем его
-		if (nparam == 3) delimetr = partstring[3].ToCStr().Get();
-		paramtype.delimetr = delimetr;
-
-		// Если заданы игнорируемые значения
-		if (nparam == 4) ignore_val = partstring[4].ToCStr().Get();
-		paramtype.ignore_val = ignore_val;
+	if (propertyParams.ContainsKey("{" + partstring[0] + "}")) {
+		paramtype.value = "{" + partstring[0] + "}";
 	}
-	return flag;
+	else {
+		return false;
+	}
+	// Ищём определение свойства-критерия
+	if (nparam > 1) {
+		if (propertyParams.ContainsKey("{" + partstring[1] + "}")) paramtype.criteria = "{" + partstring[1] + "}");
+	}
+	// Если задан и разделитель - пропишем его
+	if (nparam == 3) paramtype.delimetr = partstring[3].ToCStr().Get();
+	// Если заданы игнорируемые значения
+	if (nparam == 4) paramtype.ignore_val = partstring[4].ToCStr().Get();
+	return true;
 } // ReNumRule
 
 GSErrCode Sum_OneRule(const SumRule& rule) {
@@ -154,7 +149,7 @@ GSErrCode Sum_OneRule(const SumRule& rule) {
 		GS::Array<API_Property>  properties;
 		err = ACAPI_Element_GetPropertyValues(elemArray[i].guid, definitions, properties);
 		if (err != NoError) {
-			msg_rep("ReNumOneRule", "ACAPI_Element_GetPropertyValues", err, elemArray[i].guid);
+			msg_rep("Sum_OneRule", "ACAPI_Element_GetPropertyValues", err, elemArray[i].guid);
 		}
 		else {
 			if (rule.sum_type == TextSum) {

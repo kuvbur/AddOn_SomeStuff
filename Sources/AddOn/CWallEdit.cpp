@@ -113,7 +113,8 @@ void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<Geometry::Polygon
 		GS::PagedArray<Point3D> points;
 		for (UInt32 j = 0; j < segment.contourNum; ++j) {
 			const API_CWContourData& countur = memo_poly.cWSegContour[j];
-			for (Int32 k = 0; k < countur.polygon.nCoords; ++k) {
+			const UInt32 nCoords = BMpGetSize(reinterpret_cast<GSPtr> (countur.coords)) / sizeof(API_Coord);
+			for (UInt32 k = 0; k < nCoords; ++k) {
 				double x = (*countur.coords)[k].x;
 				double y = (*countur.coords)[k].y;
 				Point3D p; p.Set(x, 0, y);
@@ -132,50 +133,51 @@ void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<Geometry::Polygon
 				Sector3D s;
 				rezult.GetSector3D(ii, s);
 				memo.cWallFrames[ii] = memo.cWallFrameDefaults[nFrameClasses - 1];
-				memo.cWallFrames[ii].begC.x = 0.2;//s.c1.x;
-				memo.cWallFrames[ii].begC.y = 0.3; //s.c1.z;
-				memo.cWallFrames[ii].endC.x = 0.5;//s.c2.x;
-				memo.cWallFrames[ii].endC.y = 0.6;// s.c2.z;
+				memo.cWallFrames[ii].begC.x = 0.2 * i;//s.c1.x;
+				memo.cWallFrames[ii].begC.y = 0.3 * i; //s.c1.z;
+				memo.cWallFrames[ii].endC.x = 0.5 * i;//s.c2.x;
+				memo.cWallFrames[ii].endC.y = 0.6 * i;// s.c2.z;
 				memo.cWallFrames[ii].segmentID = 0;
 				memo.cWallFrames[ii].cellID = 0;
 			}
 		}
 	}
-	ACAPI_DisposeElemMemoHdls(&memo_poly);
 
-	{
-		const UInt32 nFrameClasses = BMpGetSize(reinterpret_cast<GSPtr> (memo.cWallFrameDefaults)) / sizeof(API_CWFrameType);
-		DBASSERT(nFrameClasses > 0);
-		const UInt32 nCustomFrames = 8 * element.curtainWall.nSegments;
-		memo.cWallFrames = reinterpret_cast<API_CWFrameType*> (BMpAll(sizeof(API_CWFrameType) * nCustomFrames));
-		for (UInt32 i = 0; i < nCustomFrames; ++i) {
-			memo.cWallFrames[i] = memo.cWallFrameDefaults[nFrameClasses - 1];
-			memo.cWallFrames[i].segmentID = i / 8;
-			memo.cWallFrames[i].cellID = 0;
-		}
-		for (UInt32 i = 0; i < element.curtainWall.nSegments; ++i) {
-			memo.cWallFrames[0 + i * 8].endRel.x = memo.cWallFrames[1 + i * 8].begRel.x = 0.2;
-			memo.cWallFrames[0 + i * 8].endRel.y = memo.cWallFrames[1 + i * 8].begRel.y = 0.5;
-			memo.cWallFrames[1 + i * 8].endRel.x = memo.cWallFrames[2 + i * 8].begRel.x = 0.4;
-			memo.cWallFrames[1 + i * 8].endRel.y = memo.cWallFrames[2 + i * 8].begRel.y = 0.6;
-			memo.cWallFrames[2 + i * 8].endRel.x = memo.cWallFrames[3 + i * 8].begRel.x = 0.5;
-			memo.cWallFrames[2 + i * 8].endRel.y = memo.cWallFrames[3 + i * 8].begRel.y = 0.8;
-			memo.cWallFrames[3 + i * 8].endRel.x = memo.cWallFrames[4 + i * 8].begRel.x = 0.6;
-			memo.cWallFrames[3 + i * 8].endRel.y = memo.cWallFrames[4 + i * 8].begRel.y = 0.6;
-			memo.cWallFrames[4 + i * 8].endRel.x = memo.cWallFrames[5 + i * 8].begRel.x = 0.8;
-			memo.cWallFrames[4 + i * 8].endRel.y = memo.cWallFrames[5 + i * 8].begRel.y = 0.5;
-			memo.cWallFrames[5 + i * 8].endRel.x = memo.cWallFrames[6 + i * 8].begRel.x = 0.6;
-			memo.cWallFrames[5 + i * 8].endRel.y = memo.cWallFrames[6 + i * 8].begRel.y = 0.4;
-			memo.cWallFrames[6 + i * 8].endRel.x = memo.cWallFrames[7 + i * 8].begRel.x = 0.5;
-			memo.cWallFrames[6 + i * 8].endRel.y = memo.cWallFrames[7 + i * 8].begRel.y = 0.2;
-			memo.cWallFrames[7 + i * 8].endRel.x = memo.cWallFrames[0 + i * 8].begRel.x = 0.4;
-			memo.cWallFrames[7 + i * 8].endRel.y = memo.cWallFrames[0 + i * 8].begRel.y = 0.4;
-		}
-	}
+
+	//{
+	//	const UInt32 nFrameClasses = BMpGetSize(reinterpret_cast<GSPtr> (memo.cWallFrameDefaults)) / sizeof(API_CWFrameType);
+	//	DBASSERT(nFrameClasses > 0);
+	//	const UInt32 nCustomFrames = 8 * element.curtainWall.nSegments;
+	//	memo.cWallFrames = reinterpret_cast<API_CWFrameType*> (BMpAll(sizeof(API_CWFrameType) * nCustomFrames));
+	//	for (UInt32 i = 0; i < nCustomFrames; ++i) {
+	//		memo.cWallFrames[i] = memo.cWallFrameDefaults[nFrameClasses - 1];
+	//		memo.cWallFrames[i].segmentID = i / 8;
+	//		memo.cWallFrames[i].cellID = 0;
+	//	}
+	//	for (UInt32 i = 0; i < element.curtainWall.nSegments; ++i) {
+	//		memo.cWallFrames[0 + i * 8].endRel.x = memo.cWallFrames[1 + i * 8].begRel.x = 0.2;
+	//		memo.cWallFrames[0 + i * 8].endRel.y = memo.cWallFrames[1 + i * 8].begRel.y = 0.5;
+	//		memo.cWallFrames[1 + i * 8].endRel.x = memo.cWallFrames[2 + i * 8].begRel.x = 0.4;
+	//		memo.cWallFrames[1 + i * 8].endRel.y = memo.cWallFrames[2 + i * 8].begRel.y = 0.6;
+	//		memo.cWallFrames[2 + i * 8].endRel.x = memo.cWallFrames[3 + i * 8].begRel.x = 0.5;
+	//		memo.cWallFrames[2 + i * 8].endRel.y = memo.cWallFrames[3 + i * 8].begRel.y = 0.8;
+	//		memo.cWallFrames[3 + i * 8].endRel.x = memo.cWallFrames[4 + i * 8].begRel.x = 0.6;
+	//		memo.cWallFrames[3 + i * 8].endRel.y = memo.cWallFrames[4 + i * 8].begRel.y = 0.6;
+	//		memo.cWallFrames[4 + i * 8].endRel.x = memo.cWallFrames[5 + i * 8].begRel.x = 0.8;
+	//		memo.cWallFrames[4 + i * 8].endRel.y = memo.cWallFrames[5 + i * 8].begRel.y = 0.5;
+	//		memo.cWallFrames[5 + i * 8].endRel.x = memo.cWallFrames[6 + i * 8].begRel.x = 0.6;
+	//		memo.cWallFrames[5 + i * 8].endRel.y = memo.cWallFrames[6 + i * 8].begRel.y = 0.4;
+	//		memo.cWallFrames[6 + i * 8].endRel.x = memo.cWallFrames[7 + i * 8].begRel.x = 0.5;
+	//		memo.cWallFrames[6 + i * 8].endRel.y = memo.cWallFrames[7 + i * 8].begRel.y = 0.2;
+	//		memo.cWallFrames[7 + i * 8].endRel.x = memo.cWallFrames[0 + i * 8].begRel.x = 0.4;
+	//		memo.cWallFrames[7 + i * 8].endRel.y = memo.cWallFrames[0 + i * 8].begRel.y = 0.4;
+	//	}
+	//}
 
 	API_Element mask = {};
 	ACAPI_ELEMENT_MASK_SETFULL(mask);
 	err = ACAPI_Element_Change(&element, &mask, &memo, APIMemoMask_CWallFrames, true);
+	ACAPI_DisposeElemMemoHdls(&memo_poly);
 	ACAPI_DisposeElemMemoHdls(&memo);
 	if (err != NoError) {
 		return;

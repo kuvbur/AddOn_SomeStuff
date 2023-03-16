@@ -1238,6 +1238,43 @@ bool ParamHelpers::needAdd(ParamDictValue& params, GS::UniString& rawName) {
 	return addNew;
 }
 
+// --------------------------------------------------------------------
+// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
+// --------------------------------------------------------------------
+void ParamHelpers::AddParamValue2ParamDictElement(const ParamValue& param, ParamDictElement& paramToRead) {
+	API_Guid elemGuid = param.fromGuid;
+	GS::UniString rawName = param.rawName;
+	if (paramToRead.ContainsKey(elemGuid)) {
+		if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
+			paramToRead.Get(elemGuid).Add(rawName, param);
+		}
+	}
+	else {
+		ParamDictValue params;
+		params.Add(rawName, param);
+		paramToRead.Add(elemGuid, params);
+	}
+}
+
+// --------------------------------------------------------------------
+// Запись словаря ParamDictValue в словарь элементов ParamDictElement
+// --------------------------------------------------------------------
+void ParamHelpers::AddParamDictValue2ParamDictElement(ParamDictValue& params, const API_Guid& elemGuid, ParamDictElement& paramToRead) {
+	if (paramToRead.ContainsKey(elemGuid)) {
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+			GS::UniString rawName = *cIt->key;
+			if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
+				ParamValue param = *cIt->value;
+				if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
+				paramToRead.Get(elemGuid).Add(rawName, param);
+			}
+		}
+	}
+	else {
+		paramToRead.Add(elemGuid, params);
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Добавление массива свойств в словарь
 // -----------------------------------------------------------------------------

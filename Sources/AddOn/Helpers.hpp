@@ -351,6 +351,16 @@ namespace ParamHelpers {
 
 	bool needAdd(ParamDictValue& params, GS::UniString& rawName);
 
+	// --------------------------------------------------------------------
+	// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
+	// --------------------------------------------------------------------
+	void AddParamValue2ParamDictElement(const ParamValue& param, ParamDictElement& paramToRead);
+
+	// --------------------------------------------------------------------
+	// Запись словаря ParamDictValue в словарь элементов ParamDictElement
+	// --------------------------------------------------------------------
+	void AddParamDictValue2ParamDictElement(ParamDictValue& params, const API_Guid& elemGuid, ParamDictElement& paramToRead);
+
 	// -----------------------------------------------------------------------------
 	// Добавление массива свойств в словарь
 	// -----------------------------------------------------------------------------
