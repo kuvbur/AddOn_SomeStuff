@@ -33,7 +33,7 @@ typedef GS::HashTable<API_Guid, SumRule> SumRules;
 
 GSErrCode SumSelected(void);
 
-bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, SumRules& rules);
+bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictElement& paramToReadelem, SumRules& rules);
 
 bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype);
 

@@ -354,6 +354,11 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
 	// --------------------------------------------------------------------
+	void AddParamValue2ParamDictElement(const API_Guid& elemGuid, const ParamValue& param, ParamDictElement& paramToRead);
+
+	// --------------------------------------------------------------------
+	// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
+	// --------------------------------------------------------------------
 	void AddParamValue2ParamDictElement(const ParamValue& param, ParamDictElement& paramToRead);
 
 	// --------------------------------------------------------------------
@@ -428,6 +433,8 @@ namespace ParamHelpers {
 	// Запись ParamDictValue в свойства
 	// --------------------------------------------------------------------
 	void WritePropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
+
+	bool hasUnreadProperyDefinitoin(ParamDictElement& paramToRead);
 
 	// --------------------------------------------------------------------
 	// Заполнение словаря параметров для множества элементов

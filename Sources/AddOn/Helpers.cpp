@@ -1242,7 +1242,13 @@ bool ParamHelpers::needAdd(ParamDictValue& params, GS::UniString& rawName) {
 // Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
 // --------------------------------------------------------------------
 void ParamHelpers::AddParamValue2ParamDictElement(const ParamValue& param, ParamDictElement& paramToRead) {
-	API_Guid elemGuid = param.fromGuid;
+	ParamHelpers::AddParamValue2ParamDictElement(param.fromGuid, param, paramToRead);
+}
+
+// --------------------------------------------------------------------
+// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
+// --------------------------------------------------------------------
+void ParamHelpers::AddParamValue2ParamDictElement(const API_Guid& elemGuid, const ParamValue& param, ParamDictElement& paramToRead) {
 	GS::UniString rawName = param.rawName;
 	if (paramToRead.ContainsKey(elemGuid)) {
 		if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
@@ -2428,6 +2434,20 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 	//GSErrCode error = ACAPI_Element_SetProperties(elemGuid, properties);
 }
 
+bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement& paramToRead) {
+	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamDictValue& params = *cIt->value;
+		if (!params.IsEmpty()) {
+			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+				ParamValue& param = *cIt->value;
+				if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) return true;
+			}
+		}
+	}
+	return false;
+}
+
+
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
@@ -2435,14 +2455,15 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 	if (paramToRead.IsEmpty()) return;
 
 	// Словарь со всеми возможными определениями свойств
-	if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
-
+	if (propertyParams.IsEmpty()) {
+		if (ParamHelpers::hasUnreadProperyDefinitoin(paramToRead)) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	}
 	// Выбираем по-элементно параметры для чтения
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamDictValue& params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
 		if (!params.IsEmpty()) {
-			ParamHelpers::Compare(propertyParams, params); // Сопоставляем свойства
+			if (!propertyParams.IsEmpty()) ParamHelpers::Compare(propertyParams, params); // Сопоставляем свойства
 			ParamHelpers::Read(elemGuid, params, propertyParams);
 		}
 	}
