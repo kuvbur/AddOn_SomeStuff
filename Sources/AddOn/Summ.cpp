@@ -21,17 +21,15 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 // -----------------------------------------------------------------------------------------------------------------------
 
 GSErrCode SumSelected(void) {
-	GSErrCode err = NoError;
 	SumRules rules;
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
-	if (guidArray.IsEmpty()) return err;
+	if (guidArray.IsEmpty()) return NoError;
 	ParamDictElement paramToReadelem;
-
 	// Получаем список правил суммирования
 	bool hasSum = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		GS::Array<API_PropertyDefinition>	definitions;
-		err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
+		GSErrCode err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
 		if (err == NoError && !definitions.IsEmpty()) {
 			ParamDictValue propertyParams;
 			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
@@ -40,27 +38,27 @@ GSErrCode SumSelected(void) {
 			}
 		}
 	}
-	if (!hasSum) return err;
+	if (!hasSum) return NoError;
 	ParamDictValue propertyParams; // Все свойства уже считаны, поэтому словарь просто пустой
 	ParamHelpers::ElementsRead(paramToReadelem, propertyParams);
+	ParamDictElement paramToWriteelem;
+	for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
+		const SumRule& rule = *cIt->value;
+		if (!rule.elemts.IsEmpty()) Sum_OneRule(rule, paramToReadelem, paramToWriteelem);
+	}
+	if (paramToWriteelem.IsEmpty()) {
+		msg_rep("SumSelected", "No data to write", NoError, APINULLGuid);
+		return NoError;
+	}
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		if (!guidArray.IsEmpty()) {
-
-			// Есть список правил, в каждом правиле - список элементов. Прохдоим по правилам и обрабатываем каждое
-			if (!rules.IsEmpty()) {
-				for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
-					const SumRule& rule = *cIt->value;
-					if (!rule.elemts.IsEmpty()) err = Sum_OneRule(rule, paramToReadelem);
-				}
-			}
-		}
-		GS::UniString intString = GS::UniString::Printf("Qty elements - %d", guidArray.GetSize());
-		msg_rep("SumSelected", intString, err, APINULLGuid);
+		ParamHelpers::ElementsWrite(paramToWriteelem);
+		GS::UniString intString = GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize())+ GS::UniString::Printf("wrtite to - %d", paramToWriteelem.GetSize());
+		msg_rep("SumSelected", intString, NoError, APINULLGuid);
 		rules.Clear();
-		return err;
+		return NoError;
 							  });
-	return err;
+	return NoError;
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -144,8 +142,7 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 	return true;
 } // ReNumRule
 
-GSErrCode Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem) {
-	GSErrCode							err = NoError;
+void Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem) {
 	SumCriteria							criteriaList;
 	GS::UniString delimetr = GS::UniString(rule.delimetr.c_str());
 
@@ -162,12 +159,10 @@ GSErrCode Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem) {
 			}
 		}
 	}
-	ParamDictElement paramToWriteelem;
-
 	// Проходим по словарю с критериями и суммируем
 	for (SumCriteria::iterator i = criteriaList.begin(); i != criteriaList.end(); ++i) {
 		GS::Array<UInt32> eleminpos = i->second.inx;
-		ParamValueData summ; // Для суммирования числовых значений
+		ParamValue summ; // Для суммирования числовых значений
 		bool has_sum = false;
 		for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
 			API_Guid elemGuid = rule.elemts[eleminpos[j]];
@@ -179,18 +174,19 @@ GSErrCode Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem) {
 				if (param.isValid) {
 					has_sum = true;
 					// Дописать сложение с округлением, считывать настройки архикада
-					summ.doubleValue = summ.doubleValue + param.val.doubleValue;
-					summ.intValue = summ.intValue + param.val.intValue;
-					summ.boolValue = summ.boolValue && param.val.boolValue;
+					summ.val.doubleValue = summ.val.doubleValue + param.val.doubleValue;
+					summ.val.intValue = summ.val.intValue + param.val.intValue;
+					summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
 					if (rule.sum_type == TextSum) {
-						summ.uniStringValue = summ.uniStringValue + param.val.uniStringValue + delimetr;
+						summ.val.uniStringValue = summ.val.uniStringValue + param.val.uniStringValue + delimetr;
 					}
 				}
 			}
 		}
+		// Для конкатенации текста определим уникальные значения
 		if (rule.sum_type == TextSum) {
-			GS::UniString unic = StringUnic(summ.uniStringValue, delimetr);
-			summ.uniStringValue = unic;
+			GS::UniString unic = StringUnic(summ.val.uniStringValue, delimetr);
+			summ.val.uniStringValue = unic;
 		}
 		// Заполнение словаря записи
 		if (has_sum == true) {
@@ -200,18 +196,15 @@ GSErrCode Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem) {
 				if (params.ContainsKey(rule.position)) {
 					ParamValue param = params.Get(rule.position);
 					param.isValid = true;
-					summ.type = param.val.type;
-					param.val = summ;
-					ParamHelpers::AddParamValue2ParamDictElement(elemGuid, param, paramToWriteelem);
+					summ.val.type = param.val.type;
+					// Записываем только изменённые значения
+					if (param != summ) {
+						param.val = summ.val;
+						ParamHelpers::AddParamValue2ParamDictElement(elemGuid, param, paramToWriteelem);
+					}
 				}
 			}
 		}
 	}
-	if (!paramToWriteelem.IsEmpty()) {
-		ParamHelpers::ElementsWrite(paramToWriteelem);
-	}
-	else {
-		msg_rep("SyncByType", "No data to write", NoError, APINULLGuid);
-	}
-	return err;
+	return;
 }
