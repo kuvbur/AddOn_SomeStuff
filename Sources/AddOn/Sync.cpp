@@ -129,17 +129,6 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
 		if (i % 10 > 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-			if (!paramToWrite.IsEmpty()) {
-				ParamHelpers::ElementsWrite(paramToWrite);
-			}
-			else {
-				msg_rep("SyncByType", "No data to write", NoError, APINULLGuid);
-			}
-			flag_chanel = true;
-			msg_rep("SyncByType", subtitle + u8" - отмена", NoError, APINULLGuid);
-			return flag_chanel;
-		}
 	}
 	if (!paramToWrite.IsEmpty()) {
 		ParamHelpers::ElementsWrite(paramToWrite);

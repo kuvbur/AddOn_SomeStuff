@@ -13,20 +13,13 @@ static const short TextSum = 1;
 static const short NumSum = 2;
 
 typedef struct {
-	API_Guid		guid = APINULLGuid;
-	std::string		criteria = "";
-	std::string		string_value = "";
-	double			num_value = 0;
-} SumElement;
-
-typedef struct {
 	GS::UniString position = "";
 	GS::UniString value = "";
 	GS::UniString criteria = "";
-	std::string					delimetr = "";
+	std::string					delimetr = ",";
 	std::string					ignore_val = "";
 	short						sum_type = 0;
-	GS::Array <SumElement>		elemts;
+	GS::Array <API_Guid>		elemts;
 } SumRule;
 
 typedef GS::HashTable<API_Guid, SumRule> SumRules;
@@ -37,6 +30,6 @@ bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, Pa
 
 bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype);
 
-GSErrCode Sum_OneRule(const SumRule& rule);
+GSErrCode Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem);
 
 #endif

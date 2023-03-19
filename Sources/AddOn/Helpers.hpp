@@ -16,6 +16,8 @@
 #include	"SyncSettings.hpp"
 #include	"3dpart/exprtk.hpp"
 #include	"sillygeometry.hpp"
+#include	<unordered_map>
+#include	"3dpart/alphanum.hpp"
 
 #define ELEMSTR_LEN				256
 
@@ -244,6 +246,16 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 // Пока записывает только GLOB_ID
 // -----------------------------------------------------------------------------
 GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API_Property& property);
+
+// -----------------------------------------------------------------------------
+// Возвращает уникальные вхождения текста
+// -----------------------------------------------------------------------------
+GS::UniString StringUnic(const GS::UniString& instring, const GS::UniString& delim);
+
+// -----------------------------------------------------------------------------
+// Возвращает уникальные вхождения текста
+// -----------------------------------------------------------------------------
+UInt32 StringSpltUnic(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
