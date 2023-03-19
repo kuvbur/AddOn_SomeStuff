@@ -25,50 +25,6 @@ bool is_equal(double x, double y) {
 	return std::fabs(x - y) < std::numeric_limits<double>::epsilon();
 }
 
-//// -----------------------------------------------------------------------------
-//// Пересечение отрезков
-//// -----------------------------------------------------------------------------
-//bool intersection(Segment& s1, Segment& s2, Point& res) {
-//	Point a1 = s1.p1;
-//	Point a2 = s1.p2;
-//	Point b1 = s2.p1;
-//	Point b2 = s2.p2;
-//	double d = (a1.x - a2.x) * (b2.y - b1.y) - (a1.y - a2.y) * (b2.x - b1.x);
-//	double da = (a1.x - b1.x) * (b2.y - b1.y) - (a1.y - b1.y) * (b2.x - b1.x);
-//	double db = (a1.x - a2.x) * (a1.y - b1.y) - (a1.y - a2.y) * (a1.x - b1.x);
-//	if (std::abs(d) < 1e-9) {
-//		return false;
-//	}
-//	double ta = da / d;
-//	double tb = db / d;
-//	if (0 <= ta && ta <= 1 && 0 <= tb && tb <= 1) {
-//		res = { a1.x + ta * (a2.x - a1.x), a1.y + ta * (a2.y - a1.y) };
-//		return true;
-//	}
-//	return false;
-//}
-//
-//// -----------------------------------------------------------------------------
-//// Расстояние между точками
-//// -----------------------------------------------------------------------------
-//double length(Point& a1, Point& a2) {
-//	return std::sqrt(std::pow(a2.x - a1.x, 2) + std::pow(a2.y - a1.y, 2));
-//}
-//
-//// -----------------------------------------------------------------------------
-//// Середина отрезка по точкам
-//// -----------------------------------------------------------------------------
-//Point halfpoint(Point& a1, Point& a2) {
-//	return { (a1.x + a2.x) / 2, (a1.y + a2.y) / 2 };
-//}
-//
-//// -----------------------------------------------------------------------------
-//// Длина отрезка
-//// -----------------------------------------------------------------------------
-//double length(Segment& s1) {
-//	return length(s1.p1, s1.p2);
-//}
-
 // --------------------------------------------------------------------
 // Содержит ли значения элементиз списка игнорируемых
 // --------------------------------------------------------------------
@@ -668,7 +624,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 		GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
 		msg_rep(funcname + " Selected", intString + time, NoError, APINULLGuid);
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
-	}
+}
 }
 
 void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&, ParamDictValue& propertyParams, ParamDictElement& paramToWrite), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname) {
@@ -921,9 +877,52 @@ GSErrCode WriteProp2Param(const API_Guid& elemGuid, GS::UniString paramName, API
 }
 
 // -----------------------------------------------------------------------------
+// Возвращает уникальные вхождения текста
+// -----------------------------------------------------------------------------
+GS::UniString StringUnic(const GS::UniString& instring, const GS::UniString& delim) {
+	if (!instring.Contains(delim)) return instring;
+	GS::Array<GS::UniString> partstring;
+	GS::UniString outsting = "";
+	UInt32 n = StringSpltUnic(instring, delim, partstring);
+	for (UInt32 i = 0; i < n; i++) {
+		outsting = outsting + partstring[i] + delim;
+	}
+	return outsting;
+}
+
+// -----------------------------------------------------------------------------
+// Возвращает уникальные вхождения текста
+// -----------------------------------------------------------------------------
+UInt32 StringSpltUnic(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring) {
+	if (!instring.Contains(delim)) {
+		partstring.Push(instring);
+		return 1;
+	}
+	GS::Array<GS::UniString> tpartstring;
+	UInt32 n = StringSplt(instring, delim, tpartstring);
+	std::map<std::string, int, doj::alphanum_less<std::string> > unic = {};
+	for (UInt32 i = 0; i < n; i++) {
+		std::string s = tpartstring[i].ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+		unic[s];
+	}
+	UInt32 nout = 0;
+	for (std::map<std::string, int, doj::alphanum_less<std::string> >::iterator k = unic.begin(); k != unic.end(); ++k) {
+		std::string s = k->first;
+		GS::UniString unis = GS::UniString(s.c_str());
+		partstring.Push(unis);
+		nout = nout + 1;
+	}
+	return nout;
+}
+
+// -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring) {
+	if (!instring.Contains(delim)) {
+		partstring.Push(instring);
+		return 1;
+	}
 	GS::Array<GS::UniString> parts;
 	GS::UniString tinstring = instring;
 	UInt32 npart = instring.Split(delim, &parts);
@@ -948,6 +947,10 @@ UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS:
 // Записывает в массив только части, содержащие строку filter
 // -----------------------------------------------------------------------------
 UInt32 StringSplt(const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter) {
+	if (!instring.Contains(delim) || !instring.Contains(filter)) {
+		partstring.Push(instring);
+		return 1;
+	}
 	GS::Array<GS::UniString> parts;
 	UInt32 n = 0;
 	UInt32 npart = StringSplt(instring, delim, parts);
@@ -1355,7 +1358,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1850,14 +1853,14 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 			if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
 				string += "; ";
 			}
-		}
+	}
 #endif
-	} break;
+} break;
 	default:
 	{
 		break;
 	}
-	}
+}
 	return string;
 }
 
@@ -1895,7 +1898,7 @@ bool operator== (const API_Variant & lhs, const API_Variant & rhs) {
 	default:
 		return false;
 	}
-}
+	}
 
 bool operator== (const API_SingleVariant & lhs, const API_SingleVariant & rhs) {
 	return lhs.variant == rhs.variant;
@@ -1957,7 +1960,7 @@ bool Equals(const API_PropertyValue & lhs, const API_PropertyValue & rhs, API_Pr
 		DBBREAK();
 		return false;
 	}
-}
+	}
 
 bool operator== (const API_PropertyGroup & lhs, const API_PropertyGroup & rhs) {
 	return lhs.guid == rhs.guid &&
@@ -2378,7 +2381,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 			}
 			if (actualParam.typeID == APIParT_Angle) {
 				chgParam.realValue = paramfrom.doubleValue;
-			}
+		}
 			if (actualParam.typeID == APIParT_RealNum) {
 				chgParam.realValue = paramfrom.doubleValue;
 			}
@@ -2390,8 +2393,8 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 				msg_rep("ParamHelpers::WriteGDLValues", "APIAny_ChangeAParameterID", err, elem_head.guid);
 				return;
 			}
-		}
 	}
+}
 	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams, nullptr);
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "APIAny_GetActParametersID", err, elem_head.guid);
@@ -2434,7 +2437,7 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 	//GSErrCode error = ACAPI_Element_SetProperties(elemGuid, properties);
 }
 
-bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement& paramToRead) {
+bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamDictValue& params = *cIt->value;
 		if (!params.IsEmpty()) {
@@ -2447,7 +2450,6 @@ bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement& paramToRead) {
 	return false;
 }
 
-
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
@@ -2458,6 +2460,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 	if (propertyParams.IsEmpty()) {
 		if (ParamHelpers::hasUnreadProperyDefinitoin(paramToRead)) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 	}
+
 	// Выбираем по-элементно параметры для чтения
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamDictValue& params = *cIt->value;
@@ -3693,12 +3696,12 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 					fillThick = memo.beamSegments[0].assemblySegmentData.nominalHeight;
 				}
 				if (structtype == API_ProfileStructure) constrinx = memo.beamSegments[0].assemblySegmentData.profileAttr;
-			}
+				}
 			else {
 				msg_rep("materialString::GetComponents", "ACAPI_Element_GetMemo - BeamSegment", err, element.header.guid);
 				return false;
 			}
-		}
+			}
 		else {
 			msg_rep("materialString::GetComponents", "Multisegment beam not supported", NoError, element.header.guid);
 			return false;
@@ -3732,7 +3735,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	default:
 		return false;
 		break;
-	}
+		}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -3774,7 +3777,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 		ACAPI_DisposeElemMemoHdls(&memo);
 	}
 	return hasData;
-}
+	}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
