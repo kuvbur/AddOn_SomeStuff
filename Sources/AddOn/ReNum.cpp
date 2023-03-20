@@ -28,81 +28,86 @@ typedef std::unordered_map <std::string, SortInx> Delimetr;
 // -----------------------------------------------------------------------------------------------------------------------
 
 GSErrCode ReNumSelected(void) {
-	GSErrCode err = NoError;
-	Rules rules;
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
+	if (guidArray.IsEmpty()) return NoError;
+	long time_start = clock();
+	ParamDictElement paramToWriteelem;
+	if (!GetRenumElements(guidArray, paramToWriteelem)) {
+		msg_rep("ReNumSelected", "No data to write", NoError, APINULLGuid);
+		return NoError;
+	}
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		if (!guidArray.IsEmpty()) {
-			for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-				err = ReNum_GetElement(guidArray[i], rules);
-			}
-			if (!rules.IsEmpty()) {
-
-				// Теперь у нас есть списк правил. Можем пройти по каждому правилу и обработать элементы
-				for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
-					const RenumRule& rule = *cIt->value;
-					if (rule.state && !rule.elemts.IsEmpty()) {
-						err = ReNumOneRule(rule);
-					}
-				}
-			}
-		}
-		GS::UniString intString = GS::UniString::Printf("Qty elements - %d", guidArray.GetSize());
-		msg_rep("ReNumSelected", intString, err, APINULLGuid);
-		rules.Clear();
-		return err;
+		ParamHelpers::ElementsWrite(paramToWriteelem);
+		long time_end = clock();
+		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
+		GS::UniString intString = GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + GS::UniString::Printf("wrtite to - %d", paramToWriteelem.GetSize()) + time;
+		msg_rep("ReNumSelected", intString, NoError, APINULLGuid);
+		return NoError;
 							  });
-	return err;
+	return NoError;
+}
+
+bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem) {
+	ParamDictElement paramToReadelem;
+
+	// Получаем список правил суммирования
+	bool hasRenum = false;
+	Rules rules;
+	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		GS::Array<API_PropertyDefinition>	definitions;
+		GSErrCode err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
+		if (err == NoError && !definitions.IsEmpty() && ReNumHasFlag(definitions)) {
+			ParamDictValue propertyParams;
+			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
+		}
+	}
+	if (!hasRenum) return NoError;
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules) {
-	GSErrCode							err = NoError;
-	GS::Array<API_PropertyDefinition>	definitions;
-	RenumElement el = {};
-	err = ACAPI_Element_GetPropertyDefinitions(elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
-	if (err == NoError) {
-		for (UInt32 j = 0; j < definitions.GetSize(); j++) {
+bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictElement& paramToReadelem, Rules& rules) {
+	bool hasRenum = false;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		API_PropertyDefinition& definition = param.definition;
+		if (definition.description.Contains("Renum_flag")) {
 
-			// Является ли свойство описанием системы нумерации?
-			if (definitions[j].description.Contains("Renum_flag")) {
+			// Проверяем содержит ли описание свойства флаг нумерации со ссылкой на правило нумерации
+			API_PropertyDefinition  propertydefrule = {};
+			short nulltype = NOZEROS;
+			UInt32 state = ReNumGetRule(definition, elemGuid, propertydefrule, nulltype);
+			if (state != RENUM_IGNORE) {
+				hasRenum = true;
 
-				// Проверяем содержит ли описание свойства флаг нумерации со ссылкой на правило нумерации
-				API_PropertyDefinition  propertydefrule = {};
-				short nulltype = NOZEROS;
-				UInt32 state = ReNumGetRule(definitions[j], elemGuid, propertydefrule, nulltype);
-				if (state != RENUM_IGNORE) {
-
-					// Если содержит - заполняем словарь с правилами и словарь элементов для этого правила
-					// Если, конечно, раньше его не было
-					if (!rules.ContainsKey(definitions[j].guid)) {
-						RenumRule rulecritetia = {};
-						rulecritetia.position = propertydefrule;
-						rulecritetia.state = ReNumRule(elemGuid, propertydefrule.description, rulecritetia);
-						rulecritetia.nulltype = nulltype;
-						rules.Add(definitions[j].guid, rulecritetia);
+				// Если содержит - заполняем словарь с правилами и словарь элементов для этого правила
+				// Если, конечно, раньше его не было
+				if (!rules.ContainsKey(definition.guid)) {
+					RenumRule rulecritetia = {};
+					rulecritetia.position = propertydefrule;
+					rulecritetia.state = ReNumRule(elemGuid, propertydefrule.description, rulecritetia);
+					rulecritetia.nulltype = nulltype;
+					rules.Add(definition.guid, rulecritetia);
+				}
+				else {
+					if (state == RENUM_ADD) {
+						rules.Get(definition.guid).state = RENUM_ADD; //TODO Допилить нумерацию
 					}
-					else {
-						if (state == RENUM_ADD) {
-							rules.Get(definitions[j].guid).state = RENUM_ADD; //TODO Допилить нумерацию
-						}
-					}
+				}
 
-					//rules.ContainsKey(definitions[j].guid)
-					// Дописываем элемент в правило
-					RenumElement el = {};
-					el.guid = elemGuid;
-					el.state = state;
-					rules.Get(definitions[j].guid).elemts.Push(el);
-				} // ReNumGetRule
-			} // definitions[j].description.Contains("Renum")
-		}//for
-	}//ACAPI_Element_GetPropertyDefinitions
-	return err;
-}// ReNum_GetElement
+				//rules.ContainsKey(definitions[j].guid)
+				// Дописываем элемент в правило
+				RenumElement el = {};
+				el.guid = elemGuid;
+				el.state = state;
+				rules.Get(definition.guid).elemts.Push(el);
+			}
+		}
+	}
+	return hasRenum;
+}
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Запись позиции в свойство
@@ -258,19 +263,34 @@ bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string
 	return flag;
 } // ReNumRule
 
+//--------------------------------------------------------------------------------------------------------------------------
+// Проверяет - есть ли хоть одно описание флага
+//--------------------------------------------------------------------------------------------------------------------------
+bool ReNumHasFlag(const GS::Array<API_PropertyDefinition> definitions) {
+	if (definitions.IsEmpty()) return false;
+	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+		if (!definitions[i].description.IsEmpty()) {
+			if (definitions[i].description.Contains("Renum_flag")) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 // -----------------------------------------------------------------------------------------------------------------------
-// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL) и описание свойства с правилом
+// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL)
 // -----------------------------------------------------------------------------------------------------------------------
-Int32 ReNumGetFlag(const API_Property& propertyflag) {
-	UInt32			flag = RENUM_IGNORE;
+Int32 ReNumGetFlagValue(const API_Property& propertyflag) {
 #if defined(AC_22) || defined(AC_23)
 	bool isnoteval = (!propertyflag.isEvaluated);
 #else
 	bool isnoteval = (propertyflag.status != API_Property_HasValue);
 #endif
 	if (isnoteval) {
-		return flag;
+		return RENUM_IGNORE;
 	}
+	UInt32			flag = RENUM_IGNORE;
 	GS::UniString		state = "";
 	API_PropertyValue	val;
 	if (propertyflag.isDefault) {
@@ -311,7 +331,7 @@ UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid&
 		GS::Array<API_Property>  propertyflag;
 		err = ACAPI_Element_GetPropertyValues(elemGuid, definitions, propertyflag);
 		if (err == NoError) {
-			flag = ReNumGetFlag(propertyflag[0]);
+			flag = ReNumGetFlagValue(propertyflag[0]);
 			if (flag != RENUM_IGNORE) {
 				GS::UniString paramName = definitionflag.description.GetSubstring('{', '}', 0);
 				paramName.ReplaceAll("property:", "");
