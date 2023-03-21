@@ -2,7 +2,6 @@
 #include	<map>
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#include	"Helpers.hpp"
 #include	"Summ.hpp"
 typedef std::unordered_map <std::string, SortInx> SumCriteria;
 

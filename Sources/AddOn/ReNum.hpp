@@ -9,7 +9,7 @@
 #include	"APICommon26.h"
 #endif // AC_26
 #include	"DG.h"
-
+#include	"Helpers.hpp"
 // Типы нумерации (см. RenumElement.state)
 #define RENUM_IGNORE 0	// Игнорировать, не менять и не объединять с другими элементами позицию.
 #define RENUM_ADD 1		// Позицию не менять, добавить другие элементы при совпадении критерия
@@ -22,13 +22,14 @@
 
 typedef struct {
 	API_Guid guid;		// Ну, эт понятно
-	std::string criteria;	// Значение свойства-критерия
-	std::string delimetr;	// Значение свойства - разбивки
+	//std::string criteria;	// Значение свойства-критерия
+	//std::string delimetr;	// Значение свойства - разбивки
 	UInt32 state;		// Тип нумерации элемента (игнорировать, объединить, пронумеровать)
 } RenumElement;
 
 typedef struct {
 	bool state;		// Корректность правила
+	GS::UniString flag;	// Описание свойства, в которое ставим позицию
 	GS::UniString position;	// Описание свойства, в которое ставим позицию
 	GS::UniString criteria;	// Описание свойства-критерия
 	GS::UniString delimetr;	// Описание свойства-разбивки
@@ -39,13 +40,15 @@ typedef struct {
 typedef GS::HashTable<API_Guid, RenumRule> Rules;	// Таблица правил
 
 GSErrCode ReNumSelected(void);
+
 bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem);
+
 bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string, RenumRule& paramtype);
 bool ReNumHasFlag(const GS::Array<API_PropertyDefinition> definitions);
 Int32 ReNumGetFlagValue(const API_Property& propertyflag);
 UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid& elemGuid, API_PropertyDefinition& propertdefyrule, short& nulltype);
-GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules);
-GSErrCode ReNumOneRule(const RenumRule& rule);
 bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictElement& paramToReadelem, Rules& rules);
+GSErrCode ReNumOneRule(const RenumRule& rule);
+
 
 #endif
