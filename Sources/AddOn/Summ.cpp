@@ -19,8 +19,8 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 // TODO Попробовать сделать диапазоны 1...10 и т.д.
 // -----------------------------------------------------------------------------------------------------------------------
 
-GSErrCode SumSelected(void) {
-	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true);
+GSErrCode SumSelected(SyncSettings& syncSettings) {
+	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
 	long time_start = clock();
 	ParamDictElement paramToWriteelem;
@@ -33,7 +33,7 @@ GSErrCode SumSelected(void) {
 		ParamHelpers::ElementsWrite(paramToWriteelem);
 		long time_end = clock();
 		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
-		GS::UniString intString = GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + GS::UniString::Printf("wrtite to - %d", paramToWriteelem.GetSize())+ time;
+		GS::UniString intString = GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + GS::UniString::Printf("wrtite to - %d", paramToWriteelem.GetSize()) + time;
 		msg_rep("SumSelected", intString, NoError, APINULLGuid);
 		return NoError;
 							  });
@@ -44,6 +44,7 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 	if (guidArray.IsEmpty()) return false;
 	SumRules rules;
 	ParamDictElement paramToReadelem;
+
 	// Получаем список правил суммирования
 	bool hasSum = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
@@ -73,6 +74,7 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 	else {
 		unitPrefs.roundInch = 0;
 	}
+
 	// Суммируем, заполняе словарь для записи
 	for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
 		const SumRule& rule = *cIt->value;
@@ -176,7 +178,7 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 } // ReNumRule
 
 void Sum_OneRule(const SumRule& rule, const API_WorkingUnitPrefs& unitPrefs, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem) {
-	SumCriteria							criteriaList;
+	SumCriteria criteriaList;
 	GS::UniString delimetr = GS::UniString(rule.delimetr.c_str());
 
 	// Выбираем значения критериев

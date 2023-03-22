@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿//------------ kuvbur 2022 ------------
+#pragma once
 #if !defined (SUMM_HPP)
 #define	SUMM_HPP
 #ifdef AC_25
@@ -24,7 +25,7 @@ typedef struct {
 
 typedef GS::HashTable<API_Guid, SumRule> SumRules;
 
-GSErrCode SumSelected(void);
+GSErrCode SumSelected(SyncSettings& syncSettings);
 
 bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem);
 

@@ -180,7 +180,7 @@ void SyncSelected(const SyncSettings& syncSettings) {
 	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
 
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		CallOnSelectedElemSettings(SyncElement, false, true, syncSettings, fmane);
+		CallOnSelectedElemSettings(SyncElement, false, true, syncSettings, fmane, false);
 		return NoError;
 							  });
 }
@@ -190,7 +190,7 @@ void SyncSelected(const SyncSettings& syncSettings) {
 // -----------------------------------------------------------------------------
 void RunParamSelected(const SyncSettings& syncSettings) {
 	GS::UniString fmane = "Run parameter script";
-	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane);
+	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);
 }
 
 // -----------------------------------------------------------------------------
@@ -524,6 +524,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			//TODO Проверить на файле из видео обработку материалов
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Material:", "");
+			rulestring_one.ReplaceAll("ayers}", "ayers,20}");
 			paramNamePrefix = "{material:";
 			GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
 			param.val.uniStringValue = templatestring;
