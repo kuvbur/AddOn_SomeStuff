@@ -619,7 +619,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 		long time_start = clock();
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			function(guidArray[i], syncSettings);
-			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+			if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 				return;
 			}
@@ -638,7 +638,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	ParamDictValue propertyParams = {};
 	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 	ParamDictElement paramToWrite;
-	GS::UniString subtitle("working...");
+	GS::UniString subtitle = "read data...";
 	short nPhase = 1;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
 	long time_start = clock();
@@ -650,11 +650,14 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		function(guidArray[i], syncSettings, propertyParams, paramToWrite);
 		if (needdimround) err = DimAutoRound(guidArray[i], dimrules, propertyParams);
-		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 			return;
 		}
 	}
+	subtitle = "write data...";
+	UInt32 i = guidArray.GetSize() + 1;
+	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 	if (!paramToWrite.IsEmpty()) {
 		ParamHelpers::ElementsWrite(paramToWrite);
 	}
@@ -663,7 +666,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 	}
 	long time_end = clock();
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
-	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
+	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize()) + GS::UniString::Printf(" write to %d qty", paramToWrite.GetSize());
 	msg_rep(funcname + " Selected", intString + time, NoError, APINULLGuid);
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 }
@@ -680,7 +683,7 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 		short nPhase = 1;
 		ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+			if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 			function(guidArray[i]);
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 				return;
@@ -908,7 +911,7 @@ UInt32 StringSpltUnic(const GS::UniString& instring, const GS::UniString& delim,
 	UInt32 n = StringSplt(instring, delim, tpartstring);
 	std::map<std::string, int, doj::alphanum_less<std::string> > unic = {};
 	for (UInt32 i = 0; i < n; i++) {
-		std::string s = tpartstring[i].ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+		std::string s = tpartstring[i].ToCStr(0, MaxUSize, GChCode).Get();
 		unic[s];
 	}
 	UInt32 nout = 0;
@@ -1668,7 +1671,7 @@ bool EvalExpression(GS::UniString & unistring_expression) {
 		part = unistring_expression.GetSubstring('<', '>', 0);
 		typedef exprtk::expression<T>   expression_t;
 		typedef exprtk::parser<T>       parser_t;
-		std::string expression_string(part.ToCStr(0, MaxUSize, CC_Cyrillic).Get());
+		std::string expression_string(part.ToCStr(0, MaxUSize, GChCode).Get());
 		expression_t expression;
 		parser_t parser;
 		parser.compile(expression_string, expression);
@@ -2882,7 +2885,7 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 				param.type = API_PropertyStringValueType;
 				param.val.canCalculate = true;
 				param.val.boolValue = !infoString.IsEmpty();
-				std::string var = infoString.ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+				std::string var = infoString.ToCStr(0, MaxUSize, GChCode).Get();
 				param.val.doubleValue = atof(var.c_str());
 				param.val.intValue = atoi(var.c_str());
 				if (param.val.intValue == 0 && param.val.boolValue) {
@@ -3139,7 +3142,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 		pvalue.val.type = API_PropertyStringValueType;
 		param_string = nthParameter.value.uStr;
 		param_bool = (!param_string.IsEmpty());
-		std::string var = param_string.ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+		std::string var = param_string.ToCStr(0, MaxUSize, GChCode).Get();
 		param_real = atof(var.c_str());
 		param_int = atoi(var.c_str());
 		if (param_bool && param_int == 0) {
@@ -3259,7 +3262,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.val.doubleValue = 0.0;
 	pvalue.val.canCalculate = false;
 	pvalue.val.uniStringValue = PropertyHelpers::ToString(property);
-	std::string var = pvalue.val.uniStringValue.ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+	std::string var = pvalue.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
 	switch (property.value.singleVariant.variant.type) {
 	case API_PropertyIntegerValueType:
 		pvalue.val.intValue = property.value.singleVariant.variant.intValue;
@@ -3342,6 +3345,27 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_PropertyDefinition &
 	pvalue.fromProperty = true;
 	pvalue.fromPropertyDefinition = !pvalue.fromAttribDefinition;
 	pvalue.definition = definition;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация строки в ParamValue
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramName, const GS::UniString & strvalue) {
+	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
+	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{gdl:" + paramName.ToLowerCase() + "}";
+	pvalue.val.uniStringValue = strvalue;
+	std::string var = strvalue.ToCStr(0, MaxUSize, GChCode).Get();
+	pvalue.val.doubleValue = atof(var.c_str());
+	pvalue.val.intValue = atoi(var.c_str());
+	pvalue.val.boolValue = !strvalue.IsEmpty();
+	if (pvalue.val.boolValue && pvalue.val.intValue == 0) { // Конвертация провалилась
+		pvalue.val.intValue = 1;
+		pvalue.val.doubleValue = 1.0;
+	}
+	pvalue.val.type = API_PropertyStringValueType;
+	pvalue.val.canCalculate = true;
+	pvalue.isValid = true;
 	return true;
 }
 

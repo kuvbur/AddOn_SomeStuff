@@ -128,7 +128,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	ParamDictElement paramToWrite;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
-		if (i % 10 > 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 	}
 	if (!paramToWrite.IsEmpty()) {
 		ParamHelpers::ElementsWrite(paramToWrite);
@@ -136,7 +136,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	else {
 		msg_rep("SyncByType", "No data to write", NoError, APINULLGuid);
 	}
-	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
+	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize()) + GS::UniString::Printf(" write to %d qty", paramToWrite.GetSize());
 	long time_end = clock();
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncByType", subtitle + intString + time, NoError, APINULLGuid);

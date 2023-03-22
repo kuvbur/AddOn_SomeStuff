@@ -210,7 +210,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictVa
 				if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
 					flag_write = true;
 					(*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
-					strcpy((char*)&(dimElem.note.content), content.ToCStr(CC_Cyrillic).Get());
+					strcpy((char*)&(dimElem.note.content), content.ToCStr(GChCode).Get());
 					*dimElem.note.contentUStr = content;
 				}
 				if (flag_change == DIM_CHANGE_OFF && dimElem.note.contentType != API_NoteContent_Measured) {
