@@ -10,7 +10,7 @@
 bool ResetProperty(ParamDictValue& propertyParams) {
 	GS::Array<API_PropertyDefinition> definitions_to_reset;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		API_PropertyDefinition definition = param.definition;
 		if (definition.description.Contains("Sync_reset")) definitions_to_reset.Push(definition);
 	}

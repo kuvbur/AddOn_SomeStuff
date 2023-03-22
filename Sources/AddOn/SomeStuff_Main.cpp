@@ -184,10 +184,10 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			syncSettings.cwallS = !syncSettings.cwallS;
 			break;
 		case ReNum_CommandID:
-			err = ReNumSelected();
+			err = ReNumSelected(syncSettings);
 			break;
 		case Sum_CommandID:
-			err = SumSelected();
+			err = SumSelected(syncSettings);
 			break;
 		case Log_CommandID:
 			break;
@@ -195,6 +195,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			RunParamSelected(syncSettings);
 			break;
 		case AddHole_CommandID:
+
 			//AddHoleToSelectedCWall(syncSettings);
 			break;
 		}

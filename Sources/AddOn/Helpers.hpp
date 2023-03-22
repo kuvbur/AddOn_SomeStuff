@@ -50,6 +50,8 @@ static const Int32 BuildingMaterialDescriptionID = 9;
 static const Int32 BuildingMaterialDensityID = 10;
 static const Int32 BuildingMaterialManufacturerID = 11;
 static const Int32 ThicknessID = 12;
+static const Int32 RenumIgnoreID = 13;
+static const Int32 RenumAddID = 14;
 
 typedef struct {
 	GS::Array <API_Guid>	guid;
@@ -204,21 +206,26 @@ void MenuItemCheckAC(short itemInd, bool checked);
 // -----------------------------------------------------------------------------
 // Получить массив Guid выбранных элементов
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/);
+GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, SyncSettings& syncSettings, bool addSubelement);
+
+// -----------------------------------------------------------------------------
+// Получить массив Guid выбранных элементов
+// -----------------------------------------------------------------------------
+GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement);
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid SyncSettings
 // -----------------------------------------------------------------------------
-void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname);
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname, bool addSubelement);
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid
 // -----------------------------------------------------------------------------
-void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString& funcname /* = ""*/);
+void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString& funcname /* = ""*/, bool addSubelement);
 
-void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&, ParamDictValue& propertyParams, ParamDictElement& paramToWrite), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname);
+void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&, ParamDictValue& propertyParams, ParamDictElement& paramToWrite), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname, bool addSubelement);
 
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid
@@ -328,7 +335,7 @@ namespace ParamHelpers {
 	// Получение размеров Морфа
 	// Формирует словарь ParamDictValue& pdictvalue со значениями
 	// -----------------------------------------------------------------------------
-	bool GetMorphParam(const API_Element& element, ParamDictValue& pdictvalue);
+	bool ReadMorphParam(const API_Element& element, ParamDictValue& pdictvalue);
 
 	// -----------------------------------------------------------------------------
 	// Получение координат объекта
@@ -337,7 +344,7 @@ namespace ParamHelpers {
 	// Для колонны или объекта - центр колонны и отм. низа
 	// Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 	// -----------------------------------------------------------------------------
-	bool GetCoords(const API_Element& element, ParamDictValue& params);
+	bool ReadElemCoords(const API_Element& element, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
 	// Замена имен параметров на значения в выражении
@@ -414,17 +421,17 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Чтение значений свойств в ParamDictValue
 	// --------------------------------------------------------------------
-	bool GetPropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
+	bool ReadPropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
 	// Получение значения IFC свойств в ParamDictValue
 	// -----------------------------------------------------------------------------
-	bool GetIFCValues(const API_Guid& elemGuid, ParamDictValue& params);
+	bool ReadIFCValues(const API_Guid& elemGuid, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
 	// Получить значение GDL параметра по его имени или описанию в ParamValue
 	// -----------------------------------------------------------------------------
-	bool GetGDLValues(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
+	bool ReadGDLValues(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
 
 	// --------------------------------------------------------------------
 	// Запись словаря параметров для множества элементов
@@ -517,7 +524,7 @@ namespace ParamHelpers {
 	// -----------------------------------------------------------------------------
 	// Получение информации о материалах и составе конструкции
 	// -----------------------------------------------------------------------------
-	bool GetMaterial(const API_Element& element, ParamDictValue& params, ParamDictValue& propertyParams);
+	bool ReadMaterial(const API_Element& element, ParamDictValue& params, ParamDictValue& propertyParams);
 
 	// --------------------------------------------------------------------
 	// Получение данных из однородной конструкции
