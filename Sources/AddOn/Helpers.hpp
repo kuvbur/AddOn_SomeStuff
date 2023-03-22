@@ -53,6 +53,8 @@ static const Int32 ThicknessID = 12;
 static const Int32 RenumIgnoreID = 13;
 static const Int32 RenumAddID = 14;
 
+static const GSCharCode GChCode = CC_Cyrillic;
+
 typedef struct {
 	GS::Array <API_Guid>	guid;
 } SortGUID;
@@ -479,6 +481,11 @@ namespace ParamHelpers {
 	// Конвертация определения свойства в ParamValue
 	// -----------------------------------------------------------------------------
 	bool ConvValue(ParamValue& pvalue, const API_PropertyDefinition& definition);
+
+	// -----------------------------------------------------------------------------
+	// Конвертация строки в ParamValue
+	// -----------------------------------------------------------------------------
+	bool ConvValue(ParamValue& pvalue, const GS::UniString& paramName, const GS::UniString& strvalue);
 
 	// -----------------------------------------------------------------------------
 	// Конвертация целого числа в ParamValue

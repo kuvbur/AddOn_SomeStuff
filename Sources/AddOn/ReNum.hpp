@@ -27,6 +27,7 @@ typedef struct {
 	GS::UniString position;	// Описание свойства, в которое ставим позицию
 	GS::UniString criteria;	// Описание свойства-критерия
 	GS::UniString delimetr;	// Описание свойства-разбивки
+	GS::UniString prefix;	// Описание свойства-префикса
 	short nulltype;	// Тип постановки нулей в позиции
 	GS::Array <API_Guid> elemts;		// Массив элементов
 } RenumRule;

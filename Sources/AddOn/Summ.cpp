@@ -23,11 +23,19 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
 	long time_start = clock();
+	GS::UniString funcname = "Summation";
+	GS::UniString subtitle = "read data...";
+	short nPhase = 1; short i = 1;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
+	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 	ParamDictElement paramToWriteelem;
 	if (!GetSumValuesOfElements(guidArray, paramToWriteelem)) {
 		msg_rep("SumSelected", "No data to write", NoError, APINULLGuid);
+		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
 	}
+	subtitle = "write data..."; i = 2;
+	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		ParamHelpers::ElementsWrite(paramToWriteelem);
@@ -35,6 +43,7 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 		GS::UniString intString = GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + GS::UniString::Printf("wrtite to - %d", paramToWriteelem.GetSize()) + time;
 		msg_rep("SumSelected", intString, NoError, APINULLGuid);
+		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
 							  });
 	return NoError;
@@ -186,7 +195,7 @@ void Sum_OneRule(const SumRule& rule, const API_WorkingUnitPrefs& unitPrefs, Par
 		if (paramToReadelem.ContainsKey(rule.elemts[i])) {
 			ParamDictValue params = paramToReadelem.Get(rule.elemts[i]);
 			if (!rule.criteria.IsEmpty() && params.ContainsKey(rule.criteria)) {
-				std::string criteria = params.Get(rule.criteria).val.uniStringValue.ToCStr(0, MaxUSize, CC_Cyrillic).Get();
+				std::string criteria = params.Get(rule.criteria).val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
 				criteriaList[criteria].inx.Push(i);
 			}
 			else {
