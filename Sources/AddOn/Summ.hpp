@@ -29,7 +29,7 @@ GSErrCode SumSelected(SyncSettings& syncSettings);
 
 bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem);
 
-bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictElement& paramToReadelem, SumRules& rules);
+bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue & paramToRead, SumRules& rules);
 
 bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype);
 

@@ -189,15 +189,14 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 		case Sum_CommandID:
 			err = SumSelected(syncSettings);
 			break;
-		case Log_CommandID:
-			break;
+		//case Log_CommandID:
+		//	break;
 		case RunParam_CommandID:
 			RunParamSelected(syncSettings);
 			break;
-		case AddHole_CommandID:
-
-			//AddHoleToSelectedCWall(syncSettings);
-			break;
+		//case AddHole_CommandID:
+		//	AddHoleToSelectedCWall(syncSettings);
+		//	break;
 		}
 		break;
 	}

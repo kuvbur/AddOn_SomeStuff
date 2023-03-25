@@ -20,24 +20,23 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 // -----------------------------------------------------------------------------------------------------------------------
 
 GSErrCode SumSelected(SyncSettings& syncSettings) {
+	long time_start = clock();
+	GS::UniString funcname = "Summation"; short nPhase = 1;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
-	long time_start = clock();
-	GS::UniString funcname = "Summation";
-	GS::UniString subtitle = "read data...";
-	short nPhase = 1; short i = 1;
-	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
-	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-	ParamDictElement paramToWriteelem;
-	if (!GetSumValuesOfElements(guidArray, paramToWriteelem)) {
-		msg_rep("SumSelected", "No data to write", NoError, APINULLGuid);
-		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
-		return NoError;
-	}
-	subtitle = "write data..."; i = 2;
-	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+		GS::UniString subtitle = "read data..."; short i = 1;
+		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+		ParamDictElement paramToWriteelem;
+		if (!GetSumValuesOfElements(guidArray, paramToWriteelem)) {
+			msg_rep("SumSelected", "No data to write", NoError, APINULLGuid);
+			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+			return NoError;
+		}
+		GS::UniString subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); short i = 2;
+		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		ParamHelpers::ElementsWrite(paramToWriteelem);
 		long time_end = clock();
 		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
@@ -53,24 +52,31 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 	if (guidArray.IsEmpty()) return false;
 	SumRules rules;
 	ParamDictElement paramToReadelem;
-
+	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
 	// Получаем список правил суммирования
 	bool hasSum = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+			return false;
+		}
 		GS::Array<API_PropertyDefinition>	definitions;
 		GSErrCode err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
 		if (err == NoError && !definitions.IsEmpty()) {
 			ParamDictValue propertyParams;
+			ParamDictValue paramToRead;
 			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
 			if (!propertyParams.IsEmpty()) {
-				if (Sum_GetElement(guidArray[i], propertyParams, paramToReadelem, rules)) hasSum = true;
+				if (Sum_GetElement(guidArray[i], propertyParams, paramToRead, rules)) {
+					ParamHelpers::Read(guidArray[i], paramToRead, propertyParams);
+					ParamHelpers::AddParamDictValue2ParamDictElement(guidArray[i], paramToRead, paramToReadelem);
+					hasSum = true;
+				}
+
 			}
 		}
 	}
 	if (!hasSum) return false;
-	ParamDictValue propertyParams; // Все свойства уже считаны, поэтому словарь просто пустой
-	ParamHelpers::ElementsRead(paramToReadelem, propertyParams); // Читаем значения
-
 	// Получаем данные об округлении и типе расчёта
 	API_CalcUnitPrefs unitPrefs1;
 	ACAPI_Environment(APIEnv_GetPreferencesID, &unitPrefs1, (void*)APIPrefs_CalcUnitsID);
@@ -95,7 +101,7 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictElement& paramToReadelem, SumRules& rules) {
+bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue & paramToRead, SumRules& rules) {
 	bool has_sum = false;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
@@ -122,9 +128,9 @@ bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, Pa
 
 				// Добавляем свойства для чтения в словарь
 				SumRule paramtype = rules.Get(definition.guid);
-				if (!paramtype.position.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(paramtype.position), paramToReadelem);
-				if (!paramtype.value.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(paramtype.value), paramToReadelem);
-				if (!paramtype.criteria.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(paramtype.criteria), paramToReadelem);
+				if (!paramtype.position.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(paramtype.position), paramToRead);
+				if (!paramtype.value.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(paramtype.value), paramToRead);
+				if (!paramtype.criteria.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(paramtype.criteria), paramToRead);
 				has_sum = true;
 			}
 		}

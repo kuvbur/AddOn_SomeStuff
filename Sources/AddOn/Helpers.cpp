@@ -1251,6 +1251,19 @@ bool ParamHelpers::needAdd(ParamDictValue& params, GS::UniString& rawName) {
 }
 
 // --------------------------------------------------------------------
+// Запись параметра ParamValue в словарь элементов ParamDict, если его там прежде не было
+// --------------------------------------------------------------------
+void ParamHelpers::AddParamValue2ParamDict(const API_Guid& elemGuid, ParamValue& param, ParamDictValue& paramToRead) {
+	GS::UniString rawName = param.rawName;
+	if (!paramToRead.ContainsKey(rawName)) {
+		if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
+		paramToRead.Add(rawName, param);
+	}
+}
+
+
+
+// --------------------------------------------------------------------
 // Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
 // --------------------------------------------------------------------
 void ParamHelpers::AddParamValue2ParamDictElement(const ParamValue& param, ParamDictElement& paramToRead) {
@@ -1277,9 +1290,9 @@ void ParamHelpers::AddParamValue2ParamDictElement(const API_Guid& elemGuid, cons
 // --------------------------------------------------------------------
 // Запись словаря ParamDictValue в словарь элементов ParamDictElement
 // --------------------------------------------------------------------
-void ParamHelpers::AddParamDictValue2ParamDictElement(ParamDictValue& params, const API_Guid& elemGuid, ParamDictElement& paramToRead) {
+void ParamHelpers::AddParamDictValue2ParamDictElement(const API_Guid& elemGuid, ParamDictValue& param, ParamDictElement& paramToRead) {
 	if (paramToRead.ContainsKey(elemGuid)) {
-		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = param.EnumeratePairs(); cIt != NULL; ++cIt) {
 			GS::UniString rawName = *cIt->key;
 			if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
 				ParamValue& param = *cIt->value;
@@ -1289,7 +1302,7 @@ void ParamHelpers::AddParamDictValue2ParamDictElement(ParamDictValue& params, co
 		}
 	}
 	else {
-		paramToRead.Add(elemGuid, params);
+		paramToRead.Add(elemGuid, param);
 	}
 }
 
