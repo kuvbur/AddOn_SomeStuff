@@ -30,24 +30,21 @@ typedef std::unordered_map <std::string, TypeValues> Delimetr; // Словарь
 // -----------------------------------------------------------------------------------------------------------------------
 
 GSErrCode ReNumSelected(SyncSettings& syncSettings) {
+	GS::UniString funcname("Numbering"); short nPhase = 1;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
+	long time_start = clock();
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
-	GS::UniString funcname("Numbering");
-	short nPhase = 1;
-	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
-	GS::UniString subtitle = "read data..."; short i = 1;
-	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-	long time_start = clock();
-	ParamDictElement paramToWriteelem;
-	if (!GetRenumElements(guidArray, paramToWriteelem)) {
-		msg_rep("ReNumSelected", "No data to write", NoError, APINULLGuid);
-		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
-		return NoError;
-	}
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
-	subtitle = "write data..."; i = 2;
-	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+		ParamDictElement paramToWriteelem;
+		if (!GetRenumElements(guidArray, paramToWriteelem)) {
+			msg_rep("ReNumSelected", "No data to write", NoError, APINULLGuid);
+			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+			return NoError;
+		}
+		GS::UniString subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); short i = 2;
+		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		ParamHelpers::ElementsWrite(paramToWriteelem);
 		long time_end = clock();
 		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
@@ -64,13 +61,19 @@ bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& par
 	// Получаем список правил суммирования
 	Rules rules;
 	ParamDictElement paramToReadelem;
+	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		GS::Array<API_PropertyDefinition>	definitions;
 		GSErrCode err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
 		if (err == NoError && !definitions.IsEmpty() && ReNumHasFlag(definitions)) {
+			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+				return false;
+			}
 			ParamDictValue propertyParams;
+			ParamDictValue paramToRead;
 			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
-			ReNum_GetElement(guidArray[i], propertyParams, paramToReadelem, rules);
+			if (ReNum_GetElement(guidArray[i], propertyParams, paramToRead, rules)) ParamHelpers::AddParamDictValue2ParamDictElement(guidArray[i], paramToRead, paramToReadelem);
 		}
 	}
 	if (paramToReadelem.IsEmpty() || rules.IsEmpty()) return false;
@@ -88,7 +91,7 @@ bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& par
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-void ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictElement& paramToReadelem, Rules& rules) {
+bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue & paramToRead, Rules& rules) {
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
 		bool flag = false;
 		ParamValue& param = *cIt->value;

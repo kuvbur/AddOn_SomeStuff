@@ -40,7 +40,7 @@ bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& par
 
 bool ReNumHasFlag(const GS::Array<API_PropertyDefinition> definitions);
 short ReNumGetFlag(const ParamValue& paramflag, const ParamValue& paramposition);
-void ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictElement& paramToReadelem, Rules& rules);
+void ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue & paramToRead, Rules& rules);
 void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
 
 #endif

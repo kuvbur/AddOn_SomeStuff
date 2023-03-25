@@ -433,7 +433,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					if (ParamHelpers::ParseParamNameMaterial(templatestring, paramDict)) {
 						param.val.uniStringValue = templatestring;
 						ParamHelpers::AddVal(paramDict, "property:sync_name");
-						ParamHelpers::AddParamDictValue2ParamDictElement(paramDict, elemGuid, paramToRead);
+						ParamHelpers::AddParamDictValue2ParamDictElement(elemGuid, paramDict, paramToRead);
 						hasSub = true; // Нужно будет прочитать все свойства
 					}
 				}
