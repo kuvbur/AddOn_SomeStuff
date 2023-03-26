@@ -120,6 +120,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 #else
 	ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle);
 #endif // AC_26
+	GS::UniString subtitle_ = GS::UniString::Printf("Reading data from %d elements : ", guidArray.GetSize()) + subtitle;
 
 	// Словарь со всеми возможными определениями свойств
 	if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
@@ -128,9 +129,11 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	ParamDictElement paramToWrite;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
-		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle_, &i);
 	}
 	if (!paramToWrite.IsEmpty()) {
+		subtitle_ = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()) + subtitle; short i = 1;
+		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle_, &i);
 		ParamHelpers::ElementsWrite(paramToWrite);
 	}
 	else {
@@ -552,12 +555,11 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		}
 	}
 	if (synctypefind == false) {
-		if (rulestring_one.Contains("Info:") && rulestring_one.Contains('"')) {
+		if (rulestring_one.Contains("Info:")) {
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Info:", "");
 			paramNamePrefix = "{info:";
 			param.fromInfo = true;
-			syncdirection = SYNC_FROM;
 		}
 	}
 	if (synctypefind == false) {
