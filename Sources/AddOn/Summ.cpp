@@ -27,7 +27,7 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 	if (guidArray.IsEmpty()) return NoError;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		GS::UniString subtitle = "read data..."; short i = 1;
+		GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());; short i = 1;
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		ParamDictElement paramToWriteelem;
 		if (!GetSumValuesOfElements(guidArray, paramToWriteelem)) {
@@ -35,7 +35,7 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 			return NoError;
 		}
-		GS::UniString subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); short i = 2;
+		subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); i = 2;
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		ParamHelpers::ElementsWrite(paramToWriteelem);
 		long time_end = clock();
@@ -53,6 +53,7 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 	SumRules rules;
 	ParamDictElement paramToReadelem;
 	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
+
 	// Получаем список правил суммирования
 	bool hasSum = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
@@ -72,11 +73,11 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 					ParamHelpers::AddParamDictValue2ParamDictElement(guidArray[i], paramToRead, paramToReadelem);
 					hasSum = true;
 				}
-
 			}
 		}
 	}
 	if (!hasSum) return false;
+
 	// Получаем данные об округлении и типе расчёта
 	API_CalcUnitPrefs unitPrefs1;
 	ACAPI_Environment(APIEnv_GetPreferencesID, &unitPrefs1, (void*)APIPrefs_CalcUnitsID);
@@ -101,7 +102,7 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue & paramToRead, SumRules& rules) {
+bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, SumRules& rules) {
 	bool has_sum = false;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
@@ -156,6 +157,7 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 	if (!paramtype.sum_type) return false;
 
 	GS::UniString paramName = definition.description.GetSubstring('{', '}', 0);
+	paramName.ReplaceAll("\\/", "/");
 	GS::Array<GS::UniString>	partstring;
 	int nparam = StringSplt(paramName.ToLowerCase(), ";", partstring);
 	if (nparam == 0) return false;

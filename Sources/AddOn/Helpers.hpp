@@ -372,6 +372,9 @@ namespace ParamHelpers {
 
 	bool needAdd(ParamDictValue& params, GS::UniString& rawName);
 
+	// --------------------------------------------------------------------
+	// Запись параметра ParamValue в словарь ParamDict, если его там прежде не было
+	// --------------------------------------------------------------------
 	void AddParamValue2ParamDict(const API_Guid& elemGuid, ParamValue& param, ParamDictValue& paramToRead);
 
 	// --------------------------------------------------------------------
@@ -448,6 +451,11 @@ namespace ParamHelpers {
 	void Write(const API_Guid& elemGuid, ParamDictValue& params);
 
 	// --------------------------------------------------------------------
+	// Запись ParamDictElement в информацию о проекте
+	// --------------------------------------------------------------------
+	void InfoWrite(ParamDictElement& paramToWrite);
+
+	// --------------------------------------------------------------------
 	// Запись ParamDictValue в GDL параметры и ID
 	// --------------------------------------------------------------------
 	void WriteGDLValues(const API_Guid& elemGuid, ParamDictValue& params);
@@ -458,6 +466,8 @@ namespace ParamHelpers {
 	void WritePropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
 
 	bool hasUnreadProperyDefinitoin(ParamDictElement& paramToRead);
+
+	bool hasUnreadInfo(ParamDictElement& paramToRead);
 
 	// --------------------------------------------------------------------
 	// Заполнение словаря параметров для множества элементов
@@ -503,6 +513,11 @@ namespace ParamHelpers {
 	// Конвертация API_IFCProperty в ParamValue
 	// -----------------------------------------------------------------------------
 	bool ConvValue(ParamValue& pvalue, const API_IFCProperty& property);
+
+	// --------------------------------------------------------------------
+	// Заполнение информации о проекте
+	// --------------------------------------------------------------------
+	void GetAllInfoToParamDict(ParamDictValue& propertyParams);
 
 	// --------------------------------------------------------------------
 	// Заполнение свойств для элемента

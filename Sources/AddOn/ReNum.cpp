@@ -39,7 +39,7 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		ParamDictElement paramToWriteelem;
 		if (!GetRenumElements(guidArray, paramToWriteelem)) {
-			msg_rep("ReNumSelected", "No data to write", NoError, APINULLGuid);
+			msg_rep("ReNumSelected", GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + "No data to write", NoError, APINULLGuid);
 			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 			return NoError;
 		}
@@ -91,7 +91,8 @@ bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& par
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue & paramToRead, Rules& rules) {
+bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules) {
+	bool hasRenum = false;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
 		bool flag = false;
 		ParamValue& param = *cIt->value;
@@ -103,8 +104,9 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 				// Разбираем - что записано в свойстве с флагом
 				// В нём должно быть имя свойства и, возможно, флаг добавления нулей
 				GS::UniString paramName = definition.description.ToLowerCase().GetSubstring('{', '}', 0);
+				paramName.ReplaceAll("\\/", "/");
 				GS::UniString rawNameposition = "{";
-				GS::UniString rawNameprefix = "{";
+				GS::UniString rawNameprefix = "";
 				if (paramName.Contains(";")) { // Есть указание на нули
 					GS::Array<GS::UniString>	partstring;
 					int nparam = StringSplt(paramName, ";", partstring);
@@ -113,7 +115,7 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 						if (partstring[1] == "null") rulecritetia.nulltype = ADDZEROS;
 						if (partstring[1] == "allnull") rulecritetia.nulltype = ADDMAXZEROS;
 						if (rulecritetia.nulltype == NOZEROS) { // Префикс
-							rawNameprefix = rawNameprefix + partstring[0] + "}";
+							rawNameprefix = "{" + partstring[0] + "}";
 						}
 					};
 					if (nparam > 2) {
@@ -126,11 +128,13 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 				}
 				if (!rawNameposition.Contains("property")) rawNameposition.ReplaceAll("{", "{gdl:");
 				if (!rawNameprefix.IsEmpty() && !rawNameprefix.Contains("property")) rawNameprefix.ReplaceAll("{", "{gdl:");
+
 				// Проверяем - есть ли у объекта такое свойство-правило
 				if (propertyParams.ContainsKey(rawNameposition)) {
 
 					// В описании правила может быть указано имя свойства-критерия и, возможно, имя свойства-разбивки
 					GS::UniString ruleparamName = propertyParams.Get(rawNameposition).definition.description;
+					ruleparamName.ReplaceAll("\\/", "/");
 					if (ruleparamName.Contains("Renum") && ruleparamName.Contains("{") && ruleparamName.Contains("}")) {
 						ruleparamName = ruleparamName.ToLowerCase().GetSubstring('{', '}', 0);
 						GS::UniString rawNamecriteria = "{";
@@ -146,6 +150,7 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 						}
 						if (!rawNamecriteria.Contains("property")) rawNamecriteria.ReplaceAll("{", "{gdl:");
 						if (!rawNamedelimetr.IsEmpty() && !rawNamedelimetr.Contains("property")) rawNamedelimetr.ReplaceAll("{", "{gdl:");
+
 						// Если такие свойства есть - записываем правило
 						if (propertyParams.ContainsKey(rawNamecriteria) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty()) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty())) {
 							rulecritetia.state = true;
@@ -164,17 +169,18 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 				flag = true; // Правило уже существует, просто добавим свойства в словарь чтения и id в правила
 			}
 			if (flag) {
+				hasRenum = true;
 				rules.Get(definition.guid).elemts.Push(elemGuid);
 				RenumRule& rulecritetia = rules.Get(definition.guid);
-				if (!rulecritetia.position.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(rulecritetia.position), paramToReadelem);
-				if (!rulecritetia.flag.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(rulecritetia.flag), paramToReadelem);
-				if (!rulecritetia.criteria.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(rulecritetia.criteria), paramToReadelem);
-				if (!rulecritetia.delimetr.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(rulecritetia.delimetr), paramToReadelem);
-				if (!rulecritetia.prefix.IsEmpty()) ParamHelpers::AddParamValue2ParamDictElement(elemGuid, propertyParams.Get(rulecritetia.prefix), paramToReadelem);
+				if (!rulecritetia.position.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.position), paramToRead);
+				if (!rulecritetia.flag.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.flag), paramToRead);
+				if (!rulecritetia.criteria.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.criteria), paramToRead);
+				if (!rulecritetia.delimetr.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.delimetr), paramToRead);
+				if (!rulecritetia.prefix.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.prefix), paramToRead);
 			}
 		}
 	}
-	return;
+	return hasRenum;
 }
 
 void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem) {
@@ -302,6 +308,7 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 							}
 							ParamValue paramflag = paramToReadelem.Get(eleminpos[j]).Get(rule.flag);
 							if (paramflag.type == API_PropertyStringValueType) {
+
 								// Переключаем флаг в режим Добавить
 								GS::UniString txtypenum = RSGetIndString(AddOnStringsID, RenumAddID, ACAPI_GetOwnResModule());
 								if (!paramflag.val.uniStringValue.Contains(txtypenum)) {
