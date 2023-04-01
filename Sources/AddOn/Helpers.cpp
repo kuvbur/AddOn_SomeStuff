@@ -117,7 +117,7 @@ void GetNumSymbSpase(GS::UniString& outstring, GS::UniChar symb, char charrepl) 
 }
 
 void ReplaceSymbSpase(GS::UniString& outstring) {
-	GetNumSymbSpase(outstring, '~', u8' ');
+	GetNumSymbSpase(outstring, '~', ' ');
 	GetNumSymbSpase(outstring, '@', CharTAB);
 	outstring.ReplaceAll("\\TAB", u8"\u0009");
 	outstring.ReplaceAll("\\CRLF", u8"\u000D\u000A");
