@@ -2,6 +2,10 @@ name: Add-On Build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'beta-testing'
+      - 'master'
 
 jobs:
   build_mac_ac25:
