@@ -10,7 +10,6 @@
 #endif // AC_26
 #include	"basicgeometry.h"
 #include	"Polygon3D.hpp"
-#include	"Intersection3D.hpp"
 
 Sector3D GetSector3DFromCoord(const Coord& coord1, const Coord& coord2);
 

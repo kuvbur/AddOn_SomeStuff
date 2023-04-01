@@ -112,6 +112,7 @@ typedef struct {
 	bool fromProperty = false; // Найден в свойствах
 	bool fromMorph = false; // Найден свойствах морфа
 	bool fromInfo = false; // Найден в инфо о проекте
+	bool fromGlob = false; // Найден в глобальных переменных
 	bool fromIFCProperty = false;
 	bool fromCoord = false; //Координаты
 	bool fromPropertyDefinition = false; //Задан определением, искать не нужно
@@ -469,6 +470,8 @@ namespace ParamHelpers {
 
 	bool hasUnreadInfo(ParamDictElement& paramToRead);
 
+	bool hasUnreadGlob(ParamDictElement& paramToRead);
+
 	// --------------------------------------------------------------------
 	// Заполнение словаря параметров для множества элементов
 	// --------------------------------------------------------------------
@@ -518,6 +521,8 @@ namespace ParamHelpers {
 	// Заполнение информации о проекте
 	// --------------------------------------------------------------------
 	void GetAllInfoToParamDict(ParamDictValue& propertyParams);
+
+	void GetAllGlobToParamDict(ParamDictValue& propertyParams);
 
 	// --------------------------------------------------------------------
 	// Заполнение свойств для элемента

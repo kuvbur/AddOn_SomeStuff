@@ -252,7 +252,7 @@ bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
 
 	// Проверяем - зарезервирован ли объект и резервируем, если надо
 	if (ACAPI_TeamworkControl_HasConnection() && !ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
-#ifdef AC_24
+#if defined(AC_24) || defined(AC_23)
 		GS::PagedArray<API_Guid>	elements;
 #else
 		GS::Array<API_Guid>	elements;
@@ -602,7 +602,13 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 		if (addSubelement) {
 			API_ElemTypeID elementType;
 			API_NeigID neigID = neig.neigID;
+#ifdef AC_26
+			API_ElemType elemType26;
+			GSErrCode err = ACAPI_Goodies_NeigIDToElemType(neigID, elemType26);
+			elementType = elemType26.typeID;
+#else
 			GSErrCode err = ACAPI_Goodies(APIAny_NeigIDToElemTypeID, &neigID, &elementType);
+#endif // AC_26
 			if (err == NoError) GetRelationsElement(neig.guid, elementType, syncSettings, guidArray);
 		}
 	}
@@ -705,18 +711,18 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	GSErrCode		err = NoError;
-	API_Elem_Head elementHead;
-	BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
-	elementHead.guid = elemGuid;
-	err = ACAPI_Element_GetHeader(&elementHead);
+	API_Elem_Head elem_head;
+	BNZeroMemory(&elem_head, sizeof(API_Elem_Head));
+	elem_head.guid = elemGuid;
+	err = ACAPI_Element_GetHeader(&elem_head);
 	if (err != NoError) {
 		msg_rep("GetTypeByGUID", "", err, elemGuid);
 		return err;
 	}
 #ifdef AC_26
-	elementType = elementHead.type.typeID;
+	elementType = elem_head.type.typeID;
 #else
-	elementType = elementHead.typeID;
+	elementType = elem_head.typeID;
 #endif
 	return err;
 }
@@ -808,6 +814,44 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 		if (syncSettings.objS) {
 			err = ACAPI_Element_GetRelations(elemGuid, API_ZombieElemID, &relData);
 			if (err != NoError) {
+#ifdef AC_23
+				for (Int32 i = 0; i < relData.nObject - 1; i++) {
+					API_Guid elGuid = *(relData.objects)[i];
+					subelemGuid.Push(elGuid);
+				}
+				if (syncSettings.widoS) {
+					for (Int32 i = 0; i < relData.nWindow - 1; i++) {
+						API_Guid elGuid = *(relData.windows)[i];
+						subelemGuid.Push(elGuid);
+					}
+					for (Int32 i = 0; i < relData.nDoor - 1; i++) {
+						API_Guid elGuid = *(relData.doors)[i];
+						subelemGuid.Push(elGuid);
+					}
+					for (Int32 i = 0; i < relData.nSkylight - 1; i++) {
+						API_Guid elGuid = *(relData.skylights)[i];
+						subelemGuid.Push(elGuid);
+					}
+				}
+				if (syncSettings.wallS) {
+					for (Int32 i = 0; i < relData.nColumn - 1; i++) {
+						API_Guid elGuid = *(relData.columns)[i];
+						subelemGuid.Push(elGuid);
+					}
+					for (Int32 i = 0; i < relData.nWallPart - 1; i++) {
+						API_Guid elGuid = relData.wallPart[i]->guid;
+						subelemGuid.Push(elGuid);
+					}
+					for (Int32 i = 0; i < relData.nBeamPart - 1; i++) {
+						API_Guid elGuid = relData.beamPart[i]->guid;
+						subelemGuid.Push(elGuid);
+					}
+					for (Int32 i = 0; i < relData.nMorph - 1; i++) {
+						API_Guid elGuid = *(relData.morphs)[i];
+						subelemGuid.Push(elGuid);
+					}
+				}
+#else
 				typeinzone.Push(API_ObjectID);
 				typeinzone.Push(API_LampID);
 				typeinzone.Push(API_StairID);
@@ -826,33 +870,9 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 				if (syncSettings.widoS) {
 					typeinzone.Push(API_WindowID);
 					typeinzone.Push(API_DoorID);
+					typeinzone.Push(API_SkylightID);
 				}
-				if (syncSettings.cwallS) {
-
-					//typeinzone.Push(API_RailingID);
-					//typeinzone.Push(API_RailingToprailID);
-					//typeinzone.Push(API_RailingHandrailID);
-					//typeinzone.Push(API_RailingRailID);
-					//typeinzone.Push(API_RailingPostID);
-					//typeinzone.Push(API_RailingInnerPostID);
-					//typeinzone.Push(API_RailingBalusterID);
-					//typeinzone.Push(API_RailingPanelID);
-					//typeinzone.Push(API_RailingSegmentID);
-					//typeinzone.Push(API_RailingToprailEndID);
-					//typeinzone.Push(API_RailingHandrailEndID);
-					//typeinzone.Push(API_RailingRailEndID);
-					//typeinzone.Push(API_RailingToprailConnectionID);
-					//typeinzone.Push(API_RailingHandrailConnectionID);
-					//typeinzone.Push(API_RailingRailConnectionID);
-					//typeinzone.Push(API_RailingNodeID);
-					typeinzone.Push(API_CurtainWallID);
-					typeinzone.Push(API_CurtainWallFrameID);
-					typeinzone.Push(API_CurtainWallPanelID);
-					typeinzone.Push(API_CurtainWallJunctionID);
-					typeinzone.Push(API_CurtainWallAccessoryID);
-					typeinzone.Push(API_CurtainWallSegmentID);
-				}
-				typeinzone.Push(API_SkylightID);
+				if (syncSettings.cwallS) typeinzone.Push(API_CurtainWallID);
 				for (const API_ElemTypeID& typeelem : typeinzone) {
 					if (relData.elementsGroupedByType.ContainsKey(typeelem)) {
 						for (const API_Guid& elGuid : relData.elementsGroupedByType[typeelem]) {
@@ -860,6 +880,7 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 						}
 					}
 				}
+#endif
 			}
 		}
 		break;
@@ -1354,7 +1375,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 	switch (elem_head.type.typeID) {
 #else
 	switch (elem_head.typeID) {
-#endif
+#endif // AC_26
 	case API_CurtainWallPanelID:
 		elemGuid = element.cwPanel.symbolID;
 		elemType = API_ObjectID;
@@ -1371,7 +1392,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		UNUSED_VARIABLE(element);
 		elemGuid = elem_head.guid;
 #ifdef AC_26
-		elemType = elem_head.typeID;
+		elemType = elem_head.type.typeID;
 #else
 		elemType = elem_head.typeID;
 #endif
@@ -1532,6 +1553,8 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", symb_pos_ey_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", symb_pos_correct);
 	}
+
+	// TODO Вынести первод из радиан в градусы в функцию
 	double k = 100.0;
 	if (abs(angz) > 0.0001) {
 		angz = round((angz * 180 / PI) * k) / k;
@@ -1539,7 +1562,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	else {
 		angz = 0.0;
 	}
-	double symb_rotangle_fraction = abs(abs(angz * k) - floor(abs(angz * k))) * 10.0;
+	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 100;
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", symb_rotangle_fraction < 1.0);
@@ -1705,6 +1728,7 @@ void ParamHelpers::GetParamTypeList(GS::Array<GS::UniString>&paramTypesList) {
 	paramTypesList.Push("ifc");
 	paramTypesList.Push("morph");
 	paramTypesList.Push("material");
+	paramTypesList.Push("glob");
 }
 
 // -----------------------------------------------------------------------------
@@ -2288,7 +2312,6 @@ void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 	}
 }
 
-
 // --------------------------------------------------------------------
 // Запись ParamDictValue в один элемент
 // --------------------------------------------------------------------
@@ -2309,14 +2332,15 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 			if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
 		}
 		if (!paramByType.IsEmpty()) {
+
 			// Проходим поиском, специфичным для каждого типа
-			// TODO переписать без использования сравнения с текстом!
 			if (paramType.IsEqual("property")) {
 				ParamHelpers::WritePropertyValues(elemGuid, paramByType);
 			}
 			if (paramType.IsEqual("gdl")) {
 				ParamHelpers::WriteGDLValues(elemGuid, paramByType);
 			}
+
 			//if (paramType.IsEqual("ifc")) {}
 		}
 	}
@@ -2325,7 +2349,7 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 // --------------------------------------------------------------------
 // Запись ParamDictValue в автотекст
 // --------------------------------------------------------------------
-void ParamHelpers::InfoWrite(ParamDictElement& paramToWrite) {
+void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
 	ParamDictValue paramsinfo;
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -2338,7 +2362,7 @@ void ParamHelpers::InfoWrite(ParamDictElement& paramToWrite) {
 						ParamValue infoparam = paramsinfo.Get(param.rawName);
 						infoparam.val.doubleValue = infoparam.val.doubleValue + param.val.doubleValue;
 						infoparam.val.intValue = infoparam.val.intValue + param.val.intValue;
-						infoparam.val.uniStringValue = infoparam.val.uniStringValue +";" + param.val.uniStringValue;
+						infoparam.val.uniStringValue = infoparam.val.uniStringValue + ";" + param.val.uniStringValue;
 					}
 					else {
 						paramsinfo.Add(param.rawName, param);
@@ -2532,12 +2556,27 @@ bool ParamHelpers::hasUnreadInfo(ParamDictElement & paramToRead) {
 	return false;
 }
 
+bool ParamHelpers::hasUnreadGlob(ParamDictElement & paramToRead) {
+	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamDictValue& params = *cIt->value;
+		if (!params.IsEmpty()) {
+			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+				ParamValue& param = *cIt->value;
+				if (param.fromGlob) return true;
+			}
+		}
+	}
+	return false;
+}
+
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
 void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	if (paramToRead.IsEmpty()) return;
 	if (ParamHelpers::hasUnreadInfo(paramToRead)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
+	if (ParamHelpers::hasUnreadGlob(paramToRead)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
+
 	// Словарь со всеми возможными определениями свойств
 	if (propertyParams.IsEmpty()) {
 		if (ParamHelpers::hasUnreadProperyDefinitoin(paramToRead)) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
@@ -2629,7 +2668,6 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			bool needCompare = false;
 
 			// Проходим поиском, специфичным для каждого типа
-			// TODO переписать без использования сравнения с текстом!
 			if (paramType.IsEqual("property")) {
 				needCompare = ParamHelpers::ReadPropertyValues(elemGuid, paramByType);
 			}
@@ -2674,6 +2712,61 @@ void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 			propertyParams.Add(rawName, pvalue);
 		}
 	}
+}
+
+void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
+	GS::UniString name = "";
+	GS::UniString rawName = "";
+	ParamValue pvalue;
+	API_PlaceInfo placeInfo = {};
+	GSErrCode err = ACAPI_Environment(APIEnv_GetPlaceSetsID, &placeInfo, nullptr);
+	if (err != NoError) {
+		msg_rep("GetAllGlobToParamDict", "APIEnv_GetPlaceSetsID", err, APINULLGuid);
+		return;
+	}
+
+	//GSErrCode err = ACAPI_Environment(APIEnv_GetGeoLocationID, &geoLocation);
+	//if (err != NoError) {
+	//	msg_rep("GetAllGlobToParamDict", "APIEnv_GetGeoLocationID", err, APINULLGuid);
+	//	return;
+	//}
+	// placeInfo = geoLocation.
+	//name = "SYMB_POS_FROM_SURVEY_POINT_X"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	//pvalue.name = name; pvalue.rawName = rawName;
+	//ParamHelpers::ConvValue(pvalue, rawName, geoLocation.surveyPointPosition.x);
+	//propertyParams.Add(rawName, pvalue);
+	//name = "SYMB_POS_FROM_SURVEY_POINT_Y"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	//pvalue.name = name; pvalue.rawName = rawName;
+	//ParamHelpers::ConvValue(pvalue, rawName, geoLocation.surveyPointPosition.y);
+	//propertyParams.Add(rawName, pvalue);
+	//name = "SYMB_POS_FROM_SURVEY_POINT_Z"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	//pvalue.name = name; pvalue.rawName = rawName;
+	//ParamHelpers::ConvValue(pvalue, rawName, geoLocation.surveyPointPosition.z);
+	//propertyParams.Add(rawName, pvalue);
+	name = "GLOB_NORTH_DIR"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	pvalue.name = name; pvalue.rawName = rawName;
+	ParamHelpers::ConvValue(pvalue, rawName, round((placeInfo.north * 180 / PI) * 1000.0) / 1000.0);
+	propertyParams.Add(rawName, pvalue);
+	name = "GLOB_PROJECT_LONGITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	pvalue.name = name; pvalue.rawName = rawName;
+	ParamHelpers::ConvValue(pvalue, rawName, placeInfo.longitude);
+	propertyParams.Add(rawName, pvalue);
+	name = "GLOB_PROJECT_LATITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	pvalue.name = name; pvalue.rawName = rawName;
+	ParamHelpers::ConvValue(pvalue, rawName, placeInfo.latitude);
+	propertyParams.Add(rawName, pvalue);
+	name = "GLOB_PROJECT_ALTITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	pvalue.name = name; pvalue.rawName = rawName;
+	ParamHelpers::ConvValue(pvalue, rawName, placeInfo.altitude);
+	propertyParams.Add(rawName, pvalue);
+	name = "GLOB_SUN_AZIMUTH"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	pvalue.name = name; pvalue.rawName = rawName;
+	ParamHelpers::ConvValue(pvalue, rawName, round((placeInfo.sunAngXY * 180 / PI) * 1000.0) / 1000.0);
+	propertyParams.Add(rawName, pvalue);
+	name = "GLOB_SUN_ALTITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	pvalue.name = name; pvalue.rawName = rawName;
+	ParamHelpers::ConvValue(pvalue, rawName, round((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
+	propertyParams.Add(rawName, pvalue);
 }
 
 // --------------------------------------------------------------------
@@ -2897,8 +2990,6 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 			API_Guid elguid = elem_head.guid;
 			GSErrCode err = ACAPI_Database(APIDb_GetElementInfoStringID, &elguid, &infoString);
 			if (err == NoError) {
-
-				// TODO Добавить перевод ID в число
 				param.isValid = true;
 				param.val.type = API_PropertyStringValueType;
 				param.type = API_PropertyStringValueType;
@@ -3269,13 +3360,13 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 		if (pvalue.name.IsEmpty()) pvalue.name = fname;
 	}
 #if defined(AC_22) || defined(AC_23)
-	pvalue.isValid = property_from.isEvaluated;
+	pvalue.isValid = property.isEvaluated;
 #else
 	pvalue.isValid = (property.status == API_Property_HasValue);
 #endif
 	if (!pvalue.isValid) {
 		return false;
-}
+	}
 	pvalue.val.boolValue = false;
 	pvalue.val.intValue = 0;
 	pvalue.val.doubleValue = 0.0;
@@ -3336,7 +3427,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.property = property;
 	pvalue.val.canCalculate = true;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -3674,14 +3765,17 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 				OrientedSegments& l = *cIt->value;
 				GS::Array<Point3D> points;
 				for (UInt32 i = 0; i < l.segments.GetSize(); i++) {
-					Point3D res;
 					for (UInt32 j = 1; j < cont.GetSize(); j++) {
-						if (XLines3D(&l.segments[i], &cont[j], &res)) points.Push(res);
+						Point3D res;
+						bool hasIntersect = XSectors3D(&l.segments[i], &cont[j], &res); //
+						if (hasIntersect) points.Push(res);
 					}
 				}
 				if (points.GetSize() == 2) {
+					Point3D pmidpoint;
+					pmidpoint.Set((points[1].x - points[0].x) / 2, (points[1].y - points[0].y) / 2, (points[1].z - points[0].z) / 2);
 					Sector3D sfillThickL(points[0], points[1]);
-					Sector3D srfromstart(l.start, sfillThickL.GetMidPoint());
+					Sector3D srfromstart(l.start, pmidpoint);
 					double fillThickL = sfillThickL.GetLength();
 					double rfromstart = srfromstart.GetLength();
 					API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();

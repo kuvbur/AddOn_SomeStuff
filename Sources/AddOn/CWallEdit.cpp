@@ -40,13 +40,17 @@ void AddHoleToSelectedCWall(const SyncSettings& syncSettings) {
 	GS::Array<API_Guid> cWallguidArray;
 	GS::Array<Geometry::Polygon3D> elems = {};
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		API_Elem_Head elementHead;
-		BNZeroMemory(&elementHead, sizeof(API_Elem_Head));
-		elementHead.guid = guidArray[i];
-		GSErrCode err = ACAPI_Element_GetHeader(&elementHead);
+		API_Elem_Head elem_head;
+		BNZeroMemory(&elem_head, sizeof(API_Elem_Head));
+		elem_head.guid = guidArray[i];
+		GSErrCode err = ACAPI_Element_GetHeader(&elem_head);
 		bool needGetElem = false;
 		if (err != NoError) return;
-		switch (elementHead.typeID)
+#ifdef AC_26
+		switch (elem_head.type.typeID)
+#else
+		switch (elem_head.typeID)
+#endif // AC_26
 		{
 		case API_CurtainWallID:
 			cWallguidArray.Push(guidArray[i]);
@@ -62,7 +66,7 @@ void AddHoleToSelectedCWall(const SyncSettings& syncSettings) {
 		}
 		if (needGetElem) {
 			API_Box3D coord;
-			err = ACAPI_Database(APIDb_CalcBoundsID, &elementHead, &coord);
+			err = ACAPI_Database(APIDb_CalcBoundsID, &elem_head, &coord);
 			if (err == NoError) {
 				GS::PagedArray<Point3D> points;
 				Point3D p1; p1.Set(coord.xMin, coord.yMin, coord.zMin); points.Push(p1);
@@ -142,7 +146,6 @@ void Do_ChangeCWall(const API_Guid& elemGuid, const  GS::Array<Geometry::Polygon
 			}
 		}
 	}
-
 
 	//{
 	//	const UInt32 nFrameClasses = BMpGetSize(reinterpret_cast<GSPtr> (memo.cWallFrameDefaults)) / sizeof(API_CWFrameType);
