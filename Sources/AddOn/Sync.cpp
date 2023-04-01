@@ -320,7 +320,6 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 					else {
 						paramsFrom = paramToRead.Get(elemGuidFrom);
 					}
-
 					// Проверяем наличие имён в словаре параметров
 					if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
 						ParamValue paramFrom = paramsFrom.Get(rawNameFrom);

@@ -43,7 +43,6 @@ set (AC_API_DEVKIT_DIR $ENV{AC_API_DEVKIT_DIR} CACHE PATH "API DevKit directory.
 set (AC_ADDON_NAME "SomeStuff_AddOn" CACHE STRING "Add-On name.")
 set (AC_ADDON_LANGUAGE "INT" CACHE STRING "Add-On language code.")
 
-
 set (ACAPINC_FILE_LOCATION ${AC_API_DEVKIT_DIR}/Support/Inc/ACAPinc.h)
 if (EXISTS ${ACAPINC_FILE_LOCATION})
 	file (READ ${ACAPINC_FILE_LOCATION} ACAPIncContent)
@@ -159,7 +158,7 @@ else ()
 endif ()
 
 if (WIN32)
-target_link_options (AddOn PUBLIC "${ResourceObjectsDir}/${OutputName}.res")
+	target_link_options (AddOn PUBLIC "${ResourceObjectsDir}/${OutputName}.res")
 	target_link_options (AddOn PUBLIC /export:GetExportedFuncAddrs,@1 /export:SetImportedFuncAddrs,@2)
 endif ()
 
