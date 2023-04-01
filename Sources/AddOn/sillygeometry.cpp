@@ -2,6 +2,9 @@
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"sillygeometry.hpp"
+#ifndef AC_23
+#include	"Intersection3D.hpp"
+#endif // !AC_23
 
 Sector3D GetSector3DFromCoord(const Coord& coord1, const Coord& coord2) {
 	Point3D point1 = GetPoint3DFromCoord(coord1);
@@ -48,8 +51,8 @@ Point3D GetPoint3DFromCoord(double x, double y) {
 
 double GetAngXYSector3D(const Sector3D& sector) {
 	double angz = 0;
-	Point3D p1 = sector.BegPoint();
-	Point3D p2 = sector.EndPoint();
+	Point3D p1 = sector.c1;
+	Point3D p2 = sector.c2;
 	double dx = p2.x - p1.x;
 	double dy = p2.y - p1.y;
 	if (dx > 0 && dy >= 0) {
@@ -73,7 +76,7 @@ double GetAngXYSector3D(const Sector3D& sector) {
 	return angz;
 }
 void TransformPoint3D(const Sector3D& sector, Point3D& point) {
-	Point3D basepoint = sector.BegPoint();
+	Point3D basepoint = sector.c1;
 	double ang = GetAngXYSector3D(sector);
 	double x = point.x;
 	double y = point.y;
@@ -111,6 +114,7 @@ bool IntersectPolygon3DSector3D(const Geometry::Polygon3D& poly, const Sector3D&
 
 bool IsPoint3DInPolygon3D(const Geometry::Polygon3D& poly, const Point3D& point) {
 	int incount = 0; // Счётчик пересечений
+#ifndef AC_23
 
 	// Формуируем луч с началом в точке и направлением на середину полигона
 	Box3D bx = poly.GetBounds();
@@ -135,6 +139,7 @@ bool IsPoint3DInPolygon3D(const Geometry::Polygon3D& poly, const Point3D& point)
 			}
 		}
 	}
+#endif
 	if (incount == 0) {
 		return false;
 	} // Нет пересечений

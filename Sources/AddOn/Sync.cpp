@@ -527,7 +527,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			//TODO Проверить на файле из видео обработку материалов
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Material:", "");
-			rulestring_one.ReplaceAll("ayers}", "ayers,20}");
+			rulestring_one.ReplaceAll("{Layers;", "{Layers,20;");
 			paramNamePrefix = "{material:";
 			GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
 			param.val.uniStringValue = templatestring;
@@ -568,6 +568,15 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			rulestring_one.ReplaceAll("IFC:", "");
 			paramNamePrefix = "{ifc:";
 			param.fromIFCProperty = true;
+			syncdirection = SYNC_FROM;
+		}
+	}
+	if (synctypefind == false) {
+		if (rulestring_one.Contains("Glob:")) {
+			synctypefind = true;
+			rulestring_one.ReplaceAll("Glob:", "");
+			paramNamePrefix = "{glob:";
+			param.fromGlob = true;
 			syncdirection = SYNC_FROM;
 		}
 	}

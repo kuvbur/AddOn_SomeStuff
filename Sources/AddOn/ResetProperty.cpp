@@ -53,7 +53,8 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 	if (!doneelemguid.IsEmpty()) {
 		GS::UniString intString = GS::UniString::Printf(" %d", doneelemguid.GetSize());
 		msg_rep("Reset property done - ", intString, NoError, APINULLGuid);
-	} else {
+	}
+	else {
 		msg_rep("Reset property done", "", NoError, APINULLGuid);
 	}
 	return flag_reset;
@@ -111,7 +112,8 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 								}
 							}
 						}
-					} else {
+					}
+					else {
 						msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
 					}
 				}
@@ -151,7 +153,8 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 
 			// Если не получилось - выведем ошибку.
 			if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
-		} else {
+		}
+		else {
 			err = APIERR_MISSINGCODE;
 		}
 	}
@@ -256,7 +259,11 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 	if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_GetPropertyValuesOfDefaultElem", err, APINULLGuid);
 	if (err == NoError) {
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
+#if defined(AC_23)
+			if (!properties[i].isDefault && properties[i].isEvaluated) {
+#else
 			if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
+#endif // AC_26
 				properties[i].isDefault = true;
 				properties_to_reset.Push(properties.Get(i));
 			}
@@ -268,7 +275,8 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
 #endif // AC_26
 			if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);
-		} else {
+		}
+		else {
 			err = APIERR_MISSINGCODE;
 		}
 	}
