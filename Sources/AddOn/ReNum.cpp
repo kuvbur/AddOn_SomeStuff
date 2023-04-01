@@ -285,7 +285,7 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 					pos = std::to_string(npos);
 				}
 				unicriteria[criteria] = pos;
-				maxpos = max(maxpos, static_cast<int>(pos.length()));
+				maxpos = fmax(maxpos, static_cast<int>(pos.length()));
 			}
 			if (!unicriteria.empty()) {
 				for (auto const& ent1 : unicriteria) {
