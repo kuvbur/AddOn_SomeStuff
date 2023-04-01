@@ -1,4 +1,4 @@
-//------------ kuvbur 2022 ------------
+﻿//------------ kuvbur 2022 ------------
 #pragma once
 #ifndef DIM_HPP
 #define	DIM_HPP
@@ -19,7 +19,7 @@ typedef struct {
 	bool	flag_change = false;
 	GS::UniString expression = "";
 	GS::UniString layer = "";
-	ParamDict paramDict;
+	ParamDictValue paramDict;
 } DimRule;
 
 typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
@@ -28,17 +28,14 @@ typedef GS::HashTable<GS::UniString, DimRule> DimRules;
 
 GSErrCode DimReadPref(DimRules& dimrules);
 
-bool DimParsePref(GS::UniString rawrule, DimRule& dimrule);
+bool DimParsePref(GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression);
 
-void DimAutoRoundSel(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams);
 
-void DimSelected(const SyncSettings& syncSettings);
-GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules);
-
-bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule);
+bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule, ParamDictValue& propertyParams);
 
 void DimRoundAll(const SyncSettings& syncSettings);
 
-bool DimRoundByType(const API_ElemTypeID typeID, DoneElemGuid& doneelemguid, DimRules& dimrules);
+bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams);
 
 #endif
