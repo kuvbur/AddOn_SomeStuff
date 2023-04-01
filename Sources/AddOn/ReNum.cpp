@@ -260,7 +260,7 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 		}
 		hasAdd = !unicpos.empty() && !unicriteria.empty();
 		if (hasNormal) {
-			int maxpos = 1;
+			double maxpos = 1;
 			int npos = 1;
 			for (Values::iterator k = tv[RENUM_NORMAL].begin(); k != tv[RENUM_NORMAL].end(); ++k) {
 				std::string criteria = k->first;
