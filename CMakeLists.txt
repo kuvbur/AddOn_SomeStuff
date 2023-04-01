@@ -28,6 +28,7 @@ function (SetCompilerOptions target)
 			-Wno-unused-private-field
 			-Wno-unused-but-set-variable
 			-Wno-unused-variable
+			-Wno-shorten-64-to-32
 			-Wno-non-c-typedef-for-linkage)
 	endif ()
 endfunction ()
