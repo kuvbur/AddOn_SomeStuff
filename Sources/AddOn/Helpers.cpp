@@ -3773,7 +3773,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 				}
 				if (points.GetSize() == 2) {
 					Point3D pmidpoint;
-					pmidpoint.Set((points[1].x - points[0].x) / 2, (points[1].y - points[0].y) / 2, (points[1].z - points[0].z) / 2);
+					pmidpoint.Set((points[1].x + points[0].x) / 2, (points[1].y + points[0].y) / 2, (points[1].z + points[0].z) / 2);
 					Sector3D sfillThickL(points[0], points[1]);
 					Sector3D srfromstart(l.start, pmidpoint);
 					double fillThickL = sfillThickL.GetLength();
