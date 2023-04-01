@@ -176,7 +176,7 @@ if (WIN32)
 	set_target_properties(AddOn PROPERTIES
 	VS_DEBUGGER_WORKING_DIRECTORY "$(ProjectDir)"
 	VS_DEBUGGER_COMMAND "$ENV{ProgramFiles}/GRAPHISOFT/ARCHICAD ${ARCHICAD_VERSION}/ARCHICAD.exe"
-	VS_DEBUGGER_COMMAND_ARGUMENTS "$(ProjectDir)/test.pln"
+	VS_DEBUGGER_COMMAND_ARGUMENTS "$(ProjectDir)test.pln"
 	)
 else ()
 	find_library (CocoaFramework Cocoa)

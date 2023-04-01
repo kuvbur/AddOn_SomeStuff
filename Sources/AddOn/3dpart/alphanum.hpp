@@ -40,8 +40,6 @@
 #include <typeinfo>
 #endif
 
-// TODO: make comparison with hexadecimal numbers. Extend the alphanum_comp() function by traits to choose between decimal and hexadecimal.
-
 namespace doj
 {
 

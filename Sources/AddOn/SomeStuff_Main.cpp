@@ -16,13 +16,14 @@
 #include	"ReNum.hpp"
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
+#include	"CWallEdit.hpp"
 
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
 static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
-	const GS::HashSet<API_Guid>& released,
-	const GS::HashSet<API_Guid>& deleted) {
+														 const GS::HashSet<API_Guid>& released,
+														 const GS::HashSet<API_Guid>& deleted) {
 	(void)deleted;
 	(void)released;
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
@@ -71,8 +72,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 // -----------------------------------------------------------------------------
 // Срабатывает при изменении элемента
 // -----------------------------------------------------------------------------
-GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType)
-{
+GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType) {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
 #ifdef PK_1
@@ -90,7 +90,8 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	if (elemType->elemHead.typeID == API_GroupID) return NoError;
 #endif
 	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) return NoError;
-	bool	sync_prop = false;
+	ParamDictValue propertyParams = {};
+	ParamDictElement paramToWrite = {};
 	switch (elemType->notifID) {
 	case APINotifyElement_New:
 	case APINotifyElement_Copy:
@@ -101,12 +102,12 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	case APINotifyElement_Redo_Modified:
 	case APINotifyElement_Redo_Deleted:
 	case APINotifyElement_ClassificationChange:
-		sync_prop = true;
+		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite);
+		if (!paramToWrite.IsEmpty()) {
+			ParamHelpers::ElementsWrite(paramToWrite);
+		}
 	default:
 		break;
-	}
-	if (sync_prop) {
-		SyncElement(elemType->elemHead.guid, syncSettings);
 	}
 	return NoError;
 }	// ElementEventHandlerProc
@@ -114,8 +115,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 // -----------------------------------------------------------------------------
 // Включение мониторинга
 // -----------------------------------------------------------------------------
-void	Do_ElementMonitor(bool& syncMon)
-{
+void	Do_ElementMonitor(bool& syncMon) {
 #ifdef PK_1
 	syncMon = true;
 #endif
@@ -131,6 +131,17 @@ void	Do_ElementMonitor(bool& syncMon)
 	}
 	return;
 }	// Do_ElementMonitor
+
+// -----------------------------------------------------------------------------
+// Обновление отмеченных в меню пунктов
+// -----------------------------------------------------------------------------
+void MenuSetState(SyncSettings& syncSettings) {
+	MenuItemCheckAC(Menu_MonAll, syncSettings.syncMon);
+	MenuItemCheckAC(Menu_wallS, syncSettings.wallS);
+	MenuItemCheckAC(Menu_widoS, syncSettings.widoS);
+	MenuItemCheckAC(Menu_objS, syncSettings.objS);
+	MenuItemCheckAC(Menu_cwallS, syncSettings.cwallS);
+}
 
 static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	GSErrCode err = NoError;
@@ -148,7 +159,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			syncSettings.syncMon = !syncSettings.syncMon;
 #endif // PK_1
 			Do_ElementMonitor(syncSettings.syncMon);
-			SyncAndMonAll(syncSettings);
+			MonAll(syncSettings);
 			DimRoundAll(syncSettings);
 			break;
 		case SyncAll_CommandID:
@@ -159,7 +170,6 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		case SyncSelect_CommandID:
 			SyncSelected(syncSettings);
-			DimSelected(syncSettings);
 			break;
 		case wallS_CommandID:
 			syncSettings.wallS = !syncSettings.wallS;
@@ -174,13 +184,19 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			syncSettings.cwallS = !syncSettings.cwallS;
 			break;
 		case ReNum_CommandID:
-			err = ReNumSelected();
+			err = ReNumSelected(syncSettings);
 			break;
 		case Sum_CommandID:
-			err = SumSelected();
+			err = SumSelected(syncSettings);
 			break;
-		case Log_CommandID:
+		//case Log_CommandID:
+		//	break;
+		case RunParam_CommandID:
+			RunParamSelected(syncSettings);
 			break;
+		//case AddHole_CommandID:
+		//	AddHoleToSelectedCWall(syncSettings);
+		//	break;
 		}
 		break;
 	}
@@ -192,22 +208,19 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	return NoError;
 }
 
-API_AddonType __ACDLL_CALL CheckEnvironment(API_EnvirParams* envir)
-{
+API_AddonType __ACDLL_CALL CheckEnvironment(API_EnvirParams* envir) {
 	RSGetIndString(&envir->addOnInfo.name, AddOnInfoID, AddOnNameID, ACAPI_GetOwnResModule());
 	RSGetIndString(&envir->addOnInfo.description, AddOnInfoID, AddOnDescriptionID, ACAPI_GetOwnResModule());
 	ACAPI_KeepInMemory(true);
 	return APIAddon_Preload;
 }
 
-GSErrCode __ACDLL_CALL RegisterInterface(void)
-{
+GSErrCode __ACDLL_CALL RegisterInterface(void) {
 	GSErrCode err = ACAPI_Register_Menu(AddOnMenuID, AddOnPromtID, MenuCode_Tools, MenuFlag_Default);
 	return err;
 }
 
-GSErrCode __ACENV_CALL Initialize(void)
-{
+GSErrCode __ACENV_CALL Initialize(void) {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
 #ifdef PK_1
@@ -215,12 +228,12 @@ GSErrCode __ACENV_CALL Initialize(void)
 #endif // PK_1
 	MenuSetState(syncSettings);
 	Do_ElementMonitor(syncSettings.syncMon);
+	MonAll(syncSettings);
 	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 	ACAPI_KeepInMemory(true);
 	return ACAPI_Install_MenuHandler(AddOnMenuID, MenuCommandHandler);
 }
 
-GSErrCode __ACENV_CALL FreeData(void)
-{
+GSErrCode __ACENV_CALL FreeData(void) {
 	return NoError;
 }

@@ -1,3 +1,4 @@
+//------------ kuvbur 2022 ------------
 #if !defined (RENUM_HPP)
 #pragma once
 #define	RENUM_HPP
@@ -8,40 +9,38 @@
 #include	"APICommon26.h"
 #endif // AC_26
 #include	"DG.h"
+#include	"Helpers.hpp"
 
-// Типы нумерации (см. RenumElement.state)
-#define RENUM_IGNORE 0	// Игнорировать, не менять и не объединять с другими элементами позицию.
-#define RENUM_ADD 1		// Позицию не менять, добавить другие элементы при совпадении критерия
-#define RENUM_NORMAL 2	// Обычная нумерация/перенумерация
+// РўРёРїС‹ РЅСѓРјРµСЂР°С†РёРё (СЃРј. RenumElement.state)
+#define RENUM_IGNORE 0	// РРіРЅРѕСЂРёСЂРѕРІР°С‚СЊ, РЅРµ РјРµРЅСЏС‚СЊ Рё РЅРµ РѕР±СЉРµРґРёРЅСЏС‚СЊ СЃ РґСЂСѓРіРёРјРё СЌР»РµРјРµРЅС‚Р°РјРё РїРѕР·РёС†РёСЋ.
+#define RENUM_ADD 1		// РџРѕР·РёС†РёСЋ РЅРµ РјРµРЅСЏС‚СЊ, РґРѕР±Р°РІРёС‚СЊ РґСЂСѓРіРёРµ СЌР»РµРјРµРЅС‚С‹ РїСЂРё СЃРѕРІРїР°РґРµРЅРёРё РєСЂРёС‚РµСЂРёСЏ
+#define RENUM_NORMAL 2	// РћР±С‹С‡РЅР°СЏ РЅСѓРјРµСЂР°С†РёСЏ/РїРµСЂРµРЅСѓРјРµСЂР°С†РёСЏ
 
-// Типы простановки нулей для СТРОКОВОГО (API_PropertyStringValueType) свойства (см. RenumRule.nulltype)
-#define NOZEROS 0		// Не добавлять нули в текстовое свойство
-#define ADDZEROS 1		// Добавлять нули с учётом разбивки
-#define ADDMAXZEROS 2	// Добавлять нули по максимальному количеству без учёта разбивки
-
-typedef struct {
-	API_Guid		guid;		// Ну, эт понятно
-	std::string		criteria;	// Значение свойства-критерия
-	std::string		delimetr;	// Значение свойства - разбивки
-	UInt32			state;		// Тип нумерации элемента (игнорировать, объединить, пронумеровать)
-} RenumElement;
+// РўРёРїС‹ РїСЂРѕСЃС‚Р°РЅРѕРІРєРё РЅСѓР»РµР№ РґР»СЏ РЎРўР РћРљРћР’РћР“Рћ (API_PropertyStringValueType) СЃРІРѕР№СЃС‚РІР° (СЃРј. RenumRule.nulltype)
+#define NOZEROS 0		// РќРµ РґРѕР±Р°РІР»СЏС‚СЊ РЅСѓР»Рё РІ С‚РµРєСЃС‚РѕРІРѕРµ СЃРІРѕР№СЃС‚РІРѕ
+#define ADDZEROS 1		// Р”РѕР±Р°РІР»СЏС‚СЊ РЅСѓР»Рё СЃ СѓС‡С‘С‚РѕРј СЂР°Р·Р±РёРІРєРё
+#define ADDMAXZEROS 2	// Р”РѕР±Р°РІР»СЏС‚СЊ РЅСѓР»Рё РїРѕ РјР°РєСЃРёРјР°Р»СЊРЅРѕРјСѓ РєРѕР»РёС‡РµСЃС‚РІСѓ Р±РµР· СѓС‡С‘С‚Р° СЂР°Р·Р±РёРІРєРё
 
 typedef struct {
-	bool						state;		// Корректность правила
-	API_PropertyDefinition		position;	// Описание свойства, в которое ставим позицию
-	API_PropertyDefinition		criteria;	// Описание свойства-критерия
-	API_PropertyDefinition		delimetr;	// Описание свойства-разбивки
-	short						nulltype;	// Тип постановки нулей в позиции
-	GS::Array <RenumElement>	elemts;		// Массив элементов
+	bool state;		// РљРѕСЂСЂРµРєС‚РЅРѕСЃС‚СЊ РїСЂР°РІРёР»Р°
+	GS::UniString flag;	// РћРїРёСЃР°РЅРёРµ СЃРІРѕР№СЃС‚РІР°, РІ РєРѕС‚РѕСЂРѕРµ СЃС‚Р°РІРёРј РїРѕР·РёС†РёСЋ
+	GS::UniString position;	// РћРїРёСЃР°РЅРёРµ СЃРІРѕР№СЃС‚РІР°, РІ РєРѕС‚РѕСЂРѕРµ СЃС‚Р°РІРёРј РїРѕР·РёС†РёСЋ
+	GS::UniString criteria;	// РћРїРёСЃР°РЅРёРµ СЃРІРѕР№СЃС‚РІР°-РєСЂРёС‚РµСЂРёСЏ
+	GS::UniString delimetr;	// РћРїРёСЃР°РЅРёРµ СЃРІРѕР№СЃС‚РІР°-СЂР°Р·Р±РёРІРєРё
+	GS::UniString prefix;	// РћРїРёСЃР°РЅРёРµ СЃРІРѕР№СЃС‚РІР°-РїСЂРµС„РёРєСЃР°
+	short nulltype;	// РўРёРї РїРѕСЃС‚Р°РЅРѕРІРєРё РЅСѓР»РµР№ РІ РїРѕР·РёС†РёРё
+	GS::Array <API_Guid> elemts;		// РњР°СЃСЃРёРІ СЌР»РµРјРµРЅС‚РѕРІ
 } RenumRule;
 
-typedef GS::HashTable<API_Guid, RenumRule> Rules;	// Таблица правил
+typedef GS::HashTable<API_Guid, RenumRule> Rules;	// РўР°Р±Р»РёС†Р° РїСЂР°РІРёР»
 
-GSErrCode ReNumSelected(void);
-bool ReNumRule(const API_Guid& elemGuid, const GS::UniString& description_string, RenumRule& paramtype);
-UInt32 ReNumGetRule(const API_PropertyDefinition definitionflag, const API_Guid& elemGuid, API_PropertyDefinition& propertdefyrule, short& nulltype);
-GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules);
-GSErrCode ReNumOneRule(const RenumRule& rule);
-GSErrCode ReNum_GetElement(const API_Guid& elemGuid, Rules& rules);
+GSErrCode ReNumSelected(SyncSettings& syncSettings);
+
+bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem);
+
+bool ReNumHasFlag(const GS::Array<API_PropertyDefinition> definitions);
+short ReNumGetFlag(const ParamValue& paramflag, const ParamValue& paramposition);
+bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules);
+void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
 
 #endif

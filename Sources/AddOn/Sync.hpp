@@ -9,74 +9,105 @@
 #endif // AC_26
 #include	"DG.h"
 #include	"SyncSettings.hpp"
+#include	"Helpers.hpp"
 
 // --------------------------------------------------------------------
-// ��������� ��� �������� ������ �������
-// ���������� ��. SyncString
+// Структура для хранения одного правила
+// Заполнение см. SyncString
 // --------------------------------------------------------------------
 typedef struct {
-	GS::UniString paramName = "";
+	GS::UniString paramNameFrom = "";
+	API_PropertyDefinition paramFrom = {};
+	GS::UniString paramNameTo = "";
+	API_PropertyDefinition paramTo = {};
 	GS::Array<GS::UniString> ignorevals;
 	GS::UniString templatestring = "";
 	int synctype = 0;
 	int syncdirection = 0;
 } SyncRule;
 
-// --------------------------------------------------------------------
-// ��������� ��� �������� ������ �� ������� �����������
-// ���������� ��. SyncPropAndMatGetComponents
-// --------------------------------------------------------------------
 typedef struct {
-	API_Attribute					buildingMaterial;
-	GS::Array<API_PropertyDefinition>	definitions;
-	GS::UniString						templatestring = "";
-	double								fillThick = 0.0;
-} LayerConstr;
+	API_Guid guidTo = APINULLGuid;
+	API_Guid guidFrom = APINULLGuid;
+	ParamValue paramFrom;
+	ParamValue paramTo;
+	GS::Array<GS::UniString> ignorevals;
+	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью #mm или #0)
+	bool toSub = false;
+	bool fromSub = false;
+} WriteData;
 
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
+// Словарь с параметрами для записи
+typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
 
+// -----------------------------------------------------------------------------
+// Подключение мониторинга
+// -----------------------------------------------------------------------------
+void MonAll(SyncSettings& syncSettings);
+
+// -----------------------------------------------------------------------------
+// Подключение мониторинга по типам
+// -----------------------------------------------------------------------------
+void MonByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
+
+// -----------------------------------------------------------------------------
+// Запускает обработку всех объектов, заданных в настройке
+// -----------------------------------------------------------------------------
 void SyncAndMonAll(SyncSettings& syncSettings);
 
+// -----------------------------------------------------------------------------
+// Синхронизация элементов по типу
+// -----------------------------------------------------------------------------
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase, ParamDictValue& propertyParams);
+
+// -----------------------------------------------------------------------------
+// Синхронизация элемента и его подэлементов
+// -----------------------------------------------------------------------------
+void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
+
+// -----------------------------------------------------------------------------
+// Запускает обработку выбранных, заданных в настройке
+// -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings& syncSettings);
 
-void SyncElement(const API_Guid& objectId, const SyncSettings& syncSettings);
+// -----------------------------------------------------------------------------
+// Запуск скрипта параметров выбранных элементов
+// -----------------------------------------------------------------------------
+void RunParamSelected(const SyncSettings& syncSettings);
 
-void SyncRelationsElement(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+// -----------------------------------------------------------------------------
+// Запуск скрипта параметра элемента
+// -----------------------------------------------------------------------------
+void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
-void SyncGetRelationsElement(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+// --------------------------------------------------------------------
+// Поиск и синхронизация свойств связанных элементов
+// --------------------------------------------------------------------
+bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
-void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings);
+// --------------------------------------------------------------------
+// Синхронизация данных элемента согласно указаниям в описании свойств
+// --------------------------------------------------------------------
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
-GSErrCode SyncOneProperty(const API_Guid& elemGuid, const API_ElemTypeID elementType, API_PropertyDefinition definition);
+// --------------------------------------------------------------------
+// Добавление подэлементов и их параметров в правила синхорнизации
+// --------------------------------------------------------------------
+void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array <WriteData>& mainsyncRules, WriteDict& syncRules, ParamDictElement& paramToRead);
 
-bool SyncOneRule(const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition& definition, SyncRule syncRule);
+// --------------------------------------------------------------------
+// Запись правила в словарь правил WriteData, попутно заполняем словарь с параметрами элементов ParamDictElement
+// --------------------------------------------------------------------
+void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictElement& paramToRead);
 
-bool SyncString(GS::UniString& description_string, GS::Array<SyncRule>& syncRules);
+// -----------------------------------------------------------------------------
+// Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
+// -----------------------------------------------------------------------------
+bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub);
 
-bool SyncState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
-
-GSErrCode SyncPropAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, const SyncRule& syncRule, const API_PropertyDefinition& definition);
-
-GSErrCode SyncMorphAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition);
-
-GSErrCode SyncIFCAndProp(const API_Guid& elemGuid, const SyncRule& syncRule, const API_PropertyDefinition& definition);
-
-GSErrCode SyncParamAndProp(const API_Guid& elemGuid_from, const API_Guid& elemGuid_to, SyncRule& syncRule, const API_PropertyDefinition& definition);
-
-GSErrCode SyncPropAndMatParseString(const GS::UniString& templatestring, GS::UniString& outstring, GS::Array<API_PropertyDefinition>& outdefinitions);
-
-GSErrCode SyncPropAndMatGetComponents(const API_Guid& elemGuid, GS::Array<LayerConstr>& components);
-
-void SyncPropAndMatReplaceValue(const API_Property& property, const GS::UniString& patternstring, GS::UniString& outstring);
-
-GSErrCode SyncPropAndMatWriteOneString(const API_Attribute& attrib, const double& fillThick, const GS::Array<API_PropertyDefinition>& outdefinitions, const GS::UniString& templatestring, GS::UniString& outstring, UInt32& n);
-
-GSErrCode SyncPropAndMat(const API_Guid& elemGuid, const API_ElemTypeID elementType, const SyncRule syncRule, const API_PropertyDefinition& definition);
-
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, const GS::UniString& val);
-
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_Property& property);
-
-bool SyncCheckIgnoreVal(const SyncRule& syncRule, const API_IFCProperty& property);
+// -----------------------------------------------------------------------------
+// Парсит описание свойства
+// -----------------------------------------------------------------------------
+bool SyncString(const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, GS::UniString& stringformat);
 
 #endif
