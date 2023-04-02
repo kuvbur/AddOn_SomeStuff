@@ -13,7 +13,6 @@
 #include	"Helpers.hpp"
 #include	"Model3D/model.h"
 #include	"Model3D/MeshBody.hpp"
-#include	"Dimensions.hpp"
 #include	"VectorImageIterator.hpp"
 #include	"ProfileVectorImageOperations.hpp"
 #include	"ProfileAdditionalInfo.hpp"
@@ -636,45 +635,6 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 		msg_rep(funcname + " Selected", intString + time, NoError, APINULLGuid);
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 	}
-}
-
-void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&, ParamDictValue& propertyParams, ParamDictElement& paramToWrite), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname, bool addSubelement) {
-	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable, addSubelement);
-	if (guidArray.IsEmpty()) return;
-	ParamDictValue propertyParams = {};
-	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
-	ParamDictElement paramToWrite;
-	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
-	short nPhase = 1;
-	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
-	long time_start = clock();
-
-	DimRules dimrules = {};
-	GSErrCode err = DimReadPref(dimrules);
-	bool needdimround = (!dimrules.IsEmpty() && err == NoError);
-
-	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		function(guidArray[i], syncSettings, propertyParams, paramToWrite);
-		if (needdimround) err = DimAutoRound(guidArray[i], dimrules, propertyParams);
-		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-			return;
-		}
-	}
-	subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWrite.GetSize());
-	UInt32 i = guidArray.GetSize() + 1;
-	ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-	if (!paramToWrite.IsEmpty()) {
-		ParamHelpers::ElementsWrite(paramToWrite);
-	}
-	else {
-		msg_rep(funcname, "No data to write", NoError, APINULLGuid);
-	}
-	long time_end = clock();
-	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
-	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize()) + GS::UniString::Printf(" write to %d qty", paramToWrite.GetSize());
-	msg_rep(funcname + " Selected", intString + time, NoError, APINULLGuid);
-	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 }
 
 // -----------------------------------------------------------------------------
@@ -2317,6 +2277,7 @@ void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 // --------------------------------------------------------------------
 void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
+	if (elemGuid == APINULLGuid) return;
 
 	// Получаем список возможных префиксов
 	ParamDictValue paramByType;
@@ -2340,8 +2301,6 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 			if (paramType.IsEqual("gdl")) {
 				ParamHelpers::WriteGDLValues(elemGuid, paramByType);
 			}
-
-			//if (paramType.IsEqual("ifc")) {}
 		}
 	}
 }
@@ -2357,17 +2316,7 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 				ParamValue& param = *cIt->value;
-				if (param.fromInfo) {
-					if (paramsinfo.ContainsKey(param.rawName)) {
-						ParamValue infoparam = paramsinfo.Get(param.rawName);
-						infoparam.val.doubleValue = infoparam.val.doubleValue + param.val.doubleValue;
-						infoparam.val.intValue = infoparam.val.intValue + param.val.intValue;
-						infoparam.val.uniStringValue = infoparam.val.uniStringValue + ";" + param.val.uniStringValue;
-					}
-					else {
-						paramsinfo.Add(param.rawName, param);
-					}
-				}
+				if (param.fromInfo && !paramsinfo.ContainsKey(param.rawName)) paramsinfo.Add(param.rawName, param);
 			}
 		}
 	}
@@ -2379,6 +2328,7 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 		GSErrCode err = ACAPI_Goodies(APIAny_SetAnAutoTextID, &dbKey, &value);
 		if (err != NoError) msg_rep("InfoWrite", "APIAny_SetAnAutoTextID", err, APINULLGuid);
 	}
+	msg_rep("InfoWrite", "write", NoError, APINULLGuid);
 }
 
 // --------------------------------------------------------------------
@@ -2445,8 +2395,8 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 		if (err != NoError) {
 			msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 			return;
-		}
 	}
+}
 
 	// TODO Оптимизировать, разнести по функциям
 	bool flagFind = false;
@@ -2630,8 +2580,8 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				needGetElement = true;
 			}
 			if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
-		}
 	}
+}
 
 	if (needGetAllDefinitions) {
 		GetAllPropertyDefinitionToParamDict(params, elemGuid);
@@ -2706,8 +2656,9 @@ void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 		GS::UniString rawName = "{info:" + name.ToLowerCase() + "}";
 		if (!propertyParams.ContainsKey(rawName)) {
 			ParamValue pvalue;
-			pvalue.name = name;
+			pvalue.name = autotexts[i][1];
 			pvalue.rawName = rawName;
+			pvalue.fromInfo = true;
 			ParamHelpers::ConvValue(pvalue, rawName, autotexts[i][2]);
 			propertyParams.Add(rawName, pvalue);
 		}
@@ -3006,7 +2957,7 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 				params.Set(param.rawName, param);
 				flag_find_ID = true;
 			}
-		}
+	}
 		else {
 			if (param.fromGDLdescription && eltype == API_ObjectID) {
 				paramBydescription.Add(param.rawName, param);
@@ -3015,7 +2966,7 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 				if (param.fromGDLparam) paramByName.Add(param.rawName, param);
 			}
 		}
-	}
+}
 	if (paramBydescription.IsEmpty() && paramByName.IsEmpty() && !flag_find_ID) return false;
 
 	// Поиск по описанию
@@ -3853,12 +3804,12 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 					fillThick = memo.columnSegments[0].assemblySegmentData.nominalHeight;
 				}
 				if (structtype == API_ProfileStructure) constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
-			}
+		}
 			else {
 				msg_rep("materialString::GetComponents", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
 				return false;
 			}
-		}
+	}
 		else {
 			msg_rep("materialString::GetComponents", "Multisegment column not supported", NoError, element.header.guid);
 			return false;
@@ -3917,7 +3868,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	default:
 		return false;
 		break;
-	}
+}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв

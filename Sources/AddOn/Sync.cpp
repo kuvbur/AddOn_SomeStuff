@@ -5,6 +5,7 @@
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
 #include	"ResetProperty.hpp"
+#include	"Dimensions.hpp"
 
 #define SYNC_NO 0
 #define SYNC_FROM 1
@@ -67,46 +68,60 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 	if (ResetProperty(propertyParams)) return;
 	GS::UniString	title("Sync All");
 	bool flag_chanel = false;
+	ParamDictElement paramToWrite;
+	short nPhase = 1;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nPhase);
+	long time_start = clock();
+	if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings, nPhase, propertyParams, paramToWrite);
+	nPhase = nPhase + 1;
+	if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings, nPhase, propertyParams, paramToWrite);
+	long time_end = clock();
+	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
+	msg_rep("SyncAll - read", time, NoError, APINULLGuid);
+	if (!paramToWrite.IsEmpty()) {
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		short nPhase = 1;
-		ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nPhase);
-		long time_start = clock();
-		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings, nPhase, propertyParams);
-		nPhase = nPhase + 1;
-		if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings, nPhase, propertyParams);
-		long time_end = clock();
-		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
-		msg_rep("SyncAll", time, NoError, APINULLGuid);
-		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+			long time_start = clock();
+			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
+			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &title, &i);
+			ParamHelpers::ElementsWrite(paramToWrite);
+			long time_end = clock();
+			GS::UniString time = title + GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
+			msg_rep("SyncAll - write", time, NoError, APINULLGuid);
 		return NoError;
 							  });
+	}
+	else {
+		msg_rep("SyncAll - write", "No data to write", NoError, APINULLGuid);
+	}
+	ParamHelpers::InfoWrite(paramToWrite);
+	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 }
 
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
 // -----------------------------------------------------------------------------
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase, ParamDictValue& propertyParams) {
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
 	GS::UniString		subtitle;
 	GSErrCode			err = NoError;
 	GS::Array<API_Guid>	guidArray;
@@ -126,20 +141,11 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 	if (propertyParams.IsEmpty()) return true;
 	bool flag_chanel = false;
-	ParamDictElement paramToWrite;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
 		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle_, &i);
 	}
-	if (!paramToWrite.IsEmpty()) {
-		subtitle_ = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()) + subtitle; short i = 1;
-		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle_, &i);
-		ParamHelpers::ElementsWrite(paramToWrite);
-	}
-	else {
-		msg_rep("SyncByType", "No data to write", NoError, APINULLGuid);
-	}
-	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize()) + GS::UniString::Printf(" write to %d qty", paramToWrite.GetSize());
+	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
 	long time_end = clock();
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncByType", subtitle + intString + time, NoError, APINULLGuid);
@@ -173,19 +179,46 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings& syncSettings) {
-	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
-	GS::UniString fmane = "Sync";
 
-	API_DatabaseInfo    databaseInfo;
-	GSErrCode           err;
-
-	BNZeroMemory(&databaseInfo, sizeof(API_DatabaseInfo));
-	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
-
-	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
-		CallOnSelectedElemSettings(SyncElement, false, true, syncSettings, fmane, false);
-		return NoError;
-							  });
+	GS::UniString fmane = "Sync Selected";
+	GS::Array<API_Guid> guidArray = GetSelectedElements(false, true, true);
+	if (guidArray.IsEmpty()) return;
+	ParamDictValue propertyParams = {};
+	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	ParamDictElement paramToWrite;
+	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
+	short nPhase = 1;
+	ACAPI_Interface(APIIo_InitProcessWindowID, &fmane, &nPhase);
+	long time_start = clock();
+	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
+		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
+		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+			return;
+		}
+	}
+	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
+	long time_end = clock();
+	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
+	msg_rep("SyncSelected - read", subtitle + intString + time, NoError, APINULLGuid);
+	if (!paramToWrite.IsEmpty()) {
+		GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
+		ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+			long time_start = clock();
+			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
+			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &title, &i);
+			ParamHelpers::ElementsWrite(paramToWrite);
+			long time_end = clock();
+			GS::UniString time = title + GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
+			msg_rep("SyncSelected - write", time, NoError, APINULLGuid);
+			return NoError;
+								  });
+	}
+	else {
+		msg_rep("SyncSelected - write", "No data to write", NoError, APINULLGuid);
+	}
+	ParamHelpers::InfoWrite(paramToWrite);
+	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 }
 
 // -----------------------------------------------------------------------------

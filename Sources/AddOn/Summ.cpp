@@ -61,18 +61,14 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 			return false;
 		}
-		GS::Array<API_PropertyDefinition>	definitions;
-		GSErrCode err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
-		if (err == NoError && !definitions.IsEmpty()) {
-			ParamDictValue propertyParams;
-			ParamDictValue paramToRead;
-			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
-			if (!propertyParams.IsEmpty()) {
-				if (Sum_GetElement(guidArray[i], propertyParams, paramToRead, rules)) {
-					ParamHelpers::Read(guidArray[i], paramToRead, propertyParams);
-					ParamHelpers::AddParamDictValue2ParamDictElement(guidArray[i], paramToRead, paramToReadelem);
-					hasSum = true;
-				}
+		ParamDictValue propertyParams;
+		ParamDictValue paramToRead;
+		ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, guidArray[i]);
+		if (!propertyParams.IsEmpty()) {
+			if (Sum_GetElement(guidArray[i], propertyParams, paramToRead, rules)) {
+				ParamHelpers::Read(guidArray[i], paramToRead, propertyParams);
+				ParamHelpers::AddParamDictValue2ParamDictElement(guidArray[i], paramToRead, paramToReadelem);
+				hasSum = true;
 			}
 		}
 	}
@@ -161,7 +157,6 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 	GS::Array<GS::UniString>	partstring;
 	int nparam = StringSplt(paramName.ToLowerCase(), ";", partstring);
 	if (nparam == 0) return false;
-
 	if (propertyParams.ContainsKey("{" + partstring[0] + "}")) {
 		paramtype.value = "{" + partstring[0] + "}";
 	}
@@ -232,9 +227,9 @@ void Sum_OneRule(const SumRule& rule, const API_WorkingUnitPrefs& unitPrefs, Par
 					}
 					else {
 						double val = param.val.doubleValue;
-						if (unitPrefs.roundInch) { // В зависимости от настроек - складываем с округлением.
-							val = int(val * 100 + 0.5) / 100.0;
-						}
+						//if (unitPrefs.roundInch) { // В зависимости от настроек - складываем с округлением.
+						//	val = int(val * 100 + 0.5) / 100.0;
+						//}
 						summ.val.doubleValue = summ.val.doubleValue + val;
 						summ.val.intValue = summ.val.intValue + param.val.intValue;
 						summ.val.boolValue = summ.val.boolValue && param.val.boolValue;

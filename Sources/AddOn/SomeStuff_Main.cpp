@@ -170,6 +170,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		case SyncSelect_CommandID:
 			SyncSelected(syncSettings);
+			DimRoundAll(syncSettings);
 			break;
 		case wallS_CommandID:
 			syncSettings.wallS = !syncSettings.wallS;
@@ -185,18 +186,16 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		case ReNum_CommandID:
 			err = ReNumSelected(syncSettings);
+			DimRoundAll(syncSettings);
 			break;
 		case Sum_CommandID:
 			err = SumSelected(syncSettings);
+			DimRoundAll(syncSettings);
 			break;
-		//case Log_CommandID:
-		//	break;
 		case RunParam_CommandID:
 			RunParamSelected(syncSettings);
+			DimRoundAll(syncSettings);
 			break;
-		//case AddHole_CommandID:
-		//	AddHoleToSelectedCWall(syncSettings);
-		//	break;
 		}
 		break;
 	}
