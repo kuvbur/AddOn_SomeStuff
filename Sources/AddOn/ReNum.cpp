@@ -227,11 +227,14 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 		}
 	}
 
+	double maxposall = 1;
+
 	//Теперь последовательно идём по словарю c разделителями, вытаскиваем оттуда guid и нумеруем
 	for (Delimetr::iterator i = delimetrList.begin(); i != delimetrList.end(); ++i) {
 		std::map<std::string, int, doj::alphanum_less<std::string> > unicpos;
 		std::map<std::string, std::string, doj::alphanum_less<std::string> > unicriteria;
 		TypeValues& tv = i->second;
+		double maxpos = 1;
 
 		// Проверим - есть ли элементы с исключаемыми позициями
 		bool hasAdd = (tv.count(RENUM_ADD) != 0);
@@ -243,13 +246,14 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 				GS::Array<API_Guid> eleminpos = k->second.guid;
 				ParamValue posvalue = paramToReadelem.Get(eleminpos[0]).Get(rule.position);
 				std::string pos = posvalue.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
+				maxpos = fmax(maxpos, atof(pos.c_str()));
+				maxposall = fmax(maxposall, maxpos);
 				unicpos[pos] = posvalue.val.intValue;
 				unicriteria[k->first] = pos;
 				for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
 					ParamValue paramposition = paramToReadelem.Get(eleminpos[j]).Get(rule.position);
 					paramposition.isValid = true;
 					posvalue.val.type = paramposition.val.type;
-
 					// Записываем только изменённые значения
 					if (paramposition != posvalue) {
 						paramposition.val = posvalue.val;
@@ -258,34 +262,25 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 				}
 			}
 		}
-		hasAdd = !unicpos.empty() && !unicriteria.empty();
 		if (hasNormal) {
-			double maxpos = 1;
 			int npos = 1;
+			std::string pos = "1";
 			for (Values::iterator k = tv[RENUM_NORMAL].begin(); k != tv[RENUM_NORMAL].end(); ++k) {
 				std::string criteria = k->first;
-				std::string pos = "1";
-
-				//Поищем среди неизменяемых позиций - есть ли позиции с такуим критерием
-				if (hasAdd) {
-					if (unicriteria.count(criteria) > 0) { // Есть существующая позиция с таким критерием
-						pos = unicriteria[criteria];
-					}
-					else { // Ищем свободную позицию
-						while (unicpos.count(pos) > 0)
-						{
-							npos += 1;
-							pos = std::to_string(npos);
-						}
-						unicpos[pos] = npos;
-					}
+				if (unicriteria.count(criteria) > 0) { // Есть существующая позиция с таким критерием
+					pos = unicriteria[criteria];
 				}
-				else {
-					npos += 1; // Просто всё перенумеруем
-					pos = std::to_string(npos);
+				else { // Ищем свободную позицию
+					while (unicpos.count(pos) > 0)
+					{
+						npos += 1;
+						pos = std::to_string(npos);
+					}
+					unicpos[pos] = npos;
 				}
 				unicriteria[criteria] = pos;
-				maxpos = fmax(maxpos, static_cast<int>(pos.length()));
+				maxpos = fmax(maxpos, atof(pos.c_str()));
+				maxposall = fmax(maxposall, maxpos);
 			}
 			if (!unicriteria.empty()) {
 				for (auto const& ent1 : unicriteria) {
@@ -293,6 +288,13 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 					if (tv[RENUM_NORMAL].count(criteria)) {
 						std::string pos = ent1.second;
 						GS::UniString unipos = GS::UniString(pos.c_str(), GChCode);
+						if (rule.nulltype == ADDZEROS) {
+							int npos = atoi(pos.c_str());
+							if (npos)
+							if (maxpos < 10.0) unipos = GS::UniString::Printf("%d", npos);
+							if (maxpos < 100.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%02d", npos);
+							if (maxpos < 1000.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%03d", npos);
+						}
 						ParamValue posvalue;
 						ParamHelpers::ConvValue(posvalue, rule.position, unipos);
 						GS::Array<API_Guid> eleminpos = tv[RENUM_NORMAL][criteria].guid;
@@ -321,6 +323,29 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 				}
 			}
 		}
+		// Все позиции с неизменной нумерацией должны иметь один номер. Если нет - меняем его сами.
+		//if (hasAdd) {
+		//	for (Values::iterator k = tv[RENUM_ADD].begin(); k != tv[RENUM_ADD].end(); ++k) {
+		//		GS::Array<API_Guid> eleminpos = k->second.guid;
+		//		ParamValue posvalue = paramToReadelem.Get(eleminpos[0]).Get(rule.position);
+		//		std::string pos = posvalue.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
+		//		if (atof(pos.c_str()) > 0.0001) {
+		//			maxposall = fmax(maxposall, maxpos);
+		//			unicpos[pos] = posvalue.val.intValue;
+		//			unicriteria[k->first] = pos;
+		//			for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
+		//				ParamValue paramposition = paramToReadelem.Get(eleminpos[j]).Get(rule.position);
+		//				paramposition.isValid = true;
+		//				posvalue.val.type = paramposition.val.type;
+		//				// Записываем только изменённые значения
+		//				if (paramposition != posvalue) {
+		//					paramposition.val = posvalue.val;
+		//					ParamHelpers::AddParamValue2ParamDictElement(eleminpos[j], paramposition, paramToWriteelem);
+		//				}
+		//			}
+		//		}
+		//	}
+		//}
 	}
 	return;
 }
