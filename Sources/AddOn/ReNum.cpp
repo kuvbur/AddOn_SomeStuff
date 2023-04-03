@@ -287,13 +287,19 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 					std::string criteria = ent1.first;
 					if (tv[RENUM_NORMAL].count(criteria)) {
 						std::string pos = ent1.second;
-						GS::UniString unipos = GS::UniString(pos.c_str(), GChCode);
+						GS::UniString unipos = "";
+						GS::UniString unipos_t = GS::UniString(pos.c_str(), GChCode);
+						if (rule.nulltype == NOZEROS || rule.nulltype == ADDMAXZEROS) unipos = unipos_t;
 						if (rule.nulltype == ADDZEROS) {
-							int npos = atoi(pos.c_str());
-							if (npos)
-							if (maxpos < 10.0) unipos = GS::UniString::Printf("%d", npos);
-							if (maxpos < 100.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%02d", npos);
-							if (maxpos < 1000.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%03d", npos);
+							int npos = 0;
+							if (UniStringToInt(unipos_t, npos)) {
+								if (maxpos < 10.0) unipos = GS::UniString::Printf("%d", npos);
+								if (maxpos < 100.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%02d", npos);
+								if (maxpos < 1000.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%03d", npos);
+							}
+							else {
+								unipos = unipos_t;
+							}
 						}
 						ParamValue posvalue;
 						ParamHelpers::ConvValue(posvalue, rule.position, unipos);

@@ -136,8 +136,6 @@ typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 // --------------------------------------------------------------------
 bool is_equal(double x, double y);
 
-bool UniStringToDouble(const GS::UniString& var, double& x);
-
 // --------------------------------------------------------------------
 // Содержит ли значения элементиз списка игнорируемых
 // --------------------------------------------------------------------
@@ -157,6 +155,10 @@ bool CheckIgnoreVal(const GS::Array<GS::UniString>& ignorevals, const GS::UniStr
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
 Int32 DoubleM2IntMM(const double& value);
+
+bool UniStringToInt(const GS::UniString& var, int& x);
+
+bool UniStringToDouble(const GS::UniString& var, double& x);
 
 // --------------------------------------------------------------------
 // Округлить целое n вверх до ближайшего целого числа, кратного k
