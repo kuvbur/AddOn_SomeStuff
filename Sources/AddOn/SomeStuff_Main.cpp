@@ -86,8 +86,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
 #ifdef AC_26
 	if (elemType->elemHead.type.typeID == API_GroupID) return NoError;
+	if (!CheckElementType(elemType->elemHead.type.typeID, syncSettings)) return NoError;
 #else
 	if (elemType->elemHead.typeID == API_GroupID) return NoError;
+	if (!CheckElementType(elemType->elemHead.typeID, syncSettings)) return NoError;
 #endif
 	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) return NoError;
 	ParamDictValue propertyParams = {};

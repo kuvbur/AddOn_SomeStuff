@@ -147,7 +147,7 @@ GSErrCode IsTeamwork(bool& isteamwork, short& userid) {
 // -----------------------------------------------------------------------------
 GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSettings) {
 	GSErrCode		err = NoError;
-	if (IsElementEditable(objectId, syncSettings, true)) {
+	if (IsElementEditable(objectId, syncSettings, false)) {
 #ifdef AC_22
 		API_Elem_Head elemHead;
 		elemHead.guid = objectId;
@@ -1406,15 +1406,53 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	double sx = 0; double sy = 0;
 	double dx = 0; double dy = 0;
 	double ex = 0; double ey = 0;
-	double tolerance_coord = 0.1;
+	double tolerance_coord = 0.01;
 	bool hasSymbpos = false; bool hasLine = false;
+
+	GS::UniString globnorthkey = "{glob:glob_north_dir}";
 	API_ElemTypeID eltype;
 #ifdef AC_26
 	eltype = element.header.type.typeID;
 #else
 	eltype = element.header.typeID;
 #endif
+	API_Element owner;
+
+	// Если нужно определить направление окон или дверей - запрашиваем родительский элемент
+	if (params.ContainsKey(globnorthkey) && (eltype == API_WindowID || eltype == API_DoorID)) {
+		BNZeroMemory(&owner, sizeof(API_Element));
+		if (eltype == API_WindowID) owner.header.guid = element.window.owner;
+		if (eltype == API_DoorID) owner.header.guid = element.door.owner;
+		if (ACAPI_Element_Get(&owner) != NoError) return false;
+#ifdef AC_26
+		if (owner.header.type.typeID == API_WallID)
+#else
+		if (owner.header.typeID == API_WallID)
+#endif
+		{
+			sx = owner.wall.begC.x;
+			sy = owner.wall.begC.y;
+			ex = owner.wall.endC.x;
+			ey = owner.wall.endC.y;
+			hasLine = true;
+		}
+	}
+	else {
+		UNUSED_VARIABLE(owner);
+	}
 	switch (eltype) {
+	case API_WindowID:
+		x = element.window.objLoc;
+		y = 0;
+		z = 0;
+		hasSymbpos = true;
+		break;
+	case API_DoorID:
+		x = element.door.objLoc;
+		y = 0;
+		z = 0;
+		hasSymbpos = true;
+		break;
 	case API_CurtainWallPanelID:
 		x = element.cwPanel.centroid.x;
 		y = element.cwPanel.centroid.y;
@@ -1465,8 +1503,8 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
-		double symb_pos_x_correct = abs(abs(x * k) - floor(abs(x * k)));
-		double symb_pos_y_correct = abs(abs(y * k) - floor(abs(y * k)));
+		double symb_pos_x_correct = abs(abs(x * 1000.0) - floor(abs(x * 1000.0)));
+		double symb_pos_y_correct = abs(abs(y * 1000.0) - floor(abs(y * 1000.0)));
 		double symb_pos_correct = (symb_pos_x_correct < tolerance_coord&& symb_pos_y_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", symb_pos_x_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", symb_pos_y_correct < tolerance_coord);
@@ -1502,10 +1540,10 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
-		double symb_pos_sx_correct = abs(abs(sx * k) - floor(abs(sx * k)));
-		double symb_pos_sy_correct = abs(abs(sy * k) - floor(abs(sy * k)));
-		double symb_pos_ex_correct = abs(abs(ex * k) - floor(abs(ex * k)));
-		double symb_pos_ey_correct = abs(abs(ey * k) - floor(abs(ey * k)));
+		double symb_pos_sx_correct = abs(abs(sx * 1000.0) - floor(abs(sx * 1000.0)));
+		double symb_pos_sy_correct = abs(abs(sy * 1000.0) - floor(abs(sy * 1000.0)));
+		double symb_pos_ex_correct = abs(abs(ex * 1000.0) - floor(abs(ex * 1000.0)));
+		double symb_pos_ey_correct = abs(abs(ey * 1000.0) - floor(abs(ey * 1000.0)));
 		double symb_pos_correct = (symb_pos_sx_correct < tolerance_coord&& symb_pos_sy_correct < tolerance_coord&& symb_pos_ex_correct < tolerance_coord&& symb_pos_ey_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", symb_pos_sx_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", symb_pos_sy_correct < tolerance_coord);
@@ -1515,17 +1553,22 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	}
 
 	// TODO Вынести первод из радиан в градусы в функцию
-	double k = 100.0;
-	if (abs(angz) > 0.0001) {
-		angz = round((angz * 180 / PI) * k) / k;
+	double k = 100000.0;
+	if (abs(angz) > 0.0000001) {
+		angz = fmod(round((angz * 180.0 / PI) * k) / k, 360.0);
 	}
 	else {
 		angz = 0.0;
 	}
-	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 100;
+	if (params.ContainsKey(globnorthkey)) {
+		double north = params.Get(globnorthkey).val.doubleValue;
+		double angznorth = round((north - angz) * k) / k;
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
+	}
+	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 10000;
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
-	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", symb_rotangle_fraction < 1.0);
+	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", symb_rotangle_fraction < 0.1);
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz, 5.0));
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
@@ -2395,8 +2438,8 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 		if (err != NoError) {
 			msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 			return;
+		}
 	}
-}
 
 	// TODO Оптимизировать, разнести по функциям
 	bool flagFind = false;
@@ -2580,8 +2623,8 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				needGetElement = true;
 			}
 			if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
+		}
 	}
-}
 
 	if (needGetAllDefinitions) {
 		GetAllPropertyDefinitionToParamDict(params, elemGuid);
@@ -2622,6 +2665,13 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				needCompare = ParamHelpers::ReadPropertyValues(elemGuid, paramByType);
 			}
 			if (paramType.IsEqual("coord")) {
+
+				// Для определения угла к северу нам потребуется значение направления на север.
+				// Оно должно быть в Info, проверим и добавим, если оно есть
+				GS::UniString globnorthkey = "{glob:glob_north_dir}";
+				if (propertyParams.ContainsKey(globnorthkey)) {
+					paramByType.Add(globnorthkey, propertyParams.Get(globnorthkey));
+				}
 				needCompare = ParamHelpers::ReadElemCoords(element, paramByType);
 			}
 			if (paramType.IsEqual("gdl")) {
@@ -2957,7 +3007,7 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 				params.Set(param.rawName, param);
 				flag_find_ID = true;
 			}
-	}
+		}
 		else {
 			if (param.fromGDLdescription && eltype == API_ObjectID) {
 				paramBydescription.Add(param.rawName, param);
@@ -2966,7 +3016,7 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 				if (param.fromGDLparam) paramByName.Add(param.rawName, param);
 			}
 		}
-}
+	}
 	if (paramBydescription.IsEmpty() && paramByName.IsEmpty() && !flag_find_ID) return false;
 
 	// Поиск по описанию
@@ -3804,12 +3854,12 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 					fillThick = memo.columnSegments[0].assemblySegmentData.nominalHeight;
 				}
 				if (structtype == API_ProfileStructure) constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
-		}
+			}
 			else {
 				msg_rep("materialString::GetComponents", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
 				return false;
 			}
-	}
+		}
 		else {
 			msg_rep("materialString::GetComponents", "Multisegment column not supported", NoError, element.header.guid);
 			return false;
@@ -3868,7 +3918,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	default:
 		return false;
 		break;
-}
+	}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв

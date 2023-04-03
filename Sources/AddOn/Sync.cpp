@@ -460,7 +460,11 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 				WriteData writeOne;
 				writeOne.stringformat = stringformat;
 				writeOne.ignorevals = ignorevals;
-
+				if (param.fromCoord && param.rawName.Contains("north_dir")) {
+					ParamDictValue paramDict;
+					ParamHelpers::AddVal(paramDict, "info:glob_north_dir");
+					ParamHelpers::AddParamDictValue2ParamDictElement(elemGuid, paramDict, paramToRead);
+				}
 				// Вытаскиваем параметры для материалов, если такие есть
 				if (param.fromMaterial) {
 					ParamDictValue paramDict;

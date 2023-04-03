@@ -22,7 +22,6 @@ bool ResetProperty(ParamDictValue& propertyParams) {
 // Сброс свойств во всех БД файла и настройках по умолчанию
 //--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
-	if (definitions_to_reset.GetSize() > 0) return 0;
 	DoneElemGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
 	UInt32 flag_reset = 0;
 	GSErrCode	err = NoError;
