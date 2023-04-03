@@ -136,6 +136,8 @@ typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 // --------------------------------------------------------------------
 bool is_equal(double x, double y);
 
+bool UniStringToDouble(const GS::UniString& var, double& x);
+
 // --------------------------------------------------------------------
 // Содержит ли значения элементиз списка игнорируемых
 // --------------------------------------------------------------------

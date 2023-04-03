@@ -65,6 +65,15 @@ Int32 DoubleM2IntMM(const double& value) {
 	return param_int;
 }
 
+bool UniStringToDouble(const GS::UniString& var, double& x) {
+	if (var.IsEmpty()) return false;
+	GS::UniString var_clear = var;
+	var_clear.Trim();
+	var_clear.ReplaceAll(",", ".");
+	std::string var_str = var_clear.ToCStr(0, MaxUSize, GChCode).Get();
+	return scanf(var_str.c_str(), "%lf", &x)>0;
+}
+
 // --------------------------------------------------------------------
 // Округлить целое n вверх до ближайшего целого числа, кратного k
 // --------------------------------------------------------------------
@@ -531,8 +540,8 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 			layer.header.typeID = API_LayerID;
 			layer.header.index = elem_head.layer;
 			if (ACAPI_Attribute_Get(&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-		}
 	}
+}
 	GS::UniString msg = modulename + ": " + reportString + " " + error_type;
 	ACAPI_WriteReport(msg, false);
 }
@@ -609,11 +618,11 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 			GSErrCode err = ACAPI_Goodies(APIAny_NeigIDToElemTypeID, &neigID, &elementType);
 #endif // AC_26
 			if (err == NoError) GetRelationsElement(neig.guid, elementType, syncSettings, guidArray);
-		}
 	}
+		}
 	return guidArray;
 #endif // AC_22
-}
+	}
 
 void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname, bool addSubelement) {
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable, addSubelement);
@@ -809,8 +818,8 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 					for (Int32 i = 0; i < relData.nMorph - 1; i++) {
 						API_Guid elGuid = *(relData.morphs)[i];
 						subelemGuid.Push(elGuid);
-					}
-				}
+	}
+}
 #else
 				typeinzone.Push(API_ObjectID);
 				typeinzone.Push(API_LampID);
@@ -841,7 +850,7 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 					}
 				}
 #endif
-			}
+}
 		}
 		break;
 	default:
@@ -1359,7 +1368,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1895,11 +1904,11 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
 			}
-		}
+			}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
-	} break;
+		} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26)
@@ -1924,7 +1933,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	}
 	return string;
-}
+	}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (lhs.val.type) {
@@ -2691,7 +2700,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			}
 		}
 	}
-}
+	}
 
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
@@ -2996,12 +3005,13 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 				param.type = API_PropertyStringValueType;
 				param.val.canCalculate = true;
 				param.val.boolValue = !infoString.IsEmpty();
-				std::string var = infoString.ToCStr(0, MaxUSize, GChCode).Get();
-				param.val.doubleValue = atof(var.c_str());
-				param.val.intValue = atoi(var.c_str());
-				if (param.val.intValue == 0 && param.val.boolValue) {
+
+				if (UniStringToDouble(infoString, param.val.doubleValue)) {
+					param.val.intValue = (GS::Int32)param.val.doubleValue;
+				}
+				else {
 					param.val.intValue = !infoString.IsEmpty();
-					param.val.doubleValue = !infoString.IsEmpty() * 1.0;
+					param.val.doubleValue = param.val.intValue * 1.0;
 				}
 				param.val.uniStringValue = infoString;
 				params.Set(param.rawName, param);
@@ -3253,12 +3263,16 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 		pvalue.val.type = API_PropertyStringValueType;
 		param_string = nthParameter.value.uStr;
 		param_bool = (!param_string.IsEmpty());
-		std::string var = param_string.ToCStr(0, MaxUSize, GChCode).Get();
-		param_real = atof(var.c_str());
-		param_int = atoi(var.c_str());
-		if (param_bool && param_int == 0) {
-			param_int = 1;
-			param_real = 1.0;
+
+		if (UniStringToDouble(param_string, param_real)) {
+			param_int = (GS::Int32)param_real;
+			if (param_int / 1 < param_real) param_int += 1;
+		}
+		else {
+			if (param_bool) {
+				param_int = 1;
+				param_real = 1.0;
+			}
 		}
 	}
 	else {
@@ -3401,11 +3415,15 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	case API_PropertyGuidValueType:
 		pvalue.val.type = API_PropertyStringValueType;
 		pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty();
-		pvalue.val.doubleValue = atof(var.c_str());
-		pvalue.val.intValue = atoi(var.c_str());
-		if (pvalue.val.boolValue && pvalue.val.intValue == 0) {
-			pvalue.val.intValue = 1;
-			pvalue.val.doubleValue = 1.0;
+		if (UniStringToDouble(pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
+			pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+			if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
+		}
+		else {
+			if (pvalue.val.boolValue) {
+				pvalue.val.intValue = 1;
+				pvalue.val.doubleValue = 1.0;
+			}
 		}
 		break;
 	case API_PropertyUndefinedValueType:
@@ -3466,13 +3484,16 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
 	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{gdl:" + paramName.ToLowerCase() + "}";
 	pvalue.val.uniStringValue = strvalue;
-	std::string var = strvalue.ToCStr(0, MaxUSize, GChCode).Get();
-	pvalue.val.doubleValue = atof(var.c_str());
-	pvalue.val.intValue = atoi(var.c_str());
-	pvalue.val.boolValue = !strvalue.IsEmpty();
-	if (pvalue.val.boolValue && pvalue.val.intValue == 0) { // Конвертация провалилась
-		pvalue.val.intValue = 1;
-		pvalue.val.doubleValue = 1.0;
+	pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty();
+	if (UniStringToDouble(pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
+		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+		if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
+	}
+	else {
+		if (pvalue.val.boolValue) {
+			pvalue.val.intValue = 1;
+			pvalue.val.doubleValue = 1.0;
+		}
 	}
 	pvalue.val.type = API_PropertyStringValueType;
 	pvalue.val.canCalculate = true;
