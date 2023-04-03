@@ -65,13 +65,23 @@ Int32 DoubleM2IntMM(const double& value) {
 	return param_int;
 }
 
+bool UniStringToInt(const GS::UniString& var, int& x) {
+	if (var.IsEmpty()) return false;
+	GS::UniString var_clear = var;
+	var_clear.Trim();
+	std::string var_str = var_clear.ToCStr(0, MaxUSize, GChCode).Get();
+	int n = sscanf(var_str.c_str(), "%d", &x);
+	return n > 0;
+}
+
 bool UniStringToDouble(const GS::UniString& var, double& x) {
 	if (var.IsEmpty()) return false;
 	GS::UniString var_clear = var;
 	var_clear.Trim();
 	var_clear.ReplaceAll(",", ".");
 	std::string var_str = var_clear.ToCStr(0, MaxUSize, GChCode).Get();
-	return scanf(var_str.c_str(), "%lf", &x)>0;
+	int n = sscanf(var_str.c_str(), "%lf", &x);
+	return n > 0;
 }
 
 // --------------------------------------------------------------------
@@ -164,7 +174,7 @@ GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSetti
 #else
 		err = ACAPI_Element_AttachObserver(objectId);
 #endif
-	}
+}
 	return err;
 }
 
@@ -270,7 +280,7 @@ bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
 		elements.Push(objectId);
 		ACAPI_TeamworkControl_ReserveElements(elements, &conflicts);
 		if (!conflicts.IsEmpty()) return false; // Не получилось зарезервировать
-	}
+}
 	if (ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) {
 		if (ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) {
 			if (ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
@@ -540,8 +550,8 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 			layer.header.typeID = API_LayerID;
 			layer.header.index = elem_head.layer;
 			if (ACAPI_Attribute_Get(&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
+		}
 	}
-}
 	GS::UniString msg = modulename + ": " + reportString + " " + error_type;
 	ACAPI_WriteReport(msg, false);
 }
@@ -594,7 +604,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 		BMKillHandle((GSHandle*)&selNeigs);
 #endif // AC_22
 		return GS::Array<API_Guid>();
-	}
+}
 	GS::Array<API_Guid> guidArray;
 #ifdef AC_22
 	USize nSel = BMGetHandleSize((GSHandle)selNeigs) / sizeof(API_Neig);
@@ -618,8 +628,8 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 			GSErrCode err = ACAPI_Goodies(APIAny_NeigIDToElemTypeID, &neigID, &elementType);
 #endif // AC_26
 			if (err == NoError) GetRelationsElement(neig.guid, elementType, syncSettings, guidArray);
-	}
 		}
+	}
 	return guidArray;
 #endif // AC_22
 	}
@@ -694,7 +704,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	elementType = elem_head.typeID;
 #endif
 	return err;
-}
+	}
 
 #ifndef AC_26
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr) {
@@ -818,8 +828,8 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 					for (Int32 i = 0; i < relData.nMorph - 1; i++) {
 						API_Guid elGuid = *(relData.morphs)[i];
 						subelemGuid.Push(elGuid);
-	}
-}
+					}
+		}
 #else
 				typeinzone.Push(API_ObjectID);
 				typeinzone.Push(API_LampID);
@@ -850,12 +860,12 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 					}
 				}
 #endif
+	}
 }
-		}
 		break;
 	default:
 		break;
-	}
+}
 	ACAPI_DisposeRoomRelationHdls(&relData);
 }
 
@@ -1868,7 +1878,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-	}
+}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -1904,7 +1914,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
 			}
-			}
+		}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
@@ -2505,7 +2515,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	err = ACAPI_Element_ChangeMemo(elemGuidt, APIMemoMask_AddPars, &elemMemo);
 	if (err != NoError) msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
 	ACAPI_DisposeAddParHdl(&apiParams.params);
-}
+	}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -2700,7 +2710,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			}
 		}
 	}
-	}
+}
 
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
