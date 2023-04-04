@@ -99,8 +99,8 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncAll - read", time, NoError, APINULLGuid);
 	if (!paramToWrite.IsEmpty()) {
-	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
-	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
+		GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
+		ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 			long time_start = clock();
 			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &title, &i);
@@ -108,8 +108,8 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 			long time_end = clock();
 			GS::UniString time = title + GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 			msg_rep("SyncAll - write", time, NoError, APINULLGuid);
-		return NoError;
-							  });
+			return NoError;
+								  });
 	}
 	else {
 		msg_rep("SyncAll - write", "No data to write", NoError, APINULLGuid);
@@ -179,7 +179,6 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings& syncSettings) {
-
 	GS::UniString fmane = "Sync Selected";
 	GS::Array<API_Guid> guidArray = GetSelectedElements(false, true, true);
 	if (guidArray.IsEmpty()) return;
@@ -226,7 +225,17 @@ void SyncSelected(const SyncSettings& syncSettings) {
 // -----------------------------------------------------------------------------
 void RunParamSelected(const SyncSettings& syncSettings) {
 	GS::UniString fmane = "Run parameter script";
+
+	// Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
+	API_AttributeIndex layerCombIndex;
+	API_DatabaseInfo databaseInfo;
+	BNZeroMemory(&databaseInfo, sizeof(API_DatabaseInfo));
+	GSErrCode err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
+	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
+	if (err != NoError) return;
 	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);
+	if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
+	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &databaseInfo, nullptr);
 }
 
 // -----------------------------------------------------------------------------
@@ -238,6 +247,16 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	tElemHead.guid = elemGuid;
 	GSErrCode	err = ACAPI_Element_GetHeader(&tElemHead);
 	if (err != NoError) return;
+	API_DatabaseInfo databaseInfo;
+	API_DatabaseInfo dbInfo;
+	err = ACAPI_Database(APIDb_GetContainingDatabaseID, &tElemHead.guid, &dbInfo);
+	if (err != NoError) return;
+	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
+	if (err != NoError) return;
+	if (dbInfo.databaseUnId != databaseInfo.databaseUnId) {
+		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+		if (err != NoError) return;
+	}
 	err = ACAPI_Goodies(APIAny_RunGDLParScriptID, &tElemHead, 0);
 	if (err != NoError) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
@@ -353,6 +372,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 					else {
 						paramsFrom = paramToRead.Get(elemGuidFrom);
 					}
+
 					// Проверяем наличие имён в словаре параметров
 					if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
 						ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
@@ -465,6 +485,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					ParamHelpers::AddVal(paramDict, "info:glob_north_dir");
 					ParamHelpers::AddParamDictValue2ParamDictElement(elemGuid, paramDict, paramToRead);
 				}
+
 				// Вытаскиваем параметры для материалов, если такие есть
 				if (param.fromMaterial) {
 					ParamDictValue paramDict;
