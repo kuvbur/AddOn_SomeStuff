@@ -84,6 +84,15 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 		return NoError;
 	}
 	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
+	if (elemType->elemHead.hotlinkGuid != APINULLGuid) return false;
+	// Смотрим - что поменялось
+	API_ActTranPars actTranPars;
+	ACAPI_Notify_GetTranParams(&actTranPars);
+	API_EditCmdID acttype = actTranPars.typeID;
+	if (acttype == APIEdit_Drag) {
+		if (is_equal(actTranPars.theDisp.x,0) && is_equal(actTranPars.theDisp.y, 0) && is_equal(actTranPars.theDispZ, 0)) return NoError;
+	}
+
 #ifdef AC_26
 	if (elemType->elemHead.type.typeID == API_GroupID) return NoError;
 	if (!CheckElementType(elemType->elemHead.type.typeID, syncSettings)) return NoError;
@@ -96,15 +105,11 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	ParamDictElement paramToWrite = {};
 	switch (elemType->notifID) {
 	case APINotifyElement_New:
-	case APINotifyElement_Copy:
+	//case APINotifyElement_Copy:
 	case APINotifyElement_Change:
 	case APINotifyElement_Edit:
-	case APINotifyElement_Undo_Modified:
-	case APINotifyElement_Redo_Created:
-	case APINotifyElement_Redo_Modified:
-	case APINotifyElement_Redo_Deleted:
 	case APINotifyElement_ClassificationChange:
-		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite);
+		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, acttype);
 		if (!paramToWrite.IsEmpty()) {
 			ParamHelpers::ElementsWrite(paramToWrite);
 		}
