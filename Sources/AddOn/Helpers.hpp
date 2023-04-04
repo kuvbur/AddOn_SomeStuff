@@ -52,7 +52,7 @@ static const Int32 BuildingMaterialManufacturerID = 11;
 static const Int32 ThicknessID = 12;
 static const Int32 RenumIgnoreID = 13;
 static const Int32 RenumAddID = 14;
-
+static const Int32 BuildingMaterialCutFillID = 15;
 static const GSCharCode GChCode = CC_Cyrillic;
 
 typedef struct {
