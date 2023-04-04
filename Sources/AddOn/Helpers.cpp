@@ -174,7 +174,7 @@ GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSetti
 #else
 		err = ACAPI_Element_AttachObserver(objectId);
 #endif
-}
+	}
 	return err;
 }
 
@@ -280,7 +280,7 @@ bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
 		elements.Push(objectId);
 		ACAPI_TeamworkControl_ReserveElements(elements, &conflicts);
 		if (!conflicts.IsEmpty()) return false; // Не получилось зарезервировать
-}
+	}
 	if (ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) {
 		if (ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) {
 			if (ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
@@ -604,7 +604,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 		BMKillHandle((GSHandle*)&selNeigs);
 #endif // AC_22
 		return GS::Array<API_Guid>();
-}
+	}
 	GS::Array<API_Guid> guidArray;
 #ifdef AC_22
 	USize nSel = BMGetHandleSize((GSHandle)selNeigs) / sizeof(API_Neig);
@@ -632,7 +632,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 	}
 	return guidArray;
 #endif // AC_22
-	}
+}
 
 void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname, bool addSubelement) {
 	GS::Array<API_Guid> guidArray = GetSelectedElements(assertIfNoSel, onlyEditable, addSubelement);
@@ -704,7 +704,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	elementType = elem_head.typeID;
 #endif
 	return err;
-	}
+}
 
 #ifndef AC_26
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr) {
@@ -829,7 +829,7 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 						API_Guid elGuid = *(relData.morphs)[i];
 						subelemGuid.Push(elGuid);
 					}
-		}
+				}
 #else
 				typeinzone.Push(API_ObjectID);
 				typeinzone.Push(API_LampID);
@@ -860,12 +860,12 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 					}
 				}
 #endif
-	}
-}
+			}
+		}
 		break;
 	default:
 		break;
-}
+	}
 	ACAPI_DisposeRoomRelationHdls(&relData);
 }
 
@@ -1378,7 +1378,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1638,6 +1638,9 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 	nameproperty = "property:" + RSGetIndString(AddOnStringsID, BuildingMaterialManufacturerID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "property:BuildingMaterialProperties/Building Material Manufacturer";
 
+	nameproperty = "property:" + RSGetIndString(AddOnStringsID, BuildingMaterialCutFillID, ACAPI_GetOwnResModule());
+	if (name.IsEqual(nameproperty)) return "property:BuildingMaterialProperties/Building Material CutFill";
+
 	nameproperty = "property:" + RSGetIndString(AddOnStringsID, ThicknessID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "material:layer thickness";
 
@@ -1878,7 +1881,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-}
+	}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -1918,7 +1921,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
-		} break;
+	} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26)
@@ -1943,7 +1946,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	}
 	return string;
-	}
+}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (lhs.val.type) {
@@ -2515,7 +2518,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	err = ACAPI_Element_ChangeMemo(elemGuidt, APIMemoMask_AddPars, &elemMemo);
 	if (err != NoError) msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
 	ACAPI_DisposeAddParHdl(&apiParams.params);
-	}
+}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -3998,9 +4001,11 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 // --------------------------------------------------------------------
 bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue & paramsAdd) {
 	API_Attribute	attrib = {};
+	GS::UniString name = "";
 	BNZeroMemory(&attrib, sizeof(API_Attribute));
 	attrib.header.typeID = API_BuildingMaterialID;
 	attrib.header.index = constrinx;
+	attrib.header.uniStringNamePtr = &name;
 	GS::UniString attribsuffix = GS::UniString::Printf("%d", constrinx);
 	GSErrCode error = ACAPI_Attribute_Get(&attrib);
 	if (error != NoError) {
@@ -4009,12 +4014,37 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 	};
 
 	// Определения и свойста для элементов
+	bool flag_find = false;
 	GS::Array<API_PropertyDefinition> propertyDefinitions;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
 		if (param.fromAttribDefinition) {
-			API_PropertyDefinition definition = param.definition;
-			if (!definition.name.Contains(CharENTER)) propertyDefinitions.Push(definition);
+			bool flag_add = true;
+
+			// Если в списке есть штриховка или покрытие - получим их имена.
+			if (param.rawName.Contains("buildingmaterialproperties/building material cutfill")) {
+				GS::UniString namet = "";
+				API_Attribute	attribt = {};
+				BNZeroMemory(&attribt, sizeof(API_Attribute));
+				attribt.header.typeID = API_FilltypeID;
+				attribt.header.index = attrib.buildingMaterial.cutFill;
+				attribt.header.uniStringNamePtr = &namet;
+				error = ACAPI_Attribute_Get(&attribt);
+				ParamValue pvalue;
+				GS::UniString rawName = param.rawName;
+				rawName.ReplaceAll("}", CharENTER + attribsuffix + "}");
+				pvalue.name = param.name + CharENTER + attribsuffix;
+				pvalue.rawName = rawName;
+				ParamHelpers::ConvValue(pvalue, pvalue.name, namet);
+				pvalue.fromMaterial = true;
+				ParamHelpers::AddParamValue2ParamDict(param.fromGuid, pvalue, params);
+				flag_add = false;
+				flag_find = true;
+			}
+			if (flag_add) {
+				API_PropertyDefinition definition = param.definition;
+				if (!definition.name.Contains(CharENTER)) propertyDefinitions.Push(definition);
+			}
 		}
 	}
 	if (!propertyDefinitions.IsEmpty()) {
@@ -4022,12 +4052,8 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 		error = ACAPI_Attribute_GetPropertyValues(attrib.header, propertyDefinitions, properties);
 		if (error != NoError) {
 			msg_rep("materialString::GetAttributeValues", "ACAPI_Attribute_GetPropertyValues", error, APINULLGuid);
-			return false;
+			return flag_find;
 		};
-		if (error != NoError) {
-			msg_rep("ParamDictGetPropertyValues", "ACAPI_Attribute_GetPropertyValues", error, APINULLGuid);
-			return false;
-		}
 		for (UInt32 i = 0; i < properties.GetSize(); i++) {
 			properties[i].definition.name = properties[i].definition.name + CharENTER + attribsuffix;
 			GS::UniString val = PropertyHelpers::ToString(properties[i]);
@@ -4038,7 +4064,7 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 				}
 			}
 		}
-		return (ParamHelpers::AddProperty(params, properties));
+		return (ParamHelpers::AddProperty(params, properties) || flag_find);
 	}
-	return false;
+	return flag_find;
 }
