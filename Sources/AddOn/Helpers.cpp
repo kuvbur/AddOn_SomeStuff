@@ -182,6 +182,8 @@ GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSetti
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
 bool CheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings) {
+	if (elementType == API_GroupID)
+		return false;
 	if (elementType == API_DimensionID)
 		return true;
 	if (syncSettings.wallS &&

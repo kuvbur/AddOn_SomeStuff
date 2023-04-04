@@ -141,8 +141,9 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 	if (propertyParams.IsEmpty()) return true;
 	bool flag_chanel = false;
+	API_EditCmdID acttype = APIEdit_General;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
+		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite, acttype);
 		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle_, &i);
 	}
 	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
@@ -155,7 +156,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
 // -----------------------------------------------------------------------------
-void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
+void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, API_EditCmdID& acttype) {
 	API_ElemTypeID elementType;
 	GSErrCode err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) return;
@@ -163,13 +164,13 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 	// Получаем список связанных элементов
 	GS::Array<API_Guid> subelemGuids;
 	GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuids);
-	SyncData(elemGuid, syncSettings, subelemGuids, propertyParams, paramToWrite);
+	SyncData(elemGuid, syncSettings, subelemGuids, propertyParams, paramToWrite, acttype);
 	if (!subelemGuids.IsEmpty() && SyncRelationsElement(elementType, syncSettings)) {
 		for (UInt32 i = 0; i < subelemGuids.GetSize(); ++i) {
 			API_Guid subelemGuid = subelemGuids[i];
 			if (subelemGuid != elemGuid) {
 				GS::Array<API_Guid> epm;
-				SyncData(subelemGuid, syncSettings, epm, propertyParams, paramToWrite);
+				SyncData(subelemGuid, syncSettings, epm, propertyParams, paramToWrite, acttype);
 			}
 		}
 	}
@@ -189,8 +190,9 @@ void SyncSelected(const SyncSettings& syncSettings) {
 	short nPhase = 1;
 	ACAPI_Interface(APIIo_InitProcessWindowID, &fmane, &nPhase);
 	long time_start = clock();
+	API_EditCmdID acttype = APIEdit_General;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
+		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite, acttype);
 		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
 			return;
@@ -292,7 +294,7 @@ bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings&
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, API_EditCmdID& acttype) {
 	GSErrCode	err = NoError;
 	if (!IsElementEditable(elemGuid, syncSettings, true)) return;
 
@@ -323,9 +325,8 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	ParamDictElement paramToRead; // Словарь с параметрами для чтения
 	bool hasSub = false;
 	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
-
 		// Получаем список правил синхронизации из всех свойств
-		ParseSyncString(elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub); // Парсим описание свойства
+		ParseSyncString(elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, acttype); // Парсим описание свойства
 	}
 	if (mainsyncRules.IsEmpty()) return;
 	if (propertyParams.IsEmpty()) {
@@ -447,7 +448,8 @@ void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictEleme
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub) {
+bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, API_EditCmdID& acttype) {
+	// TODO Попробовать отключать часть синхронизаций в зависимости от изменённых параметров (API_ActTranPars acttype)
 	GS::UniString description_string = definition.description;
 	if (description_string.IsEmpty()) {
 		return false;
