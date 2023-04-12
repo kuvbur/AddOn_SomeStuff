@@ -3,10 +3,8 @@ pushd %~dp0
 
 set AC_Version=AC22
 set Dev_Kit_Name=API Development Kit 22.3004
-set VS_Version=Visual Studio 14 2015
+set VS_Version=Visual Studio 16 2019
 set VS_Toolset=v140
-
-
 
 set Dev_Kit_Path_WIN="C:/Program Files/GRAPHISOFT/%Dev_Kit_Name%"
 set Dev_Kit_Path_Local="../Build/%Dev_Kit_Name%"

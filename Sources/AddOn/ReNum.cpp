@@ -1,17 +1,10 @@
 ﻿//------------ kuvbur 2022 ------------
 #include	<map>
 #include	<unordered_map>
-#include	"3dpart/alphanum.hpp"
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"ReNum.hpp"
 #include	"Helpers.hpp"
-
-typedef std::map<std::string, SortGUID, doj::alphanum_less<std::string> > Values; // Словарь элементов по критериям
-
-typedef std::unordered_map <short, Values> TypeValues; // Словарь по типам нумерации
-
-typedef std::unordered_map <std::string, TypeValues> Delimetr; // Словарь по разделителю
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Итак, задача, суть такова:
@@ -56,7 +49,7 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 	return NoError;
 }
 
-bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem) {
+bool GetRenumElements(GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem) {
 
 	// Получаем список правил суммирования
 	Rules rules;
@@ -79,6 +72,36 @@ bool GetRenumElements(const GS::Array<API_Guid> guidArray, ParamDictElement& par
 	if (paramToReadelem.IsEmpty() || rules.IsEmpty()) return false;
 	ParamDictValue propertyParams; // Все свойства уже считаны, поэтому словарь просто пустой
 	ParamHelpers::ElementsRead(paramToReadelem, propertyParams); // Читаем значения
+
+	// Получаем список пронумерованных прежде элементов
+	GS::Array<API_Guid> setGuids;
+	API_UserData userData;
+	BNZeroMemory(&userData, sizeof(userData));
+	userData.platformSign = GS::Act_Platform_Sign;
+	userData.dataVersion = 2;
+	userData.dataHdl = BMAllocateHandle(0, ALLOCATE_CLEAR, 0);
+	GSErrCode err = ACAPI_ElementSet_Identify(APINULLGuid, &setGuids);
+	if (err == NoError) {
+		for (UInt32 i = 0; i < setGuids.GetSize(); i++) {
+			BNZeroMemory(&userData, sizeof(userData));
+			userData.platformSign = GS::Act_Platform_Sign;
+			userData.dataVersion = 2;
+			userData.dataHdl = BMAllocateHandle(0, ALLOCATE_CLEAR, 0);
+			if (userData.dataHdl != nullptr) {
+				userData.dataHdl = BMReallocHandle(userData.dataHdl, sizeof(API_Guid), REALLOC_FULLCLEAR, 0);
+				if (userData.dataHdl != nullptr) {
+					GS::Array<API_Guid> elemGuids;
+					err = ACAPI_ElementSet_GetData(setGuids[i], &elemGuids, &userData);
+					if (userData.dataHdl != nullptr) {
+						API_Guid ruleGuid = *reinterpret_cast<API_Guid*> (*userData.dataHdl);
+						if (rules.ContainsKey(ruleGuid) && !elemGuids.IsEmpty()) rules.Get(ruleGuid).exselemts.Append(elemGuids);
+					}
+				}
+			}
+			err = ACAPI_ElementSet_Delete(setGuids[i]);
+		}
+	}
+	BMKillHandle(&userData.dataHdl);
 
 	// Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
 	for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -106,7 +129,6 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 				GS::UniString paramName = definition.description.ToLowerCase().GetSubstring('{', '}', 0);
 				paramName.ReplaceAll("\\/", "/");
 				GS::UniString rawNameposition = "{";
-				GS::UniString rawNameprefix = "";
 				if (paramName.Contains(";")) { // Есть указание на нули
 					GS::Array<GS::UniString>	partstring;
 					int nparam = StringSplt(paramName, ";", partstring);
@@ -114,20 +136,14 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 					if (nparam > 1) {
 						if (partstring[1] == "null") rulecritetia.nulltype = ADDZEROS;
 						if (partstring[1] == "allnull") rulecritetia.nulltype = ADDMAXZEROS;
-						if (rulecritetia.nulltype == NOZEROS) { // Префикс
-							rawNameprefix = "{" + partstring[0] + "}";
-						}
+						if (partstring[1] == "space") rulecritetia.nulltype = ADDSPACE;
+						if (partstring[1] == "allspace") rulecritetia.nulltype = ADDMAXSPACE;
 					};
-					if (nparam > 2) {
-						if (partstring[2] == "null") rulecritetia.nulltype = ADDZEROS;
-						if (partstring[2] == "allnull") rulecritetia.nulltype = ADDMAXZEROS;
-					}
 				}
 				else {
 					rawNameposition = rawNameposition + paramName + "}";
 				}
 				if (!rawNameposition.Contains("property")) rawNameposition.ReplaceAll("{", "{gdl:");
-				if (!rawNameprefix.IsEmpty() && !rawNameprefix.Contains("property")) rawNameprefix.ReplaceAll("{", "{gdl:");
 
 				// Проверяем - есть ли у объекта такое свойство-правило
 				if (propertyParams.ContainsKey(rawNameposition)) {
@@ -154,11 +170,12 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 						// Если такие свойства есть - записываем правило
 						if (propertyParams.ContainsKey(rawNamecriteria) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty()) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty())) {
 							rulecritetia.state = true;
+							if (definition.valueType != API_PropertyBooleanValueType) rulecritetia.oldalgoritm = false;
 							rulecritetia.position = rawNameposition;
 							rulecritetia.flag = param.rawName;
 							rulecritetia.criteria = rawNamecriteria;
 							rulecritetia.delimetr = rawNamedelimetr;
-							rulecritetia.prefix = rawNameprefix;
+							rulecritetia.guid = definition.guid;
 							flag = true;
 						}
 					}
@@ -176,34 +193,235 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 				if (!rulecritetia.flag.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.flag), paramToRead);
 				if (!rulecritetia.criteria.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.criteria), paramToRead);
 				if (!rulecritetia.delimetr.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.delimetr), paramToRead);
-				if (!rulecritetia.prefix.IsEmpty()) ParamHelpers::AddParamValue2ParamDict(elemGuid, propertyParams.Get(rulecritetia.prefix), paramToRead);
 			}
 		}
 	}
 	return hasRenum;
 }
 
-void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem) {
-	if (!rule.state) return;
-	GS::Array<API_Guid>		elemArray = rule.elemts;
-	Delimetr delimetrList;
+void GetCountPos(const GS::Array<RenumPos>& eleminpos, std::map<std::string, int>& npos) {
+	for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
+		std::string pos = eleminpos[j].strpos;
+		if (npos.count(pos) != 0) {
+			npos[pos] = npos[pos] + 1;
+		}
+		else {
+			npos[pos] = 1;
+		}
+	}
+}
 
-	// Заполняем типы нумерации
-	bool hasdelimetr = !rule.delimetr.IsEmpty();
+// Возвращает самое часто встречающееся значение позиции
+// Необходима для подбора элементов с одинаковым критерием, но разной позицией
+RenumPos GetMostFrequentPos(const GS::Array<RenumPos>& eleminpos) {
+	std::map<std::string, int> npos; // Словарь для подсчёта
+	UInt32 inx = 0;
+	int maxcont = 0;
+	for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
+		std::string pos = eleminpos[j].strpos;
+		if (npos.count(pos) != 0) {
+			int countpos = npos[pos] + 1;
+			npos[pos] = countpos;
+			if (countpos > maxcont) {
+				maxcont = countpos;
+				inx = j;
+			}
+		}
+		else {
+			npos[pos] = 1;
+		}
+	}
+	RenumPos out = eleminpos.Get(inx);
+	return out;
+}
+
+RenumPos GetPos(DRenumPosDict& unicpos, DStringDict& unicriteria, const std::string& delimetr, const std::string& criteria) {
+	RenumPos pos(1);
+	while (unicpos[delimetr].count(pos.strpos) != 0)
+	{
+		pos.Add(1);
+	}
+	unicpos[delimetr][pos.strpos] = criteria;
+	unicriteria[delimetr][criteria] = pos;
+	return pos;
+}
+
+void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem) {
+
+	// Рассортируем элементы по разделителю, типу нумерации и критерию.
+	Delimetr delimetrList;
+	if (!ElementsSeparation(rule, paramToReadelem, delimetrList)) return;
+
+	DRenumPosDict unicpos;				// Словарь соответствия позиции критерию
+	DStringDict unicriteria;			// Словарь соответствия критерия поизции (обратный предыдущему)
+	std::map<std::string, RenumPos> maxpos;	// Словарь максимальных позиций
+	RenumPos maxposall;
+
+	//Определим часто встречающиеся позиции для критериев. Ищем только в игнорируемых и добавленных
+	if (!rule.oldalgoritm) {
+		for (Delimetr::iterator i = delimetrList.begin(); i != delimetrList.end(); ++i) {
+			TypeValues& tv = i->second;
+			std::string delimetr = i->first;
+			RenumPos maxposdelim;
+			if (tv.count(RENUM_IGNORE) != 0) {
+				for (Values::iterator k = tv[RENUM_IGNORE].begin(); k != tv[RENUM_IGNORE].end(); ++k) {
+					GS::Array<RenumPos> eleminpos = k->second.elements;
+					std::string criteria = k->first;
+					RenumPos pos = GetMostFrequentPos(eleminpos);
+					unicriteria[delimetr][criteria] = pos;
+					unicpos[delimetr][pos.strpos] = criteria;
+
+					// Игнорируемые позиции нельзя занимать. Добавим их в словарь
+					for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
+						if (pos.strpos != eleminpos[j].strpos) unicpos[delimetr][eleminpos[j].strpos] = criteria;
+					}
+					maxposdelim.SetToMax(pos);
+				}
+			}
+			if (tv.count(RENUM_ADD) != 0) {
+				for (Values::iterator k = tv[RENUM_ADD].begin(); k != tv[RENUM_ADD].end(); ++k) {
+					GS::Array<RenumPos> eleminpos = k->second.elements;
+					std::string criteria = k->first;
+
+					// Отбираем элементы, не встретившиеся прежде в игнорируемых
+					if (unicriteria[delimetr].count(criteria) == 0) { // Если такой критерий уже есть в словаре - значит для него есть подходящая позиция
+						RenumPos pos = GetMostFrequentPos(eleminpos);
+						unicriteria[delimetr][criteria] = pos;
+					}
+				}
+			}
+			maxposall.SetToMax(maxposdelim);
+			maxpos[delimetr] = maxposdelim;
+		}
+	}
+
+	// Предолагаемое поведение:
+	// Игнорируемые позиции (RENUM_IGNORE) - не меняют значения.
+	//						Остальные элементы, при совпадении критерия, могут принимать значения подходящих игнорируемых.
+	//						Позиции игнорируемых могут совпадать.
+	// Добавочные позиции (RENUM_ADD) - меняют значения в случаях:
+	//						Сначала проверяем по критерию ищем подходящую позацию среди игнорируемых.
+	//						В качестве подходящей для назначения выбирается самая часто встречающаяся позиция.
+	//
+	//
+	// Новые позиции (RENUM_NORMAL)
+	//						Сначала идёт поиск по подходящим позициям предыдущих типов. Если не нашли - ищем по-порядку свободную позицию.
+	// Если критерий элемента совпадает с подходящим критерием игнорируемого - будет применена позиция игнорируемого
+
+	//Теперь последовательно идём по словарю c разделителями, вытаскиваем оттуда guid и нумеруем
+	for (Delimetr::iterator i = delimetrList.begin(); i != delimetrList.end(); ++i) {
+		TypeValues& tv = i->second;
+		std::string delimetr = i->first;
+		RenumPos maxposdelim;
+
+		// Получаем позиции добавляемых элементов
+		if (tv.count(RENUM_ADD) != 0 && !rule.oldalgoritm) {
+			for (Values::iterator k = tv[RENUM_ADD].begin(); k != tv[RENUM_ADD].end(); ++k) {
+				std::string criteria = k->first;
+				GS::Array<RenumPos> eleminpos = k->second.elements;
+
+				// Расставляем позиции для элементов, для которых есть подходящая по критериям позиция
+				if (unicriteria[delimetr].count(criteria) != 0) {
+					delimetrList[delimetr][RENUM_ADD][criteria].mostFrequentPos = unicriteria[delimetr][criteria];
+				}
+				else {
+
+					// Если такой позиции нет (например, она занята) - создадим новую позицию
+					RenumPos pos = GetPos(unicpos, unicriteria, delimetr, criteria);
+					delimetrList[delimetr][RENUM_ADD][criteria].mostFrequentPos = pos;
+					maxposdelim.SetToMax(pos);
+				}
+			}
+		}
+
+		// Получаем позиции новых элементов
+		if (tv.count(RENUM_NORMAL) != 0) {
+			for (Values::iterator k = tv[RENUM_NORMAL].begin(); k != tv[RENUM_NORMAL].end(); ++k) {
+				std::string criteria = k->first;
+				GS::Array<RenumPos> eleminpos = k->second.elements;
+
+				// Расставляем позиции для элементов, для которых есть подходящая по критериям позиция
+				if (unicriteria[delimetr].count(criteria) != 0) {
+					delimetrList[delimetr][RENUM_NORMAL][criteria].mostFrequentPos = unicriteria[delimetr][criteria];
+				}
+				else {
+
+					// Если такой позиции нет (например, она занята) - создадим новую позицию
+					RenumPos pos = GetPos(unicpos, unicriteria, delimetr, criteria);
+					delimetrList[delimetr][RENUM_NORMAL][criteria].mostFrequentPos = pos;
+					maxposdelim.SetToMax(pos);
+				}
+			}
+		}
+		maxposall.SetToMax(maxposdelim);
+		maxpos[delimetr] = maxposdelim;
+	}
+
+	//Финишная прямая. Берём позиции из словаря и расставляем значения.
+	GS::UniString rawname_position = rule.position;
+	RenumPos maxposdelim;
+	if (rule.nulltype == ADDMAXZEROS || rule.nulltype == ADDMAXSPACE) maxposdelim = maxposall;
+	for (Delimetr::iterator i = delimetrList.begin(); i != delimetrList.end(); ++i) {
+		TypeValues& tv = i->second;
+		for (short renumType = RENUM_ADD; renumType <= RENUM_NORMAL; renumType++) {
+			if (tv.count(renumType) != 0) {
+				if (rule.nulltype == ADDZEROS || rule.nulltype == ADDSPACE) maxposdelim = maxpos[i->first];
+				for (Values::iterator k = tv[renumType].begin(); k != tv[renumType].end(); ++k) {
+					std::string criteria = k->first;
+					GS::Array<RenumPos> eleminpos = k->second.elements;
+					RenumPos pos = k->second.mostFrequentPos;
+					pos.FormatToMax(maxposdelim, rule.nulltype);
+					ParamValue posvalue = pos.ToParamValue(rawname_position);
+					for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
+						ParamValue paramposition = paramToReadelem.Get(eleminpos[j].guid).Get(rawname_position);
+						paramposition.isValid = true;
+						posvalue.val.type = paramposition.val.type;
+
+						// Записываем только изменённые значения
+						if (paramposition != posvalue) {
+							paramposition.val = posvalue.val;
+							ParamHelpers::AddParamValue2ParamDictElement(eleminpos[j].guid, paramposition, paramToWriteelem);
+						}
+					}
+				}
+			}
+		}
+	}
+	return;
+}
+
+bool ElementsSeparation(const RenumRule& rule, const  ParamDictElement& paramToReadelem, Delimetr& delimetrList) {
+	if (!rule.state) return false;
+	GS::Array<API_Guid> elemArray = rule.elemts;
+	GS::Array<API_Guid> elemrenumArray;
+	bool needAddSet = false;
+	bool flag = false;
 
 	// Собираем значения свойств из criteria. Нам нужны только уникальные значения.
 	for (UInt32 i = 0; i < elemArray.GetSize(); i++) {
 		if (paramToReadelem.ContainsKey(elemArray[i])) {
 
 			// Сразу проверим режим нумерации элемента
-			short state = RENUM_IGNORE;
+			short state = RENUM_SKIP;
+			RenumPos pos;
 			ParamDictValue params = paramToReadelem.Get(elemArray[i]);
 			if (params.ContainsKey(rule.flag) && params.ContainsKey(rule.position)) {
 				ParamValue paramflag = params.Get(rule.flag);
 				ParamValue paramposition = params.Get(rule.position);
 				state = ReNumGetFlag(paramflag, paramposition);
+
+				// Получаем позицию, если она есть
+				if (paramposition.isValid && state != RENUM_SKIP) pos = RenumPos(paramposition);
+				if (state != RENUM_IGNORE && state != RENUM_SKIP) needAddSet = true;
 			}
-			if (state != RENUM_IGNORE) {
+			if (state != RENUM_IGNORE && state != RENUM_SKIP && !rule.oldalgoritm) {
+				elemrenumArray.Push(elemArray[i]);
+
+				// Проверим - не нумеровался ли прежде этот элемент. Если нет - ставим флаг перенумерации
+				if (!rule.exselemts.IsEmpty() && !rule.exselemts.Contains(elemArray[i])) state = RENUM_NORMAL;
+			}
+
+			if (state != RENUM_SKIP) {
 
 				// Получаем разделитель, если он есть
 				std::string delimetr = "";
@@ -218,142 +436,36 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 					ParamValue param = params.Get(rule.criteria);
 					if (param.isValid) criteria = param.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
 				}
-
-				if (delimetrList.count(delimetr) == 0) delimetrList[delimetr] = {};
-				if (delimetrList[delimetr].count(state) == 0) delimetrList[delimetr][state] = {};
-				if (delimetrList[delimetr][state].count(criteria) == 0) delimetrList[delimetr][state][criteria] = {};
-				delimetrList[delimetr][state][criteria].guid.Push(elemArray[i]);
+				if (state != RENUM_SKIP) {
+					if (delimetrList.count(delimetr) == 0) delimetrList[delimetr] = {};
+					if (delimetrList[delimetr].count(state) == 0) delimetrList[delimetr][state] = {};
+					if (delimetrList[delimetr][state].count(criteria) == 0) delimetrList[delimetr][state][criteria] = {};
+					delimetrList[delimetr][state][criteria].elements.Push(pos);
+					flag = true;
+				}
 			}
 		}
 	}
 
-	double maxposall = 1;
-
-	//Теперь последовательно идём по словарю c разделителями, вытаскиваем оттуда guid и нумеруем
-	for (Delimetr::iterator i = delimetrList.begin(); i != delimetrList.end(); ++i) {
-		std::map<std::string, int, doj::alphanum_less<std::string> > unicpos;
-		std::map<std::string, std::string, doj::alphanum_less<std::string> > unicriteria;
-		TypeValues& tv = i->second;
-		double maxpos = 1;
-
-		// Проверим - есть ли элементы с исключаемыми позициями
-		bool hasAdd = (tv.count(RENUM_ADD) != 0);
-		bool hasNormal = (tv.count(RENUM_NORMAL) != 0);
-
-		// Все позиции с неизменной нумерацией должны иметь один номер. Если нет - меняем его сами.
-		if (hasAdd) {
-			for (Values::iterator k = tv[RENUM_ADD].begin(); k != tv[RENUM_ADD].end(); ++k) {
-				GS::Array<API_Guid> eleminpos = k->second.guid;
-				ParamValue posvalue = paramToReadelem.Get(eleminpos[0]).Get(rule.position);
-				std::string pos = posvalue.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
-				maxpos = fmax(maxpos, atof(pos.c_str()));
-				maxposall = fmax(maxposall, maxpos);
-				unicpos[pos] = posvalue.val.intValue;
-				unicriteria[k->first] = pos;
-				for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
-					ParamValue paramposition = paramToReadelem.Get(eleminpos[j]).Get(rule.position);
-					paramposition.isValid = true;
-					posvalue.val.type = paramposition.val.type;
-					// Записываем только изменённые значения
-					if (paramposition != posvalue) {
-						paramposition.val = posvalue.val;
-						ParamHelpers::AddParamValue2ParamDictElement(eleminpos[j], paramposition, paramToWriteelem);
-					}
-				}
+	// Запись обрабатываемых элементов в память
+	if (needAddSet && !rule.oldalgoritm && flag) {
+		API_UserData userData;
+		BNZeroMemory(&userData, sizeof(userData));
+		userData.platformSign = GS::Act_Platform_Sign;
+		userData.dataVersion = 2;
+		userData.dataHdl = BMAllocateHandle(0, ALLOCATE_CLEAR, 0);
+		if (userData.dataHdl != nullptr) {
+			userData.dataHdl = BMReallocHandle(userData.dataHdl, sizeof(API_Guid), REALLOC_FULLCLEAR, 0);
+			if (userData.dataHdl != nullptr) {
+				*reinterpret_cast<API_Guid*> (*userData.dataHdl) = rule.guid;
+				API_Guid elemsetGuid;
+				GSErrCode err = ACAPI_ElementSet_Create(&elemrenumArray, &userData, &elemsetGuid);
+				if (err != NoError) msg_rep("ReNumOneRule", "ACAPI_ElementSet_Create", err, APINULLGuid);
 			}
 		}
-		if (hasNormal) {
-			int npos = 1;
-			std::string pos = "1";
-			for (Values::iterator k = tv[RENUM_NORMAL].begin(); k != tv[RENUM_NORMAL].end(); ++k) {
-				std::string criteria = k->first;
-				if (unicriteria.count(criteria) > 0) { // Есть существующая позиция с таким критерием
-					pos = unicriteria[criteria];
-				}
-				else { // Ищем свободную позицию
-					while (unicpos.count(pos) > 0)
-					{
-						npos += 1;
-						pos = std::to_string(npos);
-					}
-					unicpos[pos] = npos;
-				}
-				unicriteria[criteria] = pos;
-				maxpos = fmax(maxpos, atof(pos.c_str()));
-				maxposall = fmax(maxposall, maxpos);
-			}
-			if (!unicriteria.empty()) {
-				for (auto const& ent1 : unicriteria) {
-					std::string criteria = ent1.first;
-					if (tv[RENUM_NORMAL].count(criteria)) {
-						std::string pos = ent1.second;
-						GS::UniString unipos = "";
-						GS::UniString unipos_t = GS::UniString(pos.c_str(), GChCode);
-						if (rule.nulltype == NOZEROS || rule.nulltype == ADDMAXZEROS) unipos = unipos_t;
-						if (rule.nulltype == ADDZEROS) {
-							int npos = 0;
-							if (UniStringToInt(unipos_t, npos)) {
-								if (maxpos < 10.0) unipos = GS::UniString::Printf("%d", npos);
-								if (maxpos < 100.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%02d", npos);
-								if (maxpos < 1000.0 && unipos.IsEmpty()) unipos = GS::UniString::Printf("%03d", npos);
-							}
-							else {
-								unipos = unipos_t;
-							}
-						}
-						ParamValue posvalue;
-						ParamHelpers::ConvValue(posvalue, rule.position, unipos);
-						GS::Array<API_Guid> eleminpos = tv[RENUM_NORMAL][criteria].guid;
-						for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
-							ParamValue paramposition = paramToReadelem.Get(eleminpos[j]).Get(rule.position);
-							paramposition.isValid = true;
-							posvalue.val.type = paramposition.val.type;
-
-							// Записываем только изменённые значения
-							if (paramposition != posvalue) {
-								paramposition.val = posvalue.val;
-								ParamHelpers::AddParamValue2ParamDictElement(eleminpos[j], paramposition, paramToWriteelem);
-							}
-							ParamValue paramflag = paramToReadelem.Get(eleminpos[j]).Get(rule.flag);
-							if (paramflag.type == API_PropertyStringValueType) {
-
-								// Переключаем флаг в режим Добавить
-								GS::UniString txtypenum = RSGetIndString(AddOnStringsID, RenumAddID, ACAPI_GetOwnResModule());
-								if (!paramflag.val.uniStringValue.Contains(txtypenum)) {
-									paramflag.val.uniStringValue = txtypenum;
-									ParamHelpers::AddParamValue2ParamDictElement(eleminpos[j], paramflag, paramToWriteelem);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		// Все позиции с неизменной нумерацией должны иметь один номер. Если нет - меняем его сами.
-		//if (hasAdd) {
-		//	for (Values::iterator k = tv[RENUM_ADD].begin(); k != tv[RENUM_ADD].end(); ++k) {
-		//		GS::Array<API_Guid> eleminpos = k->second.guid;
-		//		ParamValue posvalue = paramToReadelem.Get(eleminpos[0]).Get(rule.position);
-		//		std::string pos = posvalue.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
-		//		if (atof(pos.c_str()) > 0.0001) {
-		//			maxposall = fmax(maxposall, maxpos);
-		//			unicpos[pos] = posvalue.val.intValue;
-		//			unicriteria[k->first] = pos;
-		//			for (UInt32 j = 0; j < eleminpos.GetSize(); j++) {
-		//				ParamValue paramposition = paramToReadelem.Get(eleminpos[j]).Get(rule.position);
-		//				paramposition.isValid = true;
-		//				posvalue.val.type = paramposition.val.type;
-		//				// Записываем только изменённые значения
-		//				if (paramposition != posvalue) {
-		//					paramposition.val = posvalue.val;
-		//					ParamHelpers::AddParamValue2ParamDictElement(eleminpos[j], paramposition, paramToWriteelem);
-		//				}
-		//			}
-		//		}
-		//	}
-		//}
+		BMKillHandle(&userData.dataHdl);
 	}
-	return;
+	return flag;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -375,30 +487,35 @@ bool ReNumHasFlag(const GS::Array<API_PropertyDefinition> definitions) {
 // Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL)
 // -----------------------------------------------------------------------------------------------------------------------
 short ReNumGetFlag(const ParamValue& paramflag, const ParamValue& paramposition) {
-	if (!paramflag.isValid) return RENUM_IGNORE;
+	if (!paramflag.isValid) return RENUM_SKIP;
 	if (paramflag.type == API_PropertyBooleanValueType) {
 		if (paramflag.val.boolValue) {
 			return RENUM_NORMAL;
 		}
 		else {
-			return RENUM_IGNORE;
+			return RENUM_SKIP;
 		}
 	}
 	if (paramflag.type == API_PropertyStringValueType) {
+		GS::UniString flag = paramflag.val.uniStringValue.ToLowerCase();
 
 		// Исключаемые позиции
-		GS::UniString txtypenum = RSGetIndString(AddOnStringsID, RenumIgnoreID, ACAPI_GetOwnResModule());
-		if (paramflag.val.uniStringValue.Contains(txtypenum)) return RENUM_IGNORE;
+		GS::UniString txtypenum = RSGetIndString(AddOnStringsID, RenumSkipID, ACAPI_GetOwnResModule());
+		if (flag.Contains(txtypenum)) return RENUM_SKIP;
+
+		// Неизменные позиции
+		txtypenum = RSGetIndString(AddOnStringsID, RenumIgnoreID, ACAPI_GetOwnResModule());
+		if (flag.Contains(txtypenum)) return RENUM_IGNORE;
 
 		// Пустые позиции (если строка пустая - значение ноль.)
 		if (paramposition.val.intValue == 0) return RENUM_NORMAL;
 
 		// Добавочные позиции
 		txtypenum = RSGetIndString(AddOnStringsID, RenumAddID, ACAPI_GetOwnResModule());
-		if (paramflag.val.uniStringValue.Contains(txtypenum)) return RENUM_ADD;
+		if (flag.Contains(txtypenum)) return RENUM_ADD;
 
 		// Все прочие
 		return RENUM_NORMAL;
 	}
-	return RENUM_IGNORE;
+	return RENUM_SKIP;
 }

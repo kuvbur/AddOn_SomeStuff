@@ -325,6 +325,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	ParamDictElement paramToRead; // Словарь с параметрами для чтения
 	bool hasSub = false;
 	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+
 		// Получаем список правил синхронизации из всех свойств
 		ParseSyncString(elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, acttype); // Парсим описание свойства
 	}
@@ -449,6 +450,7 @@ void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictEleme
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
 bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, API_EditCmdID& acttype) {
+
 	// TODO Попробовать отключать часть синхронизаций в зависимости от изменённых параметров (API_ActTranPars acttype)
 	GS::UniString description_string = definition.description;
 	if (description_string.IsEmpty()) {
@@ -558,6 +560,10 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	//GS::Array<GS::UniString> paramTypesList;
 	//GetParamTypeList(paramTypesList);
 	//Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать ненужного поиска по строке
+	if (rulestring_one.Contains("symb_pos_x") || rulestring_one.Contains("symb_pos_y") || rulestring_one.Contains("symb_pos_z")) {
+		rulestring_one.ReplaceAll("{symb_pos_", "{Coord:symb_pos_");
+	}
+	
 	if (synctypefind == false) {
 		if (!rulestring_one.Contains(":") || rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {
 			if (rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {
