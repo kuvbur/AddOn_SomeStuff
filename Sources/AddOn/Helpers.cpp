@@ -3018,11 +3018,10 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 				param.isValid = true;
 				param.val.type = API_PropertyStringValueType;
 				param.type = API_PropertyStringValueType;
-				param.val.canCalculate = true;
 				param.val.boolValue = !infoString.IsEmpty();
-
 				if (UniStringToDouble(infoString, param.val.doubleValue)) {
 					param.val.intValue = (GS::Int32)param.val.doubleValue;
+					param.val.canCalculate = true;
 				}
 				else {
 					param.val.intValue = !infoString.IsEmpty();
@@ -3235,7 +3234,6 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 		}
 		if (flag) {
 			params.Get(rawName).val.uniStringValue = outstring;
-			params.Get(rawName).val.canCalculate = true;
 			params.Get(rawName).isValid = true;
 			params.Get(rawName).val.type = API_PropertyStringValueType;
 		}
@@ -3271,7 +3269,6 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 	GS::Int32 param_int = 0;
 	double param_real = 0.0;
 	bool param_bool = false;
-	pvalue.val.canCalculate = false;
 
 	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
 	if (nthParameter.typeID == APIParT_CString) {
@@ -3282,6 +3279,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 		if (UniStringToDouble(param_string, param_real)) {
 			param_int = (GS::Int32)param_real;
 			if (param_int / 1 < param_real) param_int += 1;
+			pvalue.val.canCalculate = true;
 		}
 		else {
 			if (param_bool) {
@@ -3306,6 +3304,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 		case APIParT_Integer:
 			param_string = GS::UniString::Printf("%d", param_int);
 			pvalue.val.type = API_PropertyIntegerValueType;
+			pvalue.val.canCalculate = true;
 			break;
 		case APIParT_Boolean:
 			if (param_bool) {
@@ -3318,18 +3317,22 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 				param_int = 0;
 				param_real = 0.0;
 			}
+			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyBooleanValueType;
 			break;
 		case APIParT_Length:
 			param_string = GS::UniString::Printf("%.0f", param_real * 1000);
+			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyRealValueType;
 			break;
 		case APIParT_Angle:
 			param_string = GS::UniString::Printf("%.1f", param_real);
+			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyRealValueType;
 			break;
 		case APIParT_RealNum:
 			param_string = GS::UniString::Printf("%.3f", param_real);
+			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyRealValueType;
 			break;
 
@@ -3374,7 +3377,6 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 	pvalue.val.doubleValue = param_real;
 	pvalue.val.intValue = param_int;
 	pvalue.val.uniStringValue = param_string;
-	pvalue.val.canCalculate = true;
 	pvalue.isValid = true;
 	return true;
 }
@@ -3400,7 +3402,6 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.val.boolValue = false;
 	pvalue.val.intValue = 0;
 	pvalue.val.doubleValue = 0.0;
-	pvalue.val.canCalculate = false;
 	pvalue.val.uniStringValue = PropertyHelpers::ToString(property);
 	std::string var = pvalue.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
 	switch (property.value.singleVariant.variant.type) {
@@ -3409,6 +3410,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 		pvalue.val.doubleValue = property.value.singleVariant.variant.intValue * 1.0;
 		if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
 		pvalue.val.type = API_PropertyIntegerValueType;
+		pvalue.val.canCalculate = true;
 		break;
 	case API_PropertyRealValueType:
 		pvalue.val.doubleValue = round(property.value.singleVariant.variant.doubleValue * 1000) / 1000;
@@ -3417,6 +3419,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 		if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
 		if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 		pvalue.val.type = API_PropertyRealValueType;
+		pvalue.val.canCalculate = true;
 		break;
 	case API_PropertyBooleanValueType:
 		pvalue.val.boolValue = property.value.singleVariant.variant.boolValue;
@@ -3425,6 +3428,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 			pvalue.val.doubleValue = 1.0;
 		}
 		pvalue.val.type = API_PropertyBooleanValueType;
+		pvalue.val.canCalculate = true;
 		break;
 	case API_PropertyStringValueType:
 	case API_PropertyGuidValueType:
@@ -3433,6 +3437,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 		if (UniStringToDouble(pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
 			pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 			if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
+			pvalue.val.canCalculate = true;
 		}
 		else {
 			if (pvalue.val.boolValue) {
@@ -3459,9 +3464,8 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.fromPropertyDefinition = !pvalue.fromAttribDefinition;
 	pvalue.definition = property.definition;
 	pvalue.property = property;
-	pvalue.val.canCalculate = true;
 	return true;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -3503,6 +3507,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 	if (UniStringToDouble(pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
 		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 		if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
+		pvalue.val.canCalculate = true;
 	}
 	else {
 		if (pvalue.val.boolValue) {
@@ -3511,7 +3516,6 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 		}
 	}
 	pvalue.val.type = API_PropertyStringValueType;
-	pvalue.val.canCalculate = true;
 	pvalue.isValid = true;
 	return true;
 }
@@ -3558,7 +3562,6 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{ifc:" + fname.ToLowerCase() + "}";
 		if (pvalue.name.IsEmpty()) pvalue.name = fname;
 	}
-	pvalue.val.canCalculate = true;
 	pvalue.isValid = true;
 	if (property.head.propertyType == API_IFCPropertySingleValueType) {
 		switch (property.singleValue.nominalValue.value.primitiveType) {
@@ -3572,6 +3575,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 			}
 			break;
 		case API_IFCPropertyAnyValueRealType:
+			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyRealValueType;
 			pvalue.val.doubleValue = round(property.singleValue.nominalValue.value.doubleValue * 1000) / 1000;
 			if (property.singleValue.nominalValue.value.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
@@ -3581,6 +3585,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 			pvalue.val.uniStringValue = GS::UniString::Printf("%.3f", pvalue.val.doubleValue);
 			break;
 		case API_IFCPropertyAnyValueIntegerType:
+			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyIntegerValueType;
 			pvalue.val.intValue = (GS::Int32)property.singleValue.nominalValue.value.intValue;
 			pvalue.val.doubleValue = pvalue.val.intValue * 1.0;
@@ -3588,6 +3593,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 			pvalue.val.uniStringValue = GS::UniString::Printf("%d", pvalue.val.intValue);
 			break;
 		case API_IFCPropertyAnyValueBooleanType:
+			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyBooleanValueType;
 			pvalue.val.boolValue = property.singleValue.nominalValue.value.boolValue;
 			if (pvalue.val.boolValue) {
@@ -3974,7 +3980,8 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 		ParamValue param_composite = {};
 		param_composite.fromGuid = element.header.guid;
 		param_composite.isValid = true;
-		param_composite.val.canCalculate = true;
+
+		//param_composite.val.canCalculate = true;
 		paramlayers.Add("{material:layers,20}", param_composite);
 	}
 
