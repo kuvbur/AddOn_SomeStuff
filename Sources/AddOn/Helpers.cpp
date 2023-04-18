@@ -746,6 +746,16 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 	GSErrCode	err = NoError;
 	API_RoomRelation	relData;
 	GS::Array<API_ElemTypeID> typeinzone;
+
+	API_HierarchicalOwnerType hierarchicalOwnerType = API_ParentHierarchicalOwner;
+	API_HierarchicalElemType hierarchicalElemType = API_SingleElem;
+	API_HierarchicalElemType hierarchicalElemType_root = API_SingleElem;
+	API_Guid ownerElemApiGuid = APINULLGuid;
+	API_Guid ownerElemApiGuid_root = APINULLGuid;
+	API_Guid elemGuid_t = elemGuid;
+	ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
+	hierarchicalOwnerType = API_RootHierarchicalOwner;
+	ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
 	switch (elementType) {
 	case API_RailingID:
 		if (syncSettings.cwallS) {
@@ -769,6 +779,8 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 				if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
 				if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
 			}
+			if (ownerElemApiGuid != APINULLGuid && hierarchicalElemType == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid);
+			if (ownerElemApiGuid_root != ownerElemApiGuid && ownerElemApiGuid_root != APINULLGuid && hierarchicalElemType_root == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid_root);
 		}
 		break;
 	case API_DoorID:
@@ -779,6 +791,8 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 				if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
 				if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
 			}
+			if (ownerElemApiGuid != APINULLGuid && hierarchicalElemType == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid);
+			if (ownerElemApiGuid_root != ownerElemApiGuid && ownerElemApiGuid_root != APINULLGuid && hierarchicalElemType_root == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid_root);
 		}
 		break;
 	case API_WindowID:
@@ -789,6 +803,8 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 				if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
 				if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
 			}
+			if (ownerElemApiGuid != APINULLGuid && hierarchicalElemType == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid);
+			if (ownerElemApiGuid_root != ownerElemApiGuid && ownerElemApiGuid_root != APINULLGuid && hierarchicalElemType_root == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid_root);
 		}
 		break;
 	case API_ZoneID:
@@ -3465,7 +3481,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
