@@ -181,7 +181,7 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings& syncSettings) {
 	GS::UniString fmane = "Sync Selected";
-	GS::Array<API_Guid> guidArray = GetSelectedElements(false, true, true);
+	GS::Array<API_Guid> guidArray = GetSelectedElements(false, true, false);
 	if (guidArray.IsEmpty()) return;
 	ParamDictValue propertyParams = {};
 	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
@@ -406,24 +406,27 @@ void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array 
 			WriteData writeSub = mainsyncRules.Get(i);
 			SyncAddRule(writeSub, syncRules, paramToRead);
 		}
-		if (mainsyncRules[i].fromSub) {
-			for (UInt32 j = 0; j < subelemGuids.GetSize(); j++) {
+		// Если есть субэлементы - обработаем их
+		if (!subelemGuids.IsEmpty()) {
+			// Для записи из дочернего в родительский возьмём только один, первый элемент
+			if (mainsyncRules[i].fromSub) {
 				WriteData writeSub = mainsyncRules.Get(i);
-				API_Guid subelemGuid = subelemGuids.Get(j);
+				API_Guid subelemGuid = subelemGuids.Get(0);
 				writeSub.fromSub = false;
 				writeSub.guidFrom = subelemGuid;
 				writeSub.paramFrom.fromGuid = subelemGuid;
 				SyncAddRule(writeSub, syncRules, paramToRead);
 			}
-		}
-		if (mainsyncRules[i].toSub) {
-			for (UInt32 j = 0; j < subelemGuids.GetSize(); j++) {
-				WriteData writeSub = mainsyncRules.Get(i);
-				API_Guid subelemGuid = subelemGuids.Get(j);
-				writeSub.toSub = false;
-				writeSub.guidTo = subelemGuid;
-				writeSub.paramTo.fromGuid = subelemGuid;
-				SyncAddRule(writeSub, syncRules, paramToRead);
+			if (mainsyncRules[i].toSub) {
+				// Для 
+				for (UInt32 j = 0; j < subelemGuids.GetSize(); j++) {
+					WriteData writeSub = mainsyncRules.Get(i);
+					API_Guid subelemGuid = subelemGuids.Get(j);
+					writeSub.toSub = false;
+					writeSub.guidTo = subelemGuid;
+					writeSub.paramTo.fromGuid = subelemGuid;
+					SyncAddRule(writeSub, syncRules, paramToRead);
+				}
 			}
 		}
 	}
@@ -563,7 +566,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	if (rulestring_one.Contains("symb_pos_x") || rulestring_one.Contains("symb_pos_y") || rulestring_one.Contains("symb_pos_z")) {
 		rulestring_one.ReplaceAll("{symb_pos_", "{Coord:symb_pos_");
 	}
-	
+
 	if (synctypefind == false) {
 		if (!rulestring_one.Contains(":") || rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {
 			if (rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {
