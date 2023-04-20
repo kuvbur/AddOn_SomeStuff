@@ -182,9 +182,15 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictVa
 		UInt32 flag_change = DIM_NOCHANGE;
 		UInt32 flag_highlight = DIM_NOCHANGE;
 		auto& dimElem = (*memo.dimElems)[k];
+		API_ElemTypeID elementType;
+#ifdef AC_26
+		elementType = dimElem.base.base.type.typeID;
+#else
+		elementType = dimElem.base.base.typeID;
+#endif // AC_26
 
 		// TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
-		if (dimElem.dimVal == 0 && dimElem.base.base.typeID == API_ColumnID) {
+		if (dimElem.dimVal == 0 && elementType == API_ColumnID) {
 			ACAPI_DisposeElemMemoHdls(&memo);
 			return err;
 		};
