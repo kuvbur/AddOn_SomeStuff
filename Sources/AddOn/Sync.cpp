@@ -406,8 +406,10 @@ void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array 
 			WriteData writeSub = mainsyncRules.Get(i);
 			SyncAddRule(writeSub, syncRules, paramToRead);
 		}
+
 		// Если есть субэлементы - обработаем их
 		if (!subelemGuids.IsEmpty()) {
+
 			// Для записи из дочернего в родительский возьмём только один, первый элемент
 			if (mainsyncRules[i].fromSub) {
 				WriteData writeSub = mainsyncRules.Get(i);
@@ -418,7 +420,8 @@ void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array 
 				SyncAddRule(writeSub, syncRules, paramToRead);
 			}
 			if (mainsyncRules[i].toSub) {
-				// Для 
+
+				// Для
 				for (UInt32 j = 0; j < subelemGuids.GetSize(); j++) {
 					WriteData writeSub = mainsyncRules.Get(i);
 					API_Guid subelemGuid = subelemGuids.Get(j);

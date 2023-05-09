@@ -1715,7 +1715,7 @@ bool ParamHelpers::ReplaceParamInExpression(const ParamDictValue & pdictvalue, G
 		val = "";
 		if (pdictvalue.ContainsKey(parts)) {
 			ParamValue pvalue = pdictvalue.Get(parts);
-			if (pvalue.isValid && pvalue.val.canCalculate) {
+			if (pvalue.isValid) {
 				val = ParamHelpers::ToString(pvalue);
 				flag_find = true;
 			}
@@ -1723,7 +1723,7 @@ bool ParamHelpers::ReplaceParamInExpression(const ParamDictValue & pdictvalue, G
 		else {
 			if (pdictvalue.ContainsKey(partc)) {
 				ParamValue pvalue = pdictvalue.Get(partc);
-				if (pvalue.isValid && pvalue.val.canCalculate) {
+				if (pvalue.isValid) {
 					val = ParamHelpers::ToString(pvalue);
 					flag_find = true;
 				}
@@ -3885,6 +3885,11 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	API_ModelElemStructureType	structtype = {};
 	API_AttributeIndex			constrinx = {};
 	double						fillThick = 0;
+
+	// Отделка колонн
+	API_AttributeIndex			constrinx_ven = {};
+	double						fillThick_ven = 0;
+	bool columnHasFinish = false;
 	API_Elem_Head elemhead = element.header;
 	GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
 
@@ -3910,6 +3915,9 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 				if (structtype == API_BasicStructure) {
 					constrinx = memo.columnSegments[0].assemblySegmentData.buildingMaterial;
 					fillThick = memo.columnSegments[0].assemblySegmentData.nominalHeight;
+					constrinx_ven = memo.columnSegments[0].venBuildingMaterial;
+					fillThick_ven = memo.columnSegments[0].venThick;
+					if (fillThick_ven > 0.0001) columnHasFinish = true;
 				}
 				if (structtype == API_ProfileStructure) constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
 			}
@@ -4004,7 +4012,10 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	bool hasData = false;
 
 	// Получим индексы строительных материалов и толщины
-	if (structtype == API_BasicStructure) hasData = ParamHelpers::GetComponentsBasicStructure(constrinx, fillThick, params, paramlayers, paramsAdd);
+	if (structtype == API_BasicStructure) {
+		hasData = ParamHelpers::GetComponentsBasicStructure(constrinx, fillThick, params, paramlayers, paramsAdd);
+		if (columnHasFinish) hasData = ParamHelpers::GetComponentsBasicStructure(constrinx_ven, fillThick_ven, params, paramlayers, paramsAdd);
+	}
 	if (structtype == API_CompositeStructure) hasData = ParamHelpers::GetComponentsCompositeStructure(elemhead.guid, constrinx, params, paramlayers, paramsAdd, existsmaterial);
 	if (structtype == API_ProfileStructure) {
 		API_ElementMemo	memo = {};
