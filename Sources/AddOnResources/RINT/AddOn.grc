@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.6b"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.61"
 }   
 
 'STR#' ID_ADDON_MENU "Strings for the Menu" {
