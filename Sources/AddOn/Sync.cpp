@@ -64,6 +64,8 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 	// Сразу прочитаем свойства и разложим их по элементам
 	ParamDictValue propertyParams;
 	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	ParamHelpers::GetAllInfoToParamDict(propertyParams);
+	ParamHelpers::GetAllGlobToParamDict(propertyParams);
 	if (propertyParams.IsEmpty()) return;
 	if (ResetProperty(propertyParams)) return;
 	GS::UniString	title("Sync All");
@@ -138,7 +140,11 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	GS::UniString subtitle_ = GS::UniString::Printf("Reading data from %d elements : ", guidArray.GetSize()) + subtitle;
 
 	// Словарь со всеми возможными определениями свойств
-	if (propertyParams.IsEmpty()) ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	if (propertyParams.IsEmpty()) {
+		ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+		ParamHelpers::GetAllInfoToParamDict(propertyParams);
+		ParamHelpers::GetAllGlobToParamDict(propertyParams);
+	}
 	if (propertyParams.IsEmpty()) return true;
 	bool flag_chanel = false;
 	API_EditCmdID acttype = APIEdit_General;
@@ -185,6 +191,8 @@ void SyncSelected(const SyncSettings& syncSettings) {
 	if (guidArray.IsEmpty()) return;
 	ParamDictValue propertyParams = {};
 	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
+	ParamHelpers::GetAllInfoToParamDict(propertyParams);
+	ParamHelpers::GetAllGlobToParamDict(propertyParams);
 	ParamDictElement paramToWrite;
 	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
 	short nPhase = 1;
@@ -420,8 +428,6 @@ void SyncAddSubelement(const GS::Array<API_Guid>& subelemGuids, const GS::Array 
 				SyncAddRule(writeSub, syncRules, paramToRead);
 			}
 			if (mainsyncRules[i].toSub) {
-
-				// Для
 				for (UInt32 j = 0; j < subelemGuids.GetSize(); j++) {
 					WriteData writeSub = mainsyncRules.Get(i);
 					API_Guid subelemGuid = subelemGuids.Get(j);
@@ -622,6 +628,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			rulestring_one.ReplaceAll("Coord:", "");
 			paramNamePrefix = "{coord:";
 			param.fromCoord = true;
+			if (rulestring_one.Contains("orth")) param.fromGlob = true;
 			syncdirection = SYNC_FROM;
 		}
 	}

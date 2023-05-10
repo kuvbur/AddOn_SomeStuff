@@ -74,23 +74,10 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 	}
 	if (!hasSum) return false;
 
-	// Получаем данные об округлении и типе расчёта
-	API_CalcUnitPrefs unitPrefs1;
-	ACAPI_Environment(APIEnv_GetPreferencesID, &unitPrefs1, (void*)APIPrefs_CalcUnitsID);
-
-	API_WorkingUnitPrefs unitPrefs;
-	ACAPI_Environment(APIEnv_GetPreferencesID, &unitPrefs, (void*)APIPrefs_WorkingUnitsID);
-	if (unitPrefs1.useDisplayedValues) {
-		unitPrefs.roundInch = 1;
-	}
-	else {
-		unitPrefs.roundInch = 0;
-	}
-
 	// Суммируем, заполняе словарь для записи
 	for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
 		const SumRule& rule = *cIt->value;
-		if (!rule.elemts.IsEmpty()) Sum_OneRule(rule, unitPrefs, paramToReadelem, paramToWriteelem);
+		if (!rule.elemts.IsEmpty()) Sum_OneRule(rule, paramToReadelem, paramToWriteelem);
 	}
 	return !paramToWriteelem.IsEmpty();
 }
@@ -189,7 +176,7 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 	return true;
 } // ReNumRule
 
-void Sum_OneRule(const SumRule& rule, const API_WorkingUnitPrefs& unitPrefs, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem) {
+void Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem) {
 	SumCriteria criteriaList;
 	GS::UniString delimetr = GS::UniString(rule.delimetr.c_str());
 
@@ -226,11 +213,7 @@ void Sum_OneRule(const SumRule& rule, const API_WorkingUnitPrefs& unitPrefs, Par
 						if (j < eleminpos.GetSize() - 1) summ.val.uniStringValue = summ.val.uniStringValue + delimetr;
 					}
 					else {
-						double val = param.val.doubleValue;
-						//if (unitPrefs.roundInch) { // В зависимости от настроек - складываем с округлением.
-						//	val = int(val * 100 + 0.5) / 100.0;
-						//}
-						summ.val.doubleValue = summ.val.doubleValue + val;
+						summ.val.doubleValue = summ.val.doubleValue + param.val.doubleValue;
 						summ.val.intValue = summ.val.intValue + param.val.intValue;
 						summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
 					}
@@ -253,7 +236,10 @@ void Sum_OneRule(const SumRule& rule, const API_WorkingUnitPrefs& unitPrefs, Par
 					ParamValue param = params.Get(rule.position);
 					param.isValid = true;
 					summ.val.type = param.val.type;
-
+					if (rule.sum_type != TextSum) {
+						summ.val.stringformat = param.val.stringformat;
+						summ.val.uniStringValue = ParamHelpers::ToString(summ);
+					}
 					// Записываем только изменённые значения
 					if (param != summ) {
 						param.val = summ.val;

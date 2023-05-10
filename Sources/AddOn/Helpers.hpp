@@ -79,6 +79,7 @@ typedef struct {
 
 	// Собственно значения
 	API_VariantType type = API_PropertyUndefinedValueType; //Прочитанный тип данных
+
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
 	bool boolValue = false;
@@ -94,6 +95,15 @@ typedef struct {
 	bool isCore = false;
 	int num = 0;
 } ParamValueComposite;
+
+typedef struct {
+	int n_zero = 3;
+	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью .mm или .0)
+	bool needRound = false;
+} FormatString;
+
+// Словарь с форматированием и округлением
+typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
@@ -308,6 +318,8 @@ GSErrCode GetGDLParameters(const API_ElemTypeID& elemType, const API_Guid& elemG
 // -----------------------------------------------------------------------------
 GS::UniString GetFormatString(GS::UniString& paramName);
 
+FormatStringDict GetFotmatStringForMeasureType();
+
 // -----------------------------------------------------------------------------
 // Получение имени внутренних свойств по русскому имени
 // -----------------------------------------------------------------------------
@@ -407,6 +419,11 @@ namespace ParamHelpers {
 	void AddVal(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double& val);
 
 	// -----------------------------------------------------------------------------
+	// Добавление значения в словарь ParamDictValue
+	// -----------------------------------------------------------------------------
+	void AddVal(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString& val);
+
+	// -----------------------------------------------------------------------------
 	// Список возможных префиксов типов параметров
 	// -----------------------------------------------------------------------------
 	void GetParamTypeList(GS::Array<GS::UniString>& paramTypesList);
@@ -471,9 +488,9 @@ namespace ParamHelpers {
 
 	bool hasUnreadProperyDefinitoin(ParamDictElement& paramToRead);
 
-	bool hasUnreadInfo(ParamDictElement& paramToRead);
+	bool hasUnreadInfo(ParamDictElement& paramToRead, ParamDictValue& propertyParams);
 
-	bool hasUnreadGlob(ParamDictElement& paramToRead);
+	bool hasUnreadGlob(ParamDictElement& paramToRead, ParamDictValue& propertyParams);
 
 	// --------------------------------------------------------------------
 	// Заполнение словаря параметров для множества элементов
@@ -561,7 +578,7 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Получение данных из однородной конструкции
 	// --------------------------------------------------------------------
-	bool GetComponentsBasicStructure(const API_AttributeIndex& constrinx, const double& fillThick, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd);
+	bool GetComponentsBasicStructure(const API_AttributeIndex& constrinx, const double& fillThick, const API_AttributeIndex& constrinx_ven, const double& fillThick_ven, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd);
 
 	// --------------------------------------------------------------------
 	// Получение данных из многослойной конструкции
