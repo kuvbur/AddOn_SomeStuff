@@ -86,6 +86,7 @@ typedef struct {
 	double doubleValue = 0.0;
 	bool canCalculate = false; // Может быть использован в формулах
 	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью .mm или .0)
+	int n_zero = 2;
 } ParamValueData;
 
 typedef struct {
@@ -97,7 +98,7 @@ typedef struct {
 } ParamValueComposite;
 
 typedef struct {
-	int n_zero = 3;
+	int n_zero = 2;
 	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью .mm или .0)
 	bool needRound = false;
 } FormatString;
@@ -337,10 +338,11 @@ bool EvalExpression(GS::UniString& unistring_expression);
 bool MenuInvertItemMark(short menuResID, short itemIndex);
 
 namespace PropertyHelpers {
-	GS::UniString	NumToString(const double& var, const GS::UniString stringformat);
-	GS::UniString	ToString(const API_Variant& variant, const GS::UniString stringformat);
+	void ParseFormatString(const GS::UniString& stringformat, Int32& n_zero, Int32& krat, double& koeff, bool& trim_zero);
+	GS::UniString	NumToString(const double& var, const GS::UniString& stringformat);
+	GS::UniString	ToString(const API_Variant& variant, const GS::UniString& stringformat);
 	GS::UniString	ToString(const API_Variant& variant);
-	GS::UniString	ToString(const API_Property& property, const GS::UniString stringformat);
+	GS::UniString	ToString(const API_Property& property, const GS::UniString& stringformat);
 	GS::UniString	ToString(const API_Property& property);
 }
 
@@ -536,6 +538,8 @@ namespace ParamHelpers {
 	// Конвертация API_IFCProperty в ParamValue
 	// -----------------------------------------------------------------------------
 	bool ConvValue(ParamValue& pvalue, const API_IFCProperty& property);
+
+	void ConvertByFormat(ParamValue& pvalue);
 
 	// --------------------------------------------------------------------
 	// Заполнение информации о проекте
