@@ -33,6 +33,6 @@ bool Sum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, Pa
 
 bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype);
 
-void Sum_OneRule(const SumRule& rule, const API_WorkingUnitPrefs& unitPrefs, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
+void Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
 
 #endif
