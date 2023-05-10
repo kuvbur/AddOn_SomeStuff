@@ -386,17 +386,34 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 					// Проверяем наличие имён в словаре параметров
 					if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
 						ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
-						ParamValue paramTo = paramsTo.Get(rawNameTo);
-						if (paramTo.type != paramFrom.val.type && paramTo.type == API_PropertyStringValueType) {
-							paramFrom.val.uniStringValue = ParamHelpers::ToString(paramFrom, writeSub.stringformat);
-						}
-
-						//Сопоставляем и записываем, если значения отличаются
-						if (paramFrom.isValid && paramFrom != paramTo) {
-							paramTo.val = paramFrom.val; // Записываем только значения
-							paramTo.isValid = true;
-							paramTo.val.stringformat = writeSub.stringformat;
-							ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
+						if (paramFrom.isValid) {
+							ParamValue paramTo = paramsTo.Get(rawNameTo);
+							if (paramTo.isValid || paramTo.fromProperty || paramTo.fromPropertyDefinition) {
+								GS::UniString stringformat = writeSub.stringformat;
+								if (stringformat.IsEmpty()) stringformat = paramTo.val.stringformat;
+								if (stringformat.IsEmpty()) stringformat = paramFrom.val.stringformat;
+								// Приводим к единому виду перед проверкой
+								if (!stringformat.IsEmpty()) {
+									Int32 n_zero = 3;
+									Int32 krat = 0;
+									double koeff = 1;
+									bool trim_zero = true;
+									PropertyHelpers::ParseFormatString(stringformat, n_zero, krat, koeff, trim_zero);
+									UNUSED_VARIABLE(krat); UNUSED_VARIABLE(koeff); UNUSED_VARIABLE(trim_zero);
+									paramTo.val.n_zero = n_zero;
+									paramTo.val.stringformat = stringformat;
+									paramFrom.val.n_zero = n_zero;
+									paramFrom.val.stringformat = stringformat;
+									ParamHelpers::ConvertByFormat(paramTo);
+									ParamHelpers::ConvertByFormat(paramFrom);
+								}
+								//Сопоставляем и записываем, если значения отличаются
+								if (paramFrom != paramTo) {
+									paramTo.val = paramFrom.val; // Записываем только значения
+									paramTo.isValid = true;
+									ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
+								}
+							}
 						}
 					}
 				}

@@ -1220,7 +1220,6 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 
 	// Ищём строку с указанием формата вывода (метры/миллиметры)
 	GS::UniString stringformat = GetFormatString(name_);
-
 	name_ = GetPropertyENGName(name_).ToLowerCase();
 
 	// Проверяем - есть ли указатель на тип параметра (GDL, Property, IFC)
@@ -1251,7 +1250,16 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 		if (rawName.Contains("info")) pvalue.fromInfo = true;
 		if (rawName.Contains("ifc")) pvalue.fromIFCProperty = true;
 		if (rawName.Contains("morph")) pvalue.fromMorph = true;
-		pvalue.val.stringformat = stringformat;
+		if (!stringformat.IsEmpty()) { // Если строка не пустая - посмотрим количество знаков после запятой
+			Int32 n_zero = 3;
+			Int32 krat = 0;
+			double koeff = 1;
+			bool trim_zero = true;
+			PropertyHelpers::ParseFormatString(stringformat, n_zero, krat, koeff, trim_zero);
+			UNUSED_VARIABLE(krat); UNUSED_VARIABLE(koeff); UNUSED_VARIABLE(trim_zero);
+			pvalue.val.stringformat = stringformat;
+			pvalue.val.n_zero = n_zero;
+		}
 		params.Add(rawName, pvalue);
 		return rawName;
 	}
@@ -1667,22 +1675,22 @@ FormatStringDict GetFotmatStringForMeasureType() {
 	FormatString fstring = {};
 	fstring.needRound = unitPrefs1.useDisplayedValues;
 
-	fstring.n_zero = 2; fstring.stringformat = ".2";
+	fstring.n_zero = 2; fstring.stringformat = "2";
 	fdict.Add(API_PropertyUndefinedMeasureType, fstring);
 
-	fstring.n_zero = 2; fstring.stringformat = ".2";
+	fstring.n_zero = 2; fstring.stringformat = "2";
 	fdict.Add(API_PropertyDefaultMeasureType, fstring);
 
-	fstring.n_zero = unitPrefs.areaDecimals; fstring.stringformat = GS::UniString::Printf(".0%d", unitPrefs.areaDecimals);
+	fstring.n_zero = unitPrefs.areaDecimals; fstring.stringformat = GS::UniString::Printf("0%d", unitPrefs.areaDecimals);
 	fdict.Add(API_PropertyAreaMeasureType, fstring);
 
-	fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf(".0%d", unitPrefs.lenDecimals);
+	fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf("0%d", unitPrefs.lenDecimals);
 	fdict.Add(API_PropertyLengthMeasureType, fstring);
 
-	fstring.n_zero = unitPrefs.volumeDecimals; fstring.stringformat = GS::UniString::Printf(".0%d", unitPrefs.volumeDecimals);
+	fstring.n_zero = unitPrefs.volumeDecimals; fstring.stringformat = GS::UniString::Printf("0%d", unitPrefs.volumeDecimals);
 	fdict.Add(API_PropertyVolumeMeasureType, fstring);
 
-	fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf(".0%d", unitPrefs.angleDecimals);
+	fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf("0%d", unitPrefs.angleDecimals);
 	fdict.Add(API_PropertyAngleMeasureType, fstring);
 	return fdict;
 }
@@ -1843,42 +1851,38 @@ bool		MenuInvertItemMark(short menuResID, short itemIndex) {
 	return (bool)((itemFlags & API_MenuItemChecked) != 0);
 }
 
-// TODO Придумать более изящную обработку округления
-GS::UniString PropertyHelpers::NumToString(const double& var, const GS::UniString stringformat) {
-	if (abs(var) < 0.00000001) return "0";
-	GS::UniString out = "";
-	double outvar = var;
-	Int32 n_zero = 3;
-	Int32 krat = 0;
+void PropertyHelpers::ParseFormatString(const GS::UniString & stringformat, Int32 & n_zero, Int32 & krat, double& koeff, bool& trim_zero) {
+	n_zero = 3;
+	krat = 0;
+	koeff = 1;
+	trim_zero = true;
 	GS::UniString outstringformat = stringformat;
-	bool trim_zero = true;
 	if (!stringformat.IsEmpty()) {
 		if (stringformat.Contains("mm")) {
 			n_zero = 0;
-			outvar = var * 1000;
+			koeff = 1000;
 			outstringformat.ReplaceAll("mm", "");
 		}
 		if (stringformat.Contains("cm")) {
 			n_zero = 1;
-			outvar = var * 100;
+			koeff = 100;
 			outstringformat.ReplaceAll("cm", "");
 		}
 		if (stringformat.Contains("dm")) {
 			n_zero = 2;
-			outvar = var * 10;
+			koeff = 10;
 			outstringformat.ReplaceAll("dm", "");
 		}
 		if (stringformat.Contains("gm")) {
-			outvar = var / 100;
+			koeff = 1 / 100;
 			outstringformat.ReplaceAll("gm", "");
 		}
 		if (stringformat.Contains("km")) {
-			outvar = var / 1000;
+			koeff = 1 / 1000;
 			outstringformat.ReplaceAll("km", "");
 		}
 		if (outstringformat.Contains("m")) {
 			n_zero = 3;
-			outvar = var;
 			outstringformat.ReplaceAll("m", "");
 		}
 
@@ -1902,6 +1906,18 @@ GS::UniString PropertyHelpers::NumToString(const double& var, const GS::UniStrin
 			}
 		}
 	}
+}
+
+// TODO Придумать более изящную обработку округления
+GS::UniString PropertyHelpers::NumToString(const double& var, const GS::UniString & stringformat) {
+	if (abs(var) < 0.00000001) return "0";
+	GS::UniString out = "";
+	Int32 n_zero = 3;
+	Int32 krat = 0;
+	double koeff = 1;
+	bool trim_zero = true;
+	PropertyHelpers::ParseFormatString(stringformat, n_zero, krat, koeff, trim_zero);
+	double outvar = var * koeff;
 	outvar = round(outvar * pow(10, n_zero)) / pow(10, n_zero);
 	if (krat > 0) outvar = ceil_mod((GS::Int32)var, krat);
 	out = GS::UniString::Printf("%f", outvar);
@@ -1917,7 +1933,7 @@ GS::UniString PropertyHelpers::NumToString(const double& var, const GS::UniStrin
 	return out;
 }
 
-GS::UniString PropertyHelpers::ToString(const API_Variant & variant, const GS::UniString stringformat) {
+GS::UniString PropertyHelpers::ToString(const API_Variant & variant, const GS::UniString & stringformat) {
 	switch (variant.type) {
 	case API_PropertyIntegerValueType: return  NumToString(variant.intValue, stringformat);
 	case API_PropertyRealValueType: return NumToString(variant.doubleValue, stringformat);
@@ -1937,7 +1953,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property) {
 	return PropertyHelpers::ToString(property, "");
 }
 
-GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS::UniString stringformat) {
+GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS::UniString & stringformat) {
 	GS::UniString string;
 	const API_PropertyValue* value;
 #if defined(AC_22) || defined(AC_23)
@@ -2803,6 +2819,12 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			}
 		}
 	}
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (param.isValid && param.val.canCalculate) {
+			ParamHelpers::ConvertByFormat(param);
+		}
+	}
 }
 
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
@@ -2821,6 +2843,7 @@ void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 			pvalue.name = autotexts[i][1];
 			pvalue.rawName = rawName;
 			pvalue.fromInfo = true;
+
 			ParamHelpers::ConvValue(pvalue, rawName, autotexts[i][2]);
 			propertyParams.Add(rawName, pvalue);
 		}
@@ -2837,25 +2860,6 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 		msg_rep("GetAllGlobToParamDict", "APIEnv_GetPlaceSetsID", err, APINULLGuid);
 		return;
 	}
-
-	//GSErrCode err = ACAPI_Environment(APIEnv_GetGeoLocationID, &geoLocation);
-	//if (err != NoError) {
-	//	msg_rep("GetAllGlobToParamDict", "APIEnv_GetGeoLocationID", err, APINULLGuid);
-	//	return;
-	//}
-	// placeInfo = geoLocation.
-	//name = "SYMB_POS_FROM_SURVEY_POINT_X"; rawName = "{glob:" + name.ToLowerCase() + "}";
-	//pvalue.name = name; pvalue.rawName = rawName;
-	//ParamHelpers::ConvValue(pvalue, rawName, geoLocation.surveyPointPosition.x);
-	//propertyParams.Add(rawName, pvalue);
-	//name = "SYMB_POS_FROM_SURVEY_POINT_Y"; rawName = "{glob:" + name.ToLowerCase() + "}";
-	//pvalue.name = name; pvalue.rawName = rawName;
-	//ParamHelpers::ConvValue(pvalue, rawName, geoLocation.surveyPointPosition.y);
-	//propertyParams.Add(rawName, pvalue);
-	//name = "SYMB_POS_FROM_SURVEY_POINT_Z"; rawName = "{glob:" + name.ToLowerCase() + "}";
-	//pvalue.name = name; pvalue.rawName = rawName;
-	//ParamHelpers::ConvValue(pvalue, rawName, geoLocation.surveyPointPosition.z);
-	//propertyParams.Add(rawName, pvalue);
 	name = "GLOB_NORTH_DIR"; rawName = "{glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvValue(pvalue, rawName, round((placeInfo.north * 180 / PI) * 1000.0) / 1000.0);
@@ -3300,6 +3304,7 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 					if (formatsting.IsEmpty()) {
 						formatsting = "1mm";
 						params.Get("{material:layer thickness}").val.stringformat = formatsting;
+						params.Get("{material:layer thickness}").val.n_zero = 1;
 					}
 					GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
 					templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
@@ -3365,6 +3370,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 		param_bool = (!param_string.IsEmpty());
 
 		if (UniStringToDouble(param_string, param_real)) {
+			param_real = round(param_real * 1000) / 1000;
 			param_int = (GS::Int32)param_real;
 			if (param_int / 1 < param_real) param_int += 1;
 			pvalue.val.canCalculate = true;
@@ -3393,8 +3399,10 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 			param_string = GS::UniString::Printf("%d", param_int);
 			pvalue.val.type = API_PropertyIntegerValueType;
 			pvalue.val.canCalculate = true;
+			pvalue.val.n_zero = 0;
 			break;
 		case APIParT_Boolean:
+			pvalue.val.n_zero = 0;
 			if (param_bool) {
 				param_string = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
 				param_int = 1;
@@ -3451,6 +3459,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 				param_bool = (attrInx != 0);
 				param_int = attrInx;
 				param_real = attrInx / 1.0;
+				pvalue.val.n_zero = 0;
 			}
 			else {
 				return false;
@@ -3500,6 +3509,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 		if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
 		pvalue.val.type = API_PropertyIntegerValueType;
 		pvalue.val.canCalculate = true;
+		pvalue.val.n_zero = 0;
 		break;
 	case API_PropertyRealValueType:
 		pvalue.val.doubleValue = round(property.value.singleVariant.variant.doubleValue * 1000) / 1000;
@@ -3515,7 +3525,10 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 				pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 				if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 			}
-			if (pvalue.val.stringformat.IsEmpty()) pvalue.val.stringformat = formatstringdict.Get(property.definition.measureType).stringformat;
+			if (pvalue.val.stringformat.IsEmpty()) {
+				pvalue.val.stringformat = formatstringdict.Get(property.definition.measureType).stringformat;
+				pvalue.val.n_zero = formatstringdict.Get(property.definition.measureType).n_zero;
+			}
 			pvalue.val.uniStringValue = ParamHelpers::ToString(pvalue);
 		}
 		pvalue.val.canCalculate = true;
@@ -3528,6 +3541,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 		}
 		pvalue.val.type = API_PropertyBooleanValueType;
 		pvalue.val.canCalculate = true;
+		pvalue.val.n_zero = 0;
 		break;
 	case API_PropertyStringValueType:
 	case API_PropertyGuidValueType:
@@ -3564,7 +3578,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -3616,6 +3630,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 	}
 	pvalue.val.type = API_PropertyStringValueType;
 	pvalue.isValid = true;
+
 	return true;
 }
 
@@ -3632,6 +3647,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 	if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
 	pvalue.val.uniStringValue = GS::UniString::Printf("%d", intValue);
 	pvalue.isValid = true;
+	pvalue.val.n_zero = 0;
 	return true;
 }
 
@@ -3668,9 +3684,16 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 			pvalue.val.type = API_PropertyStringValueType;
 			pvalue.val.uniStringValue = property.singleValue.nominalValue.value.stringValue;
 			pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty();
-			if (pvalue.val.boolValue) {
-				pvalue.val.intValue = 1;
-				pvalue.val.doubleValue = 1.0;
+			if (UniStringToDouble(pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
+				pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+				if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
+				pvalue.val.canCalculate = true;
+			}
+			else {
+				if (pvalue.val.boolValue) {
+					pvalue.val.intValue = 1;
+					pvalue.val.doubleValue = 1.0;
+				}
 			}
 			break;
 		case API_IFCPropertyAnyValueRealType:
@@ -3690,6 +3713,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 			pvalue.val.doubleValue = pvalue.val.intValue * 1.0;
 			if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
 			pvalue.val.uniStringValue = GS::UniString::Printf("%d", pvalue.val.intValue);
+			pvalue.val.n_zero = 0;
 			break;
 		case API_IFCPropertyAnyValueBooleanType:
 			pvalue.val.canCalculate = true;
@@ -3707,6 +3731,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 			}
 			break;
 		case API_IFCPropertyAnyValueLogicalType:
+			pvalue.val.n_zero = 0;
 			pvalue.val.type = API_PropertyBooleanValueType;
 			if (property.singleValue.nominalValue.value.intValue == 0) pvalue.val.boolValue = false;
 			if (property.singleValue.nominalValue.value.intValue == 1) pvalue.isValid = false;
@@ -3730,6 +3755,15 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 	}
 	return pvalue.isValid;
 }
+void ParamHelpers::ConvertByFormat(ParamValue& pvalue) {
+	if (pvalue.val.type == API_PropertyRealValueType || pvalue.val.type == API_PropertyIntegerValueType) {
+		pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, pvalue.val.n_zero)) / pow(10, pvalue.val.n_zero);
+		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+		if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
+		pvalue.val.uniStringValue = ParamHelpers::ToString(pvalue);
+	}
+}
+
 
 GS::UniString ParamHelpers::ToString(const ParamValue & pvalue) {
 	GS::UniString stringformat = pvalue.val.stringformat;
