@@ -1606,6 +1606,9 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", symb_pos_ex_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", symb_pos_ey_correct < tolerance_coord);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", symb_pos_correct);
+		double l = sqr(dx * dx + dy * dy);
+		double l_correct = abs(abs(l * 200.0) - floor(abs(l * 200.0)));
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "l_correct", l_correct);
 	}
 
 	// TODO Вынести первод из радиан в градусы в функцию
@@ -2009,11 +2012,19 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26)
-		for (UInt32 i = 0; i < value->listVariant.variants.GetSize(); i++) {
-			string += ToString(value->listVariant.variants[i], stringformat);
-			if (i != value->listVariant.variants.GetSize() - 1) {
-				string += "; ";
+		GS::Array<API_SingleEnumerationVariant> possibleEnumValues = property.definition.possibleEnumValues;
+		UInt32 qty_finded_values = value->listVariant.variants.GetSize();
+		for (UInt32 i = 0; i < possibleEnumValues.GetSize(); i++) {
+			API_Guid guidValue = possibleEnumValues[i].keyVariant.guidValue;
+			for (UInt32 j = 0; j < value->listVariant.variants.GetSize(); j++) {
+				if (value->listVariant.variants[j].guidValue == guidValue) {
+					string += ToString(possibleEnumValues[i].displayVariant, stringformat);
+					qty_finded_values = qty_finded_values - 1;
+					if (qty_finded_values != 0) string += "; ";
+					break;
+				}
 			}
+			if (qty_finded_values == 0) break;
 		}
 #else // AC_25
 		for (UInt32 i = 0; i < value->multipleEnumVariant.variants.GetSize(); i++) {
@@ -3502,7 +3513,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.val.uniStringValue = PropertyHelpers::ToString(property);
 	std::string var = pvalue.val.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
 	FormatStringDict formatstringdict;
-	switch (property.value.singleVariant.variant.type) {
+	switch (property.definition.valueType) {
 	case API_PropertyIntegerValueType:
 		pvalue.val.intValue = property.value.singleVariant.variant.intValue;
 		pvalue.val.doubleValue = property.value.singleVariant.variant.intValue * 1.0;
@@ -3578,7 +3589,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -3755,7 +3766,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 	}
 	return pvalue.isValid;
 }
-void ParamHelpers::ConvertByFormat(ParamValue& pvalue) {
+void ParamHelpers::ConvertByFormat(ParamValue & pvalue) {
 	if (pvalue.val.type == API_PropertyRealValueType || pvalue.val.type == API_PropertyIntegerValueType) {
 		pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, pvalue.val.n_zero)) / pow(10, pvalue.val.n_zero);
 		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
@@ -3763,7 +3774,6 @@ void ParamHelpers::ConvertByFormat(ParamValue& pvalue) {
 		pvalue.val.uniStringValue = ParamHelpers::ToString(pvalue);
 	}
 }
-
 
 GS::UniString ParamHelpers::ToString(const ParamValue & pvalue) {
 	GS::UniString stringformat = pvalue.val.stringformat;
