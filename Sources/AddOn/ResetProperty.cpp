@@ -144,11 +144,12 @@ GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDe
 		}
 		if (!properties_to_reset.IsEmpty()) {
 			err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
-			if (err != NoError) {
 
-				// попробуем разблокировать и повторить
-				if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
-			}
+			// Убрал резервирование - криво работает
+			//if (err != NoError) {
+			//	// попробуем разблокировать и повторить
+			//	if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
+			//}
 
 			// Если не получилось - выведем ошибку.
 			if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
@@ -266,7 +267,7 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 				properties[i].isDefault = true;
 				properties_to_reset.Push(properties.Get(i));
 			}
-		}
+			}
 		if (properties_to_reset.GetSize() > 0) {
 #ifdef AC_26
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(type, properties);
@@ -274,10 +275,10 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
 #endif // AC_26
 			if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);
-		}
+	}
 		else {
 			err = APIERR_MISSINGCODE;
 		}
-	}
+}
 	return err;
 }
