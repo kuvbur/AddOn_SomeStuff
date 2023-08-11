@@ -594,6 +594,13 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	}
 
 	if (synctypefind == false) {
+		if (rulestring_one.Contains(":id")) {
+			paramNamePrefix = "{id:";
+			param.fromID = true;
+			synctypefind = true;
+		}
+	}
+	if (synctypefind == false) {
 		if (!rulestring_one.Contains(":") || rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {
 			if (rulestring_one.Contains("escription:") || rulestring_one.Contains("esc:")) {
 				param.fromGDLdescription = true;

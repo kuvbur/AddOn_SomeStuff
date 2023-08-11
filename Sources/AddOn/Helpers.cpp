@@ -1833,6 +1833,7 @@ void ParamHelpers::GetParamTypeList(GS::Array<GS::UniString>&paramTypesList) {
 	paramTypesList.Push("morph");
 	paramTypesList.Push("material");
 	paramTypesList.Push("glob");
+	paramTypesList.Push("id");
 }
 
 // -----------------------------------------------------------------------------
@@ -2461,6 +2462,9 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 			if (paramType.IsEqual("gdl")) {
 				ParamHelpers::WriteGDLValues(elemGuid, paramByType);
 			}
+			if (paramType.IsEqual("id")) {
+				ParamHelpers::WriteIDValues(elemGuid, paramByType);
+			}
 		}
 	}
 }
@@ -2492,22 +2496,22 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 }
 
 // --------------------------------------------------------------------
-// Запись ParamDictValue в GDL параметры и ID
+// Запись ParamDictValue в ID
+// --------------------------------------------------------------------
+void ParamHelpers::WriteIDValues(const API_Guid& elemGuid, ParamDictValue& params) {
+	if (params.IsEmpty()) return;
+	if (elemGuid == APINULLGuid) return;
+	GS::UniString val = ParamHelpers::ToString(params.Get("{id:id}"));
+	GSErrCode err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
+	if (err != NoError) msg_rep("WriteGDLValues - ID", "ACAPI_Database(APIDb_ChangeElementInfoStringID", err, elemGuid);
+}
+
+// --------------------------------------------------------------------
+// Запись ParamDictValue в GDL параметры
 // --------------------------------------------------------------------
 void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
-
-	// Поиск и запись ID
-	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
-		if (param.rawName.IsEqual("{gdl:id}")) {
-			GS::UniString val = ParamHelpers::ToString(param);
-			GSErrCode err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
-			if (err != NoError) msg_rep("WriteGDLValues - ID", "ACAPI_Database(APIDb_ChangeElementInfoStringID", err, elemGuid);
-			params.Delete(param.rawName);
-		}
-	}
 	if (params.IsEmpty()) return;
 	API_Elem_Head elem_head = {};
 	API_Element element = {};
@@ -2816,6 +2820,9 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			if (paramType.IsEqual("gdl")) {
 				needCompare = ParamHelpers::ReadGDLValues(element, elem_head, paramByType);
 			}
+			if (paramType.IsEqual("id")) {
+				needCompare = ParamHelpers::ReadIDValues(elem_head, paramByType);
+			}
 			if (paramType.IsEqual("material") && !paramByType.IsEmpty()) {
 				ParamHelpers::ReadMaterial(element, params, propertyParams);
 			}
@@ -3095,6 +3102,34 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 	return flag_find;
 }
 
+bool ParamHelpers::ReadIDValues(const API_Elem_Head& elem_head, ParamDictValue& params) {
+	if (params.IsEmpty()) return false;
+	ParamValue param = params.Get("{id:id}");
+	GS::UniString infoString;
+	API_Guid elguid = elem_head.guid;
+	GSErrCode err = ACAPI_Database(APIDb_GetElementInfoStringID, &elguid, &infoString);
+	if (err != NoError) {
+		msg_rep("ReadIDValues - ID", "ACAPI_Database(APIDb_GetElementInfoStringID", err, elguid);
+		return false;
+	} else{
+		param.isValid = true;
+		param.val.type = API_PropertyStringValueType;
+		param.type = API_PropertyStringValueType;
+		param.val.boolValue = !infoString.IsEmpty();
+		if (UniStringToDouble(infoString, param.val.doubleValue)) {
+			param.val.intValue = (GS::Int32)param.val.doubleValue;
+			param.val.canCalculate = true;
+		}
+		else {
+			param.val.intValue = !infoString.IsEmpty();
+			param.val.doubleValue = param.val.intValue * 1.0;
+		}
+		param.val.uniStringValue = infoString;
+		params.Set(param.rawName, param);
+		return true;
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Получить значение GDL параметра по его имени или описанию в ParamValue
 // -----------------------------------------------------------------------------
@@ -3113,35 +3148,11 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 	bool flag_find_ID = false;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
-		if (param.rawName.IsEqual("{gdl:id}")) {
-			GS::UniString infoString;
-			API_Guid elguid = elem_head.guid;
-			GSErrCode err = ACAPI_Database(APIDb_GetElementInfoStringID, &elguid, &infoString);
-			if (err == NoError) {
-				param.isValid = true;
-				param.val.type = API_PropertyStringValueType;
-				param.type = API_PropertyStringValueType;
-				param.val.boolValue = !infoString.IsEmpty();
-				if (UniStringToDouble(infoString, param.val.doubleValue)) {
-					param.val.intValue = (GS::Int32)param.val.doubleValue;
-					param.val.canCalculate = true;
-				}
-				else {
-					param.val.intValue = !infoString.IsEmpty();
-					param.val.doubleValue = param.val.intValue * 1.0;
-				}
-				param.val.uniStringValue = infoString;
-				params.Set(param.rawName, param);
-				flag_find_ID = true;
-			}
+		if (param.fromGDLdescription && eltype == API_ObjectID) {
+			paramBydescription.Add(param.rawName, param);
 		}
 		else {
-			if (param.fromGDLdescription && eltype == API_ObjectID) {
-				paramBydescription.Add(param.rawName, param);
-			}
-			else {
-				if (param.fromGDLparam) paramByName.Add(param.rawName, param);
-			}
+			if (param.fromGDLparam) paramByName.Add(param.rawName, param);
 		}
 	}
 	if (paramBydescription.IsEmpty() && paramByName.IsEmpty() && !flag_find_ID) return false;
