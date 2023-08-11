@@ -120,17 +120,18 @@ typedef struct {
 
 	// Тут храним способ, которым нужно получить значение
 	bool fromGDLparam = false; // Найден в гдл параметрах
-	bool fromGDLdescription = false; // Найден по описанию
+	bool fromGDLdescription = false; // Найден по описанию в гдл параметрах
 	bool fromProperty = false; // Найден в свойствах
 	bool fromMorph = false; // Найден свойствах морфа
 	bool fromInfo = false; // Найден в инфо о проекте
 	bool fromGlob = false; // Найден в глобальных переменных
-	bool fromIFCProperty = false;
+	bool fromIFCProperty = false; // Найден в IFC свойствах
+	bool fromID = false; // Найден в ID
 	bool fromCoord = false; //Координаты
-	bool fromPropertyDefinition = false; //Задан определением, искать не нужно
+	bool fromPropertyDefinition = false; //Задан определением свойства, искать не нужно
 	bool fromMaterial = false; // Взять инфо из состава конструкции
 	bool fromAttribDefinition = false; // Взять инфо из свойств аттрибута
-	API_Guid fromGuid = APINULLGuid; //Откуда прочитать
+	API_Guid fromGuid = APINULLGuid; //Из какого элемента прочитан
 } ParamValue;
 
 // Словарь с заранее вычисленными данными в пределах обного элемента
@@ -459,6 +460,11 @@ namespace ParamHelpers {
 	bool ReadIFCValues(const API_Guid& elemGuid, ParamDictValue& params);
 
 	// -----------------------------------------------------------------------------
+	// Получение ID элемента
+	// -----------------------------------------------------------------------------
+	bool ReadIDValues(const API_Elem_Head& elem_head, ParamDictValue& params);
+
+	// -----------------------------------------------------------------------------
 	// Получить значение GDL параметра по его имени или описанию в ParamValue
 	// -----------------------------------------------------------------------------
 	bool ReadGDLValues(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
@@ -479,7 +485,12 @@ namespace ParamHelpers {
 	void InfoWrite(ParamDictElement& paramToWrite);
 
 	// --------------------------------------------------------------------
-	// Запись ParamDictValue в GDL параметры и ID
+	// Запись ParamDictValue в ID
+	// --------------------------------------------------------------------
+	void WriteIDValues(const API_Guid& elemGuid, ParamDictValue& params);
+
+	// --------------------------------------------------------------------
+	// Запись ParamDictValue в GDL параметры
 	// --------------------------------------------------------------------
 	void WriteGDLValues(const API_Guid& elemGuid, ParamDictValue& params);
 
