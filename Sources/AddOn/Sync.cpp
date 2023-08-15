@@ -392,6 +392,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 								GS::UniString stringformat = writeSub.stringformat;
 								if (stringformat.IsEmpty()) stringformat = paramTo.val.stringformat;
 								if (stringformat.IsEmpty()) stringformat = paramFrom.val.stringformat;
+
 								// Приводим к единому виду перед проверкой
 								if (!stringformat.IsEmpty()) {
 									Int32 n_zero = 3;
@@ -407,6 +408,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 									ParamHelpers::ConvertByFormat(paramTo);
 									ParamHelpers::ConvertByFormat(paramFrom);
 								}
+
 								//Сопоставляем и записываем, если значения отличаются
 								if (paramFrom != paramTo) {
 									paramTo.val = paramFrom.val; // Записываем только значения
@@ -594,7 +596,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	}
 
 	if (synctypefind == false) {
-		if (rulestring_one.Contains(":id")) {
+		if (rulestring_one.Contains("{id}") || rulestring_one.Contains("{ID}")) {
 			paramNamePrefix = "{id:";
 			param.fromID = true;
 			synctypefind = true;
