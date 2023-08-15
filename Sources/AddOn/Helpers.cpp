@@ -1655,13 +1655,17 @@ GS::UniString GetFormatString(GS::UniString & paramName) {
 	if (!paramName.Contains(".")) return formatstring;
 	GS::Array<GS::UniString> partstring;
 	UInt32 n = StringSplt(paramName, ".", partstring);
-	if (StringSplt(paramName, ".", partstring) > 1) {
-		if (partstring[n - 1].Contains("m") || partstring[n - 1].Contains(u8"м")) {
+	GS::UniString meterString = RSGetIndString(AddOnStringsID, MeterStringID, ACAPI_GetOwnResModule());
+	if (n > 1) {
+		formatstring = partstring[n - 1];
+		if (partstring[n - 1].Contains('m') || partstring[n - 1].Contains(meterString)) {
 			formatstring = partstring[n - 1];
-			paramName.ReplaceAll("." + formatstring, "");
-			formatstring.ReplaceAll(u8"м", "m");
-			formatstring.ReplaceAll(u8"д", "d");
-			formatstring.ReplaceAll(u8"с", "c");
+			paramName.ReplaceAll('.' + formatstring, "");
+			formatstring.ReplaceAll(meterString, "m");
+			meterString = RSGetIndString(AddOnStringsID, DMeterStringID, ACAPI_GetOwnResModule());
+			formatstring.ReplaceAll(meterString, "d");
+			meterString = RSGetIndString(AddOnStringsID, CMeterStringID, ACAPI_GetOwnResModule());
+			formatstring.ReplaceAll(meterString, "c");
 		}
 	}
 	return formatstring;
@@ -2498,7 +2502,7 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 // --------------------------------------------------------------------
 // Запись ParamDictValue в ID
 // --------------------------------------------------------------------
-void ParamHelpers::WriteIDValues(const API_Guid& elemGuid, ParamDictValue& params) {
+void ParamHelpers::WriteIDValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
 	GS::UniString val = ParamHelpers::ToString(params.Get("{id:id}"));
@@ -3102,7 +3106,7 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 	return flag_find;
 }
 
-bool ParamHelpers::ReadIDValues(const API_Elem_Head& elem_head, ParamDictValue& params) {
+bool ParamHelpers::ReadIDValues(const API_Elem_Head & elem_head, ParamDictValue & params) {
 	if (params.IsEmpty()) return false;
 	ParamValue param = params.Get("{id:id}");
 	GS::UniString infoString;
@@ -3111,7 +3115,8 @@ bool ParamHelpers::ReadIDValues(const API_Elem_Head& elem_head, ParamDictValue& 
 	if (err != NoError) {
 		msg_rep("ReadIDValues - ID", "ACAPI_Database(APIDb_GetElementInfoStringID", err, elguid);
 		return false;
-	} else{
+	}
+	else {
 		param.isValid = true;
 		param.val.type = API_PropertyStringValueType;
 		param.type = API_PropertyStringValueType;
