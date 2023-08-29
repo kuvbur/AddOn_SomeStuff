@@ -267,6 +267,16 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
 		if (err != NoError) return;
 	}
+
+	API_Element element, mask;
+	ACAPI_ELEMENT_MASK_CLEAR (mask);
+	ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, renovationStatus);
+	element.header = tElemHead;
+	err = ACAPI_Element_Get(&element);
+	if (err != NoError) {
+		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
+		return;
+	}
 	err = ACAPI_Goodies(APIAny_RunGDLParScriptID, &tElemHead, 0);
 	if (err != NoError) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
@@ -392,23 +402,13 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 								GS::UniString stringformat = writeSub.stringformat;
 								if (stringformat.IsEmpty()) stringformat = paramTo.val.stringformat;
 								if (stringformat.IsEmpty()) stringformat = paramFrom.val.stringformat;
-
 								// Приводим к единому виду перед проверкой
 								if (!stringformat.IsEmpty()) {
-									Int32 n_zero = 3;
-									Int32 krat = 0;
-									double koeff = 1;
-									bool trim_zero = true;
-									PropertyHelpers::ParseFormatString(stringformat, n_zero, krat, koeff, trim_zero);
-									UNUSED_VARIABLE(krat); UNUSED_VARIABLE(koeff); UNUSED_VARIABLE(trim_zero);
-									paramTo.val.n_zero = n_zero;
 									paramTo.val.stringformat = stringformat;
-									paramFrom.val.n_zero = n_zero;
 									paramFrom.val.stringformat = stringformat;
 									ParamHelpers::ConvertByFormat(paramTo);
 									ParamHelpers::ConvertByFormat(paramFrom);
 								}
-
 								//Сопоставляем и записываем, если значения отличаются
 								if (paramFrom != paramTo) {
 									paramTo.val = paramFrom.val; // Записываем только значения
