@@ -3784,10 +3784,17 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & proper
 }
 void ParamHelpers::ConvertByFormat(ParamValue & pvalue) {
 	if (pvalue.val.type == API_PropertyRealValueType || pvalue.val.type == API_PropertyIntegerValueType) {
-		pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, pvalue.val.n_zero)) / pow(10, pvalue.val.n_zero);
+		Int32 n_zero = 3;
+		Int32 krat = 0;
+		double koeff = 1;
+		bool trim_zero = true;
+		PropertyHelpers::ParseFormatString(pvalue.val.stringformat, n_zero, krat, koeff, trim_zero);
+		UNUSED_VARIABLE(krat); UNUSED_VARIABLE(trim_zero);
+		pvalue.val.uniStringValue = ParamHelpers::ToString(pvalue);
+		if (koeff != 1) n_zero = n_zero + (GS::Int32)log10(koeff);
+		pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, n_zero)) / pow(10, n_zero);
 		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 		if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
-		pvalue.val.uniStringValue = ParamHelpers::ToString(pvalue);
 	}
 }
 
