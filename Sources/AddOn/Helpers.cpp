@@ -188,43 +188,43 @@ bool CheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syn
 		return true;
 	if (syncSettings.wallS &&
 		(elementType == API_WallID || elementType == API_ColumnID || elementType == API_BeamID || elementType == API_SlabID ||
-		 elementType == API_RoofID || elementType == API_MeshID || elementType == API_ShellID ||
-		 elementType == API_MorphID ||
-		 elementType == API_BeamSegmentID ||
-		 elementType == API_ColumnSegmentID))
+			elementType == API_RoofID || elementType == API_MeshID || elementType == API_ShellID ||
+			elementType == API_MorphID ||
+			elementType == API_BeamSegmentID ||
+			elementType == API_ColumnSegmentID))
 		return true;
 	if (syncSettings.objS &&
 		(elementType == API_StairID || elementType == API_RiserID ||
-		 elementType == API_TreadID || elementType == API_StairStructureID ||
-		 elementType == API_ObjectID ||
-		 elementType == API_ZoneID ||
-		 elementType == API_LampID))
+			elementType == API_TreadID || elementType == API_StairStructureID ||
+			elementType == API_ObjectID ||
+			elementType == API_ZoneID ||
+			elementType == API_LampID))
 		return true;
 	if (syncSettings.objS &&
 		(elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
-		 elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
-		 elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
-		 elementType == API_RailingNodeID || elementType == API_RailingBalusterSetID || elementType == API_RailingPatternID ||
-		 elementType == API_RailingToprailEndID || elementType == API_RailingHandrailEndID ||
-		 elementType == API_RailingRailEndID ||
-		 elementType == API_RailingToprailConnectionID ||
-		 elementType == API_RailingHandrailConnectionID ||
-		 elementType == API_RailingRailConnectionID ||
-		 elementType == API_RailingEndFinishID))
+			elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
+			elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
+			elementType == API_RailingNodeID || elementType == API_RailingBalusterSetID || elementType == API_RailingPatternID ||
+			elementType == API_RailingToprailEndID || elementType == API_RailingHandrailEndID ||
+			elementType == API_RailingRailEndID ||
+			elementType == API_RailingToprailConnectionID ||
+			elementType == API_RailingHandrailConnectionID ||
+			elementType == API_RailingRailConnectionID ||
+			elementType == API_RailingEndFinishID))
 		return true;
 	if (syncSettings.cwallS &&
 		(elementType == API_CurtainWallSegmentID ||
-		 elementType == API_CurtainWallFrameID ||
-		 elementType == API_CurtainWallJunctionID ||
-		 elementType == API_CurtainWallAccessoryID ||
-		 elementType == API_CurtainWallID ||
-		 elementType == API_CurtainWallPanelID))
+			elementType == API_CurtainWallFrameID ||
+			elementType == API_CurtainWallJunctionID ||
+			elementType == API_CurtainWallAccessoryID ||
+			elementType == API_CurtainWallID ||
+			elementType == API_CurtainWallPanelID))
 		return true;
 	if (syncSettings.widoS &&
 		(elementType == API_WindowID ||
-		 elementType == API_DoorID ||
-		 elementType == API_SkylightID ||
-		 elementType == API_OpeningID))
+			elementType == API_DoorID ||
+			elementType == API_SkylightID ||
+			elementType == API_OpeningID))
 		return true;
 	return false;
 }
@@ -1210,6 +1210,21 @@ bool ParamHelpers::ReadMorphParam(const API_Element& element, ParamDictValue& pd
 	}
 }
 
+void ParamHelpers::SetSourseByName(ParamValue& pvalue) {
+	if (pvalue.rawName.Contains("{@coord:")) pvalue.fromCoord = true;
+	if (pvalue.rawName.Contains("{@gdl")) pvalue.fromGDLparam = true;
+	if (pvalue.rawName.Contains("{@description:")) {
+		pvalue.fromGDLparam = true;
+		pvalue.fromGDLdescription = true;
+	}
+	if (pvalue.rawName.Contains("{@property")) pvalue.fromProperty = true;
+	if (pvalue.rawName.Contains("{@material")) pvalue.fromMaterial = true;
+	if (pvalue.rawName.Contains("{@info")) pvalue.fromInfo = true;
+	if (pvalue.rawName.Contains("{@ifc")) pvalue.fromIFCProperty = true;
+	if (pvalue.rawName.Contains("{@morph")) pvalue.fromMorph = true;
+	if (pvalue.rawName.Contains("{@id")) pvalue.fromID = true;
+}
+
 // -----------------------------------------------------------------------------
 // Добавление пустого значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
@@ -1231,7 +1246,7 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 			name_ = partstring[1].ToLowerCase();
 		}
 	}
-	if (rawname_prefix.IsEmpty()) rawname_prefix = "gdl:";
+	if (rawname_prefix.IsEmpty()) rawname_prefix = "@gdl:";
 
 	// Ищём строку с указанием формата вывода (метры/миллиметры)
 	GS::UniString rawName = "{" + rawname_prefix + name_ + "}";
@@ -1239,17 +1254,6 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 		ParamValue pvalue;
 		pvalue.rawName = rawName;
 		pvalue.name = name_;
-		if (rawName.Contains("coord")) pvalue.fromCoord = true;
-		if (rawName.Contains("gdl")) pvalue.fromGDLparam = true;
-		if (rawName.Contains("escription:") || rawName.Contains("esc:")) {
-			pvalue.fromGDLparam = true;
-			pvalue.fromGDLdescription = true;
-		}
-		if (rawName.Contains("property")) pvalue.fromProperty = true;
-		if (rawName.Contains("material")) pvalue.fromMaterial = true;
-		if (rawName.Contains("info")) pvalue.fromInfo = true;
-		if (rawName.Contains("ifc")) pvalue.fromIFCProperty = true;
-		if (rawName.Contains("morph")) pvalue.fromMorph = true;
 		if (!stringformat.IsEmpty()) { // Если строка не пустая - посмотрим количество знаков после запятой
 			Int32 n_zero = 3;
 			Int32 krat = 0;
@@ -1319,7 +1323,7 @@ void ParamHelpers::AddParamDictValue2ParamDictElement(const API_Guid& elemGuid, 
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = param.EnumeratePairs(); cIt != NULL; ++cIt) {
 			GS::UniString rawName = *cIt->key;
 			if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
-				ParamValue param = *cIt->value;
+				ParamValue& param = *cIt->value;
 				if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
 				paramToRead.Get(elemGuid).Add(rawName, param);
 			}
@@ -1415,7 +1419,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1465,7 +1469,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	double tolerance_coord = 0.01;
 	bool hasSymbpos = false; bool hasLine = false;
 
-	GS::UniString globnorthkey = "{glob:glob_north_dir}";
+	GS::UniString globnorthkey = "{@glob:glob_north_dir}";
 	API_ElemTypeID eltype;
 #ifdef AC_26
 	eltype = element.header.type.typeID;
@@ -1495,7 +1499,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	}
 	else {
 		UNUSED_VARIABLE(owner);
-	}
+}
 	switch (eltype) {
 	case API_WindowID:
 		x = element.window.objLoc;
@@ -1737,7 +1741,7 @@ bool ParamHelpers::ParseParamNameMaterial(GS::UniString & expression, ParamDictV
 	GS::UniString part = "";
 	while (expression.Count('%') > 1) {
 		part = expression.GetSubstring('%', '%', 0);
-		if (!part.IsEmpty()) expression.ReplaceAll('%' + part + '%', "{property:" + part.ToLowerCase() + '}');
+		if (!part.IsEmpty()) expression.ReplaceAll('%' + part + '%', "{@property:" + part.ToLowerCase() + '}');
 	}
 	return ParamHelpers::ParseParamName(expression, paramDict);
 }
@@ -1829,15 +1833,15 @@ bool EvalExpression(GS::UniString & unistring_expression) {
 // -----------------------------------------------------------------------------
 void ParamHelpers::GetParamTypeList(GS::Array<GS::UniString>&paramTypesList) {
 	if (!paramTypesList.IsEmpty()) paramTypesList.Clear();
-	paramTypesList.Push("property");
-	paramTypesList.Push("coord");
-	paramTypesList.Push("gdl");
-	paramTypesList.Push("info");
-	paramTypesList.Push("ifc");
-	paramTypesList.Push("morph");
-	paramTypesList.Push("material");
-	paramTypesList.Push("glob");
-	paramTypesList.Push("id");
+	paramTypesList.Push("{@property:");
+	paramTypesList.Push("{@coord:");
+	paramTypesList.Push("{@gdl:");
+	paramTypesList.Push("{@info:");
+	paramTypesList.Push("{@ifc:");
+	paramTypesList.Push("{@morph:");
+	paramTypesList.Push("{@material:");
+	paramTypesList.Push("{@glob:");
+	paramTypesList.Push("{@id:");
 }
 
 // -----------------------------------------------------------------------------
@@ -2049,7 +2053,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 }
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
-	switch (lhs.val.type) {
+	switch (rhs.val.type) {
 	case API_PropertyIntegerValueType:
 		return lhs.val.intValue == rhs.val.intValue;
 	case API_PropertyRealValueType:
@@ -2113,7 +2117,7 @@ bool Equals(const API_PropertyDefaultValue & lhs, const API_PropertyDefaultValue
 	else {
 		return Equals(lhs.basicValue, rhs.basicValue, collType);
 	}
-}
+	}
 
 bool Equals(const API_PropertyValue & lhs, const API_PropertyValue & rhs, API_PropertyCollectionType collType) {
 	if (lhs.variantStatus != rhs.variantStatus) {
@@ -2226,12 +2230,12 @@ void DeleteElementsUserData() {
 	USize ng = elemList.GetSize();
 	if (err == NoError) {
 		ACAPI_CallUndoableCommand("Delete Element Set",
-								  [&]() -> GSErrCode {
-									  for (UIndex ii = 0; ii < ng; ii++) {
-										  DeleteElementUserData(elemList[ii]);
-									  }
-									  return NoError;
-								  });
+			[&]() -> GSErrCode {
+				for (UIndex ii = 0; ii < ng; ii++) {
+					DeleteElementUserData(elemList[ii]);
+				}
+				return NoError;
+			});
 	}
 }
 
@@ -2429,7 +2433,7 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue params = *cIt->value;
+		ParamDictValue& params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
 		if (!params.IsEmpty()) {
 			ParamHelpers::Write(elemGuid, params);
@@ -2454,19 +2458,19 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 		GS::UniString paramType = paramTypesList[i];
 		ParamDictValue paramByType;
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-			ParamValue param = *cIt->value;
+			ParamValue& param = *cIt->value;
 			if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
 		}
 		if (!paramByType.IsEmpty()) {
 
 			// Проходим поиском, специфичным для каждого типа
-			if (paramType.IsEqual("property")) {
+			if (paramType.IsEqual("{@property:")) {
 				ParamHelpers::WritePropertyValues(elemGuid, paramByType);
 			}
-			if (paramType.IsEqual("gdl")) {
+			if (paramType.IsEqual("{@gdl:")) {
 				ParamHelpers::WriteGDLValues(elemGuid, paramByType);
 			}
-			if (paramType.IsEqual("id")) {
+			if (paramType.IsEqual("{@id:")) {
 				ParamHelpers::WriteIDValues(elemGuid, paramByType);
 			}
 		}
@@ -2480,17 +2484,17 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
 	ParamDictValue paramsinfo;
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue params = *cIt->value;
+		ParamDictValue& params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue param = *cIt->value;
+				ParamValue& param = *cIt->value;
 				if (param.fromInfo && !paramsinfo.ContainsKey(param.rawName)) paramsinfo.Add(param.rawName, param);
 			}
 		}
 	}
 	if (paramsinfo.IsEmpty()) return;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsinfo.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		GS::UniString dbKey = param.name;
 		GS::UniString value = ParamHelpers::ToString(param, param.val.stringformat);
 		GSErrCode err = ACAPI_Goodies(APIAny_SetAnAutoTextID, &dbKey, &value);
@@ -2563,8 +2567,8 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 		if (err != NoError) {
 			msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 			return;
-		}
 	}
+}
 
 	// TODO Оптимизировать, разнести по функциям
 	bool flagFind = false;
@@ -2573,7 +2577,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	for (Int32 i = 0; i < addParNum; ++i) {
 		API_AddParType& actualParam = (*apiParams.params)[i];
 		GS::UniString name = actualParam.name;
-		GS::UniString rawname = "{gdl:" + name.ToLowerCase() + "}";
+		GS::UniString rawname = "{@gdl:" + name.ToLowerCase() + "}";
 		if (params.ContainsKey(rawname)) {
 			ParamValueData paramfrom = params.Get(rawname).val;
 			BNZeroMemory(&chgParam, sizeof(API_ChangeParamType));
@@ -2631,7 +2635,7 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 	if (elemGuid == APINULLGuid) return;
 	GS::Array<API_Property> properties;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.isValid && param.fromPropertyDefinition) {
 			API_Property property = param.property;
 
@@ -2650,10 +2654,10 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 
 bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue params = *cIt->value;
+		ParamDictValue& params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue param = *cIt->value;
+				ParamValue& param = *cIt->value;
 				if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) return true;
 			}
 		}
@@ -2663,10 +2667,10 @@ bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
 
 bool ParamHelpers::hasUnreadInfo(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue params = *cIt->value;
+		ParamDictValue& params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue param = *cIt->value;
+				ParamValue& param = *cIt->value;
 				if (param.fromInfo) {
 
 					// Проверим - есть ли уже считанный параметр
@@ -2687,10 +2691,10 @@ bool ParamHelpers::hasUnreadInfo(ParamDictElement & paramToRead, ParamDictValue 
 
 bool ParamHelpers::hasUnreadGlob(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue params = *cIt->value;
+		ParamDictValue& params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue param = *cIt->value;
+				ParamValue& param = *cIt->value;
 				if (param.fromGlob) {
 
 					// Проверим - есть ли уже считанный параметр
@@ -2724,7 +2728,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 
 	// Выбираем по-элементно параметры для чтения
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue params = *cIt->value;
+		ParamDictValue& params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
 		if (!params.IsEmpty()) {
 			if (!propertyParams.IsEmpty()) ParamHelpers::Compare(propertyParams, params, "ElementsRead"); // Сопоставляем свойства
@@ -2758,7 +2762,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 	bool needGetElement = false;
 	bool needGetAllDefinitions = false;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
 		if (param.fromGuid == elemGuid && param.fromGuid != APINULLGuid) {
 
@@ -2770,8 +2774,8 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				needGetElement = true;
 			}
 			if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
-		}
 	}
+}
 
 	if (needGetAllDefinitions) {
 		GetAllPropertyDefinitionToParamDict(params, elemGuid);
@@ -2799,7 +2803,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 		GS::UniString paramType = paramTypesList.Get(i);
 		ParamDictValue paramByType;
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-			ParamValue param = *cIt->value;
+			ParamValue& param = *cIt->value;
 			if (param.fromGuid == elemGuid) {
 				if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
 			}
@@ -2808,32 +2812,32 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			bool needCompare = false;
 
 			// Проходим поиском, специфичным для каждого типа
-			if (paramType.IsEqual("property")) {
+			if (paramType.IsEqual("{@property:")) {
 				needCompare = ParamHelpers::ReadPropertyValues(elemGuid, paramByType);
 			}
-			if (paramType.IsEqual("coord")) {
+			if (paramType.IsEqual("{@coord:")) {
 
 				// Для определения угла к северу нам потребуется значение направления на север.
 				// Оно должно быть в Info, проверим и добавим, если оно есть
-				GS::UniString globnorthkey = "{glob:glob_north_dir}";
+				GS::UniString globnorthkey = "{@glob:glob_north_dir}";
 				if (propertyParams.ContainsKey(globnorthkey)) {
 					paramByType.Add(globnorthkey, propertyParams.Get(globnorthkey));
 				}
 				needCompare = ParamHelpers::ReadElemCoords(element, paramByType);
 			}
-			if (paramType.IsEqual("gdl")) {
+			if (paramType.IsEqual("{@gdl:")) {
 				needCompare = ParamHelpers::ReadGDLValues(element, elem_head, paramByType);
 			}
-			if (paramType.IsEqual("id")) {
+			if (paramType.IsEqual("{@id:")) {
 				needCompare = ParamHelpers::ReadIDValues(elem_head, paramByType);
 			}
-			if (paramType.IsEqual("material") && !paramByType.IsEmpty()) {
+			if (paramType.IsEqual("{@material:") && !paramByType.IsEmpty()) {
 				ParamHelpers::ReadMaterial(element, params, propertyParams);
 			}
-			if (paramType.IsEqual("ifc")) {
+			if (paramType.IsEqual("{@ifc:")) {
 				needCompare = ParamHelpers::ReadIFCValues(elemGuid, paramByType);
 			}
-			if (paramType.IsEqual("morph")) {
+			if (paramType.IsEqual("{@morph:")) {
 				needCompare = ParamHelpers::ReadMorphParam(element, paramByType);
 			}
 			if (needCompare) {
@@ -2841,9 +2845,8 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			}
 		}
 	}
-	int hh = 1;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.isValid && param.val.canCalculate) {
 			ParamHelpers::ConvertByFormat(param);
 		}
@@ -2860,7 +2863,7 @@ void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	}
 	for (UInt32 i = 0; i < autotexts.GetSize(); i++) {
 		GS::UniString name = autotexts[i][0];
-		GS::UniString rawName = "{info:" + name.ToLowerCase() + "}";
+		GS::UniString rawName = "{@info:" + name.ToLowerCase() + "}";
 		if (!propertyParams.ContainsKey(rawName)) {
 			ParamValue pvalue;
 			pvalue.name = autotexts[i][1];
@@ -2883,27 +2886,27 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 		msg_rep("GetAllGlobToParamDict", "APIEnv_GetPlaceSetsID", err, APINULLGuid);
 		return;
 	}
-	name = "GLOB_NORTH_DIR"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	name = "GLOB_NORTH_DIR"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvValue(pvalue, rawName, round((placeInfo.north * 180 / PI) * 1000.0) / 1000.0);
 	propertyParams.Add(rawName, pvalue);
-	name = "GLOB_PROJECT_LONGITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	name = "GLOB_PROJECT_LONGITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvValue(pvalue, rawName, placeInfo.longitude);
 	propertyParams.Add(rawName, pvalue);
-	name = "GLOB_PROJECT_LATITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	name = "GLOB_PROJECT_LATITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvValue(pvalue, rawName, placeInfo.latitude);
 	propertyParams.Add(rawName, pvalue);
-	name = "GLOB_PROJECT_ALTITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	name = "GLOB_PROJECT_ALTITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvValue(pvalue, rawName, placeInfo.altitude);
 	propertyParams.Add(rawName, pvalue);
-	name = "GLOB_SUN_AZIMUTH"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	name = "GLOB_SUN_AZIMUTH"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvValue(pvalue, rawName, round((placeInfo.sunAngXY * 180 / PI) * 1000.0) / 1000.0);
 	propertyParams.Add(rawName, pvalue);
-	name = "GLOB_SUN_ALTITUDE"; rawName = "{glob:" + name.ToLowerCase() + "}";
+	name = "GLOB_SUN_ALTITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvValue(pvalue, rawName, round((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
 	propertyParams.Add(rawName, pvalue);
@@ -2979,13 +2982,13 @@ void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & property
 					GS::UniString name = "";
 					GS::UniString rawName = "";
 					if (definitions[j].description.Contains("Sync_name")) {
-						rawName = "{property:sync_name}";
+						rawName = "{@property:sync_name}";
 						name = "Sync_name";
 						definitions[j].name = name;
 					}
 					else {
 						name = groups[i].name + "/" + definitions[j].name;
-						rawName = "{property:" + name.ToLowerCase() + "}";
+						rawName = "{@property:" + name.ToLowerCase() + "}";
 					}
 					bool changeExs = propertyParams.ContainsKey(rawName);
 					if (needAddNew && !changeExs) {
@@ -3019,11 +3022,11 @@ void ParamHelpers::Compare(const ParamDictValue & paramsFrom, ParamDictValue & p
 	if (paramsFrom.IsEmpty() || paramsTo.IsEmpty()) return;
 	if (paramsTo.IsEmpty()) return;
 	UInt32 nparams = paramsTo.GetSize();
-	for (auto& cIt : paramsTo){
+	for (auto& cIt : paramsTo) {
 		GS::UniString k = *cIt.key;
 		if (paramsFrom.ContainsKey(k)) {
 			nparams--;
-			ParamValue paramFrom = paramsFrom.Get(*cIt.key);
+			ParamValue paramFrom = paramsFrom.Get(k);
 			paramFrom.fromGuid = paramsTo.Get(paramFrom.rawName).fromGuid; // Чтоб GUID не перезаписался
 			paramsTo.Set(paramFrom.rawName, paramFrom);
 			if (nparams == 0) return; // Если все ключи найдены - выходим
@@ -3041,7 +3044,7 @@ bool ParamHelpers::ReadPropertyValues(const API_Guid & elemGuid, ParamDictValue 
 	// Определения и свойста для элементов
 	GS::Array<API_PropertyDefinition> propertyDefinitions;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.fromPropertyDefinition) {
 			API_PropertyDefinition definition = param.definition;
 			propertyDefinitions.Push(definition);
@@ -3075,7 +3078,7 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 	for (UInt32 i = 0; i < properties.GetSize(); i++) {
 		API_IFCProperty prop = properties.Get(i);
 		GS::UniString fname = properties[i].head.propertySetName + "/" + properties[i].head.propertyName;
-		GS::UniString rawName = "{ifc:" + fname.ToLowerCase() + "}";
+		GS::UniString rawName = "{@ifc:" + fname.ToLowerCase() + "}";
 		if (params.ContainsKey(rawName)) {
 			ParamValue pvalue;
 			API_IFCProperty property = properties.Get(i);
@@ -3090,7 +3093,7 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 		}
 		else {
 			fname = properties[i].head.propertyName;
-			rawName = "{ifc:" + fname.ToLowerCase() + "}";
+			rawName = "{@ifc:" + fname.ToLowerCase() + "}";
 			if (params.ContainsKey(rawName)) {
 				ParamValue pvalue;
 				API_IFCProperty property = properties.Get(i);
@@ -3153,7 +3156,7 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 	ParamDictValue paramBydescription;
 	ParamDictValue paramByName;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.fromGDLdescription && eltype == API_ObjectID) {
 			paramBydescription.Add(param.rawName, param);
 		}
@@ -3208,7 +3211,7 @@ bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictV
 	for (Int32 i = 0; i < addParNum; ++i) {
 		API_AddParType& actualParam = (*addPars)[i];
 		GS::UniString name = actualParam.uDescname;
-		GS::UniString rawname = "{gdl:" + name.ToLowerCase() + "}";
+		GS::UniString rawname = "{@gdl:" + name.ToLowerCase() + "}";
 		if (params.ContainsKey(rawname)) {
 			nfind--;
 			ParamValue pvalue = params.Get(rawname);
@@ -3246,7 +3249,7 @@ bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_He
 	for (Int32 i = 0; i < addParNum; ++i) {
 		API_AddParType& actualParam = (*addPars)[i];
 		GS::UniString name = actualParam.name;
-		GS::UniString rawname = "{gdl:" + name.ToLowerCase() + "}";
+		GS::UniString rawname = "{@gdl:" + name.ToLowerCase() + "}";
 		if (params.ContainsKey(rawname)) {
 			nfind--;
 			ParamValue pvalue = params.Get(rawname);
@@ -3276,9 +3279,9 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 
 	ParamDictValue paramlayers;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.fromMaterial) {
-			if (param.rawName.Contains("{material:layers")) {
+			if (param.rawName.Contains("{@material:layers")) {
 				paramlayers.Add(param.rawName, param);
 			}
 		}
@@ -3290,7 +3293,7 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 		ParamHelpers::Compare(propertyParams, paramsAdd, "ReadMaterial");
 		GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
-			ParamValue param_composite = *cIt->value;
+			ParamValue& param_composite = *cIt->value;
 			ParamDictValue paramsAdd_1;
 			if (param_composite.val.uniStringValue.Contains("{")) {
 				Int32 nlayers = param_composite.composite.GetSize();
@@ -3317,7 +3320,7 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 	// Если есть строка-шаблон - заполним её
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 		bool flag = false;
-		ParamValue param_composite = *cIt->value;
+		ParamValue& param_composite = *cIt->value;
 		GS::UniString rawName = *cIt->key;
 		GS::UniString outstring = "";
 		if (param_composite.val.uniStringValue.Contains("{")) {
@@ -3327,23 +3330,23 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 				API_AttributeIndex constrinx = param_composite.composite[i].inx;
 
 				// Если нужно заполнить толщину
-				if (params.ContainsKey("{material:layer thickness}")) {
+				if (params.ContainsKey("{@material:layer thickness}")) {
 					double fillThick = param_composite.composite[i].fillThick;
-					GS::UniString formatsting = params.Get("{material:layer thickness}").val.stringformat;
+					GS::UniString formatsting = params.Get("{@material:layer thickness}").val.stringformat;
 					if (formatsting.IsEmpty()) {
 						formatsting = "1mm";
-						params.Get("{material:layer thickness}").val.stringformat = formatsting;
-						params.Get("{material:layer thickness}").val.n_zero = 1;
+						params.Get("{@material:layer thickness}").val.stringformat = formatsting;
+						params.Get("{@material:layer thickness}").val.n_zero = 1;
 					}
 					GS::UniString fillThickstring = PropertyHelpers::NumToString(fillThick, formatsting);
-					templatestring.ReplaceAll("{material:layer thickness}", fillThickstring);
+					templatestring.ReplaceAll("{@material:layer thickness}", fillThickstring);
 				}
-				templatestring.ReplaceAll("{material:n}", GS::UniString::Printf("%d", i + 1));
+				templatestring.ReplaceAll("{@material:n}", GS::UniString::Printf("%d", i + 1));
 
 				// Если для материала было указано уникальное наименование - заменим его
 				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
-				if (params.ContainsKey("{property:sync_name" + attribsuffix)) {
-					if (params.Get("{property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
+				if (params.ContainsKey("{@property:sync_name" + attribsuffix)) {
+					if (params.Get("{@property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
 				}
 				templatestring.ReplaceAll("}", attribsuffix);
 				if (ParamHelpers::ReplaceParamInExpression(params, templatestring)) {
@@ -3429,6 +3432,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 			pvalue.val.type = API_PropertyIntegerValueType;
 			pvalue.val.canCalculate = true;
 			pvalue.val.n_zero = 0;
+			pvalue.val.stringformat = "0m";
 			break;
 		case APIParT_Boolean:
 			pvalue.val.n_zero = 0;
@@ -3442,6 +3446,8 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 				param_int = 0;
 				param_real = 0.0;
 			}
+			pvalue.val.stringformat = "0m";
+			pvalue.val.n_zero = 0;
 			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyBooleanValueType;
 			break;
@@ -3449,16 +3455,19 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 			param_string = GS::UniString::Printf("%.0f", param_real * 1000);
 			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyRealValueType;
+			pvalue.val.stringformat = "1mm";
 			break;
 		case APIParT_Angle:
 			param_string = GS::UniString::Printf("%.1f", param_real);
 			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyRealValueType;
+			pvalue.val.stringformat = "2m";
 			break;
 		case APIParT_RealNum:
 			param_string = GS::UniString::Printf("%.3f", param_real);
 			pvalue.val.canCalculate = true;
 			pvalue.val.type = API_PropertyRealValueType;
+			pvalue.val.stringformat = "3m";
 			break;
 
 			// Для реквезитов в текст выведем имена
@@ -3495,7 +3504,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 			}
 		}
 	}
-	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{gdl:" + GS::UniString(nthParameter.name).ToLowerCase() + "}";
+	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + GS::UniString(nthParameter.name).ToLowerCase() + "}";
 	if (pvalue.name.IsEmpty()) pvalue.name = nthParameter.name;
 	pvalue.type = pvalue.val.type;
 	pvalue.fromGDLparam = true;
@@ -3514,7 +3523,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	if (pvalue.rawName.IsEmpty() || pvalue.name.IsEmpty()) {
 		GS::UniString fname;
 		GetPropertyFullName(property.definition, fname);
-		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{property:" + fname.ToLowerCase() + "}";
+		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@property:" + fname.ToLowerCase() + "}";
 		if (pvalue.name.IsEmpty()) pvalue.name = fname;
 	}
 #if defined(AC_22) || defined(AC_23)
@@ -3594,7 +3603,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	default:
 		return false;
 		break;
-	}
+}
 	if (pvalue.rawName.Contains("buildingmaterial")) {
 		pvalue.fromAttribDefinition = true;
 	}
@@ -3616,7 +3625,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_PropertyDefinition &
 	if (pvalue.rawName.IsEmpty() || pvalue.name.IsEmpty()) {
 		GS::UniString fname;
 		GetPropertyFullName(definition, fname);
-		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{property:" + fname.ToLowerCase() + "}";
+		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@property:" + fname.ToLowerCase() + "}";
 		if (pvalue.name.IsEmpty()) pvalue.name = fname;
 	}
 	if (pvalue.rawName.Contains("buildingmaterial")) {
@@ -3628,7 +3637,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_PropertyDefinition &
 		}
 	}
 	if (definition.description.Contains("Sync_name")) {
-		pvalue.rawName = "{property:sync_name}";
+		pvalue.rawName = "{@property:sync_name}";
 		pvalue.name = "Sync_name";
 		pvalue.fromAttribDefinition = true;
 	}
@@ -3643,7 +3652,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_PropertyDefinition &
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramName, const GS::UniString & strvalue) {
 	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
-	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{gdl:" + paramName.ToLowerCase() + "}";
+	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + paramName.ToLowerCase() + "}";
 	pvalue.val.uniStringValue = strvalue;
 	pvalue.val.boolValue = !pvalue.val.uniStringValue.IsEmpty();
 	if (UniStringToDouble(pvalue.val.uniStringValue, pvalue.val.doubleValue)) {
@@ -3668,7 +3677,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramName, const Int32 intValue) {
 	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
-	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{gdl:" + paramName.ToLowerCase() + "}";
+	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + paramName.ToLowerCase() + "}";
 	pvalue.val.type = API_PropertyIntegerValueType;
 	pvalue.val.canCalculate = true;
 	pvalue.val.intValue = intValue;
@@ -3685,7 +3694,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramName, const double doubleValue) {
 	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
-	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{gdl:" + paramName.ToLowerCase() + "}";
+	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + paramName.ToLowerCase() + "}";
 	pvalue.val.type = API_PropertyRealValueType;
 	pvalue.val.canCalculate = true;
 	pvalue.val.intValue = (GS::Int32)doubleValue;
@@ -3703,7 +3712,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const GS::UniString & paramNam
 bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_IFCProperty & property) {
 	if (pvalue.rawName.IsEmpty() || pvalue.name.IsEmpty()) {
 		GS::UniString fname = property.head.propertySetName + "/" + property.head.propertyName;
-		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{ifc:" + fname.ToLowerCase() + "}";
+		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@ifc:" + fname.ToLowerCase() + "}";
 		if (pvalue.name.IsEmpty()) pvalue.name = fname;
 	}
 	pvalue.isValid = true;
@@ -4077,12 +4086,12 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 					fillThick_ven = memo.columnSegments[0].venThick;
 				}
 				if (structtype == API_ProfileStructure) constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
-			}
+		}
 			else {
 				msg_rep("materialString::GetComponents", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
 				return false;
 			}
-		}
+	}
 		else {
 			msg_rep("materialString::GetComponents", "Multisegment column not supported", NoError, element.header.guid);
 			return false;
@@ -4141,16 +4150,16 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	default:
 		return false;
 		break;
-	}
+}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
 	// Получим словарь исключительно с определениями состава
 	ParamDictValue paramlayers;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.fromMaterial) {
-			if (param.rawName.Contains("{material:layers")) {
+			if (param.rawName.Contains("{@material:layers")) {
 				paramlayers.Add(param.rawName, param);
 			}
 		}
@@ -4161,7 +4170,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 		ParamValue param_composite = {};
 		param_composite.fromGuid = element.header.guid;
 		param_composite.isValid = true;
-		paramlayers.Add("{material:layers,20}", param_composite);
+		paramlayers.Add("{@material:layers,20}", param_composite);
 	}
 
 	bool hasData = false;
@@ -4207,7 +4216,7 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 	bool flag_find = false;
 	GS::Array<API_PropertyDefinition> propertyDefinitions;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue param = *cIt->value;
+		ParamValue& param = *cIt->value;
 		if (param.fromAttribDefinition) {
 			bool flag_add = true;
 
