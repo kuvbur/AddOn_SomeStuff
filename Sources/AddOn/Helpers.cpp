@@ -1200,7 +1200,7 @@ bool ParamHelpers::ReadMorphParam(const API_Element& element, ParamDictValue& pd
 		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "morph:", "a", A);
 		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "morph:", "b", B);
 		ParamHelpers::AddVal(pdictvaluemorph, element.header.guid, "morph:", "zzyzx", ZZYZX);
-		ParamHelpers::Compare(pdictvaluemorph, pdictvalue);
+		ParamHelpers::Compare(pdictvaluemorph, pdictvalue, "ReadMorphParam");
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return true;
 	}
@@ -1319,7 +1319,7 @@ void ParamHelpers::AddParamDictValue2ParamDictElement(const API_Guid& elemGuid, 
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = param.EnumeratePairs(); cIt != NULL; ++cIt) {
 			GS::UniString rawName = *cIt->key;
 			if (!paramToRead.Get(elemGuid).ContainsKey(rawName)) {
-				ParamValue& param = *cIt->value;
+				ParamValue param = *cIt->value;
 				if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
 				paramToRead.Get(elemGuid).Add(rawName, param);
 			}
@@ -1641,7 +1641,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
 	ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod(angz, 180.0));
-	ParamHelpers::Compare(pdictvaluecoord, params);
+	ParamHelpers::Compare(pdictvaluecoord, params, "ReadElemCoords");
 	return true;
 }
 
@@ -2429,7 +2429,7 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue& params = *cIt->value;
+		ParamDictValue params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
 		if (!params.IsEmpty()) {
 			ParamHelpers::Write(elemGuid, params);
@@ -2454,7 +2454,7 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 		GS::UniString paramType = paramTypesList[i];
 		ParamDictValue paramByType;
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-			ParamValue& param = *cIt->value;
+			ParamValue param = *cIt->value;
 			if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
 		}
 		if (!paramByType.IsEmpty()) {
@@ -2480,17 +2480,17 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
 	ParamDictValue paramsinfo;
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue& params = *cIt->value;
+		ParamDictValue params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue& param = *cIt->value;
+				ParamValue param = *cIt->value;
 				if (param.fromInfo && !paramsinfo.ContainsKey(param.rawName)) paramsinfo.Add(param.rawName, param);
 			}
 		}
 	}
 	if (paramsinfo.IsEmpty()) return;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsinfo.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		GS::UniString dbKey = param.name;
 		GS::UniString value = ParamHelpers::ToString(param, param.val.stringformat);
 		GSErrCode err = ACAPI_Goodies(APIAny_SetAnAutoTextID, &dbKey, &value);
@@ -2631,7 +2631,7 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 	if (elemGuid == APINULLGuid) return;
 	GS::Array<API_Property> properties;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.isValid && param.fromPropertyDefinition) {
 			API_Property property = param.property;
 
@@ -2650,10 +2650,10 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 
 bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue& params = *cIt->value;
+		ParamDictValue params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue& param = *cIt->value;
+				ParamValue param = *cIt->value;
 				if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) return true;
 			}
 		}
@@ -2663,10 +2663,10 @@ bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
 
 bool ParamHelpers::hasUnreadInfo(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue& params = *cIt->value;
+		ParamDictValue params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue& param = *cIt->value;
+				ParamValue param = *cIt->value;
 				if (param.fromInfo) {
 
 					// Проверим - есть ли уже считанный параметр
@@ -2687,10 +2687,10 @@ bool ParamHelpers::hasUnreadInfo(ParamDictElement & paramToRead, ParamDictValue 
 
 bool ParamHelpers::hasUnreadGlob(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue& params = *cIt->value;
+		ParamDictValue params = *cIt->value;
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-				ParamValue& param = *cIt->value;
+				ParamValue param = *cIt->value;
 				if (param.fromGlob) {
 
 					// Проверим - есть ли уже считанный параметр
@@ -2724,10 +2724,10 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 
 	// Выбираем по-элементно параметры для чтения
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamDictValue& params = *cIt->value;
+		ParamDictValue params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
 		if (!params.IsEmpty()) {
-			if (!propertyParams.IsEmpty()) ParamHelpers::Compare(propertyParams, params); // Сопоставляем свойства
+			if (!propertyParams.IsEmpty()) ParamHelpers::Compare(propertyParams, params, "ElementsRead"); // Сопоставляем свойства
 			ParamHelpers::Read(elemGuid, params, propertyParams);
 		}
 	}
@@ -2758,7 +2758,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 	bool needGetElement = false;
 	bool needGetAllDefinitions = false;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
 		if (param.fromGuid == elemGuid && param.fromGuid != APINULLGuid) {
 
@@ -2796,10 +2796,10 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 
 	// Для каждого типа - свой способ получения данных. Поэтому разбиваем по типам и обрабатываем по-отдельности
 	for (UInt32 i = 0; i < paramTypesList.GetSize(); i++) {
-		GS::UniString paramType = paramTypesList[i];
+		GS::UniString paramType = paramTypesList.Get(i);
 		ParamDictValue paramByType;
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-			ParamValue& param = *cIt->value;
+			ParamValue param = *cIt->value;
 			if (param.fromGuid == elemGuid) {
 				if (param.rawName.Contains(paramType)) paramByType.Add(param.rawName, param);
 			}
@@ -2837,12 +2837,13 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				needCompare = ParamHelpers::ReadMorphParam(element, paramByType);
 			}
 			if (needCompare) {
-				ParamHelpers::Compare(paramByType, params);
+				ParamHelpers::Compare(paramByType, params, paramType);
 			}
 		}
 	}
+	int hh = 1;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.isValid && param.val.canCalculate) {
 			ParamHelpers::ConvertByFormat(param);
 		}
@@ -3014,20 +3015,21 @@ void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & property
 // --------------------------------------------------------------------
 // Сопоставление двух словарей ParamDictValue
 // --------------------------------------------------------------------
-void ParamHelpers::Compare(const ParamDictValue & paramsFrom, ParamDictValue & paramsTo) {
+void ParamHelpers::Compare(const ParamDictValue & paramsFrom, ParamDictValue & paramsTo, GS::UniString fname) {
 	if (paramsFrom.IsEmpty() || paramsTo.IsEmpty()) return;
 	if (paramsTo.IsEmpty()) return;
 	UInt32 nparams = paramsTo.GetSize();
-	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsTo.EnumeratePairs(); cIt != NULL; ++cIt) {
-		GS::UniString k = *cIt->key;
+	for (auto& cIt : paramsTo){
+		GS::UniString k = *cIt.key;
 		if (paramsFrom.ContainsKey(k)) {
 			nparams--;
-			ParamValue paramFrom = paramsFrom.Get(k);
-			paramFrom.fromGuid = paramsTo.Get(k).fromGuid; // Чтоб GUID не перезаписался
-			paramsTo.Set(k, paramFrom);
+			ParamValue paramFrom = paramsFrom.Get(*cIt.key);
+			paramFrom.fromGuid = paramsTo.Get(paramFrom.rawName).fromGuid; // Чтоб GUID не перезаписался
+			paramsTo.Set(paramFrom.rawName, paramFrom);
 			if (nparams == 0) return; // Если все ключи найдены - выходим
 		}
 	}
+	return;
 }
 
 // --------------------------------------------------------------------
@@ -3039,7 +3041,7 @@ bool ParamHelpers::ReadPropertyValues(const API_Guid & elemGuid, ParamDictValue 
 	// Определения и свойста для элементов
 	GS::Array<API_PropertyDefinition> propertyDefinitions;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.fromPropertyDefinition) {
 			API_PropertyDefinition definition = param.definition;
 			propertyDefinitions.Push(definition);
@@ -3150,9 +3152,8 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 	// Разбиваем по типам поиска - по описанию/по имени
 	ParamDictValue paramBydescription;
 	ParamDictValue paramByName;
-	bool flag_find_ID = false;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.fromGDLdescription && eltype == API_ObjectID) {
 			paramBydescription.Add(param.rawName, param);
 		}
@@ -3160,22 +3161,23 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 			if (param.fromGDLparam) paramByName.Add(param.rawName, param);
 		}
 	}
-	if (paramBydescription.IsEmpty() && paramByName.IsEmpty() && !flag_find_ID) return false;
+	if (paramBydescription.IsEmpty() && paramByName.IsEmpty()) return false;
 
 	// Поиск по описанию
 	bool flag_find_desc = false;
-	if (!paramBydescription.IsEmpty()) {
-		flag_find_desc = ParamHelpers::GDLParamByDescription(element, paramBydescription);
-		if (flag_find_desc) ParamHelpers::Compare(paramBydescription, params);
-	}
-
-	// Поиск по описанию
 	bool flag_find_name = false;
-	if (!paramByName.IsEmpty()) {
-		flag_find_name = ParamHelpers::GDLParamByName(element, elem_head, paramByName);
-		if (flag_find_name) ParamHelpers::Compare(paramByName, params);
+	if (!paramBydescription.IsEmpty()) flag_find_desc = ParamHelpers::GDLParamByDescription(element, paramBydescription);
+	if (!paramByName.IsEmpty()) flag_find_name = ParamHelpers::GDLParamByName(element, elem_head, paramByName);
+
+	if (flag_find_desc && flag_find_name) {
+		ParamHelpers::Compare(paramBydescription, params, "GDLParamByDescription");
+		ParamHelpers::Compare(paramByName, params, "GDLParamByName");
 	}
-	return (flag_find_desc || flag_find_name || flag_find_ID);
+	else {
+		if (flag_find_desc) params = paramBydescription;
+		if (flag_find_name) params = paramByName;
+	}
+	return (flag_find_desc || flag_find_name);
 }
 
 // -----------------------------------------------------------------------------
@@ -3274,7 +3276,7 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 
 	ParamDictValue paramlayers;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.fromMaterial) {
 			if (param.rawName.Contains("{material:layers")) {
 				paramlayers.Add(param.rawName, param);
@@ -3285,10 +3287,10 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 
 	// В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
 	if (!paramsAdd.IsEmpty()) {
-		ParamHelpers::Compare(propertyParams, paramsAdd);
+		ParamHelpers::Compare(propertyParams, paramsAdd, "ReadMaterial");
 		GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
-			ParamValue& param_composite = *cIt->value;
+			ParamValue param_composite = *cIt->value;
 			ParamDictValue paramsAdd_1;
 			if (param_composite.val.uniStringValue.Contains("{")) {
 				Int32 nlayers = param_composite.composite.GetSize();
@@ -3315,7 +3317,7 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 	// Если есть строка-шаблон - заполним её
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 		bool flag = false;
-		ParamValue& param_composite = *cIt->value;
+		ParamValue param_composite = *cIt->value;
 		GS::UniString rawName = *cIt->key;
 		GS::UniString outstring = "";
 		if (param_composite.val.uniStringValue.Contains("{")) {
@@ -3839,7 +3841,7 @@ bool ParamHelpers::GetComponentsBasicStructure(const API_AttributeIndex & constr
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 		paramlayers.Get(*cIt->key).composite = param_composite.composite;
 	}
-	ParamHelpers::Compare(paramlayers, params);
+	ParamHelpers::Compare(paramlayers, params, "GetComponentsBasicStructure");
 	return true;
 }
 
@@ -3882,7 +3884,7 @@ bool ParamHelpers::GetComponentsCompositeStructure(const API_Guid & elemguid, AP
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 		paramlayers.Get(*cIt->key).composite = param_composite.composite;
 	}
-	ParamHelpers::Compare(paramlayers, params);
+	ParamHelpers::Compare(paramlayers, params, "GetComponentsCompositeStructure");
 	ACAPI_DisposeAttrDefsHdls(&defs);
 	return true;
 }
@@ -4030,7 +4032,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 				paramlayers.Get(*cIt->key).composite = paramout;
 			}
 		}
-		ParamHelpers::Compare(paramlayers, params);
+		ParamHelpers::Compare(paramlayers, params, "GetComponentsProfileStructure");
 	}
 	return hasData;
 }
@@ -4146,7 +4148,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	// Получим словарь исключительно с определениями состава
 	ParamDictValue paramlayers;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.fromMaterial) {
 			if (param.rawName.Contains("{material:layers")) {
 				paramlayers.Add(param.rawName, param);
@@ -4205,7 +4207,7 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 	bool flag_find = false;
 	GS::Array<API_PropertyDefinition> propertyDefinitions;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
+		ParamValue param = *cIt->value;
 		if (param.fromAttribDefinition) {
 			bool flag_add = true;
 
