@@ -232,7 +232,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictVa
 			return ACAPI_Element_Change(&element, &mask, &memo, APIMemoMask_All, true);
 
 			//return ACAPI_Element_ChangeMemo(elemGuid_n, APIMemoMask_AdditionalPolygon, &memo);
-										});
+			});
 		if (err == APIERR_REFUSEDCMD) { // Я сказал надо!
 			if (!ACAPI_Element_Filter(elemGuid, APIFilt_InMyWorkspace)) {
 				ACAPI_DisposeElemMemoHdls(&memo);
@@ -275,11 +275,11 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 		ParamDictValue pdictvalue = dimrule.paramDict;
 
 		// Добавляем в словарь округлённое значение
-		if (pdictvalue.ContainsKey("{gdl:measuredvalue}")) {
+		if (pdictvalue.ContainsKey("{@gdl::measuredvalue}")) {
 			ParamValue pvalue;
 			ParamHelpers::ConvValue(pvalue, "MeasuredValue", dimValmm_round);
-			pdictvalue.Get("{gdl:measuredvalue}").val = pvalue.val;
-			pdictvalue.Get("{gdl:measuredvalue}").isValid = true;
+			pdictvalue.Get("{@gdl::measuredvalue}").val = pvalue.val;
+			pdictvalue.Get("{@gdl::measuredvalue}").isValid = true;
 		}
 		if (elemGuid != APINULLGuid) ParamHelpers::Read(elemGuid, pdictvalue, propertyParams); //Получим значения, если размер привязан к элементу
 		GS::UniString expression = dimrule.expression;

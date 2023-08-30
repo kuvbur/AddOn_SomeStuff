@@ -26,21 +26,6 @@
 #define	 SYNC_RESET	1
 #define	 SYNC	2
 
-// Откуда получены данные
-static const short FUNDEF = 0; // Найден в гдл параметрах
-static const short FGDLPARAM = 1; // Найден в гдл параметрах
-static const short FGDLDESCRIPTION = 2; // Найден по описанию в гдл параметрах
-static const short FPROPERTY = 3; // Найден в свойствах
-static const short FMORPH = 4; // Найден свойствах морфа
-static const short FINFO = 5; // Найден в инфо о проекте
-static const short FGLOB = 6; // Найден в глобальных переменных
-static const short FIFCPROPERTY = 7; // Найден в IFC свойствах
-static const short FID = 8; // Найден в ID
-static const short FCOORD = 9; //Координаты
-static const short FPROPERTYDEFINITION = 10; //Задан определением свойства, искать не нужно
-static const short FMATERIAL = 11; // Взять инфо из состава конструкции
-static const short FATTRIBDEFINITION = 12; // Взять инфо из свойств аттрибута
-
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
 static const short AddOnPromtID = ID_ADDON_PROMT;
@@ -124,6 +109,7 @@ typedef struct {
 
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
+
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
 typedef struct {
@@ -135,20 +121,18 @@ typedef struct {
 	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
 	API_Property property = {}; // Само свойство, для упрощения чтения/записи
 	GS::Array <ParamValueComposite> composite = {};
-	short source = FUNDEF; // Тут храним способ, которым нужно получить значение
-
-	//bool fromGDLparam = false; // Найден в гдл параметрах
-	//bool fromGDLdescription = false; // Найден по описанию в гдл параметрах
-	//bool fromProperty = false; // Найден в свойствах
-	//bool fromMorph = false; // Найден свойствах морфа
-	//bool fromInfo = false; // Найден в инфо о проекте
-	//bool fromGlob = false; // Найден в глобальных переменных
-	//bool fromIFCProperty = false; // Найден в IFC свойствах
-	//bool fromID = false; // Найден в ID
-	//bool fromCoord = false; //Координаты
-	//bool fromPropertyDefinition = false; //Задан определением свойства, искать не нужно
-	//bool fromMaterial = false; // Взять инфо из состава конструкции
-	//bool fromAttribDefinition = false; // Взять инфо из свойств аттрибута
+	bool fromGDLparam = false; // Найден в гдл параметрах
+	bool fromGDLdescription = false; // Найден по описанию в гдл параметрах
+	bool fromProperty = false; // Найден в свойствах
+	bool fromMorph = false; // Найден свойствах морфа
+	bool fromInfo = false; // Найден в инфо о проекте
+	bool fromGlob = false; // Найден в глобальных переменных
+	bool fromIFCProperty = false; // Найден в IFC свойствах
+	bool fromID = false; // Найден в ID
+	bool fromCoord = false; //Координаты
+	bool fromPropertyDefinition = false; //Задан определением свойства, искать не нужно
+	bool fromMaterial = false; // Взять инфо из состава конструкции
+	bool fromAttribDefinition = false; // Взять инфо из свойств аттрибута
 	API_Guid fromGuid = APINULLGuid; //Из какого элемента прочитан
 } ParamValue;
 
@@ -375,6 +359,11 @@ namespace ParamHelpers {
 	// Формирует словарь ParamDictValue& pdictvalue со значениями
 	// -----------------------------------------------------------------------------
 	bool ReadMorphParam(const API_Element& element, ParamDictValue& pdictvalue);
+
+	// -----------------------------------------------------------------------------
+	// Задаёт источник получения информации по rawName
+	// -----------------------------------------------------------------------------
+	void SetSourseByName(ParamValue& pvalue);
 
 	// -----------------------------------------------------------------------------
 	// Получение координат объекта
