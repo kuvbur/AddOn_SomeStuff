@@ -724,7 +724,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 
 	// Параметры не найдены - выходим
 	if (nparam == 0) return false;
-	GS::UniString paramName = params[0];
+	GS::UniString paramName = params.Get(0);
 	stringformat = GetFormatString(paramName);
 	paramName.ReplaceAll("\\/", "/");
 	param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
