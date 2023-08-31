@@ -1710,26 +1710,26 @@ FormatStringDict GetFotmatStringForMeasureType() {
 // Получение имени внутренних свойств по русскому имени
 // -----------------------------------------------------------------------------
 GS::UniString GetPropertyENGName(GS::UniString & name) {
-	if (name.IsEqual("property:id")) return "property:BuildingMaterialProperties/Building Material ID";
-	if (name.IsEqual("property:n")) return "material:n";
+	if (name.IsEqual("@property:id")) return "@property:BuildingMaterialProperties/Building Material ID";
+	if (name.IsEqual("@property:n")) return "@material:n";
 	GS::UniString nameproperty = "";
-	nameproperty = "property:" + RSGetIndString(AddOnStringsID, BuildingMaterialNameID, ACAPI_GetOwnResModule());
-	if (name.IsEqual(nameproperty)) return "property:BuildingMaterialProperties/Building Material Name";
+	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialNameID, ACAPI_GetOwnResModule());
+	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Name";
 
-	nameproperty = "property:" + RSGetIndString(AddOnStringsID, BuildingMaterialDescriptionID, ACAPI_GetOwnResModule());
-	if (name.IsEqual(nameproperty)) return "property:BuildingMaterialProperties/Building Material Description";
+	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialDescriptionID, ACAPI_GetOwnResModule());
+	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Description";
 
-	nameproperty = "property:" + RSGetIndString(AddOnStringsID, BuildingMaterialDensityID, ACAPI_GetOwnResModule());
-	if (name.IsEqual(nameproperty)) return "property:BuildingMaterialProperties/Building Material Density";
+	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialDensityID, ACAPI_GetOwnResModule());
+	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Density";
 
-	nameproperty = "property:" + RSGetIndString(AddOnStringsID, BuildingMaterialManufacturerID, ACAPI_GetOwnResModule());
-	if (name.IsEqual(nameproperty)) return "property:BuildingMaterialProperties/Building Material Manufacturer";
+	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialManufacturerID, ACAPI_GetOwnResModule());
+	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Manufacturer";
 
-	nameproperty = "property:" + RSGetIndString(AddOnStringsID, BuildingMaterialCutFillID, ACAPI_GetOwnResModule());
-	if (name.IsEqual(nameproperty)) return "property:BuildingMaterialProperties/Building Material CutFill";
+	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialCutFillID, ACAPI_GetOwnResModule());
+	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material CutFill";
 
-	nameproperty = "property:" + RSGetIndString(AddOnStringsID, ThicknessID, ACAPI_GetOwnResModule());
-	if (name.IsEqual(nameproperty)) return "material:layer thickness";
+	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, ThicknessID, ACAPI_GetOwnResModule());
+	if (name.IsEqual(nameproperty)) return "@material:layer thickness";
 
 	return name;
 }
@@ -3346,7 +3346,7 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 				// Если для материала было указано уникальное наименование - заменим его
 				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
 				if (params.ContainsKey("{@property:sync_name" + attribsuffix)) {
-					if (params.Get("{@property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("property:buildingmaterialproperties/building material name", "property:sync_name");
+					if (params.Get("{@property:sync_name" + attribsuffix).isValid) templatestring.ReplaceAll("{@property:buildingmaterialproperties/building material name", "{@property:sync_name");
 				}
 				templatestring.ReplaceAll("}", attribsuffix);
 				if (ParamHelpers::ReplaceParamInExpression(params, templatestring)) {
