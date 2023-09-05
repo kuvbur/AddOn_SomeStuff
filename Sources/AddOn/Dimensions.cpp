@@ -20,6 +20,7 @@
 GSErrCode DimReadPref(DimRules& dimrules) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
 	API_AutotextType	type = APIAutoText_Custom;
+	DBPrintf ("== SMSTF == DimReadPref start\n");
 	GSErrCode	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
 	if (err != NoError) {
 		msg_rep("DimReadPref", "ACAPI_Goodies", err, APINULLGuid);
@@ -58,9 +59,11 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 					dimrules.Add(kstr, dimrule);
 				}
 			}
+			DBPrintf ("== SMSTF == DimReadPref end!!\n");
 			return err;
 		}
 	}
+	DBPrintf ("== SMSTF == DimReadPref end\n");
 	return err;
 }
 
@@ -345,15 +348,16 @@ void DimRoundAll(const SyncSettings& syncSettings) {
 	(void)syncSettings;
 	DoneElemGuid doneelemguid;
 	DimRules dimrules;
+	DBPrintf ("== SMSTF == DimRoundAll start\n");
 	const GSErrCode err = DimReadPref(dimrules);
 	if (dimrules.GetSize() == 0 || err != NoError) return;
 	bool flag_chanel = false;
 	ParamDictValue propertyParams;
 	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 	if (!flag_chanel) flag_chanel = DimRoundByType(API_DimensionID, doneelemguid, dimrules, propertyParams);
-
 	//if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
 	//if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
+	DBPrintf ("== SMSTF == DimRoundAll end\n");
 }
 
 // -----------------------------------------------------------------------------

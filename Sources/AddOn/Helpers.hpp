@@ -454,7 +454,7 @@ namespace ParamHelpers {
 	// --------------------------------------------------------------------
 	// Сопоставление двух словарей ParamDictValue
 	// --------------------------------------------------------------------
-	void Compare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo, GS::UniString fname);
+	void Compare(const ParamDictValue& paramsFrom, ParamDictValue& paramsTo);
 
 	// --------------------------------------------------------------------
 	// Чтение значений свойств в ParamDictValue
