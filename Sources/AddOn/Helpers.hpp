@@ -70,8 +70,9 @@ typedef struct {
 
 // Массив отрезков с указанием точки начала
 typedef struct {
-	GS::Array<Sector3D> segments;
-	Point3D start;
+	Vector2D cut_direction;
+	Point2D cut_start;
+	Point2D start;
 } OrientedSegments;
 
 // Хранение данных параметра
