@@ -586,7 +586,7 @@ namespace ParamHelpers {
 	// Поиск по описанию GDL параметра
 	// Данный способ работат только с объектами (только чтение)
 	// -----------------------------------------------------------------------------
-	bool GDLParamByDescription(const API_Element& element, ParamDictValue& params);
+	bool GDLParamByDescription(const API_Element& element, ParamDictValue& params, ParamDictValue& find_params);
 
 	// -----------------------------------------------------------------------------
 	// Поиск по имени GDL параметра (чтение/запись)
