@@ -51,7 +51,7 @@ jobs:
     - name: Download Development Kit
       run: python3 Tools/download_and_unzip.py ${{ secrets.MAC_DEVKIT_AC26 }} Build
     - name: Generate Project
-      run: cmake -B Build/AC26 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 26.3000"
+      run: cmake -B Build/AC26 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 26.3000"
     - name: Build Release
       run: cmake --build Build/AC26 --config Release
     - name: Create DMG file
@@ -61,6 +61,33 @@ jobs:
       with:
         name: SomeStuff AddOn AC26 Mac
         path: Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.dmg
+
+  build_mac_intel_ac26:
+    runs-on: [ macos-12 ]
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install requests
+    - name: Download Development Kit
+      run: python3 Tools/download_and_unzip.py ${{ secrets.MAC_DEVKIT_INTEL_AC26 }} Build
+    - name: Generate Project
+      run: cmake -B Build/AC26 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 26.3000"
+    - name: Build Release
+      run: cmake --build Build/AC26 --config Release
+    - name: Create DMG file
+      run: hdiutil create -format UDZO -srcfolder Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.bundle Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.dmg
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: SomeStuff AddOn AC26 Mac Intel
+        path: Build/AC26/Release/SomeStuff_AddOn_AC26_MacIntel.dmg 
 
   build_win_ac25:
     runs-on: [ windows-2019 ]
