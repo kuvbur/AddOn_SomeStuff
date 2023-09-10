@@ -2295,10 +2295,12 @@ bool ParamHelpers::ToProperty(ParamValue & pvalue) {
 // Возвращает true и подготовленное для записи свойство в случае отличий
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ToProperty(const ParamValue & pvalue, API_Property & property) {
-	if (property.definition.canValueBeEditable == false) {
+	if (!property.definition.canValueBeEditable) {
+		DBPrintf("== SMSTF == ParamHelpers::ToProperty !property.definition.canValueBeEditable\n");
 		return false;
 	}
-	if (pvalue.isValid == false) {
+	if (!pvalue.isValid) {
+		DBPrintf("== SMSTF == ParamHelpers::ToProperty !pvalue.isValid\n");
 		return false;
 	}
 	bool flag_rec = false;
@@ -3179,25 +3181,33 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 	// Поиск по описанию
 	bool flag_find_desc = false;
 	bool flag_find_name = false;
-	if (!paramBydescription.IsEmpty()) flag_find_desc = ParamHelpers::GDLParamByDescription(element, paramBydescription);
+	if (!paramBydescription.IsEmpty()) {
+		flag_find_desc = ParamHelpers::GDLParamByDescription(element, paramBydescription, paramByName);
+	}
 	if (!paramByName.IsEmpty()) flag_find_name = ParamHelpers::GDLParamByName(element, elem_head, paramByName);
-
 	if (flag_find_desc && flag_find_name) {
-		ParamHelpers::Compare(paramBydescription, params);
-		ParamHelpers::Compare(paramByName, params);
+		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramBydescription.EnumeratePairs(); cIt != NULL; ++cIt) {
+			ParamValue& param_by_desc = *cIt->value;
+			GS::UniString rawname = param_by_desc.name;
+			if (paramByName.ContainsKey(rawname)) {
+				ParamValue param_by_name = paramByName.Get(rawname);
+				GS::UniString desc_name = param_by_desc.val.uniStringValue;
+				GS::UniString desc_rawname = param_by_desc.rawName;
+				param_by_name.name = desc_name;
+				param_by_name.rawName = desc_rawname;
+				paramByName.Add(*cIt->key, param_by_name);
+			}
+		}
 	}
-	else {
-		if (flag_find_desc) params = paramBydescription;
-		if (flag_find_name) params = paramByName;
-	}
-	return (flag_find_desc || flag_find_name);
+	if (flag_find_name) ParamHelpers::Compare(paramByName, params);
+	return (flag_find_name);
 }
 
 // -----------------------------------------------------------------------------
 // Поиск по описанию GDL параметра
 // Данный способ не работает с элементами навесных стен
 // -----------------------------------------------------------------------------
-bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictValue & params) {
+bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictValue & params, ParamDictValue & find_params) {
 	API_LibPart libpart;
 	BNZeroMemory(&libpart, sizeof(libpart));
 	libpart.index = element.object.libInd;
@@ -3218,18 +3228,32 @@ bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictV
 	}
 	bool flagFind = false;
 	Int32 nfind = params.GetSize();
+
+	// Ищем описание параметров
 	for (Int32 i = 0; i < addParNum; ++i) {
 		API_AddParType& actualParam = (*addPars)[i];
-		GS::UniString name = actualParam.uDescname;
-		GS::UniString rawname = "{@gdl:" + name.ToLowerCase() + "}";
-		if (params.ContainsKey(rawname)) {
-			nfind--;
-			ParamValue pvalue = params.Get(rawname);
-			ParamHelpers::ConvValue(pvalue, actualParam);
-			if (pvalue.isValid) {
-				params.Set(rawname, pvalue);
-				flagFind = true;
+		GS::UniString desc_name = actualParam.uDescname;
+		GS::UniString desc_rawname = "{@gdl:" + desc_name.ToLowerCase() + "}";
+		if (params.ContainsKey(desc_rawname)) {
+
+			// Получаем имя параметра
+			GS::UniString name = actualParam.name;
+			GS::UniString rawname = "{@gdl:" + name.ToLowerCase() + "}";
+
+			// Если в словаре для чтения по имени параметра такого параметра нет - добавим
+			if (!find_params.ContainsKey(rawname)) {
+				ParamValue pvalue = params.Get(desc_rawname);
+				pvalue.rawName = rawname;
+				find_params.Add(rawname, pvalue);
 			}
+
+			// Описание на время сохраним в val.uniStringValue
+			params.Get(desc_rawname).val.uniStringValue = params.Get(desc_rawname).name;
+
+			// rawname с именем параметра для дальнейшего сопоставления
+			params.Get(desc_rawname).name = rawname;
+			flagFind = true;
+			nfind--;
 			if (nfind == 0) {
 				ACAPI_DisposeAddParHdl(&addPars);
 				return flagFind;
@@ -3435,7 +3459,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_AddParType & nthPara
 	if (abs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
 
 	// Если параметр не строковое - определяем текстовое значение конвертацией
-	if (param_string.IsEmpty()) {
+	if (param_string.IsEmpty() && nthParameter.typeID != APIParT_CString) {
 		API_AttrTypeID attrType = API_ZombieAttrID;
 		short attrInx = (short)param_int;
 		switch (nthParameter.typeID) {
@@ -3974,7 +3998,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 	if (!profilehasLine) {
 		Point2D p1 = { -1000, 0 };
 		Point2D p2 = { 1000, 0 };
-		Sector cut1 = {p1, p2};
+		Sector cut1 = { p1, p2 };
 		OrientedSegments d;
 		d.start = p2;
 		d.cut_start = p1;
@@ -3987,7 +4011,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 		}
 		Point2D p3 = { 0, -1000 };
 		Point2D p4 = { 0, 1000 };
-		Sector cut2 = {p3, p4};
+		Sector cut2 = { p3, p4 };
 		OrientedSegments d2;
 		d2.start = p3;
 		d2.cut_start = p4;
