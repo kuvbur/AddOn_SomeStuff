@@ -165,7 +165,7 @@ jobs:
         path: Build/AC24/Release/SomeStuff_AddOn_AC24_Win.apx
         
   build_release_all:
-    needs: [build_win_ac24, build_win_ac25, build_mac_ac25, build_mac_ac26, build_win_ac26]
+    needs: [build_win_ac24, build_win_ac25, build_mac_ac25, build_mac_ac26, build_win_ac26, build_mac_intel_ac26]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repo
@@ -178,3 +178,4 @@ jobs:
         draft: true
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
+        
