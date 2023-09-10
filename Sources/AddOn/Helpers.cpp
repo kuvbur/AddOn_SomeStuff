@@ -556,7 +556,7 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 	}
 	GS::UniString msg = modulename + ": " + reportString + " " + error_type;
 	ACAPI_WriteReport(msg, false);
-	DBPrintf (msg.ToCStr());
+	DBPrintf(msg.ToCStr());
 }
 
 void	MenuItemCheckAC(short itemInd, bool checked) {
@@ -1420,7 +1420,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1500,7 +1500,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	}
 	else {
 		UNUSED_VARIABLE(owner);
-}
+	}
 	switch (eltype) {
 	case API_WindowID:
 		x = element.window.objLoc;
@@ -2118,7 +2118,7 @@ bool Equals(const API_PropertyDefaultValue & lhs, const API_PropertyDefaultValue
 	else {
 		return Equals(lhs.basicValue, rhs.basicValue, collType);
 	}
-	}
+}
 
 bool Equals(const API_PropertyValue & lhs, const API_PropertyValue & rhs, API_PropertyCollectionType collType) {
 	if (lhs.variantStatus != rhs.variantStatus) {
@@ -2433,7 +2433,7 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 // --------------------------------------------------------------------
 void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
-	DBPrintf ("== SMSTF == acttype == ElementsWrite start\n");
+	DBPrintf("== SMSTF == acttype == ElementsWrite start\n");
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamDictValue& params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
@@ -2441,7 +2441,7 @@ void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 			ParamHelpers::Write(elemGuid, params);
 		}
 	}
-	DBPrintf ("== SMSTF == acttype == ElementsWrite end\n");
+	DBPrintf("== SMSTF == acttype == ElementsWrite end\n");
 }
 
 // --------------------------------------------------------------------
@@ -2485,7 +2485,7 @@ void ParamHelpers::Write(const API_Guid & elemGuid, ParamDictValue & params) {
 // --------------------------------------------------------------------
 void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
-	DBPrintf ("== SMSTF == InfoWrite start\n");
+	DBPrintf("== SMSTF == InfoWrite start\n");
 	ParamDictValue paramsinfo;
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamDictValue& params = *cIt->value;
@@ -2525,7 +2525,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
 	if (params.IsEmpty()) return;
-	DBPrintf ("== SMSTF == WriteGDLValues\n");
+	DBPrintf("== SMSTF == WriteGDLValues\n");
 	API_Elem_Head elem_head = {};
 	API_Element element = {};
 	API_ElemTypeID	elemType;
@@ -2572,8 +2572,8 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 		if (err != NoError) {
 			msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 			return;
+		}
 	}
-}
 
 	// TODO Оптимизировать, разнести по функциям
 	bool flagFind = false;
@@ -2638,7 +2638,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
-	DBPrintf ("== SMSTF == WritePropertyValues\n");
+	DBPrintf("== SMSTF == WritePropertyValues\n");
 	GS::Array<API_Property> properties;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
@@ -2653,6 +2653,7 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 			}
 		}
 	}
+
 	//if (properties.IsEmpty()) return;
 	//GSErrCode error = ACAPI_Element_SetProperties(elemGuid, properties);
 }
@@ -2723,7 +2724,7 @@ bool ParamHelpers::hasUnreadGlob(ParamDictElement & paramToRead, ParamDictValue 
 // --------------------------------------------------------------------
 void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	if (paramToRead.IsEmpty()) return;
-	DBPrintf ("== SMSTF == ElementsRead start\n");
+	DBPrintf("== SMSTF == ElementsRead start\n");
 	if (ParamHelpers::hasUnreadInfo(paramToRead, propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
 	if (ParamHelpers::hasUnreadGlob(paramToRead, propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
 
@@ -2741,7 +2742,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 			ParamHelpers::Read(elemGuid, params, propertyParams);
 		}
 	}
-	DBPrintf ("== SMSTF == ElementsRead end\n");
+	DBPrintf("== SMSTF == ElementsRead end\n");
 }
 
 // --------------------------------------------------------------------
@@ -2780,8 +2781,8 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				needGetElement = true;
 			}
 			if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
+		}
 	}
-}
 
 	if (needGetAllDefinitions) {
 		GetAllPropertyDefinitionToParamDict(params, elemGuid);
@@ -2862,7 +2863,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
 	API_AutotextType	type = APIAutoText_Custom;
-	DBPrintf ("== SMSTF == GetAllInfoToParamDict\n");
+	DBPrintf("== SMSTF == GetAllInfoToParamDict\n");
 	GSErrCode	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
 	if (err != NoError) {
 		msg_rep("GetAllInfoToParamDict", "APIAny_GetAutoTextsID", err, APINULLGuid);
@@ -2888,7 +2889,7 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 	GS::UniString rawName = "";
 	ParamValue pvalue;
 	API_PlaceInfo placeInfo = {};
-	DBPrintf ("== SMSTF == GetAllGlobToParamDict\n");
+	DBPrintf("== SMSTF == GetAllGlobToParamDict\n");
 	GSErrCode err = ACAPI_Environment(APIEnv_GetPlaceSetsID, &placeInfo, nullptr);
 	if (err != NoError) {
 		msg_rep("GetAllGlobToParamDict", "APIEnv_GetPlaceSetsID", err, APINULLGuid);
@@ -2924,7 +2925,7 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 // Заполнение свойств для элемента
 // --------------------------------------------------------------------
 void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, const API_Guid & elemGuid) {
-	DBPrintf ("== SMSTF == GetAllPropertyDefinitionToParamDict\n");
+	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict\n");
 	if (elemGuid == APINULLGuid) {
 		ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 	}
@@ -3614,7 +3615,7 @@ bool ParamHelpers::ConvValue(ParamValue & pvalue, const API_Property & property)
 	default:
 		return false;
 		break;
-}
+	}
 	if (pvalue.rawName.Contains("buildingmaterial")) {
 		pvalue.fromAttribDefinition = true;
 	}
@@ -3914,7 +3915,8 @@ bool ParamHelpers::GetComponentsCompositeStructure(const API_Guid & elemguid, AP
 // --------------------------------------------------------------------
 bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDescription, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial) {
 	ConstProfileVectorImageIterator profileDescriptionIt(profileDescription);
-	GS::HashTable<short, OrientedSegments> lines;
+	GS::HashTable<short, OrientedSegments> lines; // Для хранения точки начала сечения и линии сечения
+	GS::HashTable<short, GS::Array<Sector>> segment; // Для хранения отрезков линий сечения и последующего объединения
 	GS::HashTable<short, ParamValue> param_composite;
 
 	// Получаем список перьев в параметрах
@@ -3928,7 +3930,9 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 			if (n > 0) {
 				short pen = std::atoi(partstring[1].ToCStr());
 				OrientedSegments s;
+				GS::Array<Sector> segments;
 				lines.Add(pen, s);
+				segment.Add(pen, segments);
 				ParamValue p;
 				param_composite.Add(pen, p);
 				paramlayers.Get(*cIt->key).val.intValue = pen;
@@ -3946,7 +3950,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 			const Sy_ArcType* pSyArc = static_cast <const Sy_ArcType*> (profileDescriptionIt);
 			short pen = pSyArc->GetExtendedPen().GetIndex();
 			if (lines.ContainsKey(pen)) {
-				Point3D s = GetPoint3DFromCoord(pSyArc->origC);
+				Point2D s = { pSyArc->origC };
 				lines.Get(pen).start = s;
 			}
 		}
@@ -3955,9 +3959,9 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 		{
 			const Sy_LinType* pSyPolyLine = static_cast <const Sy_LinType*> (profileDescriptionIt);
 			short pen = pSyPolyLine->GetExtendedPen().GetIndex();
-			if (lines.ContainsKey(pen)) {
-				Sector3D line = GetSector3DFromCoord(pSyPolyLine->begC, pSyPolyLine->endC);
-				lines.Get(pen).segments.Push(line);
+			if (segment.ContainsKey(pen)) {
+				Sector line = { pSyPolyLine->begC, pSyPolyLine->endC };
+				segment.Get(pen).Push(line);
 				profilehasLine = true;
 			}
 		}
@@ -3968,17 +3972,67 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 
 	// Если линии сечения не найдены - создадим парочку - вертикальную и горизонтальную
 	if (!profilehasLine) {
-		Sector3D line = GetSector3DFromCoord(-1000, 0, 1000, 0);
+		Point2D p1 = { -1000, 0 };
+		Point2D p2 = { 1000, 0 };
+		Sector cut1 = {p1, p2};
 		OrientedSegments d;
-		d.segments.Push(line);
-		lines.Add(20, d);
-		Sector3D line2 = GetSector3DFromCoord(0, 1000, 0, -1000);
+		d.start = p2;
+		d.cut_start = p1;
+		d.cut_direction = Geometry::SectorVector(cut1);
+		if (lines.ContainsKey(20)) {
+			lines.Set(20, d);
+		}
+		else {
+			lines.Add(20, d);
+		}
+		Point2D p3 = { 0, -1000 };
+		Point2D p4 = { 0, 1000 };
+		Sector cut2 = {p3, p4};
 		OrientedSegments d2;
-		d2.segments.Push(line2);
-		lines.Add(6, d2);
+		d2.start = p3;
+		d2.cut_start = p4;
+		d2.cut_direction = Geometry::SectorVector(cut2);
+		if (lines.ContainsKey(6)) {
+			lines.Set(6, d2);
+		}
+		else {
+			lines.Add(6, d2);
+		}
 		ParamValue p;
 		param_composite.Add(20, p);
 		param_composite.Add(6, p);
+	}
+	else {
+
+		// Проходим по сегментам, соединяем их в одну линию
+		for (GS::HashTable<short, GS::Array<Sector>>::PairIterator cIt = segment.EnumeratePairs(); cIt != NULL; ++cIt) {
+			GS::Array<Sector>& segment = *cIt->value;
+			Point2D pstart = lines.Get(*cIt->key).start;
+			Sector cutline;
+			double max_r = 0; double min_r = 300000;
+			for (UInt32 j = 0; j < segment.GetSize(); j++) {
+				double r = Geometry::Dist(pstart, segment[j].c1);
+				if (r > max_r) {
+					cutline.c1 = segment[j].c1;
+					max_r = r;
+				}
+				if (r < min_r) {
+					cutline.c2 = segment[j].c1;
+					min_r = r;
+				}
+				r = Geometry::Dist(pstart, segment[j].c2);
+				if (r > max_r) {
+					cutline.c1 = segment[j].c2;
+					max_r = r;
+				}
+				if (r < min_r) {
+					cutline.c2 = segment[j].c2;
+					min_r = r;
+				}
+			}
+			lines.Get(*cIt->key).cut_start = cutline.c2;
+			lines.Get(*cIt->key).cut_direction = Geometry::SectorVector(cutline);
+		}
 	}
 	bool hasData = false;
 	ConstProfileVectorImageIterator profileDescriptionIt1(profileDescription);
@@ -3986,50 +4040,42 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 		switch (profileDescriptionIt1->item_Typ) {
 		case SyHatch:
 			const HatchObject& syHatch = profileDescriptionIt1;
+			Geometry::MultiPolygon2D result;
 
-			GS::Array<Sector3D> cont;
-			GS::Array<Point2D> coords = syHatch.GetCoords();
-			Point3D p1 = GetPoint3DFromCoord(coords[0]);
-			Point3D p2;
-			for (UInt32 i = 1; i < coords.GetSize(); i++) {
-				Point3D p2 = GetPoint3DFromCoord(coords[i]);
-				Sector3D line(p1, p2);
-				cont.Push(line);
-				p1 = p2;
-			}
+			// Получаем полигон штриховки
+			if (syHatch.ToPolygon2D(result, HatchObject::VertexAndEdgeData::Omit) == NoError) {
 
-			// Проходим по всем линиям - сечениям
-			for (GS::HashTable<short, OrientedSegments>::PairIterator cIt = lines.EnumeratePairs(); cIt != NULL; ++cIt) {
-				OrientedSegments& l = *cIt->value;
-				GS::Array<Point3D> points;
-				for (UInt32 i = 0; i < l.segments.GetSize(); i++) {
-					for (UInt32 j = 1; j < cont.GetSize(); j++) {
-						Point3D res;
-						bool hasIntersect = XSectors3D(&l.segments[i], &cont[j], &res); //
-						if (hasIntersect) points.Push(res);
+				// Проходим по полигонам
+				for (UInt32 i = 0; i < result.GetSize(); i++) {
+
+					// Находим пересечения каждого полигона с линиями
+					for (GS::HashTable<short, OrientedSegments>::PairIterator cIt = lines.EnumeratePairs(); cIt != NULL; ++cIt) {
+						OrientedSegments& l = *cIt->value;
+						GS::Array<Sector> resSectors;
+						bool h = result[i].Intersect(l.cut_start, l.cut_direction, &resSectors);
+						if (!resSectors.IsEmpty()) {
+							for (UInt32 k = 0; k < resSectors.GetSize(); k++) {
+								double fillThickL = resSectors[k].GetLength();
+								double rfromstart = Geometry::Dist(l.start, resSectors[k].GetMidPoint()); // Расстояние до окружности(начала порядка слоёв)
+								API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
+								ParamValueComposite layer = {};
+								layer.inx = constrinxL;
+								layer.fillThick = fillThickL;
+								layer.rfromstart = rfromstart;
+								param_composite.Get(*cIt->key).composite.Push(layer);
+								if (!existsmaterial.ContainsKey(constrinxL)) {
+									ParamHelpers::GetAttributeValues(constrinxL, params, paramsAdd);
+									existsmaterial.Add(constrinxL, true);
+								}
+								hasData = true;
+							}
+						}
 					}
 				}
-				if (points.GetSize() == 2) {
-					Point3D pmidpoint;
-					pmidpoint.Set((points[1].x + points[0].x) / 2, (points[1].y + points[0].y) / 2, (points[1].z + points[0].z) / 2);
-					Sector3D sfillThickL(points[0], points[1]);
-					Sector3D srfromstart(l.start, pmidpoint);
-					double fillThickL = sfillThickL.GetLength();
-					double rfromstart = srfromstart.GetLength();
-					API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
-					ParamValueComposite layer = {};
-					layer.inx = constrinxL;
-					layer.fillThick = fillThickL;
-					layer.rfromstart = rfromstart;
-					param_composite.Get(*cIt->key).composite.Push(layer);
-					if (!existsmaterial.ContainsKey(constrinxL)) {
-						ParamHelpers::GetAttributeValues(constrinxL, params, paramsAdd);
-						existsmaterial.Add(constrinxL, true);
-					};
-					hasData = true;
-				}
 			}
-			break;
+			else {
+				DBPrintf("== SMSTF == ERROR syHatch.ToPolygon2D ====================\n");
+			}
 		}
 		++profileDescriptionIt1;
 	}
@@ -4097,12 +4143,12 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 					fillThick_ven = memo.columnSegments[0].venThick;
 				}
 				if (structtype == API_ProfileStructure) constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
-		}
+			}
 			else {
 				msg_rep("materialString::GetComponents", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
 				return false;
 			}
-	}
+		}
 		else {
 			msg_rep("materialString::GetComponents", "Multisegment column not supported", NoError, element.header.guid);
 			return false;
@@ -4161,7 +4207,7 @@ bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & p
 	default:
 		return false;
 		break;
-}
+	}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв

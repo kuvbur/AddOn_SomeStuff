@@ -20,7 +20,7 @@ Int32 nLib = 0;
 // -----------------------------------------------------------------------------
 void MonAll(SyncSettings& syncSettings) {
 	if (!syncSettings.syncMon) return;
-	DBPrintf ("== SMSTF == MonAll start\n");
+	DBPrintf("== SMSTF == MonAll start\n");
 	long time_start = clock();
 	MonByType(API_ObjectID, syncSettings);
 	MonByType(API_WindowID, syncSettings);
@@ -37,7 +37,7 @@ void MonAll(SyncSettings& syncSettings) {
 	long time_end = clock();
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("MonAll", time, NoError, APINULLGuid);
-	DBPrintf ("== SMSTF == MonAll end\n");
+	DBPrintf("== SMSTF == MonAll end\n");
 }
 
 // -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ void MonAll(SyncSettings& syncSettings) {
 // -----------------------------------------------------------------------------
 void MonByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings) {
 	GS::Array<API_Guid>	guidArray;
-	DBPrintf ("== SMSTF == MonByType\n");
+	DBPrintf("== SMSTF == MonByType\n");
 	GSErrCode err = ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
 	if (err != NoError || guidArray.IsEmpty()) return;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
@@ -63,7 +63,8 @@ void MonByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettin
 // Запускает обработку всех объектов, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncAndMonAll(SyncSettings& syncSettings) {
-	DBPrintf ("== SMSTF == SyncAndMonAll start\n");
+	DBPrintf("== SMSTF == SyncAndMonAll start\n");
+
 	// Сразу прочитаем свойства и разложим их по элементам
 	ParamDictValue propertyParams;
 	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
@@ -121,7 +122,7 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 	}
 	ParamHelpers::InfoWrite(paramToWrite);
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
-	DBPrintf ("== SMSTF == SyncAndMonAll end\n");
+	DBPrintf("== SMSTF == SyncAndMonAll end\n");
 }
 
 // -----------------------------------------------------------------------------
@@ -256,7 +257,7 @@ void RunParamSelected(const SyncSettings& syncSettings) {
 // Запуск скрипта параметра элемента
 // -----------------------------------------------------------------------------
 void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
-	DBPrintf ("== SMSTF == RunParam\n");
+	DBPrintf("== SMSTF == RunParam\n");
 	API_Elem_Head	tElemHead;
 	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
 	tElemHead.guid = elemGuid;
@@ -422,6 +423,14 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 									paramTo.isValid = true;
 									ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
 								}
+#ifdef DEBUG
+								else {
+									DBPrintf("== SMSTF == Write Debug\n");
+									paramTo.val = paramFrom.val; // Записываем только значения
+									paramTo.isValid = true;
+									ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
+								}
+#endif // DEBUG
 							}
 						}
 					}
@@ -591,12 +600,9 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	if (syncdirection == SYNC_NO) return false;
 
 	GS::UniString paramNamePrefix = "";
-
-	//Выбор типа копируемого свойства
 	bool synctypefind = false;
 
-	//GS::Array<GS::UniString> paramTypesList;
-	//GetParamTypeList(paramTypesList);
+	//Выбор типа копируемого свойства
 	//Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать ненужного поиска по строке
 	if (rulestring_one.Contains("symb_pos_x") || rulestring_one.Contains("symb_pos_y") || rulestring_one.Contains("symb_pos_z")) {
 		rulestring_one.ReplaceAll("{symb_pos_", "{@coord:symb_pos_");
