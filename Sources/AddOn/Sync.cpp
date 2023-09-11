@@ -605,7 +605,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	//Выбор типа копируемого свойства
 	//Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать ненужного поиска по строке
 	if (rulestring_one.Contains("symb_pos_x") || rulestring_one.Contains("symb_pos_y") || rulestring_one.Contains("symb_pos_z")) {
-		rulestring_one.ReplaceAll("{symb_pos_", "{@coord:symb_pos_");
+		rulestring_one.ReplaceAll("{symb_pos_", "{Coord:symb_pos_");
 	}
 
 	if (synctypefind == false) {

@@ -556,6 +556,7 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 	}
 	GS::UniString msg = modulename + ": " + reportString + " " + error_type;
 	ACAPI_WriteReport(msg, false);
+	if (err != NoError) msg = "== SMSTF ERR ==" + msg;
 	DBPrintf(msg.ToCStr());
 }
 
@@ -1122,6 +1123,7 @@ GSErrCode GetRElementsForRailing(const API_Guid& elemGuid, GS::Array<API_Guid>& 
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadMorphParam(const API_Element& element, ParamDictValue& pdictvalue) {
 	if (!element.header.hasMemo) return NoError;
+	DBPrintf("== SMSTF ==      ReadMorphParam\n");
 	API_ElementMemo  memo;
 	BNZeroMemory(&memo, sizeof(API_ElementMemo));
 	GSErrCode err = ACAPI_Element_GetMemo(element.header.guid, &memo);
@@ -1248,7 +1250,10 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 		}
 	}
 	if (rawname_prefix.IsEmpty()) rawname_prefix = "@gdl:";
-
+	if (!rawname_prefix.Contains("@"))
+	{
+		rawname_prefix = "@" + rawname_prefix;
+	}
 	// Ищём строку с указанием формата вывода (метры/миллиметры)
 	GS::UniString rawName = "{" + rawname_prefix + name_ + "}";
 	if (!params.ContainsKey(rawName)) {
@@ -1371,7 +1376,7 @@ bool ParamHelpers::AddProperty(ParamDictValue& params, GS::Array<API_Property>& 
 // -----------------------------------------------------------------------------
 void ParamHelpers::AddVal(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double& val) {
 	ParamValue pvalue;
-	pvalue.rawName = "{" + rawName_prefix + name.ToLowerCase() + "}";
+	pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase() + "}";
 	pvalue.name = name.ToLowerCase();
 	ParamHelpers::ConvValue(pvalue, "", val);
 	params.Add(pvalue.rawName, pvalue);
@@ -1382,7 +1387,7 @@ void ParamHelpers::AddVal(ParamDictValue& params, const API_Guid& elemGuid, cons
 // -----------------------------------------------------------------------------
 void ParamHelpers::AddVal(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString& val) {
 	ParamValue pvalue;
-	pvalue.rawName = "{" + rawName_prefix + name.ToLowerCase() + "}";
+	pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase() + "}";
 	pvalue.name = name.ToLowerCase();
 	ParamHelpers::ConvValue(pvalue, "", val);
 	params.Add(pvalue.rawName, pvalue);
@@ -1420,7 +1425,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1463,6 +1468,7 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & params) {
+	DBPrintf("== SMSTF ==      ReadElemCoords\n");
 	double x = 0; double y = 0; double z = 0; double angz = 0;
 	double sx = 0; double sy = 0;
 	double dx = 0; double dy = 0;
@@ -1597,6 +1603,8 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		sy = round(sy * k) / k;
 		ex = round(ex * k) / k;
 		ey = round(ey * k) / k;
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
+		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
 		ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
@@ -1978,7 +1986,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-	}
+}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -2013,7 +2021,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 			if (possibleEnumValues[i].keyVariant.guidValue == guidValue) {
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
-			}
+	}
 		}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
@@ -2435,7 +2443,7 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 // --------------------------------------------------------------------
 void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 	if (paramToWrite.IsEmpty()) return;
-	DBPrintf("== SMSTF == acttype == ElementsWrite start\n");
+	DBPrintf("== SMSTF == ElementsWrite start\n");
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamDictValue& params = *cIt->value;
 		API_Guid elemGuid = *cIt->key;
@@ -2443,7 +2451,7 @@ void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
 			ParamHelpers::Write(elemGuid, params);
 		}
 	}
-	DBPrintf("== SMSTF == acttype == ElementsWrite end\n");
+	DBPrintf("== SMSTF == ElementsWrite end\n");
 }
 
 // --------------------------------------------------------------------
@@ -2515,7 +2523,9 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 void ParamHelpers::WriteIDValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
-	GS::UniString val = ParamHelpers::ToString(params.Get("{id:id}"));
+	if (!params.ContainsKey("{@id:id}")) return;
+	DBPrintf("== SMSTF ==      WriteIDValues\n");
+	GS::UniString val = ParamHelpers::ToString(params.Get("{@id:id}"));
 	GSErrCode err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
 	if (err != NoError) msg_rep("WriteGDLValues - ID", "ACAPI_Database(APIDb_ChangeElementInfoStringID", err, elemGuid);
 }
@@ -2526,8 +2536,7 @@ void ParamHelpers::WriteIDValues(const API_Guid & elemGuid, ParamDictValue & par
 void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
-	if (params.IsEmpty()) return;
-	DBPrintf("== SMSTF == WriteGDLValues\n");
+	DBPrintf("== SMSTF ==      WriteGDLValues\n");
 	API_Elem_Head elem_head = {};
 	API_Element element = {};
 	API_ElemTypeID	elemType;
@@ -2640,7 +2649,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return;
 	if (elemGuid == APINULLGuid) return;
-	DBPrintf("== SMSTF == WritePropertyValues\n");
+	DBPrintf("== SMSTF ==      WritePropertyValues\n");
 	GS::Array<API_Property> properties;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
@@ -2837,30 +2846,36 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			if (paramType.IsEqual("{@gdl:")) {
 				needCompare = ParamHelpers::ReadGDLValues(element, elem_head, paramByType);
 			}
-			if (paramType.IsEqual("{@id:")) {
-				needCompare = ParamHelpers::ReadIDValues(elem_head, paramByType);
-			}
-			if (paramType.IsEqual("{@material:") && !paramByType.IsEmpty()) {
-				ParamHelpers::ReadMaterial(element, params, propertyParams);
-			}
 			if (paramType.IsEqual("{@ifc:")) {
 				needCompare = ParamHelpers::ReadIFCValues(elemGuid, paramByType);
 			}
 			if (paramType.IsEqual("{@morph:")) {
 				needCompare = ParamHelpers::ReadMorphParam(element, paramByType);
 			}
+			if (paramType.IsEqual("{@id:")) {
+				needCompare = ParamHelpers::ReadIDValues(elem_head, paramByType);
+			}
+			if (paramType.IsEqual("{@material:")) {
+				if (ParamHelpers::ReadMaterial(element, params, propertyParams)) DBPrintf("== SMSTF ==          Compare\n");
+				needCompare = false;
+			}
 			if (needCompare) {
+				DBPrintf("== SMSTF ==          Compare\n");
 				ParamHelpers::Compare(paramByType, params);
+			}
+			else {
+				if (!paramType.IsEqual("{@material:")) DBPrintf("== SMSTF ERR ==          Not found\n");
 			}
 		}
 	}
+	DBPrintf("== SMSTF ==      ConvertByFormat\n");
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
 		if (param.isValid && param.val.canCalculate) {
 			ParamHelpers::ConvertByFormat(param);
 		}
 	}
-}
+	}
 
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
@@ -2948,6 +2963,7 @@ void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & property
 // --------------------------------------------------------------------
 void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, GS::Array<API_PropertyDefinition>&definitions) {
 	if (definitions.IsEmpty()) return;
+	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict\n");
 	UInt32 nparams = propertyParams.GetSize();
 	bool needAddNew = (nparams == 0);
 	for (UInt32 j = 0; j < definitions.GetSize(); j++) {
@@ -2975,6 +2991,7 @@ void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & property
 // --------------------------------------------------------------------
 void ParamHelpers::GetAllPropertyDefinitionToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<API_PropertyGroup> groups;
+	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict\n");
 	GSErrCode err = ACAPI_Property_GetPropertyGroups(groups);
 	if (err != NoError) {
 		msg_rep("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
@@ -3052,6 +3069,7 @@ void ParamHelpers::Compare(const ParamDictValue & paramsFrom, ParamDictValue & p
 // --------------------------------------------------------------------
 bool ParamHelpers::ReadPropertyValues(const API_Guid & elemGuid, ParamDictValue & params) {
 	if (params.IsEmpty()) return false;
+	DBPrintf("== SMSTF ==      ReadPropertyValues\n");
 
 	// Определения и свойста для элементов
 	GS::Array<API_PropertyDefinition> propertyDefinitions;
@@ -3071,6 +3089,7 @@ bool ParamHelpers::ReadPropertyValues(const API_Guid & elemGuid, ParamDictValue 
 		}
 		return (ParamHelpers::AddProperty(params, properties));
 	}
+	DBPrintf("== SMSTF == ReadPropertyValues -- no property\n");
 	return false;
 }
 
@@ -3078,8 +3097,8 @@ bool ParamHelpers::ReadPropertyValues(const API_Guid & elemGuid, ParamDictValue 
 // Получение значения IFC свойств
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & params) {
-	UInt32 nparams = params.GetSize();
-	if (nparams == 0) return false;
+	if (params.IsEmpty()) return false;
+	DBPrintf("== SMSTF ==      ReadIFCValues\n");
 	GS::Array<API_IFCProperty> properties;
 	GSErrCode err = ACAPI_Element_GetIFCProperties(elemGuid, false, &properties);
 	if (err != NoError) {
@@ -3087,6 +3106,7 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 		return false;
 	}
 	bool flag_find = false;
+	UInt32 nparams = params.GetSize();
 	for (UInt32 i = 0; i < properties.GetSize(); i++) {
 		API_IFCProperty prop = properties.Get(i);
 		GS::UniString fname = properties[i].head.propertySetName + "/" + properties[i].head.propertyName;
@@ -3125,7 +3145,9 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 
 bool ParamHelpers::ReadIDValues(const API_Elem_Head & elem_head, ParamDictValue & params) {
 	if (params.IsEmpty()) return false;
-	ParamValue param = params.Get("{id:id}");
+	if (!params.ContainsKey("{@id:id}")) return false;
+	DBPrintf("== SMSTF ==      ReadIDValues\n");
+	ParamValue param = params.Get("{@id:id}");
 	GS::UniString infoString;
 	API_Guid elguid = elem_head.guid;
 	GSErrCode err = ACAPI_Database(APIDb_GetElementInfoStringID, &elguid, &infoString);
@@ -3157,6 +3179,7 @@ bool ParamHelpers::ReadIDValues(const API_Elem_Head & elem_head, ParamDictValue 
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Head & elem_head, ParamDictValue & params) {
 	if (params.IsEmpty()) return false;
+	DBPrintf("== SMSTF ==      ReadGDLValues\n");
 	API_ElemTypeID eltype;
 #ifdef AC_26
 	eltype = elem_head.type.typeID;
@@ -3306,6 +3329,7 @@ bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_He
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & params, ParamDictValue & propertyParams) {
+	DBPrintf("== SMSTF ==      ReadMaterial\n");
 
 	// Получим состав элемента, добавив в словарь требуемые параметры
 	ParamDictValue paramsAdd;
@@ -3870,6 +3894,7 @@ GS::UniString ParamHelpers::ToString(const ParamValue & pvalue, const GS::UniStr
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
 bool ParamHelpers::GetComponentsBasicStructure(const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd) {
+	DBPrintf("== SMSTF ==          GetComponentsBasicStructure\n");
 	ParamValue param_composite = {};
 	if (fillThick_ven > 0.0001) {
 		ParamValueComposite layer = {};
@@ -3894,6 +3919,7 @@ bool ParamHelpers::GetComponentsBasicStructure(const API_AttributeIndex & constr
 // Получение данных из многослойной конструкции
 // --------------------------------------------------------------------
 bool ParamHelpers::GetComponentsCompositeStructure(const API_Guid & elemguid, API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial) {
+	DBPrintf("== SMSTF ==          GetComponentsCompositeStructure\n");
 	API_Attribute attrib;
 	BNZeroMemory(&attrib, sizeof(API_Attribute));
 
@@ -3938,6 +3964,7 @@ bool ParamHelpers::GetComponentsCompositeStructure(const API_Guid & elemguid, AP
 // Получение данных из сложного профиля
 // --------------------------------------------------------------------
 bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDescription, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial) {
+	DBPrintf("== SMSTF ==          GetComponentsProfileStructure\n");
 	ConstProfileVectorImageIterator profileDescriptionIt(profileDescription);
 	GS::HashTable<short, OrientedSegments> lines; // Для хранения точки начала сечения и линии сечения
 	GS::HashTable<short, GS::Array<Sector>> segment; // Для хранения отрезков линий сечения и последующего объединения
@@ -4063,6 +4090,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 	while (!profileDescriptionIt1.IsEOI()) {
 		switch (profileDescriptionIt1->item_Typ) {
 		case SyHatch:
+		{
 			const HatchObject& syHatch = profileDescriptionIt1;
 			Geometry::MultiPolygon2D result;
 
@@ -4098,8 +4126,10 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 				}
 			}
 			else {
-				DBPrintf("== SMSTF == ERROR syHatch.ToPolygon2D ====================\n");
+				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
+		}
+		break;
 		}
 		++profileDescriptionIt1;
 	}
@@ -4131,6 +4161,7 @@ bool ParamHelpers::GetComponentsProfileStructure(ProfileVectorImage & profileDes
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
 bool ParamHelpers::GetComponents(const API_Element & element, ParamDictValue & params, ParamDictValue & paramsAdd) {
+	DBPrintf("== SMSTF ==          GetComponents\n");
 	API_ModelElemStructureType	structtype = {};
 	API_AttributeIndex			constrinx = {};
 	double						fillThick = 0;

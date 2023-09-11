@@ -11,11 +11,11 @@
 #include	"APICommon26.h"
 #endif // AC_26
 #include	"DG.h"
+#include	"basicgeometry.h"
 #include	"StringConversion.hpp"
 #include	"ResourceIds.hpp"
 #include	"SyncSettings.hpp"
 #include	"3dpart/exprtk.hpp"
-#include	"sillygeometry.hpp"
 #include	<unordered_map>
 #include	"3dpart/alphanum.hpp"
 
