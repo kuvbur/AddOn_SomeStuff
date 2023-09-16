@@ -12,6 +12,7 @@
 #define SYNC_TO 2
 #define SYNC_TO_SUB 3
 #define SYNC_FROM_SUB 4
+#define SYNC_FROM_GUID 5
 
 Int32 nLib = 0;
 
@@ -187,6 +188,36 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 	}
 }
 
+void SetSyncGUID() {
+	API_Elem_Head	tElemHead;
+	BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
+	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, false);
+	if (guidArray.IsEmpty()) return;
+	if (!GetAnElem("Click a root element", API_ZombieElemID, nullptr, &tElemHead.typeID, &tElemHead.guid)) {
+		return;
+	}
+	API_Guid root_guid = tElemHead.guid;
+}
+
+void ShowSyncGUID() {
+	ACAPI_Interface(APIIo_HighlightElementsID);
+	GS::Array<API_Guid> meshList;
+	ACAPI_Element_GetElemList(API_ObjectID, &meshList);
+	if (meshList.GetSize() > 0) {
+		GS::HashTable<API_Guid, API_RGBAColor>  hlElems;
+		API_RGBAColor   hlColor = { 0.0, 0.5, 0.75, 0.5 };
+		for (auto it = meshList.Enumerate(); it != nullptr; ++it) {
+			hlElems.Add(*it, hlColor);
+			hlColor.f_red += 0.1;
+			if (hlColor.f_red > 1.0)
+				hlColor.f_red = 0.0;
+		}
+
+		bool wireframe3D = true;
+		ACAPI_Interface(APIIo_HighlightElementsID, &hlElems, &wireframe3D);
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
@@ -342,6 +373,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	// Синхронизация данных
 	// Проверяем - не отключена ли синхронизация у данного объекта
 	if (!GetElemState(elemGuid, definitions, "Sync_flag")) return;
+	GS::Array<API_PropertyDefinition> subguid_definitions;
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) { return; }
@@ -402,36 +434,12 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 					// Проверяем наличие имён в словаре параметров
 					if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
 						ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
-						if (paramFrom.isValid) {
-							ParamValue paramTo = paramsTo.Get(rawNameTo);
-							if (paramTo.isValid || paramTo.fromProperty || paramTo.fromPropertyDefinition) {
-								GS::UniString stringformat = writeSub.stringformat;
-								if (stringformat.IsEmpty()) stringformat = paramTo.val.stringformat;
-								if (stringformat.IsEmpty()) stringformat = paramFrom.val.stringformat;
+						ParamValue paramTo = paramsTo.Get(rawNameTo);
+						GS::UniString stringformat = writeSub.stringformat;
 
-								// Приводим к единому виду перед проверкой
-								if (!stringformat.IsEmpty()) {
-									paramTo.val.stringformat = stringformat;
-									paramFrom.val.stringformat = stringformat;
-									ParamHelpers::ConvertByFormat(paramTo);
-									ParamHelpers::ConvertByFormat(paramFrom);
-								}
-
-								//Сопоставляем и записываем, если значения отличаются
-								if (paramFrom != paramTo) {
-									paramTo.val = paramFrom.val; // Записываем только значения
-									paramTo.isValid = true;
-									ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
-								}
-#ifdef DEBUG
-								else {
-									DBPrintf("== SMSTF == Write Debug\n");
-									paramTo.val = paramFrom.val; // Записываем только значения
-									paramTo.isValid = true;
-									ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
-								}
-#endif // DEBUG
-							}
+						//Сопоставляем и записываем, если значения отличаются
+						if (ParamHelpers::CompareParamValue(paramFrom, paramTo, stringformat)) {
+							ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
 						}
 					}
 				}
@@ -516,14 +524,25 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 		GS::Array<GS::UniString> rulestring;
 		UInt32 nrule = StringSplt(description_string, "Sync_", rulestring, "{"); // Проверяем количество правил
 
-		//Проходим по каждому правилу и извлекаем из него правило синхронизации (WriteDict syncRules) и словарь уникальных параметров для чтения/записи (ParamDictElement paramToRead)
+		//Проходим по каждому правилу и извлекаем из него правило синхронизации (WriteDict syncRules)
+		//и словарь уникальных параметров для чтения/записи (ParamDictElement paramToRead)
 		for (UInt32 i = 0; i < nrule; i++) {
 			ParamValue param;
 			int syncdirection = SYNC_NO; // Направление синхронизации
 			GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
 			GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
 			GS::UniString stringformat = ""; //Строка с форматом числа
-			if (SyncString(elementType, rulestring[i], syncdirection, param, ignorevals, stringformat)) {
+			GS::UniString rulestringone = rulestring[i];
+			API_Guid elemGuidfrom = elemGuid;
+			// Копировать из другого элемента
+			if (rulestringone.Contains("from_GUID{")) {
+				GS::Array<GS::UniString> params;
+				UInt32 nparams = StringSplt(rulestringone, ";", params, "{");
+				if (nparams == 2) {
+					GS::UniString rulestringone = rulestring[i];
+				}
+			}
+			if (SyncString(elementType, rulestringone, syncdirection, param, ignorevals, stringformat)) {
 				hasRule = true;
 				ParamValue paramdef; //Свойство, из которого получено правило
 				ParamHelpers::ConvValue(paramdef, definition);
@@ -555,9 +574,9 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					}
 					else {
 						writeOne.guidTo = elemGuid;
-						param.fromGuid = elemGuid;
+						param.fromGuid = elemGuidfrom;
 					}
-					writeOne.guidFrom = elemGuid;
+					writeOne.guidFrom = elemGuidfrom;
 					writeOne.paramFrom = paramdef;
 					writeOne.paramTo = param;
 				}
@@ -567,8 +586,8 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 						writeOne.fromSub = true;
 					}
 					else {
-						writeOne.guidFrom = elemGuid;
-						param.fromGuid = elemGuid;
+						writeOne.guidFrom = elemGuidfrom;
+						param.fromGuid = elemGuidfrom;
 					}
 					writeOne.guidTo = elemGuid;
 					writeOne.paramTo = paramdef;
@@ -596,9 +615,9 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	if (syncdirection == SYNC_NO && rulestring_one.Contains("from{")) syncdirection = SYNC_FROM;
 	if (syncdirection == SYNC_NO && rulestring_one.Contains("to{")) syncdirection = SYNC_TO;
 
+
 	//Если направление синхронизации не нашли - выходим
 	if (syncdirection == SYNC_NO) return false;
-
 	GS::UniString paramNamePrefix = "";
 	bool synctypefind = false;
 

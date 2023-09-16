@@ -14,6 +14,8 @@
 #define	 Menu_ReNum			8
 #define	 Menu_Sum			9
 #define	 Menu_RunParam		10
+#define	 Menu_SetGUID		11
+#define	 Menu_ShowGUID		12
 
 static const Int32 MonAll_CommandID = 1;
 static const Int32 SyncAll_CommandID = 2;
@@ -25,6 +27,8 @@ static const Int32 cwallS_CommandID = 7;
 static const Int32 ReNum_CommandID = 8;
 static const Int32 Sum_CommandID = 9;
 static const Int32 RunParam_CommandID = 10;
+static const Int32 SetGUID_CommandID = 11;
+static const Int32 ShowGUID_CommandID = 12;
 
 GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType);
 

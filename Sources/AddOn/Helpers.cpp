@@ -17,6 +17,181 @@
 #include	"ProfileVectorImageOperations.hpp"
 #include	"ProfileAdditionalInfo.hpp"
 
+// -----------------------------------------------------------------------------
+// Convert the element header to a neig
+// -----------------------------------------------------------------------------
+
+bool	ElemHeadToNeig(API_Neig* neig,
+	const API_Elem_Head* elemHead)
+{
+	BNZeroMemory(neig, sizeof(API_Neig));
+	API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
+	neig->guid = elemHead->guid;
+	if (elemHeadNonConst->typeID == API_ZombieElemID && neig->guid != APINULLGuid) {
+		BNZeroMemory(elemHeadNonConst, sizeof(API_Elem_Head));
+		elemHeadNonConst->guid = neig->guid;
+		ACAPI_Element_GetHeader(elemHeadNonConst);
+	}
+
+	switch (elemHeadNonConst->typeID) {
+	case API_WallID:					neig->neigID = APINeig_Wall;				neig->inIndex = 1;	break;
+	case API_ColumnID:					neig->neigID = APINeig_Colu;				neig->inIndex = 0;	break;
+	case API_BeamID:					neig->neigID = APINeig_Beam;				neig->inIndex = 1;	break;
+	case API_WindowID:					neig->neigID = APINeig_WindHole;			neig->inIndex = 0;	break;
+	case API_DoorID:					neig->neigID = APINeig_DoorHole;			neig->inIndex = 0;	break;
+	case API_ObjectID:					neig->neigID = APINeig_Symb;				neig->inIndex = 1;	break;
+	case API_LampID:					neig->neigID = APINeig_Light;				neig->inIndex = 1;	break;
+	case API_SlabID:					neig->neigID = APINeig_Ceil;				neig->inIndex = 1;	break;
+	case API_RoofID:					neig->neigID = APINeig_Roof;				neig->inIndex = 1;	break;
+	case API_MeshID:					neig->neigID = APINeig_Mesh;				neig->inIndex = 1;	break;
+
+	case API_DimensionID:				neig->neigID = APINeig_DimOn;				neig->inIndex = 1;	break;
+	case API_RadialDimensionID:			neig->neigID = APINeig_RadDim;				neig->inIndex = 1;	break;
+	case API_LevelDimensionID:			neig->neigID = APINeig_LevDim;				neig->inIndex = 1;	break;
+	case API_AngleDimensionID:			neig->neigID = APINeig_AngDimOn;			neig->inIndex = 1;	break;
+
+	case API_TextID:					neig->neigID = APINeig_Word;				neig->inIndex = 1;	break;
+	case API_LabelID:					neig->neigID = APINeig_Label;				neig->inIndex = 1;	break;
+	case API_ZoneID:					neig->neigID = APINeig_Room;				neig->inIndex = 1;	break;
+
+	case API_HatchID:					neig->neigID = APINeig_Hatch;				neig->inIndex = 1;	break;
+	case API_LineID:					neig->neigID = APINeig_Line;				neig->inIndex = 1;	break;
+	case API_PolyLineID:				neig->neigID = APINeig_PolyLine;			neig->inIndex = 1;	break;
+	case API_ArcID:						neig->neigID = APINeig_Arc;					neig->inIndex = 1;	break;
+	case API_CircleID:					neig->neigID = APINeig_Circ;				neig->inIndex = 1;	break;
+	case API_SplineID:					neig->neigID = APINeig_Spline;				neig->inIndex = 1;	break;
+	case API_HotspotID:					neig->neigID = APINeig_Hot;					neig->inIndex = 1;	break;
+
+	case API_CutPlaneID:				neig->neigID = APINeig_CutPlane;			neig->inIndex = 1;	break;
+	case API_ElevationID:				neig->neigID = APINeig_Elevation;			neig->inIndex = 1;	break;
+	case API_InteriorElevationID:		neig->neigID = APINeig_InteriorElevation;	neig->inIndex = 1;	break;
+	case API_CameraID:					neig->neigID = APINeig_Camera;				neig->inIndex = 1;	break;
+	case API_CamSetID:					return false;
+
+	case API_PictureID:					neig->neigID = APINeig_PictObj;				neig->inIndex = 1;	break;
+	case API_DetailID:					neig->neigID = APINeig_Detail;				neig->inIndex = 1;	break;
+	case API_WorksheetID:				neig->neigID = APINeig_Worksheet;			neig->inIndex = 1;	break;
+
+	case API_SectElemID:				neig->neigID = APINeig_VirtSy;				neig->inIndex = 1;	break;
+	case API_DrawingID:					neig->neigID = APINeig_DrawingCenter;		neig->inIndex = 1;	break;
+
+	case API_CurtainWallID:				neig->neigID = APINeig_CurtainWall;			neig->inIndex = 1;	break;
+	case API_CurtainWallSegmentID:		neig->neigID = APINeig_CWSegment;			neig->inIndex = 1;	break;
+	case API_CurtainWallFrameID:		neig->neigID = APINeig_CWFrame;				neig->inIndex = 1;	break;
+	case API_CurtainWallPanelID:		neig->neigID = APINeig_CWPanel;				neig->inIndex = 1;	break;
+	case API_CurtainWallJunctionID:		neig->neigID = APINeig_CWJunction;			neig->inIndex = 1;	break;
+	case API_CurtainWallAccessoryID:	neig->neigID = APINeig_CWAccessory;			neig->inIndex = 1;	break;
+	case API_ShellID:					neig->neigID = APINeig_Shell;				neig->inIndex = 1;	break;
+	case API_SkylightID:				neig->neigID = APINeig_SkylightHole;		neig->inIndex = 0;	break;
+	case API_MorphID:					neig->neigID = APINeig_Morph;				neig->inIndex = 1;	break;
+	case API_ChangeMarkerID:			neig->neigID = APINeig_ChangeMarker;		neig->inIndex = 1;	break;
+
+	case API_GroupID:
+	case API_HotlinkID:
+	default:
+		return false;
+	}
+
+	return true;
+}		// ElemHead_To_Neig
+
+// -----------------------------------------------------------------------------
+// Convert the NeigID to element type
+// -----------------------------------------------------------------------------
+
+API_ElemTypeID	NeigToElemID(API_NeigID neigID)
+{
+	API_ElemTypeID	typeID;
+	GSErrCode		err;
+
+	err = ACAPI_Goodies(APIAny_NeigIDToElemTypeID, &neigID, &typeID);
+	if (err != NoError)
+		typeID = API_ZombieElemID;
+
+	return typeID;
+}		// Neig_To_ElemID
+
+// -----------------------------------------------------------------------------
+// Ask the user to click an element
+// 'needTypeID' specifies the requested element type
+//	- API_ZombieElemID: all types pass
+//	- API_XXXID: 		only this type will pass
+// Return:
+//	true:	the user clicked the correct element
+//	false:	the input is canceled or wrong type of element was clicked
+// -----------------------------------------------------------------------------
+
+bool	GetAnElem(const char* prompt,
+	API_ElemTypeID		needTypeID,
+	API_Neig* neig /*= nullptr*/,
+	API_ElemTypeID* typeID /*= nullptr*/,
+	API_Guid* guid /*= nullptr*/,
+	API_Coord3D* c /*= nullptr*/,
+	bool				ignorePartialSelection /*= true*/)
+{
+	API_GetPointType	pointInfo = {};
+	API_ElemTypeID		clickedID;
+	GSErrCode			err;
+
+	CHTruncate(prompt, pointInfo.prompt, sizeof(pointInfo.prompt));
+	pointInfo.changeFilter = false;
+	pointInfo.changePlane = false;
+	err = ACAPI_Interface(APIIo_GetPointID, &pointInfo, nullptr);
+	if (err != NoError) {
+		if (err != APIERR_CANCEL)
+			msg_rep("GetAnElem", "APIIo_GetPointID", err, APINULLGuid);
+		return false;
+	}
+
+	if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
+		API_Elem_Head elemHead;
+		BNZeroMemory(&elemHead, sizeof(API_Elem_Head));
+		API_ElemSearchPars	pars;
+		BNZeroMemory(&pars, sizeof(API_ElemSearchPars));
+		pars.typeID = needTypeID;
+		pars.loc.x = pointInfo.pos.x;
+		pars.loc.y = pointInfo.pos.y;
+		pars.z = 1.00E6;
+		pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
+		err = ACAPI_Goodies(APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
+		if (err == NoError) {
+			elemHead.typeID = pars.typeID;
+			ElemHeadToNeig(&pointInfo.neig, &elemHead);
+		}
+	}
+
+	if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
+		pointInfo.neig.elemPartType = APINeigElemPart_None;
+		pointInfo.neig.elemPartIndex = 0;
+	}
+
+	clickedID = NeigToElemID(pointInfo.neig.neigID);
+
+	if (neig != nullptr)
+		*neig = pointInfo.neig;
+	if (typeID != nullptr)
+		*typeID = clickedID;
+	if (guid != nullptr)
+		*guid = pointInfo.neig.guid;
+	if (c != nullptr)
+		*c = pointInfo.pos;
+
+	if (clickedID == API_ZombieElemID)
+		return false;
+
+	bool good = (needTypeID == API_ZombieElemID || needTypeID == clickedID);
+
+	if (!good && clickedID == API_SectElemID) {
+		API_Element element;
+		BNZeroMemory(&element, sizeof(API_Element));
+		element.header.guid = pointInfo.neig.guid;
+		if (ACAPI_Element_Get(&element) == NoError)
+			good = (needTypeID == element.sectElem.parentID);
+	}
+
+	return good;
+}		// ClickAnElem
+
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
 // --------------------------------------------------------------------
@@ -554,9 +729,11 @@ void msg_rep(const GS::UniString& modulename, const GS::UniString& reportString,
 			if (ACAPI_Attribute_Get(&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
 		}
 	}
-	GS::UniString msg = modulename + ": " + reportString + " " + error_type;
+	GS::UniString msg = modulename + ": " + reportString + " " + error_type + "\n";
 	ACAPI_WriteReport(msg, false);
-	if (err != NoError) msg = "== SMSTF ERR ==" + msg;
+	if (err != NoError) {
+		msg = "== SMSTF ERR ==";
+	}
 	DBPrintf(msg.ToCStr());
 }
 
@@ -1254,6 +1431,7 @@ GS::UniString ParamHelpers::AddVal(ParamDictValue& params, const GS::UniString& 
 	{
 		rawname_prefix = "@" + rawname_prefix;
 	}
+
 	// Ищём строку с указанием формата вывода (метры/миллиметры)
 	GS::UniString rawName = "{" + rawname_prefix + name_ + "}";
 	if (!params.ContainsKey(rawName)) {
@@ -1302,6 +1480,33 @@ void ParamHelpers::AddParamValue2ParamDict(const API_Guid& elemGuid, ParamValue&
 // --------------------------------------------------------------------
 void ParamHelpers::AddParamValue2ParamDictElement(const ParamValue& param, ParamDictElement& paramToRead) {
 	ParamHelpers::AddParamValue2ParamDictElement(param.fromGuid, param, paramToRead);
+}
+
+// --------------------------------------------------------------------
+// Сопоставляет параметры
+// --------------------------------------------------------------------
+bool ParamHelpers::CompareParamValue(ParamValue& paramFrom, ParamValue& paramTo, GS::UniString stringformat) {
+	if (!paramFrom.isValid) return false;
+	if (paramTo.isValid || paramTo.fromProperty || paramTo.fromPropertyDefinition) {
+		if (stringformat.IsEmpty()) stringformat = paramTo.val.stringformat;
+		if (stringformat.IsEmpty()) stringformat = paramFrom.val.stringformat;
+
+		// Приводим к единому виду перед проверкой
+		if (!stringformat.IsEmpty()) {
+			paramTo.val.stringformat = stringformat;
+			paramFrom.val.stringformat = stringformat;
+			ParamHelpers::ConvertByFormat(paramTo);
+			ParamHelpers::ConvertByFormat(paramFrom);
+		}
+
+		//Сопоставляем и записываем, если значения отличаются
+		if (paramFrom != paramTo) {
+			paramTo.val = paramFrom.val; // Записываем только значения
+			paramTo.isValid = true;
+			return true;
+		}
+	}
+	return false;
 }
 
 // --------------------------------------------------------------------
@@ -1425,7 +1630,7 @@ void GetGDLParametersHead(const API_Element& element, const API_Elem_Head& elem_
 		break;
 	}
 	return;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1986,7 +2191,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-}
+	}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -2021,7 +2226,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 			if (possibleEnumValues[i].keyVariant.guidValue == guidValue) {
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
-	}
+			}
 		}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
@@ -2413,7 +2618,7 @@ bool ParamHelpers::ToProperty(const ParamValue & pvalue, API_Property & property
 //--------------------------------------------------------------------------------------------------------------------------
 //Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name) {
+bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name) {
 	if (definitions.IsEmpty()) return false;
 	GSErrCode	err = NoError;
 	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
@@ -2436,6 +2641,55 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 		}
 	}
 	return false;
+}
+
+bool GetSubGuidDefinition(const GS::Array<API_PropertyDefinition>&definitions, GS::Array<API_PropertyDefinition>&definitionsout) {
+	if (definitions.IsEmpty()) return false;
+	GS::HashTable<GS::UniString, API_PropertyDefinition> GuidDefinition;
+	bool flag_find = false;
+	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+		if (!definitions[i].description.IsEmpty()) {
+			if (definitions[i].description.Contains("Sync_GUID"))
+			{
+				definitionsout.Push(definitions[i]);
+				flag_find = true;
+			}
+		}
+	}
+	return flag_find;
+}
+
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+API_Guid GetSubGuid(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name) {
+	if (definitions.IsEmpty()) return APINULLGuid;
+	bool flag_find = false;
+	GSErrCode	err = NoError;
+	API_Property propertyflag = {};
+	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+		if (!definitions[i].description.IsEmpty()) {
+			if (definitions[i].description.Contains(property_flag_name)) {
+				err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
+				if (err == NoError) {
+					GS::UniString n = "";
+					if (propertyflag.isDefault) {
+						n = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.uniStringValue;
+					}
+					else {
+						n = propertyflag.value.singleVariant.variant.uniStringValue;
+					}
+					if (n.IsEmpty()) return APINULLGuid;
+					API_Guid guid_from = APIGuidFromString(n.ToCStr().Get());
+					return guid_from;
+				}
+				else {
+					return APINULLGuid;
+				}
+			}
+		}
+	}
+	return APINULLGuid;
 }
 
 // --------------------------------------------------------------------
@@ -2875,7 +3129,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			ParamHelpers::ConvertByFormat(param);
 		}
 	}
-	}
+}
 
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;

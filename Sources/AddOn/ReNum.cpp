@@ -45,7 +45,7 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 		msg_rep("ReNumSelected", intString, NoError, APINULLGuid);
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
-							  });
+		});
 	return NoError;
 }
 
@@ -128,7 +128,7 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 				// В нём должно быть имя свойства и, возможно, флаг добавления нулей
 				GS::UniString paramName = definition.description.ToLowerCase().GetSubstring('{', '}', 0);
 				paramName.ReplaceAll("\\/", "/");
-				GS::UniString rawNameposition = "{";
+				GS::UniString rawNameposition = "{@";
 				if (paramName.Contains(";")) { // Есть указание на нули
 					GS::Array<GS::UniString>	partstring;
 					int nparam = StringSplt(paramName, ";", partstring);
@@ -143,7 +143,7 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 				else {
 					rawNameposition = rawNameposition + paramName + "}";
 				}
-				if (!rawNameposition.Contains("property")) rawNameposition.ReplaceAll("{", "{gdl:");
+				if (!rawNameposition.Contains("property")) rawNameposition.ReplaceAll("{", "{@gdl:");
 
 				// Проверяем - есть ли у объекта такое свойство-правило
 				if (propertyParams.ContainsKey(rawNameposition)) {
@@ -153,19 +153,19 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 					ruleparamName.ReplaceAll("\\/", "/");
 					if (ruleparamName.Contains("Renum") && ruleparamName.Contains("{") && ruleparamName.Contains("}")) {
 						ruleparamName = ruleparamName.ToLowerCase().GetSubstring('{', '}', 0);
-						GS::UniString rawNamecriteria = "{";
+						GS::UniString rawNamecriteria = "{@";
 						GS::UniString rawNamedelimetr = "";
 						if (ruleparamName.Contains(";")) { // Есть указание на нули
 							GS::Array<GS::UniString>	partstring;
 							int nparam = StringSplt(ruleparamName, ";", partstring);
 							rawNamecriteria = rawNamecriteria + partstring[0] + "}";
-							if (nparam > 1) rawNamedelimetr = "{" + rawNamedelimetr + partstring[1] + "}";
+							if (nparam > 1) rawNamedelimetr = "{@" + rawNamedelimetr + partstring[1] + "}";
 						}
 						else {
 							rawNamecriteria = rawNamecriteria + ruleparamName + "}";
 						}
-						if (!rawNamecriteria.Contains("property")) rawNamecriteria.ReplaceAll("{", "{gdl:");
-						if (!rawNamedelimetr.IsEmpty() && !rawNamedelimetr.Contains("property")) rawNamedelimetr.ReplaceAll("{", "{gdl:");
+						if (!rawNamecriteria.Contains("property")) rawNamecriteria.ReplaceAll("{", "{@gdl:");
+						if (!rawNamedelimetr.IsEmpty() && !rawNamedelimetr.Contains("property")) rawNamedelimetr.ReplaceAll("{", "{@gdl:");
 
 						// Если такие свойства есть - записываем правило
 						if (propertyParams.ContainsKey(rawNamecriteria) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty()) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty())) {
