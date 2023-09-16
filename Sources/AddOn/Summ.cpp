@@ -44,7 +44,7 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 		msg_rep("SumSelected", intString, NoError, APINULLGuid);
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
-							  });
+		});
 	return NoError;
 }
 
@@ -144,8 +144,8 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 	GS::Array<GS::UniString>	partstring;
 	int nparam = StringSplt(paramName.ToLowerCase(), ";", partstring);
 	if (nparam == 0) return false;
-	if (propertyParams.ContainsKey("{" + partstring[0] + "}")) {
-		paramtype.value = "{" + partstring[0] + "}";
+	if (propertyParams.ContainsKey("{@" + partstring[0] + "}")) {
+		paramtype.value = "{@" + partstring[0] + "}";
 	}
 	else {
 		return false;
@@ -153,8 +153,8 @@ bool Sum_Rule(const API_Guid& elemGuid, const API_PropertyDefinition& definition
 
 	// Ищём определение свойства-критерия
 	if (nparam > 1) {
-		if (propertyParams.ContainsKey("{" + partstring[1] + "}")) {
-			paramtype.criteria = "{" + partstring[1] + "}";
+		if (propertyParams.ContainsKey("{@" + partstring[1] + "}")) {
+			paramtype.criteria = "{@" + partstring[1] + "}";
 		}
 		else {
 			paramtype.delimetr = partstring[1].ToCStr().Get();
@@ -240,6 +240,7 @@ void Sum_OneRule(const SumRule& rule, ParamDictElement& paramToReadelem, ParamDi
 						summ.val.stringformat = param.val.stringformat;
 						summ.val.uniStringValue = ParamHelpers::ToString(summ);
 					}
+
 					// Записываем только изменённые значения
 					if (param != summ) {
 						param.val = summ.val;

@@ -94,7 +94,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	DBPrintf("== SMSTF == ElementEventHandlerProc start\n");
 	if (acttype == APIEdit_Drag) {
 		if (is_equal(actTranPars.theDisp.x, 0) && is_equal(actTranPars.theDisp.y, 0) && is_equal(actTranPars.theDispZ, 0)) {
-			DBPrintf("== SMSTF == acttype == APIEdit_Drag\n");
+			DBPrintf("== SMSTF == acttype == APIEdit_Drag 0\n");
 			return NoError;
 		}
 	}
@@ -111,9 +111,8 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	ParamDictElement paramToWrite = {};
 	switch (elemType->notifID) {
 	case APINotifyElement_New:
-
-		//case APINotifyElement_Copy:
 	case APINotifyElement_Change:
+	case APINotifyElement_PropertyValueChange:
 	case APINotifyElement_Edit:
 	case APINotifyElement_ClassificationChange:
 		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, acttype);
@@ -214,6 +213,12 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 		case RunParam_CommandID:
 			RunParamSelected(syncSettings);
 			DimRoundAll(syncSettings);
+			break;
+		case SetGUID_CommandID:
+			SetSyncGUID();
+			break;
+		case ShowGUID_CommandID:
+			ShowSyncGUID();
 			break;
 		}
 		break;

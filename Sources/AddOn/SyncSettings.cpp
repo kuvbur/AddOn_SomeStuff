@@ -51,7 +51,7 @@ GSErrCode SyncSettings::Write(GS::OChannel& oc) const
 
 bool LoadSyncSettingsFromPreferences(SyncSettings& syncSettings)
 {
-	DBPrintf ("== SMSTF == LoadSyncSettingsFromPreferences\n");
+	DBPrintf("== SMSTF == LoadSyncSettingsFromPreferences\n");
 	GSErrCode err = NoError;
 	Int32 version = 3;
 	GSSize bytes = 0;
@@ -78,11 +78,11 @@ bool LoadSyncSettingsFromPreferences(SyncSettings& syncSettings)
 	syncSettings = tempsyncSettings;
 	delete[] data;
 	return true;
-	}
+}
 
 bool WriteSyncSettingsToPreferences(const SyncSettings& syncSettings)
 {
-	DBPrintf ("== SMSTF == WriteSyncSettingsToPreferences\n");
+	DBPrintf("== SMSTF == WriteSyncSettingsToPreferences\n");
 	GSErrCode err = NoError;
 	MemoryOChannel outputChannel;
 	err = syncSettings.Write(outputChannel);

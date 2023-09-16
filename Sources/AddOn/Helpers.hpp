@@ -3,7 +3,6 @@
 
 #ifndef HELPERS_HPP
 #define	HELPERS_HPP
-
 #ifdef AC_25
 #include	"APICommon25.h"
 #endif // AC_25
@@ -146,6 +145,18 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
+
+bool ElemHeadToNeig(API_Neig* neig, const API_Elem_Head* elemHead);
+
+API_ElemTypeID NeigToElemID(API_NeigID neigID);
+
+bool		GetAnElem(const char* prompt,
+	API_ElemTypeID		needTypeID,
+	API_Neig* neig = nullptr,
+	API_ElemTypeID* typeID = nullptr,
+	API_Guid* guid = nullptr,
+	API_Coord3D* c = nullptr,
+	bool				ignorePartialSelection = true);
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -415,6 +426,11 @@ namespace ParamHelpers {
 	void AddParamValue2ParamDictElement(const ParamValue& param, ParamDictElement& paramToRead);
 
 	// --------------------------------------------------------------------
+	// Сопоставляет параметры
+	// --------------------------------------------------------------------
+	bool CompareParamValue(ParamValue& paramFrom, ParamValue& paramTo, GS::UniString stringformat);
+
+	// --------------------------------------------------------------------
 	// Запись словаря ParamDictValue в словарь элементов ParamDictElement
 	// --------------------------------------------------------------------
 	void AddParamDictValue2ParamDictElement(const API_Guid& elemGuid, ParamDictValue& param, ParamDictElement& paramToRead);
@@ -678,19 +694,11 @@ void UnhideUnlockAllLayer(void);
 //--------------------------------------------------------------------------------------------------------------------------
 //Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition> definitions, GS::UniString property_flag_name);
+bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name);
 
-// -----------------------------------------------------------------------------
-// Получение определения свойства по имени свойства
-// Формат имени ГРУППА/ИМЯ_СВОЙСТВА
-// -----------------------------------------------------------------------------
-GSErrCode GetPropertyDefinitionByName(const GS::UniString& propertyname, API_PropertyDefinition& definition);
+bool GetSubGuidDefinition(const GS::Array<API_PropertyDefinition>& definitions, GS::Array<API_PropertyDefinition>& definitionsout);
 
-// -----------------------------------------------------------------------------
-// Получение определения свойства по имени свойства дляф заданного элемента
-// Формат имени ГРУППА/ИМЯ_СВОЙСТВА
-// -----------------------------------------------------------------------------
-GSErrCode GetPropertyDefinitionByName(const API_Guid& elemGuid, const GS::UniString& tpropertyname, API_PropertyDefinition& definition);
+API_Guid GetSubGuid(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name);
 
 // -----------------------------------------------------------------------------
 // Получить полное имя свойства (включая имя группы)

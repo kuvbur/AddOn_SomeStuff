@@ -275,10 +275,10 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
 #endif // AC_26
 			if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);
-	}
+		}
 		else {
 			err = APIERR_MISSINGCODE;
 		}
-}
+			}
 	return err;
 }

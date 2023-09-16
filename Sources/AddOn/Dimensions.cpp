@@ -20,7 +20,7 @@
 GSErrCode DimReadPref(DimRules& dimrules) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
 	API_AutotextType	type = APIAutoText_Custom;
-	DBPrintf ("== SMSTF == DimReadPref start\n");
+	DBPrintf("== SMSTF == DimReadPref start\n");
 	GSErrCode	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
 	if (err != NoError) {
 		msg_rep("DimReadPref", "ACAPI_Goodies", err, APINULLGuid);
@@ -59,11 +59,11 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 					dimrules.Add(kstr, dimrule);
 				}
 			}
-			DBPrintf ("== SMSTF == DimReadPref end!!\n");
+			DBPrintf("== SMSTF == DimReadPref end!!\n");
 			return err;
 		}
 	}
-	DBPrintf ("== SMSTF == DimReadPref end\n");
+	DBPrintf("== SMSTF == DimReadPref end\n");
 	return err;
 }
 
@@ -231,7 +231,7 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictVa
 		API_Element mask;
 		ACAPI_ELEMENT_MASK_SETFULL(mask);
 		API_Guid elemGuid_n = elemGuid;
-		err = ACAPI_CallUndoableCommand("Create text", [&]() -> GSErrCode {
+		err = ACAPI_CallUndoableCommand("Change dimension text", [&]() -> GSErrCode {
 			return ACAPI_Element_Change(&element, &mask, &memo, APIMemoMask_All, true);
 
 			//return ACAPI_Element_ChangeMemo(elemGuid_n, APIMemoMask_AdditionalPolygon, &memo);
@@ -278,11 +278,11 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 		ParamDictValue pdictvalue = dimrule.paramDict;
 
 		// Добавляем в словарь округлённое значение
-		if (pdictvalue.ContainsKey("{@gdl::measuredvalue}")) {
+		if (pdictvalue.ContainsKey("{@gdl:measuredvalue}")) {
 			ParamValue pvalue;
 			ParamHelpers::ConvValue(pvalue, "MeasuredValue", dimValmm_round);
-			pdictvalue.Get("{@gdl::measuredvalue}").val = pvalue.val;
-			pdictvalue.Get("{@gdl::measuredvalue}").isValid = true;
+			pdictvalue.Get("{@gdl:measuredvalue}").val = pvalue.val;
+			pdictvalue.Get("{@gdl:measuredvalue}").isValid = true;
 		}
 		if (elemGuid != APINULLGuid) ParamHelpers::Read(elemGuid, pdictvalue, propertyParams); //Получим значения, если размер привязан к элементу
 		GS::UniString expression = dimrule.expression;
@@ -348,16 +348,17 @@ void DimRoundAll(const SyncSettings& syncSettings) {
 	(void)syncSettings;
 	DoneElemGuid doneelemguid;
 	DimRules dimrules;
-	DBPrintf ("== SMSTF == DimRoundAll start\n");
+	DBPrintf("== SMSTF == DimRoundAll start\n");
 	const GSErrCode err = DimReadPref(dimrules);
 	if (dimrules.GetSize() == 0 || err != NoError) return;
 	bool flag_chanel = false;
 	ParamDictValue propertyParams;
 	ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams);
 	if (!flag_chanel) flag_chanel = DimRoundByType(API_DimensionID, doneelemguid, dimrules, propertyParams);
+
 	//if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
 	//if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
-	DBPrintf ("== SMSTF == DimRoundAll end\n");
+	DBPrintf("== SMSTF == DimRoundAll end\n");
 }
 
 // -----------------------------------------------------------------------------
