@@ -63,7 +63,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
 // -----------------------------------------------------------------------------
-void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, API_EditCmdID& acttype);
+void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
 void SetSyncGUID();
 
@@ -73,6 +73,11 @@ void ShowSyncGUID();
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings& syncSettings);
+
+// -----------------------------------------------------------------------------
+// Запускает обработку переданного массива
+// -----------------------------------------------------------------------------
+void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray);
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметров выбранных элементов
@@ -92,7 +97,9 @@ bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings&
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, API_EditCmdID& acttype);
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
+
+void SyncCalcRule(const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite);
 
 // --------------------------------------------------------------------
 // Добавление подэлементов и их параметров в правила синхорнизации
@@ -107,7 +114,9 @@ void SyncAddRule(const WriteData& writeSub, WriteDict& syncRules, ParamDictEleme
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, API_EditCmdID& acttype);
+bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams);
+
+bool Name2Rawname(GS::UniString& name, GS::UniString& rawname);
 
 // -----------------------------------------------------------------------------
 // Парсит описание свойства

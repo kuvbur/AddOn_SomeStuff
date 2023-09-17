@@ -115,7 +115,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	case APINotifyElement_PropertyValueChange:
 	case APINotifyElement_Edit:
 	case APINotifyElement_ClassificationChange:
-		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, acttype);
+		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite);
 		if (!paramToWrite.IsEmpty()) {
 			ParamHelpers::ElementsWrite(paramToWrite);
 		}
