@@ -5,6 +5,7 @@
 #include	"ACAPinc.h"
 #include	"ReNum.hpp"
 #include	"Helpers.hpp"
+#include	"Sync.hpp"
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Итак, задача, суть такова:
@@ -29,9 +30,11 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
+	bool flag_write = true;
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		ParamDictElement paramToWriteelem;
 		if (!GetRenumElements(guidArray, paramToWriteelem)) {
+			flag_write = false;
 			msg_rep("ReNumSelected", GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + "No data to write", NoError, APINULLGuid);
 			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 			return NoError;
@@ -46,6 +49,7 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
 		});
+	if (flag_write) SyncArray(syncSettings, guidArray);
 	return NoError;
 }
 
@@ -65,7 +69,7 @@ bool GetRenumElements(GS::Array<API_Guid> guidArray, ParamDictElement& paramToWr
 			}
 			ParamDictValue propertyParams;
 			ParamDictValue paramToRead;
-			ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, definitions);
+			ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams, definitions);
 			if (ReNum_GetElement(guidArray[i], propertyParams, paramToRead, rules)) ParamHelpers::AddParamDictValue2ParamDictElement(guidArray[i], paramToRead, paramToReadelem);
 		}
 	}

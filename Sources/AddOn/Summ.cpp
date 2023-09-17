@@ -3,6 +3,7 @@
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Summ.hpp"
+#include	"Sync.hpp"
 typedef std::unordered_map <std::string, SortInx> SumCriteria;
 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -26,11 +27,13 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
+	bool flag_write = true;
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());; short i = 1;
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 		ParamDictElement paramToWriteelem;
 		if (!GetSumValuesOfElements(guidArray, paramToWriteelem)) {
+			flag_write = false;
 			msg_rep("SumSelected", "No data to write", NoError, APINULLGuid);
 			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 			return NoError;
@@ -45,6 +48,7 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
 		});
+	if (flag_write) SyncArray(syncSettings, guidArray);
 	return NoError;
 }
 
@@ -63,7 +67,7 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 		}
 		ParamDictValue propertyParams;
 		ParamDictValue paramToRead;
-		ParamHelpers::GetAllPropertyDefinitionToParamDict(propertyParams, guidArray[i]);
+		ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams, guidArray[i]);
 		if (!propertyParams.IsEmpty()) {
 			if (Sum_GetElement(guidArray[i], propertyParams, paramToRead, rules)) {
 				ParamHelpers::Read(guidArray[i], paramToRead, propertyParams);
