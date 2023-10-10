@@ -9,6 +9,10 @@
 #ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
+#ifdef AC_27
+#include	"APICommon27.h"
+#include	"ACAPI_MigrationHeader.hpp"
+#endif // AC_26
 #include	"DG.h"
 #include	"basicgeometry.h"
 #include	"StringConversion.hpp"
@@ -94,7 +98,7 @@ typedef struct {
 } ParamValueData;
 
 typedef struct {
-	API_AttributeIndex inx = 0;
+	API_AttributeIndex inx;
 	double fillThick = 0.0;
 	double rfromstart = 0.0;
 	bool isCore = false;
