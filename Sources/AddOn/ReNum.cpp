@@ -49,7 +49,7 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 		return NoError;
 		});
-	if (flag_write) SyncArray(syncSettings, guidArray);
+	//if (flag_write) SyncArray(syncSettings, guidArray);
 	return NoError;
 }
 
