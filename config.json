@@ -1,0 +1,21 @@
+{
+    "addOnName": "SomeStuff_AddOn",
+    "devKitLinks": {
+        "WIN": {
+            "27": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/27.3001/API.Development.Kit.WIN.27.3001.zip",
+            "26": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/26.3000/API.Development.Kit.WIN.26.3000.zip",
+            "25": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/25.3002/API.Development.Kit.WIN.25.3002.zip",
+            "24": "https://disk.yandex.ru/d/dsFjdq_EHfA0Ow",
+            "23": "https://disk.yandex.ru/d/SP59HFAZO_qWWA",
+            "22": "https://disk.yandex.ru/d/4fH7cmV9ENuxPA"
+        },
+        "MAC": {
+            "27": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/27.3001/API.Development.Kit.MAC.27.3001.zip",
+            "26": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/26.3000/API.Development.Kit.MAC.26.3000.zip",
+            "25": "https://github.com/GRAPHISOFT/archicad-api-devkit/releases/download/25.3002/API.Development.Kit.MAC.25.3002.zip"
+        }
+    },
+    "languages": [
+        "INT"
+    ]
+}
