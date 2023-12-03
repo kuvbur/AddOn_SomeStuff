@@ -1,154 +1,33 @@
 name: Add-On Build
-
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - 'beta-testing'
-      - 'master'
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  build_mac_ac25:
-    runs-on: [ macos-12 ]
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install requests
-    - name: Download Development Kit
-      run: python3 Tools/download_and_unzip.py ${{ secrets.MAC_DEVKIT_AC25 }} Build
-    - name: Generate Project
-      run: cmake -B Build/AC25 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 25.3006"
-    - name: Build Release
-      run: cmake --build Build/AC25 --config Release
-    - name: Create DMG file
-      run: hdiutil create -format UDZO -srcfolder Build/AC25/Release/SomeStuff_AddOn_AC25_Mac.bundle Build/AC25/Release/SomeStuff_AddOn_AC25_Mac.dmg
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: SomeStuff AddOn AC25 Mac
-        path: Build/AC25/Release/SomeStuff_AddOn_AC25_Mac.dmg
+  build:
+    runs-on: ${{ matrix.os-type }}
 
-  build_mac_ac26:
-    runs-on: [ macos-12 ]
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install requests
-    - name: Download Development Kit
-      run: python3 Tools/download_and_unzip.py ${{ secrets.MAC_DEVKIT_AC26 }} Build
-    - name: Generate Project
-      run: cmake -B Build/AC26 -G "Xcode" -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" -DAC_API_DEVKIT_DIR="Build/GRAPHISOFT ARCHICAD API DevKit 26.3000"
-    - name: Build Release
-      run: cmake --build Build/AC26 --config Release
-    - name: Create DMG file
-      run: hdiutil create -format UDZO -srcfolder Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.bundle Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.dmg
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: SomeStuff AddOn AC26 Mac
-        path: Build/AC26/Release/SomeStuff_AddOn_AC26_Mac.dmg
+    strategy:
+      matrix:
+        os-type: [ windows-2019, macos-12 ]
+        ac-version: [ 25, 26, 27 ]
 
-  build_win_ac25:
-    runs-on: [ windows-2019 ]
     steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install requests
-    - name: Download Development Kit
-      run: python Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC25 }} Build
-    - name: Generate Project
-      run: cmake -B Build/AC25 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="Build/API Development Kit 25.3002"
-    - name: Build Release
-      run: cmake --build Build/AC25 --config Release
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: SomeStuff_AddOn AC25 Win
-        path: Build/AC25/Release/SomeStuff_AddOn_AC25_Win.apx
+      - uses: actions/checkout@v3
 
-  build_win_ac26:
-    runs-on: [ windows-2019 ]
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install requests
-    - name: Download Development Kit
-      run: python Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC26 }} Build
-    - name: Generate Project
-      run: cmake -B Build/AC26 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="Build/API Development Kit 26.3000"
-    - name: Build Release
-      run: cmake --build Build/AC26 --config Release
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: SomeStuff_AddOn AC26 Win
-        path: Build/AC26/Release/SomeStuff_AddOn_AC26_Win.apx
+      - name: Checkout the submodule
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
-  build_win_ac24:
-    runs-on: [ windows-2019 ]
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.9
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install requests
-    - name: Download Development Kit
-      run: python Tools/download_and_unzip.py ${{ secrets.WIN_DEVKIT_AC24 }} Build
-    - name: Generate Project
-      run: cmake -B Build/AC24 -G "Visual Studio 16 2019" -A "x64" -T "v142" -DAC_API_DEVKIT_DIR="Build/API Development Kit 24.3009"
-    - name: Build Release
-      run: cmake --build Build/AC24 --config Release
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: SomeStuff_AddOn AC24 Win
-        path: Build/AC24/Release/SomeStuff_AddOn_AC24_Win.apx
-        
-  build_release_all:
-    needs: [build_win_ac24, build_win_ac25, build_mac_ac25, build_mac_ac26, build_win_ac26]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v3
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: ncipollo/release-action@v1
-      with:
-        artifacts: Build/AC24/Release/SomeStuff_AddOn_AC24_Win.apx
-        draft: true
-        allowUpdates: true
-        token: ${{ secrets.GITHUB_TOKEN }}
-        
+      - name: setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      
+      - name: Run build script
+        run: |
+          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }}
