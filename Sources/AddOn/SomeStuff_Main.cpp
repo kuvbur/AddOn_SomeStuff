@@ -59,8 +59,13 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 		break;
 	case APINotify_Close:
 	case APINotify_Quit:
+#ifdef AC_27
+
+		//TODO Заменить на АС27
+#else
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
+#endif
 		break;
 	case APINotify_ChangeWindow:
 	case APINotify_ChangeFloor:
@@ -83,7 +88,12 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	syncSettings.syncMon = true;
 #endif // PK_1
 	API_ActTranPars actTranPars;
+#ifdef AC_27
+
+	//TODO Заменить на АС27
+#else
 	ACAPI_Notify_GetTranParams(&actTranPars);
+#endif
 	API_EditCmdID acttype = actTranPars.typeID;
 	if (!syncSettings.syncMon) return NoError;
 	if (elemType->notifID == APINotifyElement_EndEvents) {
@@ -106,8 +116,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	if (elemType->elemHead.type.typeID == API_GroupID) return NoError;
 	if (!CheckElementType(elemType->elemHead.type.typeID, syncSettings)) return NoError;
 #else
+#ifdef AC_27
+
+	//TODO Заменить на АС27
+#else
 	if (elemType->elemHead.typeID == API_GroupID) return NoError;
 	if (!CheckElementType(elemType->elemHead.typeID, syncSettings)) return NoError;
+#endif
 #endif
 	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) return NoError;
 	ParamDictValue propertyParams = {};
@@ -139,15 +154,25 @@ void	Do_ElementMonitor(bool& syncMon) {
 
 	if (syncMon) {
 		DBPrintf("== SMSTF == Do_ElementMonitor on\n");
+#ifdef AC_27
+
+		//TODO Заменить на АС27
+#else
 		ACAPI_Notify_CatchNewElement(nullptr, ElementEventHandlerProc);			// for all elements
 		ACAPI_Notify_InstallElementObserver(ElementEventHandlerProc);
 		ACAPI_Notify_CatchElementReservationChange(ReservationChangeHandler);
+#endif
 	}
 	if (!syncMon) {
 		DBPrintf("== SMSTF == Do_ElementMonitor off\n");
+#ifdef AC_27
+
+		//TODO Заменить на АС27
+#else
 		ACAPI_Notify_CatchNewElement(nullptr, nullptr);
 		ACAPI_Notify_InstallElementObserver(nullptr);
 		ACAPI_Notify_CatchElementReservationChange(nullptr);
+#endif
 	}
 	return;
 }	// Do_ElementMonitor
@@ -229,7 +254,12 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	(void)err;
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
+#ifdef AC_27
+
+	//TODO Заменить на АС27
+#else
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+#endif
 	ACAPI_KeepInMemory(true);
 	DBPrintf("== SMSTF == MenuCommandHandler end\n");
 	return NoError;
@@ -245,7 +275,12 @@ API_AddonType __ACDLL_CALL CheckEnvironment(API_EnvirParams* envir) {
 
 GSErrCode __ACDLL_CALL RegisterInterface(void) {
 	DBPrintf("== SMSTF == RegisterInterface\n");
+#ifdef AC_27
+
+	//TODO Заменить на АС27
+#else
 	GSErrCode err = ACAPI_Register_Menu(AddOnMenuID, AddOnPromtID, MenuCode_Tools, MenuFlag_Default);
+#endif
 	return err;
 }
 
@@ -259,9 +294,19 @@ GSErrCode __ACENV_CALL Initialize(void) {
 	MenuSetState(syncSettings);
 	Do_ElementMonitor(syncSettings.syncMon);
 	MonAll(syncSettings);
+#ifdef AC_27
+
+	//TODO Заменить на АС27
+#else
 	ACAPI_Notify_CatchProjectEvent(APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
+#endif
 	ACAPI_KeepInMemory(true);
+#ifdef AC_27
+
+	//TODO Заменить на АС27
+#else
 	return ACAPI_Install_MenuHandler(AddOnMenuID, MenuCommandHandler);
+#endif
 }
 
 GSErrCode __ACENV_CALL FreeData(void) {
