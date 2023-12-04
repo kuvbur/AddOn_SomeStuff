@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ac-version: [ 24, 25, 26, 27 ]
+        ac-version: [24]
     runs-on: [ windows-2019 ]
     steps:
       - uses: actions/checkout@v3
@@ -33,4 +33,4 @@ jobs:
       
       - name: Run build script
         run: |
-          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --config RelWithDebInfo
+          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
