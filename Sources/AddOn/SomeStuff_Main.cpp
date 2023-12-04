@@ -8,6 +8,9 @@
 #ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
+#ifdef AC_27
+#include	"APICommon27.h"
+#endif // AC_27
 #include	"DGModule.hpp"
 #include	"UniString.hpp"
 #include	"APIdefs_Properties.h"
