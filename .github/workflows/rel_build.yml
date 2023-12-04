@@ -38,4 +38,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: SomeStuff_AddOn AC${{ matrix.params.acVersion }} Win
-          path: Build/Package/SomeStuff_AddOn.AC${{ matrix.params.acVersion }}.WIN.zip
+          path: Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.WIN.zip
