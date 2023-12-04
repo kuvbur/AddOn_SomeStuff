@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ac-version: [24]
+        ac-version: [24, 25, 26, 27]
     runs-on: [ windows-2019 ]
     steps:
       - uses: actions/checkout@v3
@@ -37,5 +37,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: SomeStuff_AddOn AC${{ matrix.params.acVersion }} Win
+          name: SomeStuff_AddOn AC${{ matrix.ac-version }} Win
           path: Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.WIN.zip
