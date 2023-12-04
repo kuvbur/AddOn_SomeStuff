@@ -11,6 +11,7 @@ jobs:
     runs-on: ${{ matrix.os-type }}
 
     strategy:
+      fail-fast: false
       matrix:
         os-type: [ windows-2019, macos-12 ]
         ac-version: [ 25, 26, 27 ]
