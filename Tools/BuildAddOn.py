@@ -252,14 +252,13 @@ def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKi
         '--config', configuration
     ]
     buildResult = subprocess.call(buildParams)
+    if configuration == 'Debug':
+        shutil.copy(
+            workspaceRootFolder / f'Test_file/test_{version}.pln',
+            buildPath / f'test_{version}.pln',
+        )
     if buildResult != 0:
         raise Exception('Failed to build project!')
-    else:
-        if configuration == 'Debug':
-            shutil.copy(
-                workspaceRootFolder / f'Test_file/test_{version}.pln',
-                buildPath / f'test_{version}.pln',
-            )
 
 
 def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolder, buildFolder, devKitFolderList):
