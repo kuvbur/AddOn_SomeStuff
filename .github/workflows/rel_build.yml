@@ -7,15 +7,12 @@ defaults:
     shell: bash
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os-type }}
-
+  build_win:
     strategy:
       fail-fast: false
       matrix:
-        os-type: [ windows-2019, macos-12 ]
-        ac-version: [ 25, 26, 27 ]
-
+        ac-version: [ 24, 25, 26, 27 ]
+    runs-on: [ windows-2019 ]
     steps:
       - uses: actions/checkout@v3
 
@@ -36,4 +33,4 @@ jobs:
       
       - name: Run build script
         run: |
-          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }}
+          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --config RelWithDebInfo
