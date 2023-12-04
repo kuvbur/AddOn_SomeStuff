@@ -266,7 +266,6 @@ def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolde
     try:
         for version in devKitFolderList:
             devKitFolder = devKitFolderList[version]
-
             if args.release is True:
                 for languageCode in languageList:
                     BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder,
@@ -294,14 +293,14 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
     sourceFolder = buildFolder / addOnName / version
 
     if languageCode is not None:
-        packageFolder = packageFolder / languageCode
+        # packageFolder = packageFolder / languageCode
         sourceFolder = sourceFolder / languageCode
     sourceFolder = sourceFolder / configuration
 
     if not packageFolder.exists():
         packageFolder.mkdir(parents=True)
 
-    fileName = addOnName
+    fileName = f'{addOnName}.AC{version}.{platformName}'
     if not isRelease:
         fileName = f'{fileName}_{configuration}'
 
@@ -343,7 +342,7 @@ def PackageAddOns(args, addOnName, platformName, acVersionList, languageList, bu
         subprocess.call([
             '7z', 'a',
             str(packageRootFolder.parent /
-                f'{addOnName}-{version}_{buildType}_{platformName}.zip'),
+                f'{addOnName}.AC{version}.{platformName}.zip'),
             str(packageRootFolder / version / '*')
         ])
 
