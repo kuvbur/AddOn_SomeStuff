@@ -10,6 +10,9 @@
 #ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
+#ifdef AC_27
+#include	"APICommon27.h"
+#endif // AC_27
 #include	"Helpers.hpp"
 #include	"Model3D/model.h"
 #include	"Model3D/MeshBody.hpp"
@@ -500,7 +503,8 @@ void ReplaceSymbSpase(GS::UniString& outstring) {
 GSErrCode IsTeamwork(bool& isteamwork, short& userid) {
 	isteamwork = false;
 	API_ProjectInfo projectInfo = {};
-	GSErrCode err = ACAPI_Environment(APIEnv_ProjectID, &projectInfo);
+	GSErrCode err = NoError;
+	err = ACAPI_Environment(APIEnv_ProjectID, &projectInfo);
 	if (err == NoError) {
 		isteamwork = projectInfo.teamwork;
 		userid = projectInfo.userId;
@@ -521,7 +525,7 @@ GSErrCode	AttachObserver(const API_Guid& objectId, const SyncSettings& syncSetti
 #else
 		err = ACAPI_Element_AttachObserver(objectId);
 #endif
-	}
+}
 	return err;
 	}
 
@@ -629,7 +633,7 @@ bool ReserveElement(const API_Guid& objectId, GSErrCode& err) {
 		elements.Push(objectId);
 		ACAPI_TeamworkControl_ReserveElements(elements, &conflicts);
 		if (!conflicts.IsEmpty()) return false; // Не получилось зарезервировать
-	}
+}
 	if (ACAPI_Element_Filter(objectId, APIFilt_HasAccessRight)) {
 		if (ACAPI_Element_Filter(objectId, APIFilt_IsEditable)) {
 			if (ACAPI_Element_Filter(objectId, APIFilt_InMyWorkspace)) {
@@ -957,7 +961,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 		BMKillHandle((GSHandle*)&selNeigs);
 #endif // AC_22
 		return GS::Array<API_Guid>();
-	}
+}
 	GS::Array<API_Guid> guidArray;
 #ifdef AC_22
 	USize nSel = BMGetHandleSize((GSHandle)selNeigs) / sizeof(API_Neig);
@@ -1057,7 +1061,7 @@ GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType) {
 	elementType = elem_head.typeID;
 #endif
 	return err;
-}
+	}
 
 #ifndef AC_26
 bool	GetElementTypeString(API_ElemTypeID typeID, char* elemStr) {
@@ -1198,7 +1202,7 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 						API_Guid elGuid = *(relData.morphs)[i];
 						subelemGuid.Push(elGuid);
 					}
-				}
+		}
 #else
 				typeinzone.Push(API_ObjectID);
 				typeinzone.Push(API_LampID);
@@ -1229,12 +1233,12 @@ void GetRelationsElement(const API_Guid& elemGuid, const  API_ElemTypeID& elemen
 					}
 				}
 #endif
-				}
-			}
+	}
+}
 		break;
 	default:
 		break;
-		}
+}
 	ACAPI_DisposeRoomRelationHdls(&relData);
 	}
 
@@ -1814,7 +1818,7 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 	if (err != NoError) {
 		msg_rep("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
 		return err;
-}
+	}
 	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
 	if (err != NoError) {
 		msg_rep("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
@@ -1826,7 +1830,7 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 	err = ACAPI_Goodies(APIAny_CloseParametersID);
 	if (err != NoError) msg_rep("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
 	return err;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Получение координат объекта
@@ -2354,7 +2358,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-	}
+}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -2390,7 +2394,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
 			}
-		}
+	}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
@@ -2424,7 +2428,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	default:
 	{
 		break;
-			}
+	}
 		}
 	return string;
 	}
@@ -2486,7 +2490,7 @@ bool operator== (const API_MultipleEnumerationVariant & lhs, const API_MultipleE
 bool Equals(const API_PropertyDefaultValue & lhs, const API_PropertyDefaultValue & rhs, API_PropertyCollectionType collType) {
 	if (lhs.hasExpression != rhs.hasExpression) {
 		return false;
-}
+	}
 
 	if (lhs.hasExpression) {
 		return lhs.propertyExpressions == rhs.propertyExpressions;
@@ -2943,7 +2947,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "APIAny_OpenParametersID", err, elem_head.guid);
 		return;
-}
+	}
 	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "APIAny_GetActParametersID", err, elem_head.guid);
@@ -3009,7 +3013,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	err = ACAPI_Element_ChangeMemo(elemGuidt, APIMemoMask_AddPars, &elemMemo);
 	if (err != NoError) msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
 	ACAPI_DisposeAddParHdl(&apiParams.params);
-}
+	}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -4022,7 +4026,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 #endif
 	if (!pvalue.isValid) {
 		return false;
-}
+	}
 	pvalue.val.boolValue = false;
 	pvalue.val.intValue = 0;
 	pvalue.val.doubleValue = 0.0;
@@ -4105,7 +4109,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -4691,7 +4695,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 	default:
 		return false;
 		break;
-}
+	}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -4734,7 +4738,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 		ACAPI_DisposeElemMemoHdls(&memo);
 	}
 	return hasData;
-	}
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя

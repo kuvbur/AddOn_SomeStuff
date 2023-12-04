@@ -285,7 +285,9 @@ void RunParamSelected(const SyncSettings& syncSettings) {
 	API_AttributeIndex layerCombIndex;
 	API_DatabaseInfo databaseInfo;
 	BNZeroMemory(&databaseInfo, sizeof(API_DatabaseInfo));
-	GSErrCode err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
+	GSErrCode err = NoError;
+	err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
+	if (err != NoError) return;
 	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
 	if (err != NoError) return;
 	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);

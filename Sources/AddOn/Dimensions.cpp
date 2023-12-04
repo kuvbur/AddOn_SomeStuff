@@ -21,7 +21,13 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
 	API_AutotextType	type = APIAutoText_Custom;
 	DBPrintf("== SMSTF == DimReadPref start\n");
-	GSErrCode	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
+	GSErrCode	err = NoError;
+#ifdef AC_27
+
+	//TODO Заменить на АС27
+#else
+	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
+#endif
 	if (err != NoError) {
 		msg_rep("DimReadPref", "ACAPI_Goodies", err, APINULLGuid);
 		return err;
@@ -189,7 +195,12 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictVa
 #ifdef AC_26
 		elementType = dimElem.base.base.type.typeID;
 #else
+#ifdef AC_27
+
+		//TODO Заменить на АС27
+#else
 		elementType = dimElem.base.base.typeID;
+#endif
 #endif // AC_26
 
 		// TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
@@ -376,7 +387,12 @@ bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, Di
 				err = DimAutoRound(guidArray.Get(i), dimrules, propertyParams);
 				if (err == NoError) doneelemguid.Add(guidArray.Get(i), false);
 			}
+#ifdef AC_27
+
+			//TODO Заменить на АС27
+#else
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
+#endif
 		}
 	}
 	else {
