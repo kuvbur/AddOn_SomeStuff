@@ -251,10 +251,15 @@ def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKi
         '--build', str(buildPath),
         '--config', configuration
     ]
-
     buildResult = subprocess.call(buildParams)
     if buildResult != 0:
         raise Exception('Failed to build project!')
+    else:
+        if configuration == 'Debug':
+            shutil.copy(
+                workspaceRootFolder / f'Test_file/test_{version}.pln',
+                buildPath / f'test_{version}.pln',
+            )
 
 
 def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolder, buildFolder, devKitFolderList):
@@ -274,8 +279,8 @@ def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolde
             else:
                 BuildAddOn(configData, platformName, workspaceRootFolder,
                            buildFolder, devKitFolder, version, 'Debug')
-                BuildAddOn(configData, platformName, workspaceRootFolder,
-                           buildFolder, devKitFolder, version, 'RelWithDebInfo')
+                # BuildAddOn(configData, platformName, workspaceRootFolder,
+                #            buildFolder, devKitFolder, version, 'RelWithDebInfo')
 
     except Exception as e:
         raise e
@@ -364,7 +369,6 @@ def Main():
         if args.package:
             PackageAddOns(args, addOnName, platformName, acVersionList,
                           languageList, buildFolder, packageRootFolder)
-
         print('Build succeeded!')
         sys.exit(0)
 

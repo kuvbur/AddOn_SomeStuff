@@ -78,8 +78,8 @@ function (LinkGSLibrariesToProject acVersion devKitDir addOnName)
     if (WIN32)
         set_target_properties(${addOnName} PROPERTIES
         VS_DEBUGGER_WORKING_DIRECTORY "$(ProjectDir)"
-        VS_DEBUGGER_COMMAND "$ENV{ProgramFiles}/GRAPHISOFT/ARCHICAD ${ARCHICAD_VERSION}/ARCHICAD.exe"
-        VS_DEBUGGER_COMMAND_ARGUMENTS "$(ProjectDir)test.pln"
+        VS_DEBUGGER_COMMAND "$ENV{ProgramFiles}/GRAPHISOFT/ARCHICAD ${acVersion}/ARCHICAD.exe"
+        VS_DEBUGGER_COMMAND_ARGUMENTS "$(ProjectDir)test_${acVersion}.pln"
         )
         if (${acVersion} LESS 27)
             target_link_libraries (${addOnName}
