@@ -283,9 +283,17 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID(const API_Guid& elemGuid, API_ElemTypeID& elementType);
 
-#ifdef AC_26
+#if defined AC_26 || defined AC_27
+
+// -----------------------------------------------------------------------------
+// Получение названия типа элемента
+// -----------------------------------------------------------------------------
 bool GetElementTypeString(API_ElemType elemType, char* elemStr);
 #else
+
+// -----------------------------------------------------------------------------
+// Получение названия типа элемента
+// -----------------------------------------------------------------------------
 bool GetElementTypeString(API_ElemTypeID typeID, char* elemStr);
 #endif
 

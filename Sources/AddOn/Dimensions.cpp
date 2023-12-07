@@ -192,15 +192,10 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictVa
 		UInt32 flag_highlight = DIM_NOCHANGE;
 		auto& dimElem = (*memo.dimElems)[k];
 		API_ElemTypeID elementType;
-#ifdef AC_26
+#if defined AC_26 || defined AC_27
 		elementType = dimElem.base.base.type.typeID;
 #else
-#ifdef AC_27
-
-		//TODO Заменить на АС27
-#else
 		elementType = dimElem.base.base.typeID;
-#endif
 #endif // AC_26
 
 		// TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.

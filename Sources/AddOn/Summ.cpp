@@ -22,30 +22,53 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 
 GSErrCode SumSelected(SyncSettings& syncSettings) {
 	long time_start = clock();
-	GS::UniString funcname = "Summation"; short nPhase = 1;
+	GS::UniString funcname = "Summation";
+	GS::Int32 nPhase = 1;
+#ifdef AC_27
+	ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
+#else
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
+#endif
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
 	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
 	bool flag_write = true;
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());; short i = 1;
+#ifdef AC_27
+		bool showPercent = true;
+		ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
 		ParamDictElement paramToWriteelem;
 		if (!GetSumValuesOfElements(guidArray, paramToWriteelem)) {
 			flag_write = false;
 			msg_rep("SumSelected", "No data to write", NoError, APINULLGuid);
+#ifdef AC_27
+			ACAPI_ProcessWindow_CloseProcessWindow();
+#else
 			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+#endif
 			return NoError;
 		}
 		subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); i = 2;
+#ifdef AC_27
+		bool showPercent = true;
+		ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
 		ParamHelpers::ElementsWrite(paramToWriteelem);
 		long time_end = clock();
 		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 		GS::UniString intString = GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + GS::UniString::Printf("wrtite to - %d", paramToWriteelem.GetSize()) + time;
 		msg_rep("SumSelected", intString, NoError, APINULLGuid);
+#ifdef AC_27
+		ACAPI_ProcessWindow_CloseProcessWindow();
+#else
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+#endif
 		return NoError;
 		});
 	if (flag_write) SyncArray(syncSettings, guidArray);
@@ -61,10 +84,17 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 	// Получаем список правил суммирования
 	bool hasSum = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-			return false;
-		}
+#ifdef AC_27
+		bool showPercent = true;
+		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
+		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
+#ifdef AC_27
+		if (ACAPI_ProcessWindow_IsProcessCanceled()) return false;
+#else
+		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
+#endif
 		ParamDictValue propertyParams;
 		ParamDictValue paramToRead;
 		ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams, guidArray[i]);

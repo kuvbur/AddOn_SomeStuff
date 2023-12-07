@@ -73,11 +73,15 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 	ParamHelpers::GetAllGlobToParamDict(propertyParams);
 	if (propertyParams.IsEmpty()) return;
 	if (ResetProperty(propertyParams)) return;
-	GS::UniString	title("Sync All");
+	GS::UniString	funcname("Sync All");
 	bool flag_chanel = false;
 	ParamDictElement paramToWrite;
-	short nPhase = 1;
-	ACAPI_Interface(APIIo_InitProcessWindowID, &title, &nPhase);
+	GS::Int32 nPhase = 1;
+#ifdef AC_27
+	ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
+#else
+	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
+#endif
 	long time_start = clock();
 	if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings, nPhase, propertyParams, paramToWrite);
 	nPhase = nPhase + 1;
@@ -110,7 +114,12 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 		ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 			long time_start = clock();
 			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
+#ifdef AC_27
+			bool showPercent = true;
+			ACAPI_ProcessWindow_SetNextProcessPhase(&title, reinterpret_cast<Int32*> (i), &showPercent);
+#else
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &title, &i);
+#endif
 			ParamHelpers::ElementsWrite(paramToWrite);
 			long time_end = clock();
 			GS::UniString time = title + GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
@@ -122,14 +131,18 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 		msg_rep("SyncAll - write", "No data to write", NoError, APINULLGuid);
 	}
 	ParamHelpers::InfoWrite(paramToWrite);
+#ifdef AC_27
+	ACAPI_ProcessWindow_CloseProcessWindow();
+#else
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+#endif
 	DBPrintf("== SMSTF == SyncAndMonAll end\n");
 }
 
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
 // -----------------------------------------------------------------------------
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Int32& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
 	GS::UniString		subtitle;
 	GSErrCode			err = NoError;
 	GS::Array<API_Guid>	guidArray;
@@ -155,7 +168,12 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	bool flag_chanel = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
-		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle_, &i);
+#ifdef AC_27
+		bool showPercent = true;
+		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
+		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
 	}
 	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
 	long time_end = clock();
@@ -234,22 +252,33 @@ void SyncSelected(const SyncSettings& syncSettings) {
 // -----------------------------------------------------------------------------
 void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray) {
 	if (guidArray.IsEmpty()) return;
-	GS::UniString fmane = "Sync Selected";
+	GS::UniString funcname = "Sync Selected";
 	ParamDictValue propertyParams = {};
 	ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 	ParamHelpers::GetAllInfoToParamDict(propertyParams);
 	ParamHelpers::GetAllGlobToParamDict(propertyParams);
 	ParamDictElement paramToWrite;
 	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
-	short nPhase = 1;
-	ACAPI_Interface(APIIo_InitProcessWindowID, &fmane, &nPhase);
+	GS::Int32 nPhase = 1;
+#ifdef AC_27
+	ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
+#else
+	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
+#endif
 	long time_start = clock();
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
+#ifdef AC_27
+		bool showPercent = true;
+		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
 		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-			return;
-		}
+#endif
+#ifdef AC_27
+		if (ACAPI_ProcessWindow_IsProcessCanceled()) return;
+#else
+		if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
+#endif
 	}
 	GS::UniString intString = GS::UniString::Printf(" %d qty", guidArray.GetSize());
 	long time_end = clock();
@@ -260,7 +289,12 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 		ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 			long time_start = clock();
 			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
-			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &title, &i);
+#ifdef AC_27
+			bool showPercent = true;
+			ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
+			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
 			ParamHelpers::ElementsWrite(paramToWrite);
 			long time_end = clock();
 			GS::UniString time = title + GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
@@ -272,7 +306,11 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 		msg_rep("SyncSelected - write", "No data to write", NoError, APINULLGuid);
 	}
 	ParamHelpers::InfoWrite(paramToWrite);
+#ifdef AC_27
+	ACAPI_ProcessWindow_CloseProcessWindow();
+#else
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -286,13 +324,26 @@ void RunParamSelected(const SyncSettings& syncSettings) {
 	API_DatabaseInfo databaseInfo;
 	BNZeroMemory(&databaseInfo, sizeof(API_DatabaseInfo));
 	GSErrCode err = NoError;
+#ifdef AC_27
+	err = ACAPI_Navigator_GetCurrLayerComb(&layerCombIndex);
+#else
 	err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
+#endif
 	if (err != NoError) return;
+#ifdef AC_27
+	err = ACAPI_Database_GetCurrentDatabase(&databaseInfo);
+#else
 	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
+#endif
+
 	if (err != NoError) return;
 	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);
 	if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
-	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &databaseInfo, nullptr);
+#ifdef AC_27
+	err = ACAPI_Database_ChangeCurrentDatabase(&dbInfo);
+#else
+	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -309,10 +360,18 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	API_DatabaseInfo dbInfo;
 	err = ACAPI_Database(APIDb_GetContainingDatabaseID, &tElemHead.guid, &dbInfo);
 	if (err != NoError) return;
+#ifdef AC_27
+	err = ACAPI_Database_GetCurrentDatabase(&databaseInfo);
+#else
 	err = ACAPI_Database(APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
+#endif
 	if (err != NoError) return;
 	if (dbInfo.databaseUnId != databaseInfo.databaseUnId) {
+#ifdef AC_27
+		err = ACAPI_Database_ChangeCurrentDatabase(&dbInfo);
+#else
 		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+#endif
 		if (err != NoError) return;
 	}
 
@@ -325,7 +384,11 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
 		return;
 	}
+#ifdef AC_27
+	err = ACAPI_LibraryManagement_RunGDLParScript(&tElemHead, 0);
+#else
 	err = ACAPI_Goodies(APIAny_RunGDLParScriptID, &tElemHead, 0);
+#endif
 	if (err != NoError) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
 		return;
