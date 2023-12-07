@@ -61,7 +61,7 @@ void SyncAndMonAll(SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
 // -----------------------------------------------------------------------------
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, short& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Int32& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов

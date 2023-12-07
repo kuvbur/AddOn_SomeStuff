@@ -24,8 +24,13 @@
 // -----------------------------------------------------------------------------------------------------------------------
 
 GSErrCode ReNumSelected(SyncSettings& syncSettings) {
-	GS::UniString funcname("Numbering"); short nPhase = 1;
+	GS::UniString funcname("Numbering");
+	GS::Int32 nPhase = 1;
+#ifdef AC_27
+	ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
+#else
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
+#endif
 	long time_start = clock();
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
@@ -36,19 +41,33 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 		if (!GetRenumElements(guidArray, paramToWriteelem)) {
 			flag_write = false;
 			msg_rep("ReNumSelected", GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + "No data to write", NoError, APINULLGuid);
+#ifdef AC_27
+			ACAPI_ProcessWindow_CloseProcessWindow();
+#else
 			ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+#endif
 			return NoError;
 		}
 		GS::UniString subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); short i = 2;
+#ifdef AC_27
+		bool showPercent = true;
+		ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
 		ParamHelpers::ElementsWrite(paramToWriteelem);
 		long time_end = clock();
 		GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 		GS::UniString intString = GS::UniString::Printf("Qty elements - %d ", guidArray.GetSize()) + GS::UniString::Printf("wrtite to - %d", paramToWriteelem.GetSize()) + time;
 		msg_rep("ReNumSelected", intString, NoError, APINULLGuid);
+#ifdef AC_27
+		ACAPI_ProcessWindow_CloseProcessWindow();
+#else
 		ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
+#endif
 		return NoError;
 		});
+
 	//if (flag_write) SyncArray(syncSettings, guidArray);
 	return NoError;
 }
@@ -63,10 +82,17 @@ bool GetRenumElements(GS::Array<API_Guid> guidArray, ParamDictElement& paramToWr
 		GS::Array<API_PropertyDefinition>	definitions;
 		GSErrCode err = ACAPI_Element_GetPropertyDefinitions(guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
 		if (err == NoError && !definitions.IsEmpty() && ReNumHasFlag(definitions)) {
+#ifdef AC_27
+			bool showPercent = true;
+			ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+#else
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
-			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) {
-				return false;
-			}
+#endif
+#ifdef AC_27
+			if (ACAPI_ProcessWindow_IsProcessCanceled()) return false;
+#else
+			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
+#endif
 			ParamDictValue propertyParams;
 			ParamDictValue paramToRead;
 			ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams, definitions);

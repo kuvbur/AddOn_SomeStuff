@@ -255,8 +255,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
 #ifdef AC_27
-
-	//TODO Заменить на АС27
+	ACAPI_ProcessWindow_CloseProcessWindow();
 #else
 	ACAPI_Interface(APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
