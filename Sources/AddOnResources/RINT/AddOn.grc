@@ -16,9 +16,9 @@
 /* [  7] */		"Обрабатывать элементы навесных стен^E3^ES^EE^ED^EW^EL^32612"
 /* [  8] */		"Перенумеровать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32608"
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
-/* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32604"
-/* [  11] */	"Задать элемент для синхронизации^E3^ES^EE^ED^EW^EL^S^R^T^32604"
-/* [  12] */	"Показать связанный элемент^E3^ES^EE^ED^EW^EL^S^R^T^32604"
+/* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+/* [  11] */	"Задать элемент для синхронизации^E3^ES^EE^ED^EW^EL^S^R^T^32614"
+/* [  12] */	"Показать связанный элемент^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 }
 
 
@@ -89,6 +89,15 @@
 'GICN' 32609 "SumAllIcon" {
     "SumAllIcon"
 }
-'GICN' 32612 "SyncсWall" {
-    "LogShowIcon"
+'GICN' 32612 "SynccWallIcon" {
+    "SynccWallIcon"
+}
+'GICN' 32613 "RunParamIcon" {
+    "RunParamIcon"
+}
+'GICN' 32614 "SetGUIDIcon" {
+    "SetGUIDIcon"
+}
+'GICN' 32615 "ShowGUIDIcon" {
+    "ShowGUIDIcon"
 }
