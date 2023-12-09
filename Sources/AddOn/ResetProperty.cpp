@@ -51,7 +51,7 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 #ifdef AC_27
 		err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
 #else
-		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &commandID, nullptr);
 #endif
 		if (err != NoError) { msg_rep("ResetPropertyElement2Defult", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid); }
 		if (err == NoError) { err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); }
@@ -105,9 +105,9 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 			if (err == NoError) {
 				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars);
 #ifdef AC_27
-				err = ACAPI_Database_ChangeCurrentDatabase(&dbInfo);
+				err = ACAPI_Database_ChangeCurrentDatabase(&dbPars);
 #else
-				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars, nullptr);
 #endif
 				if (err != NoError) msg_rep("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
 				if (err == NoError) {
