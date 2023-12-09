@@ -340,9 +340,9 @@ void RunParamSelected(const SyncSettings& syncSettings) {
 	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);
 	if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
 #ifdef AC_27
-	err = ACAPI_Database_ChangeCurrentDatabase(&dbInfo);
+	err = ACAPI_Database_ChangeCurrentDatabase(&databaseInfo);
 #else
-	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &databaseInfo, nullptr);
 #endif
 }
 
