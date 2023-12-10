@@ -20,14 +20,17 @@
 #include	"ProfileVectorImageOperations.hpp"
 #include	"ProfileAdditionalInfo.hpp"
 
-#ifdef AC_26
+#if defined AC_26 || defined AC_27
 
 API_ElemType	NeigToElemID(API_NeigID neigID)
 {
 	API_ElemType	type;
 	GSErrCode		err;
-
+#ifdef AC_27
+	err = ACAPI_Element_NeigIDToElemType(neigID, type);
+#else
 	err = ACAPI_Goodies_NeigIDToElemType(neigID, type);
+#endif
 	if (err != NoError)
 		type = API_ZombieElemID;
 
@@ -157,7 +160,11 @@ bool	GetAnElem(const char* prompt,
 	CHTruncate(prompt, pointInfo.prompt, sizeof(pointInfo.prompt));
 	pointInfo.changeFilter = false;
 	pointInfo.changePlane = false;
+#ifdef AC_27
+	err = ACAPI_UserInput_GetPoint(&pointInfo, nullptr);
+#else
 	err = ACAPI_Interface(APIIo_GetPointID, &pointInfo, nullptr);
+#endif
 	if (err != NoError) {
 		return false;
 	}
@@ -170,7 +177,11 @@ bool	GetAnElem(const char* prompt,
 		pars.loc.y = pointInfo.pos.y;
 		pars.z = 1.00E6;
 		pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
+#ifdef AC_27
+		err = ACAPI_Element_SearchElementByCoord(&pars, &elemHead.guid);
+#else
 		err = ACAPI_Goodies(APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
+#endif
 		if (err == NoError) {
 			elemHead.type = pars.type;
 			ElemHeadToNeig(&pointInfo.neig, &elemHead);
@@ -1129,7 +1140,12 @@ GSErrCode GetTypeByGUID(const API_Guid & elemGuid, API_ElemTypeID & elementType)
 #if defined AC_26 || defined AC_27
 bool	GetElementTypeString(API_ElemType elemType, char* elemStr) {
 	GS::UniString	ustr;
-	GSErrCode	err = ACAPI_Goodies_GetElemTypeName(elemType, ustr);
+	GSErrCode	err = NoError;
+#ifdef AC_27
+	err = ACAPI_Element_GetElemTypeName(elemType, ustr);
+#else
+	err = ACAPI_Goodies_GetElemTypeName(elemType, ustr);
+#endif
 	if (err == NoError) {
 		CHTruncate(ustr.ToCStr(), elemStr, ELEMSTR_LEN - 1);
 		return true;
@@ -1171,9 +1187,18 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 	API_Guid ownerElemApiGuid = APINULLGuid;
 	API_Guid ownerElemApiGuid_root = APINULLGuid;
 	API_Guid elemGuid_t = elemGuid;
+
+#ifdef AC_27
+	ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
+#else
 	ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
+#endif
 	hierarchicalOwnerType = API_RootHierarchicalOwner;
+#ifdef AC_27
+	ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
+#else
 	ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
+#endif
 	switch (elementType) {
 	case API_RailingID:
 		if (syncSettings.cwallS) {
@@ -1414,7 +1439,11 @@ GSErrCode GetRElementsForCWall(const API_Guid & cwGuid, GS::Array<API_Guid>&elem
 	const GSSize nPanels = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof(API_CWPanelType);
 	if (nPanels > 0) {
 		for (Int32 idx = 0; idx < nPanels; ++idx) {
+#ifdef AC_27
+			err = ACAPI_CurtainWall_IsCWPanelDegenerate(&memo.cWallPanels[idx].head.guid, &isDegenerate);
+#else
 			err = ACAPI_Database(APIDb_IsCWPanelDegenerateID, (void*)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
+#endif
 			if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
 				elementsSymbolGuids.Push(std::move(memo.cWallPanels[idx].head.guid));
 			}
@@ -1877,20 +1906,36 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 #else
 	apiOwner.typeID = elemType;
 #endif
+#ifdef AC_27
+	err = ACAPI_LibraryPart_OpenParameters(&apiOwner);
+#else
 	err = ACAPI_Goodies(APIAny_OpenParametersID, &apiOwner, nullptr);
+#endif
 	if (err != NoError) {
 		msg_rep("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
 		return err;
 	}
+#ifdef AC_27
+	err = ACAPI_LibraryPart_GetActParameters(&apiParams);
+#else
 	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
+#endif
 	if (err != NoError) {
 		msg_rep("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
+#ifdef AC_27
+		err = ACAPI_LibraryPart_CloseParameters();
+#else
 		err = ACAPI_Goodies(APIAny_CloseParametersID);
+#endif
 		if (err != NoError) msg_rep("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
 		return err;
 	}
 	params = apiParams.params;
+#ifdef AC_27
+	err = ACAPI_LibraryPart_CloseParameters();
+#else
 	err = ACAPI_Goodies(APIAny_CloseParametersID);
+#endif
 	if (err != NoError) msg_rep("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
 	return err;
 }
@@ -2124,9 +2169,18 @@ FormatStringDict GetFotmatStringForMeasureType() {
 
 	// Получаем данные об округлении и типе расчёта
 	API_CalcUnitPrefs unitPrefs1;
+#ifdef AC_27
+	ACAPI_ProjectSetting_GetPreferences(&unitPrefs1, APIPrefs_CalcUnitsID);
+#else
 	ACAPI_Environment(APIEnv_GetPreferencesID, &unitPrefs1, (void*)APIPrefs_CalcUnitsID);
+#endif
 	API_WorkingUnitPrefs unitPrefs;
+
+#ifdef AC_27
+	ACAPI_ProjectSetting_GetPreferences(&unitPrefs, APIPrefs_WorkingUnitsID);
+#else
 	ACAPI_Environment(APIEnv_GetPreferencesID, &unitPrefs, (void*)APIPrefs_WorkingUnitsID);
+#endif
 	FormatString fstring = {};
 	fstring.needRound = unitPrefs1.useDisplayedValues;
 
@@ -2298,12 +2352,21 @@ bool		MenuInvertItemMark(short menuResID, short itemIndex) {
 	itemRef.menuResID = menuResID;
 	itemRef.itemIndex = itemIndex;
 	itemFlags = 0;
+#ifdef AC_27
+	ACAPI_MenuItem_GetMenuItemFlags(&itemRef, &itemFlags);
+#else
 	ACAPI_Interface(APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
+#endif
 	if ((itemFlags & API_MenuItemChecked) == 0)
 		itemFlags |= API_MenuItemChecked;
 	else
 		itemFlags &= ~API_MenuItemChecked;
+
+#ifdef AC_27
+	ACAPI_MenuItem_SetMenuItemFlags(&itemRef, &itemFlags);
+#else
 	ACAPI_Interface(APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
+#endif
 	return (bool)((itemFlags & API_MenuItemChecked) != 0);
 }
 
@@ -2449,7 +2512,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	} break;
 	case API_PropertySingleChoiceEnumerationCollectionType:
 	{
-#if defined(AC_25) || defined(AC_26)
+#if defined(AC_25) || defined(AC_26) || defined(AC_27)
 		API_Guid guidValue = value->singleVariant.variant.guidValue;
 		GS::Array<API_SingleEnumerationVariant> possibleEnumValues = property.definition.possibleEnumValues;
 		for (UInt32 i = 0; i < possibleEnumValues.GetSize(); i++) {
@@ -2464,7 +2527,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
-#if defined(AC_25) || defined(AC_26)
+#if defined(AC_25) || defined(AC_26) || defined(AC_27)
 		GS::Array<API_SingleEnumerationVariant> possibleEnumValues = property.definition.possibleEnumValues;
 		UInt32 qty_finded_values = value->listVariant.variants.GetSize();
 		for (UInt32 i = 0; i < possibleEnumValues.GetSize(); i++) {
@@ -2544,7 +2607,7 @@ bool operator== (const API_SingleEnumerationVariant & lhs, const API_SingleEnume
 	return lhs.keyVariant == rhs.keyVariant && lhs.displayVariant == rhs.displayVariant;
 }
 
-#if !defined(AC_25) && !defined(AC_26)
+#if !defined(AC_25) && !defined(AC_26) && !defined(AC_27)
 bool operator== (const API_MultipleEnumerationVariant & lhs, const API_MultipleEnumerationVariant & rhs) {
 	return lhs.variants == rhs.variants;
 }
@@ -2577,7 +2640,7 @@ bool Equals(const API_PropertyValue & lhs, const API_PropertyValue & rhs, API_Pr
 		return lhs.singleVariant == rhs.singleVariant;
 	case API_PropertyListCollectionType:
 		return lhs.listVariant == rhs.listVariant;
-#if defined(AC_25) || defined(AC_26)
+#if defined(AC_25) || defined(AC_26) || defined(AC_27)
 	case API_PropertySingleChoiceEnumerationCollectionType:
 		return lhs.singleVariant == rhs.singleVariant;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
@@ -2633,7 +2696,11 @@ void DeleteElementUserData(const API_Guid & elemguid) {
 	API_ElementUserData userData = {};
 	GSErrCode err = ACAPI_Element_GetUserData(&tElemHead, &userData);
 	if (err == NoError && userData.dataHdl != nullptr) {
+#ifdef AC_27
+		err = ACAPI_UserData_DeleteUserData(&tElemHead);
+#else
 		err = ACAPI_Element_DeleteUserData(&tElemHead);
+#endif
 		msg_rep("Del user data", " ", NoError, APINULLGuid);
 	}
 	BMKillHandle(&userData.dataHdl);
@@ -2685,11 +2752,17 @@ void DeleteElementsUserData() {
 
 void UnhideUnlockAllLayer(void) {
 	API_Attribute		attrib;
-	API_AttributeIndex	count, i;
+#ifdef AC_27
+	UInt32 count, i;
+#else
+	API_AttributeIndex count, i;
+#endif
 	GSErrCode			err;
-	err = ACAPI_Attribute_GetNum(API_LayerID, &count);
+	err = ACAPI_Attribute_GetNum(API_LayerID, &count);//TODO Заменить на АС27
 	if (err != NoError) msg_rep("UnhideUnlockAllLayer", "ACAPI_Attribute_GetNum", err, APINULLGuid);
 	if (err == NoError) {
+
+		//TODO Заменить на АС27
 		for (i = 2; i <= count; i++) {
 			BNZeroMemory(&attrib, sizeof(API_Attribute));
 			attrib.header.typeID = API_LayerID;
@@ -2946,7 +3019,12 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 		ParamValue& param = *cIt->value;
 		GS::UniString dbKey = param.name;
 		GS::UniString value = ParamHelpers::ToString(param, param.val.stringformat);
-		GSErrCode err = ACAPI_Goodies(APIAny_SetAnAutoTextID, &dbKey, &value);
+		GSErrCode err = NoError;
+#ifdef AC_27
+		err = ACAPI_AutoText_SetAnAutoText(&dbKey, &value);
+#else
+		err = ACAPI_Goodies(APIAny_SetAnAutoTextID, &dbKey, &value);
+#endif
 		if (err != NoError) msg_rep("InfoWrite", "APIAny_SetAnAutoTextID", err, APINULLGuid);
 	}
 	msg_rep("InfoWrite", "write", NoError, APINULLGuid);
@@ -2961,7 +3039,12 @@ void ParamHelpers::WriteIDValues(const API_Guid & elemGuid, ParamDictValue & par
 	if (!params.ContainsKey("{@id:id}")) return;
 	DBPrintf("== SMSTF ==      WriteIDValues\n");
 	GS::UniString val = ParamHelpers::ToString(params.Get("{@id:id}"));
-	GSErrCode err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
+	GSErrCode err = NoError;
+#ifdef AC_27
+	err = ACAPI_Element_ChangeElementInfoString(&elemGuid, &val);
+#else
+	err = ACAPI_Database(APIDb_ChangeElementInfoStringID, (void*)&elemGuid, (void*)&val);
+#endif
 	if (err != NoError) msg_rep("WriteGDLValues - ID", "ACAPI_Database(APIDb_ChangeElementInfoStringID", err, elemGuid);
 }
 
@@ -3006,15 +3089,27 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 #else
 	apiOwner.typeID = elemType;
 #endif
+#ifdef AC_27
+	err = ACAPI_LibraryPart_OpenParameters(&apiOwner);
+#else
 	err = ACAPI_Goodies(APIAny_OpenParametersID, &apiOwner, nullptr);
+#endif
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "APIAny_OpenParametersID", err, elem_head.guid);
 		return;
 	}
+#ifdef AC_27
+	err = ACAPI_LibraryPart_GetActParameters(&apiParams);
+#else
 	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
+#endif
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "APIAny_GetActParametersID", err, elem_head.guid);
+#ifdef AC_27
+		err = ACAPI_LibraryPart_CloseParameters();
+#else
 		err = ACAPI_Goodies(APIAny_CloseParametersID);
+#endif
 		if (err != NoError) {
 			msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 			return;
@@ -3054,19 +3149,31 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 			if (actualParam.typeID == APIParT_Boolean) {
 				chgParam.realValue = paramfrom.boolValue;
 			}
+#ifdef AC_27
+			err = ACAPI_LibraryPart_ChangeAParameter(&chgParam);
+#else
 			err = ACAPI_Goodies(APIAny_ChangeAParameterID, &chgParam, nullptr);
+#endif
 			if (err != NoError) {
 				msg_rep("ParamHelpers::WriteGDLValues", "APIAny_ChangeAParameterID", err, elem_head.guid);
 				return;
 			}
 		}
 	}
-	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams, nullptr);
+#ifdef AC_27
+	err = ACAPI_LibraryPart_GetActParameters(&apiParams);
+#else
+	err = ACAPI_Goodies(APIAny_GetActParametersID, &apiParams);
+#endif
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "APIAny_GetActParametersID", err, elem_head.guid);
 		return;
 	}
-	err = ACAPI_Goodies(APIAny_CloseParametersID, nullptr, nullptr);
+#ifdef AC_27
+	err = ACAPI_LibraryPart_CloseParameters();
+#else
+	err = ACAPI_Goodies(APIAny_CloseParametersID);
+#endif
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 		return;
@@ -3316,7 +3423,12 @@ void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
 	API_AutotextType	type = APIAutoText_Custom;
 	DBPrintf("== SMSTF == GetAllInfoToParamDict\n");
-	GSErrCode	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
+	GSErrCode err = NoError;
+#ifdef AC_27
+	err = ACAPI_AutoText_GetAutoTexts(&autotexts, type);
+#else
+	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
+#endif
 	if (err != NoError) {
 		msg_rep("GetAllInfoToParamDict", "APIAny_GetAutoTextsID", err, APINULLGuid);
 		return;
@@ -3342,7 +3454,12 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 	ParamValue pvalue;
 	API_PlaceInfo placeInfo = {};
 	DBPrintf("== SMSTF == GetAllGlobToParamDict\n");
-	GSErrCode err = ACAPI_Environment(APIEnv_GetPlaceSetsID, &placeInfo, nullptr);
+	GSErrCode err = NoError;
+#ifdef AC_27
+	err = ACAPI_GeoLocation_GetPlaceSets(&placeInfo);
+#else
+	err = ACAPI_Environment(APIEnv_GetPlaceSetsID, &placeInfo, nullptr);
+#endif
 	if (err != NoError) {
 		msg_rep("GetAllGlobToParamDict", "APIEnv_GetPlaceSetsID", err, APINULLGuid);
 		return;
@@ -3646,7 +3763,12 @@ bool ParamHelpers::ReadIDValues(const API_Elem_Head & elem_head, ParamDictValue 
 	ParamValue param = params.Get("{@id:id}");
 	GS::UniString infoString;
 	API_Guid elguid = elem_head.guid;
-	GSErrCode err = ACAPI_Database(APIDb_GetElementInfoStringID, &elguid, &infoString);
+	GSErrCode err = NoError;
+#ifdef AC_27
+	err = ACAPI_Element_GetElementInfoString(&elguid, &infoString);
+#else
+	err = ACAPI_Database(APIDb_GetElementInfoStringID, &elguid, &infoString);
+#endif
 	if (err != NoError) {
 		msg_rep("ReadIDValues - ID", "ACAPI_Database(APIDb_GetElementInfoStringID", err, elguid);
 		return false;
@@ -3730,7 +3852,12 @@ bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictV
 	API_LibPart libpart;
 	BNZeroMemory(&libpart, sizeof(libpart));
 	libpart.index = element.object.libInd;
-	GSErrCode err = ACAPI_LibPart_Get(&libpart);
+	GSErrCode err = NoError;
+#ifdef AC_27
+	err = ACAPI_LibraryPart_Get(&libpart);
+#else
+	err = ACAPI_LibPart_Get(&libpart);
+#endif
 	if (err != NoError) {
 		msg_rep("FindGDLParametersByDescription", "ACAPI_LibPart_Get", err, element.header.guid);
 		return false;
@@ -3739,7 +3866,11 @@ bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictV
 	double bParam = 0.0;
 	Int32 addParNum = 0;
 	API_AddParType** addPars = NULL;
+#ifdef AC_27
+	err = ACAPI_LibraryPart_GetParams(libpart.index, &aParam, &bParam, &addParNum, &addPars);
+#else
 	err = ACAPI_LibPart_GetParams(libpart.index, &aParam, &bParam, &addParNum, &addPars);
+#endif
 	if (err != NoError) {
 		ACAPI_DisposeAddParHdl(&addPars);
 		msg_rep("FindGDLParametersByDescription", "ACAPI_LibPart_GetParams", err, element.header.guid);
@@ -4046,6 +4177,8 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 		if (attrType != API_ZombieAttrID) {
 			API_Attribute	attrib = {};
 			attrib.header.typeID = attrType;
+
+			//TODO Заменить на АС27
 			attrib.header.index = attrInx;
 			if (ACAPI_Attribute_Get(&attrib) == NoError) {
 				param_string = GS::UniString::Printf("%s", attrib.header.name);
@@ -4605,6 +4738,8 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 							for (UInt32 k = 0; k < resSectors.GetSize(); k++) {
 								double fillThickL = resSectors[k].GetLength();
 								double rfromstart = Geometry::Dist(l.start, resSectors[k].GetMidPoint()); // Расстояние до окружности(начала порядка слоёв)
+
+								//TODO Заменить на АС27
 								API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
 								ParamValueComposite layer = {};
 								layer.inx = constrinxL;

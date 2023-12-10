@@ -25,6 +25,7 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 	GS::UniString funcname = "Summation";
 	GS::Int32 nPhase = 1;
 #ifdef AC_27
+	bool showPercent = true;
 	ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
 #else
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
@@ -36,7 +37,6 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());; short i = 1;
 #ifdef AC_27
-		bool showPercent = true;
 		ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
 #else
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -54,7 +54,6 @@ GSErrCode SumSelected(SyncSettings& syncSettings) {
 		}
 		subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); i = 2;
 #ifdef AC_27
-		bool showPercent = true;
 		ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
 #else
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);

@@ -23,8 +23,7 @@ GSErrCode DimReadPref(DimRules& dimrules) {
 	DBPrintf("== SMSTF == DimReadPref start\n");
 	GSErrCode	err = NoError;
 #ifdef AC_27
-
-	//TODO Заменить на АС27
+	err = ACAPI_AutoText_GetAutoTexts(&autotexts, type);
 #else
 	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
 #endif
@@ -383,8 +382,7 @@ bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, Di
 				if (err == NoError) doneelemguid.Add(guidArray.Get(i), false);
 			}
 #ifdef AC_27
-
-			//TODO Заменить на АС27
+			if (ACAPI_ProcessWindow_IsProcessCanceled()) return true;
 #else
 			if (ACAPI_Interface(APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
 #endif
