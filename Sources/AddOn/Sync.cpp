@@ -149,10 +149,14 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	long time_start = clock();
 	ACAPI_Element_GetElemList(elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
 	if (guidArray.IsEmpty()) return false;
-#ifdef AC_26
+#if defined AC_26 || defined AC_27
 	API_ElemType elemType;
 	elemType.typeID = elementType;
+#ifdef AC_27
+	ACAPI_Element_GetElemTypeName(elemType, subtitle);
+#else
 	ACAPI_Goodies_GetElemTypeName(elemType, subtitle);
+#endif
 #else
 	ACAPI_Goodies(APIAny_GetElemTypeNameID, (void*)elementType, &subtitle);
 #endif // AC_26
@@ -180,7 +184,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncByType", subtitle + intString + time, NoError, APINULLGuid);
 	return flag_chanel;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
@@ -338,7 +342,7 @@ void RunParamSelected(const SyncSettings& syncSettings) {
 
 	if (err != NoError) return;
 	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);
-	if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
+	if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);//TODO Заменить на АС27
 #ifdef AC_27
 	err = ACAPI_Database_ChangeCurrentDatabase(&databaseInfo);
 #else
@@ -358,7 +362,11 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	if (err != NoError) return;
 	API_DatabaseInfo databaseInfo;
 	API_DatabaseInfo dbInfo;
+#ifdef AC_27
+	err = ACAPI_Database_GetContainingDatabase(&tElemHead.guid, &dbInfo);
+#else
 	err = ACAPI_Database(APIDb_GetContainingDatabaseID, &tElemHead.guid, &dbInfo);
+#endif
 	if (err != NoError) return;
 #ifdef AC_27
 	err = ACAPI_Database_GetCurrentDatabase(&databaseInfo);
@@ -374,7 +382,6 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 #endif
 		if (err != NoError) return;
 	}
-
 	API_Element element, mask;
 	ACAPI_ELEMENT_MASK_CLEAR(mask);
 	ACAPI_ELEMENT_MASK_SET(mask, API_Elem_Head, renovationStatus);
@@ -392,7 +399,7 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	if (err != NoError) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
 		return;
-	}
+}
 }
 
 // --------------------------------------------------------------------
