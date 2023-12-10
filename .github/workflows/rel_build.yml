@@ -66,11 +66,9 @@ jobs:
       - name: Run build script
         run: |
           python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
-      - name: Create DMG file
-        run: hdiutil create -format UDZO -srcfolder Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.MAC.bundle Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.MAC.dmg
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
           name: SomeStuff_AddOn AC${{ matrix.ac-version }} Mac
-          path: Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.MAC.dmg
+          path: Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.MAC.zip
 
