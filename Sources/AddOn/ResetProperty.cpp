@@ -83,7 +83,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 #ifdef AC_27
 		if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
 #else
-		if (layerCombIndex.attributeIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+		if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 #endif
 		GS::Array<API_Guid>	guidArray;
 		err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
@@ -153,7 +153,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 #ifdef AC_27
 					if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
 #else
-					if (layerCombIndex.attributeIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 #endif
 					GS::Array<API_Guid>	guidArray;
 					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
@@ -173,7 +173,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 					}
 				}
 			}
-	}
+		}
 	}
 	return flag_reset;
 }
@@ -323,7 +323,7 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 				properties[i].isDefault = true;
 				properties_to_reset.Push(properties.Get(i));
 			}
-			}
+		}
 		if (properties_to_reset.GetSize() > 0) {
 #if defined AC_26 || defined AC_27
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(type, properties);
@@ -335,6 +335,6 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 		else {
 			err = APIERR_MISSINGCODE;
 		}
-		}
-	return err;
 	}
+	return err;
+}
