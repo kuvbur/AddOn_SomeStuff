@@ -1,9 +1,12 @@
-function (SetGlobalCompilerDefinitions)
+function (SetGlobalCompilerDefinitions acVersion)
 
     if (WIN32)
         add_definitions (-DUNICODE -D_UNICODE)
     else ()
         add_definitions (-Dmacintosh=1)
+        if (${acVersion} GREATER_EQUAL 26)
+            set (CMAKE_OSX_ARCHITECTURES "x86_64;arm64" PARENT_SCOPE CACHE STRING "" FORCE)
+        endif ()
     endif ()
     add_definitions (-DACExtension)
 
@@ -22,10 +25,10 @@ function (SetCompilerOptions target acVersion)
             /Zc:wchar_t-
             /wd4499
             /EHsc
-			/wd4003
-			/wd5208
-			/wd4996
-			/bigobj
+            /wd4003
+            /wd5208
+            /wd4996
+            /bigobj
             -D_CRT_SECURE_NO_WARNINGS
         )
     else ()
