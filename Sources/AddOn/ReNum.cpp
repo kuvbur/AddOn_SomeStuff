@@ -84,7 +84,8 @@ bool GetRenumElements(GS::Array<API_Guid> guidArray, ParamDictElement& paramToWr
 		if (err == NoError && !definitions.IsEmpty() && ReNumHasFlag(definitions)) {
 #ifdef AC_27
 			bool showPercent = true;
-			ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+			Int32 maxval = guidArray.GetSize();
+			ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif

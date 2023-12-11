@@ -1041,6 +1041,8 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 		GS::UniString subtitle("working...");
 		GS::Int32 nPhase = 1;
 #ifdef AC_27
+		bool showPercent = true;
+		Int32 maxval = guidArray.GetSize();
 		ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
 #else
 		ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
@@ -1049,8 +1051,7 @@ void CallOnSelectedElemSettings(void (*function)(const API_Guid&, const SyncSett
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			function(guidArray[i], syncSettings);
 #ifdef AC_27
-			bool showPercent = true;
-			if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+			if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 			if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
@@ -1083,14 +1084,15 @@ void CallOnSelectedElem(void (*function)(const API_Guid&), bool assertIfNoSel /*
 		GS::UniString subtitle("working...");
 		GS::Int32 nPhase = 1;
 #ifdef AC_27
+		bool showPercent = true;
+		Int32 maxval = guidArray.GetSize();
 		ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
 #else
 		ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
 #endif
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 #ifdef AC_27
-			bool showPercent = true;
-			if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+			if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 			if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
@@ -1289,8 +1291,8 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 					for (Int32 i = 0; i < relData.nMorph - 1; i++) {
 						API_Guid elGuid = *(relData.morphs)[i];
 						subelemGuid.Push(elGuid);
-					}
-				}
+		}
+	}
 #else
 				typeinzone.Push(API_ObjectID);
 				typeinzone.Push(API_LampID);
@@ -1321,7 +1323,7 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 					}
 				}
 #endif
-			}
+}
 		}
 		break;
 	default:
@@ -2484,7 +2486,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-	}
+}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -2524,7 +2526,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
-	} break;
+			} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26) || defined(AC_27)
@@ -2547,17 +2549,17 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 			string += ToString(value->multipleEnumVariant.variants[i].displayVariant, stringformat);
 			if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
 				string += "; ";
-			}
 		}
+	}
 #endif
-	} break;
+		} break;
 	default:
 	{
 		break;
 	}
 	}
 	return string;
-}
+	}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (rhs.val.type) {
@@ -2752,21 +2754,24 @@ void DeleteElementsUserData() {
 
 void UnhideUnlockAllLayer(void) {
 	API_Attribute		attrib;
+	GSErrCode			err;
 #ifdef AC_27
 	UInt32 count, i;
+	err = ACAPI_Attribute_GetNum(API_LayerID, count);
 #else
 	API_AttributeIndex count, i;
+	err = ACAPI_Attribute_GetNum(API_LayerID, &count);
 #endif
-	GSErrCode			err;
-	err = ACAPI_Attribute_GetNum(API_LayerID, &count);//TODO Заменить на АС27
 	if (err != NoError) msg_rep("UnhideUnlockAllLayer", "ACAPI_Attribute_GetNum", err, APINULLGuid);
 	if (err == NoError) {
-
-		//TODO Заменить на АС27
 		for (i = 2; i <= count; i++) {
 			BNZeroMemory(&attrib, sizeof(API_Attribute));
 			attrib.header.typeID = API_LayerID;
+#ifdef AC_27
+			attrib.header.index = ACAPI_CreateAttributeIndex(i);
+#else
 			attrib.header.index = i;
+#endif
 			err = ACAPI_Attribute_Get(&attrib);
 			if (err != NoError) msg_rep("UnhideUnlockAllLayer", "ACAPI_Attribute_Get", err, APINULLGuid);
 			if (err == NoError) {
@@ -4112,7 +4117,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 	// Если параметр не строковое - определяем текстовое значение конвертацией
 	if (param_string.IsEmpty() && nthParameter.typeID != APIParT_CString) {
 		API_AttrTypeID attrType = API_ZombieAttrID;
+#ifdef AC_27
+		API_AttributeIndex attrInx = ACAPI_CreateAttributeIndex(param_int);
+#else
 		short attrInx = (short)param_int;
+#endif
+
 		switch (nthParameter.typeID) {
 		case APIParT_Integer:
 			param_string = GS::UniString::Printf("%d", param_int);
@@ -4177,15 +4187,18 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 		if (attrType != API_ZombieAttrID) {
 			API_Attribute	attrib = {};
 			attrib.header.typeID = attrType;
-
-			//TODO Заменить на АС27
 			attrib.header.index = attrInx;
 			if (ACAPI_Attribute_Get(&attrib) == NoError) {
 				param_string = GS::UniString::Printf("%s", attrib.header.name);
 				pvalue.val.type = API_PropertyStringValueType;
+#ifdef AC_27
+				param_bool = (attrInx.ToInt32_Deprecated() != 0);
+				param_int = attrInx.ToInt32_Deprecated();
+#else
 				param_bool = (attrInx != 0);
 				param_int = attrInx;
-				param_real = attrInx / 1.0;
+#endif
+				param_real = param_int / 1.0;
 				pvalue.val.n_zero = 0;
 			}
 			else {
@@ -4305,7 +4318,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -4738,9 +4751,11 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 							for (UInt32 k = 0; k < resSectors.GetSize(); k++) {
 								double fillThickL = resSectors[k].GetLength();
 								double rfromstart = Geometry::Dist(l.start, resSectors[k].GetMidPoint()); // Расстояние до окружности(начала порядка слоёв)
-
-								//TODO Заменить на АС27
+#ifdef AC_27
+								API_AttributeIndex	constrinxL = ACAPI_CreateAttributeIndex((GS::Int32)syHatch.GetBuildMatIdx().ToGSAttributeIndex());
+#else
 								API_AttributeIndex	constrinxL = (API_AttributeIndex)syHatch.GetBuildMatIdx();
+#endif
 								ParamValueComposite layer = {};
 								layer.inx = constrinxL;
 								layer.fillThick = fillThickL;

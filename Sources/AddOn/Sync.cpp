@@ -153,6 +153,8 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	API_ElemType elemType;
 	elemType.typeID = elementType;
 #ifdef AC_27
+	bool showPercent = true;
+	Int32 maxval = guidArray.GetSize();
 	ACAPI_Element_GetElemTypeName(elemType, subtitle);
 #else
 	ACAPI_Goodies_GetElemTypeName(elemType, subtitle);
@@ -173,8 +175,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
 #ifdef AC_27
-		bool showPercent = true;
-		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
@@ -184,7 +185,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncByType", subtitle + intString + time, NoError, APINULLGuid);
 	return flag_chanel;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
@@ -265,6 +266,8 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
 	GS::Int32 nPhase = 1;
 #ifdef AC_27
+	bool showPercent = true;
+	Int32 maxval = guidArray.GetSize();
 	ACAPI_ProcessWindow_InitProcessWindow(&funcname, &nPhase);
 #else
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
@@ -273,8 +276,8 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
 #ifdef AC_27
-		bool showPercent = true;
-		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+
+		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
@@ -294,8 +297,7 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 			long time_start = clock();
 			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
 #ifdef AC_27
-			bool showPercent = true;
-			ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+			ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
@@ -342,10 +344,11 @@ void RunParamSelected(const SyncSettings& syncSettings) {
 
 	if (err != NoError) return;
 	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);
-	if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex);//TODO Заменить на АС27
 #ifdef AC_27
+	if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
 	err = ACAPI_Database_ChangeCurrentDatabase(&databaseInfo);
 #else
+	if (layerCombIndex.attributeIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 	err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &databaseInfo, nullptr);
 #endif
 }
@@ -399,7 +402,7 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 	if (err != NoError) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
 		return;
-}
+	}
 }
 
 // --------------------------------------------------------------------
