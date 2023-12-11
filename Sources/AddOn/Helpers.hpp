@@ -675,9 +675,11 @@ namespace ParamHelpers
 	bool ComponentsCompositeStructure(const API_Guid& elemguid, API_AttributeIndex& constrinx, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial);
 
 	// --------------------------------------------------------------------
-	// Получение данных из сложного профиля
+	// Получение данных из сложного профиля, для АС24 и выше
 	// --------------------------------------------------------------------
+#ifndef AC_23
 	bool ComponentsProfileStructure(ProfileVectorImage& profileDescription, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial);
+#endif
 
 	// --------------------------------------------------------------------
 	// Вытаскивает всё, что может, из информации о составе элемента

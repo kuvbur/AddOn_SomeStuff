@@ -1291,8 +1291,8 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 					for (Int32 i = 0; i < relData.nMorph - 1; i++) {
 						API_Guid elGuid = *(relData.morphs)[i];
 						subelemGuid.Push(elGuid);
-		}
-	}
+					}
+				}
 #else
 				typeinzone.Push(API_ObjectID);
 				typeinzone.Push(API_LampID);
@@ -1323,7 +1323,7 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 					}
 				}
 #endif
-}
+			}
 		}
 		break;
 	default:
@@ -2486,7 +2486,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-}
+	}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -2526,7 +2526,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
-			} break;
+	} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26) || defined(AC_27)
@@ -2549,17 +2549,17 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 			string += ToString(value->multipleEnumVariant.variants[i].displayVariant, stringformat);
 			if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
 				string += "; ";
+			}
 		}
-	}
 #endif
-		} break;
+	} break;
 	default:
 	{
 		break;
 	}
 	}
 	return string;
-	}
+}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (rhs.val.type) {
@@ -4318,7 +4318,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -4605,6 +4605,7 @@ bool ParamHelpers::ComponentsCompositeStructure(const API_Guid & elemguid, API_A
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля
 // --------------------------------------------------------------------
+#ifndef AC_23
 bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescription, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial) {
 	DBPrintf("== SMSTF ==          ComponentsProfileStructure\n");
 	ConstProfileVectorImageIterator profileDescriptionIt(profileDescription);
@@ -4802,6 +4803,7 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 	}
 	return hasData;
 }
+#endif
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -4938,6 +4940,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 		hasData = ParamHelpers::ComponentsBasicStructure(constrinx, fillThick, constrinx_ven, fillThick_ven, params, paramlayers, paramsAdd);
 	}
 	if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure(elemhead.guid, constrinx, params, paramlayers, paramsAdd, existsmaterial);
+#ifndef AC_23
 	if (structtype == API_ProfileStructure) {
 		API_ElementMemo	memo = {};
 		UInt64 mask = APIMemoMask_StretchedProfile;
@@ -4950,6 +4953,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 		hasData = ParamHelpers::ComponentsProfileStructure(profileDescription, params, paramlayers, paramsAdd, existsmaterial);
 		ACAPI_DisposeElemMemoHdls(&memo);
 	}
+#endif
 	return hasData;
 }
 
