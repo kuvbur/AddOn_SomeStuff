@@ -80,9 +80,11 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 
 	// Если чистим элементы в текущей БД - переключаться не нужно
 	if (commandID == APIDb_GetCurrentDatabaseID) {
-
-		//TODO Заменить на АС27
-		if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+#ifdef AC_27
+		if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
+#else
+		if (layerCombIndex.attributeIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+#endif
 		GS::Array<API_Guid>	guidArray;
 		err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 		if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_1", err, APINULLGuid);
@@ -100,9 +102,35 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 		return flag_reset;
 	}
 	GS::Array<API_DatabaseUnId>	dbases;
-
-	//TODO Заменить на АС27
+#ifdef AC_27
+	switch (commandID) {
+	case APIDb_GetElevationDatabasesID:
+		err = ACAPI_Database_GetElevationDatabases(nullptr, &dbases);
+		break;
+	case APIDb_GetDetailDatabasesID:
+		err = ACAPI_Database_GetDetailDatabases(nullptr, &dbases);
+		break;
+	case APIDb_GetWorksheetDatabasesID:
+		err = ACAPI_Database_GetWorksheetDatabases(nullptr, &dbases);
+		break;
+	case APIDb_GetDocumentFrom3DDatabasesID:
+		err = ACAPI_Database_GetDocumentFrom3DDatabases(nullptr, &dbases);
+		break;
+	case APIDb_GetLayoutDatabasesID:
+		err = ACAPI_Database_GetLayoutDatabases(nullptr, &dbases);
+		break;
+	case APIDb_GetSectionDatabasesID:
+		err = ACAPI_Database_GetSectionDatabases(nullptr, &dbases);
+		break;
+	case APIDb_GetInteriorElevationDatabasesID:
+		err = ACAPI_Database_GetInteriorElevationDatabases(nullptr, &dbases);
+		break;
+	default:
+		break;;
+	}
+#else
 	err = ACAPI_Database(commandID, nullptr, &dbases); // Получаем список БД
+#endif
 	if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Database", err, APINULLGuid);
 	if (err == NoError) {
 		for (const auto& dbUnId : dbases) {
@@ -118,14 +146,15 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 #ifdef AC_27
 				err = ACAPI_Database_ChangeCurrentDatabase(&dbPars);
 #else
-
 				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars, nullptr);
 #endif
 				if (err != NoError) msg_rep("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
 				if (err == NoError) {
-
-					//TODO Заменить на АС27
-					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+#ifdef AC_27
+					if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
+#else
+					if (layerCombIndex.attributeIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+#endif
 					GS::Array<API_Guid>	guidArray;
 					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
 					if (err == NoError) {
@@ -144,7 +173,7 @@ UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_Pro
 					}
 				}
 			}
-		}
+	}
 	}
 	return flag_reset;
 }
@@ -294,7 +323,7 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 				properties[i].isDefault = true;
 				properties_to_reset.Push(properties.Get(i));
 			}
-		}
+			}
 		if (properties_to_reset.GetSize() > 0) {
 #if defined AC_26 || defined AC_27
 			err = ACAPI_Element_SetPropertiesOfDefaultElem(type, properties);
@@ -306,6 +335,6 @@ GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_Prope
 		else {
 			err = APIERR_MISSINGCODE;
 		}
-	}
+		}
 	return err;
-}
+	}

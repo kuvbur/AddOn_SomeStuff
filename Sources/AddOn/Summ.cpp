@@ -85,7 +85,8 @@ bool GetSumValuesOfElements(const GS::Array<API_Guid> guidArray, ParamDictElemen
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 #ifdef AC_27
 		bool showPercent = true;
-		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+		Int32 maxval = guidArray.GetSize();
+		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 		if (i % 10 == 0) ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
