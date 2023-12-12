@@ -115,8 +115,9 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 			long time_start = clock();
 			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
 #ifdef AC_27
-			bool showPercent = true;
-			ACAPI_ProcessWindow_SetNextProcessPhase(&title, reinterpret_cast<Int32*> (i), &showPercent);
+			bool showPercent = false;
+			Int32 maxval = 2;
+			ACAPI_ProcessWindow_SetNextProcessPhase(&title, &maxval, &showPercent);
 #else
 			ACAPI_Interface(APIIo_SetNextProcessPhaseID, &title, &i);
 #endif
