@@ -50,8 +50,9 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 		}
 		GS::UniString subtitle = GS::UniString::Printf("Writing data to %d elements", paramToWriteelem.GetSize()); short i = 2;
 #ifdef AC_27
-		bool showPercent = true;
-		ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, reinterpret_cast<Int32*> (i), &showPercent);
+		bool showPercent = false;
+		Int32 maxval = 2;
+		ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
 		ACAPI_Interface(APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
