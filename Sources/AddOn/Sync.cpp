@@ -611,9 +611,11 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 	}
 
 	// Если указан сброс данных - синхронизировать не будем
+#ifndef AC_27
 	if (description_string.Contains("Sync_reset")) {
 		return false;
 	}
+#endif
 	bool hasRule = false;
 	if (description_string.Contains("Sync_") && description_string.Contains("{") && description_string.Contains("}")) {
 		GS::Array<GS::UniString> rulestring;
