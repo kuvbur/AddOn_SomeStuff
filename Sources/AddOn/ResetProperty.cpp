@@ -8,6 +8,9 @@
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
 bool ResetProperty(ParamDictValue& propertyParams) {
+#ifdef AC_27
+	return false;
+#endif
 	GS::Array<API_PropertyDefinition> definitions_to_reset;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
@@ -49,7 +52,8 @@ UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& defi
 		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 #ifdef AC_27
-		err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
+
+		//err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
 #else
 		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &commandID, nullptr);
 #endif
