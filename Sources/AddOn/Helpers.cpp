@@ -2195,7 +2195,7 @@ FormatStringDict GetFotmatStringForMeasureType() {
 	fstring.n_zero = unitPrefs.areaDecimals; fstring.stringformat = GS::UniString::Printf("0%d", unitPrefs.areaDecimals);
 	fdict.Add(API_PropertyAreaMeasureType, fstring);
 
-	fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf("0%d", unitPrefs.lenDecimals);
+	fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf("0%dmm", unitPrefs.lenDecimals);
 	fdict.Add(API_PropertyLengthMeasureType, fstring);
 
 	fstring.n_zero = unitPrefs.volumeDecimals; fstring.stringformat = GS::UniString::Printf("0%d", unitPrefs.volumeDecimals);
@@ -4260,7 +4260,8 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 		pvalue.val.type = API_PropertyRealValueType;
 		formatstringdict = GetFotmatStringForMeasureType();
 		if (formatstringdict.ContainsKey(property.definition.measureType)) {
-			if (formatstringdict.Get(property.definition.measureType).needRound) {
+			if (formatstringdict.Get(property.definition.measureType).needRound && property.definition.measureType != API_PropertyLengthMeasureType) {
+				double l = pow(10, formatstringdict.Get(property.definition.measureType).n_zero);
 				pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, formatstringdict.Get(property.definition.measureType).n_zero)) / pow(10, formatstringdict.Get(property.definition.measureType).n_zero);
 				pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 				if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
