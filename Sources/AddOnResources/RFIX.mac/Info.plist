@@ -5,13 +5,13 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.graphisoft.ExampleAddOn</string>
+	<string>com.graphisoft.SomeStuff_AddOn</string>
 	<key>CFBundleName</key>
-	<string>ExampleAddOn</string>
+	<string>SomeStuff_AddOn</string>
 	<key>CFBundleGetInfoString</key>
 	<string>Example AddOn Description...</string>
 	<key>CFBundleShortVersionString</key>
-	<string>ExampleAddOn</string>
+	<string>SomeStuff_AddOn</string>
 	<key>CFBundlePackageType</key>
 	<string>.APX</string>
 	<key>CFBundleSignature</key>
