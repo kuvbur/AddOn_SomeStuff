@@ -4087,6 +4087,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 	double param_real = 0.0;
 	bool param_bool = false;
 
+	// TODO добавить округления на основе настроек проекта
 	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
 	if (nthParameter.typeID == APIParT_CString) {
 		pvalue.val.type = API_PropertyStringValueType;
@@ -4094,7 +4095,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 		param_bool = (!param_string.IsEmpty());
 
 		if (UniStringToDouble(param_string, param_real)) {
-			param_real = round(param_real * 1000) / 1000;
+			param_real = round(param_real * 100000) / 100000;
 			param_int = (GS::Int32)param_real;
 			if (param_int / 1 < param_real) param_int += 1;
 			pvalue.val.canCalculate = true;
@@ -4107,8 +4108,8 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 		}
 	}
 	else {
-		param_real = round(nthParameter.value.real * 1000) / 1000;
-		if (nthParameter.value.real - param_real > 0.001) param_real += 0.001;
+		param_real = round(nthParameter.value.real * 100000) / 100000;
+		if (nthParameter.value.real - param_real > 0.00001) param_real += 0.00001;
 		param_int = (GS::Int32)param_real;
 		if (param_int / 1 < param_real) param_int += 1;
 	}
