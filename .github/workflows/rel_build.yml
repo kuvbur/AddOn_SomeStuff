@@ -38,13 +38,13 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: SomeStuff_AddOn AC${{ matrix.ac-version }} Win
-          path: Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.WIN.zip
+          path: Build/Package/SomeStuff_AddOn_AC${{ matrix.ac-version }}_WIN.zip
   build_mac:
     strategy:
       fail-fast: false
       matrix:
         ac-version: [25, 26, 27]
-    runs-on: [ macos-12 ]
+    runs-on: [ macos-12-large ]
     steps:
       - uses: actions/checkout@v3
 
@@ -70,5 +70,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: SomeStuff_AddOn AC${{ matrix.ac-version }} Mac
-          path: Build/Package/SomeStuff_AddOn.AC${{ matrix.ac-version }}.MAC.zip
+          path: Build/Package/SomeStuff_AddOn_AC${{ matrix.ac-version }}_MAC.zip
 
