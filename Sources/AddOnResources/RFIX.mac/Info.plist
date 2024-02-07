@@ -9,7 +9,7 @@
 	<key>CFBundleName</key>
 	<string>SomeStuff_AddOn</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Example AddOn Description...</string>
+	<string>SomeStuff_AddOn 1.67</string>
 	<key>CFBundleShortVersionString</key>
 	<string>SomeStuff_AddOn</string>
 	<key>CFBundlePackageType</key>
@@ -17,14 +17,13 @@
 	<key>CFBundleSignature</key>
 	<string>GSAP</string>
 	<key>CFBundleVersion</key>
-	<string>1.0</string>
+	<string>1.67</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleIconFile</key>
 	<string>ArchiCADPlugin.icns</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.11.0</string>
+	<string>10.15.0</string>
 	<key>LSRequiresCarbon</key>
 	<true/>
 </dict>
-</plist>

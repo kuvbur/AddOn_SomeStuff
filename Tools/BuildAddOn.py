@@ -304,7 +304,7 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
     if not packageFolder.exists():
         packageFolder.mkdir(parents=True)
 
-    fileName = f'{addOnName}.AC{version}.{platformName}'
+    fileName = f'{addOnName}_AC{version}_{platformName}'
     if not isRelease:
         fileName = f'{fileName}_{configuration}'
 
@@ -346,7 +346,7 @@ def PackageAddOns(args, addOnName, platformName, acVersionList, languageList, bu
         subprocess.call([
             '7z', 'a',
             str(packageRootFolder.parent /
-                f'{addOnName}.AC{version}.{platformName}.zip'),
+                f'{addOnName}_AC{version}_{platformName}.zip'),
             str(packageRootFolder / version / '*')
         ])
 
