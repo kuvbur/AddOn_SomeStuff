@@ -7,6 +7,8 @@ function (SetGlobalCompilerDefinitions acVersion)
         if (${acVersion} GREATER_EQUAL 26)
             set (CMAKE_OSX_ARCHITECTURES "x86_64;arm64" PARENT_SCOPE CACHE STRING "" FORCE)
         endif ()
+        set (CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
+        set (CMAKE_XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET ${CMAKE_OSX_DEPLOYMENT_TARGET})
     endif ()
     add_definitions (-DACExtension)
 
