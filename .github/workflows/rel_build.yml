@@ -44,7 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         ac-version: [25, 26, 27]
-    runs-on: macos-latest-large
+    runs-on: flyci-macos-large-latest-m1
     steps:
       - uses: actions/checkout@v3
 
