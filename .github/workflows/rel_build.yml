@@ -14,15 +14,15 @@ jobs:
         ac-version: [23, 24, 25, 26, 27]
     runs-on: windows-2019
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Checkout the submodule
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: setup python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
           
@@ -35,7 +35,7 @@ jobs:
         run: |
           python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SomeStuff AC${{ matrix.ac-version }} Win
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
@@ -46,15 +46,15 @@ jobs:
         ac-version: [25, 26, 27]
     runs-on: macos-12
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Checkout the submodule
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: setup python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
           
@@ -67,7 +67,7 @@ jobs:
         run: |
           python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SomeStuff AC${{ matrix.ac-version }} Mac
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
