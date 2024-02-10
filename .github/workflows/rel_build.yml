@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         ac-version: [23, 24, 25, 26, 27]
-    runs-on: [ windows-2019 ]
+    runs-on: windows-2019
     steps:
       - uses: actions/checkout@v3
 
@@ -37,14 +37,14 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: SomeStuff_AddOn AC${{ matrix.ac-version }} Win
-          path: Build/Package/SomeStuff_AddOn_AC${{ matrix.ac-version }}_WIN.zip
+          name: SomeStuff AC${{ matrix.ac-version }} Win
+          path: Build/Package/SomeStuff/{{ matrix.ac-version }}
   build_mac:
     strategy:
       fail-fast: false
       matrix:
         ac-version: [25, 26, 27]
-    runs-on: flyci-macos-large-latest-m1
+    runs-on: macos-12
     steps:
       - uses: actions/checkout@v3
 
@@ -69,6 +69,6 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: SomeStuff_AddOn AC${{ matrix.ac-version }} Mac
-          path: Build/Package/SomeStuff_AddOn_AC${{ matrix.ac-version }}_MAC.zip
+          name: SomeStuff AC${{ matrix.ac-version }} Mac
+          path: Build/Package/SomeStuff/{{ matrix.ac-version }}
 

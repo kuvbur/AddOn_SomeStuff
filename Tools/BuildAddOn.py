@@ -278,8 +278,6 @@ def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolde
             else:
                 BuildAddOn(configData, platformName, workspaceRootFolder,
                            buildFolder, devKitFolder, version, 'Debug')
-                # BuildAddOn(configData, platformName, workspaceRootFolder,
-                #            buildFolder, devKitFolder, version, 'RelWithDebInfo')
 
     except Exception as e:
         raise e
@@ -307,12 +305,12 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
     if platformName == 'WIN':
         shutil.copy(
             sourceFolder / f'{addOnName}.apx',
-            packageFolder / f'{addOnName}.apx',
+            packageFolder / f'{addOnName}_{version}.apx',
         )
         if configuration == 'Debug':
             shutil.copy(
                 sourceFolder / f'{addOnName}.pdb',
-                packageFolder / f'{addOnName}.pdb',
+                packageFolder / f'{addOnName}_{version}.pdb',
             )
 
     elif platformName == 'MAC':
@@ -325,8 +323,7 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
 
 # Zip packages
 def PackageAddOns(args, addOnName, platformName, acVersionList, languageList, buildFolder, packageRootFolder):
-    Check7ZInstallation()
-
+    # Check7ZInstallation()
     for version in acVersionList:
         if args.release:
             for languageCode in languageList:
@@ -338,13 +335,13 @@ def PackageAddOns(args, addOnName, platformName, acVersionList, languageList, bu
             CopyResultToPackage(packageRootFolder, buildFolder,
                                 version, addOnName, platformName, 'RelWithDebInfo')
 
-        buildType = 'Release' if args.release else 'Daily'
-        subprocess.call([
-            '7z', 'a',
-            str(packageRootFolder.parent /
-                f'{addOnName}_AC{version}_{platformName}.zip'),
-            str(packageRootFolder / version / '*')
-        ])
+        # buildType = 'Release' if args.release else 'Daily'
+        # subprocess.call([
+        #     '7z', 'a',
+        #     str(packageRootFolder.parent /
+        #         f'{addOnName}_AC{version}_{platformName}.zip'),
+        #     str(packageRootFolder / version / '*')
+        # ])
 
 
 def Main():
