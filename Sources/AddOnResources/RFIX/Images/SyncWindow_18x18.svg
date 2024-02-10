@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="18pt" height="18pt" viewBox="0 0 18 18" version="1.1">
-<g id="surface1">
-<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 2.5 4 C 2.5 3.699219 2.800781 3.5 3 3.5 L 15 2.5 C 15.300781 2.5 15.5 2.699219 15.5 3 L 15.5 12 C 15.5 12.300781 15.300781 12.398438 15 12.5 L 3 15.5 C 2.699219 15.601562 2.5 15.300781 2.5 15 Z M 2.5 4 "/>
-<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 9.5 13.5 L 9.5 3.5 "/>
-<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 2.5 9.5 L 15.5 7.5 "/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="18pt" height="18pt"
+    viewBox="0 0 18 18" version="1.1">
+    <g id="surface1">
+        <path
+            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
+            d="M 2.5 4 C 2.5 3.699219 2.800781 3.5 3 3.5 L 15 2.5 C 15.300781 2.5 15.5 2.699219 15.5 3 L 15.5 12 C 15.5 12.300781 15.300781 12.398438 15 12.5 L 3 15.5 C 2.699219 15.601562 2.5 15.300781 2.5 15 Z M 2.5 4 " />
+        <path
+            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
+            d="M 9.5 13.5 L 9.5 3.5 " />
+        <path
+            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
+            d="M 2.5 9.5 L 15.5 7.5 " />
+    </g>
 </svg>
