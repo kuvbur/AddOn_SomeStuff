@@ -183,6 +183,13 @@ class MacResourceCompiler (ResourceCompiler):
                 stringsFile = codecs.open(filePath, 'r', 'utf-16')
                 resultLocalizableStringsFile.write(stringsFile.read())
                 stringsFile.close()
+        icondark = os.path.join(os.path.dirname(
+            self.resourceObjectsPath), 'MacDarkModeIcon')
+        for fileName in os.listdir(icondark):
+            filePath = os.path.join(icondark, fileName)
+            extension = os.path.splitext(fileName)[1].lower()
+            if extension == '.tif':
+                shutil.copy(filePath, resultResourcePath)
         resultLocalizableStringsFile.close()
 
 

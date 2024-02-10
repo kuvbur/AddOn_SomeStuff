@@ -1,21 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="18pt" height="18pt"
-    viewBox="0 0 18 18" version="1.1">
-    <g id="surface1">
-        <path
-            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
-            d="M 4.5 9.398438 L 4.5 4.5 C 4.5 4 5 3.101562 5.5 3 L 8.5 2 C 9 1.898438 9.5 2 9.5 2.5 L 9.5 7.5 " />
-        <path
-            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
-            d="M 4.5 14.5 L 4.5 9.398438 " />
-        <path
-            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
-            d="M 14.5 9.5 L 14.5 14.5 " />
-        <path
-            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
-            d="M 9.5 16.5 L 9.5 11.5 " />
-        <path
-            style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:white;stroke-opacity:1;stroke-miterlimit:10;"
-            d="M 14.5 9.5 L 9.5 7.5 L 4.5 9.5 L 9.5 11.5 Z M 14.5 9.5 " />
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="18pt" height="18pt" viewBox="0 0 18 18" version="1.1">
+<g id="surface1">
+<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 4.5 9.398438 L 4.5 4.5 C 4.5 4 5 3.101562 5.5 3 L 8.5 2 C 9 1.898438 9.5 2 9.5 2.5 L 9.5 7.5 "/>
+<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 4.5 14.5 L 4.5 9.398438 "/>
+<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 14.5 9.5 L 14.5 14.5 "/>
+<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 9.5 16.5 L 9.5 11.5 "/>
+<path style="fill:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke:rgb(14.901961%,19.607843%,21.960784%);stroke-opacity:1;stroke-miterlimit:10;" d="M 14.5 9.5 L 9.5 7.5 L 4.5 9.5 L 9.5 11.5 Z M 14.5 9.5 "/>
+</g>
 </svg>
