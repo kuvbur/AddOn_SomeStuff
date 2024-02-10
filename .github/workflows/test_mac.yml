@@ -1,0 +1,41 @@
+name: Add-On Build
+on:
+  push
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build_mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        ac-version: [27]
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout the submodule
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install requests
+      
+      - name: Run build script
+        run: |
+          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SomeStuff AC${{ matrix.ac-version }} Mac
+          path: Build/Package/SomeStuff/${{ matrix.ac-version }}
