@@ -304,26 +304,22 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
     if not packageFolder.exists():
         packageFolder.mkdir(parents=True)
 
-    fileName = f'{addOnName}_AC{version}_{platformName}'
-    if not isRelease:
-        fileName = f'{fileName}_{configuration}'
-
     if platformName == 'WIN':
         shutil.copy(
             sourceFolder / f'{addOnName}.apx',
-            packageFolder / f'{fileName}.apx',
+            packageFolder / f'{addOnName}.apx',
         )
         if configuration == 'Debug':
             shutil.copy(
                 sourceFolder / f'{addOnName}.pdb',
-                packageFolder / f'{fileName}.pdb',
+                packageFolder / f'{addOnName}.pdb',
             )
 
     elif platformName == 'MAC':
         subprocess.call([
             'cp', '-r',
             sourceFolder / f'{addOnName}.bundle',
-            packageFolder / f'{fileName}.bundle'
+            packageFolder / f'{addOnName}.bundle'
         ])
 
 
