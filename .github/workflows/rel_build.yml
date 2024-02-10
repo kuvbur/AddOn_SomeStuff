@@ -1,6 +1,8 @@
 name: Add-On Build
 on:
-  push:
+  pull_request:
+    branches:    
+      - 'master'
 
 defaults:
   run:
