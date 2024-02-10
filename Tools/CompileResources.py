@@ -183,6 +183,7 @@ class MacResourceCompiler (ResourceCompiler):
                 stringsFile = codecs.open(filePath, 'r', 'utf-16')
                 resultLocalizableStringsFile.write(stringsFile.read())
                 stringsFile.close()
+        print("self.sourcesPath")
         print(self.sourcesPath)
         # icondark = os.path.join(os.path.dirname(
         #     self.resourceObjectsPath), 'MacDarkModeIcon')
