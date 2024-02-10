@@ -38,7 +38,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: SomeStuff AC${{ matrix.ac-version }} Win
-          path: Build/Package/SomeStuff/{{ matrix.ac-version }}
+          path: Build/Package/SomeStuff/${{ matrix.ac-version }}
   build_mac:
     strategy:
       fail-fast: false
@@ -70,5 +70,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: SomeStuff AC${{ matrix.ac-version }} Mac
-          path: Build/Package/SomeStuff/{{ matrix.ac-version }}
+          path: Build/Package/SomeStuff/${{ matrix.ac-version }}
 
