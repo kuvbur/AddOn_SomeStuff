@@ -7,13 +7,6 @@
 #include	"ResetProperty.hpp"
 #include	"Dimensions.hpp"
 
-#define SYNC_NO 0
-#define SYNC_FROM 1
-#define SYNC_TO 2
-#define SYNC_TO_SUB 3
-#define SYNC_FROM_SUB 4
-#define SYNC_FROM_GUID 5
-
 Int32 nLib = 0;
 
 // -----------------------------------------------------------------------------
@@ -209,38 +202,6 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 			}
 		}
 	}
-}
-
-void SetSyncGUID() {
-
-	//API_Elem_Head	tElemHead;
-	//BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
-	//GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, false);
-	//if (guidArray.IsEmpty()) return;
-	//if (!GetAnElem("Click a root element", API_ZombieElemID, nullptr, &tElemHead.typeID, &tElemHead.guid)) {
-	//	return;
-	//}
-	//API_Guid root_guid = tElemHead.guid;
-}
-
-void ShowSyncGUID() {
-
-	//ACAPI_Interface(APIIo_HighlightElementsID);
-	//GS::Array<API_Guid> meshList;
-	//ACAPI_Element_GetElemList(API_ObjectID, &meshList);
-	//if (meshList.GetSize() > 0) {
-	//	GS::HashTable<API_Guid, API_RGBAColor>  hlElems;
-	//	API_RGBAColor   hlColor = { 0.0, 0.5, 0.75, 0.5 };
-	//	for (auto it = meshList.Enumerate(); it != nullptr; ++it) {
-	//		hlElems.Add(*it, hlColor);
-	//		hlColor.f_red += 0.1;
-	//		if (hlColor.f_red > 1.0)
-	//			hlColor.f_red = 0.0;
-	//	}
-
-	//	bool wireframe3D = true;
-	//	ACAPI_Interface(APIIo_HighlightElementsID, &hlElems, &wireframe3D);
-	//}
 }
 
 // -----------------------------------------------------------------------------
@@ -843,8 +804,6 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	}
 	if (synctypefind == false) {
 		if (rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
-
-			//TODO Проверить на файле из видео обработку материалов
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Material:", "");
 			rulestring_one.ReplaceAll("{Layers;", "{Layers,20;");
@@ -947,15 +906,54 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
 	param.name = paramName;
 	if (nparam > 1) {
-		for (UInt32 j = 1; j < nparam; j++) {
-			GS::UniString ignoreval;
-			if (params[j].Contains('"')) {
-				ignoreval = params[j].GetSubstring('"', '"', 0);
+
+		// Обработка данных о размерах массива и типе чтения
+		UInt32 start_ignore = 1;
+		bool hasArray = false;
+		if (params[1].Contains("uniq")) {
+			param.val.array_format_out = ARRAY_UNIC;
+			hasArray = true;
+		}
+		if (params[1].Contains("sum")) {
+			param.val.array_format_out = ARRAY_SUM;
+			hasArray = true;
+		}
+		if (params[1].Contains("concat")) {
+			param.val.array_format_out = ARRAY_CONCAT;
+			hasArray = true;
+		}
+		if (hasArray) {
+
+			// TODO Добавить срезы массивов
+			int array_row_start = 0;
+			int array_row_end = 0;
+			int array_column_start = 0;
+			int array_column_end = 0;
+			param.val.array_row_start = array_row_start;
+			param.val.array_row_end = array_row_end;
+			param.val.array_column_start = array_column_start;
+			param.val.array_column_end = array_column_end;
+			param.fromGDLArray = true;
+			GS::UniString tarray_row_start = "_" + GS::UniString::Printf("%.0f", array_row_start);
+			GS::UniString tarray_row_end = "_" + GS::UniString::Printf("%.0f", array_row_end);
+			GS::UniString tarray_column_start = "_" + GS::UniString::Printf("%.0f", array_column_start);
+			GS::UniString tarray_column_end = "_" + GS::UniString::Printf("%.0f", array_column_end);
+			param.rawName = paramNamePrefix + paramName.ToLowerCase() + "@arr" + tarray_row_start + tarray_row_end + tarray_column_start + tarray_column_end + "}";
+			start_ignore = 2;
+		}
+
+		// Обработка игнорируемых значений
+		if (nparam > start_ignore) {
+			for (UInt32 j = start_ignore; j < nparam; j++) {
+				GS::UniString ignoreval;
+				if (params[j].Contains('"')) {
+					ignoreval = params[j].GetSubstring('"', '"', 0);
+				}
+				else {
+					ignoreval = params[j];
+				}
+				ignorevals.Push(ignoreval);
 			}
-			else {
-				ignoreval = params[j];
-			}
-			ignorevals.Push(ignoreval);
 		}
 	}
 	return true;

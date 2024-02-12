@@ -28,6 +28,11 @@
 #define SYNC_RESET 1
 #define SYNC 2
 
+// Типы операций по переводу значений массива гдл параметра в совйство
+#define ARRAY_UNIC 1	// Вывод уникальных значений
+#define ARRAY_SUM 2		// Вывод суммы (для текста - конкатенация)
+#define ARRAY_CONCAT 3	// Конкатенация независимо от типа данных
+
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
 static const short AddOnPromtID = ID_ADDON_PROMT;
@@ -94,17 +99,23 @@ typedef struct
 	GS::Int32 intValue = 0;
 	bool boolValue = false;
 	double doubleValue = 0.0;
-	bool canCalculate = false;		 // Может быть использован в формулах
-	GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
-	int n_zero = 2;
+	bool canCalculate = false;			// Может ли быть использован в формулах?
+	GS::UniString stringformat = "";	// Формат строки (задаётся с помощью .mm или .0)
+	int n_zero = 2;						// Количество нулей после запятой
+	int array_row_start = 0;				// Начальная строка массива
+	int array_row_end = 0;				// Последняя строка массива
+	int array_column_start = 0;			// Начальный столбец массива
+	int array_column_end = 0;				// Последний столбец массива
+	int array_format_out = ARRAY_UNIC;	// В каком виде выводить в свойство
 } ParamValueData;
 
+// Структура для описания слоя в многослойной конструкции
 typedef struct
 {
-	API_AttributeIndex inx;
-	double fillThick = 0.0;
-	double rfromstart = 0.0;
-	bool isCore = false;
+	API_AttributeIndex inx;		// Индекс материала
+	double fillThick = 0.0;		// Толщина слой
+	double rfromstart = 0.0;	//Удаление от начальной точки (для определения порядка следования)
+	bool isCore = false;		//Является ядром?
 	int num = 0;
 } ParamValueComposite;
 
@@ -142,6 +153,7 @@ typedef struct
 	bool fromPropertyDefinition = false; // Задан определением свойства, искать не нужно
 	bool fromMaterial = false;			 // Взять инфо из состава конструкции
 	bool fromAttribDefinition = false;	 // Взять инфо из свойств аттрибута
+	bool fromGDLArray = false;			 // Взять из массива
 	API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
 } ParamValue;
 
