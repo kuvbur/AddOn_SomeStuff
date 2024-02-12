@@ -1,36 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>English</string>
-	<key>CFBundleGetInfoString</key>
-	<string>SomeStuff Add-On for Archciad 26, Copyright &#169; Dmitry Rogozhin, 2024</string>
-	<key>CFBundleIconFile</key>
-	<string>ArchiCADPlugin.icns</string>
-	<key>CFBundleIdentifier</key>
-	<string>com.graphisoft.addon.SomeStuff</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>SomeStuff</string>
-	<key>CFBundlePackageType</key>
-	<string>.apx</string>
-	<key>CFBundleVersion</key>
-	<string>1.67.0.26</string>
-	<key>CFBundleShortVersionString</key>
-	<string>1.67 AC26</string>
-	<key>NSHumanReadableCopyright</key>
-	<string>Copyright &#169; Dmitry Rogozhin, 2024</string>
-	<key>CFBundleSignature</key>
-	<string>GSAP</string>
-	<key>CFBundleSupportedPlatforms</key>
-	<array>
-		<string>MacOSX</string>
-	</array>
-	<key>LSMinimumSystemVersion</key>
-	<string>12.6</string>
-	<key>LSRequiresCarbon</key>
-	<true/>
-</dict>
+	<dict>
+		<key>
+			CFBundleDevelopmentRegion
+		</key>
+		<string>
+			English
+		</string>
+		<key>
+			CFBundleGetInfoString
+		</key>
+		<string>
+			SomeStuff Add-On https://github.com/kuvbur/AddOn_SomeStuff
+		</string>
+		<key>
+			CFBundleIconFile
+		</key>
+		<string>
+			ArchiCADPlugin.icns
+		</string>
+		<key>
+			CFBundleIdentifier
+		</key>
+		<string>
+			com.graphisoft.addon.SomeStuff
+		</string>
+		<key>
+			CFBundleInfoDictionaryVersion
+		</key>
+		<string>
+			6.0
+		</string>
+		<key>
+			CFBundleName
+		</key>
+		<string>
+			SomeStuff
+		</string>
+		<key>
+			CFBundlePackageType
+		</key>
+		<string>
+			.apx
+		</string>
+		<key>
+			CFBundleVersion
+		</key>
+		<string>
+			1.68
+		</string>
+		<key>
+			CFBundleShortVersionString
+		</key>
+		<string>
+			1.68
+		</string>
+		<key>
+			CFBundleSignature
+		</key>
+		<string>
+			GSAP
+		</string>
+		<key>
+			CFBundleSupportedPlatforms
+		</key>
+		<array>
+			<string>
+				MacOSX
+			</string>
+		</array>
+		<key>
+			LSMinimumSystemVersion
+		</key>
+		<string>
+			10.15
+		</string>
+		<key>
+			LSRequiresCarbon
+		</key>
+		<true />
+	</dict>
 </plist>

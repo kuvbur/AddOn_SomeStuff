@@ -1,4 +1,4 @@
-name: Add-On Build
+name: Mac_Test
 on:
   push
 

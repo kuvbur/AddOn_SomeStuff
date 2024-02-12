@@ -238,12 +238,6 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			RunParamSelected(syncSettings);
 			DimRoundAll(syncSettings);
 			break;
-		case SetGUID_CommandID:
-			SetSyncGUID();
-			break;
-		case ShowGUID_CommandID:
-			ShowSyncGUID();
-			break;
 		}
 		break;
 	}
