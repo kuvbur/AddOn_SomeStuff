@@ -664,12 +664,12 @@ namespace ParamHelpers
 	// Поиск по описанию GDL параметра
 	// Данный способ работат только с объектами (только чтение)
 	// -----------------------------------------------------------------------------
-	bool GDLParamByDescription(const API_Element& element, ParamDictValue& params, ParamDictValue& find_params);
+	bool GDLParamByDescription(const API_Element& element, ParamDictValue& params, ParamDictValue& find_params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>& paramnamearray);
 
 	// -----------------------------------------------------------------------------
 	// Поиск по имени GDL параметра (чтение/запись)
 	// -----------------------------------------------------------------------------
-	bool GDLParamByName(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
+	bool GDLParamByName(const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>& paramnamearray);
 
 	// -----------------------------------------------------------------------------
 	// Получение информации о материалах и составе конструкции

@@ -3813,7 +3813,7 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 	// Разбиваем по типам поиска - по описанию/по имени
 	ParamDictValue paramBydescription;
 	ParamDictValue paramByName;
-	GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramarray;
+	GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramnamearray;
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
 		GS::UniString rawName = param.rawName;
@@ -3821,11 +3821,11 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 			GS::Array<GS::UniString> tparams;
 			UInt32 nparam = StringSplt(rawName, "@arr", tparams);
 			rawName = tparams[0] + "}";
-			if (!paramarray.ContainsKey(rawName)) {
+			if (!paramnamearray.ContainsKey(rawName)) {
 				GS::Array<GS::UniString> t;
-				paramarray.Add(rawName, t);
+				paramnamearray.Add(rawName, t);
 			}
-			paramarray.Get(rawName).Push(param.rawName);
+			paramnamearray.Get(rawName).Push(param.rawName);
 			if (param.fromGDLdescription && eltype == API_ObjectID) {
 				paramBydescription.Add(rawName, param);
 			}
@@ -3846,9 +3846,9 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 	bool flag_find_desc = false;
 	bool flag_find_name = false;
 	if (!paramBydescription.IsEmpty()) {
-		flag_find_desc = ParamHelpers::GDLParamByDescription(element, paramBydescription, paramByName);
+		flag_find_desc = ParamHelpers::GDLParamByDescription(element, paramBydescription, paramByName, paramnamearray);
 	}
-	if (!paramByName.IsEmpty()) flag_find_name = ParamHelpers::GDLParamByName(element, elem_head, paramByName);
+	if (!paramByName.IsEmpty()) flag_find_name = ParamHelpers::GDLParamByName(element, elem_head, paramByName, paramnamearray);
 	if (flag_find_desc && flag_find_name) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramBydescription.EnumeratePairs(); cIt != NULL; ++cIt) {
 			ParamValue& param_by_desc = *cIt->value;
@@ -3865,13 +3865,13 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 	}
 	if (flag_find_name) ParamHelpers::CompareParamDictValue(paramByName, params);
 	return (flag_find_name);
-		}
+}
 
 // -----------------------------------------------------------------------------
 // Поиск по описанию GDL параметра
 // Данный способ не работает с элементами навесных стен
 // -----------------------------------------------------------------------------
-bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictValue & params, ParamDictValue & find_params) {
+bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictValue & params, ParamDictValue & find_params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>&paramnamearray) {
 	API_LibPart libpart;
 	BNZeroMemory(&libpart, sizeof(libpart));
 	libpart.index = element.object.libInd;
@@ -3940,7 +3940,7 @@ bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictV
 // -----------------------------------------------------------------------------
 // Поиск по имени GDL параметра
 // -----------------------------------------------------------------------------
-bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_Head & elem_head, ParamDictValue & params) {
+bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_Head & elem_head, ParamDictValue & params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>&paramnamearray) {
 	API_ElemTypeID	elemType;
 	API_Guid		elemGuid;
 	GetGDLParametersHead(element, elem_head, elemType, elemGuid);
@@ -3958,12 +3958,29 @@ bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_He
 		GS::UniString name = actualParam.name;
 		GS::UniString rawname = "{@gdl:" + name.ToLowerCase() + "}";
 		if (params.ContainsKey(rawname)) {
-			nfind--;
-			ParamValue pvalue = params.Get(rawname);
-			ParamHelpers::ConvertToParamValue(pvalue, actualParam);
-			if (pvalue.isValid) {
-				params.Set(rawname, pvalue);
-				flagFind = true;
+
+			// Проверим - нет ли подходящих параметров-массивов?
+			if (paramnamearray.ContainsKey(rawname)) {
+				GS::Array<GS::UniString> paramarray = paramnamearray.Get(rawname);
+				for (UInt32 j = 0; j < paramarray.GetSize(); ++j) {
+					nfind--;
+					ParamValue pvalue = params.Get(paramarray[j]);
+					ParamHelpers::ConvertToParamValue(pvalue, actualParam);
+					if (pvalue.isValid) {
+						params.Set(rawname, pvalue);
+						flagFind = true;
+					}
+				}
+				nfind--;
+			}
+			else {
+				nfind--;
+				ParamValue pvalue = params.Get(rawname);
+				ParamHelpers::ConvertToParamValue(pvalue, actualParam);
+				if (pvalue.isValid) {
+					params.Set(rawname, pvalue);
+					flagFind = true;
+				}
 			}
 			if (nfind == 0) {
 				ACAPI_DisposeAddParHdl(&addPars);
@@ -4123,8 +4140,8 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 				param_int = 1;
 				param_real = 1.0;
 			}
-			}
 		}
+	}
 	else {
 		param_real = round(nthParameter.value.real * 100000) / 100000;
 		if (nthParameter.value.real - param_real > 0.00001) param_real += 0.00001;
@@ -4235,7 +4252,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 	pvalue.val.uniStringValue = param_string;
 	pvalue.isValid = true;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация свойства в ParamValue
@@ -4791,15 +4808,15 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 						}
 					}
 				}
-		}
+			}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
 		}
 		break;
-	}
+		}
 		++profileDescriptionIt1;
-}
+	}
 	if (hasData) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 			short pen = paramlayers.Get(*cIt->key).val.intValue;
@@ -4975,7 +4992,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 	}
 #endif
 	return hasData;
-	}
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
