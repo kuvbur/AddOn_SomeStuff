@@ -4138,13 +4138,13 @@ void ParamHelpers::Array2ParamValue(GS::Array<ParamValueData>&pvalue, ParamValue
 				param_bool = param_bool + pval.boolValue;
 			}
 			if (pvalrezult.array_format_out == ARRAY_MAX) {
-				param_real = max(param_real, pval.doubleValue);
-				param_int = max(param_int, pval.intValue);
+				param_real = fmax(param_real, pval.doubleValue);
+				param_int = fmax(param_int, pval.intValue);
 				if (pval.boolValue) param_bool = true;
 			}
 			if (pvalrezult.array_format_out == ARRAY_MIN) {
-				param_real = min(param_real, pval.doubleValue);
-				param_int = min(param_int, pval.intValue);
+				param_real = fmin(param_real, pval.doubleValue);
+				param_int = fmin(param_int, pval.intValue);
 				if (!pval.boolValue) param_bool = false;
 			}
 		}
@@ -4199,7 +4199,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 				param_real = 1.0;
 			}
 		}
-			}
+	}
 	else {
 		param_real = round(param_real * 100000) / 100000;
 		if (preal - param_real > 0.00001) param_real += 0.00001;
@@ -4304,12 +4304,13 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 	pvalue.intValue = param_int;
 	pvalue.uniStringValue = param_string;
 	return true;
-		}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация параметра-массива библиотечного элемента (тип API_ParArray) в ParamValue
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddParID & typeIDr, const GS::Array<GS::UniString> &pstring, const GS::Array<double> &preal) {
+
 	// TODO Добавить обработку игнорируемых значений
 	GS::Array<ParamValueData> pvalues;
 	GS::UniString param_string = "";
@@ -4957,15 +4958,15 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 						}
 					}
 				}
-		}
+			}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
 		}
 		break;
-	}
+		}
 		++profileDescriptionIt1;
-}
+	}
 	if (hasData) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 			short pen = paramlayers.Get(*cIt->key).val.intValue;
@@ -4988,7 +4989,7 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 		ParamHelpers::CompareParamDictValue(paramlayers, params);
 	}
 	return hasData;
-	}
+}
 #endif
 
 // --------------------------------------------------------------------
