@@ -3967,9 +3967,15 @@ bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_He
 					ParamValue pvalue = params.Get(paramarray[j]);
 					ParamHelpers::ConvertToParamValue(pvalue, actualParam);
 					if (pvalue.isValid) {
-						params.Set(rawname, pvalue);
+						params.Set(pvalue.rawName, pvalue);
 						flagFind = true;
 					}
+				}
+				ParamValue pvalue = params.Get(rawname);
+				ParamHelpers::ConvertToParamValue(pvalue, actualParam);
+				if (pvalue.isValid) {
+					params.Set(rawname, pvalue);
+					flagFind = true;
 				}
 				nfind--;
 			}
@@ -4113,27 +4119,79 @@ GSErrCode GetPropertyFullName(const API_PropertyDefinition & definision, GS::Uni
 	return error;
 }
 
-// -----------------------------------------------------------------------------
-// Конвертация параметров библиотечного элемента в ParamValue
-// -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
+void ParamHelpers::Array2ParamValue(GS::Array<ParamValueData>&pvalue, ParamValueData & pvalrezult) {
+	if (pvalue.IsEmpty()) return;
 	GS::UniString param_string = "";
-	GS::Int32 param_int = 0;
-	double param_real = 0.0;
+	double param_real = 0;
 	bool param_bool = false;
+	if (pvalrezult.array_format_out == ARRAY_MIN) param_bool = true;
+	GS::Int32 param_int = 0;
+	bool canCalculate = false;
+
+	for (UInt32 i = 0; i < pvalue.GetSize(); i++) {
+		ParamValueData pval = pvalue.Get(i);
+		if (pval.canCalculate) {
+			canCalculate = true;
+			if (pvalrezult.array_format_out == ARRAY_SUM || pvalrezult.array_format_out == ARRAY_UNIC) {
+				param_real = param_real + pval.doubleValue;
+				param_int = param_int + pval.intValue;
+				param_bool = param_bool + pval.boolValue;
+			}
+			if (pvalrezult.array_format_out == ARRAY_MAX) {
+				param_real = max(param_real, pval.doubleValue);
+				param_int = max(param_int, pval.intValue);
+				if (pval.boolValue) param_bool = true;
+			}
+			if (pvalrezult.array_format_out == ARRAY_MIN) {
+				param_real = min(param_real, pval.doubleValue);
+				param_int = min(param_int, pval.intValue);
+				if (!pval.boolValue) param_bool = false;
+			}
+		}
+		if (param_string.IsEmpty()) {
+			param_string = pval.uniStringValue;
+		}
+		else {
+			param_string = param_string + ";" + pval.uniStringValue;
+		}
+	}
+
+	//if (pvalrezult.array_format_out == ARRAY_UNIC) {
+	//}
+	//if (pvalrezult.array_format_out == ARRAY_SUM) {
+	//}
+	//if (pvalrezult.array_format_out == ARRAY_MAX) {
+	//}
+	//if (pvalrezult.array_format_out == ARRAY_MIN) {
+	//}
+	pvalrezult = pvalue.Get(0);
+	pvalrezult.boolValue = param_bool;
+	pvalrezult.doubleValue = param_real;
+	pvalrezult.intValue = param_int;
+	pvalrezult.uniStringValue = param_string;
+	pvalrezult.canCalculate = canCalculate;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация одиночного параметра библиотечного элемента (тип API_ParSimple) в ParamValue
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddParID & typeIDr, const GS::UniString & pstring, const double& preal) {
 
 	// TODO добавить округления на основе настроек проекта
-	// Определяем тип и вычисляем текстовое, целочисленное и дробное значение.
-	if (nthParameter.typeID == APIParT_CString) {
-		pvalue.val.type = API_PropertyStringValueType;
-		param_string = nthParameter.value.uStr;
+	GS::UniString param_string = pstring;
+	double param_real = preal;
+	bool param_bool = false;
+	GS::Int32 param_int = 0;
+	pvalue.canCalculate = false;
+	if (typeIDr == APIParT_CString) {
+		pvalue.type = API_PropertyStringValueType;
 		param_bool = (!param_string.IsEmpty());
 
 		if (UniStringToDouble(param_string, param_real)) {
 			param_real = round(param_real * 100000) / 100000;
 			param_int = (GS::Int32)param_real;
 			if (param_int / 1 < param_real) param_int += 1;
-			pvalue.val.canCalculate = true;
+			pvalue.canCalculate = true;
 		}
 		else {
 			if (param_bool) {
@@ -4141,34 +4199,33 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 				param_real = 1.0;
 			}
 		}
-	}
+			}
 	else {
-		param_real = round(nthParameter.value.real * 100000) / 100000;
-		if (nthParameter.value.real - param_real > 0.00001) param_real += 0.00001;
+		param_real = round(param_real * 100000) / 100000;
+		if (preal - param_real > 0.00001) param_real += 0.00001;
 		param_int = (GS::Int32)param_real;
 		if (param_int / 1 < param_real) param_int += 1;
 	}
 	if (abs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
 
 	// Если параметр не строковое - определяем текстовое значение конвертацией
-	if (param_string.IsEmpty() && nthParameter.typeID != APIParT_CString) {
+	if (param_string.IsEmpty() && typeIDr != APIParT_CString) {
 		API_AttrTypeID attrType = API_ZombieAttrID;
 #ifdef AC_27
 		API_AttributeIndex attrInx = ACAPI_CreateAttributeIndex(param_int);
 #else
 		short attrInx = (short)param_int;
 #endif
-
-		switch (nthParameter.typeID) {
+		switch (typeIDr) {
 		case APIParT_Integer:
 			param_string = GS::UniString::Printf("%d", param_int);
-			pvalue.val.type = API_PropertyIntegerValueType;
-			pvalue.val.canCalculate = true;
-			pvalue.val.n_zero = 0;
-			pvalue.val.stringformat = "0m";
+			pvalue.type = API_PropertyIntegerValueType;
+			pvalue.canCalculate = true;
+			pvalue.n_zero = 0;
+			pvalue.stringformat = "0m";
 			break;
 		case APIParT_Boolean:
-			pvalue.val.n_zero = 0;
+			pvalue.n_zero = 0;
 			if (param_bool) {
 				param_string = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
 				param_int = 1;
@@ -4179,28 +4236,28 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 				param_int = 0;
 				param_real = 0.0;
 			}
-			pvalue.val.stringformat = "0m";
-			pvalue.val.n_zero = 0;
-			pvalue.val.canCalculate = true;
-			pvalue.val.type = API_PropertyBooleanValueType;
+			pvalue.stringformat = "0m";
+			pvalue.n_zero = 0;
+			pvalue.canCalculate = true;
+			pvalue.type = API_PropertyBooleanValueType;
 			break;
 		case APIParT_Length:
 			param_string = GS::UniString::Printf("%.0f", param_real * 1000);
-			pvalue.val.canCalculate = true;
-			pvalue.val.type = API_PropertyRealValueType;
-			pvalue.val.stringformat = "1mm";
+			pvalue.canCalculate = true;
+			pvalue.type = API_PropertyRealValueType;
+			pvalue.stringformat = "1mm";
 			break;
 		case APIParT_Angle:
 			param_string = GS::UniString::Printf("%.1f", param_real);
-			pvalue.val.canCalculate = true;
-			pvalue.val.type = API_PropertyRealValueType;
-			pvalue.val.stringformat = "2m";
+			pvalue.canCalculate = true;
+			pvalue.type = API_PropertyRealValueType;
+			pvalue.stringformat = "2m";
 			break;
 		case APIParT_RealNum:
 			param_string = GS::UniString::Printf("%.3f", param_real);
-			pvalue.val.canCalculate = true;
-			pvalue.val.type = API_PropertyRealValueType;
-			pvalue.val.stringformat = "3m";
+			pvalue.canCalculate = true;
+			pvalue.type = API_PropertyRealValueType;
+			pvalue.stringformat = "3m";
 			break;
 
 			// Для реквезитов в текст выведем имена
@@ -4226,7 +4283,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 			attrib.header.index = attrInx;
 			if (ACAPI_Attribute_Get(&attrib) == NoError) {
 				param_string = GS::UniString::Printf("%s", attrib.header.name);
-				pvalue.val.type = API_PropertyStringValueType;
+				pvalue.type = API_PropertyStringValueType;
 #ifdef AC_27
 				param_bool = (attrInx.ToInt32_Deprecated() != 0);
 				param_int = attrInx.ToInt32_Deprecated();
@@ -4235,21 +4292,113 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 				param_int = attrInx;
 #endif
 				param_real = param_int / 1.0;
-				pvalue.val.n_zero = 0;
+				pvalue.n_zero = 0;
 			}
 			else {
 				return false;
 			}
 		}
 	}
+	pvalue.boolValue = param_bool;
+	pvalue.doubleValue = param_real;
+	pvalue.intValue = param_int;
+	pvalue.uniStringValue = param_string;
+	return true;
+		}
+
+// -----------------------------------------------------------------------------
+// Конвертация параметра-массива библиотечного элемента (тип API_ParArray) в ParamValue
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddParID & typeIDr, const GS::Array<GS::UniString> &pstring, const GS::Array<double> &preal) {
+	// TODO Добавить обработку игнорируемых значений
+	GS::Array<ParamValueData> pvalues;
+	GS::UniString param_string = "";
+	double param_real = 0.0;
+	if (typeIDr == APIParT_CString) {
+		if (pstring.IsEmpty()) {
+			DBPrintf("== SMSTF == Empty array\n");
+			return false;
+		}
+		for (UInt32 i = 0; i < pstring.GetSize(); i++) {
+			ParamValueData pval = {};
+			param_string = pstring.Get(i);
+			if (ParamHelpers::ConvertToParamValue(pval, typeIDr, param_string, param_real)) {
+				pvalues.Push(pval);
+			}
+		}
+	}
+	else {
+		if (preal.IsEmpty()) {
+			DBPrintf("== SMSTF == Empty array\n");
+			return false;
+		}
+		for (UInt32 i = 0; i < preal.GetSize(); i++) {
+			ParamValueData pval = {};
+			param_real = preal.Get(i);
+			if (ParamHelpers::ConvertToParamValue(pval, typeIDr, param_string, param_real)) {
+				pvalues.Push(pval);
+			}
+		}
+	}
+	if (pvalues.IsEmpty()) {
+		DBPrintf("== SMSTF == Empty array\n");
+		return false;
+	}
+	else {
+		ParamHelpers::Array2ParamValue(pvalues, pvalue);
+		return true;
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация параметра библиотечного элемента в ParamValue
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType & nthParameter) {
+	GS::UniString param_string = "";
+	double param_real = 0.0;
+	API_AddParID typeIDr = nthParameter.typeID;
+	ParamValueData pval = pvalue.val;
+	if (nthParameter.typeMod == API_ParArray) {
+		size_t ind = 0;
+		char* valueStr;
+		UInt32 num_chars = BMGetHandleSize((GSConstHandle)nthParameter.value.array) / sizeof(GS::uchar_t);
+		GS::Array<GS::UniString> arr_param_string;
+		GS::Array<double> arr_param_real;
+		if (nthParameter.typeID != APIParT_CString) {
+			for (Int32 i = 1; i <= nthParameter.dim1; i++) {
+				for (Int32 j = 1; j <= nthParameter.dim2; j++) {
+					param_real = (Int32)((double*)*nthParameter.value.array)[ind];
+					arr_param_real.Push(param_real);
+					ind++;
+				}
+			}
+		}
+		else {
+			for (UInt32 i = 0; i < num_chars; i++) {
+				valueStr = *nthParameter.value.array + ind;
+				if (*valueStr == '\0') {
+					arr_param_string.Push(param_string);
+					param_string = "";
+					ind += 2;
+				}
+				else {
+					param_string.Append(valueStr);
+					ind += strlen(valueStr) + 1;
+				}
+			}
+		}
+		if (!ParamHelpers::ConvertToParamValue(pval, typeIDr, arr_param_string, arr_param_real)) return false;
+	}
+	if (nthParameter.typeMod == API_ParSimple) {
+		param_string = nthParameter.value.uStr;
+		param_real = nthParameter.value.real;
+		if (!ParamHelpers::ConvertToParamValue(pval, typeIDr, param_string, param_real)) return false;
+	}
 	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + GS::UniString(nthParameter.name).ToLowerCase() + "}";
 	if (pvalue.name.IsEmpty()) pvalue.name = nthParameter.name;
-	pvalue.type = pvalue.val.type;
+	pvalue.val = pval;
+	pvalue.type = pval.type;
 	pvalue.fromGDLparam = true;
-	pvalue.val.boolValue = param_bool;
-	pvalue.val.doubleValue = param_real;
-	pvalue.val.intValue = param_int;
-	pvalue.val.uniStringValue = param_string;
 	pvalue.isValid = true;
 	return true;
 }
@@ -4808,15 +4957,15 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 						}
 					}
 				}
-			}
+		}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
 		}
 		break;
-		}
-		++profileDescriptionIt1;
 	}
+		++profileDescriptionIt1;
+}
 	if (hasData) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 			short pen = paramlayers.Get(*cIt->key).val.intValue;
@@ -4839,7 +4988,7 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 		ParamHelpers::CompareParamDictValue(paramlayers, params);
 	}
 	return hasData;
-}
+	}
 #endif
 
 // --------------------------------------------------------------------

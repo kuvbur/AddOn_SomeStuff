@@ -31,7 +31,8 @@
 // Типы операций по переводу значений массива гдл параметра в совйство
 #define ARRAY_UNIC 1	// Вывод уникальных значений
 #define ARRAY_SUM 2		// Вывод суммы (для текста - конкатенация)
-#define ARRAY_CONCAT 3	// Конкатенация независимо от типа данных
+#define ARRAY_MAX 3
+#define ARRAY_MIN 4
 
 static const GSResID AddOnInfoID = ID_ADDON_INFO;
 static const short AddOnMenuID = ID_ADDON_MENU;
@@ -106,7 +107,7 @@ typedef struct
 	int array_row_end = 0;				// Последняя строка массива
 	int array_column_start = 0;			// Начальный столбец массива
 	int array_column_end = 0;				// Последний столбец массива
-	int array_format_out = ARRAY_UNIC;	// В каком виде выводить в свойство
+	int array_format_out = ARRAY_SUM;	// В каком виде выводить в свойство
 } ParamValueData;
 
 // Структура для описания слоя в многослойной конструкции
@@ -585,6 +586,10 @@ namespace ParamHelpers
 	// Заполнение словаря с параметрами
 	// --------------------------------------------------------------------
 	void Read(const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams);
+
+	void Array2ParamValue(GS::Array<ParamValueData>& pvalue, ParamValueData& pvalrezult);
+	bool ConvertToParamValue(ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::UniString& pstring, const double& preal);
+	bool ConvertToParamValue(ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::Array<GS::UniString>& pstring, const GS::Array<double>& preal);
 
 	// -----------------------------------------------------------------------------
 	// Конвертация параметров библиотечного элемента в ParamValue

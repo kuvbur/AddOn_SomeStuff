@@ -918,8 +918,12 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			param.val.array_format_out = ARRAY_SUM;
 			hasArray = true;
 		}
-		if (params[1].Contains("concat")) {
-			param.val.array_format_out = ARRAY_CONCAT;
+		if (params[1].Contains("min")) {
+			param.val.array_format_out = ARRAY_MIN;
+			hasArray = true;
+		}
+		if (params[1].Contains("max")) {
+			param.val.array_format_out = ARRAY_MAX;
 			hasArray = true;
 		}
 		if (hasArray) {
