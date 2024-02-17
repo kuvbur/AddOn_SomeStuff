@@ -398,7 +398,7 @@ bool is_equal(double x, double y) {
 // Содержит ли значения элементиз списка игнорируемых
 // --------------------------------------------------------------------
 bool CheckIgnoreVal(const std::string& ignoreval, const GS::UniString& val) {
-	GS::UniString unignoreval = GS::UniString(ignoreval.c_str());
+	GS::UniString unignoreval = GS::UniString(ignoreval.c_str(), GChCode);
 	return CheckIgnoreVal(unignoreval, val);
 }
 bool CheckIgnoreVal(const GS::UniString& ignoreval, const GS::UniString& val) {
@@ -1365,7 +1365,7 @@ UInt32 StringSpltUnic(const GS::UniString & instring, const GS::UniString & deli
 	UInt32 nout = 0;
 	for (std::map<std::string, int, doj::alphanum_less<std::string> >::iterator k = unic.begin(); k != unic.end(); ++k) {
 		std::string s = k->first;
-		GS::UniString unis = GS::UniString(s.c_str());
+		GS::UniString unis = GS::UniString(s.c_str(), GChCode);
 		partstring.Push(unis);
 		nout = nout + 1;
 	}
@@ -4121,54 +4121,71 @@ GSErrCode GetPropertyFullName(const API_PropertyDefinition & definision, GS::Uni
 
 void ParamHelpers::Array2ParamValue(GS::Array<ParamValueData>&pvalue, ParamValueData & pvalrezult) {
 	if (pvalue.IsEmpty()) return;
+	GS::UniString delim = ";";
+	int array_format_out = pvalrezult.array_format_out;
 	GS::UniString param_string = "";
 	double param_real = 0;
 	bool param_bool = false;
-	if (pvalrezult.array_format_out == ARRAY_MIN) param_bool = true;
+	if (array_format_out == ARRAY_MIN) param_bool = true;
 	GS::Int32 param_int = 0;
 	bool canCalculate = false;
+	std::string p = "";
+
+	if (array_format_out == ARRAY_MAX || array_format_out == ARRAY_MIN) {
+		param_real = pvalue.Get(0).doubleValue;
+		param_int = pvalue.Get(0).intValue;
+		param_bool = pvalue.Get(0).boolValue;
+		param_string = pvalue.Get(0).uniStringValue;
+	}
 
 	for (UInt32 i = 0; i < pvalue.GetSize(); i++) {
 		ParamValueData pval = pvalue.Get(i);
 		if (pval.canCalculate) {
 			canCalculate = true;
-			if (pvalrezult.array_format_out == ARRAY_SUM || pvalrezult.array_format_out == ARRAY_UNIC) {
+			if (array_format_out == ARRAY_SUM || array_format_out == ARRAY_UNIC) {
 				param_real = param_real + pval.doubleValue;
 				param_int = param_int + pval.intValue;
 				param_bool = param_bool + pval.boolValue;
 			}
-			if (pvalrezult.array_format_out == ARRAY_MAX) {
+			if (array_format_out == ARRAY_MAX) {
 				param_real = fmax(param_real, pval.doubleValue);
-				param_int = fmax(param_int, pval.intValue);
+				if (pval.intValue > param_int) param_int = pval.intValue;
 				if (pval.boolValue) param_bool = true;
 			}
-			if (pvalrezult.array_format_out == ARRAY_MIN) {
+			if (array_format_out == ARRAY_MIN) {
 				param_real = fmin(param_real, pval.doubleValue);
-				param_int = fmin(param_int, pval.intValue);
+				if (pval.intValue < param_int) param_int = pval.intValue;
 				if (!pval.boolValue) param_bool = false;
 			}
 		}
-		if (param_string.IsEmpty()) {
-			param_string = pval.uniStringValue;
+		if (array_format_out == ARRAY_SUM || array_format_out == ARRAY_UNIC) {
+			if (param_string.IsEmpty()) {
+				param_string = pval.uniStringValue;
+			}
+			else {
+				param_string = param_string + delim + pval.uniStringValue;
+			}
 		}
-		else {
-			param_string = param_string + ";" + pval.uniStringValue;
+		if (array_format_out == ARRAY_MAX) {
+			std::string s = pval.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
+			p = param_string.ToCStr(0, MaxUSize, GChCode).Get();
+			if (doj::alphanum_comp(s, p) > 0) param_string = GS::UniString(s.c_str(), GChCode);
+		}
+		if (array_format_out == ARRAY_MIN) {
+			std::string s = pval.uniStringValue.ToCStr(0, MaxUSize, GChCode).Get();
+			if (doj::alphanum_comp(s, p) < 0) param_string = GS::UniString(s.c_str(), GChCode);
 		}
 	}
-
-	//if (pvalrezult.array_format_out == ARRAY_UNIC) {
-	//}
-	//if (pvalrezult.array_format_out == ARRAY_SUM) {
-	//}
-	//if (pvalrezult.array_format_out == ARRAY_MAX) {
-	//}
-	//if (pvalrezult.array_format_out == ARRAY_MIN) {
-	//}
 	pvalrezult = pvalue.Get(0);
+	if (array_format_out == ARRAY_UNIC) {
+		pvalrezult.uniStringValue = StringUnic(param_string, delim);
+	}
+	else {
+		pvalrezult.uniStringValue = param_string;
+	}
 	pvalrezult.boolValue = param_bool;
 	pvalrezult.doubleValue = param_real;
 	pvalrezult.intValue = param_int;
-	pvalrezult.uniStringValue = param_string;
 	pvalrezult.canCalculate = canCalculate;
 }
 
@@ -4293,12 +4310,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 #endif
 				param_real = param_int / 1.0;
 				pvalue.n_zero = 0;
-			}
+		}
 			else {
 				return false;
 			}
-		}
 	}
+}
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
 	pvalue.intValue = param_int;
@@ -4954,17 +4971,17 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 									existsmaterial.Add(constrinxL, true);
 								}
 								hasData = true;
-							}
-						}
 					}
 				}
 			}
+		}
+		}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
-		}
+	}
 		break;
-		}
+}
 		++profileDescriptionIt1;
 	}
 	if (hasData) {

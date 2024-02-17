@@ -909,40 +909,88 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 
 		// Обработка данных о размерах массива и типе чтения
 		UInt32 start_ignore = 1;
+		GS::UniString arrtype = params[1].ToLowerCase();
 		bool hasArray = false;
-		if (params[1].Contains("uniq")) {
+		if (!hasArray && arrtype.Contains("uniq")) {
+			arrtype.ReplaceAll("uniq", "");
 			param.val.array_format_out = ARRAY_UNIC;
 			hasArray = true;
 		}
-		if (params[1].Contains("sum")) {
+		if (!hasArray && arrtype.Contains("sum")) {
+			arrtype.ReplaceAll("sum", "");
 			param.val.array_format_out = ARRAY_SUM;
 			hasArray = true;
 		}
-		if (params[1].Contains("min")) {
+		if (!hasArray && arrtype.Contains("min")) {
+			arrtype.ReplaceAll("min", "");
 			param.val.array_format_out = ARRAY_MIN;
 			hasArray = true;
 		}
-		if (params[1].Contains("max")) {
+		if (!hasArray && arrtype.Contains("max")) {
+			arrtype.ReplaceAll("max", "");
 			param.val.array_format_out = ARRAY_MAX;
 			hasArray = true;
 		}
 		if (hasArray) {
-
-			// TODO Добавить срезы массивов
 			int array_row_start = 0;
 			int array_row_end = 0;
 			int array_column_start = 0;
 			int array_column_end = 0;
+			double p;
+			if (params[1].Contains("(")) {
+				GS::Array<GS::UniString> sr;
+				UInt32 nsr = StringSplt(arrtype, ")", sr);
+				if (nsr > 0) {
+					GS::UniString sr1 = sr.Get(0);
+					sr1.Trim('(');
+					if (sr1.Contains(",")) {
+						GS::Array<GS::UniString> dim;
+						UInt32 ndim = StringSplt(sr1, ",", dim);
+						if (ndim > 0) {
+							if (UniStringToDouble(dim[0], p)) array_row_start = (int)p-1;
+						}
+						if (ndim > 1) {
+							if (UniStringToDouble(dim[1], p)) array_row_end = (int)p-1;
+						}
+					}
+					else {
+						if (UniStringToDouble(sr1, p)) {
+							array_row_start = (int)p-1;
+							array_row_end = (int)p-1;
+						}
+					}
+				}
+				if (nsr > 1) {
+					GS::UniString sr1 = sr.Get(1);
+					sr1.Trim('(');
+					if (sr1.Contains(",")) {
+						GS::Array<GS::UniString> dim;
+						UInt32 ndim = StringSplt(sr1, ",", dim);
+						if (ndim > 0) {
+							if (UniStringToDouble(dim[0], p)) array_column_start = (int)p-1;
+						}
+						if (ndim > 1) {
+							if (UniStringToDouble(dim[1], p)) array_column_end = (int)p-1;
+						}
+					}
+					else {
+						if (UniStringToDouble(sr1, p)) {
+							array_column_start = (int)p-1;
+							array_column_end = (int)p-1;
+						}
+					}
+				}
+			}
+			if (array_row_start < 0) array_row_start = 0;
+			if (array_row_end < 0) array_row_end = 0;
+			if (array_column_start < 0) array_column_start = 0;
+			if (array_column_end < 0) array_column_end = 0;
 			param.val.array_row_start = array_row_start;
 			param.val.array_row_end = array_row_end;
 			param.val.array_column_start = array_column_start;
 			param.val.array_column_end = array_column_end;
 			param.fromGDLArray = true;
-			GS::UniString tarray_row_start = "_" + GS::UniString::Printf("%.0f", array_row_start);
-			GS::UniString tarray_row_end = "_" + GS::UniString::Printf("%.0f", array_row_end);
-			GS::UniString tarray_column_start = "_" + GS::UniString::Printf("%.0f", array_column_start);
-			GS::UniString tarray_column_end = "_" + GS::UniString::Printf("%.0f", array_column_end);
-			param.rawName = paramNamePrefix + paramName.ToLowerCase() + "@arr" + tarray_row_start + tarray_row_end + tarray_column_start + tarray_column_end + "}";
+			param.rawName = paramNamePrefix + paramName.ToLowerCase() + GS::UniString::Printf("@arr_%d_%d_%d_%d_%d}", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out);
 			start_ignore = 2;
 		}
 
