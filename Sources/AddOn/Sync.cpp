@@ -936,6 +936,10 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			int array_row_end = 0;
 			int array_column_start = 0;
 			int array_column_end = 0;
+			GS::UniString rawName_row_start = "";// Имя параметра со значением начала диапазона чтения строк
+			GS::UniString rawName_row_end = "";	 // Имя параметра со значением конца диапазона чтения строк
+			GS::UniString rawName_col_start = "";// Имя параметра со значением начала диапазона чтения столбцов
+			GS::UniString rawName_col_end = "";	 // Имя параметра со значением конца диапазона чтения столбцов
 			double p;
 			if (params[1].Contains("(")) {
 				GS::Array<GS::UniString> sr;
@@ -947,16 +951,28 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 						GS::Array<GS::UniString> dim;
 						UInt32 ndim = StringSplt(sr1, ",", dim);
 						if (ndim > 0) {
-							if (UniStringToDouble(dim[0], p)) array_row_start = (int)p-1;
+							GS::UniString dim0 = dim.Get(0);
+							if (UniStringToDouble(dim0, p)) { array_row_start = (int)p;
+							}
+							else {
+								rawName_row_start = "{@gdl:"+dim0+"}";
+							}
 						}
 						if (ndim > 1) {
-							if (UniStringToDouble(dim[1], p)) array_row_end = (int)p-1;
+							GS::UniString dim1 = dim.Get(1);
+							if (UniStringToDouble(dim1, p)) {
+								array_row_end = (int)p;
+							} else {
+								rawName_row_end = "{@gdl:"+dim1+"}";
+							}
 						}
-					}
-					else {
+					} else {
 						if (UniStringToDouble(sr1, p)) {
-							array_row_start = (int)p-1;
-							array_row_end = (int)p-1;
+							array_row_start = (int)p;
+							array_row_end = (int)p;
+						} else {
+							rawName_row_start = "{@gdl:"+sr1+"}";
+							rawName_row_end = rawName_col_start;
 						}
 					}
 				}
@@ -967,16 +983,28 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 						GS::Array<GS::UniString> dim;
 						UInt32 ndim = StringSplt(sr1, ",", dim);
 						if (ndim > 0) {
-							if (UniStringToDouble(dim[0], p)) array_column_start = (int)p-1;
+							GS::UniString dim0 = dim.Get(0);
+							if (UniStringToDouble(dim0, p)) {
+								array_column_start = (int)p;
+							} else {
+								rawName_col_start = "{@gdl:"+dim0+"}";
+							}
 						}
 						if (ndim > 1) {
-							if (UniStringToDouble(dim[1], p)) array_column_end = (int)p-1;
+							GS::UniString dim1 = dim.Get(1);
+							if (UniStringToDouble(dim1, p)) {
+								array_column_end = (int)p;
+							} else {
+								rawName_col_end = "{@gdl:"+dim1+"}";
+							}
 						}
-					}
-					else {
+					} else {
 						if (UniStringToDouble(sr1, p)) {
-							array_column_start = (int)p-1;
-							array_column_end = (int)p-1;
+							array_column_start = (int)p;
+							array_column_end = (int)p;
+						} else {
+							rawName_col_start = "{@gdl:"+sr1+"}";
+							rawName_col_end = rawName_col_start;
 						}
 					}
 				}
@@ -990,7 +1018,13 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			param.val.array_column_start = array_column_start;
 			param.val.array_column_end = array_column_end;
 			param.fromGDLArray = true;
-			param.rawName = paramNamePrefix + paramName.ToLowerCase() + GS::UniString::Printf("@arr_%d_%d_%d_%d_%d}", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out);
+
+			param.rawName_row_start = rawName_row_start;
+			param.rawName_row_end = rawName_row_end;
+			param.rawName_col_start = rawName_col_start;
+			param.rawName_col_end = rawName_col_end;
+			if (!rawName_row_start.IsEmpty() || !rawName_row_end.IsEmpty() || !rawName_col_start.IsEmpty() || !rawName_col_end.IsEmpty()) param.needPreRead = true;
+			param.rawName = paramNamePrefix + paramName.ToLowerCase() + GS::UniString::Printf("@arr_%d_%d_%d_%d_%d", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out)+ rawName_row_start+"_" + rawName_row_end+"_" + rawName_col_start+"_" + rawName_col_end + "}";
 			start_ignore = 2;
 		}
 

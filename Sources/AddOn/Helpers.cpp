@@ -3809,11 +3809,62 @@ bool ParamHelpers::ReadGDLValues(const API_Element & element, const API_Elem_Hea
 #else
 	eltype = elem_head.typeID;
 #endif
-
-	// Разбиваем по типам поиска - по описанию/по имени
 	ParamDictValue paramBydescription;
 	ParamDictValue paramByName;
 	GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramnamearray;
+	// Если диапазоны массивов хранятся в параметра х - прочитаем сначала их
+	ParamDictValue paramdiap;
+	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+		ParamValue& param = *cIt->value;
+		if (param.needPreRead) {
+			if (!param.rawName_row_start.IsEmpty()) {
+				ParamValue arr_row_start;
+				arr_row_start.fromGDLparam = true;
+				arr_row_start.rawName = param.rawName_row_start;
+				paramdiap.Add(arr_row_start.rawName, arr_row_start);
+			}
+			if (!param.rawName_row_end.IsEmpty()) {
+				ParamValue arr_row_end;
+				arr_row_end.fromGDLparam = true;
+				arr_row_end.rawName = param.rawName_row_end;
+				paramdiap.Add(arr_row_end.rawName, arr_row_end);
+			}
+			if (!param.rawName_col_start.IsEmpty()) {
+				ParamValue arr_col_start;
+				arr_col_start.fromGDLparam = true;
+				arr_col_start.rawName = param.rawName_col_start;
+				paramdiap.Add(arr_col_start.rawName, arr_col_start);
+			}
+			if (!param.rawName_col_end.IsEmpty()) {
+				ParamValue arr_col_end;
+				arr_col_end.fromGDLparam = true;
+				arr_col_end.rawName = param.rawName_col_end;
+				paramdiap.Add(arr_col_end.rawName, arr_col_end);
+			}
+		}
+	}
+	if (!paramdiap.IsEmpty()) {
+		if (ParamHelpers::GDLParamByName(element, elem_head, paramdiap, paramnamearray)) {
+			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
+				ParamValue& param = *cIt->value;
+				if (param.needPreRead) {
+					if (!param.rawName_row_start.IsEmpty()) {
+						if (paramdiap.ContainsKey(param.rawName_row_start)) params.Get(param.rawName).val.array_row_start = paramdiap.Get(param.rawName_row_start).val.intValue;
+					}
+					if (!param.rawName_row_end.IsEmpty()) {
+						if (paramdiap.ContainsKey(param.rawName_row_end)) params.Get(param.rawName).val.array_row_end = paramdiap.Get(param.rawName_row_end).val.intValue;
+					}
+					if (!param.rawName_col_start.IsEmpty()) {
+						if (paramdiap.ContainsKey(param.rawName_col_start)) params.Get(param.rawName).val.array_column_start = paramdiap.Get(param.rawName_col_start).val.intValue;
+					}
+					if (!param.rawName_col_end.IsEmpty()) {
+						if (paramdiap.ContainsKey(param.rawName_col_end)) params.Get(param.rawName).val.array_column_end = paramdiap.Get(param.rawName_col_end).val.intValue;
+					}
+				}
+			}
+		}
+	}
+	// Разбиваем по типам поиска - по описанию/по имени
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamValue& param = *cIt->value;
 		GS::UniString rawName = param.rawName;
@@ -4310,12 +4361,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 #endif
 				param_real = param_int / 1.0;
 				pvalue.n_zero = 0;
-		}
+			}
 			else {
 				return false;
 			}
+		}
 	}
-}
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
 	pvalue.intValue = param_int;
@@ -4326,33 +4377,44 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 // -----------------------------------------------------------------------------
 // Конвертация параметра-массива библиотечного элемента (тип API_ParArray) в ParamValue
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddParID & typeIDr, const GS::Array<GS::UniString> &pstring, const GS::Array<double> &preal) {
+bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddParID & typeIDr, const GS::Array<GS::UniString> &pstring, const GS::Array<double> &preal, const GS::Int32 & dim1, const GS::Int32 & dim2) {
 
 	// TODO Добавить обработку игнорируемых значений
 	GS::Array<ParamValueData> pvalues;
 	GS::UniString param_string = "";
 	double param_real = 0.0;
+	GS::Int32 inx_row = 1;
+	GS::Int32 inx_col = 0;
+	int array_row_start = pvalue.array_row_start;
+	int array_row_end = pvalue.array_row_end;
+	int array_column_start = pvalue.array_column_start;
+	int array_column_end = pvalue.array_column_end;
+	if (array_row_end < 1) array_row_end = dim1;
+	if (array_column_end < 1) array_column_end = dim2;
+
+	UInt32 n = 0;
 	if (typeIDr == APIParT_CString) {
-		if (pstring.IsEmpty()) {
-			DBPrintf("== SMSTF == Empty array\n");
-			return false;
-		}
-		for (UInt32 i = 0; i < pstring.GetSize(); i++) {
-			ParamValueData pval = {};
-			param_string = pstring.Get(i);
-			if (ParamHelpers::ConvertToParamValue(pval, typeIDr, param_string, param_real)) {
-				pvalues.Push(pval);
-			}
-		}
+		if (pstring.IsEmpty()) return false;
+		n = pstring.GetSize();
 	}
 	else {
-		if (preal.IsEmpty()) {
-			DBPrintf("== SMSTF == Empty array\n");
-			return false;
+		if (preal.IsEmpty()) return false;
+		n = preal.GetSize();
+	}
+	for (UInt32 i = 0; i < n; i++) {
+		inx_col += 1;
+		if (inx_col > dim2) {
+			inx_col = 1;
+			inx_row += 1;
 		}
-		for (UInt32 i = 0; i < preal.GetSize(); i++) {
+		if (inx_col <= array_column_end && inx_col >= array_column_start && inx_row >= array_row_start && inx_row <= array_row_end) {
 			ParamValueData pval = {};
-			param_real = preal.Get(i);
+			if (typeIDr == APIParT_CString) {
+				param_string = pstring.Get(i);
+			}
+			else {
+				param_real = preal.Get(i);
+			}
 			if (ParamHelpers::ConvertToParamValue(pval, typeIDr, param_string, param_real)) {
 				pvalues.Push(pval);
 			}
@@ -4378,8 +4440,6 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 	ParamValueData pval = pvalue.val;
 	if (nthParameter.typeMod == API_ParArray) {
 		size_t ind = 0;
-		char* valueStr;
-		UInt32 num_chars = BMGetHandleSize((GSConstHandle)nthParameter.value.array) / sizeof(GS::uchar_t);
 		GS::Array<GS::UniString> arr_param_string;
 		GS::Array<double> arr_param_real;
 		if (nthParameter.typeID != APIParT_CString) {
@@ -4392,6 +4452,8 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 			}
 		}
 		else {
+			char* valueStr;
+			UInt32 num_chars = BMGetHandleSize((GSConstHandle)nthParameter.value.array) / sizeof(GS::uchar_t);
 			for (UInt32 i = 0; i < num_chars; i++) {
 				valueStr = *nthParameter.value.array + ind;
 				if (*valueStr == '\0') {
@@ -4405,7 +4467,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_AddParType
 				}
 			}
 		}
-		if (!ParamHelpers::ConvertToParamValue(pval, typeIDr, arr_param_string, arr_param_real)) return false;
+		if (!ParamHelpers::ConvertToParamValue(pval, typeIDr, arr_param_string, arr_param_real, nthParameter.dim1, nthParameter.dim2)) return false;
 	}
 	if (nthParameter.typeMod == API_ParSimple) {
 		param_string = nthParameter.value.uStr;
@@ -4971,17 +5033,17 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 									existsmaterial.Add(constrinxL, true);
 								}
 								hasData = true;
+							}
+						}
 					}
 				}
 			}
-		}
-		}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
-	}
+		}
 		break;
-}
+		}
 		++profileDescriptionIt1;
 	}
 	if (hasData) {

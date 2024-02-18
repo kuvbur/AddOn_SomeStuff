@@ -155,6 +155,11 @@ typedef struct
 	bool fromMaterial = false;			 // Взять инфо из состава конструкции
 	bool fromAttribDefinition = false;	 // Взять инфо из свойств аттрибута
 	bool fromGDLArray = false;			 // Взять из массива
+	bool needPreRead = false;			 // Необходимо прочитать значения диапазонов из параметров элемента
+	GS::UniString rawName_row_start = "";// Имя параметра со значением начала диапазона чтения строк
+	GS::UniString rawName_row_end = "";	 // Имя параметра со значением конца диапазона чтения строк
+	GS::UniString rawName_col_start = "";// Имя параметра со значением начала диапазона чтения столбцов
+	GS::UniString rawName_col_end = "";	 // Имя параметра со значением конца диапазона чтения столбцов
 	API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
 } ParamValue;
 
@@ -589,7 +594,7 @@ namespace ParamHelpers
 
 	void Array2ParamValue(GS::Array<ParamValueData>& pvalue, ParamValueData& pvalrezult);
 	bool ConvertToParamValue(ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::UniString& pstring, const double& preal);
-	bool ConvertToParamValue(ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::Array<GS::UniString>& pstring, const GS::Array<double>& preal);
+	bool ConvertToParamValue(ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::Array<GS::UniString>& pstring, const GS::Array<double>& preal, const GS::Int32& dim1, const GS::Int32& dim2);
 
 	// -----------------------------------------------------------------------------
 	// Конвертация параметров библиотечного элемента в ParamValue
