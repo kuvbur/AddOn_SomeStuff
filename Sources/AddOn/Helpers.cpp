@@ -1202,6 +1202,32 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 	ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
 #endif
 	switch (elementType) {
+	case API_WallID:
+		if (syncSettings.widoS) {
+			GS::Array<API_Guid> windows;
+#ifdef AC_27
+			err = ACAPI_Grouping_GetConnectedElements(elemGuid, API_WindowID, &windows, APIFilt_None, APINULLGuid);
+#else
+			err = ACAPI_Element_GetConnectedElements(elemGuid, API_WindowID, &windows);
+#endif
+			if (!windows.IsEmpty()) {
+				for (UInt32 i = 0; i < windows.GetSize(); i++) {
+					subelemGuid.Push(windows[i]);
+				}
+			}
+			GS::Array<API_Guid> doors;
+#ifdef AC_27
+			err = ACAPI_Grouping_GetConnectedElements(elemGuid, API_DoorID, &doors, APIFilt_None, APINULLGuid);
+#else
+			err = ACAPI_Element_GetConnectedElements(elemGuid, API_DoorID, &doors);
+#endif
+			if (!doors.IsEmpty()) {
+				for (UInt32 i = 0; i < doors.GetSize(); i++) {
+					subelemGuid.Push(doors[i]);
+				}
+			}
+			break;
+		}
 	case API_RailingID:
 		if (syncSettings.cwallS) {
 			err = GetRElementsForRailing(elemGuid, subelemGuid);
@@ -2115,7 +2141,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	}
 	if (params.ContainsKey(globnorthkey)) {
 		double north = params.Get(globnorthkey).val.doubleValue;
-		double angznorth = round((angz - north + 90.0) * k) / k;
+		double angznorth = round(fmod(abs(angz - north + 90.0), 360.0) * k) / k;
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
 		GS::UniString angznorthtxt = "";
 		if (angznorth > 337.5 || angznorth < 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule()); //c
@@ -2531,11 +2557,11 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
 			}
-			}
+		}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
-		} break;
+	} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26) || defined(AC_27)
@@ -2568,7 +2594,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	}
 	return string;
-	}
+}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (rhs.val.type) {
@@ -2798,8 +2824,8 @@ void UnhideUnlockAllLayer(void) {
 					if (err != NoError) msg_rep("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
 				}
 			}
+		}
 	}
-}
 	return;
 }
 
@@ -3138,7 +3164,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 			msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 			return;
 		}
-}
+	}
 
 	// TODO Оптимизировать, разнести по функциям
 	bool flagFind = false;
@@ -3172,7 +3198,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 			}
 			if (actualParam.typeID == APIParT_Boolean) {
 				chgParam.realValue = paramfrom.boolValue;
-		}
+			}
 #ifdef AC_27
 			err = ACAPI_LibraryPart_ChangeAParameter(&chgParam);
 #else
@@ -3183,7 +3209,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 				return;
 			}
 		}
-			}
+	}
 #ifdef AC_27
 	err = ACAPI_LibraryPart_GetActParameters(&apiParams);
 #else
@@ -3207,7 +3233,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	err = ACAPI_Element_ChangeMemo(elemGuidt, APIMemoMask_AddPars, &elemMemo);
 	if (err != NoError) msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
 	ACAPI_DisposeAddParHdl(&apiParams.params);
-	}
+}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -3441,7 +3467,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			ParamHelpers::ConvertByFormatString(param);
 		}
 	}
-	}
+}
 
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
@@ -4382,12 +4408,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 #endif
 				param_real = param_int / 1.0;
 				pvalue.n_zero = 0;
-		}
+			}
 			else {
 				return false;
 			}
-}
-}
+		}
+	}
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
 	pvalue.intValue = param_int;
@@ -5059,19 +5085,19 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 									existsmaterial.Add(constrinxL, true);
 								}
 								hasData = true;
+							}
 						}
 					}
 				}
 			}
-		}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
 		}
 		break;
-	}
+		}
 		++profileDescriptionIt1;
-}
+	}
 	if (hasData) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 			short pen = paramlayers.Get(*cIt->key).val.intValue;
@@ -5094,7 +5120,7 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 		ParamHelpers::CompareParamDictValue(paramlayers, params);
 	}
 	return hasData;
-		}
+}
 #endif
 
 // --------------------------------------------------------------------
