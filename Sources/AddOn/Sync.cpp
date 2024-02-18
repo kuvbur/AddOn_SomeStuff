@@ -7,13 +7,6 @@
 #include	"ResetProperty.hpp"
 #include	"Dimensions.hpp"
 
-#define SYNC_NO 0
-#define SYNC_FROM 1
-#define SYNC_TO 2
-#define SYNC_TO_SUB 3
-#define SYNC_FROM_SUB 4
-#define SYNC_FROM_GUID 5
-
 Int32 nLib = 0;
 
 // -----------------------------------------------------------------------------
@@ -209,38 +202,6 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 			}
 		}
 	}
-}
-
-void SetSyncGUID() {
-
-	//API_Elem_Head	tElemHead;
-	//BNZeroMemory(&tElemHead, sizeof(API_Elem_Head));
-	//GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, false);
-	//if (guidArray.IsEmpty()) return;
-	//if (!GetAnElem("Click a root element", API_ZombieElemID, nullptr, &tElemHead.typeID, &tElemHead.guid)) {
-	//	return;
-	//}
-	//API_Guid root_guid = tElemHead.guid;
-}
-
-void ShowSyncGUID() {
-
-	//ACAPI_Interface(APIIo_HighlightElementsID);
-	//GS::Array<API_Guid> meshList;
-	//ACAPI_Element_GetElemList(API_ObjectID, &meshList);
-	//if (meshList.GetSize() > 0) {
-	//	GS::HashTable<API_Guid, API_RGBAColor>  hlElems;
-	//	API_RGBAColor   hlColor = { 0.0, 0.5, 0.75, 0.5 };
-	//	for (auto it = meshList.Enumerate(); it != nullptr; ++it) {
-	//		hlElems.Add(*it, hlColor);
-	//		hlColor.f_red += 0.1;
-	//		if (hlColor.f_red > 1.0)
-	//			hlColor.f_red = 0.0;
-	//	}
-
-	//	bool wireframe3D = true;
-	//	ACAPI_Interface(APIIo_HighlightElementsID, &hlElems, &wireframe3D);
-	//}
 }
 
 // -----------------------------------------------------------------------------
@@ -843,8 +804,6 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	}
 	if (synctypefind == false) {
 		if (rulestring_one.Contains("Material:") && rulestring_one.Contains('"')) {
-
-			//TODO Проверить на файле из видео обработку материалов
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Material:", "");
 			rulestring_one.ReplaceAll("{Layers;", "{Layers,20;");
@@ -947,15 +906,140 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
 	param.name = paramName;
 	if (nparam > 1) {
-		for (UInt32 j = 1; j < nparam; j++) {
-			GS::UniString ignoreval;
-			if (params[j].Contains('"')) {
-				ignoreval = params[j].GetSubstring('"', '"', 0);
+
+		// Обработка данных о размерах массива и типе чтения
+		UInt32 start_ignore = 1;
+		GS::UniString arrtype = params[1].ToLowerCase();
+		bool hasArray = false;
+		if (!hasArray && arrtype.Contains("uniq")) {
+			arrtype.ReplaceAll("uniq", "");
+			param.val.array_format_out = ARRAY_UNIC;
+			hasArray = true;
+		}
+		if (!hasArray && arrtype.Contains("sum")) {
+			arrtype.ReplaceAll("sum", "");
+			param.val.array_format_out = ARRAY_SUM;
+			hasArray = true;
+		}
+		if (!hasArray && arrtype.Contains("min")) {
+			arrtype.ReplaceAll("min", "");
+			param.val.array_format_out = ARRAY_MIN;
+			hasArray = true;
+		}
+		if (!hasArray && arrtype.Contains("max")) {
+			arrtype.ReplaceAll("max", "");
+			param.val.array_format_out = ARRAY_MAX;
+			hasArray = true;
+		}
+		if (hasArray) {
+			int array_row_start = 0;
+			int array_row_end = 0;
+			int array_column_start = 0;
+			int array_column_end = 0;
+			GS::UniString rawName_row_start = "";// Имя параметра со значением начала диапазона чтения строк
+			GS::UniString rawName_row_end = "";	 // Имя параметра со значением конца диапазона чтения строк
+			GS::UniString rawName_col_start = "";// Имя параметра со значением начала диапазона чтения столбцов
+			GS::UniString rawName_col_end = "";	 // Имя параметра со значением конца диапазона чтения столбцов
+			double p;
+			if (params[1].Contains("(")) {
+				GS::Array<GS::UniString> sr;
+				UInt32 nsr = StringSplt(arrtype, ")", sr);
+				if (nsr > 0) {
+					GS::UniString sr1 = sr.Get(0);
+					sr1.Trim('(');
+					if (sr1.Contains(",")) {
+						GS::Array<GS::UniString> dim;
+						UInt32 ndim = StringSplt(sr1, ",", dim);
+						if (ndim > 0) {
+							GS::UniString dim0 = dim.Get(0);
+							if (UniStringToDouble(dim0, p)) { array_row_start = (int)p;
+							}
+							else {
+								rawName_row_start = "{@gdl:"+dim0+"}";
+							}
+						}
+						if (ndim > 1) {
+							GS::UniString dim1 = dim.Get(1);
+							if (UniStringToDouble(dim1, p)) {
+								array_row_end = (int)p;
+							} else {
+								rawName_row_end = "{@gdl:"+dim1+"}";
+							}
+						}
+					} else {
+						if (UniStringToDouble(sr1, p)) {
+							array_row_start = (int)p;
+							array_row_end = (int)p;
+						} else {
+							rawName_row_start = "{@gdl:"+sr1+"}";
+							rawName_row_end = rawName_col_start;
+						}
+					}
+				}
+				if (nsr > 1) {
+					GS::UniString sr1 = sr.Get(1);
+					sr1.Trim('(');
+					if (sr1.Contains(",")) {
+						GS::Array<GS::UniString> dim;
+						UInt32 ndim = StringSplt(sr1, ",", dim);
+						if (ndim > 0) {
+							GS::UniString dim0 = dim.Get(0);
+							if (UniStringToDouble(dim0, p)) {
+								array_column_start = (int)p;
+							} else {
+								rawName_col_start = "{@gdl:"+dim0+"}";
+							}
+						}
+						if (ndim > 1) {
+							GS::UniString dim1 = dim.Get(1);
+							if (UniStringToDouble(dim1, p)) {
+								array_column_end = (int)p;
+							} else {
+								rawName_col_end = "{@gdl:"+dim1+"}";
+							}
+						}
+					} else {
+						if (UniStringToDouble(sr1, p)) {
+							array_column_start = (int)p;
+							array_column_end = (int)p;
+						} else {
+							rawName_col_start = "{@gdl:"+sr1+"}";
+							rawName_col_end = rawName_col_start;
+						}
+					}
+				}
 			}
-			else {
-				ignoreval = params[j];
+			if (array_row_start < 0) array_row_start = 0;
+			if (array_row_end < 0) array_row_end = 0;
+			if (array_column_start < 0) array_column_start = 0;
+			if (array_column_end < 0) array_column_end = 0;
+			param.val.array_row_start = array_row_start;
+			param.val.array_row_end = array_row_end;
+			param.val.array_column_start = array_column_start;
+			param.val.array_column_end = array_column_end;
+			param.fromGDLArray = true;
+
+			param.rawName_row_start = rawName_row_start;
+			param.rawName_row_end = rawName_row_end;
+			param.rawName_col_start = rawName_col_start;
+			param.rawName_col_end = rawName_col_end;
+			if (!rawName_row_start.IsEmpty() || !rawName_row_end.IsEmpty() || !rawName_col_start.IsEmpty() || !rawName_col_end.IsEmpty()) param.needPreRead = true;
+			param.rawName = paramNamePrefix + paramName.ToLowerCase() + GS::UniString::Printf("@arr_%d_%d_%d_%d_%d", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out)+ rawName_row_start+"_" + rawName_row_end+"_" + rawName_col_start+"_" + rawName_col_end + "}";
+			start_ignore = 2;
+		}
+
+		// Обработка игнорируемых значений
+		if (nparam > start_ignore) {
+			for (UInt32 j = start_ignore; j < nparam; j++) {
+				GS::UniString ignoreval;
+				if (params[j].Contains('"')) {
+					ignoreval = params[j].GetSubstring('"', '"', 0);
+				}
+				else {
+					ignoreval = params[j];
+				}
+				ignorevals.Push(ignoreval);
 			}
-			ignorevals.Push(ignoreval);
 		}
 	}
 	return true;
