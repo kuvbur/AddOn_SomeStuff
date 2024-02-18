@@ -1957,6 +1957,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	double ex = 0; double ey = 0;
 	double tolerance_coord = 0.01;
 	bool hasSymbpos = false; bool hasLine = false;
+	bool isFliped = false;
 
 	GS::UniString globnorthkey = "{@glob:glob_north_dir}";
 	API_ElemTypeID eltype;
@@ -1983,6 +1984,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 			sy = owner.wall.begC.y;
 			ex = owner.wall.endC.x;
 			ey = owner.wall.endC.y;
+			isFliped = owner.wall.flipped;
 			hasLine = true;
 		}
 	}
@@ -2031,6 +2033,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		sy = element.wall.begC.y;
 		ex = element.wall.endC.x;
 		ey = element.wall.endC.y;
+		isFliped = element.wall.flipped;
 		hasLine = true;
 		break;
 	case API_BeamID:
@@ -2038,6 +2041,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		sy = element.beam.begC.y;
 		ex = element.beam.endC.x;
 		ey = element.beam.endC.y;
+		isFliped = element.beam.isFlipped;
 		hasLine = true;
 		break;
 	default:
@@ -2080,6 +2084,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		if (dx == 0 && dy < 0) {
 			angz = 0;
 		}
+		if (isFliped) angz += PI;
 		double k = 100000.0;
 		sx = round(sx * k) / k;
 		sy = round(sy * k) / k;
@@ -2096,6 +2101,8 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		double symb_pos_ex_correct = abs(abs(ex * 1000.0) - floor(abs(ex * 1000.0)));
 		double symb_pos_ey_correct = abs(abs(ey * 1000.0) - floor(abs(ey * 1000.0)));
 		double symb_pos_correct = (symb_pos_sx_correct < tolerance_coord&& symb_pos_sy_correct < tolerance_coord&& symb_pos_ex_correct < tolerance_coord&& symb_pos_ey_correct < tolerance_coord);
+		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", symb_pos_sx_correct < tolerance_coord);
+		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", symb_pos_sy_correct < tolerance_coord);
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", symb_pos_sx_correct < tolerance_coord);
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", symb_pos_sy_correct < tolerance_coord);
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", symb_pos_ex_correct < tolerance_coord);
@@ -2116,16 +2123,18 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	}
 	if (params.ContainsKey(globnorthkey)) {
 		double north = params.Get(globnorthkey).val.doubleValue;
-		double angznorth = round((north - angz) * k) / k;
+		double angznorth = round((angz-north+90) * k) / k;
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
-
-		// TODO Добавить вывод буквенной ориентации по отношению к северу
-		//GS::UniString angznorthtxt = "";
-		//if (is_equal(angznorth, 0)) angznorthtxt = u8"З";
-		//if (is_equal(angznorth, 45)) angznorthtxt = u8"СЗ";
-		//if (is_equal(angznorth, 90)) angznorthtxt = u8"С";
-		//if (is_equal(angznorth, 90)) angznorthtxt = u8"С";
-		//ParamHelpers::AddVal(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
+		GS::UniString angznorthtxt = "";
+		if (is_equal(angznorth,0)) angznorthtxt = u8"С";
+		if (is_equal(angznorth,315)) angznorthtxt = u8"СВ";
+		if (is_equal(angznorth,270)) angznorthtxt = u8"В";
+		if (is_equal(angznorth,225)) angznorthtxt = u8"ЮВ";
+		if (is_equal(angznorth,180)) angznorthtxt = u8"Ю";
+		if (is_equal(angznorth,135)) angznorthtxt = u8"ЮЗ";
+		if (is_equal(angznorth,90)) angznorthtxt = u8"З";
+		if (is_equal(angznorth,45)) angznorthtxt = u8"СЗ";
+		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
 	}
 	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 10000;
 	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
@@ -2483,7 +2492,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	if (property.isDefault && !property.isEvaluated) {
 		value = &property.definition.defaultValue.basicValue;
-	}
+}
 	else {
 		value = &property.value;
 	}
@@ -2521,8 +2530,8 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 			if (possibleEnumValues[i].keyVariant.guidValue == guidValue) {
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
-			}
 		}
+	}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
@@ -2550,16 +2559,16 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 			if (i != value->multipleEnumVariant.variants.GetSize() - 1) {
 				string += "; ";
 			}
-		}
+				}
 #endif
-	} break;
+			} break;
 	default:
 	{
 		break;
 	}
-	}
+		}
 	return string;
-}
+	}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (rhs.val.type) {
@@ -2790,7 +2799,7 @@ void UnhideUnlockAllLayer(void) {
 				}
 			}
 		}
-	}
+}
 	return;
 }
 
@@ -2857,9 +2866,19 @@ bool ParamHelpers::ConvertToProperty(const ParamValue & pvalue, API_Property & p
 		}
 		break;
 	case API_PropertyRealValueType:
-		if (!is_equal(property.value.singleVariant.variant.doubleValue, pvalue.val.doubleValue)) {
-			property.value.singleVariant.variant.doubleValue = pvalue.val.doubleValue;
-			flag_rec = true;
+
+		// Конвертация угла из радиан в градусы
+		if (property.definition.measureType == API_PropertyAngleMeasureType) {
+			if (!is_equal(pvalue.val.doubleValue * 180 / PI, property.value.singleVariant.variant.doubleValue)) {
+				property.value.singleVariant.variant.doubleValue = pvalue.val.doubleValue * PI / 180;
+				flag_rec = true;
+			}
+		}
+		else {
+			if (!is_equal(property.value.singleVariant.variant.doubleValue, pvalue.val.doubleValue)) {
+				property.value.singleVariant.variant.doubleValue = pvalue.val.doubleValue;
+				flag_rec = true;
+			}
 		}
 		break;
 	case API_PropertyBooleanValueType:
@@ -3031,7 +3050,7 @@ void ParamHelpers::InfoWrite(ParamDictElement & paramToWrite) {
 		err = ACAPI_Goodies(APIAny_SetAnAutoTextID, &dbKey, &value);
 #endif
 		if (err != NoError) msg_rep("InfoWrite", "APIAny_SetAnAutoTextID", err, APINULLGuid);
-	}
+}
 	msg_rep("InfoWrite", "write", NoError, APINULLGuid);
 }
 
@@ -3079,7 +3098,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	if (err != NoError) {
 		msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_Get", err, elem_head.guid);
 		return;
-	}
+}
 #if defined AC_26 || defined AC_27
 	eltype = elem_head.type.typeID;
 #else
@@ -3163,8 +3182,8 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 				msg_rep("ParamHelpers::WriteGDLValues", "APIAny_ChangeAParameterID", err, elem_head.guid);
 				return;
 			}
+			}
 		}
-	}
 #ifdef AC_27
 	err = ACAPI_LibraryPart_GetActParameters(&apiParams);
 #else
@@ -3314,7 +3333,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 	if (err != NoError) {
 		msg_rep("ParamDictRead", "ACAPI_Element_GetHeader", err, elem_head.guid);
 		return;
-	}
+}
 	API_ElemTypeID eltype;
 #if defined AC_26 || defined AC_27
 	eltype = elem_head.type.typeID;
@@ -3986,7 +4005,7 @@ bool ParamHelpers::GDLParamByDescription(const API_Element & element, ParamDictV
 	}
 	ACAPI_DisposeAddParHdl(&addPars);
 	return flagFind;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Поиск по имени GDL параметра
@@ -4365,7 +4384,6 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 			else {
 				return false;
 			}
-		}
 	}
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
@@ -4519,6 +4537,11 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 	case API_PropertyRealValueType:
 		pvalue.val.doubleValue = round(property.value.singleVariant.variant.doubleValue * 1000) / 1000;
 		if (property.value.singleVariant.variant.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
+
+		// Конвертация угла из радиан в градусы
+		if (property.definition.measureType == API_PropertyAngleMeasureType) {
+			pvalue.val.doubleValue = round((pvalue.val.doubleValue * 180 * 1000 / PI) / 1000);
+		}
 		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 		if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
 		if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
@@ -5034,18 +5057,18 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 								}
 								hasData = true;
 							}
-						}
 					}
 				}
 			}
+		}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
 		}
 		break;
-		}
-		++profileDescriptionIt1;
 	}
+		++profileDescriptionIt1;
+}
 	if (hasData) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 			short pen = paramlayers.Get(*cIt->key).val.intValue;
