@@ -66,6 +66,15 @@ static const Int32 MeterStringID = 17;
 static const Int32 CMeterStringID = 18;
 static const Int32 DMeterStringID = 19;
 
+static const Int32 N_StringID = 20;
+static const Int32 NE_StringID = 21;
+static const Int32 E_StringID = 22;
+static const Int32 SE_StringID = 23;
+static const Int32 S_StringID = 24;
+static const Int32 SW_StringID = 25;
+static const Int32 W_StringID = 26;
+static const Int32 NW_StringID = 27;
+
 static const GSCharCode GChCode = CC_Cyrillic;
 
 typedef struct

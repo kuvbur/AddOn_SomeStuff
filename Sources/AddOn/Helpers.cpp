@@ -2063,28 +2063,22 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", symb_pos_y_correct < tolerance_coord);
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", symb_pos_correct);
 	}
+	double tolerance_ang = 0.0000001;
 	if (hasLine) {
-		dx = ex - sx;
-		dy = ey - sy;
-		if (dx > 0 && dy >= 0) {
-			angz = atan(dy / dx);
+		if (isFliped) {
+			dx = ex - sx;
+			dy = ey - sy;
 		}
-		if (dx > 0 && dy < 0) {
-			angz = atan(dy / dx) + 2 * PI;
+		else {
+			dx = sx - ex;
+			dy = sy - ey;
 		}
-		if (dx < 0) {
-			angz = atan(dy / dx) + PI;
+		if (is_equal(dx, 0.0) && is_equal(dy, 0.0)) {
+			angz = 0.0;
 		}
-		if (dx == 0 && dy > 0) {
-			angz = PI / 2;
+		else {
+			angz = atan2(dy, dx) + PI;
 		}
-		if (dx == 0 && dy < 0) {
-			angz = 3 * PI / 2;
-		}
-		if (dx == 0 && dy < 0) {
-			angz = 0;
-		}
-		if (isFliped) angz += PI;
 		double k = 100000.0;
 		sx = round(sx * k) / k;
 		sy = round(sy * k) / k;
@@ -2112,8 +2106,6 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		double l_correct = abs(abs(l * 200.0) - floor(abs(l * 200.0)));
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "l_correct", l_correct);
 	}
-
-	// TODO Вынести первод из радиан в градусы в функцию
 	double k = 100000.0;
 	if (abs(angz) > 0.0000001) {
 		angz = fmod(round((angz * 180.0 / PI) * k) / k, 360.0);
@@ -2123,17 +2115,25 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	}
 	if (params.ContainsKey(globnorthkey)) {
 		double north = params.Get(globnorthkey).val.doubleValue;
-		double angznorth = round((angz - north + 90) * k) / k;
+		double angznorth = round((angz - north + 90.0) * k) / k;
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
 		GS::UniString angznorthtxt = "";
-		if (is_equal(angznorth, 0)) angznorthtxt = u8"С";
-		if (is_equal(angznorth, 315)) angznorthtxt = u8"СВ";
-		if (is_equal(angznorth, 270)) angznorthtxt = u8"В";
-		if (is_equal(angznorth, 225)) angznorthtxt = u8"ЮВ";
-		if (is_equal(angznorth, 180)) angznorthtxt = u8"Ю";
-		if (is_equal(angznorth, 135)) angznorthtxt = u8"ЮЗ";
-		if (is_equal(angznorth, 90)) angznorthtxt = u8"З";
-		if (is_equal(angznorth, 45)) angznorthtxt = u8"СЗ";
+		if (angznorth > 337.5 || angznorth < 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule()); //c
+		if (angznorth > 22.5 && angznorth < 67.5) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule()); //"СЗ";
+		if (angznorth > 67.5 && angznorth < 112.5) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule()); //"З";
+		if (angznorth > 112.5 && angznorth < 157.5) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule()); //"ЮЗ"
+		if (angznorth > 157.5 && angznorth < 202.5) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule()); //"Ю"
+		if (angznorth > 202.5 && angznorth < 247.5) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule()); //"ЮВ"
+		if (angznorth > 247.5 && angznorth < 292.5) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule()); //"В"
+		if (angznorth > 292.5 && angznorth < 337.5) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule()); //"СВ"
+		if (is_equal(angznorth, 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule()); //C
+		if (is_equal(angznorth, 67.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule()); //"СЗ";
+		if (is_equal(angznorth, 112.5)) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule()); //"З";
+		if (is_equal(angznorth, 157.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule()); //"ЮЗ"
+		if (is_equal(angznorth, 202.5)) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule()); //"Ю"
+		if (is_equal(angznorth, 247.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule()); //"ЮВ"
+		if (is_equal(angznorth, 292.5)) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule()); //"В"
+		if (is_equal(angznorth, 337.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule()); //"СВ"
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
 	}
 	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 10000;
@@ -2531,11 +2531,11 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 				string += ToString(possibleEnumValues[i].displayVariant, stringformat);
 				break;
 			}
-		}
+			}
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
-	} break;
+		} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26) || defined(AC_27)
@@ -2568,7 +2568,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	}
 	return string;
-}
+	}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (rhs.val.type) {
@@ -2798,8 +2798,8 @@ void UnhideUnlockAllLayer(void) {
 					if (err != NoError) msg_rep("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
 				}
 			}
-		}
 	}
+}
 	return;
 }
 
@@ -3138,7 +3138,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 			msg_rep("ParamHelpers::WriteGDLValues", "APIAny_CloseParametersID", err, elem_head.guid);
 			return;
 		}
-	}
+}
 
 	// TODO Оптимизировать, разнести по функциям
 	bool flagFind = false;
@@ -3172,7 +3172,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 			}
 			if (actualParam.typeID == APIParT_Boolean) {
 				chgParam.realValue = paramfrom.boolValue;
-			}
+		}
 #ifdef AC_27
 			err = ACAPI_LibraryPart_ChangeAParameter(&chgParam);
 #else
@@ -3183,7 +3183,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 				return;
 			}
 		}
-	}
+			}
 #ifdef AC_27
 	err = ACAPI_LibraryPart_GetActParameters(&apiParams);
 #else
@@ -3207,7 +3207,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	err = ACAPI_Element_ChangeMemo(elemGuidt, APIMemoMask_AddPars, &elemMemo);
 	if (err != NoError) msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
 	ACAPI_DisposeAddParHdl(&apiParams.params);
-}
+	}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -3441,7 +3441,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 			ParamHelpers::ConvertByFormatString(param);
 		}
 	}
-}
+	}
 
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
@@ -4382,12 +4382,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 #endif
 				param_real = param_int / 1.0;
 				pvalue.n_zero = 0;
-			}
+		}
 			else {
 				return false;
 			}
-		}
-	}
+}
+}
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
 	pvalue.intValue = param_int;
@@ -5059,19 +5059,19 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 									existsmaterial.Add(constrinxL, true);
 								}
 								hasData = true;
-							}
 						}
 					}
 				}
 			}
+		}
 			else {
 				DBPrintf("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
 			}
 		}
 		break;
-		}
-		++profileDescriptionIt1;
 	}
+		++profileDescriptionIt1;
+}
 	if (hasData) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 			short pen = paramlayers.Get(*cIt->key).val.intValue;
@@ -5094,7 +5094,7 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 		ParamHelpers::CompareParamDictValue(paramlayers, params);
 	}
 	return hasData;
-}
+		}
 #endif
 
 // --------------------------------------------------------------------
