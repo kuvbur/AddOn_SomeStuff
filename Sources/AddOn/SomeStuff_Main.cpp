@@ -19,6 +19,7 @@
 #include	"ReNum.hpp"
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
+#include	"Revision.hpp"
 
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
@@ -237,6 +238,11 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 		case RunParam_CommandID:
 			RunParamSelected(syncSettings);
 			DimRoundAll(syncSettings);
+			break;
+		case Revision_CommandID:
+#ifdef AC_25
+			Do_GetLayoutCurrentRevisionChanges();
+#endif
 			break;
 		}
 		break;
