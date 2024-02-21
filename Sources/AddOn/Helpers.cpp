@@ -2141,25 +2141,51 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	}
 	if (params.ContainsKey(globnorthkey)) {
 		double north = params.Get(globnorthkey).val.doubleValue;
-		double angznorth = round(fmod(abs(angz - north + 90.0), 360.0) * k) / k;
+		double angznorth = fmod(angz - north + 90.0, 360.0);
+		if (abs(angznorth) < 0.0000001) {
+			angznorth = 0.0;
+		}
+		else {
+			if (angznorth < 0.0) angznorth = 360.0 + angznorth;
+			angznorth = round(angznorth * k) / k;
+		}
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
 		GS::UniString angznorthtxt = "";
-		if (angznorth > 337.5 || angznorth < 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule()); //c
-		if (angznorth > 22.5 && angznorth < 67.5) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule()); //"СЗ";
-		if (angznorth > 67.5 && angznorth < 112.5) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule()); //"З";
-		if (angznorth > 112.5 && angznorth < 157.5) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule()); //"ЮЗ"
-		if (angznorth > 157.5 && angznorth < 202.5) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule()); //"Ю"
-		if (angznorth > 202.5 && angznorth < 247.5) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule()); //"ЮВ"
-		if (angznorth > 247.5 && angznorth < 292.5) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule()); //"В"
-		if (angznorth > 292.5 && angznorth < 337.5) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule()); //"СВ"
-		if (is_equal(angznorth, 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule()); //C
-		if (is_equal(angznorth, 67.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule()); //"СЗ";
-		if (is_equal(angznorth, 112.5)) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule()); //"З";
-		if (is_equal(angznorth, 157.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule()); //"ЮЗ"
-		if (is_equal(angznorth, 202.5)) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule()); //"Ю"
-		if (is_equal(angznorth, 247.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule()); //"ЮВ"
-		if (is_equal(angznorth, 292.5)) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule()); //"В"
-		if (is_equal(angznorth, 337.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule()); //"СВ"
+		double n = 0.0;		//"С"
+		double nw = 45.0;	//"СЗ"
+		double w = 90.0;	//"З"
+		double sw = 135.0;	//"ЮЗ"
+		double s = 180.0;	//"Ю"
+		double se = 225.0;	//"ЮВ"
+		double e = 270.0;	//"В";
+		double ne = 315.0;	//"СB";
+		double nn = 360.0;
+
+		//if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
+		//if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
+		//if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
+		//if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
+		//if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
+		//if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
+		//if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
+		//if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
+
+		if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, n + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, ne + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, e + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, se + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, s + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, sw + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, w + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, nn - 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule());
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
 	}
 	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 10000;
