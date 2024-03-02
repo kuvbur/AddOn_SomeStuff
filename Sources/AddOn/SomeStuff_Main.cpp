@@ -11,6 +11,9 @@
 #ifdef AC_27
 #include	"APICommon27.h"
 #endif // AC_27
+#ifdef PK_1
+#include	"Rule_PK1.hpp"
+#endif // AC_27
 #include	"DGModule.hpp"
 #include	"UniString.hpp"
 #include	"APIdefs_Properties.h"
@@ -27,6 +30,10 @@
 static GSErrCode __ACENV_CALL	ReservationChangeHandler(const GS::HashTable<API_Guid, short>& reserved,
 	const GS::HashSet<API_Guid>& released,
 	const GS::HashSet<API_Guid>& deleted) {
+#ifdef PK_1
+	ReservationCHandler(reserved, released, deleted);
+#endif
+
 	(void)deleted;
 	(void)released;
 	DBPrintf("== SMSTF == ReservationChangeHandler\n");
@@ -102,6 +109,9 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	}
 	if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
 	if (elemType->elemHead.hotlinkGuid != APINULLGuid) return false;
+#ifdef PK_1
+	ElementEventHandler(elemType, actTranPars);
+#endif
 
 	// Смотрим - что поменялось
 	DBPrintf("== SMSTF == ElementEventHandlerProc start\n");
