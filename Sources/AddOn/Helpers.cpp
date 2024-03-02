@@ -2548,7 +2548,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	else {
 		value = &property.value;
-	}
+}
 #else
 	if (property.status == API_Property_NotAvailable) {
 		return string;
@@ -2588,7 +2588,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 #else // AC_25
 		string += ToString(value->singleEnumVariant.displayVariant, stringformat);
 #endif
-	} break;
+		} break;
 	case API_PropertyMultipleChoiceEnumerationCollectionType:
 	{
 #if defined(AC_25) || defined(AC_26) || defined(AC_27)
@@ -2621,7 +2621,7 @@ GS::UniString PropertyHelpers::ToString(const API_Property & property, const GS:
 	}
 	}
 	return string;
-}
+	}
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs) {
 	switch (rhs.val.type) {
@@ -2766,7 +2766,7 @@ void DeleteElementUserData(const API_Guid & elemguid) {
 		err = ACAPI_Element_DeleteUserData(&tElemHead);
 #endif
 		msg_rep("Del user data", " ", NoError, APINULLGuid);
-	}
+}
 	BMKillHandle(&userData.dataHdl);
 	GS::Array<API_Guid> setGuids;
 	err = ACAPI_ElementSet_Identify(elemguid, &setGuids);
@@ -3235,7 +3235,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 				msg_rep("ParamHelpers::WriteGDLValues", "APIAny_ChangeAParameterID", err, elem_head.guid);
 				return;
 			}
-		}
+			}
 	}
 #ifdef AC_27
 	err = ACAPI_LibraryPart_GetActParameters(&apiParams);
@@ -3260,7 +3260,7 @@ void ParamHelpers::WriteGDLValues(const API_Guid & elemGuid, ParamDictValue & pa
 	err = ACAPI_Element_ChangeMemo(elemGuidt, APIMemoMask_AddPars, &elemMemo);
 	if (err != NoError) msg_rep("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
 	ACAPI_DisposeAddParHdl(&apiParams.params);
-}
+	}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -4184,7 +4184,12 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 			for (Int32 i = 0; i < nlayers; ++i) {
 				GS::UniString templatestring = param_composite.val.uniStringValue;
 				API_AttributeIndex constrinx = param_composite.composite[i].inx;
-
+				// Если для материала было указано уникальное наименование - заменим его
+				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
+				GS::UniString syncname = "{@property:sync_name" + attribsuffix;
+				if (params.ContainsKey(syncname)) {
+					if (params.Get(syncname).isValid && !params.Get(syncname).property.isDefault) templatestring = params.Get(syncname).val.uniStringValue;
+				}
 				// Если нужно заполнить толщину
 				GS::UniString layer_thickness = "{@material:layer thickness}";
 				if (params.ContainsKey(layer_thickness)) {
@@ -4199,13 +4204,6 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 					templatestring.ReplaceAll(layer_thickness, fillThickstring);
 				}
 				templatestring.ReplaceAll("{@material:n}", GS::UniString::Printf("%d", i + 1));
-
-				// Если для материала было указано уникальное наименование - заменим его
-				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
-				GS::UniString syncname = "{@property:sync_name" + attribsuffix;
-				if (params.ContainsKey(syncname)) {
-					if (params.Get(syncname).isValid && !params.Get(syncname).property.isDefault) templatestring = "{@property:sync_name}";
-				}
 				templatestring.ReplaceAll("}", attribsuffix);
 				if (ParamHelpers::ReplaceParamInExpression(params, templatestring)) {
 					flag = true;
@@ -4440,7 +4438,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 				return false;
 			}
 		}
-}
+	}
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
 	pvalue.intValue = param_int;
