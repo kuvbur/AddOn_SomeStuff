@@ -2271,6 +2271,7 @@ FormatStringDict GetFotmatStringForMeasureType() {
 // Получение имени внутренних свойств по русскому имени
 // -----------------------------------------------------------------------------
 GS::UniString GetPropertyENGName(GS::UniString & name) {
+	if (!name.Contains("@property:")) return name;
 	if (name.IsEqual("@property:id")) return "@property:BuildingMaterialProperties/Building Material ID";
 	if (name.IsEqual("@property:n")) return "@material:n";
 	GS::UniString nameproperty = "";
@@ -2291,7 +2292,7 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 
 	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, ThicknessID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@material:layer thickness";
-
+	if (name.IsEqual("@property:layer_thickness")) return "@material:layer thickness";
 	return name;
 }
 
@@ -4439,7 +4440,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 				return false;
 			}
 		}
-	}
+}
 	pvalue.boolValue = param_bool;
 	pvalue.doubleValue = param_real;
 	pvalue.intValue = param_int;
@@ -4662,7 +4663,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
