@@ -1968,7 +1968,7 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 #endif
 	if (err != NoError) msg_rep("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
 	return err;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Получение координат объекта
@@ -2320,6 +2320,7 @@ bool ParamHelpers::ParseParamName(GS::UniString & expression, ParamDictValue & p
 	GS::UniString part = "";
 	while (tempstring.Contains('{') && tempstring.Contains('}')) {
 		part = tempstring.GetSubstring('{', '}', 0);
+
 		// TODO Переписать всю эту хреноту - отделить парсинг от добавления в словарь
 		GS::UniString part_ = ParamHelpers::AddValueToParamDictValue(paramDict, part);
 		expression.ReplaceAll('{' + part + '}', part_);
@@ -3683,6 +3684,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 				for (UInt32 j = 0; j < definitions.GetSize(); j++) {
 					GS::UniString name = "";
 					GS::UniString rawName = "";
+
 					// TODO Когда в проекте есть два и более свойств с описанием Sync_name возникает ошибка
 					if (definitions[j].description.Contains("Sync_name")) {
 						rawName = "{@property:sync_name}";
@@ -5328,8 +5330,10 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 
 	if (params.ContainsKey("{@property:bmat}")) {
 		ParamValue pvalue_bmat;
-		pvalue_bmat.rawName = "{@material:bmat_inx" + CharENTER + attribsuffix + "}";
-		pvalue_bmat.name = "bmat_inx" + CharENTER + attribsuffix;
+		pvalue_bmat.rawName = "{@material:bmat_inx}";
+		pvalue_bmat.rawName.ReplaceAll("}", CharENTER + attribsuffix + "}");
+		pvalue_bmat.name = "bmat_inx";
+		pvalue_bmat.name = pvalue_bmat.name + CharENTER + attribsuffix;
 		ParamHelpers::ConvertToParamValue(pvalue_bmat, pvalue_bmat.name, (Int32)constrinx);
 		pvalue_bmat.fromMaterial = true;
 		ParamHelpers::AddParamValue2ParamDict(params.Get("{@property:bmat}").fromGuid, pvalue_bmat, params);
