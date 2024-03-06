@@ -1735,7 +1735,9 @@ GS::UniString ParamHelpers::AddValueToParamDictValue(ParamDictValue & params, co
 		params.Add(rawName, pvalue);
 		return rawName;
 	}
-	return "";
+
+	// TODO Провыерить - зачем сделано возвращение пустого значения при наличии имени в словаре?
+	return rawName;
 }
 
 bool ParamHelpers::needAdd(ParamDictValue & params, GS::UniString & rawName) {
@@ -1966,7 +1968,7 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 #endif
 	if (err != NoError) msg_rep("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
 	return err;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Получение координат объекта
@@ -2274,6 +2276,8 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 	if (!name.Contains("@property:")) return name;
 	if (name.IsEqual("@property:id")) return "@property:BuildingMaterialProperties/Building Material ID";
 	if (name.IsEqual("@property:n")) return "@material:n";
+	if (name.IsEqual("@property:layer_thickness")) return "@material:layer thickness";
+	if (name.IsEqual("@property:bmat_inx")) return "@material:bmat_inx";
 	GS::UniString nameproperty = "";
 	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialNameID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Name";
@@ -2292,7 +2296,6 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 
 	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, ThicknessID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@material:layer thickness";
-	if (name.IsEqual("@property:layer_thickness")) return "@material:layer thickness";
 	return name;
 }
 
@@ -2313,15 +2316,16 @@ bool ParamHelpers::ParseParamNameMaterial(GS::UniString & expression, ParamDictV
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ParseParamName(GS::UniString & expression, ParamDictValue & paramDict) {
 	GS::UniString tempstring = expression;
-	if (!tempstring.Contains('{')) return (!paramDict.IsEmpty());
+	if (!tempstring.Contains('{')) return false;
 	GS::UniString part = "";
 	while (tempstring.Contains('{') && tempstring.Contains('}')) {
 		part = tempstring.GetSubstring('{', '}', 0);
+		// TODO Переписать всю эту хреноту - отделить парсинг от добавления в словарь
 		GS::UniString part_ = ParamHelpers::AddValueToParamDictValue(paramDict, part);
 		expression.ReplaceAll('{' + part + '}', part_);
 		tempstring.ReplaceAll('{' + part + '}', "");
 	}
-	return (!paramDict.IsEmpty());
+	return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -3483,7 +3487,9 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				ParamHelpers::CompareParamDictValue(paramByType, params);
 			}
 			else {
-				if (!paramType.IsEqual("{@material:")) DBPrintf("== SMSTF ERR ==          Not found\n");
+				if (!paramType.IsEqual("{@material:")) {
+					DBPrintf("== SMSTF ERR ==          Not found\n");
+				}
 			}
 		}
 	}
@@ -3677,6 +3683,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 				for (UInt32 j = 0; j < definitions.GetSize(); j++) {
 					GS::UniString name = "";
 					GS::UniString rawName = "";
+					// TODO Когда в проекте есть два и более свойств с описанием Sync_name возникает ошибка
 					if (definitions[j].description.Contains("Sync_name")) {
 						rawName = "{@property:sync_name}";
 						name = "Sync_name";
@@ -5318,6 +5325,15 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 		msg_rep("materialString::GetAttributeValues", "ACAPI_Attribute_Get", error, APINULLGuid);
 		return false;
 	};
+
+	if (params.ContainsKey("{@property:bmat}")) {
+		ParamValue pvalue_bmat;
+		pvalue_bmat.rawName = "{@material:bmat_inx" + CharENTER + attribsuffix + "}";
+		pvalue_bmat.name = "bmat_inx" + CharENTER + attribsuffix;
+		ParamHelpers::ConvertToParamValue(pvalue_bmat, pvalue_bmat.name, (Int32)constrinx);
+		pvalue_bmat.fromMaterial = true;
+		ParamHelpers::AddParamValue2ParamDict(params.Get("{@property:bmat}").fromGuid, pvalue_bmat, params);
+	}
 
 	// Определения и свойста для элементов
 	bool flag_find = false;
