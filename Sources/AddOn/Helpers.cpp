@@ -5334,7 +5334,11 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 		pvalue_bmat.rawName.ReplaceAll("}", CharENTER + attribsuffix + "}");
 		pvalue_bmat.name = "bmat_inx";
 		pvalue_bmat.name = pvalue_bmat.name + CharENTER + attribsuffix;
+#ifdef AC_27
+		ParamHelpers::ConvertToParamValue(pvalue_bmat, pvalue_bmat.name, constrinx.ToInt32_Deprecated());
+#else
 		ParamHelpers::ConvertToParamValue(pvalue_bmat, pvalue_bmat.name, (Int32)constrinx);
+#endif
 		pvalue_bmat.fromMaterial = true;
 		ParamHelpers::AddParamValue2ParamDict(params.Get("{@property:bmat}").fromGuid, pvalue_bmat, params);
 	}
