@@ -184,7 +184,6 @@ GSErrCode DimAutoRound(const API_Guid& elemGuid, DimRules& dimrules, ParamDictVa
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return err;
 	}
-	if (propertyParams.IsEmpty()) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 	API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
 	for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
 		UInt32 flag_change = DIM_NOCHANGE;
@@ -280,8 +279,8 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	GS::UniString custom_txt = GS::UniString::Printf("%d", dimValmm_round);
 	bool flag_expression = false; //В описании найдена формула
 	if (!dimrule.expression.IsEmpty()) {
+		if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 		ParamDictValue pdictvalue = dimrule.paramDict;
-
 		// Добавляем в словарь округлённое значение
 		if (pdictvalue.ContainsKey("{@gdl:measuredvalue}")) {
 			ParamValue pvalue;
@@ -358,7 +357,6 @@ void DimRoundAll(const SyncSettings& syncSettings) {
 	if (dimrules.GetSize() == 0 || err != NoError) return;
 	bool flag_chanel = false;
 	ParamDictValue propertyParams;
-	ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 	if (!flag_chanel) flag_chanel = DimRoundByType(API_DimensionID, doneelemguid, dimrules, propertyParams);
 
 	//if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
@@ -375,7 +373,6 @@ bool DimRoundByType(const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, Di
 	err = ACAPI_Element_GetElemList(typeID, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
 	if (guidArray.GetSize() == 0 || err != NoError) return false;
 	if (err == NoError) {
-		if (propertyParams.IsEmpty()) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 		for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
 			if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
 				err = DimAutoRound(guidArray.Get(i), dimrules, propertyParams);

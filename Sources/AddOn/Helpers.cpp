@@ -3299,7 +3299,9 @@ bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
 		if (!params.IsEmpty()) {
 			for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs(); cIt != NULL; ++cIt) {
 				ParamValue& param = *cIt->value;
-				if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) return true;
+				if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) {
+					return true;
+				}
 			}
 		}
 	}
@@ -3328,6 +3330,24 @@ bool ParamHelpers::hasUnreadInfo(ParamDictElement & paramToRead, ParamDictValue 
 		}
 	}
 	return false;
+}
+
+bool ParamHelpers::hasGlob(ParamDictValue & propertyParams) {
+	if (propertyParams.IsEmpty()) return false;
+	if (!propertyParams.ContainsKey("has_Glob")) return false;
+	return true;
+}
+
+bool ParamHelpers::hasInfo(ParamDictValue & propertyParams) {
+	if (propertyParams.IsEmpty()) return false;
+	if (!propertyParams.ContainsKey("has_Info")) return false;
+	return true;
+}
+
+bool ParamHelpers::hasProperyDefinitoin(ParamDictValue & propertyParams) {
+	if (propertyParams.IsEmpty()) return false;
+	if (!propertyParams.ContainsKey("has_ProperyDefinitoin")) return false;
+	return true;
 }
 
 bool ParamHelpers::hasUnreadGlob(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
@@ -3360,13 +3380,9 @@ bool ParamHelpers::hasUnreadGlob(ParamDictElement & paramToRead, ParamDictValue 
 void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue & propertyParams) {
 	if (paramToRead.IsEmpty()) return;
 	DBPrintf("== SMSTF == ElementsRead start\n");
-	if (ParamHelpers::hasUnreadInfo(paramToRead, propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
-	if (ParamHelpers::hasUnreadGlob(paramToRead, propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
-
-	// Словарь со всеми возможными определениями свойств
-	if (propertyParams.IsEmpty()) {
-		if (ParamHelpers::hasUnreadProperyDefinitoin(paramToRead)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
-	}
+	if (ParamHelpers::hasUnreadInfo(paramToRead, propertyParams) && !ParamHelpers::hasInfo(propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
+	if (ParamHelpers::hasUnreadGlob(paramToRead, propertyParams) && !ParamHelpers::hasGlob(propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
+	if (ParamHelpers::hasUnreadProperyDefinitoin(paramToRead) && !ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 
 	// Выбираем по-элементно параметры для чтения
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -3506,7 +3522,7 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
 	API_AutotextType	type = APIAutoText_Custom;
-	DBPrintf("== SMSTF == GetAllInfoToParamDict\n");
+	DBPrintf("== SMSTF == GetAllInfoToParamDict start\n");
 	GSErrCode err = NoError;
 #ifdef AC_27
 	err = ACAPI_AutoText_GetAutoTexts(&autotexts, type);
@@ -3530,6 +3546,8 @@ void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 			propertyParams.Add(rawName, pvalue);
 		}
 	}
+	ParamHelpers::AddValueToParamDictValue(propertyParams, "has_Info");
+	DBPrintf("== SMSTF == GetAllInfoToParamDict end\n");
 }
 
 void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
@@ -3537,7 +3555,7 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 	GS::UniString rawName = "";
 	ParamValue pvalue;
 	API_PlaceInfo placeInfo = {};
-	DBPrintf("== SMSTF == GetAllGlobToParamDict\n");
+	DBPrintf("== SMSTF == GetAllGlobToParamDict start\n");
 	GSErrCode err = NoError;
 #ifdef AC_27
 	err = ACAPI_GeoLocation_GetPlaceSets(&placeInfo);
@@ -3572,15 +3590,17 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 	pvalue.name = name; pvalue.rawName = rawName;
 	ParamHelpers::ConvertToParamValue(pvalue, rawName, round((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
 	propertyParams.Add(rawName, pvalue);
+	ParamHelpers::AddValueToParamDictValue(propertyParams, "has_Glob");
+	DBPrintf("== SMSTF == GetAllGlobToParamDict end\n");
 }
 
 // --------------------------------------------------------------------
 // Заполнение свойств для элемента
 // --------------------------------------------------------------------
 void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, const API_Guid & elemGuid) {
-	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict\n");
+	DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict GUID start\n");
 	if (elemGuid == APINULLGuid) {
-		ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+		if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 	}
 	else {
 		GS::Array<API_PropertyDefinition> definitions;
@@ -3592,6 +3612,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 		if (definitions.IsEmpty()) return;
 		ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams, definitions);
 	}
+	DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict GUID end\n");
 }
 
 // --------------------------------------------------------------------
@@ -3599,7 +3620,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 // --------------------------------------------------------------------
 void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, GS::Array<API_PropertyDefinition>&definitions) {
 	if (definitions.IsEmpty()) return;
-	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict\n");
+	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict definition start\n");
 	UInt32 nparams = propertyParams.GetSize();
 	bool needAddNew = (nparams == 0);
 	for (UInt32 j = 0; j < definitions.GetSize(); j++) {
@@ -3615,11 +3636,13 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 				propertyParams.Get(pvalue.rawName) = pvalue;
 				nparams--;
 				if (nparams == 0) {
+					DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict definition return\n");
 					return;
 				}
 			}
 		}
 	}
+	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict definition end\n");
 }
 
 // --------------------------------------------------------------------
@@ -3665,7 +3688,7 @@ bool ParamHelpers::SubGuid_GetParamValue(const API_Guid & elemGuid, ParamDictVal
 // --------------------------------------------------------------------
 void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyParams) {
 	GS::Array<API_PropertyGroup> groups;
-	DBPrintf("== SMSTF == GetAllPropertyDefinitionToParamDict\n");
+	DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict start\n");
 	GSErrCode err = ACAPI_Property_GetPropertyGroups(groups);
 	if (err != NoError) {
 		msg_rep("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
@@ -3687,16 +3710,12 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 
 					// TODO Когда в проекте есть два и более свойств с описанием Sync_name возникает ошибка
 					if (definitions[j].description.Contains("Sync_name")) {
-						rawName = "{@property:sync_name}";
-						name = "Sync_name";
+						for (UInt32 inx = 0; inx < 20; inx++) {
+							rawName = "{@property:sync_name" + GS::UniString::Printf("%d", inx) + "}";
+							name = "sync_name" + GS::UniString::Printf("%d", inx);
+							if (!propertyParams.ContainsKey(rawName)) break;
+						}
 						definitions[j].name = name;
-					}
-					else {
-						name = groups[i].name + "/" + definitions[j].name;
-						rawName = "{@property:" + name.ToLowerCase() + "}";
-					}
-					bool changeExs = propertyParams.ContainsKey(rawName);
-					if (needAddNew && !changeExs) {
 						ParamValue pvalue;
 						pvalue.rawName = rawName;
 						pvalue.name = groups[i].name + "/" + definitions[j].name;
@@ -3704,20 +3723,35 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 						propertyParams.Add(pvalue.rawName, pvalue);
 					}
 					else {
-						ParamValue pvalue = propertyParams.Get(rawName);
-						pvalue.rawName = rawName;
-						pvalue.name = groups[i].name + "/" + definitions[j].name;
-						ParamHelpers::ConvertToParamValue(pvalue, definitions[j]);
-						propertyParams.Get(pvalue.rawName) = pvalue;
-						nparams--;
-						if (nparams == 0) {
-							return;
+						name = groups[i].name + "/" + definitions[j].name;
+						rawName = "{@property:" + name.ToLowerCase() + "}";
+						bool changeExs = propertyParams.ContainsKey(rawName);
+						if (needAddNew && !changeExs) {
+							ParamValue pvalue;
+							pvalue.rawName = rawName;
+							pvalue.name = groups[i].name + "/" + definitions[j].name;
+							ParamHelpers::ConvertToParamValue(pvalue, definitions[j]);
+							propertyParams.Add(pvalue.rawName, pvalue);
+						}
+						else {
+							ParamValue pvalue = propertyParams.Get(rawName);
+							pvalue.rawName = rawName;
+							pvalue.name = groups[i].name + "/" + definitions[j].name;
+							ParamHelpers::ConvertToParamValue(pvalue, definitions[j]);
+							propertyParams.Get(pvalue.rawName) = pvalue;
+							nparams--;
+							if (nparams == 0) {
+								DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict return\n");
+								return;
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+	ParamHelpers::AddValueToParamDictValue(propertyParams, "has_ProperyDefinitoin");
+	DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict end\n");
 }
 
 // --------------------------------------------------------------------
@@ -4196,9 +4230,14 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 
 				// Если для материала было указано уникальное наименование - заменим его
 				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
-				GS::UniString syncname = "{@property:sync_name" + attribsuffix;
-				if (params.ContainsKey(syncname)) {
-					if (params.Get(syncname).isValid && !params.Get(syncname).property.isDefault) templatestring = params.Get(syncname).val.uniStringValue;
+				for (UInt32 inx = 0; inx < 20; inx++) {
+					GS::UniString syncname = "{@property:sync_name" + GS::UniString::Printf("%d", inx) + attribsuffix;
+					if (params.ContainsKey(syncname)) {
+						if (params.Get(syncname).isValid && !params.Get(syncname).property.isDefault) {
+							templatestring = params.Get(syncname).val.uniStringValue;
+							break;
+						}
+					}
 				}
 
 				// Если нужно заполнить толщину
@@ -4672,7 +4711,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-}
+	}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -4692,9 +4731,11 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_PropertyDe
 			pvalue.fromAttribDefinition = true;
 		}
 	}
-	if (definition.description.Contains("Sync_name")) {
-		pvalue.rawName = "{@property:sync_name}";
-		pvalue.name = "Sync_name";
+	if (definition.description.Contains("ync_name")) {
+		if (!pvalue.rawName.Contains("{@property:sync_name")) {
+			pvalue.rawName = "{@property:sync_name0}";
+			pvalue.name = "Sync_name0";
+		}
 		pvalue.fromAttribDefinition = true;
 	}
 	pvalue.fromProperty = true;
@@ -5264,7 +5305,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 	default:
 		return false;
 		break;
-	}
+}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -5397,4 +5438,4 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 		return (ParamHelpers::AddProperty(params, properties) || flag_find);
 	}
 	return flag_find;
-}
+	}
