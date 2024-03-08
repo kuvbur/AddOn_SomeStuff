@@ -34,12 +34,6 @@
 #define ARRAY_MAX 3
 #define ARRAY_MIN 4
 
-static const GSResID AddOnInfoID = ID_ADDON_INFO;
-static const short AddOnMenuID = ID_ADDON_MENU;
-static const short AddOnPromtID = ID_ADDON_PROMT;
-
-static const GSResID AddOnStringsID = ID_ADDON_STRINGS;
-
 static const Int32 AddOnNameID = 1;
 static const Int32 AddOnDescriptionID = 2;
 
@@ -184,6 +178,9 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
+
+Int32 isEng();
+
 bool ElemHeadToNeig(API_Neig* neig, const API_Elem_Head* elemHead);
 #ifdef AC_26
 API_ElemType NeigToElemID(API_NeigID neigID);
