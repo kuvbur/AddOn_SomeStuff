@@ -75,7 +75,6 @@ static const Int32 SE_StringID = 25;
 static const Int32 E_StringID = 26;
 static const Int32 NE_StringID = 27;
 
-
 static const GSCharCode GChCode = CC_Cyrillic;
 
 typedef struct
@@ -152,6 +151,9 @@ typedef struct
 	API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
 	API_Property property = {};				// Само свойство, для упрощения чтения/записи
 	GS::Array<ParamValueComposite> composite = {};
+	API_ModelElemStructureType composite_type = API_BasicStructure;
+	API_ElemTypeID eltype = API_ZombieElemID;
+	short composite_pen = 0;
 	bool fromGDLparam = false;			 // Найден в гдл параметрах
 	bool fromGDLdescription = false;	 // Найден по описанию в гдл параметрах
 	bool fromProperty = false;			 // Найден в свойствах

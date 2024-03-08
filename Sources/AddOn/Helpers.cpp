@@ -4223,10 +4223,18 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 		GS::UniString rawName = *cIt->key;
 		GS::UniString outstring = "";
 		if (param_composite.val.uniStringValue.Contains("{")) {
+			bool inverse = rawName.Contains("{@material:layers_inv");
+			if (rawName.Contains("{@material:layers_auto")) {
+				if (param_composite.composite_type != API_ProfileStructure) {
+					if (param_composite.eltype == API_WallID) inverse = true;
+				}
+			}
 			Int32 nlayers = param_composite.composite.GetSize();
 			for (Int32 i = 0; i < nlayers; ++i) {
 				GS::UniString templatestring = param_composite.val.uniStringValue;
-				API_AttributeIndex constrinx = param_composite.composite[i].inx;
+				Int32 indx = i;
+				if (inverse) indx = nlayers - i - 1;
+				API_AttributeIndex constrinx = param_composite.composite[indx].inx;
 
 				// Если для материала было указано уникальное наименование - заменим его
 				GS::UniString attribsuffix = CharENTER + GS::UniString::Printf("%d", constrinx) + "}";
@@ -4243,7 +4251,7 @@ bool ParamHelpers::ReadMaterial(const API_Element & element, ParamDictValue & pa
 				// Если нужно заполнить толщину
 				GS::UniString layer_thickness = "{@material:layer thickness}";
 				if (params.ContainsKey(layer_thickness)) {
-					double fillThick = param_composite.composite[i].fillThick;
+					double fillThick = param_composite.composite[indx].fillThick;
 					GS::UniString formatsting = params.Get(layer_thickness).val.stringformat;
 					if (formatsting.IsEmpty()) {
 						formatsting = "1mm";
@@ -4711,7 +4719,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 	pvalue.definition = property.definition;
 	pvalue.property = property;
 	return true;
-	}
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -5012,20 +5020,14 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 
 	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
 		GS::UniString rawName = *cIt->key;
-		rawName.ReplaceAll(" ", "");
-		if (rawName.Contains(",")) {
-			GS::Array<GS::UniString> partstring;
-			UInt32 n = StringSplt(rawName, ",", partstring);
-			if (n > 0) {
-				short pen = std::atoi(partstring[1].ToCStr());
-				OrientedSegments s;
-				GS::Array<Sector> segments;
-				lines.Add(pen, s);
-				segment.Add(pen, segments);
-				ParamValue p;
-				param_composite.Add(pen, p);
-				paramlayers.Get(*cIt->key).val.intValue = pen;
-			}
+		short pen = paramlayers.Get(rawName).composite_pen;
+		if (pen > 0) {
+			OrientedSegments s;
+			GS::Array<Sector> segments;
+			lines.Add(pen, s);
+			segment.Add(pen, segments);
+			ParamValue p;
+			param_composite.Add(pen, p);
 		}
 	}
 	bool hasLine = !lines.IsEmpty();
@@ -5177,7 +5179,7 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 	}
 	if (hasData) {
 		for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs(); cIt != NULL; ++cIt) {
-			short pen = paramlayers.Get(*cIt->key).val.intValue;
+			short pen = paramlayers.Get(*cIt->key).composite_pen;
 			if (param_composite.ContainsKey(pen)) {
 
 				// Теперь нам надо отсортировать слои по параметру rfromstart
@@ -5205,7 +5207,7 @@ bool ParamHelpers::ComponentsProfileStructure(ProfileVectorImage & profileDescri
 // --------------------------------------------------------------------
 bool ParamHelpers::Components(const API_Element & element, ParamDictValue & params, ParamDictValue & paramsAdd) {
 	DBPrintf("== SMSTF ==          Components\n");
-	API_ModelElemStructureType	structtype = {};
+	API_ModelElemStructureType	structtype = API_BasicStructure;
 	API_AttributeIndex			constrinx = {};
 	double						fillThick = 0;
 
@@ -5305,7 +5307,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 	default:
 		return false;
 		break;
-}
+	}
 	ACAPI_DisposeElemMemoHdls(&memo);
 
 	// Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -5315,6 +5317,7 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 		ParamValue& param = *cIt->value;
 		if (param.fromMaterial) {
 			if (param.rawName.Contains("{@material:layers")) {
+				param.composite_type = structtype;
 				paramlayers.Add(param.rawName, param);
 			}
 		}
@@ -5325,6 +5328,9 @@ bool ParamHelpers::Components(const API_Element & element, ParamDictValue & para
 		ParamValue param_composite = {};
 		param_composite.fromGuid = element.header.guid;
 		param_composite.isValid = true;
+		param_composite.composite_pen = 20;
+		param_composite.composite_type = structtype;
+		param_composite.eltype = eltype;
 		paramlayers.Add("{@material:layers,20}", param_composite);
 	}
 
@@ -5438,4 +5444,4 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 		return (ParamHelpers::AddProperty(params, properties) || flag_find);
 	}
 	return flag_find;
-	}
+}
