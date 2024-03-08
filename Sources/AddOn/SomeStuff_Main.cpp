@@ -182,6 +182,26 @@ void MenuSetState(SyncSettings& syncSettings) {
 	MenuItemCheckAC(Menu_widoS, syncSettings.widoS);
 	MenuItemCheckAC(Menu_objS, syncSettings.objS);
 	MenuItemCheckAC(Menu_cwallS, syncSettings.cwallS);
+	if (isEng() > 0) {
+		for (UInt32 i = 0; i < 11; i++) {
+			SetPaletteMenuText(i);
+		}
+	}
+}
+
+void SetPaletteMenuText(short paletteItemInd) {
+	API_MenuItemRef     itemRef;
+	BNZeroMemory(&itemRef, sizeof(API_MenuItemRef));
+	GS::UniString itemStr;
+	itemStr = RSGetIndString(ID_ADDON_PROMT + isEng(), paletteItemInd+1, ACAPI_GetOwnResModule());
+	itemRef.menuResID = ID_ADDON_MENU;
+	itemRef.itemIndex = paletteItemInd;
+#ifdef AC_27
+	ACAPI_MenuItem_SetMenuItemText(&itemRef, nullptr, &itemStr);
+#else
+	ACAPI_Interface(APIIo_SetMenuItemTextID, &itemRef, nullptr, &itemStr);
+#endif
+	return;
 }
 
 static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
@@ -192,6 +212,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 #ifdef PK_1
 	syncSettings.syncMon = true;
 #endif // PK_1
+	const Int32 AddOnMenuID = ID_ADDON_MENU;
 	switch (menuParams->menuItemRef.menuResID) {
 	case AddOnMenuID:
 		switch (menuParams->menuItemRef.itemIndex) {
@@ -240,7 +261,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		}
 		break;
-	}
+}
 	(void)err;
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
@@ -256,8 +277,8 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 
 API_AddonType __ACDLL_CALL CheckEnvironment(API_EnvirParams* envir) {
 	DBPrintf("== SMSTF == CheckEnvironment\n");
-	RSGetIndString(&envir->addOnInfo.name, AddOnInfoID, AddOnNameID, ACAPI_GetOwnResModule());
-	RSGetIndString(&envir->addOnInfo.description, AddOnInfoID, AddOnDescriptionID, ACAPI_GetOwnResModule());
+	RSGetIndString(&envir->addOnInfo.name, ID_ADDON_INFO + isEng(), AddOnNameID, ACAPI_GetOwnResModule());
+	RSGetIndString(&envir->addOnInfo.description, ID_ADDON_INFO + isEng(), AddOnDescriptionID, ACAPI_GetOwnResModule());
 	ACAPI_KeepInMemory(true);
 	return APIAddon_Preload;
 }
@@ -266,9 +287,9 @@ GSErrCode __ACDLL_CALL RegisterInterface(void) {
 	DBPrintf("== SMSTF == RegisterInterface\n");
 	GSErrCode err = NoError;
 #ifdef AC_27
-	err = ACAPI_MenuItem_RegisterMenu(AddOnMenuID, AddOnPromtID, MenuCode_Tools, MenuFlag_Default);
+	err = ACAPI_MenuItem_RegisterMenu(ID_ADDON_MENU, ID_ADDON_PROMT + isEng(), MenuCode_Tools, MenuFlag_Default);
 #else
-	err = ACAPI_Register_Menu(AddOnMenuID, AddOnPromtID, MenuCode_Tools, MenuFlag_Default);
+	err = ACAPI_Register_Menu(ID_ADDON_MENU, ID_ADDON_PROMT + isEng(), MenuCode_Tools, MenuFlag_Default);
 #endif
 	return err;
 }
@@ -290,9 +311,9 @@ GSErrCode __ACENV_CALL Initialize(void) {
 #endif
 	ACAPI_KeepInMemory(true);
 #ifdef AC_27
-	return ACAPI_MenuItem_InstallMenuHandler(AddOnMenuID, MenuCommandHandler);
+	return ACAPI_MenuItem_InstallMenuHandler(ID_ADDON_MENU, MenuCommandHandler);
 #else
-	return ACAPI_Install_MenuHandler(AddOnMenuID, MenuCommandHandler);
+	return ACAPI_Install_MenuHandler(ID_ADDON_MENU, MenuCommandHandler);
 #endif
 }
 

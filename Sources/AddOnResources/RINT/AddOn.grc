@@ -6,8 +6,8 @@
 }
 
 'STR#' ID_ADDON_MENU "Strings for the Menu" {
-/* [ 1] */ "Синхронизация свойств и параметров GDL"
-/* [  1] */ "Отслеживать^E3^ES^EE^ED^EW^EL^32602"
+/* [ 1] */	"SomeStuff Addon (Sync of properties and parameters)"
+/* [  1] */		"Отслеживать^E3^ES^EE^ED^EW^EL^32602"
 /* [  2] */		"Синхронизировать все^E3^ES^EE^ED^EW^EL^T^32603"
 /* [  3] */		"Синхронизировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32604"
 /* [  4] */		"Обрабатывать стены/перекрытия^E3^ES^EE^ED^EW^EL^32605"
@@ -16,20 +16,22 @@
 /* [  7] */		"Обрабатывать элементы навесных стен^E3^ES^EE^ED^EW^EL^32612"
 /* [  8] */		"Перенумеровать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32608"
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
-/* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+/* [  10] */		"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 }
 
 
 'STR#' ID_ADDON_PROMT "Strings for the Menu" {
-/* [  ] */	"Синхронизация свойств и параметров GDL"
+/* [  ] */	"SomeStuff Addon (Sync of properties and parameters)"
 /* [  1] */		"Отслеживать"
 /* [  2] */		"Синхронизировать все"
 /* [  3] */		"Синхронизировать выделенные"
 /* [  4] */		"Обрабатывать стены/перекрытия"
 /* [  5] */		"Обрабатывать окна/двери"
 /* [  6] */		"Обрабатывать объекты/зоны"
+/* [  7] */		"Обрабатывать элементы навесных стен"
 /* [  8] */		"Перенумеровать выделенные"
-/* [  9] */		"Запустить скрипт параметров выделенных"
+/* [  9] */		"Просуммировать выделенные"
+/* [  10] */		"Запустить скрипт параметров выделенных"
 }
 
 
@@ -63,8 +65,74 @@
 /* [  25] */	"ЮВ"
 /* [  26] */	"В"
 /* [  27] */	"СВ"
+}
 
 
+'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
+/* [  1] */		"SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters v1.69 https://github.com/kuvbur/AddOn_SomeStuff"
+}
+
+'STR#' ID_ADDON_MENU_ENG "Strings for the Menu" {
+/* [ 1] */	"Sync of GDL properties and parameters"
+/* [  1] */		"Track^E3^ES^EE^ED^EW^EL^32602"
+/* [  2] */		"Sync all^E3^ES^EE^ED^EW^EL^T^32603"
+/* [  3] */		"Sync the selections^E3^ES^EE^ED^EW^EL^S^R^T^32604"
+/* [  4] */		"Processing walls/slabs^E3^ES^EE^ED^EW^EL^32605"
+/* [  5] */		"Processing windows/doors^E3^ES^EE^ED^EW^EL^32606"
+/* [  6] */		"Processing objects/zones^E3^ES^EE^ED^EW^EL^32607"
+/* [  7] */		"Processing curtain wall elements^E3^ES^EE^ED^EW^EL^32612"
+/* [  8] */		"Renumber the selections^E3^ES^EE^ED^EW^EL^S^R^T^32608"
+/* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
+/* [  10] */		"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+}
+
+
+'STR#' ID_ADDON_PROMT_ENG "Strings for the Menu" {
+/* [  ] */		"Sync of GDL properties and parameters"
+/* [  1] */		"Track"
+/* [  2] */		"Sync all"
+/* [  3] */		"Sync the selections"
+/* [  4] */		"Processing walls/slabs"
+/* [  5] */		"Processing windows/doors"
+/* [  6] */		"Processing objects/zones"
+/* [  7] */		"Processing curtain wall elements"
+/* [  8] */		"Renumber the selections"
+/* [  9] */		"Sum the selections"
+/* [  10] */		"Run the script for the parameters of the selections"
+}
+
+
+'STR#' ID_ADDON_STRINGS_ENG "Add-On Strings" {
+/* [  1] */		"Sync of properties and parameters"
+/* [  2] */		"Sync of properties and parameters"
+/* [  3] */		"Renumbering selected elements"
+/* [  4] */		"TRUE"
+/* [  5] */		"FALSE"
+/* [  6] */		"Elements are locked or not reserved"
+/* [  7] */		"Dimensions rounding and processing"
+/* [  8] */		"наименование"
+/* [  9] */		"описание"
+/* [  10] */	"плотность"
+/* [  11] */	"производитель"
+/* [  12] */	"толщина"
+/* [  13] */	"исключит"
+/* [  14] */	"добав"
+/* [  15] */	"пропус"
+/* [  16] */	"штриховка"
+
+/* [  17] */	"м"
+/* [  18] */	"д"
+/* [  19] */	"с"
+
+/* [  20] */	"С"
+/* [  21] */	"СЗ"
+/* [  22] */	"З"
+/* [  23] */	"ЮЗ"
+/* [  24] */	"Ю"
+/* [  25] */	"ЮВ"
+/* [  26] */	"В"
+/* [  27] */	"СВ"
 }
 
 'GICN' 32500 "Sync" {

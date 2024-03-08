@@ -103,7 +103,7 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncAll - read", time, NoError, APINULLGuid);
 	if (!paramToWrite.IsEmpty()) {
-		GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
+		GS::UniString undoString = RSGetIndString(ID_ADDON_STRINGS + isEng(), UndoSyncId, ACAPI_GetOwnResModule());
 		ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 			long time_start = clock();
 			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
@@ -254,7 +254,7 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncSelected - read", subtitle + intString + time, NoError, APINULLGuid);
 	if (!paramToWrite.IsEmpty()) {
-		GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoSyncId, ACAPI_GetOwnResModule());
+		GS::UniString undoString = RSGetIndString(ID_ADDON_STRINGS + isEng(), UndoSyncId, ACAPI_GetOwnResModule());
 		ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 			long time_start = clock();
 			GS::UniString title = GS::UniString::Printf("Writing data to %d elements : ", paramToWrite.GetSize()); short i = 1;
@@ -875,6 +875,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	}
 	if (synctypefind == false) return false;
 	param.eltype = elementType;
+
 	//Проверка допустимости правила для типа элемента
 	if (param.fromGDLparam) {
 		if (elementType == API_WallID ||

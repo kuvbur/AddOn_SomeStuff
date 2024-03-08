@@ -20,6 +20,19 @@
 #include	"ProfileVectorImageOperations.hpp"
 #include	"ProfileAdditionalInfo.hpp"
 
+Int32 isEng() {
+	GSErrCode err = NoError;
+	API_ServerApplicationInfo AppInfo;
+#ifdef AC_27
+	err = ACAPI_AddOnIdentification_Application(&AppInfo);
+#else
+	err = ACAPI_Environment(APIEnv_ApplicationID, &AppInfo);
+#endif // AC_27
+	if (err != NoError) return 0;
+	if (!AppInfo.language.IsEqual("RUS")) return 1000;
+	return 0;
+}
+
 #if defined AC_26 || defined AC_27
 
 API_ElemType	NeigToElemID(API_NeigID neigID)
@@ -982,7 +995,7 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, SyncSettings & syncSettings, bool addSubelement) {
 	GSErrCode            err;
 	API_SelectionInfo    selectionInfo;
-	GS::UniString errorString = RSGetIndString(AddOnStringsID, ErrorSelectID, ACAPI_GetOwnResModule());
+	GS::UniString errorString = RSGetIndString(ID_ADDON_STRINGS + isEng(), ErrorSelectID, ACAPI_GetOwnResModule());
 #ifdef AC_22
 	API_Neig** selNeigs;
 #else
@@ -2172,23 +2185,40 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		//if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
 		//if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
 
-		if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, n + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, N_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, ne + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NE_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, e + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, E_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, se + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SE_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, s + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, S_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, sw + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, SW_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, w + 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, W_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, nn - 22.5)) angznorthtxt = RSGetIndString(AddOnStringsID, NW_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
+		if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, n + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, ne + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, e + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, se + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, s + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, sw + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, w + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
+		if (is_equal(angznorth, nn - 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
 		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
+		if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
+		if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
+		if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
+		if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
+		if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
+		if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
+		if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
+		if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
+		if (is_equal(angznorth, n + 22.5)) angznorthtxt = "N";
+		if (is_equal(angznorth, ne + 22.5)) angznorthtxt = "NE";
+		if (is_equal(angznorth, e + 22.5)) angznorthtxt = "E";
+		if (is_equal(angznorth, se + 22.5)) angznorthtxt = "SE";
+		if (is_equal(angznorth, s + 22.5)) angznorthtxt = "S";
+		if (is_equal(angznorth, sw + 22.5)) angznorthtxt = "SW";
+		if (is_equal(angznorth, w + 22.5)) angznorthtxt = "W";
+		if (is_equal(angznorth, nn - 22.5)) angznorthtxt = "NW";
+		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxt);
 	}
 	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 10000;
 	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
@@ -2213,16 +2243,16 @@ GS::UniString GetFormatString(GS::UniString & paramName) {
 	if (!paramName.Contains(".")) return formatstring;
 	GS::Array<GS::UniString> partstring;
 	UInt32 n = StringSplt(paramName, ".", partstring);
-	GS::UniString meterString = RSGetIndString(AddOnStringsID, MeterStringID, ACAPI_GetOwnResModule());
+	GS::UniString meterString = RSGetIndString(ID_ADDON_STRINGS + isEng(), MeterStringID, ACAPI_GetOwnResModule());
 	if (n > 1) {
 		formatstring = partstring[n - 1];
 		if (partstring[n - 1].Contains('m') || partstring[n - 1].Contains(meterString)) {
 			formatstring = partstring[n - 1];
 			paramName.ReplaceAll('.' + formatstring, "");
 			formatstring.ReplaceAll(meterString, "m");
-			meterString = RSGetIndString(AddOnStringsID, DMeterStringID, ACAPI_GetOwnResModule());
+			meterString = RSGetIndString(ID_ADDON_STRINGS + isEng(), DMeterStringID, ACAPI_GetOwnResModule());
 			formatstring.ReplaceAll(meterString, "d");
-			meterString = RSGetIndString(AddOnStringsID, CMeterStringID, ACAPI_GetOwnResModule());
+			meterString = RSGetIndString(ID_ADDON_STRINGS + isEng(), CMeterStringID, ACAPI_GetOwnResModule());
 			formatstring.ReplaceAll(meterString, "c");
 		}
 	}
@@ -2279,22 +2309,22 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 	if (name.IsEqual("@property:layer_thickness")) return "@material:layer thickness";
 	if (name.IsEqual("@property:bmat_inx")) return "@material:bmat_inx";
 	GS::UniString nameproperty = "";
-	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialNameID, ACAPI_GetOwnResModule());
+	nameproperty = "@property:" + RSGetIndString(ID_ADDON_STRINGS + isEng(), BuildingMaterialNameID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Name";
 
-	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialDescriptionID, ACAPI_GetOwnResModule());
+	nameproperty = "@property:" + RSGetIndString(ID_ADDON_STRINGS + isEng(), BuildingMaterialDescriptionID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Description";
 
-	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialDensityID, ACAPI_GetOwnResModule());
+	nameproperty = "@property:" + RSGetIndString(ID_ADDON_STRINGS + isEng(), BuildingMaterialDensityID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Density";
 
-	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialManufacturerID, ACAPI_GetOwnResModule());
+	nameproperty = "@property:" + RSGetIndString(ID_ADDON_STRINGS + isEng(), BuildingMaterialManufacturerID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Manufacturer";
 
-	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, BuildingMaterialCutFillID, ACAPI_GetOwnResModule());
+	nameproperty = "@property:" + RSGetIndString(ID_ADDON_STRINGS + isEng(), BuildingMaterialCutFillID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material CutFill";
 
-	nameproperty = "@property:" + RSGetIndString(AddOnStringsID, ThicknessID, ACAPI_GetOwnResModule());
+	nameproperty = "@property:" + RSGetIndString(ID_ADDON_STRINGS + isEng(), ThicknessID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@material:layer thickness";
 	return name;
 }
@@ -4425,12 +4455,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 		case APIParT_Boolean:
 			pvalue.n_zero = 0;
 			if (param_bool) {
-				param_string = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+				param_string = RSGetIndString(ID_ADDON_STRINGS + isEng(), TrueId, ACAPI_GetOwnResModule());
 				param_int = 1;
 				param_real = 1.0;
 			}
 			else {
-				param_string = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+				param_string = RSGetIndString(ID_ADDON_STRINGS + isEng(), FalseId, ACAPI_GetOwnResModule());
 				param_int = 0;
 				param_real = 0.0;
 			}
@@ -4863,12 +4893,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_IFCPropert
 			pvalue.val.type = API_PropertyBooleanValueType;
 			pvalue.val.boolValue = property.singleValue.nominalValue.value.boolValue;
 			if (pvalue.val.boolValue) {
-				pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+				pvalue.val.uniStringValue = RSGetIndString(ID_ADDON_STRINGS + isEng(), TrueId, ACAPI_GetOwnResModule());
 				pvalue.val.intValue = 1;
 				pvalue.val.doubleValue = 1.0;
 			}
 			else {
-				pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+				pvalue.val.uniStringValue = RSGetIndString(ID_ADDON_STRINGS + isEng(), FalseId, ACAPI_GetOwnResModule());
 				pvalue.val.intValue = 0;
 				pvalue.val.doubleValue = 0.0;
 			}
@@ -4880,12 +4910,12 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_IFCPropert
 			if (property.singleValue.nominalValue.value.intValue == 1) pvalue.isValid = false;
 			if (property.singleValue.nominalValue.value.intValue == 2) pvalue.val.boolValue = true;
 			if (pvalue.val.boolValue) {
-				pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, TrueId, ACAPI_GetOwnResModule());
+				pvalue.val.uniStringValue = RSGetIndString(ID_ADDON_STRINGS + isEng(), TrueId, ACAPI_GetOwnResModule());
 				pvalue.val.intValue = 1;
 				pvalue.val.doubleValue = 1.0;
 			}
 			else {
-				pvalue.val.uniStringValue = RSGetIndString(AddOnStringsID, FalseId, ACAPI_GetOwnResModule());
+				pvalue.val.uniStringValue = RSGetIndString(ID_ADDON_STRINGS + isEng(), FalseId, ACAPI_GetOwnResModule());
 				pvalue.val.intValue = 0;
 				pvalue.val.doubleValue = 0.0;
 			}

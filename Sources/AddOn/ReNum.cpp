@@ -34,7 +34,7 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 	long time_start = clock();
 	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
-	GS::UniString undoString = RSGetIndString(AddOnStringsID, UndoReNumId, ACAPI_GetOwnResModule());
+	GS::UniString undoString = RSGetIndString(ID_ADDON_STRINGS + isEng(), UndoReNumId, ACAPI_GetOwnResModule());
 	bool flag_write = true;
 	ACAPI_CallUndoableCommand(undoString, [&]() -> GSErrCode {
 		ParamDictElement paramToWriteelem;
@@ -532,18 +532,18 @@ short ReNumGetFlag(const ParamValue& paramflag, const ParamValue& paramposition)
 		GS::UniString flag = paramflag.val.uniStringValue.ToLowerCase();
 
 		// Исключаемые позиции
-		GS::UniString txtypenum = RSGetIndString(AddOnStringsID, RenumSkipID, ACAPI_GetOwnResModule());
+		GS::UniString txtypenum = RSGetIndString(ID_ADDON_STRINGS + isEng(), RenumSkipID, ACAPI_GetOwnResModule());
 		if (flag.Contains(txtypenum)) return RENUM_SKIP;
 
 		// Неизменные позиции
-		txtypenum = RSGetIndString(AddOnStringsID, RenumIgnoreID, ACAPI_GetOwnResModule());
+		txtypenum = RSGetIndString(ID_ADDON_STRINGS + isEng(), RenumIgnoreID, ACAPI_GetOwnResModule());
 		if (flag.Contains(txtypenum)) return RENUM_IGNORE;
 
 		// Пустые позиции (если строка пустая - значение ноль.)
 		if (paramposition.val.intValue == 0) return RENUM_NORMAL;
 
 		// Добавочные позиции
-		txtypenum = RSGetIndString(AddOnStringsID, RenumAddID, ACAPI_GetOwnResModule());
+		txtypenum = RSGetIndString(ID_ADDON_STRINGS + isEng(), RenumAddID, ACAPI_GetOwnResModule());
 		if (flag.Contains(txtypenum)) return RENUM_ADD;
 
 		// Все прочие
