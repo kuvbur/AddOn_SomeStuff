@@ -586,6 +586,12 @@ namespace ParamHelpers
 	// --------------------------------------------------------------------
 	void WritePropertyValues(const API_Guid& elemGuid, ParamDictValue& params);
 
+	bool hasGlob(ParamDictValue& propertyParams);
+
+	bool hasInfo(ParamDictValue& propertyParams);
+
+	bool hasProperyDefinitoin(ParamDictValue& propertyParams);
+
 	bool hasUnreadProperyDefinitoin(ParamDictElement& paramToRead);
 
 	bool hasUnreadInfo(ParamDictElement& paramToRead, ParamDictValue& propertyParams);

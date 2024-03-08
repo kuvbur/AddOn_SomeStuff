@@ -160,7 +160,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 
 	// Словарь со всеми возможными определениями свойств
 	if (propertyParams.IsEmpty()) {
-		ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+		if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 		ParamHelpers::GetAllInfoToParamDict(propertyParams);
 		ParamHelpers::GetAllGlobToParamDict(propertyParams);
 	}
@@ -434,7 +434,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	if (mainsyncRules.IsEmpty()) return;
 	if (propertyParams.IsEmpty() || hasSub) {
 		if (hasSub) {
-			ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+			if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 		}
 		else {
 			ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams, definitions);
@@ -629,7 +629,12 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 					GS::UniString templatestring = param.val.uniStringValue; //Строка с форматом числа
 					if (ParamHelpers::ParseParamNameMaterial(templatestring, paramDict)) {
 						param.val.uniStringValue = templatestring;
-						ParamHelpers::AddValueToParamDictValue(paramDict, "@property:sync_name");
+
+						// Свойств со спецтекстом может быть несколько (случайно)
+						// Тут будут костыли, которые хорошо бы убрать
+						for (UInt32 inx = 0; inx < 20; inx++) {
+							ParamHelpers::AddValueToParamDictValue(paramDict, "@property:sync_name" + GS::UniString::Printf("%d", inx));
+						}
 						ParamHelpers::AddParamDictValue2ParamDictElement(elemGuid, paramDict, paramToRead);
 						hasSub = true; // Нужно будет прочитать все свойства
 					}
@@ -952,26 +957,30 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 						UInt32 ndim = StringSplt(sr1, ",", dim);
 						if (ndim > 0) {
 							GS::UniString dim0 = dim.Get(0);
-							if (UniStringToDouble(dim0, p)) { array_row_start = (int)p;
+							if (UniStringToDouble(dim0, p)) {
+								array_row_start = (int)p;
 							}
 							else {
-								rawName_row_start = "{@gdl:"+dim0+"}";
+								rawName_row_start = "{@gdl:" + dim0 + "}";
 							}
 						}
 						if (ndim > 1) {
 							GS::UniString dim1 = dim.Get(1);
 							if (UniStringToDouble(dim1, p)) {
 								array_row_end = (int)p;
-							} else {
-								rawName_row_end = "{@gdl:"+dim1+"}";
+							}
+							else {
+								rawName_row_end = "{@gdl:" + dim1 + "}";
 							}
 						}
-					} else {
+					}
+					else {
 						if (UniStringToDouble(sr1, p)) {
 							array_row_start = (int)p;
 							array_row_end = (int)p;
-						} else {
-							rawName_row_start = "{@gdl:"+sr1+"}";
+						}
+						else {
+							rawName_row_start = "{@gdl:" + sr1 + "}";
 							rawName_row_end = rawName_col_start;
 						}
 					}
@@ -986,24 +995,28 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 							GS::UniString dim0 = dim.Get(0);
 							if (UniStringToDouble(dim0, p)) {
 								array_column_start = (int)p;
-							} else {
-								rawName_col_start = "{@gdl:"+dim0+"}";
+							}
+							else {
+								rawName_col_start = "{@gdl:" + dim0 + "}";
 							}
 						}
 						if (ndim > 1) {
 							GS::UniString dim1 = dim.Get(1);
 							if (UniStringToDouble(dim1, p)) {
 								array_column_end = (int)p;
-							} else {
-								rawName_col_end = "{@gdl:"+dim1+"}";
+							}
+							else {
+								rawName_col_end = "{@gdl:" + dim1 + "}";
 							}
 						}
-					} else {
+					}
+					else {
 						if (UniStringToDouble(sr1, p)) {
 							array_column_start = (int)p;
 							array_column_end = (int)p;
-						} else {
-							rawName_col_start = "{@gdl:"+sr1+"}";
+						}
+						else {
+							rawName_col_start = "{@gdl:" + sr1 + "}";
 							rawName_col_end = rawName_col_start;
 						}
 					}
@@ -1024,7 +1037,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			param.rawName_col_start = rawName_col_start;
 			param.rawName_col_end = rawName_col_end;
 			if (!rawName_row_start.IsEmpty() || !rawName_row_end.IsEmpty() || !rawName_col_start.IsEmpty() || !rawName_col_end.IsEmpty()) param.needPreRead = true;
-			param.rawName = paramNamePrefix + paramName.ToLowerCase() + GS::UniString::Printf("@arr_%d_%d_%d_%d_%d", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out)+ rawName_row_start+"_" + rawName_row_end+"_" + rawName_col_start+"_" + rawName_col_end + "}";
+			param.rawName = paramNamePrefix + paramName.ToLowerCase() + GS::UniString::Printf("@arr_%d_%d_%d_%d_%d", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out) + rawName_row_start + "_" + rawName_row_end + "_" + rawName_col_start + "_" + rawName_col_end + "}";
 			start_ignore = 2;
 		}
 
