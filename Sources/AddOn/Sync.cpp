@@ -812,11 +812,19 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			synctypefind = true;
 			rulestring_one.ReplaceAll("Material:", "");
 			rulestring_one.ReplaceAll("{Layers;", "{Layers,20;");
+			rulestring_one.ReplaceAll("{Layers_inv;", "{Layers_inv,20;");
 			paramNamePrefix = "{@material:";
 			GS::UniString templatestring = rulestring_one.GetSubstring('"', '"', 0);
 			param.val.uniStringValue = templatestring;
 			rulestring_one.ReplaceAll(templatestring, "");
 			param.fromMaterial = true;
+			param.composite_pen = 20;
+			rulestring_one.ReplaceAll(" ", "");
+			if (rulestring_one.Contains(",") && rulestring_one.Contains(";")) {
+				GS::UniString penstring = rulestring_one.GetSubstring(',', ';', 0);
+				short pen = std::atoi(penstring.ToCStr());
+				if (pen > 0) param.composite_pen = pen;
+			}
 			syncdirection = SYNC_FROM;
 		}
 	}
@@ -866,7 +874,7 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 		}
 	}
 	if (synctypefind == false) return false;
-
+	param.eltype = elementType;
 	//Проверка допустимости правила для типа элемента
 	if (param.fromGDLparam) {
 		if (elementType == API_WallID ||
@@ -908,8 +916,14 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	GS::UniString paramName = params.Get(0);
 	stringformat = GetFormatString(paramName);
 	paramName.ReplaceAll("\\/", "/");
-	param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
-	param.name = paramName;
+	if (param.fromMaterial) {
+		param.rawName = paramNamePrefix + paramName.ToLowerCase() + ";" + param.val.uniStringValue + "}";
+		param.name = paramName;
+	}
+	else {
+		param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
+		param.name = paramName;
+	}
 	if (nparam > 1) {
 
 		// Обработка данных о размерах массива и типе чтения
