@@ -281,10 +281,11 @@ bool DimParse(const double& dimVal, const API_Guid& elemGuid, API_NoteContentTyp
 	if (!dimrule.expression.IsEmpty()) {
 		if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 		ParamDictValue pdictvalue = dimrule.paramDict;
+
 		// Добавляем в словарь округлённое значение
 		if (pdictvalue.ContainsKey("{@gdl:measuredvalue}")) {
 			ParamValue pvalue;
-			ParamHelpers::ConvertToParamValue(pvalue, "MeasuredValue", dimValmm_round);
+			ParamHelpers::ConvertIntToParamValue(pvalue, "MeasuredValue", dimValmm_round);
 			pdictvalue.Get("{@gdl:measuredvalue}").val = pvalue.val;
 			pdictvalue.Get("{@gdl:measuredvalue}").isValid = true;
 		}

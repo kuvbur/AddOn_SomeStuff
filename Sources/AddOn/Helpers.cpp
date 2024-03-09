@@ -401,6 +401,16 @@ bool	GetAnElem(const char* prompt,
 #endif
 
 // --------------------------------------------------------------------
+// Проверка наличия дробной части
+// --------------------------------------------------------------------
+bool chek_floor(double val, double tolerance) {
+	double k_val = fabs(val * 1000.0);
+	double val_correct = fabs(k_val - floor(k_val));
+	bool bval_correct = val_correct < tolerance;
+	return bval_correct;
+}
+
+// --------------------------------------------------------------------
 // Сравнение double c учётом точности
 // --------------------------------------------------------------------
 bool is_equal(double x, double y) {
@@ -1259,7 +1269,7 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 		if (syncSettings.cwallS) {
 			API_CWPanelRelation crelData;
 			err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &crelData);
-			if (err != NoError) {
+			if (err == NoError) {
 				if (crelData.fromRoom != APINULLGuid) subelemGuid.Push(crelData.fromRoom);
 				if (crelData.toRoom != APINULLGuid) subelemGuid.Push(crelData.toRoom);
 			}
@@ -1271,7 +1281,7 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 		if (syncSettings.widoS) {
 			API_DoorRelation drelData;
 			err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &drelData);
-			if (err != NoError) {
+			if (err == NoError) {
 				if (drelData.fromRoom != APINULLGuid) subelemGuid.Push(drelData.fromRoom);
 				if (drelData.toRoom != APINULLGuid) subelemGuid.Push(drelData.toRoom);
 			}
@@ -1283,7 +1293,7 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 		if (syncSettings.widoS) {
 			API_WindowRelation wrelData;
 			err = ACAPI_Element_GetRelations(elemGuid, API_ZoneID, &wrelData);
-			if (err != NoError) {
+			if (err == NoError) {
 				if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push(wrelData.fromRoom);
 				if (wrelData.toRoom != APINULLGuid) subelemGuid.Push(wrelData.toRoom);
 			}
@@ -1661,19 +1671,19 @@ bool ParamHelpers::ReadMorphParam(const API_Element & element, ParamDictValue & 
 		B = Max_y - Min_y;
 		ZZYZX = Max_z - Min_z;
 		ParamDictValue pdictvaluemorph;
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "l", L);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "lx", Lx);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "ly", Ly);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "lz", Lz);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "max_x", Max_x);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "min_x", Min_x);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "max_y", Max_y);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "min_y", Min_y);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "max_z", Max_z);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "min_z", Min_z);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "a", A);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "b", B);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "zzyzx", ZZYZX);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "l", L);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "lx", Lx);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "ly", Ly);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "lz", Lz);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "max_x", Max_x);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "min_x", Min_x);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "max_y", Max_y);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "min_y", Min_y);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "max_z", Max_z);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "min_z", Min_z);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "a", A);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "b", B);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluemorph, element.header.guid, "morph:", "zzyzx", ZZYZX);
 		ParamHelpers::CompareParamDictValue(pdictvaluemorph, pdictvalue);
 		ACAPI_DisposeElemMemoHdls(&memo);
 		return true;
@@ -1748,8 +1758,6 @@ GS::UniString ParamHelpers::AddValueToParamDictValue(ParamDictValue & params, co
 		params.Add(rawName, pvalue);
 		return rawName;
 	}
-
-	// TODO Провыерить - зачем сделано возвращение пустого значения при наличии имени в словаре?
 	return rawName;
 }
 
@@ -1881,22 +1889,33 @@ bool ParamHelpers::AddProperty(ParamDictValue & params, GS::Array<API_Property>&
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
-void ParamHelpers::AddValueToParamDictValue(ParamDictValue & params, const API_Guid & elemGuid, const GS::UniString & rawName_prefix, const GS::UniString & name, const double& val) {
+void ParamHelpers::AddBoolValueToParamDictValue(ParamDictValue & params, const API_Guid & elemGuid, const GS::UniString & rawName_prefix, const GS::UniString & name, const bool val) {
 	ParamValue pvalue;
 	pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase() + "}";
 	pvalue.name = name.ToLowerCase();
-	ParamHelpers::ConvertToParamValue(pvalue, "", val);
+	ParamHelpers::ConvertBoolToParamValue(pvalue, "", val);
 	params.Add(pvalue.rawName, pvalue);
 }
 
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
-void ParamHelpers::AddValueToParamDictValue(ParamDictValue & params, const API_Guid & elemGuid, const GS::UniString & rawName_prefix, const GS::UniString & name, const GS::UniString & val) {
+void ParamHelpers::AddDoubleValueToParamDictValue(ParamDictValue & params, const API_Guid & elemGuid, const GS::UniString & rawName_prefix, const GS::UniString & name, const double val) {
 	ParamValue pvalue;
 	pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase() + "}";
 	pvalue.name = name.ToLowerCase();
-	ParamHelpers::ConvertToParamValue(pvalue, "", val);
+	ParamHelpers::ConvertDoubleToParamValue(pvalue, "", val);
+	params.Add(pvalue.rawName, pvalue);
+}
+
+// -----------------------------------------------------------------------------
+// Добавление значения в словарь ParamDictValue
+// -----------------------------------------------------------------------------
+void ParamHelpers::AddStringValueToParamDictValue(ParamDictValue & params, const API_Guid & elemGuid, const GS::UniString & rawName_prefix, const GS::UniString & name, const GS::UniString val) {
+	ParamValue pvalue;
+	pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase() + "}";
+	pvalue.name = name.ToLowerCase();
+	ParamHelpers::ConvertStringToParamValue(pvalue, "", val);
 	params.Add(pvalue.rawName, pvalue);
 }
 
@@ -1996,10 +2015,11 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	double sx = 0; double sy = 0;
 	double dx = 0; double dy = 0;
 	double ex = 0; double ey = 0;
-	double tolerance_coord = 0.01;
+	double tolerance_coord = 0.001;
+	double tolerance_ang = 0.00001;
 	bool hasSymbpos = false; bool hasLine = false;
 	bool isFliped = false;
-
+	bool skip_north = false;
 	GS::UniString globnorthkey = "{@glob:glob_north_dir}";
 	API_ElemTypeID eltype;
 #if defined AC_26 || defined AC_27
@@ -2010,22 +2030,28 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 	API_Element owner;
 
 	// Если нужно определить направление окон или дверей - запрашиваем родительский элемент
-	if (params.ContainsKey(globnorthkey) && (eltype == API_WindowID || eltype == API_DoorID)) {
+	if (params.ContainsKey(globnorthkey) && (eltype == API_WindowID || eltype == API_DoorID || eltype == API_CurtainWallPanelID)) {
 		BNZeroMemory(&owner, sizeof(API_Element));
+		if (eltype == API_CurtainWallPanelID) owner.header.guid = element.cwPanel.owner;
 		if (eltype == API_WindowID) owner.header.guid = element.window.owner;
 		if (eltype == API_DoorID) owner.header.guid = element.door.owner;
 		if (ACAPI_Element_Get(&owner) != NoError) return false;
+		API_ElemTypeID ownereltype;
 #if defined AC_26 || defined AC_27
-		if (owner.header.type.typeID == API_WallID)
+		ownereltype = owner.header.type.typeID;
 #else
-		if (owner.header.typeID == API_WallID)
+		ownereltype = owner.header.typeID;
 #endif
-		{
+		if (ownereltype== API_WallID) {
 			sx = owner.wall.begC.x;
 			sy = owner.wall.begC.y;
 			ex = owner.wall.endC.x;
 			ey = owner.wall.endC.y;
 			isFliped = owner.wall.flipped;
+			hasLine = true;
+		}
+		// TODO Добавить поиск сегментов
+		if (ownereltype== API_CurtainWallID) {
 			hasLine = true;
 		}
 	}
@@ -2056,11 +2082,13 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		y = element.object.pos.y;
 		z = element.object.level;
 		angz = element.object.angle;
+		skip_north = true;
 		hasSymbpos = true;
 		break;
 	case API_ZoneID:
 		x = element.zone.pos.x;
 		y = element.zone.pos.y;
+		skip_north = true;
 		hasSymbpos = true;
 		break;
 	case API_ColumnID:
@@ -2086,26 +2114,40 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		hasLine = true;
 		break;
 	default:
-		return false;
+		sx = 0;
+		sy = 0;
+		ex = 0;
+		ey = 0;
+		angz = 0;
+		hasLine = true;
+		skip_north = true;
+		break;
 	}
 	ParamDictValue pdictvaluecoord;
 	if (hasSymbpos) {
-		double k = 10000.0;
+		double k = 100000.0;
 		x = round(x * k) / k;
 		y = round(y * k) / k;
-		z = round(y * k) / k;
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
-		double symb_pos_x_correct = abs(abs(x * 1000.0) - floor(abs(x * 1000.0)));
-		double symb_pos_y_correct = abs(abs(y * 1000.0) - floor(abs(y * 1000.0)));
-		double symb_pos_correct = (symb_pos_x_correct < tolerance_coord&& symb_pos_y_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", symb_pos_x_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", symb_pos_y_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", symb_pos_correct);
+		z = round(z * k) / k;
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
+		bool bsymb_pos_x_correct = chek_floor(x, tolerance_coord);
+		bool bsymb_pos_y_correct = chek_floor(x, tolerance_coord);
+		bool bsymb_pos_correct = bsymb_pos_x_correct && bsymb_pos_y_correct;
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_x_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_y_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_x_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_y_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
 	}
-	double tolerance_ang = 0.0000001;
 	if (hasLine) {
+		double k = 100000.0;
+		sx = round(sx * k) / k;
+		sy = round(sy * k) / k;
+		ex = round(ex * k) / k;
+		ey = round(ey * k) / k;
 		if (isFliped) {
 			dx = ex - sx;
 			dy = ey - sy;
@@ -2114,121 +2156,132 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 			dx = sx - ex;
 			dy = sy - ey;
 		}
+		double l = sqrt(dx * dx + dy * dy);
+		bool bl_correct = chek_floor(l, tolerance_coord);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "l_correct", bl_correct);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
+		bool bsymb_pos_sx_correct = chek_floor(sx, tolerance_coord);
+		bool bsymb_pos_sy_correct = chek_floor(sy, tolerance_coord);
+		bool bsymb_pos_ex_correct = chek_floor(ex, tolerance_coord);
+		bool bsymb_pos_ey_correct = chek_floor(ey, tolerance_coord);
+		bool bsymb_pos_e_correct = bsymb_pos_sx_correct && bsymb_pos_sy_correct;
+		bool bsymb_pos_s_correct = bsymb_pos_ex_correct && bsymb_pos_ey_correct;
+		bool bsymb_pos_correct = bsymb_pos_e_correct && bsymb_pos_s_correct;
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_s_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct", bsymb_pos_e_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_sx_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_sy_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_sx_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_sy_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", bsymb_pos_ex_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", bsymb_pos_ey_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
 		if (is_equal(dx, 0.0) && is_equal(dy, 0.0)) {
 			angz = 0.0;
 		}
 		else {
 			angz = atan2(dy, dx) + PI;
 		}
-		double k = 100000.0;
-		sx = round(sx * k) / k;
-		sy = round(sy * k) / k;
-		ex = round(ex * k) / k;
-		ey = round(ey * k) / k;
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
-		double symb_pos_sx_correct = abs(abs(sx * 1000.0) - floor(abs(sx * 1000.0)));
-		double symb_pos_sy_correct = abs(abs(sy * 1000.0) - floor(abs(sy * 1000.0)));
-		double symb_pos_ex_correct = abs(abs(ex * 1000.0) - floor(abs(ex * 1000.0)));
-		double symb_pos_ey_correct = abs(abs(ey * 1000.0) - floor(abs(ey * 1000.0)));
-		double symb_pos_correct = (symb_pos_sx_correct < tolerance_coord&& symb_pos_sy_correct < tolerance_coord&& symb_pos_ex_correct < tolerance_coord&& symb_pos_ey_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", symb_pos_sx_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", symb_pos_sy_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", symb_pos_sx_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", symb_pos_sy_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", symb_pos_ex_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", symb_pos_ey_correct < tolerance_coord);
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", symb_pos_correct);
-		double l = sqr(dx * dx + dy * dy);
-		double l_correct = abs(abs(l * 200.0) - floor(abs(l * 200.0)));
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "l_correct", l_correct);
 	}
 	double k = 100000.0;
-	if (abs(angz) > 0.0000001) {
+	if (fabs(angz) > 0.0000001) {
 		angz = fmod(round((angz * 180.0 / PI) * k) / k, 360.0);
 	}
 	else {
 		angz = 0.0;
 	}
 	if (params.ContainsKey(globnorthkey)) {
-		double north = params.Get(globnorthkey).val.doubleValue;
-		double angznorth = fmod(angz - north + 90.0, 360.0);
-		if (abs(angznorth) < 0.0000001) {
-			angznorth = 0.0;
+		GS::UniString angznorthtxt = "";
+		double angznorth = -1.0;
+		if (!skip_north) {
+			double north = params.Get(globnorthkey).val.doubleValue;
+			angznorth = fmod(angz - north + 90.0, 360.0);
+			if (fabs(angznorth) < 0.0000001) {
+				angznorth = 0.0;
+			}
+			else {
+				if (angznorth < 0.0) angznorth = 360.0 + angznorth;
+				angznorth = round(angznorth * k) / k;
+			}
+			ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
+			double n = 0.0;		//"С"
+			double nw = 45.0;	//"СЗ"
+			double w = 90.0;	//"З"
+			double sw = 135.0;	//"ЮЗ"
+			double s = 180.0;	//"Ю"
+			double se = 225.0;	//"ЮВ"
+			double e = 270.0;	//"В";
+			double ne = 315.0;	//"СB";
+			double nn = 360.0;
+
+			//if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
+			//if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
+			//if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
+			//if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
+			//if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
+			//if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
+			//if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
+			//if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
+
+			if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
+			if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
+			if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
+			if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
+			if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
+			if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
+			if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
+			if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, n + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, ne + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, e + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, se + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, s + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, sw + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, w + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
+			if (is_equal(angznorth, nn - 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
+			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
+			if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
+			if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
+			if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
+			if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
+			if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
+			if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
+			if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
+			if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
+			if (is_equal(angznorth, n + 22.5)) angznorthtxt = "N";
+			if (is_equal(angznorth, ne + 22.5)) angznorthtxt = "NE";
+			if (is_equal(angznorth, e + 22.5)) angznorthtxt = "E";
+			if (is_equal(angznorth, se + 22.5)) angznorthtxt = "SE";
+			if (is_equal(angznorth, s + 22.5)) angznorthtxt = "S";
+			if (is_equal(angznorth, sw + 22.5)) angznorthtxt = "SW";
+			if (is_equal(angznorth, w + 22.5)) angznorthtxt = "W";
+			if (is_equal(angznorth, nn - 22.5)) angznorthtxt = "NW";
+			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxt);
 		}
 		else {
-			if (angznorth < 0.0) angznorth = 360.0 + angznorth;
-			angznorth = round(angznorth * k) / k;
+			ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
+			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
+			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxt);
 		}
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
-		GS::UniString angznorthtxt = "";
-		double n = 0.0;		//"С"
-		double nw = 45.0;	//"СЗ"
-		double w = 90.0;	//"З"
-		double sw = 135.0;	//"ЮЗ"
-		double s = 180.0;	//"Ю"
-		double se = 225.0;	//"ЮВ"
-		double e = 270.0;	//"В";
-		double ne = 315.0;	//"СB";
-		double nn = 360.0;
-
-		//if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
-		//if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
-		//if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
-		//if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
-		//if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
-		//if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
-		//if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
-		//if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
-
-		if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
-		if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, n + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, ne + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, e + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, se + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, s + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, sw + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, w + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
-		if (is_equal(angznorth, nn - 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
-		if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
-		if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
-		if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
-		if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
-		if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
-		if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
-		if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
-		if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
-		if (is_equal(angznorth, n + 22.5)) angznorthtxt = "N";
-		if (is_equal(angznorth, ne + 22.5)) angznorthtxt = "NE";
-		if (is_equal(angznorth, e + 22.5)) angznorthtxt = "E";
-		if (is_equal(angznorth, se + 22.5)) angznorthtxt = "SE";
-		if (is_equal(angznorth, s + 22.5)) angznorthtxt = "S";
-		if (is_equal(angznorth, sw + 22.5)) angznorthtxt = "SW";
-		if (is_equal(angznorth, w + 22.5)) angznorthtxt = "W";
-		if (is_equal(angznorth, nn - 22.5)) angznorthtxt = "NW";
-		ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxt);
 	}
-	double symb_rotangle_fraction = abs(abs(angz) - floor(abs(angz))) * 10000;
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", symb_rotangle_fraction < 0.1);
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz, 5.0));
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
-	ParamHelpers::AddValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod(angz, 180.0));
+	double symb_rotangle_fraction = 1000.0 * fabs(fabs(angz) - floor(fabs(angz))) / tolerance_ang;
+	double angz_ = angz / 1000.0;
+	bool bsymb_rotangle_correct = chek_floor(angz_, tolerance_ang);
+	bool bsymb_rotangle_correct_1000 = chek_floor(angz_, 0.001);
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
+	ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", bsymb_rotangle_correct);
+	ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", bsymb_rotangle_correct_1000);
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz, 5.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod(angz, 180.0));
 	ParamHelpers::CompareParamDictValue(pdictvaluecoord, params);
 	return true;
 }
@@ -2528,7 +2581,7 @@ void PropertyHelpers::ParseFormatString(const GS::UniString & stringformat, Int3
 
 // TODO Придумать более изящную обработку округления
 GS::UniString PropertyHelpers::NumToString(const double& var, const GS::UniString & stringformat) {
-	if (abs(var) < 0.00000001) return "0";
+	if (fabs(var) < 0.00000001) return "0";
 	GS::UniString out = "";
 	Int32 n_zero = 3;
 	Int32 krat = 0;
@@ -3062,6 +3115,8 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 // Запись словаря параметров для множества элементов
 // --------------------------------------------------------------------
 void ParamHelpers::ElementsWrite(ParamDictElement & paramToWrite) {
+
+	//TODO Добавить флаги наличия свойств для записи по категориям
 	if (paramToWrite.IsEmpty()) return;
 	DBPrintf("== SMSTF == ElementsWrite start\n");
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -3309,18 +3364,12 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 		ParamValue& param = *cIt->value;
 		if (param.isValid && param.fromPropertyDefinition) {
 			API_Property property = param.property;
-
-			// TODO выяснить - что быстрее - пакетная запись или запись по-отдельности
-			//if (ParamHelpers::ConvertToProperty(param, property)) properties.Push(property);
 			if (ParamHelpers::ConvertToProperty(param, property)) {
 				GSErrCode error = ACAPI_Element_SetProperty(elemGuid, property);
 				if (error != NoError) msg_rep("WritePropertyValues", "ACAPI_Element_SetProperty", error, elemGuid);
 			}
 		}
 	}
-
-	//if (properties.IsEmpty()) return;
-	//GSErrCode error = ACAPI_Element_SetProperties(elemGuid, properties);
 }
 
 bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
@@ -3364,19 +3413,19 @@ bool ParamHelpers::hasUnreadInfo(ParamDictElement & paramToRead, ParamDictValue 
 
 bool ParamHelpers::hasGlob(ParamDictValue & propertyParams) {
 	if (propertyParams.IsEmpty()) return false;
-	if (!propertyParams.ContainsKey("has_Glob")) return false;
+	if (!propertyParams.ContainsKey("{@flag:has_glob}")) return false;
 	return true;
 }
 
 bool ParamHelpers::hasInfo(ParamDictValue & propertyParams) {
 	if (propertyParams.IsEmpty()) return false;
-	if (!propertyParams.ContainsKey("has_Info")) return false;
+	if (!propertyParams.ContainsKey("{@flag:has_info}")) return false;
 	return true;
 }
 
 bool ParamHelpers::hasProperyDefinitoin(ParamDictValue & propertyParams) {
 	if (propertyParams.IsEmpty()) return false;
-	if (!propertyParams.ContainsKey("has_ProperyDefinitoin")) return false;
+	if (!propertyParams.ContainsKey("{@flag:has_properydefinitoin}")) return false;
 	return true;
 }
 
@@ -3411,7 +3460,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 	if (paramToRead.IsEmpty()) return;
 	DBPrintf("== SMSTF == ElementsRead start\n");
 	if (ParamHelpers::hasUnreadInfo(paramToRead, propertyParams) && !ParamHelpers::hasInfo(propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
-	if (ParamHelpers::hasUnreadGlob(paramToRead, propertyParams) && !ParamHelpers::hasGlob(propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
+	if (ParamHelpers::hasUnreadGlob(paramToRead, propertyParams) && !ParamHelpers::hasGlob(propertyParams)) { ParamHelpers::GetAllGlobToParamDict(propertyParams); }
 	if (ParamHelpers::hasUnreadProperyDefinitoin(paramToRead) && !ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 
 	// Выбираем по-элементно параметры для чтения
@@ -3572,11 +3621,11 @@ void ParamHelpers::GetAllInfoToParamDict(ParamDictValue & propertyParams) {
 			pvalue.rawName = rawName;
 			pvalue.fromInfo = true;
 
-			ParamHelpers::ConvertToParamValue(pvalue, rawName, autotexts[i][2]);
+			ParamHelpers::ConvertStringToParamValue(pvalue, rawName, autotexts[i][2]);
 			propertyParams.Add(rawName, pvalue);
 		}
 	}
-	ParamHelpers::AddValueToParamDictValue(propertyParams, "has_Info");
+	ParamHelpers::AddValueToParamDictValue(propertyParams, "flag:has_Info");
 	DBPrintf("== SMSTF == GetAllInfoToParamDict end\n");
 }
 
@@ -3598,29 +3647,29 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 	}
 	name = "GLOB_NORTH_DIR"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
-	ParamHelpers::ConvertToParamValue(pvalue, rawName, round((placeInfo.north * 180 / PI) * 1000.0) / 1000.0);
+	ParamHelpers::ConvertDoubleToParamValue(pvalue, rawName, round((placeInfo.north * 180 / PI) * 1000.0) / 1000.0);
 	propertyParams.Add(rawName, pvalue);
 	name = "GLOB_PROJECT_LONGITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
-	ParamHelpers::ConvertToParamValue(pvalue, rawName, placeInfo.longitude);
+	ParamHelpers::ConvertDoubleToParamValue(pvalue, rawName, placeInfo.longitude);
 	propertyParams.Add(rawName, pvalue);
 	name = "GLOB_PROJECT_LATITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
-	ParamHelpers::ConvertToParamValue(pvalue, rawName, placeInfo.latitude);
+	ParamHelpers::ConvertDoubleToParamValue(pvalue, rawName, placeInfo.latitude);
 	propertyParams.Add(rawName, pvalue);
 	name = "GLOB_PROJECT_ALTITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
-	ParamHelpers::ConvertToParamValue(pvalue, rawName, placeInfo.altitude);
+	ParamHelpers::ConvertDoubleToParamValue(pvalue, rawName, placeInfo.altitude);
 	propertyParams.Add(rawName, pvalue);
 	name = "GLOB_SUN_AZIMUTH"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
-	ParamHelpers::ConvertToParamValue(pvalue, rawName, round((placeInfo.sunAngXY * 180 / PI) * 1000.0) / 1000.0);
+	ParamHelpers::ConvertDoubleToParamValue(pvalue, rawName, round((placeInfo.sunAngXY * 180 / PI) * 1000.0) / 1000.0);
 	propertyParams.Add(rawName, pvalue);
 	name = "GLOB_SUN_ALTITUDE"; rawName = "{@glob:" + name.ToLowerCase() + "}";
 	pvalue.name = name; pvalue.rawName = rawName;
-	ParamHelpers::ConvertToParamValue(pvalue, rawName, round((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
+	ParamHelpers::ConvertDoubleToParamValue(pvalue, rawName, round((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
 	propertyParams.Add(rawName, pvalue);
-	ParamHelpers::AddValueToParamDictValue(propertyParams, "has_Glob");
+	ParamHelpers::AddValueToParamDictValue(propertyParams, "flag:has_Glob");
 	DBPrintf("== SMSTF == GetAllGlobToParamDict end\n");
 }
 
@@ -3725,7 +3774,6 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 		return;
 	}
 	UInt32 nparams = propertyParams.GetSize();
-	bool needAddNew = (nparams == 0);
 
 	// Созданим словарь с определением всех свойств
 	for (UInt32 i = 0; i < groups.GetSize(); i++) {
@@ -3755,24 +3803,25 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 					else {
 						name = groups[i].name + "/" + definitions[j].name;
 						rawName = "{@property:" + name.ToLowerCase() + "}";
-						bool changeExs = propertyParams.ContainsKey(rawName);
-						if (needAddNew && !changeExs) {
+						if (!propertyParams.ContainsKey(rawName)) {
 							ParamValue pvalue;
 							pvalue.rawName = rawName;
-							pvalue.name = groups[i].name + "/" + definitions[j].name;
+							pvalue.name = name;
 							ParamHelpers::ConvertToParamValue(pvalue, definitions[j]);
 							propertyParams.Add(pvalue.rawName, pvalue);
 						}
 						else {
 							ParamValue pvalue = propertyParams.Get(rawName);
-							pvalue.rawName = rawName;
-							pvalue.name = groups[i].name + "/" + definitions[j].name;
-							ParamHelpers::ConvertToParamValue(pvalue, definitions[j]);
-							propertyParams.Get(pvalue.rawName) = pvalue;
-							nparams--;
-							if (nparams == 0) {
-								DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict return\n");
-								return;
+							if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
+								pvalue.rawName = rawName;
+								pvalue.name = name;
+								ParamHelpers::ConvertToParamValue(pvalue, definitions[j]);
+								propertyParams.Get(pvalue.rawName) = pvalue;
+								nparams--;
+								if (nparams == 0) {
+									DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict return\n");
+									return;
+								}
 							}
 						}
 					}
@@ -3780,7 +3829,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 			}
 		}
 	}
-	ParamHelpers::AddValueToParamDictValue(propertyParams, "has_ProperyDefinitoin");
+	ParamHelpers::AddValueToParamDictValue(propertyParams, "flag:has_ProperyDefinitoin");
 	DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict end\n");
 }
 
@@ -3871,12 +3920,11 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 	bool flag_find = false;
 	UInt32 nparams = params.GetSize();
 	for (UInt32 i = 0; i < properties.GetSize(); i++) {
-		API_IFCProperty prop = properties.Get(i);
+		API_IFCProperty property = properties.Get(i);
 		GS::UniString fname = properties[i].head.propertySetName + "/" + properties[i].head.propertyName;
 		GS::UniString rawName = "{@ifc:" + fname.ToLowerCase() + "}";
 		if (params.ContainsKey(rawName)) {
 			ParamValue pvalue;
-			API_IFCProperty property = properties.Get(i);
 			if (ParamHelpers::ConvertToParamValue(pvalue, property)) {
 				params.Get(rawName) = pvalue;
 				flag_find = true;
@@ -3891,7 +3939,6 @@ bool ParamHelpers::ReadIFCValues(const API_Guid & elemGuid, ParamDictValue & par
 			rawName = "{@ifc:" + fname.ToLowerCase() + "}";
 			if (params.ContainsKey(rawName)) {
 				ParamValue pvalue;
-				API_IFCProperty property = properties.Get(i);
 				if (ParamHelpers::ConvertToParamValue(pvalue, property)) {
 					params.Get(rawName) = pvalue;
 					flag_find = true;
@@ -4169,21 +4216,31 @@ bool ParamHelpers::GDLParamByName(const API_Element & element, const API_Elem_He
 						flagFind = true;
 					}
 				}
-				ParamValue pvalue = params.Get(rawname);
-				ParamHelpers::ConvertToParamValue(pvalue, actualParam);
-				if (pvalue.isValid) {
-					params.Set(rawname, pvalue);
-					flagFind = true;
+				if (params.ContainsKey(rawname)) {
+					ParamValue pvalue = params.Get(rawname);
+					ParamHelpers::ConvertToParamValue(pvalue, actualParam);
+					if (pvalue.isValid) {
+						params.Set(rawname, pvalue);
+						flagFind = true;
+					}
+					nfind--;
 				}
-				nfind--;
+				else {
+					DBPrintf("== SMSTF ERR ==          params.ContainsKey(rawname)\n");
+				}
 			}
 			else {
-				nfind--;
-				ParamValue pvalue = params.Get(rawname);
-				ParamHelpers::ConvertToParamValue(pvalue, actualParam);
-				if (pvalue.isValid) {
-					params.Set(rawname, pvalue);
-					flagFind = true;
+				if (params.ContainsKey(rawname)) {
+					ParamValue pvalue = params.Get(rawname);
+					ParamHelpers::ConvertToParamValue(pvalue, actualParam);
+					if (pvalue.isValid) {
+						params.Set(rawname, pvalue);
+						flagFind = true;
+					}
+					nfind--;
+				}
+				else {
+					DBPrintf("== SMSTF ERR ==          params.ContainsKey(rawname)\n");
 				}
 			}
 			if (nfind == 0) {
@@ -4434,7 +4491,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 		param_int = (GS::Int32)param_real;
 		if (param_int / 1 < param_real) param_int += 1;
 	}
-	if (abs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
+	if (fabs(param_real) > std::numeric_limits<double>::epsilon()) param_bool = true;
 
 	// Если параметр не строковое - определяем текстовое значение конвертацией
 	if (typeIDr != APIParT_CString) {
@@ -4686,7 +4743,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 		}
 		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 		if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
-		if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
+		if (fabs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 		pvalue.val.type = API_PropertyRealValueType;
 		formatstringdict = GetFotmatStringForMeasureType();
 		if (formatstringdict.ContainsKey(property.definition.measureType)) {
@@ -4694,7 +4751,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 				double l = pow(10, formatstringdict.Get(property.definition.measureType).n_zero);
 				pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, formatstringdict.Get(property.definition.measureType).n_zero)) / pow(10, formatstringdict.Get(property.definition.measureType).n_zero);
 				pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
-				if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
+				if (fabs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 			}
 			if (pvalue.val.stringformat.IsEmpty()) {
 				pvalue.val.stringformat = formatstringdict.Get(property.definition.measureType).stringformat;
@@ -4785,7 +4842,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_PropertyDe
 // -----------------------------------------------------------------------------
 // Конвертация строки в ParamValue
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const GS::UniString & paramName, const GS::UniString & strvalue) {
+bool ParamHelpers::ConvertStringToParamValue(ParamValue & pvalue, const GS::UniString & paramName, const GS::UniString strvalue) {
 	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
 	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + paramName.ToLowerCase() + "}";
 	pvalue.val.uniStringValue = strvalue;
@@ -4802,6 +4859,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const GS::UniString 
 		}
 	}
 	pvalue.val.type = API_PropertyStringValueType;
+	pvalue.type = API_PropertyStringValueType;
 	pvalue.isValid = true;
 
 	return true;
@@ -4810,10 +4868,36 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const GS::UniString 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const GS::UniString & paramName, const Int32 intValue) {
+bool ParamHelpers::ConvertBoolToParamValue(ParamValue & pvalue, const GS::UniString & paramName, const bool boolValue) {
+	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
+	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + paramName.ToLowerCase() + "}";
+	pvalue.val.type = API_PropertyBooleanValueType;
+	pvalue.type = pvalue.val.type;
+	pvalue.val.boolValue = boolValue;
+	if (pvalue.val.boolValue) {
+		pvalue.val.uniStringValue = RSGetIndString(ID_ADDON_STRINGS + isEng(), TrueId, ACAPI_GetOwnResModule());
+		pvalue.val.intValue = 1;
+		pvalue.val.doubleValue = 1.0;
+	}
+	else {
+		pvalue.val.uniStringValue = RSGetIndString(ID_ADDON_STRINGS + isEng(), FalseId, ACAPI_GetOwnResModule());
+		pvalue.val.intValue = 0;
+		pvalue.val.doubleValue = 0.0;
+	}
+	pvalue.val.canCalculate = true;
+	pvalue.isValid = true;
+	pvalue.val.n_zero = 0;
+	return true;
+}
+
+// -----------------------------------------------------------------------------
+// Конвертация целого числа в ParamValue
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ConvertIntToParamValue(ParamValue & pvalue, const GS::UniString & paramName, const Int32 intValue) {
 	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
 	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + paramName.ToLowerCase() + "}";
 	pvalue.val.type = API_PropertyIntegerValueType;
+	pvalue.type = pvalue.val.type;
 	pvalue.val.canCalculate = true;
 	pvalue.val.intValue = intValue;
 	pvalue.val.doubleValue = intValue * 1.0;
@@ -4827,15 +4911,16 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const GS::UniString 
 // -----------------------------------------------------------------------------
 // Конвертация double в ParamValue
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const GS::UniString & paramName, const double doubleValue) {
+bool ParamHelpers::ConvertDoubleToParamValue(ParamValue & pvalue, const GS::UniString & paramName, const double doubleValue) {
 	if (pvalue.name.IsEmpty()) pvalue.name = paramName;
 	if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@gdl:" + paramName.ToLowerCase() + "}";
 	pvalue.val.type = API_PropertyRealValueType;
+	pvalue.type = pvalue.val.type;
 	pvalue.val.canCalculate = true;
 	pvalue.val.intValue = (GS::Int32)doubleValue;
 	pvalue.val.doubleValue = doubleValue;
 	pvalue.val.boolValue = false;
-	if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
+	if (fabs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 	pvalue.val.uniStringValue = GS::UniString::Printf("%.3f", doubleValue);
 	pvalue.isValid = true;
 	return true;
@@ -4876,7 +4961,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_IFCPropert
 			if (property.singleValue.nominalValue.value.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
 			pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 			if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
-			if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
+			if (fabs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 			pvalue.val.uniStringValue = GS::UniString::Printf("%.3f", pvalue.val.doubleValue);
 			break;
 		case API_IFCPropertyAnyValueIntegerType:
@@ -4926,6 +5011,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_IFCPropert
 			break;
 		}
 	}
+	pvalue.type = pvalue.val.type;
 	return pvalue.isValid;
 }
 void ParamHelpers::ConvertByFormatString(ParamValue & pvalue) {
@@ -4940,7 +5026,7 @@ void ParamHelpers::ConvertByFormatString(ParamValue & pvalue) {
 		if (koeff != 1) n_zero = n_zero + (GS::Int32)log10(koeff);
 		pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, n_zero)) / pow(10, n_zero);
 		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
-		if (abs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
+		if (fabs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 	}
 }
 
@@ -5412,9 +5498,9 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 		pvalue_bmat.name = "bmat_inx";
 		pvalue_bmat.name = pvalue_bmat.name + CharENTER + attribsuffix;
 #ifdef AC_27
-		ParamHelpers::ConvertToParamValue(pvalue_bmat, pvalue_bmat.name, constrinx.ToInt32_Deprecated());
+		ParamHelpers::ConvertIntToParamValue(pvalue_bmat, pvalue_bmat.name, constrinx.ToInt32_Deprecated());
 #else
-		ParamHelpers::ConvertToParamValue(pvalue_bmat, pvalue_bmat.name, (Int32)constrinx);
+		ParamHelpers::ConvertIntToParamValue(pvalue_bmat, pvalue_bmat.name, (Int32)constrinx);
 #endif
 		pvalue_bmat.fromMaterial = true;
 		ParamHelpers::AddParamValue2ParamDict(params.Get("{@property:bmat}").fromGuid, pvalue_bmat, params);
@@ -5442,7 +5528,7 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 				rawName.ReplaceAll("}", CharENTER + attribsuffix + "}");
 				pvalue.name = param.name + CharENTER + attribsuffix;
 				pvalue.rawName = rawName;
-				ParamHelpers::ConvertToParamValue(pvalue, pvalue.name, namet);
+				ParamHelpers::ConvertStringToParamValue(pvalue, pvalue.name, namet);
 				pvalue.fromMaterial = true;
 				ParamHelpers::AddParamValue2ParamDict(param.fromGuid, pvalue, params);
 				flag_add = false;

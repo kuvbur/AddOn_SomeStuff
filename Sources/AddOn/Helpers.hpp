@@ -179,7 +179,15 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 
+// --------------------------------------------------------------------
+// Проверка языка Архикада. Для INT возвращает 1000
+// --------------------------------------------------------------------
 Int32 isEng();
+
+// --------------------------------------------------------------------
+// Проверка наличия дробной части
+// --------------------------------------------------------------------
+bool chek_floor(double val, double tolerance);
 
 bool ElemHeadToNeig(API_Neig* neig, const API_Elem_Head* elemHead);
 #ifdef AC_26
@@ -495,15 +503,17 @@ namespace ParamHelpers
 	// -----------------------------------------------------------------------------
 	bool AddProperty(ParamDictValue& params, GS::Array<API_Property>& properties);
 
-	// -----------------------------------------------------------------------------
-	// Добавление значения в словарь ParamDictValue
-	// -----------------------------------------------------------------------------
-	void AddValueToParamDictValue(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double& val);
+	void AddBoolValueToParamDictValue(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const bool val);
 
 	// -----------------------------------------------------------------------------
 	// Добавление значения в словарь ParamDictValue
 	// -----------------------------------------------------------------------------
-	void AddValueToParamDictValue(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString& val);
+	void AddDoubleValueToParamDictValue(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val);
+
+	// -----------------------------------------------------------------------------
+	// Добавление значения в словарь ParamDictValue
+	// -----------------------------------------------------------------------------
+	void AddStringValueToParamDictValue(ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString val);
 
 	// -----------------------------------------------------------------------------
 	// Список возможных префиксов типов параметров
@@ -614,6 +624,11 @@ namespace ParamHelpers
 	// -----------------------------------------------------------------------------
 	// Конвертация параметров библиотечного элемента в ParamValue
 	// -----------------------------------------------------------------------------
+	bool ConvertBoolToParamValue(ParamValue& pvalue, const GS::UniString& paramName, const bool boolValue);
+
+	// -----------------------------------------------------------------------------
+	// Конвертация параметров библиотечного элемента в ParamValue
+	// -----------------------------------------------------------------------------
 	bool ConvertToParamValue(ParamValue& pvalue, const API_AddParType& nthParameter);
 
 	// -----------------------------------------------------------------------------
@@ -629,17 +644,17 @@ namespace ParamHelpers
 	// -----------------------------------------------------------------------------
 	// Конвертация строки в ParamValue
 	// -----------------------------------------------------------------------------
-	bool ConvertToParamValue(ParamValue& pvalue, const GS::UniString& paramName, const GS::UniString& strvalue);
+	bool ConvertStringToParamValue(ParamValue& pvalue, const GS::UniString& paramName, const GS::UniString strvalue);
 
 	// -----------------------------------------------------------------------------
 	// Конвертация целого числа в ParamValue
 	// -----------------------------------------------------------------------------
-	bool ConvertToParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue);
+	bool ConvertIntToParamValue(ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue);
 
 	// -----------------------------------------------------------------------------
 	// Конвертация double в ParamValue
 	// -----------------------------------------------------------------------------
-	bool ConvertToParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue);
+	bool ConvertDoubleToParamValue(ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue);
 
 	// -----------------------------------------------------------------------------
 	// Конвертация API_IFCProperty в ParamValue
