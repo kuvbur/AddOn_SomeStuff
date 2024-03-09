@@ -133,7 +133,7 @@ public:
 	{
 		ParamValue posvalue;
 		GS::UniString unipos = this->ToUniString();
-		ParamHelpers::ConvertToParamValue(posvalue, rawname, unipos);
+		ParamHelpers::ConvertStringToParamValue(posvalue, rawname, unipos);
 		return posvalue;
 	}
 

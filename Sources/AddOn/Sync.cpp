@@ -159,11 +159,9 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	GS::UniString subtitle_ = GS::UniString::Printf("Reading data from %d elements : ", guidArray.GetSize()) + subtitle;
 
 	// Словарь со всеми возможными определениями свойств
-	if (propertyParams.IsEmpty()) {
-		if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
-		ParamHelpers::GetAllInfoToParamDict(propertyParams);
-		ParamHelpers::GetAllGlobToParamDict(propertyParams);
-	}
+	if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+	if (!ParamHelpers::hasInfo(propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
+	if (!ParamHelpers::hasGlob(propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
 	if (propertyParams.IsEmpty()) return true;
 	bool flag_chanel = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
@@ -192,8 +190,14 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 	// Получаем список связанных элементов
 	GS::Array<API_Guid> subelemGuids;
 	GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuids);
+
 	SyncData(elemGuid, syncSettings, subelemGuids, propertyParams, paramToWrite);
 	if (!subelemGuids.IsEmpty() && SyncRelationsElement(elementType, syncSettings)) {
+		if (subelemGuids.GetSize() > 3) {
+			if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+			if (!ParamHelpers::hasInfo(propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
+			if (!ParamHelpers::hasGlob(propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
+		}
 		for (UInt32 i = 0; i < subelemGuids.GetSize(); ++i) {
 			API_Guid subelemGuid = subelemGuids[i];
 			if (subelemGuid != elemGuid) {
@@ -306,6 +310,7 @@ void RunParamSelected(const SyncSettings& syncSettings) {
 
 	if (err != NoError) return;
 	CallOnSelectedElemSettings(RunParam, false, true, syncSettings, fmane, false);
+	SyncSelected(syncSettings);
 #ifdef AC_27
 	if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
 	err = ACAPI_Database_ChangeCurrentDatabase(&databaseInfo);
@@ -346,7 +351,7 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
 #endif
 		if (err != NoError) return;
-	}
+}
 	API_Element element, mask;
 	ACAPI_ELEMENT_MASK_CLEAR(mask);
 	ACAPI_ELEMENT_MASK_SET(mask, API_Elem_Head, renovationStatus);
@@ -365,7 +370,7 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
 		return;
 	}
-}
+	}
 
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов

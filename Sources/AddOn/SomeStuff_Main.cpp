@@ -110,14 +110,14 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			return NoError;
 		}
 	}
-
+	API_ElemTypeID elementType;
 #if defined AC_26 || defined AC_27
-	if (elemType->elemHead.type.typeID == API_GroupID) return NoError;
-	if (!CheckElementType(elemType->elemHead.type.typeID, syncSettings)) return NoError;
+	elementType = elemType->elemHead.type.typeID;
 #else
-	if (elemType->elemHead.typeID == API_GroupID) return NoError;
-	if (!CheckElementType(elemType->elemHead.typeID, syncSettings)) return NoError;
+	elementType = elemType->elemHead.typeID;
 #endif
+	if (elementType == API_GroupID) return NoError;
+	if (!CheckElementType(elementType, syncSettings)) return NoError;
 	if (!IsElementEditable(elemType->elemHead.guid, syncSettings, true)) return NoError;
 	ParamDictValue propertyParams = {};
 	ParamDictElement paramToWrite = {};
@@ -127,9 +127,24 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	case APINotifyElement_PropertyValueChange:
 	case APINotifyElement_Edit:
 	case APINotifyElement_ClassificationChange:
+
+		// Отключение обработки панелей навесных стен после изменения самой навесной стены
+		// Панели навесных стен обрабатываются далее, в функции SyncElement
+		if (syncSettings.logMon && elementType != API_CurtainWallPanelID && elementType != API_CurtainWallSegmentID && elementType != API_CurtainWallFrameID && elementType != API_CurtainWallJunctionID && elementType != API_CurtainWallAccessoryID) {
+			syncSettings.logMon = false;
+			WriteSyncSettingsToPreferences(syncSettings);
+		}
+		if (syncSettings.logMon) {
+			syncSettings.cwallS = false;
+		}
+		if (!syncSettings.logMon && elementType == API_CurtainWallID) {
+			syncSettings.logMon = true;
+			WriteSyncSettingsToPreferences(syncSettings);
+		}
 		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite);
 		if (!paramToWrite.IsEmpty()) {
 			ParamHelpers::ElementsWrite(paramToWrite);
+			ParamHelpers::InfoWrite(paramToWrite);
 		}
 	default:
 		break;
@@ -193,7 +208,7 @@ void SetPaletteMenuText(short paletteItemInd) {
 	API_MenuItemRef     itemRef;
 	BNZeroMemory(&itemRef, sizeof(API_MenuItemRef));
 	GS::UniString itemStr;
-	itemStr = RSGetIndString(ID_ADDON_PROMT + isEng(), paletteItemInd+1, ACAPI_GetOwnResModule());
+	itemStr = RSGetIndString(ID_ADDON_PROMT + isEng(), paletteItemInd + 1, ACAPI_GetOwnResModule());
 	itemRef.menuResID = ID_ADDON_MENU;
 	itemRef.itemIndex = paletteItemInd;
 #ifdef AC_27
@@ -261,7 +276,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		}
 		break;
-}
+	}
 	(void)err;
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
