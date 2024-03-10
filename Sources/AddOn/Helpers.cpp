@@ -401,7 +401,7 @@ bool	GetAnElem(const char* prompt,
 #endif
 
 // --------------------------------------------------------------------
-// Проверка наличия дробной части
+// Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
 bool chek_floor(double val, double tolerance) {
 	double k_val = fabs(val * 1000.0);
@@ -529,6 +529,30 @@ void ReplaceSymbSpase(GS::UniString& outstring) {
 	outstring.ReplaceAll("\\LS", u8"\u2028");
 	outstring.ReplaceAll("\\NEL", u8"\u0085");
 	outstring.ReplaceAll("\\NL", u8"\u2424");
+}
+
+int IsDummyModeOn() {
+
+	//	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
+	//	API_AutotextType	type = APIAutoText_Custom;
+	//	GSErrCode	err = NoError;
+	//#ifdef AC_27
+	//	err = ACAPI_AutoText_GetAutoTexts(&autotexts, type);
+	//#else
+	//	err = ACAPI_Goodies(APIAny_GetAutoTextsID, &autotexts, (void*)(GS::IntPtr)type);
+	//#endif
+	//	if (err != NoError) return false;
+	//	for (UInt32 i = 0; i < autotexts.GetSize(); i++) {
+	//		if (autotexts[i][0].Contains("Addon_DummyMode")) {
+	//			if (autotexts[i][2].Contains("on") || autotexts[i][2].Contains("On") || autotexts[i][2].Contains("ON")) {
+	//				return DUMMY_MODE_ON;
+	//			}
+	//			else {
+	//				return DUMMY_MODE_OFF;
+	//			}
+	//		}
+	//	}
+	return DUMMY_MODE_OFF;
 }
 
 // -----------------------------------------------------------------------------
@@ -2011,16 +2035,36 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & params) {
 	DBPrintf("== SMSTF ==      ReadElemCoords\n");
+	ParamDictValue pdictvaluecoord;
+	bool isFliped = false;
 	double x = 0; double y = 0; double z = 0; double angz = 0;
 	double sx = 0; double sy = 0;
-	double dx = 0; double dy = 0;
 	double ex = 0; double ey = 0;
+	double dx = 0; double dy = 0;
 	double tolerance_coord = 0.001;
 	double tolerance_ang = 0.00001;
 	bool hasSymbpos = false; bool hasLine = false;
-	bool isFliped = false;
-	bool skip_north = false;
+	double angznorth = -1.0; double north = -1.0; bool skip_north = false;
+
+	double symb_rotangle_fraction = 0.0;
+	bool bsymb_rotangle_correct = false;
+	bool bsymb_rotangle_correct_1000 = false;
+
+	GS::UniString angznorthtxt = "UNDEF"; GS::UniString angznorthtxteng = "UNDEF";
 	GS::UniString globnorthkey = "{@glob:glob_north_dir}";
+	if (!params.ContainsKey(globnorthkey)) {
+		skip_north = true;
+	}
+	else {
+		north = params.Get(globnorthkey).val.doubleValue;
+	}
+	bool bsync_coord_correct = true;
+	GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
+	if (params.ContainsKey(sync_coord_correctkey)) {
+		if (params.Get(sync_coord_correctkey).isValid) {
+			bsync_coord_correct = params.Get(sync_coord_correctkey).val.boolValue;
+		}
+	}
 	API_ElemTypeID eltype;
 #if defined AC_26 || defined AC_27
 	eltype = element.header.type.typeID;
@@ -2029,8 +2073,120 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 #endif
 	API_Element owner;
 
+	// Обработка навесной стены- случай особый, т.к. у неё может быть несколькор сегментов
+	if (eltype == API_CurtainWallID && element.header.hasMemo) {
+		hasLine = true;
+		isFliped = element.curtainWall.flipped;
+		double sx_ = 0; double sy_ = 0;
+		double ex_ = 0; double ey_ = 0;
+		GS::UniString angznorthtxteng_ = "";
+		bool bsymb_pos_sx_correct_ = false;
+		bool bsymb_pos_sy_correct_ = false;
+		bool bsymb_pos_ex_correct_ = false;
+		bool bsymb_pos_ey_correct_ = false;
+		bool bsymb_pos_e_correct_ = false;
+		bool bsymb_pos_s_correct_ = false;
+		bool bsymb_pos_correct_ = false;
+		bool bsymb_rotangle_correct_ = false;
+		bool bsymb_rotangle_correct_1000_ = false;
+		API_ElementMemo  memo;
+		if (ACAPI_Element_GetMemo(element.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
+			Int32 size = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallSegments)) / sizeof(API_CWSegmentType);
+			for (Int32 inx_segment = 0; inx_segment < size; ++inx_segment) {
+				sx = memo.cWallSegments[inx_segment].begC.x;
+				sy = memo.cWallSegments[inx_segment].begC.y;
+				ex = memo.cWallSegments[inx_segment].endC.x;
+				ey = memo.cWallSegments[inx_segment].endC.y;
+				if (inx_segment == 0) {
+					sx_ = sx; sy_ = sy;
+					ex_ = ex; ey_ = ey;
+				}
+				else {
+					ex_ = ex; ey_ = ey;
+				}
+				CoordRotAngle(sx, sy, ex, ey, isFliped, angz);
+				bsymb_rotangle_correct = CoordCorrectAngle(angz, tolerance_ang, symb_rotangle_fraction, bsymb_rotangle_correct_1000);
+				if (!skip_north) CoordNorthAngle(north, angz, angznorth, angznorthtxt, angznorthtxteng);
+				if (angznorthtxteng_.IsEmpty() && !angznorthtxteng.IsEmpty()) angznorthtxteng_ = angznorthtxteng;
+				if (!angznorthtxteng.IsEqual(angznorthtxteng_) && !angznorthtxteng.IsEmpty()) {
+					skip_north = true; //Несколько сегментов с разным направлением. Определить север не получится
+				}
+				bool bsymb_pos_sx_correct = chek_floor(sx, tolerance_coord);
+				bool bsymb_pos_sy_correct = chek_floor(sy, tolerance_coord);
+				bool bsymb_pos_ex_correct = chek_floor(ex, tolerance_coord);
+				bool bsymb_pos_ey_correct = chek_floor(ey, tolerance_coord);
+				bool bsymb_pos_e_correct = bsymb_pos_sx_correct && bsymb_pos_sy_correct;
+				bool bsymb_pos_s_correct = bsymb_pos_ex_correct && bsymb_pos_ey_correct;
+				bool bsymb_pos_correct = bsymb_pos_e_correct && bsymb_pos_s_correct;
+
+				if (bsymb_rotangle_correct) bsymb_rotangle_correct_ = true;
+				if (bsymb_rotangle_correct_1000) bsymb_rotangle_correct_1000_ = true;
+				if (bsymb_pos_sx_correct) bsymb_pos_sx_correct_ = true;
+				if (bsymb_pos_sy_correct) bsymb_pos_sy_correct_ = true;
+				if (bsymb_pos_ex_correct) bsymb_pos_ex_correct_ = true;
+				if (bsymb_pos_ey_correct) bsymb_pos_ey_correct_ = true;
+				if (bsymb_pos_e_correct) bsymb_pos_e_correct_ = true;
+				if (bsymb_pos_s_correct) bsymb_pos_s_correct_ = true;
+				if (bsymb_pos_correct) bsymb_pos_correct_ = true;
+			}
+		}
+		ACAPI_DisposeElemMemoHdls(&memo);
+		if (skip_north) {
+			angznorth = -1.0;
+			angznorthtxt = "UNDEF";
+			angznorthtxteng = "UNDEF";
+		}
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
+		ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
+		ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxteng);
+
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx_);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy_);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx_);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy_);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex_);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey_);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz, 5.0));
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod(angz, 180.0));
+		if (bsync_coord_correct) {
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_s_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct", bsymb_pos_e_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_sx_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_sy_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_sx_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_sy_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", bsymb_pos_ex_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", bsymb_pos_ey_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct_);
+			ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", bsymb_rotangle_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", bsymb_rotangle_correct_1000);
+		}
+		else {
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", true);
+			ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", 0.0);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", true);
+		}
+
+		ParamHelpers::CompareParamDictValue(pdictvaluecoord, params);
+		return true;
+	}
+
 	// Если нужно определить направление окон или дверей - запрашиваем родительский элемент
-	if (params.ContainsKey(globnorthkey) && (eltype == API_WindowID || eltype == API_DoorID || eltype == API_CurtainWallPanelID)) {
+	if (!skip_north && (eltype == API_WindowID || eltype == API_DoorID || eltype == API_CurtainWallPanelID)) {
 		BNZeroMemory(&owner, sizeof(API_Element));
 		if (eltype == API_CurtainWallPanelID) owner.header.guid = element.cwPanel.owner;
 		if (eltype == API_WindowID) owner.header.guid = element.window.owner;
@@ -2042,7 +2198,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 #else
 		ownereltype = owner.header.typeID;
 #endif
-		if (ownereltype== API_WallID) {
+		if (ownereltype == API_WallID) {
 			sx = owner.wall.begC.x;
 			sy = owner.wall.begC.y;
 			ex = owner.wall.endC.x;
@@ -2050,9 +2206,21 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 			isFliped = owner.wall.flipped;
 			hasLine = true;
 		}
-		// TODO Добавить поиск сегментов
-		if (ownereltype== API_CurtainWallID) {
-			hasLine = true;
+		if (eltype == API_CurtainWallPanelID && ownereltype == API_CurtainWallID && owner.header.hasMemo) {
+			Int32 inx_segment = element.cwPanel.segmentID;
+			API_ElementMemo  memo;
+			if (ACAPI_Element_GetMemo(owner.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
+				Int32 size = BMGetPtrSize(reinterpret_cast<GSPtr>(memo.cWallSegments)) / sizeof(API_CWSegmentType);
+				if (size >= inx_segment) {
+					sx = memo.cWallSegments[inx_segment].begC.x;
+					sy = memo.cWallSegments[inx_segment].begC.y;
+					ex = memo.cWallSegments[inx_segment].endC.x;
+					ey = memo.cWallSegments[inx_segment].endC.y;
+					hasLine = true;
+					isFliped = owner.curtainWall.flipped;
+				}
+			}
+			ACAPI_DisposeElemMemoHdls(&memo);
 		}
 	}
 	else {
@@ -2123,167 +2291,197 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		skip_north = true;
 		break;
 	}
-	ParamDictValue pdictvaluecoord;
 	if (hasSymbpos) {
 		double k = 100000.0;
 		x = round(x * k) / k;
 		y = round(y * k) / k;
 		z = round(z * k) / k;
+		if (fabs(angz) > 0.0000001) {
+			angz = fmod(round((angz * 180.0 / PI) * k) / k, 360.0);
+		}
+		else {
+			angz = 0.0;
+		}
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
-		bool bsymb_pos_x_correct = chek_floor(x, tolerance_coord);
-		bool bsymb_pos_y_correct = chek_floor(x, tolerance_coord);
-		bool bsymb_pos_correct = bsymb_pos_x_correct && bsymb_pos_y_correct;
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_x_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_y_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_x_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_y_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
-	}
-	if (hasLine) {
-		double k = 100000.0;
-		sx = round(sx * k) / k;
-		sy = round(sy * k) / k;
-		ex = round(ex * k) / k;
-		ey = round(ey * k) / k;
-		if (isFliped) {
-			dx = ex - sx;
-			dy = ey - sy;
+		if (bsync_coord_correct) {
+			bool bsymb_pos_x_correct = chek_floor(x, tolerance_coord);
+			bool bsymb_pos_y_correct = chek_floor(y, tolerance_coord);
+			bool bsymb_pos_correct = bsymb_pos_x_correct && bsymb_pos_y_correct;
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_x_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_y_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_x_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_y_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
 		}
 		else {
-			dx = sx - ex;
-			dy = sy - ey;
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", true);
 		}
-		double l = sqrt(dx * dx + dy * dy);
-		bool bl_correct = chek_floor(l, tolerance_coord);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "l_correct", bl_correct);
+	}
+	if (hasLine) CoordRotAngle(sx, sy, ex, ey, isFliped, angz);
+	if (hasLine && !hasSymbpos) {
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
-		bool bsymb_pos_sx_correct = chek_floor(sx, tolerance_coord);
-		bool bsymb_pos_sy_correct = chek_floor(sy, tolerance_coord);
-		bool bsymb_pos_ex_correct = chek_floor(ex, tolerance_coord);
-		bool bsymb_pos_ey_correct = chek_floor(ey, tolerance_coord);
-		bool bsymb_pos_e_correct = bsymb_pos_sx_correct && bsymb_pos_sy_correct;
-		bool bsymb_pos_s_correct = bsymb_pos_ex_correct && bsymb_pos_ey_correct;
-		bool bsymb_pos_correct = bsymb_pos_e_correct && bsymb_pos_s_correct;
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_s_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct", bsymb_pos_e_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_sx_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_sy_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_sx_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_sy_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", bsymb_pos_ex_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", bsymb_pos_ey_correct);
-		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
-		if (is_equal(dx, 0.0) && is_equal(dy, 0.0)) {
-			angz = 0.0;
+		if (bsync_coord_correct) {
+			double l = sqrt(dx * dx + dy * dy);
+			bool bl_correct = chek_floor(l, tolerance_coord);
+			bool bsymb_pos_sx_correct = chek_floor(sx, tolerance_coord);
+			bool bsymb_pos_sy_correct = chek_floor(sy, tolerance_coord);
+			bool bsymb_pos_ex_correct = chek_floor(ex, tolerance_coord);
+			bool bsymb_pos_ey_correct = chek_floor(ey, tolerance_coord);
+			bool bsymb_pos_e_correct = bsymb_pos_sx_correct && bsymb_pos_sy_correct;
+			bool bsymb_pos_s_correct = bsymb_pos_ex_correct && bsymb_pos_ey_correct;
+			bool bsymb_pos_correct = bsymb_pos_e_correct && bsymb_pos_s_correct;
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "l_correct", bl_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_s_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct", bsymb_pos_e_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_sx_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_sy_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_sx_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_sy_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", bsymb_pos_ex_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", bsymb_pos_ey_correct);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
 		}
 		else {
-			angz = atan2(dy, dx) + PI;
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "l_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", true);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", true);
 		}
 	}
+
+	if (!skip_north) CoordNorthAngle(north, angz, angznorth, angznorthtxt, angznorthtxteng);
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
+	ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
+	ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxteng);
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz, 5.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
+	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod(angz, 180.0));
+	if (bsync_coord_correct) {
+		bsymb_rotangle_correct = CoordCorrectAngle(angz, tolerance_ang, symb_rotangle_fraction, bsymb_rotangle_correct_1000);
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", bsymb_rotangle_correct);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", bsymb_rotangle_correct_1000);
+	}
+	else {
+		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", 0.0);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", true);
+		ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", true);
+	}
+	ParamHelpers::CompareParamDictValue(pdictvaluecoord, params);
+	return true;
+}
+
+bool CoordCorrectAngle(double angz, double& tolerance_ang, double& symb_rotangle_fraction, bool& bsymb_rotangle_correct_1000) {
+	symb_rotangle_fraction = 1000.0 * fabs(fabs(angz) - floor(fabs(angz))) / tolerance_ang;
+	double angz_ = angz / 1000.0;
+	bool bsymb_rotangle_correct = chek_floor(angz_, tolerance_ang);
+	bsymb_rotangle_correct_1000 = chek_floor(angz_, 0.001);
+	return bsymb_rotangle_correct;
+}
+
+void CoordNorthAngle(double north, double angz, double& angznorth, GS::UniString & angznorthtxt, GS::UniString & angznorthtxteng) {
 	double k = 100000.0;
+	angznorth = fmod(angz - north + 90.0, 360.0);
+	if (fabs(angznorth) < 0.0000001) {
+		angznorth = 0.0;
+	}
+	else {
+		if (angznorth < 0.0) angznorth = 360.0 + angznorth;
+		angznorth = round(angznorth * k) / k;
+	}
+	double n = 0.0;		//"С"
+	double nw = 45.0;	//"СЗ"
+	double w = 90.0;	//"З"
+	double sw = 135.0;	//"ЮЗ"
+	double s = 180.0;	//"Ю"
+	double se = 225.0;	//"ЮВ"
+	double e = 270.0;	//"В";
+	double ne = 315.0;	//"СB";
+	double nn = 360.0;
+	if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
+	if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
+	if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
+	if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
+	if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
+	if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
+	if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
+	if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, n + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, ne + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, e + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, se + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, s + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, sw + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, w + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
+	if (is_equal(angznorth, nn - 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
+
+	if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxteng = "N";
+	if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxteng = "NE";
+	if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxteng = "E";
+	if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxteng = "SE";
+	if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxteng = "S";
+	if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxteng = "SW";
+	if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxteng = "W";
+	if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxteng = "NW";
+	if (is_equal(angznorth, n + 22.5)) angznorthtxteng = "N";
+	if (is_equal(angznorth, ne + 22.5)) angznorthtxteng = "NE";
+	if (is_equal(angznorth, e + 22.5)) angznorthtxteng = "E";
+	if (is_equal(angznorth, se + 22.5)) angznorthtxteng = "SE";
+	if (is_equal(angznorth, s + 22.5)) angznorthtxteng = "S";
+	if (is_equal(angznorth, sw + 22.5)) angznorthtxteng = "SW";
+	if (is_equal(angznorth, w + 22.5)) angznorthtxteng = "W";
+	if (is_equal(angznorth, nn - 22.5)) angznorthtxteng = "NW";
+}
+
+void CoordRotAngle(double sx, double sy, double ex, double ey, bool isFliped, double& angz) {
+	double k = 100000.0;
+	double dx; double dy;
+	sx = round(sx * k) / k;
+	sy = round(sy * k) / k;
+	ex = round(ex * k) / k;
+	ey = round(ey * k) / k;
+	if (isFliped) {
+		dx = ex - sx;
+		dy = ey - sy;
+	}
+	else {
+		dx = sx - ex;
+		dy = sy - ey;
+	}
+	if (is_equal(dx, 0.0) && is_equal(dy, 0.0)) {
+		angz = 0.0;
+	}
+	else {
+		angz = atan2(dy, dx) + PI;
+	}
 	if (fabs(angz) > 0.0000001) {
 		angz = fmod(round((angz * 180.0 / PI) * k) / k, 360.0);
 	}
 	else {
 		angz = 0.0;
 	}
-	if (params.ContainsKey(globnorthkey)) {
-		GS::UniString angznorthtxt = "";
-		double angznorth = -1.0;
-		if (!skip_north) {
-			double north = params.Get(globnorthkey).val.doubleValue;
-			angznorth = fmod(angz - north + 90.0, 360.0);
-			if (fabs(angznorth) < 0.0000001) {
-				angznorth = 0.0;
-			}
-			else {
-				if (angznorth < 0.0) angznorth = 360.0 + angznorth;
-				angznorth = round(angznorth * k) / k;
-			}
-			ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
-			double n = 0.0;		//"С"
-			double nw = 45.0;	//"СЗ"
-			double w = 90.0;	//"З"
-			double sw = 135.0;	//"ЮЗ"
-			double s = 180.0;	//"Ю"
-			double se = 225.0;	//"ЮВ"
-			double e = 270.0;	//"В";
-			double ne = 315.0;	//"СB";
-			double nn = 360.0;
-
-			//if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
-			//if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
-			//if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
-			//if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
-			//if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
-			//if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
-			//if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
-			//if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
-
-			if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
-			if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
-			if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
-			if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
-			if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
-			if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
-			if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
-			if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, n + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), N_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, ne + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NE_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, e + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), E_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, se + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SE_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, s + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), S_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, sw + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), SW_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, w + 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), W_StringID, ACAPI_GetOwnResModule());
-			if (is_equal(angznorth, nn - 22.5)) angznorthtxt = RSGetIndString(ID_ADDON_STRINGS + isEng(), NW_StringID, ACAPI_GetOwnResModule());
-			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
-			if (angznorth > nn - 22.5 || angznorth < n + 22.5) angznorthtxt = "N";
-			if (angznorth > ne - 22.5 && angznorth < ne + 22.5) angznorthtxt = "NE";
-			if (angznorth > e - 22.5 && angznorth < e + 22.5) angznorthtxt = "E";
-			if (angznorth > se - 22.5 && angznorth < se + 22.5) angznorthtxt = "SE";
-			if (angznorth > s - 22.5 && angznorth < s + 22.5) angznorthtxt = "S";
-			if (angznorth > sw - 22.5 && angznorth < sw + 22.5) angznorthtxt = "SW";
-			if (angznorth > w - 22.5 && angznorth < w + 22.5) angznorthtxt = "W";
-			if (angznorth > nw - 22.5 && angznorth < nw + 22.5) angznorthtxt = "NW";
-			if (is_equal(angznorth, n + 22.5)) angznorthtxt = "N";
-			if (is_equal(angznorth, ne + 22.5)) angznorthtxt = "NE";
-			if (is_equal(angznorth, e + 22.5)) angznorthtxt = "E";
-			if (is_equal(angznorth, se + 22.5)) angznorthtxt = "SE";
-			if (is_equal(angznorth, s + 22.5)) angznorthtxt = "S";
-			if (is_equal(angznorth, sw + 22.5)) angznorthtxt = "SW";
-			if (is_equal(angznorth, w + 22.5)) angznorthtxt = "W";
-			if (is_equal(angznorth, nn - 22.5)) angznorthtxt = "NW";
-			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxt);
-		}
-		else {
-			ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir", angznorth);
-			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
-			ParamHelpers::AddStringValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxt);
-		}
-	}
-	double symb_rotangle_fraction = 1000.0 * fabs(fabs(angz) - floor(fabs(angz))) / tolerance_ang;
-	double angz_ = angz / 1000.0;
-	bool bsymb_rotangle_correct = chek_floor(angz_, tolerance_ang);
-	bool bsymb_rotangle_correct_1000 = chek_floor(angz_, 0.001);
-	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
-	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
-	ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", bsymb_rotangle_correct);
-	ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", bsymb_rotangle_correct_1000);
-	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod(angz, 5.0));
-	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod(angz, 10.0));
-	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod45", fmod(angz, 45.0));
-	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod(angz, 90.0));
-	ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod(angz, 180.0));
-	ParamHelpers::CompareParamDictValue(pdictvaluecoord, params);
-	return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -3111,6 +3309,31 @@ bool GetElemState(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinit
 	return false;
 }
 
+bool GetElemStateReverse(const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name) {
+	if (definitions.IsEmpty()) return false;
+	GSErrCode	err = NoError;
+	for (UInt32 i = 0; i < definitions.GetSize(); i++) {
+		if (!definitions[i].description.IsEmpty()) {
+			if (definitions[i].description.Contains(property_flag_name)) {
+				API_Property propertyflag = {};
+				err = ACAPI_Element_GetPropertyValue(elemGuid, definitions[i].guid, propertyflag);
+				if (err == NoError) {
+					if (propertyflag.isDefault) {
+						return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+					}
+					else {
+						return propertyflag.value.singleVariant.variant.boolValue;
+					}
+				}
+				else {
+					return true;
+				}
+			}
+		}
+	}
+	return true;
+}
+
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов
 // --------------------------------------------------------------------
@@ -3559,6 +3782,10 @@ void ParamHelpers::Read(const API_Guid & elemGuid, ParamDictValue & params, Para
 				GS::UniString globnorthkey = "{@glob:glob_north_dir}";
 				if (propertyParams.ContainsKey(globnorthkey)) {
 					paramByType.Add(globnorthkey, propertyParams.Get(globnorthkey));
+				}
+				GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
+				if (params.ContainsKey(sync_coord_correctkey)) {
+					paramByType.Add(sync_coord_correctkey, params.Get(sync_coord_correctkey));
 				}
 				needCompare = ParamHelpers::ReadElemCoords(element, paramByType);
 			}
@@ -4710,6 +4937,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 		if (pvalue.rawName.IsEmpty()) pvalue.rawName = "{@property:" + fname.ToLowerCase() + "}";
 		if (pvalue.name.IsEmpty()) pvalue.name = fname;
 	}
+	if (property.definition.description.Contains("Sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
 #if defined(AC_22) || defined(AC_23)
 	pvalue.isValid = property.isEvaluated;
 #else

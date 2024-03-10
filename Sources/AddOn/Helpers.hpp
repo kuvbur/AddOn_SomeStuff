@@ -34,6 +34,10 @@
 #define ARRAY_MAX 3
 #define ARRAY_MIN 4
 
+#define DUMMY_MODE_UNDEF 0
+#define DUMMY_MODE_ON 1
+#define DUMMY_MODE_OFF 2
+
 static const Int32 AddOnNameID = 1;
 static const Int32 AddOnDescriptionID = 2;
 
@@ -185,7 +189,7 @@ typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 Int32 isEng();
 
 // --------------------------------------------------------------------
-// Проверка наличия дробной части
+// Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
 bool chek_floor(double val, double tolerance);
 
@@ -254,6 +258,8 @@ void ReplaceCR(GS::UniString& val, bool clear = false);
 void GetNumSymbSpase(GS::UniString& outstring, GS::UniChar symb, char charrepl);
 
 void ReplaceSymbSpase(GS::UniString& outstring);
+
+int IsDummyModeOn();
 
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
@@ -397,6 +403,12 @@ GSErrCode GetGDLParameters(const API_ElemTypeID& elemType, const API_Guid& elemG
 GS::UniString GetFormatString(GS::UniString& paramName);
 
 FormatStringDict GetFotmatStringForMeasureType();
+
+void CoordNorthAngle(double north, double angz, double& angznorth, GS::UniString& angznorthtxt, GS::UniString& angznorthtxteng);
+
+void CoordRotAngle(double sx, double sy, double ex, double ey, bool isFliped, double& angz);
+
+bool CoordCorrectAngle(double angz, double& tolerance_ang, double& symb_rotangle_fraction, bool& bsymb_rotangle_correct_1000);
 
 // -----------------------------------------------------------------------------
 // Получение имени внутренних свойств по русскому имени
@@ -800,6 +812,8 @@ void UnhideUnlockAllLayer(void);
 // Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
 bool GetElemState(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name);
+
+bool GetElemStateReverse(const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name);
 
 // -----------------------------------------------------------------------------
 // Получить полное имя свойства (включая имя группы)
