@@ -48,13 +48,13 @@
 			CFBundleVersion
 		</key>
 		<string>
-			1.69
+			1.70
 		</string>
 		<key>
 			CFBundleShortVersionString
 		</key>
 		<string>
-			1.69
+			1.70
 		</string>
 		<key>
 			CFBundleSignature
