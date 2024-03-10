@@ -76,29 +76,30 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
 #endif
 	long time_start = clock();
-	if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings, nPhase, propertyParams, paramToWrite);
+	int dummymode = IsDummyModeOn();
+	if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ObjectID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_WindowID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType(API_DoorID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType(API_ZoneID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_WallID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_SlabID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_ColumnID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_BeamID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_RoofID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MeshID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType(API_MorphID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	nPhase = nPhase + 1;
-	if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings, nPhase, propertyParams, paramToWrite);
+	if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType(API_CurtainWallID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode);
 	long time_end = clock();
 	GS::UniString time = GS::UniString::Printf(" %d s", (time_end - time_start) / 1000);
 	msg_rep("SyncAll - read", time, NoError, APINULLGuid);
@@ -136,7 +137,7 @@ void SyncAndMonAll(SyncSettings& syncSettings) {
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
 // -----------------------------------------------------------------------------
-bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Int32& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
+bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Int32& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode) {
 	GS::UniString		subtitle;
 	GSErrCode			err = NoError;
 	GS::Array<API_Guid>	guidArray;
@@ -165,7 +166,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	if (propertyParams.IsEmpty()) return true;
 	bool flag_chanel = false;
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
+		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite, dummymode);
 #ifdef AC_27
 		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
 #else
@@ -182,7 +183,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
 // -----------------------------------------------------------------------------
-void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
+void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode) {
 	API_ElemTypeID elementType;
 	GSErrCode err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) return;
@@ -191,7 +192,7 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 	GS::Array<API_Guid> subelemGuids;
 	GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuids);
 
-	SyncData(elemGuid, syncSettings, subelemGuids, propertyParams, paramToWrite);
+	SyncData(elemGuid, syncSettings, subelemGuids, propertyParams, paramToWrite, dummymode);
 	if (!subelemGuids.IsEmpty() && SyncRelationsElement(elementType, syncSettings)) {
 		if (subelemGuids.GetSize() > 3) {
 			if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
@@ -202,7 +203,7 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 			API_Guid subelemGuid = subelemGuids[i];
 			if (subelemGuid != elemGuid) {
 				GS::Array<API_Guid> epm;
-				SyncData(subelemGuid, syncSettings, epm, propertyParams, paramToWrite);
+				SyncData(subelemGuid, syncSettings, epm, propertyParams, paramToWrite, dummymode);
 			}
 		}
 	}
@@ -231,6 +232,7 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 	ParamDictElement paramToWrite;
 	GS::UniString subtitle = GS::UniString::Printf("Reading data from %d elements", guidArray.GetSize());
 	GS::Int32 nPhase = 1;
+	int dummymode = IsDummyModeOn();
 #ifdef AC_27
 	bool showPercent = true;
 	Int32 maxval = guidArray.GetSize();
@@ -240,7 +242,7 @@ void SyncArray(const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 #endif
 	long time_start = clock();
 	for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite);
+		SyncElement(guidArray[i], syncSettings, propertyParams, paramToWrite, dummymode);
 #ifdef AC_27
 
 		if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase(&subtitle, &maxval, &showPercent);
@@ -351,7 +353,7 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
 #endif
 		if (err != NoError) return;
-}
+	}
 	API_Element element, mask;
 	ACAPI_ELEMENT_MASK_CLEAR(mask);
 	ACAPI_ELEMENT_MASK_SET(mask, API_Elem_Head, renovationStatus);
@@ -370,7 +372,7 @@ void RunParam(const API_Guid& elemGuid, const SyncSettings& syncSettings) {
 		msg_rep("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
 		return;
 	}
-	}
+}
 
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
@@ -400,7 +402,7 @@ bool SyncRelationsElement(const API_ElemTypeID& elementType, const SyncSettings&
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite) {
+void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode) {
 	GSErrCode	err = NoError;
 	if (!IsElementEditable(elemGuid, syncSettings, true)) return;
 
@@ -423,7 +425,13 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 
 	// Синхронизация данных
 	// Проверяем - не отключена ли синхронизация у данного объекта
-	if (!GetElemState(elemGuid, definitions, "Sync_flag")) return;
+	if (dummymode == DUMMY_MODE_UNDEF) dummymode = IsDummyModeOn();
+	if (dummymode != DUMMY_MODE_ON) {
+		if (!GetElemState(elemGuid, definitions, "Sync_flag")) return;
+	}
+	if (dummymode == DUMMY_MODE_ON) {
+		if (!GetElemStateReverse(elemGuid, definitions, "Sync_flag")) return;
+	}
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) { return; }
@@ -574,6 +582,16 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 	}
 	if (description_string.Contains("Sync_flag")) {
 		return false;
+	}
+	if (description_string.Contains("Sync_correct_flag")) {
+		ParamDictValue paramDict;
+		ParamValue paramdef; //Свойство, из которого получено правило
+		ParamHelpers::ConvertToParamValue(paramdef, definition);
+		paramdef.rawName = "{@property:sync_correct_flag}";
+		paramdef.fromGuid = elemGuid;
+		paramDict.Add(paramdef.rawName, paramdef);
+		ParamHelpers::AddParamDictValue2ParamDictElement(elemGuid, paramDict, paramToRead);
+		return true;
 	}
 
 	// Если указан сброс данных - синхронизировать не будем

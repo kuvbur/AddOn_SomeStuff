@@ -84,6 +84,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc(API_NotifyEventID notif
 GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType) {
 	SyncSettings syncSettings(false, false, true, true, true, true, false);
 	LoadSyncSettingsFromPreferences(syncSettings);
+	int dummymode = DUMMY_MODE_UNDEF;
 #ifdef PK_1
 	syncSettings.syncMon = true;
 #endif // PK_1
@@ -127,6 +128,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 	case APINotifyElement_PropertyValueChange:
 	case APINotifyElement_Edit:
 	case APINotifyElement_ClassificationChange:
+		dummymode = IsDummyModeOn();
+		if (dummymode == DUMMY_MODE_ON) {
+			syncSettings.syncMon = true;
+			syncSettings.wallS = true;
+			syncSettings.widoS = true;
+			syncSettings.objS = true;
+		}
 
 		// Отключение обработки панелей навесных стен после изменения самой навесной стены
 		// Панели навесных стен обрабатываются далее, в функции SyncElement
@@ -141,7 +149,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elem
 			syncSettings.logMon = true;
 			WriteSyncSettingsToPreferences(syncSettings);
 		}
-		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite);
+		SyncElement(elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode);
 		if (!paramToWrite.IsEmpty()) {
 			ParamHelpers::ElementsWrite(paramToWrite);
 			ParamHelpers::InfoWrite(paramToWrite);
@@ -276,7 +284,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			break;
 		}
 		break;
-	}
+		}
 	(void)err;
 	WriteSyncSettingsToPreferences(syncSettings);
 	MenuSetState(syncSettings);
@@ -288,7 +296,7 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 	ACAPI_KeepInMemory(true);
 	DBPrintf("== SMSTF == MenuCommandHandler end\n");
 	return NoError;
-}
+	}
 
 API_AddonType __ACDLL_CALL CheckEnvironment(API_EnvirParams* envir) {
 	DBPrintf("== SMSTF == CheckEnvironment\n");
