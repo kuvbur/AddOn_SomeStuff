@@ -2075,6 +2075,9 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 
 	// Обработка навесной стены- случай особый, т.к. у неё может быть несколькор сегментов
 	if (eltype == API_CurtainWallID && element.header.hasMemo) {
+		double aang = fabs(fmod(element.curtainWall.angle, 180.0));
+		if (aang > 90.0) aang = 180.0 - aang;
+		if (aang < 5.0) skip_north = true;
 		hasLine = true;
 		isFliped = element.curtainWall.flipped;
 		double sx_ = 0; double sy_ = 0;
@@ -2163,8 +2166,8 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", bsymb_pos_ey_correct_);
 			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct_);
 			ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", symb_rotangle_fraction);
-			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", bsymb_rotangle_correct);
-			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", bsymb_rotangle_correct_1000);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", bsymb_rotangle_correct_);
+			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", bsymb_rotangle_correct_1000_);
 		}
 		else {
 			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", true);
@@ -2207,6 +2210,9 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 			hasLine = true;
 		}
 		if (eltype == API_CurtainWallPanelID && ownereltype == API_CurtainWallID && owner.header.hasMemo) {
+			double aang = fabs(fmod(owner.curtainWall.angle, 180.0));
+			if (aang > 90.0) aang = 180.0 - aang;
+			if (aang < 5.0) skip_north = true;
 			Int32 inx_segment = element.cwPanel.segmentID;
 			API_ElementMemo  memo;
 			if (ACAPI_Element_GetMemo(owner.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
@@ -2282,13 +2288,18 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		hasLine = true;
 		break;
 	default:
+		x = 0;
+		y = 0;
+		z = 0;
 		sx = 0;
 		sy = 0;
 		ex = 0;
 		ey = 0;
 		angz = 0;
 		hasLine = true;
+		hasSymbpos = true;
 		skip_north = true;
+		bsync_coord_correct = false;
 		break;
 	}
 	if (hasSymbpos) {
