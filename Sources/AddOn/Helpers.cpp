@@ -2570,6 +2570,7 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 	if (name.IsEqual("@property:n")) return "@material:n";
 	if (name.IsEqual("@property:layer_thickness")) return "@material:layer thickness";
 	if (name.IsEqual("@property:bmat_inx")) return "@material:bmat_inx";
+	if (name.IsEqual("@property:cutfill_inx")) return "@material:cutfill_inx";
 	GS::UniString nameproperty = "";
 	nameproperty = "@property:" + RSGetIndString(ID_ADDON_STRINGS + isEng(), BuildingMaterialNameID, ACAPI_GetOwnResModule());
 	if (name.IsEqual(nameproperty)) return "@property:BuildingMaterialProperties/Building Material Name";
@@ -5730,19 +5731,32 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 		return false;
 	};
 
-	if (params.ContainsKey("{@property:bmat}")) {
+	if (params.ContainsKey("{@material:cutfill_inx}")) {
 		ParamValue pvalue_bmat;
-		pvalue_bmat.rawName = "{@material:bmat_inx}";
+		pvalue_bmat.rawName = "{@material:cutfill_inx}";
+		pvalue_bmat.name = "cutfill_inx";
 		pvalue_bmat.rawName.ReplaceAll("}", CharENTER + attribsuffix + "}");
-		pvalue_bmat.name = "bmat_inx";
-		pvalue_bmat.name = pvalue_bmat.name + CharENTER + attribsuffix;
 #ifdef AC_27
 		ParamHelpers::ConvertIntToParamValue(pvalue_bmat, pvalue_bmat.name, constrinx.ToInt32_Deprecated());
 #else
 		ParamHelpers::ConvertIntToParamValue(pvalue_bmat, pvalue_bmat.name, (Int32)constrinx);
 #endif
 		pvalue_bmat.fromMaterial = true;
-		ParamHelpers::AddParamValue2ParamDict(params.Get("{@property:bmat}").fromGuid, pvalue_bmat, params);
+		ParamHelpers::AddParamValue2ParamDict(params.Get("{@material:cutfill_inx}").fromGuid, pvalue_bmat, params);
+	}
+
+	if (params.ContainsKey("{@material:bmat_inx}")) {
+		ParamValue pvalue_bmat;
+		pvalue_bmat.rawName = "{@material:bmat_inx}";
+		pvalue_bmat.name = "bmat_inx";
+		pvalue_bmat.rawName.ReplaceAll("}", CharENTER + attribsuffix + "}");
+#ifdef AC_27
+		ParamHelpers::ConvertIntToParamValue(pvalue_bmat, pvalue_bmat.name, constrinx.ToInt32_Deprecated());
+#else
+		ParamHelpers::ConvertIntToParamValue(pvalue_bmat, pvalue_bmat.name, (Int32)constrinx);
+#endif
+		pvalue_bmat.fromMaterial = true;
+		ParamHelpers::AddParamValue2ParamDict(params.Get("{@material:bmat_inx}").fromGuid, pvalue_bmat, params);
 	}
 
 	// Определения и свойста для элементов
