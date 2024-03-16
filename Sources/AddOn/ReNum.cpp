@@ -14,7 +14,9 @@
 //					Renum_flag{*имя свойства с правилом*}
 //					Renum_flag{*имя свойства с правилом*; NULL}
 //					Renum_flag{*имя свойства с правилом*; ALLNULL}
-//						Тип данных свойства-флага: Набор параметров с вариантами "Включить", "Исключить", "Не менять"
+//					Renum_flag{*имя свойства с правилом*; SPACE}
+//					Renum_flag{*имя свойства с правилом*; ALLSPACE}
+//					Тип данных свойства-флага: Набор параметров с вариантами "Включить", "Исключить", "Не менять"
 //		Правило нумерации в одном из форматов
 //	 				Renum{*имя свойства-критерия*}
 //					Renum{*имя свойства-критерия*; *имя свойства-разбивки*}
@@ -32,7 +34,7 @@ GSErrCode ReNumSelected(SyncSettings& syncSettings) {
 	ACAPI_Interface(APIIo_InitProcessWindowID, &funcname, &nPhase);
 #endif
 	long time_start = clock();
-	GS::Array<API_Guid> guidArray = GetSelectedElements(true, true, syncSettings, true);
+	GS::Array<API_Guid> guidArray = GetSelectedElements(true, false, syncSettings, true);
 	if (guidArray.IsEmpty()) return NoError;
 	GS::UniString undoString = RSGetIndString(ID_ADDON_STRINGS + isEng(), UndoReNumId, ACAPI_GetOwnResModule());
 	bool flag_write = true;
@@ -104,36 +106,6 @@ bool GetRenumElements(GS::Array<API_Guid> guidArray, ParamDictElement& paramToWr
 	ParamDictValue propertyParams; // Все свойства уже считаны, поэтому словарь просто пустой
 	ParamHelpers::ElementsRead(paramToReadelem, propertyParams); // Читаем значения
 
-	// Получаем список пронумерованных прежде элементов
-	GS::Array<API_Guid> setGuids;
-	API_UserData userData;
-	BNZeroMemory(&userData, sizeof(userData));
-	userData.platformSign = GS::Act_Platform_Sign;
-	userData.dataVersion = 2;
-	userData.dataHdl = BMAllocateHandle(0, ALLOCATE_CLEAR, 0);
-	GSErrCode err = ACAPI_ElementSet_Identify(APINULLGuid, &setGuids);
-	if (err == NoError) {
-		for (UInt32 i = 0; i < setGuids.GetSize(); i++) {
-			BNZeroMemory(&userData, sizeof(userData));
-			userData.platformSign = GS::Act_Platform_Sign;
-			userData.dataVersion = 2;
-			userData.dataHdl = BMAllocateHandle(0, ALLOCATE_CLEAR, 0);
-			if (userData.dataHdl != nullptr) {
-				userData.dataHdl = BMReallocHandle(userData.dataHdl, sizeof(API_Guid), REALLOC_FULLCLEAR, 0);
-				if (userData.dataHdl != nullptr) {
-					GS::Array<API_Guid> elemGuids;
-					err = ACAPI_ElementSet_GetData(setGuids[i], &elemGuids, &userData);
-					if (userData.dataHdl != nullptr) {
-						API_Guid ruleGuid = *reinterpret_cast<API_Guid*> (*userData.dataHdl);
-						if (rules.ContainsKey(ruleGuid) && !elemGuids.IsEmpty()) rules.Get(ruleGuid).exselemts.Append(elemGuids);
-					}
-				}
-			}
-			err = ACAPI_ElementSet_Delete(setGuids[i]);
-		}
-	}
-	BMKillHandle(&userData.dataHdl);
-
 	// Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
 	for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs(); cIt != NULL; ++cIt) {
 		const RenumRule& rule = *cIt->value;
@@ -201,7 +173,8 @@ bool ReNum_GetElement(const API_Guid& elemGuid, ParamDictValue& propertyParams, 
 						// Если такие свойства есть - записываем правило
 						if (propertyParams.ContainsKey(rawNamecriteria) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty()) && (propertyParams.ContainsKey(rawNamedelimetr) || rawNamedelimetr.IsEmpty())) {
 							rulecritetia.state = true;
-							if (definition.valueType != API_PropertyBooleanValueType) rulecritetia.oldalgoritm = false;
+							//if (definition.valueType != API_PropertyBooleanValueType)
+							rulecritetia.oldalgoritm = false;
 							rulecritetia.position = rawNameposition;
 							rulecritetia.flag = param.rawName;
 							rulecritetia.criteria = rawNamecriteria;
@@ -333,8 +306,6 @@ void ReNumOneRule(const RenumRule& rule, ParamDictElement& paramToReadelem, Para
 	// Добавочные позиции (RENUM_ADD) - меняют значения в случаях:
 	//						Сначала проверяем по критерию ищем подходящую позацию среди игнорируемых.
 	//						В качестве подходящей для назначения выбирается самая часто встречающаяся позиция.
-	//
-	//
 	// Новые позиции (RENUM_NORMAL)
 	//						Сначала идёт поиск по подходящим позициям предыдущих типов. Если не нашли - ищем по-порядку свободную позицию.
 	// Если критерий элемента совпадает с подходящим критерием игнорируемого - будет применена позиция игнорируемого
@@ -449,7 +420,7 @@ bool ElementsSeparation(const RenumRule& rule, const  ParamDictElement& paramToR
 				elemrenumArray.Push(elemArray[i]);
 
 				// Проверим - не нумеровался ли прежде этот элемент. Если нет - ставим флаг перенумерации
-				if (!rule.exselemts.IsEmpty() && !rule.exselemts.Contains(elemArray[i])) state = RENUM_NORMAL;
+				//if (!rule.exselemts.IsEmpty() && !rule.exselemts.Contains(elemArray[i])) state = RENUM_NORMAL;
 			}
 
 			if (state != RENUM_SKIP) {
@@ -477,25 +448,6 @@ bool ElementsSeparation(const RenumRule& rule, const  ParamDictElement& paramToR
 			}
 		}
 	}
-
-	// Запись обрабатываемых элементов в память
-	if (needAddSet && !rule.oldalgoritm && flag) {
-		API_UserData userData;
-		BNZeroMemory(&userData, sizeof(userData));
-		userData.platformSign = GS::Act_Platform_Sign;
-		userData.dataVersion = 2;
-		userData.dataHdl = BMAllocateHandle(0, ALLOCATE_CLEAR, 0);
-		if (userData.dataHdl != nullptr) {
-			userData.dataHdl = BMReallocHandle(userData.dataHdl, sizeof(API_Guid), REALLOC_FULLCLEAR, 0);
-			if (userData.dataHdl != nullptr) {
-				*reinterpret_cast<API_Guid*> (*userData.dataHdl) = rule.guid;
-				API_Guid elemsetGuid;
-				GSErrCode err = ACAPI_ElementSet_Create(&elemrenumArray, &userData, &elemsetGuid);
-				if (err != NoError) msg_rep("ReNumOneRule", "ACAPI_ElementSet_Create", err, APINULLGuid);
-			}
-		}
-		BMKillHandle(&userData.dataHdl);
-	}
 	return flag;
 }
 
@@ -519,9 +471,16 @@ bool ReNumHasFlag(const GS::Array<API_PropertyDefinition> definitions) {
 // -----------------------------------------------------------------------------------------------------------------------
 short ReNumGetFlag(const ParamValue& paramflag, const ParamValue& paramposition) {
 	if (!paramflag.isValid) return RENUM_SKIP;
+	SyncSettings syncSettings;
+	bool isEditable =  IsElementEditable(paramflag.fromGuid, syncSettings, false);
 	if (paramflag.type == API_PropertyBooleanValueType) {
 		if (paramflag.val.boolValue) {
-			return RENUM_NORMAL;
+			if (isEditable) {
+				return RENUM_NORMAL;
+			}
+			else {
+				return RENUM_IGNORE;
+			}
 		}
 		else {
 			return RENUM_SKIP;
@@ -532,18 +491,17 @@ short ReNumGetFlag(const ParamValue& paramflag, const ParamValue& paramposition)
 
 		// Исключаемые позиции
 		GS::UniString txtypenum = RSGetIndString(ID_ADDON_STRINGS + isEng(), RenumSkipID, ACAPI_GetOwnResModule());
-		if (flag.Contains(txtypenum)) return RENUM_SKIP;
+		if (flag.Contains(txtypenum) || flag.Contains("skip")) return RENUM_SKIP;
+
+		// У нередактируемых элементов нет возможности поменять позицию - просто учтём её
+		if (!isEditable) return RENUM_IGNORE;
 
 		// Неизменные позиции
 		txtypenum = RSGetIndString(ID_ADDON_STRINGS + isEng(), RenumIgnoreID, ACAPI_GetOwnResModule());
-		if (flag.Contains(txtypenum)) return RENUM_IGNORE;
+		if (flag.Contains(txtypenum) || flag.Contains("ignore")) return RENUM_IGNORE;
 
 		// Пустые позиции (если строка пустая - значение ноль.)
-		if (paramposition.val.intValue == 0) return RENUM_NORMAL;
-
-		// Добавочные позиции
-		txtypenum = RSGetIndString(ID_ADDON_STRINGS + isEng(), RenumAddID, ACAPI_GetOwnResModule());
-		if (flag.Contains(txtypenum)) return RENUM_ADD;
+		if (paramposition.val.intValue != 0) return RENUM_ADD;
 
 		// Все прочие
 		return RENUM_NORMAL;

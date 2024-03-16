@@ -189,7 +189,6 @@ typedef struct
 	GS::UniString delimetr = "";   // Описание свойства-разбивки
 	short nulltype = NOZEROS;	   // Тип постановки нулей в позиции
 	GS::Array<API_Guid> elemts;	   // Массив элементов
-	GS::Array<API_Guid> exselemts; // Массив пронумерованных прежде элементов
 	API_Guid guid = APINULLGuid;   // GUID свойства с правилом
 } RenumRule;
 
