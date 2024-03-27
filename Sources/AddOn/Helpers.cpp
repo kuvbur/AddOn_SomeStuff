@@ -3220,8 +3220,8 @@ bool ParamHelpers::ConvertToProperty(const ParamValue & pvalue, API_Property & p
 
 		// Конвертация угла из радиан в градусы
 		if (property.definition.measureType == API_PropertyAngleMeasureType) {
-			if (!is_equal(pvalue.val.doubleValue * 180 / PI, property.value.singleVariant.variant.doubleValue)) {
-				property.value.singleVariant.variant.doubleValue = pvalue.val.doubleValue * PI / 180;
+			if (!is_equal(pvalue.val.doubleValue * PI / 180.0, property.value.singleVariant.variant.doubleValue)) {
+				property.value.singleVariant.variant.doubleValue = pvalue.val.doubleValue * PI / 180.0;
 				flag_rec = true;
 			}
 		}
@@ -4712,7 +4712,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 		param_bool = (!param_string.IsEmpty());
 
 		if (UniStringToDouble(param_string, param_real)) {
-			param_real = round(param_real * 100000) / 100000;
+			param_real = round(param_real * 100000.0) / 100000.0;
 			param_int = (GS::Int32)param_real;
 			if (param_int / 1 < param_real) param_int += 1;
 			pvalue.canCalculate = true;
@@ -4772,6 +4772,10 @@ bool ParamHelpers::ConvertToParamValue(ParamValueData & pvalue, const API_AddPar
 			pvalue.stringformat = "1mm";
 			break;
 		case APIParT_Angle:
+			param_real = round((preal * 180.0 / PI) * 100000.0) / 100000.0;
+			if (preal - param_real > 0.00001) param_real += 0.00001;
+			param_int = (GS::Int32)param_real;
+			if (param_int / 1 < param_real) param_int += 1;
 			param_string = GS::UniString::Printf("%.1f", param_real);
 			pvalue.canCalculate = true;
 			pvalue.type = API_PropertyRealValueType;
@@ -4974,12 +4978,14 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 		pvalue.val.n_zero = 0;
 		break;
 	case API_PropertyRealValueType:
-		pvalue.val.doubleValue = round(property.value.singleVariant.variant.doubleValue * 1000) / 1000;
-		if (property.value.singleVariant.variant.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
-
 		// Конвертация угла из радиан в градусы
 		if (property.definition.measureType == API_PropertyAngleMeasureType) {
-			pvalue.val.doubleValue = round((pvalue.val.doubleValue * 180 * 1000 / PI) / 1000);
+			double ang = property.value.singleVariant.variant.doubleValue * 180.0 / PI;
+			pvalue.val.doubleValue = round(ang * 100000.0) / 100000.0;
+		}
+		else {
+			pvalue.val.doubleValue = round(property.value.singleVariant.variant.doubleValue * 100000.0) / 100000.0;
+			if (property.value.singleVariant.variant.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
 		}
 		pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
 		if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
