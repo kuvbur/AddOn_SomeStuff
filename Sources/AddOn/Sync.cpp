@@ -4,6 +4,7 @@
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Sync.hpp"
+#include	"MEPv1.hpp"
 #include	"ResetProperty.hpp"
 #include	"Dimensions.hpp"
 
@@ -188,6 +189,10 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 	GSErrCode err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) return;
 
+	if (elementType == API_ExternalElemID) {
+		MEPv1::test_mep(elemGuid);
+	}
+
 	// Получаем список связанных элементов
 	GS::Array<API_Guid> subelemGuids;
 	GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuids);
@@ -214,7 +219,7 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 // -----------------------------------------------------------------------------
 void SyncSelected(const SyncSettings& syncSettings) {
 	GS::UniString fmane = "Sync Selected";
-	GS::Array<API_Guid> guidArray = GetSelectedElements(false, true, false);
+	GS::Array<API_Guid> guidArray = GetSelectedElements(false, true, true);
 	if (guidArray.IsEmpty()) return;
 	SyncArray(syncSettings, guidArray);
 }
