@@ -189,10 +189,6 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 	GSErrCode err = GetTypeByGUID(elemGuid, elementType);
 	if (err != NoError) return;
 
-	if (elementType == API_ExternalElemID) {
-		MEPv1::test_mep(elemGuid);
-	}
-
 	// Получаем список связанных элементов
 	GS::Array<API_Guid> subelemGuids;
 	GetRelationsElement(elemGuid, elementType, syncSettings, subelemGuids);

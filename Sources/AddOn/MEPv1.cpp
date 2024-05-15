@@ -5,55 +5,100 @@
 
 using namespace ACAPI::MEP;
 
+API_Guid GetRigidSegmentClassIDFromRoutingElemClassID(const API_Guid& routingElemClassID)
+{
+	if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
+		return ACAPI::MEP::VentilationRigidSegmentID;
+
+	if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
+		return ACAPI::MEP::PipingRigidSegmentID;
+
+	if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
+		return ACAPI::MEP::CableCarrierRigidSegmentID;
+
+	return APINULLGuid;
+}
+
+API_Guid GetBendClassIDFromRoutingElemClassID(const API_Guid& routingElemClassID)
+{
+	if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
+		return ACAPI::MEP::VentilationBendID;
+
+	if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
+		return ACAPI::MEP::PipingBendID;
+
+	if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
+		return ACAPI::MEP::CableCarrierBendID;
+
+	return APINULLGuid;
+}
+
+API_Guid GetTransitionClassIDFromRoutingElemClassID(const API_Guid& routingElemClassID)
+{
+	if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
+		return ACAPI::MEP::VentilationTransitionID;
+
+	if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
+		return ACAPI::MEP::PipingTransitionID;
+
+	if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
+		return ACAPI::MEP::CableCarrierTransitionID;
+
+	return APINULLGuid;
+}
+
 namespace MEPv1 {
-	void test_mep(const API_Guid& elemGuid) {
+	void GetSubElement(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid) {
 		GSErrCode		err = NoError;
+
 		API_Elem_Head elem_head;
 		BNZeroMemory(&elem_head, sizeof(API_Elem_Head));
 		elem_head.guid = elemGuid;
 		err = ACAPI_Element_GetHeader(&elem_head);
-		if (err != NoError) {
-			return;
-		}
 		if (elem_head.type.typeID != API_ExternalElemID) return;
 		GS::UniString txttype = "";
-		if (IsBranch(elem_head.type.classID)) {
-			txttype = "IsBranch";
-		}
 		if (IsRoutingElement(elem_head.type.classID)) {
-			UniqueID id = Adapter::UniqueID(elemGuid);
-			ACAPI::Result<RoutingElement> routingElement = RoutingElement::Get(id);
+			ACAPI::Result<RoutingElement> routingElement = RoutingElement::Get(Adapter::UniqueID(elemGuid));
 			if (routingElement.IsErr()) {
 				ACAPI_WriteReport(routingElement.UnwrapErr().text.c_str(), false);
 				return;
 			}
 			std::vector<UniqueID> routingNodeIds = routingElement->GetRoutingNodeIds();
 			std::vector<UniqueID> routingSegmentIds = routingElement->GetRoutingSegmentIds();
+
+			API_ElemType mepElemType;
+			mepElemType.typeID = API_ExternalElemID;
+			mepElemType.variationID = APIVarId_Generic;
+			if (!routingSegmentIds.empty()) {
+				for (UInt32 inx_segment = 0; inx_segment < routingSegmentIds.size(); ++inx_segment) {
+					ACAPI::Result<RoutingSegment> routingSegment = RoutingSegment::Get(routingSegmentIds[inx_segment]);
+					if (routingSegment.IsErr()) {
+						ACAPI_WriteReport(routingSegment.UnwrapErr().text.c_str(), false);
+						return;
+					}
+					API_Guid rguid = GSGuid2APIGuid(routingSegmentIds[inx_segment].GetGuid());
+					subelemGuid.Push(rguid);
+					std::vector<UniqueID> rigidSegmentIds = routingSegment->GetRigidSegmentIds();
+					if (!rigidSegmentIds.empty()) {
+						for (UInt32 inx_rigid = 0; inx_rigid < rigidSegmentIds.size(); ++inx_rigid) {
+							//ACAPI::Result<RigidSegment> rigidSegment = RigidSegment::Get(rigidSegmentIds[inx_rigid]);
+							//if (rigidSegment.IsErr()) {
+							//	ACAPI_WriteReport(rigidSegment.UnwrapErr().text.c_str(), false);
+							//	return;
+							//}
+							//const UInt32 subElemCount = 1;
+							//API_SubElement* subElemArray = (API_SubElement*)BMpAllClear(subElemCount * sizeof(API_SubElement));
+							//mepElemType.classID = GetRigidSegmentClassIDFromRoutingElemClassID(elem_head.type.classID);
+							//subElemArray[0].subElem.header.type = mepElemType;
+							//ACAPI_Element_GetMemo_ExternalHierarchical(elem_head.guid, subElemCount, subElemArray);
+
+							API_Guid rguid = GSGuid2APIGuid(rigidSegmentIds[inx_rigid].GetGuid());
+							subelemGuid.Push(rguid);
+						}
+					}
+				}
+			}
 			txttype = "IsRoutingElement";
-		}
-		if (IsAccessory(elem_head.type.classID)) {
-			txttype = "IsAccessory";
-		}
-		if (IsBend(elem_head.type.classID)) {
-			txttype = "IsBend";
-		}
-		if (IsEquipment(elem_head.type.classID)) {
-			txttype = "IsEquipment";
-		}
-		if (IsFitting(elem_head.type.classID)) {
-			txttype = "IsFitting";
-		}
-		if (IsFlexibleSegment(elem_head.type.classID)) {
-			txttype = "IsFlexibleSegment";
-		}
-		if (IsRigidSegment(elem_head.type.classID)) {
-			txttype = "IsRigidSegment";
-		}
-		if (IsTransition(elem_head.type.classID)) {
-			txttype = "IsTransition";
-		}
-		if (IsTerminal(elem_head.type.classID)) {
-			txttype = "IsTerminal";
 		}
 		GS::UniString txttype1 = "";
 	}

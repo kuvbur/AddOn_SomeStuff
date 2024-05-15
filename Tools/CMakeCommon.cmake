@@ -1,7 +1,8 @@
 function (SetGlobalCompilerDefinitions acVersion)
 
     if (WIN32)
-        add_definitions (-DUNICODE -D_UNICODE)
+        add_definitions (-DUNICODE -D_UNICODE -D_ITERATOR_DEBUG_LEVEL=0)
+        set (CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL PARENT_SCOPE)
     else ()
         add_definitions (-Dmacintosh=1)
         if (${acVersion} GREATER_EQUAL 26)
@@ -86,15 +87,11 @@ function (LinkGSLibrariesToProject acVersion devKitDir addOnName)
         )
         if (${acVersion} LESS 27)
             target_link_libraries (${addOnName}
-                "$<$<CONFIG:Debug>:${devKitDir}/Lib/Win/ACAP_STATD.lib>"
-                "$<$<CONFIG:Release>:${devKitDir}/Lib/Win/ACAP_STAT.lib>"
-                "$<$<CONFIG:RelWithDebInfo>:${devKitDir}/Lib/Win/ACAP_STAT.lib>"
+                "${devKitDir}/Lib/Win/ACAP_STAT.lib"
             )
         else ()
             target_link_libraries (${addOnName}
-                "$<$<CONFIG:Debug>:${devKitDir}/Lib/ACAP_STATD.lib>"
-                "$<$<CONFIG:Release>:${devKitDir}/Lib/ACAP_STAT.lib>"
-                "$<$<CONFIG:RelWithDebInfo>:${devKitDir}/Lib/ACAP_STAT.lib>"
+                "${devKitDir}/Lib/ACAP_STAT.lib"
             )
         endif ()
     else ()

@@ -872,13 +872,19 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 	GSErrCode	err = NoError;
 	API_RoomRelation	relData;
 	GS::Array<API_ElemTypeID> typeinzone;
-
 	API_HierarchicalOwnerType hierarchicalOwnerType = API_ParentHierarchicalOwner;
 	API_HierarchicalElemType hierarchicalElemType = API_SingleElem;
 	API_HierarchicalElemType hierarchicalElemType_root = API_SingleElem;
 	API_Guid ownerElemApiGuid = APINULLGuid;
 	API_Guid ownerElemApiGuid_root = APINULLGuid;
 	API_Guid elemGuid_t = elemGuid;
+
+
+	if (syncSettings.objS && elementType == API_ExternalElemID) {
+		MEPv1::GetSubElement(elemGuid, subelemGuid);
+		ACAPI_DisposeRoomRelationHdls(&relData);
+		return;
+	}
 
 #ifdef AC_27
 	err = ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
@@ -892,12 +898,6 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 	err = ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
 #endif
 	switch (elementType) {
-	case API_ExternalElemID:
-		if (syncSettings.objS) {
-			if (ownerElemApiGuid != APINULLGuid && hierarchicalElemType == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid);
-			if (ownerElemApiGuid_root != ownerElemApiGuid && ownerElemApiGuid_root != APINULLGuid && hierarchicalElemType_root == API_ChildElemInMultipleElem) subelemGuid.Push(ownerElemApiGuid_root);
-		}
-		break;
 	case API_WallID:
 		if (syncSettings.widoS) {
 			GS::Array<API_Guid> windows;
@@ -1635,6 +1635,12 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 	API_GetParamsType	apiParams = {};
 	BNZeroMemory(&apiOwner, sizeof(API_ParamOwnerType));
 	BNZeroMemory(&apiParams, sizeof(API_GetParamsType));
+	if (elemType == API_ExternalElemID) {
+		API_ElementMemo	memo = {};
+		err = ACAPI_Element_GetMemo(elemGuid, &memo);
+		params = memo.params;
+		return err;
+	}
 	apiOwner.guid = elemGuid;
 #if defined AC_26 || defined AC_27
 	apiOwner.type.typeID = elemType;
