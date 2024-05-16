@@ -39,6 +39,10 @@
 #include "GSUnID.hpp"
 
 namespace MEPv1 {
+	void GetSubElementOfRouting(const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+
 	void GetSubElement(const API_Guid& elemGuid, GS::Array<API_Guid>&subelemGuid);
+
+	void GetRouting(const API_Guid& elemGuid);
 }
 #endif
