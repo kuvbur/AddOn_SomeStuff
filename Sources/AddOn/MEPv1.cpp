@@ -54,31 +54,12 @@ namespace MEPv1 {
 			ACAPI_WriteReport(routingElement.UnwrapErr().text.c_str(), false);
 			return;
 		}
-		std::vector<UniqueID> routingNodeIds = routingElement->GetRoutingNodeIds();
-		std::vector<UniqueID> routingSegmentIds = routingElement->GetRoutingSegmentIds();
+		std::vector<Adapter::UniqueID> routingNodeIds = routingElement->GetRoutingNodeIds();
+		std::vector<Adapter::UniqueID> routingSegmentIds = routingElement->GetRoutingSegmentIds();
 
 		API_ElemType mepElemType;
 		mepElemType.typeID = API_ExternalElemID;
 		mepElemType.variationID = APIVarId_Generic;
-
-		//if (!routingNodeIds.empty()) {
-		//	for (UInt32 inx_segment = 0; inx_segment < routingNodeIds.size(); ++inx_segment) {
-		//		ACAPI::Result<RoutingSegment> routingSegment = RoutingSegment::Get(routingSegmentIds[inx_segment]);
-		//		if (routingSegment.IsErr()) {
-		//			ACAPI_WriteReport(routingSegment.UnwrapErr().text.c_str(), false);
-		//			return;
-		//		}
-		//		API_Guid rguid = GSGuid2APIGuid(routingSegmentIds[inx_segment].GetGuid());
-		//		subelemGuid.Push(rguid);
-		//		std::vector<UniqueID> rigidSegmentIds = routingSegment->GetRigidSegmentIds();
-		//		if (!rigidSegmentIds.empty()) {
-		//			for (UInt32 inx_rigid = 0; inx_rigid < rigidSegmentIds.size(); ++inx_rigid) {
-		//				API_Guid rguid = GSGuid2APIGuid(rigidSegmentIds[inx_rigid].GetGuid());
-		//				subelemGuid.Push(rguid);
-		//			}
-		//		}
-		//	}
-		//}
 
 		if (!routingSegmentIds.empty()) {
 			for (UInt32 inx_segment = 0; inx_segment < routingSegmentIds.size(); ++inx_segment) {
@@ -89,7 +70,7 @@ namespace MEPv1 {
 				}
 				API_Guid rguid = GSGuid2APIGuid(routingSegmentIds[inx_segment].GetGuid());
 				subelemGuid.Push(rguid);
-				std::vector<UniqueID> rigidSegmentIds = routingSegment->GetRigidSegmentIds();
+				std::vector<Adapter::UniqueID> rigidSegmentIds = routingSegment->GetRigidSegmentIds();
 				if (!rigidSegmentIds.empty()) {
 					for (UInt32 inx_rigid = 0; inx_rigid < rigidSegmentIds.size(); ++inx_rigid) {
 						API_Guid rguid = GSGuid2APIGuid(rigidSegmentIds[inx_rigid].GetGuid());
@@ -139,20 +120,20 @@ namespace MEPv1 {
 		if (IsBend(elem_head.type.classID)) {
 			ACAPI::Result<Bend> bendElement = Bend::Get(Adapter::UniqueID(elemGuid));
 			if (bendElement.IsErr()) return;
-			UniqueID nodeId = bendElement->GetRoutingNodeId();
+			Adapter::UniqueID nodeId = bendElement->GetRoutingNodeId();
 			ACAPI::Result<RoutingNode> nodeElement = RoutingNode::Get(nodeId);
 			if (nodeElement.IsErr()) return;
-			UniqueID routingId = nodeElement->GetRoutingElementId();
+			Adapter::UniqueID routingId = nodeElement->GetRoutingElementId();
 			GetSubElementOfRouting(GSGuid2APIGuid(routingId.GetGuid()), subelemGuid);
 			return;
 		}
 		if (IsRigidSegment(elem_head.type.classID)) {
 			ACAPI::Result<RigidSegment> rigidElement = RigidSegment::Get(Adapter::UniqueID(elemGuid));
 			if (rigidElement.IsErr()) return;
-			UniqueID segmentId = rigidElement->GetRoutingSegmentId();
+			Adapter::UniqueID segmentId = rigidElement->GetRoutingSegmentId();
 			ACAPI::Result<RoutingSegment> segmentElement = RoutingSegment::Get(segmentId);
 			if (segmentElement.IsErr()) return;
-			UniqueID routingId = segmentElement->GetRoutingElementId();
+			Adapter::UniqueID routingId = segmentElement->GetRoutingElementId();
 			GetSubElementOfRouting(GSGuid2APIGuid(routingId.GetGuid()), subelemGuid);
 			return;
 		}
