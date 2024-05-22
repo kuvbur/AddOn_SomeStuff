@@ -4,6 +4,9 @@
 #include	"ACAPinc.h"
 #ifdef AC_25
 #include	"APICommon25.h"
+#ifdef PK_1
+#include	"AutomateFunction.hpp"
+#endif
 #endif // AC_25
 #ifdef AC_26
 #include	"APICommon26.h"
@@ -282,6 +285,12 @@ static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams) {
 			RunParamSelected(syncSettings);
 			DimRoundAll(syncSettings);
 			break;
+#ifdef PK_1
+		case AutoList_CommandID:
+			AutoFunc::KM_ListUpdate();
+			DimRoundAll(syncSettings);
+			break;
+#endif
 		}
 		break;
 		}
