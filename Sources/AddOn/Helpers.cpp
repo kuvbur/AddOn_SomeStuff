@@ -11,6 +11,7 @@
 #include	"APICommon26.h"
 #endif // AC_26
 #ifdef AC_27
+#include	"MEPv1.hpp"
 #include	"APICommon27.h"
 #endif // AC_27
 #include	"Helpers.hpp"
@@ -32,373 +33,6 @@ Int32 isEng() {
 	if (!AppInfo.language.IsEqual("RUS")) return 1000;
 	return 0;
 }
-
-#if defined AC_26 || defined AC_27
-
-API_ElemType	NeigToElemID(API_NeigID neigID)
-{
-	API_ElemType	type;
-	GSErrCode		err;
-#ifdef AC_27
-	err = ACAPI_Element_NeigIDToElemType(neigID, type);
-#else
-	err = ACAPI_Goodies_NeigIDToElemType(neigID, type);
-#endif
-	if (err != NoError)
-		type = API_ZombieElemID;
-
-	return type;
-}		// Neig_To_ElemID
-
-bool	ElemHeadToNeig(API_Neig* neig,
-	const API_Elem_Head* elemHead)
-{
-	*neig = {};
-	neig->guid = elemHead->guid;
-
-	API_ElemType type = elemHead->type;
-	if (type == API_ZombieElemID && neig->guid != APINULLGuid) {
-		API_Elem_Head elemHeadCopy = {};
-		elemHeadCopy.guid = elemHead->guid;
-		ACAPI_Element_GetHeader(&elemHeadCopy);
-		type = elemHeadCopy.type;
-	}
-
-	switch (type.typeID) {
-	case API_WallID:					neig->neigID = APINeig_Wall;				neig->inIndex = 1;	break;
-	case API_ColumnID:					neig->neigID = APINeig_Colu;				neig->inIndex = 0;	break;
-	case API_BeamID:					neig->neigID = APINeig_Beam;				neig->inIndex = 1;	break;
-	case API_WindowID:					neig->neigID = APINeig_WindHole;			neig->inIndex = 0;	break;
-	case API_DoorID:					neig->neigID = APINeig_DoorHole;			neig->inIndex = 0;	break;
-	case API_ObjectID:					neig->neigID = APINeig_Symb;				neig->inIndex = 1;	break;
-	case API_LampID:					neig->neigID = APINeig_Light;				neig->inIndex = 1;	break;
-	case API_SlabID:					neig->neigID = APINeig_Ceil;				neig->inIndex = 1;	break;
-	case API_RoofID:					neig->neigID = APINeig_Roof;				neig->inIndex = 1;	break;
-	case API_MeshID:					neig->neigID = APINeig_Mesh;				neig->inIndex = 1;	break;
-
-	case API_DimensionID:				neig->neigID = APINeig_DimOn;				neig->inIndex = 1;	break;
-	case API_RadialDimensionID:			neig->neigID = APINeig_RadDim;				neig->inIndex = 1;	break;
-	case API_LevelDimensionID:			neig->neigID = APINeig_LevDim;				neig->inIndex = 1;	break;
-	case API_AngleDimensionID:			neig->neigID = APINeig_AngDimOn;			neig->inIndex = 1;	break;
-
-	case API_TextID:					neig->neigID = APINeig_Word;				neig->inIndex = 1;	break;
-	case API_LabelID:					neig->neigID = APINeig_Label;				neig->inIndex = 1;	break;
-	case API_ZoneID:					neig->neigID = APINeig_Room;				neig->inIndex = 1;	break;
-
-	case API_HatchID:					neig->neigID = APINeig_Hatch;				neig->inIndex = 1;	break;
-	case API_LineID:					neig->neigID = APINeig_Line;				neig->inIndex = 1;	break;
-	case API_PolyLineID:				neig->neigID = APINeig_PolyLine;			neig->inIndex = 1;	break;
-	case API_ArcID:						neig->neigID = APINeig_Arc;					neig->inIndex = 1;	break;
-	case API_CircleID:					neig->neigID = APINeig_Circ;				neig->inIndex = 1;	break;
-	case API_SplineID:					neig->neigID = APINeig_Spline;				neig->inIndex = 1;	break;
-	case API_HotspotID:					neig->neigID = APINeig_Hot;					neig->inIndex = 1;	break;
-
-	case API_CutPlaneID:				neig->neigID = APINeig_CutPlane;			neig->inIndex = 1;	break;
-	case API_ElevationID:				neig->neigID = APINeig_Elevation;			neig->inIndex = 1;	break;
-	case API_InteriorElevationID:		neig->neigID = APINeig_InteriorElevation;	neig->inIndex = 1;	break;
-	case API_CameraID:					neig->neigID = APINeig_Camera;				neig->inIndex = 1;	break;
-	case API_CamSetID:					return false;
-
-	case API_PictureID:					neig->neigID = APINeig_PictObj;				neig->inIndex = 1;	break;
-	case API_DetailID:					neig->neigID = APINeig_Detail;				neig->inIndex = 1;	break;
-	case API_WorksheetID:				neig->neigID = APINeig_Worksheet;			neig->inIndex = 1;	break;
-
-	case API_SectElemID:				neig->neigID = APINeig_VirtSy;				neig->inIndex = 1;	break;
-	case API_DrawingID:					neig->neigID = APINeig_DrawingCenter;		neig->inIndex = 1;	break;
-
-	case API_CurtainWallID:				neig->neigID = APINeig_CurtainWall;			neig->inIndex = 1;	break;
-	case API_CurtainWallSegmentID:		neig->neigID = APINeig_CWSegment;			neig->inIndex = 1;	break;
-	case API_CurtainWallFrameID:		neig->neigID = APINeig_CWFrame;				neig->inIndex = 1;	break;
-	case API_CurtainWallPanelID:		neig->neigID = APINeig_CWPanel;				neig->inIndex = 1;	break;
-	case API_CurtainWallJunctionID:		neig->neigID = APINeig_CWJunction;			neig->inIndex = 1;	break;
-	case API_CurtainWallAccessoryID:	neig->neigID = APINeig_CWAccessory;			neig->inIndex = 1;	break;
-
-	case API_ShellID:					neig->neigID = APINeig_Shell;				neig->inIndex = 1;	break;
-	case API_SkylightID:				neig->neigID = APINeig_SkylightHole;		neig->inIndex = 0;	break;
-	case API_MorphID:					neig->neigID = APINeig_Morph;				neig->inIndex = 1;	break;
-	case API_ChangeMarkerID:			neig->neigID = APINeig_ChangeMarker;		neig->inIndex = 1;	break;
-
-	case API_StairID:						neig->neigID = APINeig_Stair;			neig->inIndex = 1;	break;
-	case API_RiserID:						neig->neigID = APINeig_Riser;			neig->inIndex = 1;	break;
-	case API_TreadID:						neig->neigID = APINeig_Tread;			neig->inIndex = 1;	break;
-	case API_StairStructureID:				neig->neigID = APINeig_StairStructure;	neig->inIndex = 1;	break;
-
-	case API_RailingID:						neig->neigID = APINeig_Railing;						neig->inIndex = 1;	break;
-	case API_RailingToprailID:				neig->neigID = APINeig_RailingToprail;				neig->inIndex = 1;	break;
-	case API_RailingHandrailID:				neig->neigID = APINeig_RailingHandrail;				neig->inIndex = 1;	break;
-	case API_RailingRailID:					neig->neigID = APINeig_RailingRail;					neig->inIndex = 1;	break;
-	case API_RailingPostID:					neig->neigID = APINeig_RailingPost;					neig->inIndex = 1;	break;
-	case API_RailingInnerPostID:			neig->neigID = APINeig_RailingInnerPost;			neig->inIndex = 1;	break;
-	case API_RailingBalusterID:				neig->neigID = APINeig_RailingBaluster;				neig->inIndex = 1;	break;
-	case API_RailingPanelID:				neig->neigID = APINeig_RailingPanel;				neig->inIndex = 1;	break;
-	case API_RailingSegmentID:				return false;
-	case API_RailingNodeID:					return false;
-	case API_RailingBalusterSetID:			return false;
-	case API_RailingPatternID:				return false;
-	case API_RailingToprailEndID:			neig->neigID = APINeig_RailingToprailEnd;			neig->inIndex = 1;	break;
-	case API_RailingHandrailEndID:			neig->neigID = APINeig_RailingHandrailEnd;			neig->inIndex = 1;	break;
-	case API_RailingRailEndID:				neig->neigID = APINeig_RailingRailEnd;				neig->inIndex = 1;	break;
-	case API_RailingToprailConnectionID:	neig->neigID = APINeig_RailingToprailConnection;	neig->inIndex = 1;	break;
-	case API_RailingHandrailConnectionID:	neig->neigID = APINeig_RailingHandrailConnection;	neig->inIndex = 1;	break;
-	case API_RailingRailConnectionID:		neig->neigID = APINeig_RailingRailConnection;		neig->inIndex = 1;	break;
-	case API_RailingEndFinishID:			neig->neigID = APINeig_RailingEndFinish;			neig->inIndex = 1;	break;
-
-	case API_BeamSegmentID:					neig->neigID = APINeig_BeamSegment;					neig->inIndex = 1;	break;
-	case API_ColumnSegmentID:				neig->neigID = APINeig_ColumnSegment;				neig->inIndex = 1;	break;
-	case API_OpeningID:						return false;
-
-	case API_GroupID:
-	case API_HotlinkID:
-	default:
-		return false;
-	}
-
-	static_assert (API_LastElemType == API_OpeningID, "Do not forget to update ElemHead_To_Neig function after new element type was introduced!");
-
-	return true;
-}		// ElemHead_To_Neig
-
-bool	GetAnElem(const char* prompt,
-	const API_ElemType& needType,
-	API_Neig* neig /*= nullptr*/,
-	API_ElemType* type /*= nullptr*/,
-	API_Guid* guid /*= nullptr*/,
-	API_Coord3D* c /*= nullptr*/,
-	bool					ignorePartialSelection /*= true*/)
-{
-	API_GetPointType	pointInfo = {};
-	API_ElemType		clickedType;
-	GSErrCode			err;
-
-	CHTruncate(prompt, pointInfo.prompt, sizeof(pointInfo.prompt));
-	pointInfo.changeFilter = false;
-	pointInfo.changePlane = false;
-#ifdef AC_27
-	err = ACAPI_UserInput_GetPoint(&pointInfo, nullptr);
-#else
-	err = ACAPI_Interface(APIIo_GetPointID, &pointInfo, nullptr);
-#endif
-	if (err != NoError) {
-		return false;
-	}
-
-	if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
-		API_Elem_Head		elemHead = {};
-		API_ElemSearchPars	pars = {};
-		pars.type = needType;
-		pars.loc.x = pointInfo.pos.x;
-		pars.loc.y = pointInfo.pos.y;
-		pars.z = 1.00E6;
-		pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-#ifdef AC_27
-		err = ACAPI_Element_SearchElementByCoord(&pars, &elemHead.guid);
-#else
-		err = ACAPI_Goodies(APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
-#endif
-		if (err == NoError) {
-			elemHead.type = pars.type;
-			ElemHeadToNeig(&pointInfo.neig, &elemHead);
-		}
-	}
-
-	if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
-		pointInfo.neig.elemPartType = APINeigElemPart_None;
-		pointInfo.neig.elemPartIndex = 0;
-	}
-
-	clickedType = NeigToElemID(pointInfo.neig.neigID);
-
-	if (neig != nullptr)
-		*neig = pointInfo.neig;
-	if (type != nullptr)
-		*type = clickedType;
-	if (guid != nullptr)
-		*guid = pointInfo.neig.guid;
-	if (c != nullptr)
-		*c = pointInfo.pos;
-
-	if (clickedType == API_ZombieElemID)
-		return false;
-
-	bool good = (needType == API_ZombieElemID || needType == clickedType);
-
-	if (!good && clickedType == API_SectElemID) {
-		API_Element element = {};
-		element.header.guid = pointInfo.neig.guid;
-		if (ACAPI_Element_Get(&element) == NoError)
-			good = (needType == element.sectElem.parentType);
-	}
-
-	return good;
-}		// ClickAnElem
-#endif
-
-#ifdef AC_25
-
-// -----------------------------------------------------------------------------
-// Convert the element header to a neig
-// -----------------------------------------------------------------------------
-
-bool	ElemHeadToNeig(API_Neig* neig,
-	const API_Elem_Head* elemHead)
-{
-	BNZeroMemory(neig, sizeof(API_Neig));
-	API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
-	neig->guid = elemHead->guid;
-	if (elemHeadNonConst->typeID == API_ZombieElemID && neig->guid != APINULLGuid) {
-		BNZeroMemory(elemHeadNonConst, sizeof(API_Elem_Head));
-		elemHeadNonConst->guid = neig->guid;
-		ACAPI_Element_GetHeader(elemHeadNonConst);
-	}
-
-	switch (elemHeadNonConst->typeID) {
-	case API_WallID:					neig->neigID = APINeig_Wall;				neig->inIndex = 1;	break;
-	case API_ColumnID:					neig->neigID = APINeig_Colu;				neig->inIndex = 0;	break;
-	case API_BeamID:					neig->neigID = APINeig_Beam;				neig->inIndex = 1;	break;
-	case API_WindowID:					neig->neigID = APINeig_WindHole;			neig->inIndex = 0;	break;
-	case API_DoorID:					neig->neigID = APINeig_DoorHole;			neig->inIndex = 0;	break;
-	case API_ObjectID:					neig->neigID = APINeig_Symb;				neig->inIndex = 1;	break;
-	case API_LampID:					neig->neigID = APINeig_Light;				neig->inIndex = 1;	break;
-	case API_SlabID:					neig->neigID = APINeig_Ceil;				neig->inIndex = 1;	break;
-	case API_RoofID:					neig->neigID = APINeig_Roof;				neig->inIndex = 1;	break;
-	case API_MeshID:					neig->neigID = APINeig_Mesh;				neig->inIndex = 1;	break;
-
-	case API_DimensionID:				neig->neigID = APINeig_DimOn;				neig->inIndex = 1;	break;
-	case API_RadialDimensionID:			neig->neigID = APINeig_RadDim;				neig->inIndex = 1;	break;
-	case API_LevelDimensionID:			neig->neigID = APINeig_LevDim;				neig->inIndex = 1;	break;
-	case API_AngleDimensionID:			neig->neigID = APINeig_AngDimOn;			neig->inIndex = 1;	break;
-
-	case API_TextID:					neig->neigID = APINeig_Word;				neig->inIndex = 1;	break;
-	case API_LabelID:					neig->neigID = APINeig_Label;				neig->inIndex = 1;	break;
-	case API_ZoneID:					neig->neigID = APINeig_Room;				neig->inIndex = 1;	break;
-
-	case API_HatchID:					neig->neigID = APINeig_Hatch;				neig->inIndex = 1;	break;
-	case API_LineID:					neig->neigID = APINeig_Line;				neig->inIndex = 1;	break;
-	case API_PolyLineID:				neig->neigID = APINeig_PolyLine;			neig->inIndex = 1;	break;
-	case API_ArcID:						neig->neigID = APINeig_Arc;					neig->inIndex = 1;	break;
-	case API_CircleID:					neig->neigID = APINeig_Circ;				neig->inIndex = 1;	break;
-	case API_SplineID:					neig->neigID = APINeig_Spline;				neig->inIndex = 1;	break;
-	case API_HotspotID:					neig->neigID = APINeig_Hot;					neig->inIndex = 1;	break;
-
-	case API_CutPlaneID:				neig->neigID = APINeig_CutPlane;			neig->inIndex = 1;	break;
-	case API_ElevationID:				neig->neigID = APINeig_Elevation;			neig->inIndex = 1;	break;
-	case API_InteriorElevationID:		neig->neigID = APINeig_InteriorElevation;	neig->inIndex = 1;	break;
-	case API_CameraID:					neig->neigID = APINeig_Camera;				neig->inIndex = 1;	break;
-	case API_CamSetID:					return false;
-
-	case API_PictureID:					neig->neigID = APINeig_PictObj;				neig->inIndex = 1;	break;
-	case API_DetailID:					neig->neigID = APINeig_Detail;				neig->inIndex = 1;	break;
-	case API_WorksheetID:				neig->neigID = APINeig_Worksheet;			neig->inIndex = 1;	break;
-
-	case API_SectElemID:				neig->neigID = APINeig_VirtSy;				neig->inIndex = 1;	break;
-	case API_DrawingID:					neig->neigID = APINeig_DrawingCenter;		neig->inIndex = 1;	break;
-
-	case API_CurtainWallID:				neig->neigID = APINeig_CurtainWall;			neig->inIndex = 1;	break;
-	case API_CurtainWallSegmentID:		neig->neigID = APINeig_CWSegment;			neig->inIndex = 1;	break;
-	case API_CurtainWallFrameID:		neig->neigID = APINeig_CWFrame;				neig->inIndex = 1;	break;
-	case API_CurtainWallPanelID:		neig->neigID = APINeig_CWPanel;				neig->inIndex = 1;	break;
-	case API_CurtainWallJunctionID:		neig->neigID = APINeig_CWJunction;			neig->inIndex = 1;	break;
-	case API_CurtainWallAccessoryID:	neig->neigID = APINeig_CWAccessory;			neig->inIndex = 1;	break;
-	case API_ShellID:					neig->neigID = APINeig_Shell;				neig->inIndex = 1;	break;
-	case API_SkylightID:				neig->neigID = APINeig_SkylightHole;		neig->inIndex = 0;	break;
-	case API_MorphID:					neig->neigID = APINeig_Morph;				neig->inIndex = 1;	break;
-	case API_ChangeMarkerID:			neig->neigID = APINeig_ChangeMarker;		neig->inIndex = 1;	break;
-
-	case API_GroupID:
-	case API_HotlinkID:
-	default:
-		return false;
-	}
-
-	return true;
-}		// ElemHead_To_Neig
-
-// -----------------------------------------------------------------------------
-// Convert the NeigID to element type
-// -----------------------------------------------------------------------------
-
-API_ElemTypeID	NeigToElemID(API_NeigID neigID)
-{
-	API_ElemTypeID	typeID;
-	GSErrCode		err;
-
-	err = ACAPI_Goodies(APIAny_NeigIDToElemTypeID, &neigID, &typeID);
-	if (err != NoError)
-		typeID = API_ZombieElemID;
-
-	return typeID;
-}		// Neig_To_ElemID
-bool	GetAnElem(const char* prompt,
-	API_ElemTypeID		needTypeID,
-	API_Neig* neig /*= nullptr*/,
-	API_ElemTypeID* typeID /*= nullptr*/,
-	API_Guid* guid /*= nullptr*/,
-	API_Coord3D* c /*= nullptr*/,
-	bool				ignorePartialSelection /*= true*/)
-{
-	API_GetPointType	pointInfo = {};
-	API_ElemTypeID		clickedID;
-	GSErrCode			err;
-
-	CHTruncate(prompt, pointInfo.prompt, sizeof(pointInfo.prompt));
-	pointInfo.changeFilter = false;
-	pointInfo.changePlane = false;
-	err = ACAPI_Interface(APIIo_GetPointID, &pointInfo, nullptr);
-	if (err != NoError) {
-		if (err != APIERR_CANCEL)
-			msg_rep("GetAnElem", "APIIo_GetPointID", err, APINULLGuid);
-		return false;
-	}
-
-	if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
-		API_Elem_Head elemHead;
-		BNZeroMemory(&elemHead, sizeof(API_Elem_Head));
-		API_ElemSearchPars	pars;
-		BNZeroMemory(&pars, sizeof(API_ElemSearchPars));
-		pars.typeID = needTypeID;
-		pars.loc.x = pointInfo.pos.x;
-		pars.loc.y = pointInfo.pos.y;
-		pars.z = 1.00E6;
-		pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-		err = ACAPI_Goodies(APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
-		if (err == NoError) {
-			elemHead.typeID = pars.typeID;
-			ElemHeadToNeig(&pointInfo.neig, &elemHead);
-		}
-	}
-
-	if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
-		pointInfo.neig.elemPartType = APINeigElemPart_None;
-		pointInfo.neig.elemPartIndex = 0;
-	}
-
-	clickedID = NeigToElemID(pointInfo.neig.neigID);
-
-	if (neig != nullptr)
-		*neig = pointInfo.neig;
-	if (typeID != nullptr)
-		*typeID = clickedID;
-	if (guid != nullptr)
-		*guid = pointInfo.neig.guid;
-	if (c != nullptr)
-		*c = pointInfo.pos;
-
-	if (clickedID == API_ZombieElemID)
-		return false;
-
-	bool good = (needTypeID == API_ZombieElemID || needTypeID == clickedID);
-
-	if (!good && clickedID == API_SectElemID) {
-		API_Element element;
-		BNZeroMemory(&element, sizeof(API_Element));
-		element.header.guid = pointInfo.neig.guid;
-		if (ACAPI_Element_Get(&element) == NoError)
-			good = (needTypeID == element.sectElem.parentID);
-	}
-
-	return good;
-}		// ClickAnElem
-#endif
 
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
@@ -625,6 +259,10 @@ bool CheckElementType(const API_ElemTypeID& elementType, const SyncSettings& syn
 			elementType == API_RailingRailConnectionID ||
 			elementType == API_RailingEndFinishID))
 		return true;
+#ifdef AC_27
+	if (syncSettings.objS && elementType == API_ExternalElemID) return true;
+#endif
+
 	if (syncSettings.cwallS &&
 		(elementType == API_CurtainWallSegmentID ||
 			elementType == API_CurtainWallFrameID ||
@@ -1075,6 +713,11 @@ GS::Array<API_Guid>	GetSelectedElements(bool assertIfNoSel /* = true*/, bool onl
 #else
 			err = ACAPI_Goodies(APIAny_NeigIDToElemTypeID, &neigID, &elementType);
 #endif // AC_26
+#ifdef AC_27
+			if (err != NoError && neig.guid != APINULLGuid) { // На МЕР элементах функция ACAPI_Element_NeigIDToElemType не работает(
+				err = GetTypeByGUID(neig.guid, elementType);
+			}
+#endif // AC_27
 			if (err == NoError) GetRelationsElement(neig.guid, elementType, syncSettings, guidArray);
 		}
 	}
@@ -1229,7 +872,6 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 	GSErrCode	err = NoError;
 	API_RoomRelation	relData;
 	GS::Array<API_ElemTypeID> typeinzone;
-
 	API_HierarchicalOwnerType hierarchicalOwnerType = API_ParentHierarchicalOwner;
 	API_HierarchicalElemType hierarchicalElemType = API_SingleElem;
 	API_HierarchicalElemType hierarchicalElemType_root = API_SingleElem;
@@ -1238,15 +880,20 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 	API_Guid elemGuid_t = elemGuid;
 
 #ifdef AC_27
-	ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
+	if(syncSettings.objS && elementType == API_ExternalElemID) {
+		MEPv1::GetSubElement(elemGuid, subelemGuid);
+		ACAPI_DisposeRoomRelationHdls(&relData);
+		return;
+	}
+	err = ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
 #else
-	ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
+	err = ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
 #endif
 	hierarchicalOwnerType = API_RootHierarchicalOwner;
 #ifdef AC_27
-	ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
+	err = ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
 #else
-	ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
+	err = ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
 #endif
 	switch (elementType) {
 	case API_WallID:
@@ -1986,6 +1633,15 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 	API_GetParamsType	apiParams = {};
 	BNZeroMemory(&apiOwner, sizeof(API_ParamOwnerType));
 	BNZeroMemory(&apiParams, sizeof(API_GetParamsType));
+
+#ifdef AC_27
+	if (elemType == API_ExternalElemID) {
+		API_ElementMemo	memo = {};
+		err = ACAPI_Element_GetMemo(elemGuid, &memo);
+		params = memo.params;
+		return err;
+	}
+#endif
 	apiOwner.guid = elemGuid;
 #if defined AC_26 || defined AC_27
 	apiOwner.type.typeID = elemType;
@@ -4978,6 +4634,7 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 		pvalue.val.n_zero = 0;
 		break;
 	case API_PropertyRealValueType:
+
 		// Конвертация угла из радиан в градусы
 		if (property.definition.measureType == API_PropertyAngleMeasureType) {
 			double ang = property.value.singleVariant.variant.doubleValue * 180.0 / PI;
