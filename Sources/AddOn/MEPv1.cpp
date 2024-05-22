@@ -54,8 +54,8 @@ namespace MEPv1 {
 			ACAPI_WriteReport(routingElement.UnwrapErr().text.c_str(), false);
 			return;
 		}
-		std::vector<Adapter::UniqueID> routingNodeIds = routingElement->GetRoutingNodeIds();
-		std::vector<Adapter::UniqueID> routingSegmentIds = routingElement->GetRoutingSegmentIds();
+		std::vector<ACAPI::MEP::UniqueID> routingNodeIds = routingElement->GetRoutingNodeIds();
+		std::vector<ACAPI::MEP::UniqueID> routingSegmentIds = routingElement->GetRoutingSegmentIds();
 
 		API_ElemType mepElemType;
 		mepElemType.typeID = API_ExternalElemID;
@@ -70,7 +70,7 @@ namespace MEPv1 {
 				}
 				API_Guid rguid = GSGuid2APIGuid(routingSegmentIds[inx_segment].GetGuid());
 				subelemGuid.Push(rguid);
-				std::vector<Adapter::UniqueID> rigidSegmentIds = routingSegment->GetRigidSegmentIds();
+				std::vector<ACAPI::MEP::UniqueID> rigidSegmentIds = routingSegment->GetRigidSegmentIds();
 				if (!rigidSegmentIds.empty()) {
 					for (UInt32 inx_rigid = 0; inx_rigid < rigidSegmentIds.size(); ++inx_rigid) {
 						API_Guid rguid = GSGuid2APIGuid(rigidSegmentIds[inx_rigid].GetGuid());
@@ -120,20 +120,20 @@ namespace MEPv1 {
 		if (IsBend(elem_head.type.classID)) {
 			ACAPI::Result<Bend> bendElement = Bend::Get(Adapter::UniqueID(elemGuid));
 			if (bendElement.IsErr()) return;
-			Adapter::UniqueID nodeId = bendElement->GetRoutingNodeId();
+			ACAPI::MEP::UniqueID nodeId = bendElement->GetRoutingNodeId();
 			ACAPI::Result<RoutingNode> nodeElement = RoutingNode::Get(nodeId);
 			if (nodeElement.IsErr()) return;
-			Adapter::UniqueID routingId = nodeElement->GetRoutingElementId();
+			ACAPI::MEP::UniqueID routingId = nodeElement->GetRoutingElementId();
 			GetSubElementOfRouting(GSGuid2APIGuid(routingId.GetGuid()), subelemGuid);
 			return;
 		}
 		if (IsRigidSegment(elem_head.type.classID)) {
 			ACAPI::Result<RigidSegment> rigidElement = RigidSegment::Get(Adapter::UniqueID(elemGuid));
 			if (rigidElement.IsErr()) return;
-			Adapter::UniqueID segmentId = rigidElement->GetRoutingSegmentId();
+			ACAPI::MEP::UniqueID segmentId = rigidElement->GetRoutingSegmentId();
 			ACAPI::Result<RoutingSegment> segmentElement = RoutingSegment::Get(segmentId);
 			if (segmentElement.IsErr()) return;
-			Adapter::UniqueID routingId = segmentElement->GetRoutingElementId();
+			ACAPI::MEP::UniqueID routingId = segmentElement->GetRoutingElementId();
 			GetSubElementOfRouting(GSGuid2APIGuid(routingId.GetGuid()), subelemGuid);
 			return;
 		}
