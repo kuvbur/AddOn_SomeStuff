@@ -1,8 +1,8 @@
 ﻿//------------ kuvbur 2022 ------------
+#ifdef AC_27
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"MEPv1.hpp"
-
 using namespace ACAPI::MEP;
 
 API_Guid GetRigidSegmentClassIDFromRoutingElemClassID(const API_Guid& routingElemClassID)
@@ -158,3 +158,4 @@ namespace MEPv1 {
 		}
 	}
 }
+#endif

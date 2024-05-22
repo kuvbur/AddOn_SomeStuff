@@ -11,10 +11,10 @@
 #include	"APICommon26.h"
 #endif // AC_26
 #ifdef AC_27
+#include	"MEPv1.hpp"
 #include	"APICommon27.h"
 #endif // AC_27
 #include	"Helpers.hpp"
-#include	"MEPv1.hpp"
 #include	"Model3D/model.h"
 #include	"Model3D/MeshBody.hpp"
 #include	"VectorImageIterator.hpp"
@@ -879,14 +879,12 @@ void GetRelationsElement(const API_Guid & elemGuid, const  API_ElemTypeID & elem
 	API_Guid ownerElemApiGuid_root = APINULLGuid;
 	API_Guid elemGuid_t = elemGuid;
 
-
-	if (syncSettings.objS && elementType == API_ExternalElemID) {
+#ifdef AC_27
+	if(syncSettings.objS && elementType == API_ExternalElemID) {
 		MEPv1::GetSubElement(elemGuid, subelemGuid);
 		ACAPI_DisposeRoomRelationHdls(&relData);
 		return;
 	}
-
-#ifdef AC_27
 	err = ACAPI_HierarchicalEditing_GetHierarchicalElementOwner(&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
 #else
 	err = ACAPI_Goodies(APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
@@ -1635,12 +1633,15 @@ GSErrCode GetGDLParameters(const API_ElemTypeID & elemType, const API_Guid & ele
 	API_GetParamsType	apiParams = {};
 	BNZeroMemory(&apiOwner, sizeof(API_ParamOwnerType));
 	BNZeroMemory(&apiParams, sizeof(API_GetParamsType));
+
+#ifdef AC_27
 	if (elemType == API_ExternalElemID) {
 		API_ElementMemo	memo = {};
 		err = ACAPI_Element_GetMemo(elemGuid, &memo);
 		params = memo.params;
 		return err;
 	}
+#endif
 	apiOwner.guid = elemGuid;
 #if defined AC_26 || defined AC_27
 	apiOwner.type.typeID = elemType;

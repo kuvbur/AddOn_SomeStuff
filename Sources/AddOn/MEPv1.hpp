@@ -1,8 +1,10 @@
 //------------ kuvbur 2022 ------------
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
+#ifdef AC_27
 #include "Definitions.hpp"
 // ACAPI
+
 #include "ACAPI/Result.hpp"
 
 // MEPAPI
@@ -45,4 +47,5 @@ namespace MEPv1 {
 
 	void GetRouting(const API_Guid& elemGuid);
 }
+#endif
 #endif
