@@ -13,6 +13,7 @@
 
 namespace AutoFunc {
 	void KM_ListUpdate();
+	GSErrCode WriteGDLValues(API_Guid elemGuid, GS::Array<API_Coord>& coords);
 }
 
 #endif
