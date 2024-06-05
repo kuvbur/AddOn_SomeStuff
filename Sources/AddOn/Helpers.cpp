@@ -38,8 +38,9 @@ Int32 isEng() {
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
 bool chek_floor(double val, double tolerance) {
-	double k_val = fabs(val * 1000.0);
-	double val_correct = fabs(k_val - floor(k_val));
+	double k_val = val * 1000.0;
+	double l_val = round (k_val);
+	double val_correct = fabs(k_val - l_val);
 	bool bval_correct = val_correct < tolerance;
 	return bval_correct;
 }
@@ -1992,7 +1993,7 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 			ParamHelpers::AddBoolValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", true);
 		}
 	}
-	if (hasLine) CoordRotAngle(sx, sy, ex, ey, isFliped, angz);
+	if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
 	if (hasLine && !hasSymbpos) {
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
@@ -2001,6 +2002,13 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
 		ParamHelpers::AddDoubleValueToParamDictValue(pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
 		if (bsync_coord_correct) {
+			if (isFliped) {
+				dx = ex - sx;
+				dy = ey - sy;
+			} else {
+				dx = sx - ex;
+				dy = sy - ey;
+			}
 			double l = sqrt(dx * dx + dy * dy);
 			bool bl_correct = chek_floor(l, tolerance_coord);
 			bool bsymb_pos_sx_correct = chek_floor(sx, tolerance_coord);
