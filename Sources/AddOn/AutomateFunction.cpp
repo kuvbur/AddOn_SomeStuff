@@ -1,9 +1,9 @@
 ﻿//------------ kuvbur 2022 ------------
+#ifdef PK_1
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
 #include	"Helpers.hpp"
 #include	"AutomateFunction.hpp"
-
 
 namespace AutoFunc {
 	void KM_ListUpdate(){
@@ -117,3 +117,4 @@ namespace AutoFunc {
 		return err;
 	}
 }
+#endif
