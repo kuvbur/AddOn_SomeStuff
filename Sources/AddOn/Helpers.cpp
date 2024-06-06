@@ -3272,7 +3272,7 @@ void ParamHelpers::WritePropertyValues(const API_Guid & elemGuid, ParamDictValue
 	}
 }
 
-bool ParamHelpers::hasUnreadProperyDefinitoin(ParamDictElement & paramToRead) {
+bool ParamHelpers::hasUnreadProperyDefinition(ParamDictElement & paramToRead) {
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
 		ParamDictValue& params = *cIt->value;
 		if (!params.IsEmpty()) {
@@ -3323,9 +3323,9 @@ bool ParamHelpers::hasInfo(ParamDictValue & propertyParams) {
 	return true;
 }
 
-bool ParamHelpers::hasProperyDefinitoin(ParamDictValue & propertyParams) {
+bool ParamHelpers::hasProperyDefinition(ParamDictValue & propertyParams) {
 	if (propertyParams.IsEmpty()) return false;
-	if (!propertyParams.ContainsKey("{@flag:has_properydefinitoin}")) return false;
+	if (!propertyParams.ContainsKey("{@flag:has_properydefinition}")) return false;
 	return true;
 }
 
@@ -3361,7 +3361,7 @@ void ParamHelpers::ElementsRead(ParamDictElement & paramToRead, ParamDictValue &
 	DBPrintf("== SMSTF == ElementsRead start\n");
 	if (ParamHelpers::hasUnreadInfo(paramToRead, propertyParams) && !ParamHelpers::hasInfo(propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
 	if (ParamHelpers::hasUnreadGlob(paramToRead, propertyParams) && !ParamHelpers::hasGlob(propertyParams)) { ParamHelpers::GetAllGlobToParamDict(propertyParams); }
-	if (ParamHelpers::hasUnreadProperyDefinitoin(paramToRead) && !ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+	if (ParamHelpers::hasUnreadProperyDefinition(paramToRead) && !ParamHelpers::hasProperyDefinition(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 
 	// Выбираем по-элементно параметры для чтения
 	for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs(); cIt != NULL; ++cIt) {
@@ -3583,7 +3583,7 @@ void ParamHelpers::GetAllGlobToParamDict(ParamDictValue & propertyParams) {
 void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyParams, const API_Guid & elemGuid) {
 	DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict GUID start\n");
 	if (elemGuid == APINULLGuid) {
-		if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+		if (!ParamHelpers::hasProperyDefinition(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 	}
 	else {
 		GS::Array<API_PropertyDefinition> definitions;
@@ -3733,7 +3733,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict(ParamDictValue & propertyPar
 			}
 		}
 	}
-	ParamHelpers::AddValueToParamDictValue(propertyParams, "flag:has_ProperyDefinitoin");
+	ParamHelpers::AddValueToParamDictValue(propertyParams, "flag:has_ProperyDefinition");
 	DBPrintf("== SMSTF == AllPropertyDefinitionToParamDict end\n");
 }
 

@@ -152,6 +152,7 @@ typedef struct
 	API_ModelElemStructureType composite_type = API_BasicStructure;
 	API_ElemTypeID eltype = API_ZombieElemID;
 	short composite_pen = 0;
+	bool fromClassification = false;	 // Данные о классификаторе
 	bool fromGDLparam = false;			 // Найден в гдл параметрах
 	bool fromGDLdescription = false;	 // Найден по описанию в гдл параметрах
 	bool fromProperty = false;			 // Найден в свойствах
@@ -611,9 +612,9 @@ namespace ParamHelpers
 
 	bool hasInfo(ParamDictValue& propertyParams);
 
-	bool hasProperyDefinitoin(ParamDictValue& propertyParams);
+	bool hasProperyDefinition(ParamDictValue& propertyParams);
 
-	bool hasUnreadProperyDefinitoin(ParamDictElement& paramToRead);
+	bool hasUnreadProperyDefinition(ParamDictElement& paramToRead);
 
 	bool hasUnreadInfo(ParamDictElement& paramToRead, ParamDictValue& propertyParams);
 
