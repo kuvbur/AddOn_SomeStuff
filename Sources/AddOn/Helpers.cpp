@@ -38,6 +38,7 @@ Int32 isEng() {
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
 bool chek_floor(double val, double tolerance) {
+	if (std::fabs (val) < std::numeric_limits<double>::epsilon ()) return true;
 	double k_val = val * 1000.0;
 	double l_val = round (k_val);
 	double val_correct = fabs(k_val - l_val);
@@ -1959,12 +1960,10 @@ bool ParamHelpers::ReadElemCoords(const API_Element & element, ParamDictValue & 
 		bsync_coord_correct = false;
 		break;
 	}
+
 	if (hasSymbpos) {
-		double k = 100000.0;
-		x = round(x * k) / k;
-		y = round(y * k) / k;
-		z = round(z * k) / k;
 		if (fabs(angz) > 0.0000001) {
+			double k = 100000.0;
 			angz = fmod(round((angz * 180.0 / PI) * k) / k, 360.0);
 		}
 		else {
@@ -2261,9 +2260,12 @@ GS::UniString GetPropertyENGName(GS::UniString & name) {
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ParseParamNameMaterial(GS::UniString & expression, ParamDictValue & paramDict) {
 	GS::UniString part = "";
-	while (expression.Count('%') > 1) {
+	bool flag_change = true;
+	while (expression.Count('%') > 1 && flag_change) {
+		GS::UniString expression_old = expression;
 		part = expression.GetSubstring('%', '%', 0);
 		if (!part.IsEmpty()) expression.ReplaceAll('%' + part + '%', "{@property:" + part.ToLowerCase() + '}');
+		if (expression_old.IsEqual (expression)) flag_change = false;
 	}
 	return ParamHelpers::ParseParamName(expression, paramDict);
 }
@@ -2277,7 +2279,6 @@ bool ParamHelpers::ParseParamName(GS::UniString & expression, ParamDictValue & p
 	GS::UniString part = "";
 	while (tempstring.Contains('{') && tempstring.Contains('}')) {
 		part = tempstring.GetSubstring('{', '}', 0);
-
 		// TODO Переписать всю эту хреноту - отделить парсинг от добавления в словарь
 		GS::UniString part_ = ParamHelpers::AddValueToParamDictValue(paramDict, part);
 		expression.ReplaceAll('{' + part + '}', part_);
