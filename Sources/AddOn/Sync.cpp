@@ -161,7 +161,7 @@ bool SyncByType(const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 	GS::UniString subtitle_ = GS::UniString::Printf("Reading data from %d elements : ", guidArray.GetSize()) + subtitle;
 
 	// Словарь со всеми возможными определениями свойств
-	if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+	if (!ParamHelpers::hasProperyDefinition(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 	if (!ParamHelpers::hasInfo(propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
 	if (!ParamHelpers::hasGlob(propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
 	if (propertyParams.IsEmpty()) return true;
@@ -196,7 +196,7 @@ void SyncElement(const API_Guid& elemGuid, const SyncSettings& syncSettings, Par
 	SyncData(elemGuid, syncSettings, subelemGuids, propertyParams, paramToWrite, dummymode);
 	if (!subelemGuids.IsEmpty() && SyncRelationsElement(elementType, syncSettings)) {
 		if (subelemGuids.GetSize() > 3) {
-			if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+			if (!ParamHelpers::hasProperyDefinition(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 			if (!ParamHelpers::hasInfo(propertyParams)) ParamHelpers::GetAllInfoToParamDict(propertyParams);
 			if (!ParamHelpers::hasGlob(propertyParams)) ParamHelpers::GetAllGlobToParamDict(propertyParams);
 		}
@@ -427,11 +427,10 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	// Синхронизация данных
 	// Проверяем - не отключена ли синхронизация у данного объекта
 	if (dummymode == DUMMY_MODE_UNDEF) dummymode = IsDummyModeOn();
-	if (dummymode != DUMMY_MODE_ON) {
-		if (!GetElemState(elemGuid, definitions, "Sync_flag")) return;
-	}
 	if (dummymode == DUMMY_MODE_ON) {
 		if (!GetElemStateReverse(elemGuid, definitions, "Sync_flag")) return;
+	} else {
+		if (!GetElemState (elemGuid, definitions, "Sync_flag")) return;
 	}
 	API_ElemTypeID elementType;
 	err = GetTypeByGUID(elemGuid, elementType);
@@ -448,7 +447,7 @@ void SyncData(const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Ar
 	if (mainsyncRules.IsEmpty()) return;
 	if (propertyParams.IsEmpty() || hasSub) {
 		if (hasSub) {
-			if (!ParamHelpers::hasProperyDefinitoin(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
+			if (!ParamHelpers::hasProperyDefinition(propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams);
 		}
 		else {
 			ParamHelpers::AllPropertyDefinitionToParamDict(propertyParams, definitions);
@@ -897,6 +896,17 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 			syncdirection = SYNC_FROM;
 		}
 	}
+
+	if (synctypefind == false) {
+		if (rulestring_one.Contains ("Class:")) {
+			synctypefind = true;
+			rulestring_one.ReplaceAll ("Class:", "");
+			paramNamePrefix = "{@class:";
+			param.fromClassification = true;
+			syncdirection = SYNC_FROM;
+			}
+		}
+
 	if (synctypefind == false) return false;
 	param.eltype = elementType;
 
@@ -941,18 +951,20 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	GS::UniString paramName = params.Get(0);
 	stringformat = GetFormatString(paramName);
 	paramName.ReplaceAll("\\/", "/");
+	param.rawName = paramNamePrefix + paramName.ToLowerCase () + "}";
+	param.name = paramName;
 	if (param.fromMaterial) {
 		param.rawName = paramNamePrefix + paramName.ToLowerCase() + ";" + param.val.uniStringValue + "}";
 		param.name = paramName;
 	}
-	else {
-		param.rawName = paramNamePrefix + paramName.ToLowerCase() + "}";
-		param.name = paramName;
-	}
 	if (nparam > 1) {
-
 		// Обработка данных о размерах массива и типе чтения
 		UInt32 start_ignore = 1;
+		if (param.fromClassification) {
+			param.rawName = paramNamePrefix + tparamName + "}";
+			param.name = params.Get(1);
+			start_ignore = 2;
+		}
 		GS::UniString arrtype = params[1].ToLowerCase();
 		bool hasArray = false;
 		if (!hasArray && arrtype.Contains("uniq")) {
