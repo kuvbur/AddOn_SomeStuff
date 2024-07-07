@@ -1538,21 +1538,8 @@ bool ParamHelpers::AddProperty(ParamDictValue & params, GS::Array<API_Property>&
 	for (UInt32 i = 0; i < properties.GetSize(); i++) {
 		ParamValue pvalue;
 		API_Property property = properties.Get(i);
-		// Исправление бага с потерей строки-формата для свойств материалов
-		GS::UniString fname;
-		GetPropertyFullName (property.definition, fname);
-		pvalue.rawName = "{@property:" + fname.ToLowerCase () + "}";
-		pvalue.name = fname;
-		GS::UniString rawName = pvalue.rawName;
-		if (rawName.Contains (CharENTER)) {
-			UInt32 n = rawName.FindFirst (CharENTER);
-			GS::UniString rawName_ = rawName.GetSubstring (0, n) + "}";
-			if (params.ContainsKey (rawName_)) {
-				GS::UniString stringformat = params.Get (rawName_).val.stringformat;
-				if (!stringformat.IsEmpty ()) pvalue.val.stringformat = stringformat;
-			}
-		}
 		if (ParamHelpers::ConvertToParamValue(pvalue, property)) {
+			GS::UniString rawName = pvalue.rawName;
 			if (params.ContainsKey(rawName)) {
 				params.Get(rawName) = pvalue;
 				nparams--;
@@ -2487,12 +2474,7 @@ GS::UniString PropertyHelpers::NumToString(const double& var, const GS::UniStrin
 	}
 	else {
 		Int32 addzero = n_zero - (out.GetLength() - out.FindFirst(',') - 1);
-		if (addzero > 0) {
-			// На АС27 не смог справиться с printf, потому костыли
-			for (Int32 i = 0; i < addzero; i++) {
-				out = out + "0";
-			}
-		}
+		if (addzero > 0) out = out + GS::UniString::Printf("%*s", addzero, "0");
 	}
 	return out;
 }
@@ -3771,7 +3753,6 @@ void ParamHelpers::CompareParamDictElement(ParamDictElement & paramsFrom, ParamD
 
 // --------------------------------------------------------------------
 // Сопоставление двух словарей ParamDictValue
-// Не добавляет несуществующие в paramsTo элементы
 // --------------------------------------------------------------------
 void ParamHelpers::CompareParamDictValue(ParamDictValue & paramsFrom, ParamDictValue & paramsTo) {
 	ParamHelpers::CompareParamDictValue(paramsFrom, paramsTo, false);
@@ -3779,10 +3760,9 @@ void ParamHelpers::CompareParamDictValue(ParamDictValue & paramsFrom, ParamDictV
 
 // --------------------------------------------------------------------
 // Сопоставление двух словарей ParamDictValue
-// Добавляет несуществующие в paramsTo элементы при установке флага addInNotEx
 // --------------------------------------------------------------------
 void ParamHelpers::CompareParamDictValue(ParamDictValue & paramsFrom, ParamDictValue & paramsTo, bool addInNotEx) {
-	if (paramsFrom.IsEmpty()) return;
+	if (paramsFrom.IsEmpty() || paramsTo.IsEmpty()) return;
 	for (auto& cIt : paramsFrom) {
 		GS::UniString k = *cIt.key;
 		if (paramsTo.ContainsKey(k)) {
@@ -3793,7 +3773,7 @@ void ParamHelpers::CompareParamDictValue(ParamDictValue & paramsFrom, ParamDictV
 		else {
 			if (addInNotEx) {
 				ParamValue paramFrom = paramsFrom.Get(k);
-				paramsTo.Add(paramFrom.rawName, paramFrom);
+				paramsTo.Set(paramFrom.rawName, paramFrom);
 			}
 		}
 	}
@@ -4677,20 +4657,20 @@ bool ParamHelpers::ConvertToParamValue(ParamValue & pvalue, const API_Property &
 		if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
 		if (fabs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 		pvalue.val.type = API_PropertyRealValueType;
-		if (pvalue.val.stringformat.IsEmpty ()) {
-			formatstringdict = GetFotmatStringForMeasureType ();
-			if (formatstringdict.ContainsKey (property.definition.measureType)) {
-				if (formatstringdict.Get (property.definition.measureType).needRound && property.definition.measureType != API_PropertyLengthMeasureType) {
-					double l = pow (10, formatstringdict.Get (property.definition.measureType).n_zero);
-					pvalue.val.doubleValue = round (pvalue.val.doubleValue * pow (10, formatstringdict.Get (property.definition.measureType).n_zero)) / pow (10, formatstringdict.Get (property.definition.measureType).n_zero);
-					pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
-					if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
-				}
-				pvalue.val.stringformat = formatstringdict.Get (property.definition.measureType).stringformat;
-				pvalue.val.n_zero = formatstringdict.Get (property.definition.measureType).n_zero;
+		formatstringdict = GetFotmatStringForMeasureType();
+		if (formatstringdict.ContainsKey(property.definition.measureType)) {
+			if (formatstringdict.Get(property.definition.measureType).needRound && property.definition.measureType != API_PropertyLengthMeasureType) {
+				double l = pow(10, formatstringdict.Get(property.definition.measureType).n_zero);
+				pvalue.val.doubleValue = round(pvalue.val.doubleValue * pow(10, formatstringdict.Get(property.definition.measureType).n_zero)) / pow(10, formatstringdict.Get(property.definition.measureType).n_zero);
+				pvalue.val.intValue = (GS::Int32)pvalue.val.doubleValue;
+				if (fabs(pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon()) pvalue.val.boolValue = true;
 			}
+			if (pvalue.val.stringformat.IsEmpty()) {
+				pvalue.val.stringformat = formatstringdict.Get(property.definition.measureType).stringformat;
+				pvalue.val.n_zero = formatstringdict.Get(property.definition.measureType).n_zero;
+			}
+			pvalue.val.uniStringValue = ParamHelpers::ToString(pvalue);
 		}
-		pvalue.val.uniStringValue = ParamHelpers::ToString (pvalue);
 		pvalue.val.canCalculate = true;
 		break;
 	case API_PropertyBooleanValueType:
@@ -5502,8 +5482,7 @@ bool ParamHelpers::GetAttributeValues(const API_AttributeIndex & constrinx, Para
 				}
 			}
 		}
-		bool flag_add = ParamHelpers::AddProperty (params, properties);
-		return (flag_add || flag_find);
+		return (ParamHelpers::AddProperty(params, properties) || flag_find);
 	}
 	return flag_find;
 }

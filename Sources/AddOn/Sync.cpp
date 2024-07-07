@@ -659,8 +659,6 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 							ParamHelpers::AddValueToParamDictValue(paramDict, "@property:sync_name" + GS::UniString::Printf("%d", inx));
 						}
 						ParamHelpers::AddParamDictValue2ParamDictElement(elemGuid, paramDict, paramToRead);
-						// Чтоб не затирался строка с форматом вывода - добавим прочитанные из материала свойства в словарь с определениями
-						ParamHelpers::CompareParamDictValue (paramDict, propertyParams, true);
 						hasSub = true; // Нужно будет прочитать все свойства
 					}
 				}
