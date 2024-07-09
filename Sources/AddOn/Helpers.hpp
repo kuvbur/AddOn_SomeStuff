@@ -93,6 +93,18 @@ typedef struct
 	Point2D start;
 } OrientedSegments;
 
+typedef struct {
+	int n_zero = 2; //Количество нулей после запятой
+	GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
+	bool needRound = false;
+	Int32 krat = 0; // Крутность округления
+	double koeff = 1; //Коэфф. увеличения
+	bool trim_zero = true; //Требуется образать нули после запятой
+	bool isRead = false; // Строка успешно распарсена
+	bool isEmpty = true; //Строка не задана
+	GS::UniString delimetr = ",";
+} FormatString;
+
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
 // name - имя для поиска
@@ -106,10 +118,10 @@ typedef struct
 	GS::UniString uniStringValue = "";
 	GS::Int32 intValue = 0;
 	bool boolValue = false;
-	double doubleValue = 0.0;
+	double doubleValue = 0.0; //дробное значение, округлённое
+	double rawDoubleValue = 0.0;
 	bool canCalculate = false;			// Может ли быть использован в формулах?
-	GS::UniString stringformat = "";	// Формат строки (задаётся с помощью .mm или .0)
-	int n_zero = 2;						// Количество нулей после запятой
+	FormatString formatstring; 	// Формат строки (задаётся с помощью .mm или .0)
 	int array_row_start = 0;				// Начальная строка массива
 	int array_row_end = 0;				// Последняя строка массива
 	int array_column_start = 0;			// Начальный столбец массива
@@ -126,13 +138,6 @@ typedef struct
 	bool isCore = false;		//Является ядром?
 	int num = 0;
 } ParamValueComposite;
-
-typedef struct
-{
-	int n_zero = 2;
-	GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
-	bool needRound = false;
-} FormatString;
 
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
@@ -429,11 +434,12 @@ bool MenuInvertItemMark(short menuResID, short itemIndex);
 
 namespace PropertyHelpers
 {
-	void ParseFormatString(const GS::UniString& stringformat, Int32& n_zero, Int32& krat, double& koeff, bool& trim_zero);
-	GS::UniString NumToString(const double& var, const GS::UniString& stringformat);
-	GS::UniString ToString(const API_Variant& variant, const GS::UniString& stringformat);
+	void ParseFormatString (FormatString& stringformat);
+	FormatString ParseFormatString(const GS::UniString& stringformat);
+	GS::UniString NumToString(const double& var, const FormatString& stringformat);
+	GS::UniString ToString(const API_Variant& variant, const FormatString& stringformat);
 	GS::UniString ToString(const API_Variant& variant);
-	GS::UniString ToString(const API_Property& property, const GS::UniString& stringformat);
+	GS::UniString ToString(const API_Property& property, const FormatString& stringformat);
 	GS::UniString ToString(const API_Property& property);
 }
 
@@ -442,6 +448,11 @@ namespace PropertyHelpers
 // -----------------------------------------------------------------------------
 namespace ParamHelpers
 {
+	// -----------------------------------------------------------------------------
+	// Возвращает строку в формате rawname
+	// Очищает от единиц измерения, добавляет скобки
+	// -----------------------------------------------------------------------------
+	GS::UniString NameToRawName (const GS::UniString& name, FormatString& formatstring);
 	// -----------------------------------------------------------------------------
 	// Получение размеров Морфа
 	// Формирует словарь ParamDictValue& pdictvalue со значениями
@@ -480,9 +491,8 @@ namespace ParamHelpers
 
 	// -----------------------------------------------------------------------------
 	// Добавление пустого значения в словарь ParamDictValue
-	// Возвращает rawName
 	// -----------------------------------------------------------------------------
-	GS::UniString AddValueToParamDictValue(ParamDictValue& params, const GS::UniString& name);
+	void AddValueToParamDictValue(ParamDictValue& params, const GS::UniString& name);
 
 	bool needAdd(ParamDictValue& params, GS::UniString& rawName);
 
@@ -504,7 +514,7 @@ namespace ParamHelpers
 	// --------------------------------------------------------------------
 	// Сопоставляет параметры
 	// --------------------------------------------------------------------
-	bool CompareParamValue(ParamValue& paramFrom, ParamValue& paramTo, GS::UniString stringformat);
+	bool CompareParamValue(ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat);
 
 	// --------------------------------------------------------------------
 	// Запись словаря ParamDictValue в словарь элементов ParamDictElement
@@ -759,7 +769,7 @@ namespace ParamHelpers
 	// -----------------------------------------------------------------------------
 	// Перевод значения в строку в соответсвии с stringformat
 	// -----------------------------------------------------------------------------
-	GS::UniString ToString(const ParamValue& pvalue, const GS::UniString stringformat);
+	GS::UniString ToString(const ParamValue& pvalue, const FormatString stringformat);
 
 	// -----------------------------------------------------------------------------
 	// Перевод значения в строку в соответсвии с stringformat

@@ -268,7 +268,7 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                     param.isValid = true;
                     summ.val.type = param.val.type;
                     if(rule.sum_type != TextSum) {
-                        summ.val.stringformat = param.val.stringformat;
+                        summ.val.formatstring = param.val.formatstring;
                         summ.val.uniStringValue = ParamHelpers::ToString (summ);
                     }
 

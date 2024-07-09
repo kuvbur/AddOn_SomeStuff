@@ -45,7 +45,7 @@ typedef struct {
 	ParamValue paramFrom;
 	ParamValue paramTo;
 	GS::Array<GS::UniString> ignorevals;
-	GS::UniString stringformat = ""; //Формат строки (задаётся с помощью #mm или #0)
+	FormatString formatstring; //Формат строки (задаётся с помощью #mm или #0)
 	bool toSub = false;
 	bool fromSub = false;
 } WriteData;
@@ -134,6 +134,6 @@ bool Name2Rawname(GS::UniString& name, GS::UniString& rawname);
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString(const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, GS::UniString& stringformat);
+bool SyncString(const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat);
 
 #endif

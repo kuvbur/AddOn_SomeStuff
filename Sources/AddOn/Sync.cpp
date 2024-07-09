@@ -504,10 +504,10 @@ void SyncCalcRule(const WriteDict& syncRules, const GS::Array<API_Guid>& subelem
 					if (paramsTo.ContainsKey(rawNameTo) && paramsFrom.ContainsKey(rawNameFrom)) {
 						ParamValue paramFrom = paramsFrom.Get(rawNameFrom);
 						ParamValue paramTo = paramsTo.Get(rawNameTo);
-						GS::UniString stringformat = writeSub.stringformat;
+						FormatString formatstring = writeSub.formatstring;
 
 						//Сопоставляем и записываем, если значения отличаются
-						if (ParamHelpers::CompareParamValue(paramFrom, paramTo, stringformat)) {
+						if (ParamHelpers::CompareParamValue(paramFrom, paramTo, formatstring)) {
 							ParamHelpers::AddParamValue2ParamDictElement(paramTo, paramToWrite);
 						}
 					}
@@ -612,7 +612,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 			int syncdirection = SYNC_NO; // Направление синхронизации
 			GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
 			GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
-			GS::UniString stringformat = ""; //Строка с форматом числа
+			FormatString stringformat;
 			GS::UniString rulestring_one = rulestring[i];
 			API_Guid elemGuidfrom = elemGuid;
 
@@ -638,7 +638,7 @@ bool ParseSyncString(const API_Guid& elemGuid, const  API_ElemTypeID& elementTyp
 				ParamHelpers::ConvertToParamValue(paramdef, definition);
 				paramdef.fromGuid = elemGuid;
 				WriteData writeOne;
-				writeOne.stringformat = stringformat;
+				writeOne.formatstring = stringformat;
 				writeOne.ignorevals = ignorevals;
 				if (param.fromCoord && param.rawName.Contains("north_dir")) {
 					ParamDictValue paramDict;
@@ -778,7 +778,7 @@ bool Name2Rawname(GS::UniString& name, GS::UniString& rawname) {
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, GS::UniString& stringformat) {
+bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat) {
 	syncdirection = SYNC_NO;
 
 	// Выбор направления синхронизации
@@ -949,7 +949,8 @@ bool SyncString(const  API_ElemTypeID& elementType, GS::UniString rulestring_one
 	// Параметры не найдены - выходим
 	if (nparam == 0) return false;
 	GS::UniString paramName = params.Get(0);
-	stringformat = GetFormatString(paramName);
+	GS::UniString stringformat_raw = GetFormatString (paramName);
+	stringformat = PropertyHelpers::ParseFormatString (stringformat_raw);
 	paramName.ReplaceAll("\\/", "/");
 	param.rawName = paramNamePrefix + paramName.ToLowerCase () + "}";
 	param.name = paramName;
