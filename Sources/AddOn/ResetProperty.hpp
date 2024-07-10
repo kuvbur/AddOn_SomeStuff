@@ -7,9 +7,13 @@
 #ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
 #include	"APICommon27.h"
 #endif // AC_27
+#ifdef AC_28
+#include	"APICommon28.h"
+#endif // AC_28
+
 #include	"DG.h"
 #include	"SyncSettings.hpp"
 
@@ -18,19 +22,19 @@ typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
-bool ResetProperty(ParamDictValue& propertyParams);
+bool ResetProperty (ParamDictValue& propertyParams);
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств во всех БД файла и настройках по умолчанию
 //--------------------------------------------------------------------------------------------------------------------------
-UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& definitions_to_reset);
+UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& definitions_to_reset);
 
-UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid);
+UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid);
 
-GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDefinition>& definitions_to_reset);
+GSErrCode ResetOneElemen (const API_Guid elemGuid, const GS::Array<API_PropertyDefinition>& definitions_to_reset);
 
-UInt32 ResetElementsDefault(const GS::Array<API_PropertyDefinition>& definitions_to_reset);
+UInt32 ResetElementsDefault (const GS::Array<API_PropertyDefinition>& definitions_to_reset);
 
-GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_PropertyDefinition>& definitions_to_reset, int variationID);
+GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId, const GS::Array<API_PropertyDefinition>& definitions_to_reset, int variationID);
 
 #endif
