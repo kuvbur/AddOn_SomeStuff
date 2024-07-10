@@ -5251,8 +5251,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         double fillThickL = resSectors[k].GetLength ();
                                         double rfromstart = Geometry::Dist (l.start, resSectors[k].GetMidPoint ()); // Расстояние до окружности(начала порядка слоёв)
 #if defined(AC_27) || defined(AC_28)
-                                        API_AttributeIndex	constrinxL = ACAPI_CreateAttributeIndex ((GS::Int32) syHatch.GetBuildMatIdx ().ToGSAttributeIndex_Deprecated ());
 #if defined(AC_28)
+                                        API_AttributeIndex	constrinxL = ACAPI_CreateAttributeIndex ((GS::Int32) syHatch.GetBuildMatIdx ().ToGSAttributeIndex_Deprecated ());
 #else
                                         API_AttributeIndex	constrinxL = ACAPI_CreateAttributeIndex ((GS::Int32) syHatch.GetBuildMatIdx ().ToGSAttributeIndex ());
 #endif
