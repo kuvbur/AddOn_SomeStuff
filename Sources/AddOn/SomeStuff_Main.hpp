@@ -34,21 +34,21 @@ static const Int32 ShowGUID_CommandID = 12;
 static const Int32 AutoList_CommandID = 11;
 
 
-GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType);
+GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
-static GSErrCode __ACENV_CALL ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param);
+static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param);
 
 // -----------------------------------------------------------------------------
 // Включение отслеживания новых и резервируемых элементов
 // -----------------------------------------------------------------------------
-void Do_ElementMonitor(bool& syncMon);
+void Do_ElementMonitor (bool& syncMon);
 
-void SetPaletteMenuText(short paletteItemInd);
+void SetPaletteMenuText (short paletteItemInd);
 
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
 // -----------------------------------------------------------------------------
-void MenuSetState(SyncSettings& syncSettings);
+void MenuSetState (SyncSettings& syncSettings);
 
-static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams);
+static GSErrCode MenuCommandHandler (const API_MenuParams* menuParams);
 #endif

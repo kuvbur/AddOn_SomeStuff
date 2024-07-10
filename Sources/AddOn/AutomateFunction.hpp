@@ -10,10 +10,10 @@
 #ifdef AC_27
 #include "APICommon27.h"
 #endif // AC_26
-
-namespace AutoFunc {
-	void KM_ListUpdate();
-	GSErrCode WriteGDLValues(API_Guid elemGuid, GS::Array<API_Coord>& coords);
+namespace AutoFunc
+{
+void KM_ListUpdate ();
+GSErrCode WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords);
 }
 
 #endif
