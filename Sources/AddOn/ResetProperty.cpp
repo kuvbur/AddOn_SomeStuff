@@ -1,344 +1,357 @@
 ﻿//------------ kuvbur 2022 ------------
-#include	"APIEnvir.h"
 #include	"ACAPinc.h"
+#include	"APIEnvir.h"
 #include	"Helpers.hpp"
 #include	"ResetProperty.hpp"
+
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
-bool ResetProperty(ParamDictValue& propertyParams) {
+bool ResetProperty (ParamDictValue& propertyParams)
+{
 #ifdef AC_27
-	return false;
+    return false;
 #endif
-	GS::Array<API_PropertyDefinition> definitions_to_reset;
-	for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs(); cIt != NULL; ++cIt) {
-		ParamValue& param = *cIt->value;
-		API_PropertyDefinition definition = param.definition;
-		if (definition.description.Contains("Sync_reset")) definitions_to_reset.Push(definition);
-	}
-	if (definitions_to_reset.IsEmpty()) return false;
-	return (ResetPropertyElement2Defult(definitions_to_reset) > 0);
+    GS::Array<API_PropertyDefinition> definitions_to_reset;
+    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
+        ParamValue& param = *cIt->value;
+        API_PropertyDefinition definition = param.definition;
+        if (definition.description.Contains ("Sync_reset")) definitions_to_reset.Push (definition);
+    }
+    if (definitions_to_reset.IsEmpty ()) return false;
+    return (ResetPropertyElement2Defult (definitions_to_reset) > 0);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств во всех БД файла и настройках по умолчанию
 //--------------------------------------------------------------------------------------------------------------------------
-UInt32 ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
-	DoneElemGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
-	UInt32 flag_reset = 0;
-	GSErrCode	err = NoError;
-	API_DatabaseID commandID = APIDb_GetCurrentDatabaseID;
-	API_AttributeIndex layerCombIndex;
+UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& definitions_to_reset)
+{
+    DoneElemGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
+    UInt32 flag_reset = 0;
+    GSErrCode	err = NoError;
+    API_DatabaseID commandID = APIDb_GetCurrentDatabaseID;
+    API_AttributeIndex layerCombIndex;
 
-	// Сейчас будем переключаться между БД
-	// Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
+    // Сейчас будем переключаться между БД
+    // Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
 #ifdef AC_27
-	err = ACAPI_Navigator_GetCurrLayerComb(&layerCombIndex);
+    err = ACAPI_Navigator_GetCurrLayerComb (&layerCombIndex);
 #else
-	err = ACAPI_Environment(APIEnv_GetCurrLayerCombID, &layerCombIndex);
+    err = ACAPI_Environment (APIEnv_GetCurrLayerCombID, &layerCombIndex);
 #endif
-	if (err != NoError) { msg_rep("ResetPropertyElement2Defult", "APIEnv_GetCurrLayerCombID", err, APINULLGuid); }
-	if (err == NoError) {
-		flag_reset = flag_reset + ResetElementsDefault(definitions_to_reset);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetCurrentDatabaseID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetDetailDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetWorksheetDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetDocumentFrom3DDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetLayoutDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetMasterLayoutDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetSectionDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-		flag_reset = flag_reset + ResetElementsInDB(APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+    if (err != NoError) {
+        msg_rep ("ResetPropertyElement2Defult", "APIEnv_GetCurrLayerCombID", err, APINULLGuid);
+    }
+    if (err == NoError) {
+        flag_reset = flag_reset + ResetElementsDefault (definitions_to_reset);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetCurrentDatabaseID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetDetailDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetWorksheetDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetDocumentFrom3DDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetLayoutDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetMasterLayoutDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetSectionDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        flag_reset = flag_reset + ResetElementsInDB (APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 #ifdef AC_27
 
-		//err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
+        //err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
 #else
-		err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &commandID, nullptr);
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &commandID, nullptr);
 #endif
-		if (err != NoError) { msg_rep("ResetPropertyElement2Defult", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid); }
+        if (err != NoError) {
+            msg_rep ("ResetPropertyElement2Defult", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
+        }
 #ifdef AC_27
-		if (err == NoError) { err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); }
+        if (err == NoError) {
+            err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex);
+        }
 #else
-		if (err == NoError) { err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); }
+        if (err == NoError) {
+            err = ACAPI_Environment (APIEnv_ChangeCurrLayerCombID, &layerCombIndex);
+        }
 #endif
-		if (err != NoError) { msg_rep("ResetPropertyElement2Defult", "APIEnv_ChangeCurrLayerCombID", err, APINULLGuid); }
-	}
-	if (!doneelemguid.IsEmpty()) {
-		GS::UniString intString = GS::UniString::Printf(" %d", doneelemguid.GetSize());
-		msg_rep("Reset property done - ", intString, NoError, APINULLGuid);
-	}
-	else {
-		msg_rep("Reset property done", "", NoError, APINULLGuid);
-	}
-	return flag_reset;
+        if (err != NoError) {
+            msg_rep ("ResetPropertyElement2Defult", "APIEnv_ChangeCurrLayerCombID", err, APINULLGuid);
+        }
+    }
+    if (!doneelemguid.IsEmpty ()) {
+        GS::UniString intString = GS::UniString::Printf (" %d", doneelemguid.GetSize ());
+        msg_rep ("Reset property done - ", intString, NoError, APINULLGuid);
+    } else {
+        msg_rep ("Reset property done", "", NoError, APINULLGuid);
+    }
+    return flag_reset;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств в выбранной БД
 //--------------------------------------------------------------------------------------------------------------------------
-UInt32 ResetElementsInDB(const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid) {
-	UInt32 flag_reset = 0;
-	GSErrCode	err = NoError;
+UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid)
+{
+    UInt32 flag_reset = 0;
+    GSErrCode	err = NoError;
 
-	// Если чистим элементы в текущей БД - переключаться не нужно
-	if (commandID == APIDb_GetCurrentDatabaseID) {
+    // Если чистим элементы в текущей БД - переключаться не нужно
+    if (commandID == APIDb_GetCurrentDatabaseID) {
 #ifdef AC_27
-		if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
+        if (layerCombIndex.IsPositive ()) err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex); // Устанавливаем комбинацию слоёв
 #else
-		if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+        if (layerCombIndex != 0) err = ACAPI_Environment (APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 #endif
-		GS::Array<API_Guid>	guidArray;
-		err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
-		if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_1", err, APINULLGuid);
-		if (err == NoError) {
-			for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-				if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
-					err = ResetOneElemen(guidArray.Get(i), definitions_to_reset);
-					if (err == NoError) {
-						flag_reset++;
-						doneelemguid.Add(guidArray.Get(i), true);
-					}
-				}
-			}
-		}
-		return flag_reset;
-	}
-	GS::Array<API_DatabaseUnId>	dbases;
+        GS::Array<API_Guid>	guidArray;
+        err = ACAPI_Element_GetElemList (API_ZombieElemID, &guidArray);
+        if (err != NoError) msg_rep ("ResetElementsInDB", "ACAPI_Element_GetElemList_1", err, APINULLGuid);
+        if (err == NoError) {
+            for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+                if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
+                    err = ResetOneElemen (guidArray.Get (i), definitions_to_reset);
+                    if (err == NoError) {
+                        flag_reset++;
+                        doneelemguid.Add (guidArray.Get (i), true);
+                    }
+                }
+            }
+        }
+        return flag_reset;
+}
+    GS::Array<API_DatabaseUnId>	dbases;
 #ifdef AC_27
-	switch (commandID) {
-	case APIDb_GetElevationDatabasesID:
-		err = ACAPI_Database_GetElevationDatabases(nullptr, &dbases);
-		break;
-	case APIDb_GetDetailDatabasesID:
-		err = ACAPI_Database_GetDetailDatabases(nullptr, &dbases);
-		break;
-	case APIDb_GetWorksheetDatabasesID:
-		err = ACAPI_Database_GetWorksheetDatabases(nullptr, &dbases);
-		break;
-	case APIDb_GetDocumentFrom3DDatabasesID:
-		err = ACAPI_Database_GetDocumentFrom3DDatabases(nullptr, &dbases);
-		break;
-	case APIDb_GetLayoutDatabasesID:
-		err = ACAPI_Database_GetLayoutDatabases(nullptr, &dbases);
-		break;
-	case APIDb_GetSectionDatabasesID:
-		err = ACAPI_Database_GetSectionDatabases(nullptr, &dbases);
-		break;
-	case APIDb_GetInteriorElevationDatabasesID:
-		err = ACAPI_Database_GetInteriorElevationDatabases(nullptr, &dbases);
-		break;
-	default:
-		break;;
-	}
+    switch (commandID) {
+        case APIDb_GetElevationDatabasesID:
+            err = ACAPI_Database_GetElevationDatabases (nullptr, &dbases);
+            break;
+        case APIDb_GetDetailDatabasesID:
+            err = ACAPI_Database_GetDetailDatabases (nullptr, &dbases);
+            break;
+        case APIDb_GetWorksheetDatabasesID:
+            err = ACAPI_Database_GetWorksheetDatabases (nullptr, &dbases);
+            break;
+        case APIDb_GetDocumentFrom3DDatabasesID:
+            err = ACAPI_Database_GetDocumentFrom3DDatabases (nullptr, &dbases);
+            break;
+        case APIDb_GetLayoutDatabasesID:
+            err = ACAPI_Database_GetLayoutDatabases (nullptr, &dbases);
+            break;
+        case APIDb_GetSectionDatabasesID:
+            err = ACAPI_Database_GetSectionDatabases (nullptr, &dbases);
+            break;
+        case APIDb_GetInteriorElevationDatabasesID:
+            err = ACAPI_Database_GetInteriorElevationDatabases (nullptr, &dbases);
+            break;
+        default:
+            break;;
+    }
 #else
-	err = ACAPI_Database(commandID, nullptr, &dbases); // Получаем список БД
+    err = ACAPI_Database (commandID, nullptr, &dbases); // Получаем список БД
 #endif
-	if (err != NoError) msg_rep("ResetElementsInDB", "ACAPI_Database", err, APINULLGuid);
-	if (err == NoError) {
-		for (const auto& dbUnId : dbases) {
-			API_DatabaseInfo dbPars = {};
-			dbPars.databaseUnId = dbUnId;
+    if (err != NoError) msg_rep ("ResetElementsInDB", "ACAPI_Database", err, APINULLGuid);
+    if (err == NoError) {
+        for (const auto& dbUnId : dbases) {
+            API_DatabaseInfo dbPars = {};
+            dbPars.databaseUnId = dbUnId;
 #ifdef AC_27
-			err = ACAPI_Window_GetDatabaseInfo(&dbPars);
+            err = ACAPI_Window_GetDatabaseInfo (&dbPars);
 #else
-			err = ACAPI_Database(APIDb_GetDatabaseInfoID, &dbPars);
+            err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbPars);
 #endif
-			if (err != NoError) msg_rep("ResetElementsInDB", "APIDb_GetDatabaseInfoID", err, APINULLGuid);
-			if (err == NoError) {
+            if (err != NoError) msg_rep ("ResetElementsInDB", "APIDb_GetDatabaseInfoID", err, APINULLGuid);
+            if (err == NoError) {
 #ifdef AC_27
-				err = ACAPI_Database_ChangeCurrentDatabase(&dbPars);
+                err = ACAPI_Database_ChangeCurrentDatabase (&dbPars);
 #else
-				err = ACAPI_Database(APIDb_ChangeCurrentDatabaseID, &dbPars, nullptr);
+                err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbPars, nullptr);
 #endif
-				if (err != NoError) msg_rep("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
-				if (err == NoError) {
+                if (err != NoError) msg_rep ("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
+                if (err == NoError) {
 #ifdef AC_27
-					if (layerCombIndex.IsPositive()) err = ACAPI_Navigator_ChangeCurrLayerComb(&layerCombIndex); // Устанавливаем комбинацию слоёв
+                    if (layerCombIndex.IsPositive ()) err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex); // Устанавливаем комбинацию слоёв
 #else
-					if (layerCombIndex != 0) err = ACAPI_Environment(APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
+                    if (layerCombIndex != 0) err = ACAPI_Environment (APIEnv_ChangeCurrLayerCombID, &layerCombIndex); // Устанавливаем комбинацию слоёв
 #endif
-					GS::Array<API_Guid>	guidArray;
-					err = ACAPI_Element_GetElemList(API_ZombieElemID, &guidArray);
-					if (err == NoError) {
-						for (UInt32 i = 0; i < guidArray.GetSize(); i++) {
-							if (!doneelemguid.ContainsKey(guidArray.Get(i))) {
-								err = ResetOneElemen(guidArray.Get(i), definitions_to_reset);
-								if (err == NoError) {
-									flag_reset++;
-									doneelemguid.Add(guidArray.Get(i), true);
-								}
-							}
-						}
-					}
-					else {
-						msg_rep("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
-					}
-				}
-			}
-		}
-	}
-	return flag_reset;
+                    GS::Array<API_Guid>	guidArray;
+                    err = ACAPI_Element_GetElemList (API_ZombieElemID, &guidArray);
+                    if (err == NoError) {
+                        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+                            if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
+                                err = ResetOneElemen (guidArray.Get (i), definitions_to_reset);
+                                if (err == NoError) {
+                                    flag_reset++;
+                                    doneelemguid.Add (guidArray.Get (i), true);
+                                }
+                            }
+                        }
+                    } else {
+                        msg_rep ("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
+                    }
+        }
+    }
+        }
+    }
+    return flag_reset;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств элемента
 //--------------------------------------------------------------------------------------------------------------------------
-GSErrCode ResetOneElemen(const API_Guid elemGuid, const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
-	GSErrCode	err = NoError;
-	GS::Array<API_Property>  properties;
-	GS::Array<API_Property>  properties_to_reset;
-	err = ACAPI_Element_GetPropertyValues(elemGuid, definitions_to_reset, properties);
-	if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_GetPropertyValues", err, elemGuid);
-	if (err == NoError) {
-		for (UInt32 i = 0; i < properties.GetSize(); i++) {
-			API_Property property = properties.Get(i);
+GSErrCode ResetOneElemen (const API_Guid elemGuid, const GS::Array<API_PropertyDefinition>& definitions_to_reset)
+{
+    GSErrCode	err = NoError;
+    GS::Array<API_Property>  properties;
+    GS::Array<API_Property>  properties_to_reset;
+    err = ACAPI_Element_GetPropertyValues (elemGuid, definitions_to_reset, properties);
+    if (err != NoError) msg_rep ("ResetOneElemen", "ACAPI_Element_GetPropertyValues", err, elemGuid);
+    if (err == NoError) {
+        for (UInt32 i = 0; i < properties.GetSize (); i++) {
+            API_Property property = properties.Get (i);
 
-			// Сбрасываем только специальные значения
-			if (!property.isDefault) {
-				property.isDefault = true;
-				property.value.variantStatus = API_VariantStatusNormal;
-				properties_to_reset.Push(property);
-			}
-		}
-		if (!properties_to_reset.IsEmpty()) {
-			err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
+            // Сбрасываем только специальные значения
+            if (!property.isDefault) {
+                property.isDefault = true;
+                property.value.variantStatus = API_VariantStatusNormal;
+                properties_to_reset.Push (property);
+            }
+        }
+        if (!properties_to_reset.IsEmpty ()) {
+            err = ACAPI_Element_SetProperties (elemGuid, properties_to_reset);
 
-			// Убрал резервирование - криво работает
-			//if (err != NoError) {
-			//	// попробуем разблокировать и повторить
-			//	if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
-			//}
+            // Убрал резервирование - криво работает
+            //if (err != NoError) {
+            //	// попробуем разблокировать и повторить
+            //	if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
+            //}
 
-			// Если не получилось - выведем ошибку.
-			if (err != NoError) msg_rep("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
-		}
-		else {
-			err = APIERR_MISSINGCODE;
-		}
-	}
-	return err;
+            // Если не получилось - выведем ошибку.
+            if (err != NoError) msg_rep ("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
+        } else {
+            err = APIERR_MISSINGCODE;
+        }
+    }
+    return err;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств в настройках по умолчанию
 //--------------------------------------------------------------------------------------------------------------------------
-UInt32 ResetElementsDefault(const GS::Array<API_PropertyDefinition>& definitions_to_reset) {
-	UInt32 flag_reset = 0;
+UInt32 ResetElementsDefault (const GS::Array<API_PropertyDefinition>& definitions_to_reset)
+{
+    UInt32 flag_reset = 0;
 
-	// Элементы МЕР
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146245920) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1145194016) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1145459744) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146374688) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146373664) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1178935328) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1145654304) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1347572512) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1346520608) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1346786336) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1347897888) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1347702602) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1346980896) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1346782752) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1129468704) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1128416800) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1129597472) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1129596448) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1128678944) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1178869792) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1196574028) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 1146571296) == NoError);
+    // Элементы МЕР
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1146245920) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1145194016) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1145459744) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1146374688) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1146373664) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1178935328) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1145654304) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1347572512) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1346520608) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1346786336) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1347897888) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1347702602) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1346980896) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1346782752) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1129468704) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1128416800) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1129597472) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1129596448) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1128678944) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1178869792) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1196574028) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 1146571296) == NoError);
 
-	// Стандартные элементы
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_WallID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ColumnID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_BeamID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_WindowID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_DoorID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ObjectID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_LampID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_SlabID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RoofID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_MeshID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ZoneID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_CurtainWallID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_CurtainWallSegmentID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_CurtainWallFrameID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_CurtainWallPanelID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_CurtainWallJunctionID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_CurtainWallAccessoryID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ShellID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_SkylightID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_MorphID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_StairID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RiserID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_TreadID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_StairStructureID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingToprailID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingHandrailID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingRailID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingPostID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingInnerPostID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingBalusterID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingPanelID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingSegmentID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingNodeID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingBalusterSetID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingPatternID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingToprailEndID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingHandrailEndID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingRailEndID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingToprailConnectionID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingHandrailConnectionID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingRailConnectionID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_RailingEndFinishID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_BeamSegmentID, definitions_to_reset, 0) == NoError);
-	flag_reset = flag_reset + (ResetOneElemenDefault(API_ColumnSegmentID, definitions_to_reset, 0) == NoError);
-	return flag_reset;
+    // Стандартные элементы
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_WallID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ColumnID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_BeamID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_WindowID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_DoorID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_LampID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_SlabID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RoofID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_MeshID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ZoneID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_CurtainWallID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_CurtainWallSegmentID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_CurtainWallFrameID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_CurtainWallPanelID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_CurtainWallJunctionID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_CurtainWallAccessoryID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ShellID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_SkylightID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_MorphID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_StairID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RiserID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_TreadID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_StairStructureID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingToprailID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingHandrailID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingRailID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingPostID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingInnerPostID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingBalusterID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingPanelID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingSegmentID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingNodeID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingBalusterSetID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingPatternID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingToprailEndID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingHandrailEndID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingRailEndID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingToprailConnectionID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingHandrailConnectionID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingRailConnectionID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_RailingEndFinishID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_BeamSegmentID, definitions_to_reset, 0) == NoError);
+    flag_reset = flag_reset + (ResetOneElemenDefault (API_ColumnSegmentID, definitions_to_reset, 0) == NoError);
+    return flag_reset;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств в настройках по умолчанию для одного инструмента
 //--------------------------------------------------------------------------------------------------------------------------
-GSErrCode ResetOneElemenDefault(API_ElemTypeID typeId, const GS::Array<API_PropertyDefinition>& definitions_to_reset, int variationID) {
-	GSErrCode	err = NoError;
-	GS::Array<API_Property>  properties;
-	GS::Array<API_Property>  properties_to_reset;
+GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId, const GS::Array<API_PropertyDefinition>& definitions_to_reset, int variationID)
+{
+    GSErrCode	err = NoError;
+    GS::Array<API_Property>  properties;
+    GS::Array<API_Property>  properties_to_reset;
 #if defined AC_26 || defined AC_27
-	API_ElemType type;
-	type.typeID = typeId;
-	type.variationID = static_cast<API_ElemVariationID>(variationID);
-	err = ACAPI_Element_GetPropertyValuesOfDefaultElem(type, definitions_to_reset, properties);
+    API_ElemType type;
+    type.typeID = typeId;
+    type.variationID = static_cast<API_ElemVariationID>(variationID);
+    err = ACAPI_Element_GetPropertyValuesOfDefaultElem (type, definitions_to_reset, properties);
 #else
-	err = ACAPI_Element_GetPropertyValuesOfDefaultElem(typeId, static_cast<API_ElemVariationID>(variationID), definitions_to_reset, properties);
+    err = ACAPI_Element_GetPropertyValuesOfDefaultElem (typeId, static_cast<API_ElemVariationID>(variationID), definitions_to_reset, properties);
 #endif // AC_26
-	if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_GetPropertyValuesOfDefaultElem", err, APINULLGuid);
-	if (err == NoError) {
-		for (UInt32 i = 0; i < properties.GetSize(); i++) {
+    if (err != NoError) msg_rep ("ResetOneElemenDefault", "ACAPI_Element_GetPropertyValuesOfDefaultElem", err, APINULLGuid);
+    if (err == NoError) {
+        for (UInt32 i = 0; i < properties.GetSize (); i++) {
 #if defined(AC_23)
-			if (!properties[i].isDefault && properties[i].isEvaluated) {
+            if (!properties[i].isDefault && properties[i].isEvaluated) {
 #else
-			if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
+            if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
 #endif // AC_26
-				properties[i].isDefault = true;
-				properties_to_reset.Push(properties.Get(i));
-			}
-		}
-		if (properties_to_reset.GetSize() > 0) {
+                properties[i].isDefault = true;
+                properties_to_reset.Push (properties.Get (i));
+            }
+            }
+        if (properties_to_reset.GetSize () > 0) {
 #if defined AC_26 || defined AC_27
-			err = ACAPI_Element_SetPropertiesOfDefaultElem(type, properties);
+            err = ACAPI_Element_SetPropertiesOfDefaultElem (type, properties);
 #else
-			err = ACAPI_Element_SetPropertiesOfDefaultElem(typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
+            err = ACAPI_Element_SetPropertiesOfDefaultElem (typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
 #endif // AC_26
-			if (err != NoError) msg_rep("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);
-		}
-		else {
-			err = APIERR_MISSINGCODE;
-		}
-	}
-	return err;
+            if (err != NoError) msg_rep ("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);
+    } else {
+            err = APIERR_MISSINGCODE;
+        }
+}
+    return err;
 }
