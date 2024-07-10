@@ -4242,7 +4242,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
 #if defined(AC_28)
             ParamValue& param_composite = cIt->value;
 #else
-            ParamValue& param_composite = cIt->value;
+            ParamValue& param_composite = *cIt->value;
 #endif
             ParamDictValue paramsAdd_1;
             if(param_composite.val.uniStringValue.Contains ("{")) {
