@@ -30,21 +30,30 @@ static const Int32 RunParam_CommandID = 10;
 static const Int32 SetGUID_CommandID = 11;
 static const Int32 ShowGUID_CommandID = 12;
 
-GSErrCode __ACENV_CALL	ElementEventHandlerProc(const API_NotifyElementType* elemType);
 
-static GSErrCode __ACENV_CALL ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param);
+#if defined(AC_28)
+GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
+
+static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param);
+#else
+GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType* elemType);
+
+static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param);
+#endif
+
+
 
 // -----------------------------------------------------------------------------
 // Включение отслеживания новых и резервируемых элементов
 // -----------------------------------------------------------------------------
-void Do_ElementMonitor(bool& syncMon);
+void Do_ElementMonitor (bool& syncMon);
 
-void SetPaletteMenuText(short paletteItemInd);
+void SetPaletteMenuText (short paletteItemInd);
 
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
 // -----------------------------------------------------------------------------
-void MenuSetState(SyncSettings& syncSettings);
+void MenuSetState (SyncSettings& syncSettings);
 
-static GSErrCode MenuCommandHandler(const API_MenuParams* menuParams);
+static GSErrCode MenuCommandHandler (const API_MenuParams* menuParams);
 #endif
