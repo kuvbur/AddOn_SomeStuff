@@ -4,6 +4,7 @@
 #include	"Helpers.hpp"
 #include	"ResetProperty.hpp"
 
+
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
@@ -60,7 +61,6 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& def
         flag_reset = flag_reset + ResetElementsInDB (APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
         flag_reset = flag_reset + ResetElementsInDB (APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 #if defined(AC_27) || defined(AC_28)
-
         //err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
 #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &commandID, nullptr);

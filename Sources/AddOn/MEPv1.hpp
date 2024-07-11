@@ -40,7 +40,6 @@
 #include "ACAPI/MEPPreferenceTableBase.hpp"
 #include "GSUnID.hpp"
 
-
 namespace MEPv1
 {
 void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);

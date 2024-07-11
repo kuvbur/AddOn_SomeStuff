@@ -282,7 +282,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
     GS::UniString custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
     bool flag_expression = false; //В описании найдена формула
     if (!dimrule.expression.IsEmpty ()) {
-        if (!ParamHelpers::hasProperyDefinitoin (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+        if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
         ParamDictValue pdictvalue = dimrule.paramDict;
 
         // Добавляем в словарь округлённое значение
