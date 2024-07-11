@@ -3,7 +3,6 @@
 #if !defined (ADDON_HPP)
 #define	ADDON_HPP
 #include "Helpers.hpp"
-
 #define	 Menu_MonAll		1
 #define	 Menu_SyncAll		2
 #define	 Menu_SyncSelect	3

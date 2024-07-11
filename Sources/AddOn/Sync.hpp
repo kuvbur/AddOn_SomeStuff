@@ -13,6 +13,7 @@
 #ifdef AC_28
 #include	"APICommon28.h"
 #endif // AC_28
+
 #include	"DG.h"
 #include	"SyncSettings.hpp"
 #include	"Helpers.hpp"
@@ -31,7 +32,8 @@
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
-typedef struct {
+typedef struct
+{
     GS::UniString paramNameFrom = "";
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
@@ -42,7 +44,8 @@ typedef struct {
     int syncdirection = 0;
 } SyncRule;
 
-typedef struct {
+typedef struct
+{
     API_Guid guidTo = APINULLGuid;
     API_Guid guidFrom = APINULLGuid;
     ParamValue paramFrom;

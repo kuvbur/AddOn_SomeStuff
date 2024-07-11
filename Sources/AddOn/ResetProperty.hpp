@@ -13,7 +13,6 @@
 #ifdef AC_28
 #include	"APICommon28.h"
 #endif // AC_28
-
 #include	"DG.h"
 #include	"SyncSettings.hpp"
 

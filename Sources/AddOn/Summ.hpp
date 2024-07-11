@@ -16,10 +16,12 @@
 #endif // AC_28
 #include	"DG.h"
 #include	"Helpers.hpp"
+
 static const short TextSum = 1;
 static const short NumSum = 2;
 
-typedef struct {
+typedef struct
+{
     GS::UniString position = "";
     GS::UniString value = "";
     GS::UniString criteria = "";
