@@ -3,7 +3,6 @@
 #if !defined (ADDON_HPP)
 #define	ADDON_HPP
 #include "Helpers.hpp"
-
 #define	 Menu_MonAll		1
 #define	 Menu_SyncAll		2
 #define	 Menu_SyncSelect	3
@@ -31,22 +30,26 @@ static const Int32 RunParam_CommandID = 10;
 static const Int32 SetGUID_CommandID = 11;
 static const Int32 ShowGUID_CommandID = 12;
 
-static const Int32 AutoList_CommandID = 11;
+#if defined(AC_28)
+GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
-
+static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param);
+#else
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
 static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param);
+#endif
+
 
 // -----------------------------------------------------------------------------
-// Включение отслеживания новых и резервируемых элементов
+// Г‚ГЄГ«ГѕГ·ГҐГ­ГЁГҐ Г®ГІГ±Г«ГҐГ¦ГЁГўГ Г­ГЁГї Г­Г®ГўГ»Гµ ГЁ Г°ГҐГ§ГҐГ°ГўГЁГ°ГіГҐГ¬Г»Гµ ГЅГ«ГҐГ¬ГҐГ­ГІГ®Гў
 // -----------------------------------------------------------------------------
 void Do_ElementMonitor (bool& syncMon);
 
 void SetPaletteMenuText (short paletteItemInd);
 
 // -----------------------------------------------------------------------------
-// Обновление отмеченных в меню пунктов
+// ГЋГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ Г®ГІГ¬ГҐГ·ГҐГ­Г­Г»Гµ Гў Г¬ГҐГ­Гѕ ГЇГіГ­ГЄГІГ®Гў
 // -----------------------------------------------------------------------------
 void MenuSetState (SyncSettings& syncSettings);
 

@@ -14,7 +14,6 @@
 #include "DG.h"
 #include "Helpers.hpp"
 #include "alphanum.h"
-
 // Типы нумерации (см. RenumElement.state)
 #define RENUM_SKIP -1  // Исключить из обработки
 #define RENUM_IGNORE 0 // Не менять позмцию, но добавлять похожие элементы
@@ -48,58 +47,63 @@ public:
         }
         strpos = param.val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
     }
-    RenumPos (int pos) {
+    RenumPos (int pos)
+    {
         isNum = true;
         numpos = pos;
         this->setStr ();
     }
 
-    GS::UniString ToUniString () {
+    GS::UniString ToUniString ()
+    {
         this->setStr ();
         GS::UniString unipos = GS::UniString (this->strpos.c_str (), GChCode);
         return unipos;
     }
 
-    void Add (const int& i) {
-        if(isNum) {
+    void Add (const int& i)
+    {
+        if (isNum) {
             this->numpos = this->numpos + i;
         } else {
             this->isNum = true;
             this->numpos = i;
-            if(this->prefix.empty ())
+            if (this->prefix.empty ())
                 this->prefix = "-";
         }
         this->setStr ();
     }
 
-    void FormatToMax (RenumPos& pos, short nulltype) {
+    void FormatToMax (RenumPos& pos, short nulltype)
+    {
         // Длина от начала строки до конца числа должна быть как у pos
         // Для заполнения используем либо нули, либо пробелы
-        if(nulltype == NOZEROS)
+        if (nulltype == NOZEROS)
             return;
-        if(!this->isNum)
+        if (!this->isNum)
             return;
 
         size_t nthis = this->prefix.size () + std::to_string (this->numpos).size ();
         size_t npos = 0;
-        if(pos.isNum) {
+        if (pos.isNum) {
             npos = pos.prefix.size () + std::to_string (pos.numpos).size ();
         } else {
             npos = pos.strpos.size ();
         }
-        if(npos > nthis) {
+        if (npos > nthis) {
             size_t nadd = npos - nthis;
             char charrepl = ' ';
-            if(nulltype == ADDZEROS || nulltype == ADDMAXZEROS)
+            if (nulltype == ADDZEROS || nulltype == ADDMAXZEROS)
                 charrepl = '0';
             this->prefix = this->prefix + std::string (nadd, charrepl);
             this->setStr ();
         }
     }
 
-    void SetToMax (RenumPos& pos) {
+    void SetToMax (RenumPos& pos)
+    {
         this->setStr ();
-        if(doj::alphanum_comp (this->strpos, pos.strpos) < 0) {
+        if (doj::alphanum_comp (this->strpos, pos.strpos) < 0) {
             this->isNum = pos.isNum;
             this->prefix = pos.prefix;
             this->suffix = pos.suffix;
@@ -109,27 +113,30 @@ public:
         }
     }
 
-    void SetPrefix (GS::UniString& prefix) {
+    void SetPrefix (GS::UniString& prefix)
+    {
         this->prefix = prefix.ToCStr (0, MaxUSize, GChCode).Get ();
     }
 
-    ParamValue ToParamValue (GS::UniString& rawname) {
+    ParamValue ToParamValue (GS::UniString& rawname)
+    {
         ParamValue posvalue;
         GS::UniString unipos = this->ToUniString ();
         ParamHelpers::ConvertStringToParamValue (posvalue, rawname, unipos);
         return posvalue;
     }
 
-    bool operator==(const RenumPos& b) {
-        if(this->isNum == b.isNum && this->isNum) {
-            if(this->prefix != b.prefix)
+    bool operator==(const RenumPos& b)
+    {
+        if (this->isNum == b.isNum && this->isNum) {
+            if (this->prefix != b.prefix)
                 return false;
-            if(this->suffix != b.suffix)
+            if (this->suffix != b.suffix)
                 return false;
-            if(this->numpos != b.numpos)
+            if (this->numpos != b.numpos)
                 return false;
         } else {
-            if(this->strpos != b.strpos)
+            if (this->strpos != b.strpos)
                 return false;
         }
         return true;
@@ -143,19 +150,22 @@ public:
     // }
 
 private:
-    void setStr () {
-        if(this->isNum) {
+    void setStr ()
+    {
+        if (this->isNum) {
             strpos = this->prefix + std::to_string (this->numpos) + this->suffix;
         }
     }
 };
 
-typedef struct {
+typedef struct
+{
     GS::Array<RenumPos> elements;
     RenumPos mostFrequentPos;
 } RenumElem;
 
-typedef struct {
+typedef struct
+{
     bool state = false;
     bool oldalgoritm = true;
     GS::UniString flag = "";	   // Описание свойства, в которое ставим позицию

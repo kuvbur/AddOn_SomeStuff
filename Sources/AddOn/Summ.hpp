@@ -8,11 +8,15 @@
 #ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
-#ifdef AC_27
+#if defined(AC_27)
 #include	"APICommon27.h"
 #endif // AC_27
+#ifdef AC_28
+#include	"APICommon28.h"
+#endif // AC_28
 #include	"DG.h"
 #include	"Helpers.hpp"
+
 static const short TextSum = 1;
 static const short NumSum = 2;
 

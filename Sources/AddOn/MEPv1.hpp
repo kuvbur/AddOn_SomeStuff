@@ -1,7 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
-#ifdef AC_27
+#if defined(AC_27)
 #include "Definitions.hpp"
 // ACAPI
 

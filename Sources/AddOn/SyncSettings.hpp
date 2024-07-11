@@ -4,7 +4,6 @@
 #include "MemoryIChannel.hpp"
 #include "MemoryOChannel.hpp"
 #include "Object.hpp"
-
 class SyncSettings : public GS::Object
 {
     DECLARE_CLASS_INFO;
