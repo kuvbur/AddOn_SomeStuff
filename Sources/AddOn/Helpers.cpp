@@ -710,7 +710,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
         BMKillHandle ((GSHandle*) &selNeigs);
 #endif // AC_22
         return GS::Array<API_Guid> ();
-}
+    }
     GS::Array<API_Guid> guidArray;
 #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
@@ -3223,7 +3223,7 @@ void ParamHelpers::InfoWrite (ParamDictElement & paramToWrite)
         ParamValue& param = *cIt->value;
 #endif
         GS::UniString dbKey = param.name;
-        GS::UniString value = ParamHelpers::ToString (param, param.val.stringformat);
+        GS::UniString value = ParamHelpers::ToString (param, param.val.formatstring);
         GSErrCode err = NoError;
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_AutoText_SetAnAutoText (&dbKey, &value);
@@ -3417,7 +3417,7 @@ void ParamHelpers::WritePropertyValues (const API_Guid & elemGuid, ParamDictValu
     }
 }
 
-bool ParamHelpers::hasUnreadProperyDefinitoin (ParamDictElement & paramToRead)
+bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement & paramToRead)
 {
     for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
@@ -3534,7 +3534,7 @@ void ParamHelpers::ElementsRead (ParamDictElement & paramToRead, ParamDictValue 
     if (ParamHelpers::hasUnreadGlob (paramToRead, propertyParams) && !ParamHelpers::hasGlob (propertyParams)) {
         ParamHelpers::GetAllGlobToParamDict (propertyParams);
     }
-    if (ParamHelpers::hasUnreadProperyDefinitoin (paramToRead) && !ParamHelpers::hasProperyDefinitoin (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    if (ParamHelpers::hasUnreadProperyDefinition (paramToRead) && !ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
 
     // Выбираем по-элементно параметры для чтения
     for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
