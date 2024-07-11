@@ -4,6 +4,9 @@
 #include	<stdio.h>
 #ifdef AC_25
 #include	"APICommon25.h"
+#ifdef PK_1
+#include	"AutomateFunction.hpp"
+#endif
 #endif // AC_25
 #ifdef AC_26
 #include	"APICommon26.h"
@@ -115,7 +118,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
 #endif
-
     int dummymode = DUMMY_MODE_UNDEF;
 #ifdef PK_1
     syncSettings.syncMon = true;
@@ -261,7 +263,6 @@ void SetPaletteMenuText (short paletteItemInd)
 #endif
     return;
 }
-
 static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
 {
     GSErrCode err = NoError;
@@ -318,6 +319,12 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     RunParamSelected (syncSettings);
                     DimRoundAll (syncSettings);
                     break;
+#ifdef PK_1
+                case AutoList_CommandID:
+                    AutoFunc::KM_ListUpdate ();
+                    DimRoundAll (syncSettings);
+                    break;
+#endif
             }
             break;
     }
@@ -370,6 +377,7 @@ GSErrCode Initialize (void)
 GSErrCode __ACENV_CALL Initialize (void)
 {
 #endif
+
     DBPrintf ("== SMSTF == Initialize\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);

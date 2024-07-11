@@ -9,7 +9,6 @@
 #include	<time.h>
 
 Int32 nLib = 0;
-
 // -----------------------------------------------------------------------------
 // Подключение мониторинга
 // -----------------------------------------------------------------------------
@@ -164,7 +163,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     GS::UniString subtitle_ = GS::UniString::Printf ("Reading data from %d elements : ", guidArray.GetSize ()) + subtitle;
 
     // Словарь со всеми возможными определениями свойств
-    if (!ParamHelpers::hasProperyDefinitoin (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
     if (!ParamHelpers::hasInfo (propertyParams)) ParamHelpers::GetAllInfoToParamDict (propertyParams);
     if (!ParamHelpers::hasGlob (propertyParams)) ParamHelpers::GetAllGlobToParamDict (propertyParams);
     if (propertyParams.IsEmpty ()) return true;
@@ -200,7 +199,7 @@ void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     SyncData (elemGuid, syncSettings, subelemGuids, propertyParams, paramToWrite, dummymode);
     if (!subelemGuids.IsEmpty () && SyncRelationsElement (elementType, syncSettings)) {
         if (subelemGuids.GetSize () > 3) {
-            if (!ParamHelpers::hasProperyDefinitoin (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+            if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
             if (!ParamHelpers::hasInfo (propertyParams)) ParamHelpers::GetAllInfoToParamDict (propertyParams);
             if (!ParamHelpers::hasGlob (propertyParams)) ParamHelpers::GetAllGlobToParamDict (propertyParams);
         }
@@ -251,7 +250,6 @@ void SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         SyncElement (guidArray[i], syncSettings, propertyParams, paramToWrite, dummymode);
 #if defined(AC_27) || defined(AC_28)
-
         if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
         if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -436,11 +434,10 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     // Синхронизация данных
     // Проверяем - не отключена ли синхронизация у данного объекта
     if (dummymode == DUMMY_MODE_UNDEF) dummymode = IsDummyModeOn ();
-    if (dummymode != DUMMY_MODE_ON) {
-        if (!GetElemState (elemGuid, definitions, "Sync_flag")) return;
-    }
     if (dummymode == DUMMY_MODE_ON) {
         if (!GetElemStateReverse (elemGuid, definitions, "Sync_flag")) return;
+    } else {
+        if (!GetElemState (elemGuid, definitions, "Sync_flag")) return;
     }
     API_ElemTypeID elementType;
     err = GetTypeByGUID (elemGuid, elementType);
@@ -459,7 +456,7 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     if (mainsyncRules.IsEmpty ()) return;
     if (propertyParams.IsEmpty () || hasSub) {
         if (hasSub) {
-            if (!ParamHelpers::hasProperyDefinitoin (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+            if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
         } else {
             ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, definitions);
         }
@@ -515,10 +512,10 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
                     if (paramsTo.ContainsKey (rawNameTo) && paramsFrom.ContainsKey (rawNameFrom)) {
                         ParamValue paramFrom = paramsFrom.Get (rawNameFrom);
                         ParamValue paramTo = paramsTo.Get (rawNameTo);
-                        GS::UniString stringformat = writeSub.stringformat;
+                        FormatString formatstring = writeSub.formatstring;
 
                         //Сопоставляем и записываем, если значения отличаются
-                        if (ParamHelpers::CompareParamValue (paramFrom, paramTo, stringformat)) {
+                        if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring)) {
                             ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
                         }
                     }
@@ -625,7 +622,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
             int syncdirection = SYNC_NO; // Направление синхронизации
             GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
             GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
-            GS::UniString stringformat = ""; //Строка с форматом числа
+            FormatString stringformat;
             GS::UniString rulestring_one = rulestring[i];
             API_Guid elemGuidfrom = elemGuid;
 
@@ -651,7 +648,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                 ParamHelpers::ConvertToParamValue (paramdef, definition);
                 paramdef.fromGuid = elemGuid;
                 WriteData writeOne;
-                writeOne.stringformat = stringformat;
+                writeOne.formatstring = stringformat;
                 writeOne.ignorevals = ignorevals;
                 if (param.fromCoord && param.rawName.Contains ("north_dir")) {
                     ParamDictValue paramDict;
@@ -790,7 +787,7 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, GS::UniString& stringformat)
+bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat)
 {
     syncdirection = SYNC_NO;
 
@@ -909,6 +906,17 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             syncdirection = SYNC_FROM;
         }
     }
+
+    if (synctypefind == false) {
+        if (rulestring_one.Contains ("Class:")) {
+            synctypefind = true;
+            rulestring_one.ReplaceAll ("Class:", "");
+            paramNamePrefix = "{@class:";
+            param.fromClassification = true;
+            syncdirection = SYNC_FROM;
+        }
+    }
+
     if (synctypefind == false) return false;
     param.eltype = elementType;
 
@@ -951,19 +959,23 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     // Параметры не найдены - выходим
     if (nparam == 0) return false;
     GS::UniString paramName = params.Get (0);
-    stringformat = GetFormatString (paramName);
+    GS::UniString stringformat_raw = GetFormatString (paramName);
+    stringformat = PropertyHelpers::ParseFormatString (stringformat_raw);
     paramName.ReplaceAll ("\\/", "/");
+    param.rawName = paramNamePrefix + paramName.ToLowerCase () + "}";
+    param.name = paramName;
     if (param.fromMaterial) {
         param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "}";
         param.name = paramName;
-    } else {
-        param.rawName = paramNamePrefix + paramName.ToLowerCase () + "}";
-        param.name = paramName;
     }
     if (nparam > 1) {
-
         // Обработка данных о размерах массива и типе чтения
         UInt32 start_ignore = 1;
+        if (param.fromClassification) {
+            param.rawName = paramNamePrefix + tparamName + "}";
+            param.name = params.Get (1);
+            start_ignore = 2;
+        }
         GS::UniString arrtype = params[1].ToLowerCase ();
         bool hasArray = false;
         if (!hasArray && arrtype.Contains ("uniq")) {
