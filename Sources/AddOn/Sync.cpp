@@ -73,7 +73,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     bool flag_chanel = false;
     ParamDictElement paramToWrite;
     GS::Int32 nPhase = 1;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
 #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
@@ -111,7 +111,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
         ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
             long time_start = clock ();
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ()); short i = 1;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
             bool showPercent = false;
             Int32 maxval = 2;
             ACAPI_ProcessWindow_SetNextProcessPhase (&title, &maxval, &showPercent);
@@ -128,7 +128,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
         msg_rep ("SyncAll - write", "No data to write", NoError, APINULLGuid);
     }
     ParamHelpers::InfoWrite (paramToWrite);
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     ACAPI_ProcessWindow_CloseProcessWindow ();
 #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -147,10 +147,10 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     long time_start = clock ();
     ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
     if (guidArray.IsEmpty ()) return false;
-#if defined AC_26 || defined AC_27
+#if defined AC_26 || defined AC_27 || defined AC_28
     API_ElemType elemType;
     elemType.typeID = elementType;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     bool showPercent = true;
     Int32 maxval = guidArray.GetSize ();
     ACAPI_Element_GetElemTypeName (elemType, subtitle);
@@ -170,7 +170,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     bool flag_chanel = false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         SyncElement (guidArray[i], syncSettings, propertyParams, paramToWrite, dummymode);
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
         if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
         if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -239,7 +239,7 @@ void SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
     GS::Int32 nPhase = 1;
     int dummymode = IsDummyModeOn ();
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     bool showPercent = true;
     Int32 maxval = guidArray.GetSize ();
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
@@ -249,13 +249,12 @@ void SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray
     long time_start = clock ();
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         SyncElement (guidArray[i], syncSettings, propertyParams, paramToWrite, dummymode);
-#ifdef AC_27
-
+#if defined(AC_27) || defined(AC_28)
         if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
         if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
 #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
@@ -270,7 +269,7 @@ void SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray
         ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
             long time_start = clock ();
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ()); short i = 1;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -285,7 +284,7 @@ void SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray
         msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
     }
     ParamHelpers::InfoWrite (paramToWrite);
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     ACAPI_ProcessWindow_CloseProcessWindow ();
 #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -304,13 +303,13 @@ void RunParamSelected (const SyncSettings& syncSettings)
     API_DatabaseInfo databaseInfo;
     BNZeroMemory (&databaseInfo, sizeof (API_DatabaseInfo));
     GSErrCode err = NoError;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     err = ACAPI_Navigator_GetCurrLayerComb (&layerCombIndex);
 #else
     err = ACAPI_Environment (APIEnv_GetCurrLayerCombID, &layerCombIndex);
 #endif
     if (err != NoError) return;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
 #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
@@ -319,7 +318,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
     if (err != NoError) return;
     CallOnSelectedElemSettings (RunParam, false, true, syncSettings, fmane, false);
     SyncSelected (syncSettings);
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     if (layerCombIndex.IsPositive ()) err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex); // Устанавливаем комбинацию слоёв
     err = ACAPI_Database_ChangeCurrentDatabase (&databaseInfo);
 #else
@@ -341,26 +340,26 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     if (err != NoError) return;
     API_DatabaseInfo databaseInfo;
     API_DatabaseInfo dbInfo;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetContainingDatabase (&tElemHead.guid, &dbInfo);
 #else
     err = ACAPI_Database (APIDb_GetContainingDatabaseID, &tElemHead.guid, &dbInfo);
 #endif
     if (err != NoError) return;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
 #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
 #endif
     if (err != NoError) return;
     if (dbInfo.databaseUnId != databaseInfo.databaseUnId) {
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
         err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
 #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
 #endif
         if (err != NoError) return;
-    }
+}
     API_Element element, mask;
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, renovationStatus);
@@ -370,7 +369,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
     }
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryManagement_RunGDLParScript (&tElemHead, 0);
 #else
     err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &tElemHead, 0);
@@ -379,7 +378,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
     }
-}
+    }
 
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов

@@ -14,6 +14,9 @@
 #ifdef AC_27
 #include	"APICommon27.h"
 #endif // AC_27
+#ifdef AC_28
+#include	"APICommon28.h"
+#endif // AC_28
 #include	"DGModule.hpp"
 #include	"UniString.hpp"
 #include	"APIdefs_Properties.h"
@@ -26,10 +29,17 @@
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
-static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_Guid, short>& reserved,
-                                                          const GS::HashSet<API_Guid>& released,
-                                                          const GS::HashSet<API_Guid>& deleted)
+#if defined(AC_28)
+static GSErrCode ReservationChangeHandler (const GS::HashTable<API_Guid, short>& reserved,
+                                           const GS::HashSet<API_Guid>& released,
+                                           const GS::HashSet<API_Guid>& deleted)
 {
+#else
+static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_Guid, short>&reserved,
+                                                          const GS::HashSet<API_Guid>&released,
+                                                          const GS::HashSet<API_Guid>&deleted)
+{
+#endif
     (void) deleted;
     (void) released;
     DBPrintf ("== SMSTF == ReservationChangeHandler\n");
@@ -39,7 +49,11 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
     syncSettings.syncMon = true;
 #endif // PK_1
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
+#if defined(AC_28)
+        AttachObserver ((it->key), syncSettings);
+#else
         AttachObserver (*(it->key), syncSettings);
+#endif
     }
     return NoError;
 }
@@ -47,10 +61,17 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
 // -----------------------------------------------------------------------------
 // Срабатывает при событиях проекта (открытие, сохранение)
 // -----------------------------------------------------------------------------
+#if defined(AC_28)
+static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
+{
+    DBPrintf ("== SMSTF == ProjectEventHandlerProc\n");
+    SyncSettings syncSettings (false, false, true, true, true, true, false);
+#else
 static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
 {
     DBPrintf ("== SMSTF == ProjectEventHandlerProc\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
+#endif
     LoadSyncSettingsFromPreferences (syncSettings);
 #ifdef PK_1
     syncSettings.syncMon = true;
@@ -64,7 +85,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             break;
         case APINotify_Close:
         case APINotify_Quit:
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
             ACAPI_Element_CatchNewElement (nullptr, nullptr);
             ACAPI_Element_InstallElementObserver (nullptr);
 #else
@@ -86,16 +107,23 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
 // -----------------------------------------------------------------------------
 // Срабатывает при изменении элемента
 // -----------------------------------------------------------------------------
-GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType* elemType)
+#if defined(AC_28)
+GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
+#else
+GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
+{
+    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    LoadSyncSettingsFromPreferences (syncSettings);
+#endif
     int dummymode = DUMMY_MODE_UNDEF;
 #ifdef PK_1
     syncSettings.syncMon = true;
 #endif // PK_1
     API_ActTranPars actTranPars;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     ACAPI_Notification_GetTranParams (&actTranPars);
 #else
     ACAPI_Notify_GetTranParams (&actTranPars);
@@ -118,7 +146,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType* ele
         }
     }
     API_ElemTypeID elementType;
-#if defined AC_26 || defined AC_27
+#if defined AC_26 || defined AC_27 || defined AC_28
     elementType = elemType->elemHead.type.typeID;
 #else
     elementType = elemType->elemHead.typeID;
@@ -178,7 +206,7 @@ void	Do_ElementMonitor (bool& syncMon)
 
     if (syncMon) {
         DBPrintf ("== SMSTF == Do_ElementMonitor on\n");
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
         ACAPI_Element_CatchNewElement (nullptr, ElementEventHandlerProc);
         ACAPI_Element_InstallElementObserver (ElementEventHandlerProc);
         ACAPI_Notification_CatchElementReservationChange (ReservationChangeHandler);
@@ -190,7 +218,7 @@ void	Do_ElementMonitor (bool& syncMon)
     }
     if (!syncMon) {
         DBPrintf ("== SMSTF == Do_ElementMonitor off\n");
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
         ACAPI_Element_InstallElementObserver (nullptr);
         ACAPI_Notification_CatchElementReservationChange (nullptr);
@@ -206,7 +234,7 @@ void	Do_ElementMonitor (bool& syncMon)
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
 // -----------------------------------------------------------------------------
-void MenuSetState (SyncSettings& syncSettings)
+void MenuSetState (SyncSettings & syncSettings)
 {
     MenuItemCheckAC (Menu_MonAll, syncSettings.syncMon);
     MenuItemCheckAC (Menu_wallS, syncSettings.wallS);
@@ -228,15 +256,14 @@ void SetPaletteMenuText (short paletteItemInd)
     itemStr = RSGetIndString (ID_ADDON_PROMT + isEng (), paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = paletteItemInd;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     ACAPI_MenuItem_SetMenuItemText (&itemRef, nullptr, &itemStr);
 #else
     ACAPI_Interface (APIIo_SetMenuItemTextID, &itemRef, nullptr, &itemStr);
 #endif
     return;
 }
-
-static GSErrCode MenuCommandHandler (const API_MenuParams* menuParams)
+static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
 {
     GSErrCode err = NoError;
     DBPrintf ("== SMSTF == MenuCommandHandler start\n");
@@ -304,7 +331,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams* menuParams)
     (void) err;
     WriteSyncSettingsToPreferences (syncSettings);
     MenuSetState (syncSettings);
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     ACAPI_ProcessWindow_CloseProcessWindow ();
 #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -314,29 +341,43 @@ static GSErrCode MenuCommandHandler (const API_MenuParams* menuParams)
     return NoError;
 }
 
-API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams* envir)
+#if defined(AC_28)
+API_AddonType CheckEnvironment (API_EnvirParams * envir)
 {
+#else
+API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams * envir)
+{
+#endif
     DBPrintf ("== SMSTF == CheckEnvironment\n");
     RSGetIndString (&envir->addOnInfo.name, ID_ADDON_INFO + isEng (), AddOnNameID, ACAPI_GetOwnResModule ());
     RSGetIndString (&envir->addOnInfo.description, ID_ADDON_INFO + isEng (), AddOnDescriptionID, ACAPI_GetOwnResModule ());
     ACAPI_KeepInMemory (true);
     return APIAddon_Preload;
 }
-
+#if defined(AC_28)
+GSErrCode RegisterInterface (void)
+{
+#else
 GSErrCode __ACDLL_CALL RegisterInterface (void)
 {
+#endif
     DBPrintf ("== SMSTF == RegisterInterface\n");
     GSErrCode err = NoError;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     err = ACAPI_MenuItem_RegisterMenu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
 #else
     err = ACAPI_Register_Menu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
 #endif
     return err;
 }
-
+#if defined(AC_28)
+GSErrCode Initialize (void)
+{
+#else
 GSErrCode __ACENV_CALL Initialize (void)
 {
+#endif
+
     DBPrintf ("== SMSTF == Initialize\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
@@ -346,21 +387,25 @@ GSErrCode __ACENV_CALL Initialize (void)
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.syncMon);
     MonAll (syncSettings);
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 #else
     ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
 #endif
     ACAPI_KeepInMemory (true);
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     return ACAPI_MenuItem_InstallMenuHandler (ID_ADDON_MENU, MenuCommandHandler);
 #else
     return ACAPI_Install_MenuHandler (ID_ADDON_MENU, MenuCommandHandler);
 #endif
 }
-
+#if defined(AC_28)
+GSErrCode FreeData (void)
+{
+#else
 GSErrCode __ACENV_CALL FreeData (void)
 {
+#endif
     DBPrintf ("== SMSTF == FreeData\n");
     return NoError;
 }

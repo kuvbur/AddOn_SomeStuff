@@ -8,7 +8,7 @@
 #ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
-#ifdef AC_27
+#if defined(AC_27)
 #include	"APICommon27.h"
 #endif // AC_27
 #include	"DG.h"

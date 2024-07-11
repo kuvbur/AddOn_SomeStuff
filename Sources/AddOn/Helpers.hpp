@@ -1,6 +1,5 @@
 //------------ kuvbur 2022 ------------
 #pragma once
-
 #ifndef HELPERS_HPP
 #define HELPERS_HPP
 #ifdef AC_25
@@ -9,9 +8,12 @@
 #ifdef AC_26
 #include "APICommon26.h"
 #endif // AC_26
-#ifdef AC_27
+#if defined(AC_27)
 #include "APICommon27.h"
-#endif // AC_26
+#endif // AC_27
+#ifdef AC_28
+#include	"APICommon28.h"
+#endif // AC_28
 #include "DG.h"
 #include "basicgeometry.h"
 #include "StringConversion.hpp"
@@ -20,6 +22,7 @@
 #include "exprtk.h"
 #include <unordered_map>
 #include "alphanum.h"
+#include <Definitions.hpp>
 
 #define ELEMSTR_LEN 256
 
@@ -139,7 +142,6 @@ typedef struct
     bool isCore = false;		//Является ядром?
     int num = 0;
 } ParamValueComposite;
-
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
@@ -331,7 +333,7 @@ void CallOnSelectedElem (void (*function)(const API_Guid&), bool assertIfNoSel /
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID (const API_Guid& elemGuid, API_ElemTypeID& elementType);
 
-#if defined AC_26 || defined AC_27
+#if defined AC_26 || defined AC_27 || defined AC_28
 
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента

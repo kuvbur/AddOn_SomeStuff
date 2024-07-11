@@ -1,5 +1,5 @@
 ﻿//------------ kuvbur 2022 ------------
-#ifdef AC_27
+#if defined(AC_27)
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"MEPv1.hpp"

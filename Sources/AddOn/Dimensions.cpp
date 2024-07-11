@@ -23,7 +23,7 @@ GSErrCode DimReadPref (DimRules& dimrules)
     API_AutotextType	type = APIAutoText_Custom;
     DBPrintf ("== SMSTF == DimReadPref start\n");
     GSErrCode	err = NoError;
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
     err = ACAPI_AutoText_GetAutoTexts (&autotexts, type);
 #else
     err = ACAPI_Goodies (APIAny_GetAutoTextsID, &autotexts, (void*) (GS::IntPtr) type);
@@ -157,7 +157,11 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         if (ACAPI_Attribute_Get (&layer) != NoError) return err;
         GS::UniString layert = GS::UniString::Printf ("%s", layer.header.name);
         for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+            const GS::UniString& regexpstring = cIt->key;
+#else
             const GS::UniString& regexpstring = *cIt->key;
+#endif
             if (layert.Contains (regexpstring)) {
                 kstr = regexpstring;
                 find_rule = true;
@@ -188,7 +192,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         UInt32 flag_highlight = DIM_NOCHANGE;
         auto& dimElem = (*memo.dimElems)[k];
         API_ElemTypeID elementType;
-#if defined AC_26 || defined AC_27
+#if defined AC_26 || defined AC_27 || defined AC_28
         elementType = dimElem.base.base.type.typeID;
 #else
         elementType = dimElem.base.base.typeID;
@@ -377,7 +381,7 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
                 err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams);
                 if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
             }
-#ifdef AC_27
+#if defined(AC_27) || defined(AC_28)
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) return true;
 #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
