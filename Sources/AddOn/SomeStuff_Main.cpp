@@ -29,11 +29,13 @@
 #if defined(AC_28)
 static GSErrCode ReservationChangeHandler (const GS::HashTable<API_Guid, short>& reserved,
                                            const GS::HashSet<API_Guid>& released,
-                                           const GS::HashSet<API_Guid>& deleted) {
+                                           const GS::HashSet<API_Guid>& deleted)
+{
 #else
 static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_Guid, short>&reserved,
                                                           const GS::HashSet<API_Guid>&released,
-                                                          const GS::HashSet<API_Guid>&deleted) {
+                                                          const GS::HashSet<API_Guid>&deleted)
+{
 #endif
     (void) deleted;
     (void) released;
@@ -43,7 +45,7 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
 #ifdef PK_1
     syncSettings.syncMon = true;
 #endif // PK_1
-    for(GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
+    for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
 #if defined(AC_28)
         AttachObserver ((it->key), syncSettings);
 #else
@@ -57,11 +59,13 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
 // Срабатывает при событиях проекта (открытие, сохранение)
 // -----------------------------------------------------------------------------
 #if defined(AC_28)
-static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param) {
+static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
+{
     DBPrintf ("== SMSTF == ProjectEventHandlerProc\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
 #else
-static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param) {
+static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
+{
     DBPrintf ("== SMSTF == ProjectEventHandlerProc\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
 #endif
@@ -70,7 +74,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
     syncSettings.syncMon = true;
 #endif // PK_1
     MenuSetState (syncSettings);
-    switch(notifID) {
+    switch (notifID) {
         case APINotify_New:
         case APINotify_NewAndReset:
         case APINotify_Open:
@@ -101,11 +105,13 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
 // Срабатывает при изменении элемента
 // -----------------------------------------------------------------------------
 #if defined(AC_28)
-GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType) {
+GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
+{
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
 #else
-GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType) {
+GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
+{
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
 #endif
@@ -121,18 +127,18 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     ACAPI_Notify_GetTranParams (&actTranPars);
 #endif
     API_EditCmdID acttype = actTranPars.typeID;
-    if(!syncSettings.syncMon) return NoError;
-    if(elemType->notifID == APINotifyElement_EndEvents) {
+    if (!syncSettings.syncMon) return NoError;
+    if (elemType->notifID == APINotifyElement_EndEvents) {
         DimRoundAll (syncSettings);
         return NoError;
     }
-    if(elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
-    if(elemType->elemHead.hotlinkGuid != APINULLGuid) return false;
+    if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
+    if (elemType->elemHead.hotlinkGuid != APINULLGuid) return false;
 
     // Смотрим - что поменялось
     DBPrintf ("== SMSTF == ElementEventHandlerProc start\n");
-    if(acttype == APIEdit_Drag) {
-        if(is_equal (actTranPars.theDisp.x, 0) && is_equal (actTranPars.theDisp.y, 0) && is_equal (actTranPars.theDispZ, 0)) {
+    if (acttype == APIEdit_Drag) {
+        if (is_equal (actTranPars.theDisp.x, 0) && is_equal (actTranPars.theDisp.y, 0) && is_equal (actTranPars.theDispZ, 0)) {
             DBPrintf ("== SMSTF == acttype == APIEdit_Drag 0\n");
             return NoError;
         }
@@ -143,19 +149,19 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
 #else
     elementType = elemType->elemHead.typeID;
 #endif
-    if(elementType == API_GroupID) return NoError;
-    if(!CheckElementType (elementType, syncSettings)) return NoError;
-    if(!IsElementEditable (elemType->elemHead.guid, syncSettings, true)) return NoError;
+    if (elementType == API_GroupID) return NoError;
+    if (!CheckElementType (elementType, syncSettings)) return NoError;
+    if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true)) return NoError;
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
-    switch(elemType->notifID) {
+    switch (elemType->notifID) {
         case APINotifyElement_New:
         case APINotifyElement_Change:
         case APINotifyElement_PropertyValueChange:
         case APINotifyElement_Edit:
         case APINotifyElement_ClassificationChange:
             dummymode = IsDummyModeOn ();
-            if(dummymode == DUMMY_MODE_ON) {
+            if (dummymode == DUMMY_MODE_ON) {
                 syncSettings.syncMon = true;
                 syncSettings.wallS = true;
                 syncSettings.widoS = true;
@@ -164,19 +170,19 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
 
             // Отключение обработки панелей навесных стен после изменения самой навесной стены
             // Панели навесных стен обрабатываются далее, в функции SyncElement
-            if(syncSettings.logMon && elementType != API_CurtainWallPanelID && elementType != API_CurtainWallSegmentID && elementType != API_CurtainWallFrameID && elementType != API_CurtainWallJunctionID && elementType != API_CurtainWallAccessoryID) {
+            if (syncSettings.logMon && elementType != API_CurtainWallPanelID && elementType != API_CurtainWallSegmentID && elementType != API_CurtainWallFrameID && elementType != API_CurtainWallJunctionID && elementType != API_CurtainWallAccessoryID) {
                 syncSettings.logMon = false;
                 WriteSyncSettingsToPreferences (syncSettings);
             }
-            if(syncSettings.logMon) {
+            if (syncSettings.logMon) {
                 syncSettings.cwallS = false;
             }
-            if(!syncSettings.logMon && elementType == API_CurtainWallID) {
+            if (!syncSettings.logMon && elementType == API_CurtainWallID) {
                 syncSettings.logMon = true;
                 WriteSyncSettingsToPreferences (syncSettings);
             }
             SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode);
-            if(!paramToWrite.IsEmpty ()) {
+            if (!paramToWrite.IsEmpty ()) {
                 ParamHelpers::ElementsWrite (paramToWrite);
                 ParamHelpers::InfoWrite (paramToWrite);
             }
@@ -190,12 +196,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
 // -----------------------------------------------------------------------------
 // Включение мониторинга
 // -----------------------------------------------------------------------------
-void	Do_ElementMonitor (bool& syncMon) {
+void	Do_ElementMonitor (bool& syncMon)
+{
 #ifdef PK_1
     syncMon = true;
 #endif
 
-    if(syncMon) {
+    if (syncMon) {
         DBPrintf ("== SMSTF == Do_ElementMonitor on\n");
 #if defined(AC_27) || defined(AC_28)
         ACAPI_Element_CatchNewElement (nullptr, ElementEventHandlerProc);
@@ -207,7 +214,7 @@ void	Do_ElementMonitor (bool& syncMon) {
         ACAPI_Notify_CatchElementReservationChange (ReservationChangeHandler);
 #endif
     }
-    if(!syncMon) {
+    if (!syncMon) {
         DBPrintf ("== SMSTF == Do_ElementMonitor off\n");
 #if defined(AC_27) || defined(AC_28)
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
@@ -225,20 +232,22 @@ void	Do_ElementMonitor (bool& syncMon) {
 // -----------------------------------------------------------------------------
 // Обновление отмеченных в меню пунктов
 // -----------------------------------------------------------------------------
-void MenuSetState (SyncSettings & syncSettings) {
+void MenuSetState (SyncSettings & syncSettings)
+{
     MenuItemCheckAC (Menu_MonAll, syncSettings.syncMon);
     MenuItemCheckAC (Menu_wallS, syncSettings.wallS);
     MenuItemCheckAC (Menu_widoS, syncSettings.widoS);
     MenuItemCheckAC (Menu_objS, syncSettings.objS);
     MenuItemCheckAC (Menu_cwallS, syncSettings.cwallS);
-    if(isEng () > 0) {
-        for(UInt32 i = 0; i < 11; i++) {
+    if (isEng () > 0) {
+        for (UInt32 i = 0; i < 11; i++) {
             SetPaletteMenuText (i);
         }
     }
 }
 
-void SetPaletteMenuText (short paletteItemInd) {
+void SetPaletteMenuText (short paletteItemInd)
+{
     API_MenuItemRef     itemRef;
     BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
     GS::UniString itemStr;
@@ -253,7 +262,8 @@ void SetPaletteMenuText (short paletteItemInd) {
     return;
 }
 
-static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams) {
+static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
+{
     GSErrCode err = NoError;
     DBPrintf ("== SMSTF == MenuCommandHandler start\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
@@ -262,9 +272,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams) {
     syncSettings.syncMon = true;
 #endif // PK_1
     const Int32 AddOnMenuID = ID_ADDON_MENU;
-    switch(menuParams->menuItemRef.menuResID) {
+    switch (menuParams->menuItemRef.menuResID) {
         case AddOnMenuID:
-            switch(menuParams->menuItemRef.itemIndex) {
+            switch (menuParams->menuItemRef.itemIndex) {
                 case MonAll_CommandID:
                     syncSettings.syncAll = false;
 #ifndef PK_1
@@ -325,9 +335,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams) {
 }
 
 #if defined(AC_28)
-API_AddonType CheckEnvironment (API_EnvirParams * envir) {
+API_AddonType CheckEnvironment (API_EnvirParams * envir)
+{
 #else
-API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams * envir) {
+API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams * envir)
+{
 #endif
     DBPrintf ("== SMSTF == CheckEnvironment\n");
     RSGetIndString (&envir->addOnInfo.name, ID_ADDON_INFO + isEng (), AddOnNameID, ACAPI_GetOwnResModule ());
@@ -336,9 +348,11 @@ API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams * envir) {
     return APIAddon_Preload;
 }
 #if defined(AC_28)
-GSErrCode RegisterInterface (void) {
+GSErrCode RegisterInterface (void)
+{
 #else
-GSErrCode __ACDLL_CALL RegisterInterface (void) {
+GSErrCode __ACDLL_CALL RegisterInterface (void)
+{
 #endif
     DBPrintf ("== SMSTF == RegisterInterface\n");
     GSErrCode err = NoError;
@@ -350,9 +364,11 @@ GSErrCode __ACDLL_CALL RegisterInterface (void) {
     return err;
 }
 #if defined(AC_28)
-GSErrCode Initialize (void) {
+GSErrCode Initialize (void)
+{
 #else
-GSErrCode __ACENV_CALL Initialize (void) {
+GSErrCode __ACENV_CALL Initialize (void)
+{
 #endif
     DBPrintf ("== SMSTF == Initialize\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
@@ -376,9 +392,11 @@ GSErrCode __ACENV_CALL Initialize (void) {
 #endif
 }
 #if defined(AC_28)
-GSErrCode FreeData (void) {
+GSErrCode FreeData (void)
+{
 #else
-GSErrCode __ACENV_CALL FreeData (void) {
+GSErrCode __ACENV_CALL FreeData (void)
+{
 #endif
     DBPrintf ("== SMSTF == FreeData\n");
     return NoError;

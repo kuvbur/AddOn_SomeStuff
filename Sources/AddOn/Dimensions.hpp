@@ -15,8 +15,8 @@
 #include	"SyncSettings.hpp"
 #include	"Helpers.hpp"
 
-
-typedef struct {
+typedef struct
+{
     short	pen_original = 0;
     short	pen_rounded = 0;
     UInt32	round_value = 0;
