@@ -1046,6 +1046,7 @@ void GetRelationsElement (const API_Guid & elemGuid, const  API_ElemTypeID & ele
                             subelemGuid.Push (elGuid);
                         }
                     }
+#else
                     typeinzone.Push (API_ObjectID);
                     typeinzone.Push (API_LampID);
                     typeinzone.Push (API_StairID);
