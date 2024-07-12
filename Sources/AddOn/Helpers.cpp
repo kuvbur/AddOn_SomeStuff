@@ -24,6 +24,7 @@
 #include	"ProfileVectorImageOperations.hpp"
 #include	"ProfileAdditionalInfo.hpp"
 
+
 Int32 isEng ()
 {
     GSErrCode err = NoError;
@@ -375,6 +376,9 @@ bool ReserveElement (const API_Guid& objectId, GSErrCode& err)
     return false; // Не получилось зарезервировать
 }
 
+// -----------------------------------------------------------------------------
+// Вывод сообщения в отчёт
+// -----------------------------------------------------------------------------
 void msg_rep (const GS::UniString & modulename, const GS::UniString & reportString, const GSErrCode & err, const API_Guid & elemGuid)
 {
     GS::UniString error_type = "";
@@ -2484,12 +2488,17 @@ bool		MenuInvertItemMark (short menuResID, short itemIndex)
 //	}
 //}
 
+// -----------------------------------------------------------------------------
+// Извлекает из строки информацио о единицах измерении и откруглении
+// -----------------------------------------------------------------------------
 FormatString PropertyHelpers::ParseFormatString (const GS::UniString & stringformat)
 {
     int n_zero = 3;
     Int32 krat = 0; // Крутность округления
     double koeff = 1; //Коэфф. увеличения
     bool trim_zero = true; //Требуется образать нули после запятой
+    bool needround = false; //Требуется округлить численное значение для вычислений
+    GS::UniString delimetr = ","; // Разделитель дробной части
     FormatString format;
     format.stringformat = stringformat;
     GS::UniString outstringformat = stringformat;
@@ -2522,6 +2531,14 @@ FormatString PropertyHelpers::ParseFormatString (const GS::UniString & stringfor
             n_zero = 3;
             outstringformat.ReplaceAll ("m", "");
         }
+        if (outstringformat.Contains ("p")) {
+            delimetr = ".";
+            outstringformat.ReplaceAll ("p", "");
+        }
+        if (outstringformat.Contains ("r")) {
+            needround = true;
+            outstringformat.ReplaceAll ("r", "");
+        }
 
         // Принудительный вывод заданного кол-ва нулей после запятой
         if (outstringformat.Contains ("0")) {
@@ -2530,7 +2547,6 @@ FormatString PropertyHelpers::ParseFormatString (const GS::UniString & stringfor
             if (!outstringformat.IsEmpty ()) trim_zero = false;
         }
         if (!outstringformat.IsEmpty ()) {
-
             // Кратность округления
             if (outstringformat.Contains ("/")) {
                 GS::Array<GS::UniString> params;
@@ -2544,6 +2560,8 @@ FormatString PropertyHelpers::ParseFormatString (const GS::UniString & stringfor
         format.isEmpty = false;
         format.isRead = true;
     }
+    format.needRound = needround;
+    format.delimetr = delimetr;
     format.n_zero = n_zero;
     format.krat = krat;
     format.koeff = koeff;
@@ -4884,7 +4902,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
                 pvalue.val.doubleValue = round (ang * 100000.0) / 100000.0;
             } else {
                 pvalue.val.doubleValue = round (property.value.singleVariant.variant.doubleValue * 100000.0) / 100000.0;
-                if (property.value.singleVariant.variant.doubleValue - pvalue.val.rawDoubleValue > 0.001) pvalue.val.rawDoubleValue += 0.001;
+                if (property.value.singleVariant.variant.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
             }
             pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
             if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
@@ -5183,12 +5201,12 @@ void ParamHelpers::ConvertByFormatString (ParamValue & pvalue)
         Int32 krat = pvalue.val.formatstring.krat;
         double koeff = pvalue.val.formatstring.koeff;
         bool trim_zero = pvalue.val.formatstring.koeff;
+        pvalue.val.rawDoubleValue = pvalue.val.doubleValue; // До округлений
         pvalue.val.uniStringValue = ParamHelpers::ToString (pvalue);
         if (koeff != 1) n_zero = n_zero + (GS::Int32) log10 (koeff);
         pvalue.val.doubleValue = round (pvalue.val.doubleValue * pow (10, n_zero)) / pow (10, n_zero);
         pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
         if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
-        pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
     }
 }
 

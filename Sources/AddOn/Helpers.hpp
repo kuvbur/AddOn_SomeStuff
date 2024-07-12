@@ -100,7 +100,7 @@ typedef struct
 {
     int n_zero = 2; //Количество нулей после запятой
     GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
-    bool needRound = false;
+    bool needRound = false; //Использовать в расчётах округлённые значения
     Int32 krat = 0; // Крутность округления
     double koeff = 1; //Коэфф. увеличения
     bool trim_zero = true; //Требуется образать нули после запятой
@@ -123,7 +123,7 @@ typedef struct
     GS::Int32 intValue = 0;
     bool boolValue = false;
     double doubleValue = 0.0; //дробное значение, округлённое
-    double rawDoubleValue = 0.0;
+    double rawDoubleValue = 0.0; //прочитанное значение
     bool canCalculate = false;			// Может ли быть использован в формулах?
     FormatString formatstring; 	// Формат строки (задаётся с помощью .mm или .0)
     int array_row_start = 0;				// Начальная строка массива
@@ -296,9 +296,6 @@ bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettin
 // -----------------------------------------------------------------------------
 bool ReserveElement (const API_Guid& objectId, GSErrCode& err);
 
-// -----------------------------------------------------------------------------
-// Вывод сообщения в отчёт
-// -----------------------------------------------------------------------------
 void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid);
 
 // -----------------------------------------------------------------------------

@@ -24,7 +24,6 @@
 // 3. Откидываем все с вфключенным флагом
 // 4. По количеству уникальных имён свойств-правил, взятых из Renum_flag{*имя свойства с правилом*}, разбиваем элементы
 // -----------------------------------------------------------------------------------------------------------------------
-
 GSErrCode ReNumSelected (SyncSettings& syncSettings)
 {
     GS::UniString funcname ("Numbering");
@@ -77,7 +76,6 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
 
 bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem)
 {
-
     // Получаем список правил суммирования
     Rules rules;
     ParamDictElement paramToReadelem;
