@@ -359,7 +359,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
 #endif
         if (err != NoError) return;
-}
+    }
     API_Element element, mask;
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, renovationStatus);
@@ -378,7 +378,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
     }
-    }
+}
 
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
@@ -846,6 +846,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             rulestring_one.ReplaceAll ("Material:", "");
             rulestring_one.ReplaceAll ("{Layers;", "{Layers,20;");
             rulestring_one.ReplaceAll ("{Layers_inv;", "{Layers_inv,20;");
+            rulestring_one.ReplaceAll ("{Layers_auto;", "{Layers_auto,20;");
             paramNamePrefix = "{@material:";
             GS::UniString templatestring = rulestring_one.GetSubstring ('"', '"', 0);
             param.val.uniStringValue = templatestring;
