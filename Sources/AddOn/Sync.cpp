@@ -907,7 +907,6 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             syncdirection = SYNC_FROM;
         }
     }
-
     if (synctypefind == false) {
         if (rulestring_one.Contains ("Class:")) {
             synctypefind = true;
