@@ -1131,6 +1131,7 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
     return nout;
 }
 
+
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
@@ -2371,37 +2372,59 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue & pdictvalue, 
     if (!expression.Contains ('{')) return true;
     bool flag_find = false;
     GS::UniString attribsuffix = "";
-    if (expression.Contains (CharENTER)) attribsuffix = CharENTER + expression.GetSubstring (CharENTER, '}', 0) + '}';
     GS::UniString part = "";
+    GS::UniString part_clean = "";
     GS::UniString partc = "";
-    GS::UniString parts = "";
     GS::UniString val = "";
     bool flag_change = true;
     while (expression.Contains ('{') && expression.Contains ('}') && flag_change) {
-        GS::UniString expression_old = expression;
-        part = expression.GetSubstring ('{', '}', 0);
-        GS::UniString part_clean = part;
-        FormatString formatstring;
-        GS::UniString stringformat = GetFormatString (part_clean);
-        if (!stringformat.IsEmpty ()) formatstring = PropertyHelpers::ParseFormatString (stringformat);
-        partc = '{' + part_clean + '}';
-        parts = '{' + part_clean + attribsuffix;
         val = "";
-        if (pdictvalue.ContainsKey (parts)) {
-            ParamValue pvalue = pdictvalue.Get (parts);
-            if (pvalue.isValid) {
-                if (!formatstring.isEmpty) pvalue.val.formatstring = formatstring;
-                val = ParamHelpers::ToString (pvalue);
-                flag_find = true;
+        GS::UniString expression_old = expression;
+        // Выделяем часть, являющуюся шаблоном параметра
+        part = expression.GetSubstring ('{', '}', 0);
+        if (!part.IsEmpty ()) {
+            part_clean = part;
+            // Поищем в ней указание на номер аттрибута
+            attribsuffix = "";
+            if (part.Contains (CharENTER)) {
+                UIndex attribinx = part.FindLast (CharENTER);
+                USize partlen = part_clean.GetLength () - attribinx;
+                attribsuffix = part_clean.GetSubstring (attribinx, partlen) + '}';
+                part_clean = part_clean.GetSubstring (0, attribinx);
             }
-        } else {
-            if (pdictvalue.ContainsKey (partc)) {
-                ParamValue pvalue = pdictvalue.Get (partc);
-                if (pvalue.isValid) {
-                    if (!formatstring.isEmpty) pvalue.val.formatstring = formatstring;
-                    val = ParamHelpers::ToString (pvalue);
-                    flag_find = true;
+            // Проверяем наличие строки формата
+            FormatString formatstring;
+            GS::UniString stringformat = GetFormatString (part_clean);
+            if (!stringformat.IsEmpty ()) formatstring = PropertyHelpers::ParseFormatString (stringformat);
+
+
+            bool flag = false;
+            if (!flag) {
+                partc = '{' + part_clean + '}'; // Строка без формата
+                if (pdictvalue.ContainsKey (partc)) {
+                    ParamValue pvalue = pdictvalue.Get (partc);
+                    if (pvalue.isValid) {
+                        if (!formatstring.isEmpty) pvalue.val.formatstring = formatstring;
+                        val = ParamHelpers::ToString (pvalue);
+                        flag_find = true;
+                        flag = true;
+                    }
                 }
+            }
+            if (!flag && !attribsuffix.IsEmpty ()) {
+                partc = '{' + part_clean + attribsuffix; // Строка без формата
+                if (pdictvalue.ContainsKey (partc)) {
+                    ParamValue pvalue = pdictvalue.Get (partc);
+                    if (pvalue.isValid) {
+                        if (!formatstring.isEmpty) pvalue.val.formatstring = formatstring;
+                        val = ParamHelpers::ToString (pvalue);
+                        flag_find = true;
+                        flag = true;
+                    }
+                }
+            }
+            if (!flag) {
+                DBPrintf ("== SMSTF == ReplaceParamInExpression not found parametr\n");
             }
         }
         expression.ReplaceAll ('{' + part + '}', val);
@@ -4487,15 +4510,19 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 Int32 indx = i;
                 if (inverse) indx = nlayers - i - 1;
                 API_AttributeIndex constrinx = param_composite.composite[indx].inx;
-
                 // Если для материала было указано уникальное наименование - заменим его
                 GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + "}";
-                for (UInt32 inx = 0; inx < 20; inx++) {
-                    GS::UniString syncname = "{@property:sync_name" + GS::UniString::Printf ("%d", inx) + attribsuffix;
-                    if (params.ContainsKey (syncname)) {
-                        if (params.Get (syncname).isValid && !params.Get (syncname).property.isDefault) {
-                            templatestring = params.Get (syncname).val.uniStringValue;
-                            break;
+
+                if (templatestring.Contains ("{@property:nosyncname}")) {
+                    templatestring.ReplaceAll ("{@property:nosyncname}", "");
+                } else {
+                    for (UInt32 inx = 0; inx < 20; inx++) {
+                        GS::UniString syncname = "{@property:sync_name" + GS::UniString::Printf ("%d", inx) + attribsuffix;
+                        if (params.ContainsKey (syncname)) {
+                            if (params.Get (syncname).isValid && !params.Get (syncname).property.isDefault) {
+                                templatestring = params.Get (syncname).val.uniStringValue;
+                                break;
+                            }
                         }
                     }
                 }
@@ -4509,9 +4536,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         formatsting = PropertyHelpers::ParseFormatString ("1mm");
                         params.Get (layer_thickness).val.formatstring = formatsting;
                     }
-                    GS::UniString fillThickstring = PropertyHelpers::NumToString (fillThick, formatsting);
-                    if (!formatsting.isEmpty) layer_thickness.ReplaceAll ("}", "." + formatsting.stringformat + "}");
-                    templatestring.ReplaceAll (layer_thickness, fillThickstring);
+                    params.Get (layer_thickness).val.doubleValue = fillThick;
+                    params.Get (layer_thickness).val.rawDoubleValue = fillThick;
+                    params.Get (layer_thickness).val.type = API_PropertyRealValueType;
+                    params.Get (layer_thickness).isValid = true;
                 }
                 templatestring.ReplaceAll ("{@material:n}", GS::UniString::Printf ("%d", i + 1));
                 templatestring.ReplaceAll ("}", attribsuffix);
