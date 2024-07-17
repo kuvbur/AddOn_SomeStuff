@@ -200,7 +200,7 @@ Int32 isEng ();
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool chek_floor (double val, double tolerance);
+bool сheck_accuracy (double val, double tolerance);
 
 bool ElemHeadToNeig (API_Neig* neig, const API_Elem_Head* elemHead);
 #ifdef AC_26
@@ -822,9 +822,9 @@ void UnhideUnlockAllLayer (void);
 //--------------------------------------------------------------------------------------------------------------------------
 // Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name);
+bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind);
 
-bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name);
+bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind);
 
 // -----------------------------------------------------------------------------
 // Получить полное имя свойства (включая имя группы)
