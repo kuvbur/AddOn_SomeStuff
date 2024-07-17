@@ -200,7 +200,7 @@ Int32 isEng ();
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool сheck_accuracy (double val, double tolerance);
+bool check_accuracy (double val, double tolerance);
 
 bool ElemHeadToNeig (API_Neig* neig, const API_Elem_Head* elemHead);
 #ifdef AC_26
