@@ -579,6 +579,11 @@ bool ReadPropertyValues (const API_Guid& elemGuid, ParamDictValue& params);
 bool ReadIFCValues (const API_Guid& elemGuid, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
+// Обработка данных о классификации
+// -----------------------------------------------------------------------------
+bool ReadClassification (const API_Elem_Head& elem_head, ParamDictValue& params);
+
+// -----------------------------------------------------------------------------
 // Получение ID элемента
 // -----------------------------------------------------------------------------
 bool ReadIDValues (const API_Elem_Head& elem_head, ParamDictValue& params);
