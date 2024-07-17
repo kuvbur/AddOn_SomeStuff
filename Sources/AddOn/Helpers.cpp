@@ -43,15 +43,24 @@ Int32 isEng ()
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool chek_floor (double val, double tolerance)
+bool сheck_accuracy (double val, double tolerance)
 {
-    if (std::fabs (val) < std::numeric_limits<double>::epsilon ()) return true;
-    double k_val = val * 1000.0;
-    double l_val = round (k_val);
-    double val_correct = fabs (k_val - l_val);
-    bool bval_correct = val_correct < tolerance;
-    return bval_correct;
+    if (std::isinf (val) || std::isnan (val)) return true;
+    val = std::fabs (val * 1000.0);
+    if (val < std::numeric_limits<double>::epsilon ()) return true;
+    double reciprocal = std::round ((1 / tolerance)); // Коэффицент домножения для заданной точности
+    double val_round = std::round (val * reciprocal) / reciprocal; // Приведённое к заданной точности значение
+    if (val_round < std::numeric_limits<double>::epsilon () && val>tolerance) {
+        return false;
+    }
+    double val_correct1 = std::fabs (val_round - std::round (val_round));
+    double val_correct2 = std::fabs (val_round - std::floor (val_round));
+    bool bval1 = val_correct1 < tolerance;
+    bool bval2 = val_correct2 < tolerance;
+    return bval1 && bval2;
 }
+
+
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -115,6 +124,11 @@ bool UniStringToDouble (const GS::UniString& var, double& x)
     var_clear.ReplaceAll (",", ".");
     std::string var_str = var_clear.ToCStr (0, MaxUSize, GChCode).Get ();
     int n = sscanf (var_str.c_str (), "%lf", &x);
+    if (n <= 0) {
+        var_clear.ReplaceAll (".", ",");
+        var_str = var_clear.ToCStr (0, MaxUSize, GChCode).Get ();
+        n = sscanf (var_str.c_str (), "%lf", &x);
+    }
     return n > 0;
 }
 
@@ -186,7 +200,6 @@ void ReplaceSymbSpase (GS::UniString& outstring)
 
 int IsDummyModeOn ()
 {
-
     //	GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
     //	API_AutotextType	type = APIAutoText_Custom;
     //	GSErrCode	err = NoError;
@@ -646,15 +659,15 @@ void msg_rep (const GS::UniString & modulename, const GS::UniString & reportStri
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-        }
-    }
+            }
+            }
     GS::UniString msg = modulename + ": " + reportString + " " + error_type + "\n";
     ACAPI_WriteReport (msg, false);
     if (err != NoError) {
         msg = "== SMSTF ERR ==";
     }
     DBPrintf (msg.ToCStr ());
-}
+    }
 
 void	MenuItemCheckAC (short itemInd, bool checked)
 {
@@ -709,7 +722,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
         if (assertIfNoSel) {
             DGAlert (DG_ERROR, "Error", errorString, "", "Ok");
         }
-    }
+        }
     if (err != NoError) {
 #ifdef AC_22
         BMKillHandle ((GSHandle*) &selNeigs);
@@ -749,11 +762,11 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
             }
 #endif // AC_27
             if (err == NoError) GetRelationsElement (neig.guid, elementType, syncSettings, guidArray);
-        }
+    }
     }
     return guidArray;
 #endif // AC_22
-}
+    }
 
 void CallOnSelectedElemSettings (void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings & syncSettings, GS::UniString & funcname, bool addSubelement)
 {
@@ -791,7 +804,7 @@ void CallOnSelectedElemSettings (void (*function)(const API_Guid&, const SyncSet
 #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-    }
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -834,9 +847,9 @@ void CallOnSelectedElem (void (*function)(const API_Guid&), bool assertIfNoSel /
 #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-    } else if (!assertIfNoSel) {
-        function (APINULLGuid);
-    }
+} else if (!assertIfNoSel) {
+    function (APINULLGuid);
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -852,7 +865,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
     if (err != NoError) {
         msg_rep ("GetTypeByGUID", "", err, elemGuid);
         return err;
-    }
+}
 #if defined AC_26 || defined AC_27 || defined AC_28
     elementType = elem_head.type.typeID;
 #else
@@ -920,7 +933,7 @@ void GetRelationsElement (const API_Guid & elemGuid, const  API_ElemTypeID & ele
         MEPv1::GetSubElement (elemGuid, subelemGuid);
         ACAPI_DisposeRoomRelationHdls (&relData);
         return;
-    }
+}
 #endif
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_HierarchicalEditing_GetHierarchicalElementOwner (&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
@@ -946,7 +959,7 @@ void GetRelationsElement (const API_Guid & elemGuid, const  API_ElemTypeID & ele
                     for (UInt32 i = 0; i < windows.GetSize (); i++) {
                         subelemGuid.Push (windows[i]);
                     }
-                }
+                    }
                 GS::Array<API_Guid> doors;
 #if defined(AC_27) || defined(AC_28)
                 err = ACAPI_Grouping_GetConnectedElements (elemGuid, API_DoorID, &doors, APIFilt_None, APINULLGuid);
@@ -959,7 +972,7 @@ void GetRelationsElement (const API_Guid & elemGuid, const  API_ElemTypeID & ele
                     }
                 }
                 break;
-            }
+                }
         case API_RailingID:
             if (syncSettings.cwallS) {
                 err = GetRElementsForRailing (elemGuid, subelemGuid);
@@ -1049,7 +1062,7 @@ void GetRelationsElement (const API_Guid & elemGuid, const  API_ElemTypeID & ele
                         for (Int32 i = 0; i < relData.nMorph - 1; i++) {
                             API_Guid elGuid = *(relData.morphs)[i];
                             subelemGuid.Push (elGuid);
-                        }
+            }
                     }
 #else
                     typeinzone.Push (API_ObjectID);
@@ -1682,7 +1695,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1717,7 +1730,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return err;
-    }
+}
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -1760,6 +1773,7 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
     double ex = 0; double ey = 0;
     double dx = 0; double dy = 0;
     double tolerance_coord = 0.001;
+    double tolerance_coord_hard = 0.000001;
     double tolerance_ang = 0.00001;
     bool hasSymbpos = false; bool hasLine = false;
     double angznorth = -1.0; double north = -1.0; bool skip_north = false;
@@ -1781,7 +1795,7 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
         if (params.Get (sync_coord_correctkey).isValid) {
             bsync_coord_correct = params.Get (sync_coord_correctkey).val.boolValue;
         }
-    }
+        }
     API_ElemTypeID eltype;
 #if defined AC_26 || defined AC_27 || defined AC_28
     eltype = element.header.type.typeID;
@@ -1830,10 +1844,10 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
                 if (!angznorthtxteng.IsEqual (angznorthtxteng_) && !angznorthtxteng.IsEmpty ()) {
                     skip_north = true; //Несколько сегментов с разным направлением. Определить север не получится
                 }
-                bool bsymb_pos_sx_correct = chek_floor (sx, tolerance_coord);
-                bool bsymb_pos_sy_correct = chek_floor (sy, tolerance_coord);
-                bool bsymb_pos_ex_correct = chek_floor (ex, tolerance_coord);
-                bool bsymb_pos_ey_correct = chek_floor (ey, tolerance_coord);
+                bool bsymb_pos_sx_correct = сheck_accuracy (sx, tolerance_coord);
+                bool bsymb_pos_sy_correct = сheck_accuracy (sy, tolerance_coord);
+                bool bsymb_pos_ex_correct = сheck_accuracy (ex, tolerance_coord);
+                bool bsymb_pos_ey_correct = сheck_accuracy (ey, tolerance_coord);
                 bool bsymb_pos_e_correct = bsymb_pos_sx_correct && bsymb_pos_sy_correct;
                 bool bsymb_pos_s_correct = bsymb_pos_ex_correct && bsymb_pos_ey_correct;
                 bool bsymb_pos_correct = bsymb_pos_e_correct && bsymb_pos_s_correct;
@@ -2027,8 +2041,8 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
         if (bsync_coord_correct) {
-            bool bsymb_pos_x_correct = chek_floor (x, tolerance_coord);
-            bool bsymb_pos_y_correct = chek_floor (y, tolerance_coord);
+            bool bsymb_pos_x_correct = сheck_accuracy (x, tolerance_coord);
+            bool bsymb_pos_y_correct = сheck_accuracy (y, tolerance_coord);
             bool bsymb_pos_correct = bsymb_pos_x_correct && bsymb_pos_y_correct;
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_x_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_y_correct);
@@ -2036,6 +2050,16 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_y_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
+
+            bool bsymb_pos_x_correct_hard = сheck_accuracy (x, tolerance_coord_hard);
+            bool bsymb_pos_y_correct_hard = сheck_accuracy (y, tolerance_coord_hard);
+            bool bsymb_pos_correct_hard = bsymb_pos_x_correct_hard && bsymb_pos_y_correct_hard;
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct_hard", bsymb_pos_x_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct_hard", bsymb_pos_y_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct_hard", bsymb_pos_x_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct_hard", bsymb_pos_y_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct_hard", bsymb_pos_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct_hard", bsymb_pos_correct_hard);
         } else {
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", true);
@@ -2043,6 +2067,12 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct_hard", true);
         }
     }
     if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
@@ -2062,11 +2092,11 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
                 dy = sy - ey;
             }
             double l = sqrt (dx * dx + dy * dy);
-            bool bl_correct = chek_floor (l, tolerance_coord);
-            bool bsymb_pos_sx_correct = chek_floor (sx, tolerance_coord);
-            bool bsymb_pos_sy_correct = chek_floor (sy, tolerance_coord);
-            bool bsymb_pos_ex_correct = chek_floor (ex, tolerance_coord);
-            bool bsymb_pos_ey_correct = chek_floor (ey, tolerance_coord);
+            bool bl_correct = сheck_accuracy (l, tolerance_coord);
+            bool bsymb_pos_sx_correct = сheck_accuracy (sx, tolerance_coord);
+            bool bsymb_pos_sy_correct = сheck_accuracy (sy, tolerance_coord);
+            bool bsymb_pos_ex_correct = сheck_accuracy (ex, tolerance_coord);
+            bool bsymb_pos_ey_correct = сheck_accuracy (ey, tolerance_coord);
             bool bsymb_pos_e_correct = bsymb_pos_sx_correct && bsymb_pos_sy_correct;
             bool bsymb_pos_s_correct = bsymb_pos_ex_correct && bsymb_pos_ey_correct;
             bool bsymb_pos_correct = bsymb_pos_e_correct && bsymb_pos_s_correct;
@@ -2080,6 +2110,26 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", bsymb_pos_ex_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", bsymb_pos_ey_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
+
+
+            bool bl_correct_hard = сheck_accuracy (l, tolerance_coord_hard);
+            bool bsymb_pos_sx_correct_hard = сheck_accuracy (sx, tolerance_coord_hard);
+            bool bsymb_pos_sy_correct_hard = сheck_accuracy (sy, tolerance_coord_hard);
+            bool bsymb_pos_ex_correct_hard = сheck_accuracy (ex, tolerance_coord_hard);
+            bool bsymb_pos_ey_correct_hard = сheck_accuracy (ey, tolerance_coord_hard);
+            bool bsymb_pos_e_correct_hard = bsymb_pos_sx_correct_hard && bsymb_pos_sy_correct_hard;
+            bool bsymb_pos_s_correct_hard = bsymb_pos_ex_correct_hard && bsymb_pos_ey_correct_hard;
+            bool bsymb_pos_correct_hard = bsymb_pos_e_correct_hard && bsymb_pos_s_correct_hard;
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "l_correct_hard", bl_correct);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct_hard", bsymb_pos_s_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct_hard", bsymb_pos_e_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct_hard", bsymb_pos_sx_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct_hard", bsymb_pos_sy_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct_hard", bsymb_pos_sx_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct_hard", bsymb_pos_sy_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct_hard", bsymb_pos_ex_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct_hard", bsymb_pos_ey_correct_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct_hard", bsymb_pos_correct_hard);
         } else {
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "l_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", true);
@@ -2116,14 +2166,14 @@ bool ParamHelpers::ReadElemCoords (const API_Element & element, ParamDictValue &
     }
     ParamHelpers::CompareParamDictValue (pdictvaluecoord, params);
     return true;
-}
+    }
 
 bool CoordCorrectAngle (double angz, double& tolerance_ang, double& symb_rotangle_fraction, bool& bsymb_rotangle_correct_1000)
 {
     symb_rotangle_fraction = 1000.0 * fabs (fabs (angz) - floor (fabs (angz))) / tolerance_ang;
     double angz_ = angz / 1000.0;
-    bool bsymb_rotangle_correct = chek_floor (angz_, tolerance_ang);
-    bsymb_rotangle_correct_1000 = chek_floor (angz_, 0.001);
+    bool bsymb_rotangle_correct = сheck_accuracy (angz_, tolerance_ang);
+    bsymb_rotangle_correct_1000 = сheck_accuracy (angz_, 0.001);
     return bsymb_rotangle_correct;
 }
 
@@ -2183,12 +2233,8 @@ void CoordNorthAngle (double north, double angz, double& angznorth, GS::UniStrin
 
 void CoordRotAngle (double sx, double sy, double ex, double ey, bool isFliped, double& angz)
 {
-    double k = 100000.0;
+    double k = 1000000000.0;
     double dx; double dy;
-    sx = round (sx * k) / k;
-    sy = round (sy * k) / k;
-    ex = round (ex * k) / k;
-    ey = round (ey * k) / k;
     if (isFliped) {
         dx = ex - sx;
         dy = ey - sy;
@@ -2201,7 +2247,7 @@ void CoordRotAngle (double sx, double sy, double ex, double ey, bool isFliped, d
     } else {
         angz = atan2 (dy, dx) + PI;
     }
-    if (fabs (angz) > 0.0000001) {
+    if (fabs (angz) > 0.000000001) {
         angz = fmod (round ((angz * 180.0 / PI) * k) / k, 360.0);
     } else {
         angz = 0.0;
@@ -2658,9 +2704,9 @@ GS::UniString PropertyHelpers::ToString (const API_Property & property, const Fo
     }
     if (property.isDefault && !property.isEvaluated) {
         value = &property.definition.defaultValue.basicValue;
-    } else {
+} else {
         value = &property.value;
-}
+    }
 #else
     if (property.status == API_Property_NotAvailable) {
         return string;
@@ -2699,7 +2745,7 @@ GS::UniString PropertyHelpers::ToString (const API_Property & property, const Fo
 #else // AC_25
                 string += ToString (value->singleEnumVariant.displayVariant, stringformat);
 #endif
-                } break;
+            } break;
         case API_PropertyMultipleChoiceEnumerationCollectionType:
             {
 #if defined(AC_25) || defined(AC_26) || defined(AC_27) || defined(AC_28)
@@ -2723,16 +2769,16 @@ GS::UniString PropertyHelpers::ToString (const API_Property & property, const Fo
                     if (i != value->multipleEnumVariant.variants.GetSize () - 1) {
                         string += "; ";
                     }
-                }
+                        }
 #endif
-            } break;
+                    } break;
         default:
             {
                 break;
             }
-            }
+                }
     return string;
-    }
+            }
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs)
 {
@@ -2887,7 +2933,7 @@ void DeleteElementUserData (const API_Guid & elemguid)
         err = ACAPI_Element_DeleteUserData (&tElemHead);
 #endif
         msg_rep ("Del user data", " ", NoError, APINULLGuid);
-}
+    }
     BMKillHandle (&userData.dataHdl);
     GS::Array<API_Guid> setGuids;
     err = ACAPI_ElementSet_Identify (elemguid, &setGuids);
@@ -2974,7 +3020,7 @@ void UnhideUnlockAllLayer (void)
                     if (err != NoError) msg_rep ("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
                 }
             }
-        }
+    }
     }
     return;
 }
@@ -3121,7 +3167,7 @@ bool ParamHelpers::ConvertToProperty (const ParamValue & pvalue, API_Property & 
 //--------------------------------------------------------------------------------------------------------------------------
 //Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState (const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name)
+bool GetElemState (const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name, bool& flagfind)
 {
     if (definitions.IsEmpty ()) return false;
     GSErrCode	err = NoError;
@@ -3131,6 +3177,7 @@ bool GetElemState (const API_Guid & elemGuid, const GS::Array<API_PropertyDefini
                 API_Property propertyflag = {};
                 err = ACAPI_Element_GetPropertyValue (elemGuid, definitions[i].guid, propertyflag);
                 if (err == NoError) {
+                    flagfind = true;
                     if (propertyflag.isDefault) {
                         return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
                     } else {
@@ -3145,7 +3192,7 @@ bool GetElemState (const API_Guid & elemGuid, const GS::Array<API_PropertyDefini
     return false;
 }
 
-bool GetElemStateReverse (const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name)
+bool GetElemStateReverse (const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name, bool& flagfind)
 {
     if (definitions.IsEmpty ()) return false;
     GSErrCode	err = NoError;
@@ -3155,6 +3202,7 @@ bool GetElemStateReverse (const API_Guid & elemGuid, const GS::Array<API_Propert
                 API_Property propertyflag = {};
                 err = ACAPI_Element_GetPropertyValue (elemGuid, definitions[i].guid, propertyflag);
                 if (err == NoError) {
+                    flagfind = true;
                     if (propertyflag.isDefault) {
                         return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
                     } else {
@@ -3168,6 +3216,7 @@ bool GetElemStateReverse (const API_Guid & elemGuid, const GS::Array<API_Propert
     }
     return true;
 }
+
 
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов
@@ -3189,7 +3238,7 @@ void ParamHelpers::ElementsWrite (ParamDictElement & paramToWrite)
         if (!params.IsEmpty ()) {
             ParamHelpers::Write (elemGuid, params);
         }
-}
+    }
     DBPrintf ("== SMSTF == ElementsWrite end\n");
 }
 
@@ -3217,7 +3266,7 @@ void ParamHelpers::Write (const API_Guid & elemGuid, ParamDictValue & params)
             ParamValue& param = *cIt->value;
 #endif
             if (param.rawName.Contains (paramType)) paramByType.Add (param.rawName, param);
-    }
+        }
         if (!paramByType.IsEmpty ()) {
 
             // Проходим поиском, специфичным для каждого типа
@@ -3256,8 +3305,8 @@ void ParamHelpers::InfoWrite (ParamDictElement & paramToWrite)
                 ParamValue& param = *cIt->value;
 #endif
                 if (param.fromInfo && !paramsinfo.ContainsKey (param.rawName)) paramsinfo.Add (param.rawName, param);
+            }
         }
-}
     }
     if (paramsinfo.IsEmpty ()) return;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -3277,7 +3326,7 @@ void ParamHelpers::InfoWrite (ParamDictElement & paramToWrite)
         if (err != NoError) msg_rep ("InfoWrite", "APIAny_SetAnAutoTextID", err, APINULLGuid);
     }
     msg_rep ("InfoWrite", "write", NoError, APINULLGuid);
-}
+        }
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в ID
@@ -3325,7 +3374,7 @@ void ParamHelpers::WriteGDLValues (const API_Guid & elemGuid, ParamDictValue & p
     if (err != NoError) {
         msg_rep ("ParamHelpers::WriteGDLValues", "ACAPI_Element_Get", err, elem_head.guid);
         return;
-    }
+}
 #if defined AC_26 || defined AC_27 || defined AC_28
     eltype = elem_head.type.typeID;
 #else
@@ -3410,7 +3459,7 @@ void ParamHelpers::WriteGDLValues (const API_Guid & elemGuid, ParamDictValue & p
                 return;
             }
             }
-    }
+        }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -3434,7 +3483,7 @@ void ParamHelpers::WriteGDLValues (const API_Guid & elemGuid, ParamDictValue & p
     err = ACAPI_Element_ChangeMemo (elemGuidt, APIMemoMask_AddPars, &elemMemo);
     if (err != NoError) msg_rep ("ParamHelpers::WriteGDLValues", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
     ACAPI_DisposeAddParHdl (&apiParams.params);
-    }
+}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -3458,8 +3507,8 @@ void ParamHelpers::WritePropertyValues (const API_Guid & elemGuid, ParamDictValu
                 if (error != NoError) msg_rep ("WritePropertyValues", "ACAPI_Element_SetProperty", error, elemGuid);
             }
         }
+    }
 }
-        }
 
 bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement & paramToRead)
 {
@@ -3479,11 +3528,11 @@ bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement & paramToRead)
                 if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) {
                     return true;
                 }
+            }
         }
-}
     }
     return false;
-    }
+}
 
 bool ParamHelpers::hasUnreadInfo (ParamDictElement & paramToRead, ParamDictValue & propertyParams)
 {
@@ -3510,8 +3559,8 @@ bool ParamHelpers::hasUnreadInfo (ParamDictElement & paramToRead, ParamDictValue
                         return true; // В списке общих параметров не найден, перечитаем
                     }
                 }
+            }
         }
-}
     }
     return false;
 }
@@ -3561,8 +3610,8 @@ bool ParamHelpers::hasUnreadGlob (ParamDictElement & paramToRead, ParamDictValue
                         return true; // В списке общих параметров не найден, перечитаем
                     }
                 }
+            }
         }
-}
     }
     return false;
 }
@@ -3593,7 +3642,7 @@ void ParamHelpers::ElementsRead (ParamDictElement & paramToRead, ParamDictValue 
             if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, params); // Сопоставляем свойства
             ParamHelpers::Read (elemGuid, params, propertyParams);
         }
-}
+    }
     DBPrintf ("== SMSTF == ElementsRead end\n");
 }
 
@@ -3639,7 +3688,7 @@ void ParamHelpers::Read (const API_Guid & elemGuid, ParamDictValue & params, Par
             }
             if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
         }
-}
+    }
 
     if (needGetAllDefinitions) {
         AllPropertyDefinitionToParamDict (params, elemGuid);
@@ -3674,7 +3723,7 @@ void ParamHelpers::Read (const API_Guid & elemGuid, ParamDictValue & params, Par
             if (param.fromGuid == elemGuid) {
                 if (param.rawName.Contains (paramType)) paramByType.Add (param.rawName, param);
             }
-    }
+        }
         if (!paramByType.IsEmpty ()) {
             bool needCompare = false;
 
@@ -3733,7 +3782,7 @@ void ParamHelpers::Read (const API_Guid & elemGuid, ParamDictValue & params, Par
             ParamHelpers::ConvertByFormatString (param);
         }
     }
-}
+        }
 
 void ParamHelpers::GetAllInfoToParamDict (ParamDictValue & propertyParams)
 {
@@ -3988,7 +4037,7 @@ void ParamHelpers::CompareParamDictElement (ParamDictElement & paramsFrom, Param
         if (paramsFrom.ContainsKey (elemGuid)) {
             ParamHelpers::CompareParamDictValue (paramsFrom.Get (elemGuid), paramTo, false);
         }
-}
+    }
 }
 
 // --------------------------------------------------------------------
@@ -4021,7 +4070,7 @@ void ParamHelpers::CompareParamDictValue (ParamDictValue & paramsFrom, ParamDict
                 paramsTo.Set (paramFrom.rawName, paramFrom);
             }
         }
-}
+    }
     return;
 }
 
@@ -4045,7 +4094,7 @@ bool ParamHelpers::ReadPropertyValues (const API_Guid & elemGuid, ParamDictValue
             API_PropertyDefinition definition = param.definition;
             propertyDefinitions.Push (definition);
         }
-}
+    }
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;
         GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
@@ -4194,7 +4243,7 @@ bool ParamHelpers::ReadGDLValues (const API_Element & element, const API_Elem_He
                 paramdiap.Add (arr_col_end.rawName, arr_col_end);
             }
         }
-}
+    }
     if (!paramdiap.IsEmpty ()) {
         if (ParamHelpers::GDLParamByName (element, elem_head, paramdiap, paramnamearray)) {
             for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -4217,8 +4266,8 @@ bool ParamHelpers::ReadGDLValues (const API_Element & element, const API_Elem_He
                         if (paramdiap.ContainsKey (param.rawName_col_end)) params.Get (param.rawName).val.array_column_end = paramdiap.Get (param.rawName_col_end).val.intValue;
                     }
                 }
+            }
         }
-    }
     }
 
     // Разбиваем по типам поиска - по описанию/по имени
@@ -4279,11 +4328,11 @@ bool ParamHelpers::ReadGDLValues (const API_Element & element, const API_Elem_He
                 paramByName.Add (*cIt->key, param_by_name);
 #endif
             }
-    }
+        }
     }
     if (flag_find_name) ParamHelpers::CompareParamDictValue (paramByName, params);
     return (flag_find_name);
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Поиск по описанию GDL параметра
@@ -4448,7 +4497,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 paramlayers.Add (param.rawName, param);
             }
         }
-}
+    }
     if (paramlayers.IsEmpty ()) return true;
 
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
@@ -4481,11 +4530,11 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
 #else
                         params.Add (*cIt->key, *cIt->value);
 #endif
+                    }
+                }
+                    }
                 }
             }
-    }
-        }
-    }
     bool flag_add = false;
 
     // Если есть строка-шаблон - заполним её
@@ -4558,7 +4607,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             params.Get (rawName).isValid = true;
             params.Get (rawName).val.type = API_PropertyStringValueType;
         }
-    }
+        }
     return flag_add;
 }
 
@@ -4771,18 +4820,18 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
 #endif
                 param_real = param_int / 1.0;
                 pvalue.formatstring = PropertyHelpers::ParseFormatString ("0m");
-            } else {
+        } else {
                 return false;
             }
-        }
     }
+}
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
     pvalue.rawDoubleValue = param_real;
     pvalue.intValue = param_int;
     pvalue.uniStringValue = param_string;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Конвертация параметра-массива библиотечного элемента (тип API_ParArray) в ParamValue
@@ -5287,7 +5336,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
 #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
 #endif
-}
+    }
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
 }
@@ -5329,18 +5378,18 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
             existsmaterial.Add (constrinxL, true);
         }
-    }
+        }
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
 #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
 #endif
-}
+    }
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля
@@ -5371,7 +5420,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             ParamValue p;
             param_composite.Add (pen, p);
         }
-}
+    }
     bool hasLine = !lines.IsEmpty ();
     bool profilehasLine = false;
 
@@ -5464,7 +5513,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     cutline.c2 = segment[j].c2;
                     min_r = r;
                 }
-            }
+                }
 #if defined(AC_28)
             lines.Get (cIt->key).cut_start = cutline.c2;
             lines.Get (cIt->key).cut_direction = Geometry::SectorVector (cutline);
@@ -5473,7 +5522,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
 #endif
             }
-    }
+        }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     while (!profileDescriptionIt1.IsEOI ()) {
@@ -5526,16 +5575,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                             existsmaterial.Add (constrinxL, true);
                                         }
                                         hasData = true;
-                                    }
-                                }
-                        }
+                            }
                     }
-                } else {
+                }
+        }
+    } else {
                         DBPrintf ("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
                     }
-        }
-                break;
     }
+                break;
+}
         ++profileDescriptionIt1;
     }
     if (hasData) {
@@ -5557,16 +5606,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 GS::Array<ParamValueComposite> paramout;
                 for (std::map<double, ParamValueComposite>::iterator k = comps.begin (); k != comps.end (); ++k) {
                     paramout.Push (k->second);
-                }
+            }
 #if defined(AC_28)
                 paramlayers.Get (cIt->key).composite = paramout;
 #else
                 paramlayers.Get (*cIt->key).composite = paramout;
 #endif
-                }
-            }
-        ParamHelpers::CompareParamDictValue (paramlayers, params);
+        }
     }
+        ParamHelpers::CompareParamDictValue (paramlayers, params);
+}
     return hasData;
 }
 #endif
@@ -5691,7 +5740,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                 paramlayers.Add (param.rawName, param);
             }
         }
-}
+    }
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramlayers.IsEmpty ()) {
@@ -5811,7 +5860,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
             }
         }
-}
+    }
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;
         error = ACAPI_Attribute_GetPropertyValues (attrib.header, propertyDefinitions, properties);

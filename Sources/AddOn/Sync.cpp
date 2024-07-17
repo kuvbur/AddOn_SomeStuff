@@ -434,24 +434,30 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     // Синхронизация данных
     // Проверяем - не отключена ли синхронизация у данного объекта
     if (dummymode == DUMMY_MODE_UNDEF) dummymode = IsDummyModeOn ();
+    bool syncall = true; bool flagfindall = true;
+    bool synccoord = true; bool flagfindcoord = true;
     if (dummymode == DUMMY_MODE_ON) {
-        if (!GetElemStateReverse (elemGuid, definitions, "Sync_flag")) return;
+        syncall = GetElemStateReverse (elemGuid, definitions, "Sync_flag", flagfindall);
+        synccoord = GetElemStateReverse (elemGuid, definitions, "Sync_correct_flag", flagfindcoord);
     } else {
-        if (!GetElemState (elemGuid, definitions, "Sync_flag")) return;
+        syncall = GetElemState (elemGuid, definitions, "Sync_flag", flagfindall);
+        synccoord = GetElemState (elemGuid, definitions, "Sync_correct_flag", flagfindcoord);
     }
+    if (!syncall && !synccoord) return; //Если оба свойства-флага ложь - выходим
+    if (syncall && !flagfindcoord) synccoord = true; //Если флаг координат не найден - проверку всё равно делаем
     API_ElemTypeID elementType;
     err = GetTypeByGUID (elemGuid, elementType);
     if (err != NoError) {
         return;
     }
     GS::Array <WriteData> mainsyncRules;
-    bool hassubguid = ParamHelpers::SubGuid_GetParamValue (elemGuid, propertyParams, definitions);
+    bool hassubguid = false;
+    if (syncall) hassubguid = ParamHelpers::SubGuid_GetParamValue (elemGuid, propertyParams, definitions);
     ParamDictElement paramToRead; // Словарь с параметрами для чтения
     bool hasSub = false;
     for (UInt32 i = 0; i < definitions.GetSize (); i++) {
-
         // Получаем список правил синхронизации из всех свойств
-        ParseSyncString (elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, propertyParams); // Парсим описание свойства
+        ParseSyncString (elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, propertyParams, syncall, synccoord); // Парсим описание свойства
     }
     if (mainsyncRules.IsEmpty ()) return;
     if (propertyParams.IsEmpty () || hasSub) {
@@ -582,7 +588,7 @@ void SyncAddRule (const WriteData& writeSub, WriteDict& syncRules, ParamDictElem
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams)
+bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams, bool syncall, bool synccoord)
 {
 
     // TODO Попробовать отключать часть синхронизаций в зависимости от изменённых параметров (API_ActTranPars acttype)
@@ -642,7 +648,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                     }
                 }
             }
-            if (SyncString (elementType, rulestring_one, syncdirection, param, ignorevals, stringformat)) {
+            if (SyncString (elementType, rulestring_one, syncdirection, param, ignorevals, stringformat, syncall, synccoord)) {
                 hasRule = true;
                 ParamValue paramdef; //Свойство, из которого получено правило
                 ParamHelpers::ConvertToParamValue (paramdef, definition);
@@ -787,7 +793,7 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat)
+bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat, bool syncall, bool synccoord)
 {
     syncdirection = SYNC_NO;
 
@@ -949,6 +955,13 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (elementType != API_MorphID) synctypefind = false;
     }
 
+    // Проверка включенных флагов
+    if (!syncall) {
+        if (!param.fromCoord) synctypefind = false;
+    }
+    if (!synccoord) {
+        if (param.fromCoord) synctypefind = false;
+    }
     //Если тип свойства не нашли - выходим
     if (synctypefind == false) return false;
 
