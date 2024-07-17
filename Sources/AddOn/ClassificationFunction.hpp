@@ -14,9 +14,13 @@
 #include "APICommon28.h"
 #endif // AC_28
 
-namespace ClassificationFunc
-{
+typedef struct {
+    API_ClassificationSystem system;
+} ClassificationValues;
 
+namespace ClassificationFunc {
+    GSErrCode GetAllClassification ();
+    void GatherAllDescendantOfClassification (const API_ClassificationItem& item, GS::Array<API_ClassificationItem>& allDescendant);
 }
 
 #endif
