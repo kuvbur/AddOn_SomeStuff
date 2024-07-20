@@ -104,12 +104,13 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
         ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, guidArray[i]);
         if (!propertyParams.IsEmpty ()) {
             if (Sum_GetElement (guidArray[i], propertyParams, paramToRead, rules)) {
-                ParamHelpers::Read (guidArray[i], paramToRead, propertyParams);
+                ClassificationFunc::SystemDict systemdict;
+                ParamHelpers::Read (guidArray[i], paramToRead, propertyParams, systemdict);
                 ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
                 hasSum = true;
             }
         }
-}
+    }
 
     if (!hasSum) return false;
 
@@ -121,7 +122,7 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
         const SumRule& rule = *cIt->value;
 #endif
         if (!rule.elemts.IsEmpty ()) Sum_OneRule (rule, paramToReadelem, paramToWriteelem);
-    }
+}
     return !paramToWriteelem.IsEmpty ();
 }
 

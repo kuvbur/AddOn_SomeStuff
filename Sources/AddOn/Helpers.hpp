@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include "alphanum.h"
 #include <Definitions.hpp>
+#include "ClassificationFunction.hpp"
 
 #define ELEMSTR_LEN 256
 
@@ -124,6 +125,7 @@ typedef struct
     bool boolValue = false;
     double doubleValue = 0.0; //дробное значение, округлённое
     double rawDoubleValue = 0.0; //прочитанное значение
+    API_Guid guidval = APINULLGuid;
     bool canCalculate = false;			// Может ли быть использован в формулах?
     FormatString formatstring; 	// Формат строки (задаётся с помощью .mm или .0)
     int array_row_start = 0;				// Начальная строка массива
@@ -563,11 +565,6 @@ void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo
 
 void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo);
 
-// ----------------------------------------------------------------------------------------
-// Сопоставление двух словарей ParamDictValue с добавлением новых элементов из paramsFrom
-// -----------------------------------------------------------------------------------------
-void CompareAndAdd (ParamDictValue& paramsFrom, ParamDictValue& paramsTo);
-
 // --------------------------------------------------------------------
 // Чтение значений свойств в ParamDictValue
 // --------------------------------------------------------------------
@@ -581,7 +578,7 @@ bool ReadIFCValues (const API_Guid& elemGuid, ParamDictValue& params);
 // -----------------------------------------------------------------------------
 // Обработка данных о классификации
 // -----------------------------------------------------------------------------
-bool ReadClassification (const API_Elem_Head& elem_head, ParamDictValue& params);
+bool ReadClassification (const API_Guid& elemGuid, const ClassificationFunc::SystemDict& systemdict, ParamDictValue& paramByType);
 
 // -----------------------------------------------------------------------------
 // Получение ID элемента
@@ -638,12 +635,12 @@ bool hasUnreadGlob (ParamDictElement& paramToRead, ParamDictValue& propertyParam
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ElementsRead (ParamDictElement& paramToRead, ParamDictValue& propertyParams);
+void ElementsRead (ParamDictElement& paramToRead, ParamDictValue& propertyParams, ClassificationFunc::SystemDict& systemdict);
 
 // --------------------------------------------------------------------
 // Заполнение словаря с параметрами
 // --------------------------------------------------------------------
-void Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams);
+void Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams, ClassificationFunc::SystemDict& systemdict);
 
 void Array2ParamValue (GS::Array<ParamValueData>& pvalue, ParamValueData& pvalrezult);
 bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::UniString& pstring, const double& preal);

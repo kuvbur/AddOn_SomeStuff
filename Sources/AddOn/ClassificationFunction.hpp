@@ -14,13 +14,28 @@
 #include "APICommon28.h"
 #endif // AC_28
 
-typedef struct {
+namespace ClassificationFunc
+{
+
+typedef struct
+{
     API_ClassificationSystem system;
+    API_ClassificationItem item;
+    API_ClassificationItem parent;
+    GS::UniString parentname = "";
+    GS::UniString itemname = "";
 } ClassificationValues;
 
-namespace ClassificationFunc {
-    GSErrCode GetAllClassification ();
-    void GatherAllDescendantOfClassification (const API_ClassificationItem& item, GS::Array<API_ClassificationItem>& allDescendant);
+// Словарь с классами
+typedef GS::HashTable<GS::UniString, ClassificationValues> ClassificationDict;
+
+// Словарь с системами
+typedef GS::HashTable<GS::UniString, ClassificationDict> SystemDict;
+
+GSErrCode GetAllClassification (SystemDict& systemdict);
+void GatherAllDescendantOfClassification (const API_ClassificationItem& item, ClassificationDict& classifications, const API_ClassificationSystem& system);
+void AddClassificationItem (const API_ClassificationItem& item, const  API_ClassificationItem& parent, ClassificationDict& classifications, const API_ClassificationSystem& system);
+void GetFullName (const API_ClassificationItem& item, const ClassificationDict& classifications, GS::UniString& fullname);
 }
 
 #endif
