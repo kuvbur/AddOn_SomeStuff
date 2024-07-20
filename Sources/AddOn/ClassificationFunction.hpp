@@ -21,7 +21,6 @@ typedef struct
 {
     API_ClassificationSystem system;
     API_ClassificationItem item;
-    API_ClassificationItem parent;
     GS::UniString parentname = "";
     GS::UniString itemname = "";
 } ClassificationValues;
@@ -36,6 +35,8 @@ GSErrCode GetAllClassification (SystemDict& systemdict);
 void GatherAllDescendantOfClassification (const API_ClassificationItem& item, ClassificationDict& classifications, const API_ClassificationSystem& system);
 void AddClassificationItem (const API_ClassificationItem& item, const  API_ClassificationItem& parent, ClassificationDict& classifications, const API_ClassificationSystem& system);
 void GetFullName (const API_ClassificationItem& item, const ClassificationDict& classifications, GS::UniString& fullname);
+API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS::UniString& classname);
+void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid);
 }
 
 #endif

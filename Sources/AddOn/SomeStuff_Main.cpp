@@ -156,6 +156,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true)) return NoError;
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
+    ClassificationFunc::SystemDict systemdict;
     switch (elemType->notifID) {
         case APINotifyElement_New:
         case APINotifyElement_Change:
@@ -183,9 +184,18 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 syncSettings.logMon = true;
                 WriteSyncSettingsToPreferences (syncSettings);
             }
-            SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode);
+            SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
             if (!paramToWrite.IsEmpty ()) {
-                ParamHelpers::ElementsWrite (paramToWrite);
+                GS::Array<API_Guid> rereadelem;
+                rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
+                if (!rereadelem.IsEmpty ()) {
+                    for (UInt32 i = 0; i < rereadelem.GetSize (); i++) {
+                        propertyParams.Clear ();
+                        paramToWrite.Clear ();
+                        SyncElement (rereadelem[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                        ParamHelpers::ElementsWrite (paramToWrite);
+                    }
+                }
                 ParamHelpers::InfoWrite (paramToWrite);
             }
         default:
