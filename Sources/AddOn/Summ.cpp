@@ -73,7 +73,10 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
 #endif
         return NoError;
     });
-    if (flag_write) SyncArray (syncSettings, guidArray);
+    if (flag_write) {
+        ClassificationFunc::SystemDict systemdict;
+        SyncArray (syncSettings, guidArray, systemdict);
+    }
     return NoError;
 }
 

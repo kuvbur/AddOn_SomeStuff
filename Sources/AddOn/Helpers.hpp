@@ -593,17 +593,22 @@ bool ReadGDLValues (const API_Element& element, const API_Elem_Head& elem_head, 
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ElementsWrite (ParamDictElement& paramToWrite);
+GS::Array<API_Guid> ElementsWrite (ParamDictElement& paramToWrite);
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в один элемент
 // --------------------------------------------------------------------
-void Write (const API_Guid& elemGuid, ParamDictValue& params);
+bool Write (const API_Guid& elemGuid, ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Запись ParamDictElement в информацию о проекте
 // --------------------------------------------------------------------
 void InfoWrite (ParamDictElement& paramToWrite);
+
+// --------------------------------------------------------------------
+// Смена классификации
+// --------------------------------------------------------------------
+bool WriteClassification (const API_Guid& elemGuid, ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в ID

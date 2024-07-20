@@ -2780,15 +2780,29 @@ GS::UniString PropertyHelpers::ToString (const API_Property & property, const Fo
 
 bool operator== (const ParamValue & lhs, const ParamValue & rhs)
 {
+    double lhsd = 0.0;
+    double rhsd = 0.0;
     switch (rhs.val.type) {
         case API_PropertyIntegerValueType:
             return lhs.val.intValue == rhs.val.intValue;
         case API_PropertyRealValueType:
-            return is_equal (lhs.val.doubleValue, rhs.val.doubleValue);
+            if (lhs.val.formatstring.needRound) {
+                lhsd = lhs.val.doubleValue;
+            } else {
+                lhsd = lhs.val.rawDoubleValue;
+            }
+            if (rhs.val.formatstring.needRound) {
+                rhsd = rhs.val.doubleValue;
+            } else {
+                rhsd = rhs.val.rawDoubleValue;
+            }
+            return is_equal (lhsd, rhsd);
         case API_PropertyStringValueType:
             return lhs.val.uniStringValue == rhs.val.uniStringValue;
         case API_PropertyBooleanValueType:
             return lhs.val.boolValue == rhs.val.boolValue;
+        case API_PropertyGuidValueType:
+            return lhs.val.guidval == rhs.val.guidval;
         default:
             return false;
     }
@@ -3167,6 +3181,7 @@ bool ParamHelpers::ConvertToProperty (const ParamValue & pvalue, API_Property & 
 //--------------------------------------------------------------------------------------------------------------------------
 bool GetElemState (const API_Guid & elemGuid, const GS::Array<API_PropertyDefinition>&definitions, GS::UniString property_flag_name, bool& flagfind)
 {
+    flagfind = false;
     if (definitions.IsEmpty ()) return false;
     GSErrCode	err = NoError;
     for (UInt32 i = 0; i < definitions.GetSize (); i++) {
@@ -3219,11 +3234,12 @@ bool GetElemStateReverse (const API_Guid & elemGuid, const GS::Array<API_Propert
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ParamHelpers::ElementsWrite (ParamDictElement & paramToWrite)
+GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement & paramToWrite)
 {
 
     //TODO Добавить флаги наличия свойств для записи по категориям
-    if (paramToWrite.IsEmpty ()) return;
+    GS::Array<API_Guid> rereadelem;
+    if (paramToWrite.IsEmpty ()) return rereadelem;
     DBPrintf ("== SMSTF == ElementsWrite start\n");
     for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
@@ -3234,20 +3250,22 @@ void ParamHelpers::ElementsWrite (ParamDictElement & paramToWrite)
         API_Guid elemGuid = *cIt->key;
 #endif
         if (!params.IsEmpty ()) {
-            ParamHelpers::Write (elemGuid, params);
+            if (ParamHelpers::Write (elemGuid, params)) rereadelem.Push (elemGuid);
         }
     }
+    if (!rereadelem.IsEmpty()) DBPrintf ("== SMSTF == ElementsWrite ReRead\n");
     DBPrintf ("== SMSTF == ElementsWrite end\n");
+    return rereadelem;
 }
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в один элемент
 // --------------------------------------------------------------------
-void ParamHelpers::Write (const API_Guid & elemGuid, ParamDictValue & params)
+bool ParamHelpers::Write (const API_Guid & elemGuid, ParamDictValue & params)
 {
-    if (params.IsEmpty ()) return;
-    if (elemGuid == APINULLGuid) return;
-
+    if (params.IsEmpty ()) return false;
+    if (elemGuid == APINULLGuid) return false;
+    bool needReread = false;
     // Получаем список возможных префиксов
     ParamDictValue paramByType;
     GS::Array<GS::UniString> paramTypesList;
@@ -3277,8 +3295,13 @@ void ParamHelpers::Write (const API_Guid & elemGuid, ParamDictValue & params)
             if (paramType.IsEqual ("{@id:")) {
                 ParamHelpers::WriteIDValues (elemGuid, paramByType);
             }
+            if (paramType.IsEqual ("{@class:")) {
+                needReread = ParamHelpers::WriteClassification (elemGuid, paramByType);
+            }
+
         }
     }
+    return needReread;
 }
 
 // --------------------------------------------------------------------
@@ -3324,6 +3347,27 @@ void ParamHelpers::InfoWrite (ParamDictElement & paramToWrite)
         if (err != NoError) msg_rep ("InfoWrite", "APIAny_SetAnAutoTextID", err, APINULLGuid);
     }
     msg_rep ("InfoWrite", "write", NoError, APINULLGuid);
+}
+
+
+bool ParamHelpers::WriteClassification (const API_Guid& elemGuid, ParamDictValue& params)
+{
+    bool needReread = false;
+    if (params.IsEmpty ()) return false;
+    DBPrintf ("== SMSTF == WriteClassification start\n");
+    GSErrCode err = NoError;
+    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        ParamValue& param = cIt->value;
+#else
+        ParamValue& param = *cIt->value;
+#endif
+        err = ACAPI_Element_AddClassificationItem (elemGuid, param.val.guidval);
+        if (err == NoError) needReread = true;
+        if (err != NoError) msg_rep ("WriteClassification", "ACAPI_Element_AddClassificationItem", err, APINULLGuid);
+    }
+    return needReread;
+    msg_rep ("WriteClassification", "write", err, elemGuid);
 }
 
 // --------------------------------------------------------------------
@@ -3725,7 +3769,7 @@ void ParamHelpers::Read (const API_Guid & elemGuid, ParamDictValue & params, Par
             // Проходим поиском, специфичным для каждого типа
             if (paramType.IsEqual ("{@property:")) {
                 needCompare = ParamHelpers::ReadPropertyValues (elemGuid, paramByType);
-                // Среди прочитанных свойств могут быть свойства с классификацией. Пищем и подберём клссификацию
+                // Среди прочитанных свойств могут быть свойства с классификацией. Поищем классификацию по имени
                 if (needCompare) {
                     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cItt = paramByType.EnumeratePairs (); cItt != NULL; ++cItt) {
 #if defined(AC_28)
@@ -3735,9 +3779,8 @@ void ParamHelpers::Read (const API_Guid & elemGuid, ParamDictValue & params, Par
 #endif
                         if (parambt.fromClassification) {
                             if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
-                            if (!systemdict.IsEmpty ()) {
-
-                            }
+                            API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, parambt.val.uniStringValue.ToLowerCase ());
+                            paramByType.Get (parambt.rawName).val.guidval = classguid;
                         }
                 }
             }
@@ -4188,8 +4231,8 @@ bool ParamHelpers::ReadClassification (const API_Guid & elemGuid, const Classifi
         ParamValue& param = *cIt->value;
 #endif
         if (systemdict.ContainsKey (param.name)) {
-            if (systemdict.Get (param.name).ContainsKey (APINULLGuid)) {
-                API_Guid systemguid = systemdict.Get (param.name).Get (APINULLGuid).system.guid;
+            if (systemdict.Get (param.name).ContainsKey ("@system@")) {
+                API_Guid systemguid = systemdict.Get (param.name).Get ("@system@").system.guid;
                 elementsystem.Add (param.name, systemguid);
             }
         } else {
