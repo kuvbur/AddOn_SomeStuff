@@ -476,7 +476,8 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     subelemGuids.Push (elemGuid); // Это теперь список всех элементов для синхронизации
 
     // Читаем все возможные свойства
-    ParamHelpers::ElementsRead (paramToRead, propertyParams);
+    ClassificationFunc::SystemDict systemdict;
+    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
 
     SyncCalcRule (syncRules, subelemGuids, paramToRead, paramToWrite);
 
@@ -778,6 +779,13 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
             synctypefind = true;
         }
     }
+    if (synctypefind == false) {
+        if (name.Contains ("Class:")) {
+            name.ReplaceAll ("Class:", "");
+            paramNamePrefix = "{@class:";
+            synctypefind = true;
+        }
+    }
     if (synctypefind == false) return false;
     GS::Array<GS::UniString> params;
     GS::UniString tparamName = name.GetSubstring ('{', '}', 0);
@@ -919,7 +927,6 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             rulestring_one.ReplaceAll ("Class:", "");
             paramNamePrefix = "{@class:";
             param.fromClassification = true;
-            syncdirection = SYNC_FROM;
         }
     }
 
@@ -975,20 +982,26 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     GS::UniString stringformat_raw = GetFormatString (paramName);
     stringformat = PropertyHelpers::ParseFormatString (stringformat_raw);
     paramName.ReplaceAll ("\\/", "/");
-    param.rawName = paramNamePrefix + paramName.ToLowerCase () + "}";
-    param.name = paramName;
     if (param.fromMaterial) {
         param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "}";
         param.name = paramName;
     }
+    UInt32 start_ignore = 0;
+    if (param.fromClassification) {
+        param.name = params.Get (0).ToLowerCase ();
+        param.rawName = paramNamePrefix + param.name;
+        if (nparam > 1) {
+            param.val.uniStringValue = params.Get (1);
+            param.rawName = param.rawName + ";" + param.val.uniStringValue;
+        }
+        param.rawName = param.rawName + "}";
+        start_ignore = 1 + nparam;
+    }
+    if (param.rawName.IsEmpty ()) param.rawName = paramNamePrefix + paramName.ToLowerCase () + "}";
+    if (param.name.IsEmpty ()) param.name = paramName;
     if (nparam > 1) {
         // Обработка данных о размерах массива и типе чтения
-        UInt32 start_ignore = 1;
-        if (param.fromClassification) {
-            param.rawName = paramNamePrefix + tparamName + "}";
-            param.name = params.Get (1);
-            start_ignore = 2;
-        }
+        if (start_ignore == 0) start_ignore = 1;
         GS::UniString arrtype = params[1].ToLowerCase ();
         bool hasArray = false;
         if (!hasArray && arrtype.Contains ("uniq")) {

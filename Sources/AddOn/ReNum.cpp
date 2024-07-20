@@ -104,7 +104,8 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
     }
     if (paramToReadelem.IsEmpty () || rules.IsEmpty ()) return false;
     ParamDictValue propertyParams; // Все свойства уже считаны, поэтому словарь просто пустой
-    ParamHelpers::ElementsRead (paramToReadelem, propertyParams); // Читаем значения
+    ClassificationFunc::SystemDict systemdict;
+    ParamHelpers::ElementsRead (paramToReadelem, propertyParams, systemdict); // Читаем значения
 
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -114,7 +115,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
         const RenumRule& rule = *cIt->value;
 #endif
         if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem);
-    }
+}
     return !paramToWriteelem.IsEmpty ();
 }
 
