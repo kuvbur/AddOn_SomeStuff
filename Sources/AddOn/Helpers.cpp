@@ -3779,7 +3779,8 @@ void ParamHelpers::Read (const API_Guid & elemGuid, ParamDictValue & params, Par
 #endif
                         if (parambt.fromClassification) {
                             if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
-                            API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, parambt.val.uniStringValue.ToLowerCase ());
+                            GS::UniString systemname = parambt.val.uniStringValue.ToLowerCase ();
+                            API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, systemname);
                             paramByType.Get (parambt.rawName).val.guidval = classguid;
                         }
                 }
