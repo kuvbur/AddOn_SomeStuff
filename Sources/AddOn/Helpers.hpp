@@ -293,6 +293,11 @@ bool CheckElementType (const API_ElemTypeID& elementType, const SyncSettings& sy
 bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
 
 // -----------------------------------------------------------------------------
+// Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
+// Возвращает тип элемента
+// -----------------------------------------------------------------------------
+bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType, API_ElemTypeID& eltype);
+// -----------------------------------------------------------------------------
 // Резервируем, разблокируем, вообщем - делаем элемент редактируемым
 // Единственное, что может нас остановить - объект находится в модуле.
 // -----------------------------------------------------------------------------
