@@ -75,7 +75,7 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
         classificationitem.parentname = parent.id.ToLowerCase ();
         classifications.Add (itemname, classificationitem);
     }
-    if (desc.Contains("some_stuff_class")) {
+    if (desc.Contains ("some_stuff_class")) {
         ClassificationValues classificationitem;
         classificationitem.item = item;
         classificationitem.system = system;
@@ -89,9 +89,9 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
     GS::UniString itemname = item.id.ToLowerCase ();
     if (classifications.ContainsKey (itemname)) {
         if (fullname.IsEmpty ()) {
-            fullname = classifications.Get (itemname).item.name;
+            fullname = classifications.Get (itemname).item.id;
         } else {
-            fullname = classifications.Get (itemname).item.name + "/" + fullname;
+            fullname = classifications.Get (itemname).item.id + "/" + fullname;
         }
         GS::UniString parentname = classifications.Get (itemname).parentname;
         if (!parentname.IsEmpty () && classifications.ContainsKey (parentname)) {
@@ -117,15 +117,17 @@ void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid)
     if (systemdict.IsEmpty ()) GetAllClassification (systemdict);
     GS::UniString autoclassname = "@some_stuff_class@";
     if (!systemdict.ContainsKey (autoclassname)) return;
-    if (!systemdict.Get(autoclassname).ContainsKey (autoclassname)) return;
+    if (!systemdict.Get (autoclassname).ContainsKey (autoclassname)) return;
     API_ClassificationItem item = systemdict.Get (autoclassname).Get (autoclassname).item;
     API_ClassificationSystem system = systemdict.Get (autoclassname).Get (autoclassname).system;
     GSErrCode err = NoError;
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
-    err = ACAPI_Element_GetClassificationItems (elemGuid,systemItemPairs);
+    err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
     bool needChangeClass = false;
     if (systemItemPairs.IsEmpty ()) needChangeClass = true;
-    if (needChangeClass) err = ACAPI_Element_AddClassificationItem (elemGuid, item.guid);
+    if (needChangeClass) {
+        err = ACAPI_Element_AddClassificationItem (elemGuid, item.guid);
+    }
     if (err != NoError) msg_rep ("SetAutoclass", "ACAPI_Element_AddClassificationItem", err, elemGuid);
     return;
 }

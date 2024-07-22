@@ -427,7 +427,9 @@ bool SyncRelationsElement (const API_ElemTypeID& elementType, const SyncSettings
 void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict)
 {
     GSErrCode	err = NoError;
-    if (!IsElementEditable (elemGuid, syncSettings, true)) return;
+    API_ElemTypeID elementType;
+    if (!IsElementEditable (elemGuid, syncSettings, true, elementType)) return;
+    if (elementType == API_DimensionID) return;
     ClassificationFunc::SetAutoclass (systemdict, elemGuid);
     // Если включён мониторинг - привязываем элемент к отслеживанию
     if (syncSettings.syncMon) {
@@ -451,7 +453,7 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     if (dummymode == DUMMY_MODE_UNDEF) dummymode = IsDummyModeOn ();
     bool syncall = true; bool flagfindall = true;
     bool synccoord = true; bool flagfindcoord = true;
-    bool syncclass = true; bool flagfindclass= true;
+    bool syncclass = true; bool flagfindclass = true;
     if (dummymode == DUMMY_MODE_ON) {
         syncall = GetElemStateReverse (elemGuid, definitions, "Sync_flag", flagfindall);
         synccoord = GetElemStateReverse (elemGuid, definitions, "Sync_correct_flag", flagfindcoord);
@@ -464,12 +466,6 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     if (!syncall && !synccoord && !syncclass) return; //Если оба свойства-флага ложь - выходим
     if (syncall && !flagfindcoord) synccoord = true; //Если флаг координат не найден - проверку всё равно делаем
     if (syncall && !flagfindclass) syncclass = true;
-    API_ElemTypeID elementType;
-    err = GetTypeByGUID (elemGuid, elementType);
-    if (err != NoError) {
-        return;
-    }
-    if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
     GS::Array <WriteData> mainsyncRules;
     bool hassubguid = false;
     if (syncall) hassubguid = ParamHelpers::SubGuid_GetParamValue (elemGuid, propertyParams, definitions);
