@@ -158,7 +158,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
     ClassificationFunc::SystemDict systemdict;
-    GSErrCode err;
     switch (elemType->notifID) {
         case APINotifyElement_New:
         case APINotifyElement_Change:
@@ -241,11 +240,11 @@ void	Do_ElementMonitor (bool& syncMon)
 #endif
     }
     return;
-    }	// Do_ElementMonitor
+}	// Do_ElementMonitor
 
-    // -----------------------------------------------------------------------------
-    // Обновление отмеченных в меню пунктов
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Обновление отмеченных в меню пунктов
+// -----------------------------------------------------------------------------
 void MenuSetState (SyncSettings & syncSettings)
 {
     MenuItemCheckAC (Menu_MonAll, syncSettings.syncMon);
@@ -351,7 +350,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     ACAPI_KeepInMemory (true);
     DBPrintf ("== SMSTF == MenuCommandHandler end\n");
     return NoError;
-    }
+}
 
 #if defined(AC_28)
 API_AddonType CheckEnvironment (API_EnvirParams * envir)
