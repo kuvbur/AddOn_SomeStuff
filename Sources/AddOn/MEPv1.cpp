@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #if defined(AC_27)
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
@@ -83,8 +83,7 @@ void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& sube
     }
 }
 void GetRouting (const API_Guid& elemGuid)
-{
-}
+{}
 
 void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
 {
