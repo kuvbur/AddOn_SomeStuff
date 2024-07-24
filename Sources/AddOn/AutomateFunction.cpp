@@ -7,6 +7,103 @@
 
 namespace AutoFunc
 {
+void ProfileByLine ()
+{
+    GSErrCode err = NoError;
+    GS::Array<API_Guid> elems = GetSelectedElements2 (true, true);
+    API_Element element;
+    BNZeroMemory (&element, sizeof (API_Element));
+    element.header.guid = elems[0];
+    err = ACAPI_Element_Get (&element);
+    double angz = 0; double angzr = 0;
+    double dx = element.line.endC.x - element.line.begC.x;
+    double dy = element.line.endC.y - element.line.begC.y;
+    if (is_equal (dx, 0.0) && is_equal (dy, 0.0)) {
+        angzr = 0.0;
+        angz = 0.0;
+    } else {
+        angzr = atan2 (dy, dx) + PI;
+        angz = (angzr * 180.0 / PI);
+    }
+    double sx = element.line.begC.x * cos (angzr) - element.line.begC.y * sin (angzr);
+    double sy = element.line.begC.x * sin (angzr) + element.line.begC.y * cos (angzr);
+    double ex = element.line.endC.x * cos (angzr) - element.line.endC.y * sin (angzr);
+    double ey = element.line.endC.x * sin (angzr) + element.line.endC.y * cos (angzr);
+    double x = 0;
+    dx = fabs (sx) - fabs (ex);
+    dy = fabs (sy) - fabs (ey);
+    if (fabs (dx) < 0.00001 && fabs (sx) > std::numeric_limits<double>::epsilon ()) x = sx;
+    if (fabs (dy) < 0.00001 && fabs (sy) > std::numeric_limits<double>::epsilon ()) x = sy;
+    double pa = 0;
+    double pb = 0;
+    double pc = 0;
+    double pd = 0;
+    API_3DCutPlanesInfo cutInfo;
+    BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
+    err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
+    if (err == NoError) {
+        if (cutInfo.shapes != nullptr) BMKillHandle ((GSHandle*) &(cutInfo.shapes));
+        cutInfo.isCutPlanes = true;
+        cutInfo.useCustom = false;
+        cutInfo.nShapes = 1;
+        cutInfo.shapes = reinterpret_cast<API_3DCutShapeType**> (BMAllocateHandle (cutInfo.nShapes * sizeof (API_3DCutShapeType), ALLOCATE_CLEAR, 0));
+        pa = cos (angzr);
+        pb = sin (angzr);
+        pc = 0;
+        pd = x;
+        if (cutInfo.shapes != nullptr) {
+            (*cutInfo.shapes)[0].cutStatus = 0;
+            (*cutInfo.shapes)[0].cutPen = 3;
+            (*cutInfo.shapes)[0].cutMater = 11;
+            (*cutInfo.shapes)[0].pa = pa;
+            (*cutInfo.shapes)[0].pb = pb;
+            (*cutInfo.shapes)[0].pc = pc;
+            (*cutInfo.shapes)[0].pd = pd;
+        }
+        err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
+    }
+    API_3DProjectionInfo  proj3DInfo;
+    BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
+    err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
+    if (err != NoError) return;
+    proj3DInfo.isPersp = false;
+    proj3DInfo.u.axono.azimuth = angz + 90;
+    proj3DInfo.u.axono.projMod = 1;
+    err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
+    if (err != NoError) return;
+    API_DatabaseInfo dbInfo = {};
+    dbInfo.typeID = APIWind_DocumentFrom3DID;
+    GS::snuprintf (dbInfo.name, sizeof (dbInfo.name), "Document3D");
+    GS::snuprintf (dbInfo.ref, sizeof (dbInfo.ref), "3D");
+    err = ACAPI_Database (APIDb_NewDatabaseID, &dbInfo);
+    if (err != NoError) return;
+    API_DocumentFrom3DType documentFrom3DType;
+    err = ACAPI_Environment (APIEnv_GetDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
+    if (err != NoError) {
+        BMKillHandle (reinterpret_cast<GSHandle*> (&documentFrom3DType.cutSetting.shapes));
+        BMKillHandle ((GSHandle*) &(cutInfo.shapes));
+        return;
+    }
+    documentFrom3DType.cutSetting.isCutPlanes = cutInfo.isCutPlanes;
+    documentFrom3DType.cutSetting.useCustom = cutInfo.useCustom;
+    if (documentFrom3DType.cutSetting.shapes != nullptr) BMKillHandle ((GSHandle*) &(documentFrom3DType.cutSetting.shapes));
+    documentFrom3DType.cutSetting.shapes = reinterpret_cast<API_3DCutShapeType**> (BMAllocateHandle (cutInfo.nShapes * sizeof (API_3DCutShapeType), ALLOCATE_CLEAR, 0));
+    if (documentFrom3DType.cutSetting.shapes != nullptr) {
+        (*documentFrom3DType.cutSetting.shapes)[0].cutStatus = 0;
+        (*documentFrom3DType.cutSetting.shapes)[0].cutPen = 3;
+        (*documentFrom3DType.cutSetting.shapes)[0].cutMater = 11;
+        (*documentFrom3DType.cutSetting.shapes)[0].pa = pa;
+        (*documentFrom3DType.cutSetting.shapes)[0].pb = pb;
+        (*documentFrom3DType.cutSetting.shapes)[0].pc = pc;
+        (*documentFrom3DType.cutSetting.shapes)[0].pd = pd;
+    }
+    documentFrom3DType.projectionSetting = proj3DInfo;
+    err = ACAPI_Environment (APIEnv_ChangeDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
+    BMKillHandle (reinterpret_cast<GSHandle*> (&documentFrom3DType.cutSetting.shapes));
+    BMKillHandle ((GSHandle*) &(cutInfo.shapes));
+    if (err != NoError) return;
+}
+
 void KM_ListUpdate ()
 {
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, false);
@@ -32,13 +129,13 @@ void KM_ListUpdate ()
         }
     }
     ACAPI_CallUndoableCommand ("undoString", [&]() -> GSErrCode {
-        GSErrCode err = WriteGDLValues (elements.Get (0), coords);
+        GSErrCode err = KM_WriteGDLValues (elements.Get (0), coords);
 
         return err;
     });
 }
 
-GSErrCode WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords)
+GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords)
 {
     if (coords.IsEmpty ()) return APIERR_GENERAL;
     if (elemGuid == APINULLGuid) return APIERR_GENERAL;

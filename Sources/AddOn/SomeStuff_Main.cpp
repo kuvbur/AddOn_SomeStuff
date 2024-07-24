@@ -335,6 +335,10 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     AutoFunc::KM_ListUpdate ();
                     DimRoundAll (syncSettings);
                     break;
+                case Auto3D_CommandID:
+                    AutoFunc::ProfileByLine ();
+                    DimRoundAll (syncSettings);
+                    break;
 #endif
             }
             break;
