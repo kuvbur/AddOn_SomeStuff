@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #ifdef PK_1
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"

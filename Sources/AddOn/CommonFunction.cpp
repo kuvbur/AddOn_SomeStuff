@@ -5,7 +5,7 @@
 #include	<math.h>
 
 // -----------------------------------------------------------------------------
-// Проверка языка Архикада. Для INT возвращает 1000
+// РџСЂРѕРІРµСЂРєР° СЏР·С‹РєР° РђСЂС…РёРєР°РґР°. Р”Р»СЏ INT РІРѕР·РІСЂР°С‰Р°РµС‚ 1000
 // -----------------------------------------------------------------------------
 Int32 isEng ()
 {
@@ -22,7 +22,7 @@ Int32 isEng ()
 }
 
 // -----------------------------------------------------------------------------
-// Вывод сообщения в отчёт
+// Р’С‹РІРѕРґ СЃРѕРѕР±С‰РµРЅРёСЏ РІ РѕС‚С‡С‘С‚
 // -----------------------------------------------------------------------------
 void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid)
 {
@@ -120,7 +120,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 error_type = "There is no open project, or not in Teamwork mode.";
                 break;
             case APIERR_NOUSERDATA:
-                error_type = "Attempt to get user data assigned to an element, but there isn’t any.";
+                error_type = "Attempt to get user data assigned to an element, but there isnвЂ™t any.";
                 break;
             case APIERR_MOREUSER:
                 error_type = "The user data cannot be assigned to the element, since there is no free storage block avaliable.";
@@ -129,7 +129,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 error_type = "The link already exists.";
                 break;
             case APIERR_LINKNOTEXIST:
-                error_type = "The link doesn’t exist.";
+                error_type = "The link doesnвЂ™t exist.";
                 break;
             case APIERR_WINDEXIST:
                 error_type = "The window to be opened already exists.";
@@ -162,24 +162,24 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 error_type = "The passed floor index is out of range.";
                 break;
             case APIERR_NOTMINE:
-                error_type = "The database item is not in the user’s workspace.";
+                error_type = "The database item is not in the userвЂ™s workspace.";
                 break;
             case APIERR_NOACCESSRIGHT:
-                error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
+                error_type = "CanвЂ™t access / create / modify / delete an item in a teamwork server.";
                 break;
 #if defined(AC_22) || defined(AC_23)
             case APIERR_BADPROPERTYFORELEM:
                 error_type = "The property for the passed element or attribute is not available.";
                 break;
             case APIERR_BADCLASSIFICATIONFORELEM:
-                error_type = "Can’t set the classification for the passed element or attribute.";
+                error_type = "CanвЂ™t set the classification for the passed element or attribute.";
                 break;
 #else
             case APIERR_BADPROPERTY:
                 error_type = "The property for the passed element or attribute is not available.";
                 break;
             case APIERR_BADCLASSIFICATION:
-                error_type = "Can’t set the classification for the passed element or attribute.";
+                error_type = "CanвЂ™t set the classification for the passed element or attribute.";
                 break;
 #endif // AC_22 or AC_23
             case APIERR_MODULNOTINSTALLED:
@@ -195,13 +195,13 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 error_type = "The requested command version is newer than the version of the command that the target add - on can support.For more details see the Communication Manager.";
                 break;
             case APIERR_NOMODULEDATA:
-                error_type = "No custom data section is saved into the project file identified by the add - on’s unique ID.See ACAPI_ModulData_Get and ACAPI_ModulData_GetInfo.";
+                error_type = "No custom data section is saved into the project file identified by the add - onвЂ™s unique ID.See ACAPI_ModulData_Get and ACAPI_ModulData_GetInfo.";
                 break;
             case APIERR_PAROVERLAP:
                 error_type = "Two or more paragraphs are overlapped.The end offset of one is greater than the beginner offset of the next one.";
                 break;
             case APIERR_PARMISSING:
-                error_type = "Number of paragraphs – the size of paragraphs handle – is zero.";
+                error_type = "Number of paragraphs вЂ“ the size of paragraphs handle вЂ“ is zero.";
                 break;
             case APIERR_PAROVERFLOW:
                 error_type = "Paragraph end offset is run over the content length.";
@@ -213,7 +213,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 error_type = "Two or more runs are overlapped.The end offset of one is greater than the beginner offset of the next one.";
                 break;
             case APIERR_RUNMISSING:
-                error_type = "Number of runs – the size of run pointer – is zero.";
+                error_type = "Number of runs вЂ“ the size of run pointer вЂ“ is zero.";
                 break;
             case APIERR_RUNOVERFLOW:
                 error_type = "Run end offset is run over the content length.";
@@ -302,7 +302,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
 
 
 // --------------------------------------------------------------------
-// Отмечает заданный пункт активным/неактивным
+// РћС‚РјРµС‡Р°РµС‚ Р·Р°РґР°РЅРЅС‹Р№ РїСѓРЅРєС‚ Р°РєС‚РёРІРЅС‹Рј/РЅРµР°РєС‚РёРІРЅС‹Рј
 // --------------------------------------------------------------------
 void	MenuItemCheckAC (short itemInd, bool checked)
 {
@@ -332,8 +332,8 @@ void	MenuItemCheckAC (short itemInd, bool checked)
 }
 
 // -----------------------------------------------------------------------------
-// Получить массив Guid выбранных элементов
-// Версия без чтения настроект
+// РџРѕР»СѓС‡РёС‚СЊ РјР°СЃСЃРёРІ Guid РІС‹Р±СЂР°РЅРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ
+// Р’РµСЂСЃРёСЏ Р±РµР· С‡С‚РµРЅРёСЏ РЅР°СЃС‚СЂРѕРµРєС‚
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/)
 {
@@ -368,7 +368,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 #else
     for (const API_Neig& neig : selNeigs) {
 
-        // Получаем список связанных элементов
+        // РџРѕР»СѓС‡Р°РµРј СЃРїРёСЃРѕРє СЃРІСЏР·Р°РЅРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ
         guidArray.Push (neig.guid);
     }
     return guidArray;
@@ -376,9 +376,9 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 }
 
 // -----------------------------------------------------------------------------
-// Вызов функции для выбранных элементов
-//	(функция должна принимать в качетве аргумента API_Guid
-// Версия без чтения настроект
+// Р’С‹Р·РѕРІ С„СѓРЅРєС†РёРё РґР»СЏ РІС‹Р±СЂР°РЅРЅС‹С… СЌР»РµРјРµРЅС‚РѕРІ
+//	(С„СѓРЅРєС†РёСЏ РґРѕР»Р¶РЅР° РїСЂРёРЅРёРјР°С‚СЊ РІ РєР°С‡РµС‚РІРµ Р°СЂРіСѓРјРµРЅС‚Р° API_Guid
+// Р’РµСЂСЃРёСЏ Р±РµР· С‡С‚РµРЅРёСЏ РЅР°СЃС‚СЂРѕРµРєС‚
 // -----------------------------------------------------------------------------
 void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString & funcname)
 {
@@ -422,7 +422,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 }
 
 // -----------------------------------------------------------------------------
-// Получение типа объекта по его API_Guid
+// РџРѕР»СѓС‡РµРЅРёРµ С‚РёРїР° РѕР±СЉРµРєС‚Р° РїРѕ РµРіРѕ API_Guid
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType)
 {
@@ -445,7 +445,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
 
 #if defined AC_26 || defined AC_27 || defined AC_28
 // -----------------------------------------------------------------------------
-// Получение названия типа элемента
+// РџРѕР»СѓС‡РµРЅРёРµ РЅР°Р·РІР°РЅРёСЏ С‚РёРїР° СЌР»РµРјРµРЅС‚Р°
 // -----------------------------------------------------------------------------
 bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 {
@@ -464,7 +464,7 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 }
 #else
 // -----------------------------------------------------------------------------
-// Получение названия типа элемента
+// РџРѕР»СѓС‡РµРЅРёРµ РЅР°Р·РІР°РЅРёСЏ С‚РёРїР° СЌР»РµРјРµРЅС‚Р°
 // -----------------------------------------------------------------------------
 bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
 {
@@ -479,7 +479,7 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
 #endif // !AC_26
 
 // -----------------------------------------------------------------------------
-// Получить полное имя свойства (включая имя группы)
+// РџРѕР»СѓС‡РёС‚СЊ РїРѕР»РЅРѕРµ РёРјСЏ СЃРІРѕР№СЃС‚РІР° (РІРєР»СЋС‡Р°СЏ РёРјСЏ РіСЂСѓРїРїС‹)
 // -----------------------------------------------------------------------------
 GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::UniString & name)
 {
@@ -502,7 +502,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
 
 
 // -----------------------------------------------------------------------------
-// Удаление данных аддона из элемента
+// РЈРґР°Р»РµРЅРёРµ РґР°РЅРЅС‹С… Р°РґРґРѕРЅР° РёР· СЌР»РµРјРµРЅС‚Р°
 // -----------------------------------------------------------------------------
 void DeleteElementUserData (const API_Guid & elemguid)
 {
@@ -537,7 +537,7 @@ void DeleteElementUserData (const API_Guid & elemguid)
 }
 
 // -----------------------------------------------------------------------------
-// Удаление данных аддона из всех элементов
+// РЈРґР°Р»РµРЅРёРµ РґР°РЅРЅС‹С… Р°РґРґРѕРЅР° РёР· РІСЃРµС… СЌР»РµРјРµРЅС‚РѕРІ
 // -----------------------------------------------------------------------------
 void DeleteElementsUserData ()
 {
@@ -567,7 +567,7 @@ void DeleteElementsUserData ()
 }
 
 // -----------------------------------------------------------------------------
-// Включение и разблокирование всех слоёв
+// Р’РєР»СЋС‡РµРЅРёРµ Рё СЂР°Р·Р±Р»РѕРєРёСЂРѕРІР°РЅРёРµ РІСЃРµС… СЃР»РѕС‘РІ
 // -----------------------------------------------------------------------------
 void UnhideUnlockAllLayer (void)
 {
@@ -613,21 +613,21 @@ void UnhideUnlockAllLayer (void)
 }
 
 // -----------------------------------------------------------------------------
-// Резервируем, разблокируем, вообщем - делаем элемент редактируемым
-// Единственное, что может нас остановить - объект находится в модуле.
+// Р РµР·РµСЂРІРёСЂСѓРµРј, СЂР°Р·Р±Р»РѕРєРёСЂСѓРµРј, РІРѕРѕР±С‰РµРј - РґРµР»Р°РµРј СЌР»РµРјРµРЅС‚ СЂРµРґР°РєС‚РёСЂСѓРµРјС‹Рј
+// Р•РґРёРЅСЃС‚РІРµРЅРЅРѕРµ, С‡С‚Рѕ РјРѕР¶РµС‚ РЅР°СЃ РѕСЃС‚Р°РЅРѕРІРёС‚СЊ - РѕР±СЉРµРєС‚ РЅР°С…РѕРґРёС‚СЃСЏ РІ РјРѕРґСѓР»Рµ.
 // -----------------------------------------------------------------------------
 bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
 {
     (void) err;
 
-    // Проверяем - на находится ли объект в модуле
+    // РџСЂРѕРІРµСЂСЏРµРј - РЅР° РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё РѕР±СЉРµРєС‚ РІ РјРѕРґСѓР»Рµ
     API_Elem_Head	tElemHead;
     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
     tElemHead.guid = objectId;
     if (ACAPI_Element_GetHeader (&tElemHead) != NoError) return false;
-    if (tElemHead.hotlinkGuid != APINULLGuid) return false; // С объектами в модуле сделать ничего не получится
+    if (tElemHead.hotlinkGuid != APINULLGuid) return false; // РЎ РѕР±СЉРµРєС‚Р°РјРё РІ РјРѕРґСѓР»Рµ СЃРґРµР»Р°С‚СЊ РЅРёС‡РµРіРѕ РЅРµ РїРѕР»СѓС‡РёС‚СЃСЏ
 
-    // Проверяем - зарезервирован ли объект и резервируем, если надо
+    // РџСЂРѕРІРµСЂСЏРµРј - Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅ Р»Рё РѕР±СЉРµРєС‚ Рё СЂРµР·РµСЂРІРёСЂСѓРµРј, РµСЃР»Рё РЅР°РґРѕ
 #if defined(AC_27) || defined(AC_28)
     if (ACAPI_Teamwork_HasConnection () && !ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
 #else
@@ -646,29 +646,29 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
 #else
         ACAPI_TeamworkControl_ReserveElements (elements, &conflicts);
 #endif
-        if (!conflicts.IsEmpty ()) return false; // Не получилось зарезервировать
+        if (!conflicts.IsEmpty ()) return false; // РќРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°С‚СЊ
     }
     if (ACAPI_Element_Filter (objectId, APIFilt_HasAccessRight)) {
         if (ACAPI_Element_Filter (objectId, APIFilt_IsEditable)) {
             if (ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
-                return true;; // Зарезервировали
+                return true;; // Р—Р°СЂРµР·РµСЂРІРёСЂРѕРІР°Р»Рё
             }
         }
     };
-    return false; // Не получилось зарезервировать
+    return false; // РќРµ РїРѕР»СѓС‡РёР»РѕСЃСЊ Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°С‚СЊ
 }
 
 
 // --------------------------------------------------------------------
-// Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
+// РџСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ РґСЂРѕР±РЅРѕР№ С‡Р°СЃС‚Рё, РІРѕР·РІСЂР°С‰Р°РµС‚ Р›РћР–Р¬ РµСЃР»Рё РґСЂРѕР±РЅР°СЏ С‡Р°СЃС‚СЊ РµСЃС‚СЊ
 // --------------------------------------------------------------------
 bool check_accuracy (double val, double tolerance)
 {
     if (std::isinf (val) || std::isnan (val)) return true;
     val = std::fabs (val * 1000.0);
     if (val < std::numeric_limits<double>::epsilon ()) return true;
-    double reciprocal = std::round ((1 / tolerance)); // Коэффицент домножения для заданной точности
-    double val_round = std::round (val * reciprocal) / reciprocal; // Приведённое к заданной точности значение
+    double reciprocal = std::round ((1 / tolerance)); // РљРѕСЌС„С„РёС†РµРЅС‚ РґРѕРјРЅРѕР¶РµРЅРёСЏ РґР»СЏ Р·Р°РґР°РЅРЅРѕР№ С‚РѕС‡РЅРѕСЃС‚Рё
+    double val_round = std::round (val * reciprocal) / reciprocal; // РџСЂРёРІРµРґС‘РЅРЅРѕРµ Рє Р·Р°РґР°РЅРЅРѕР№ С‚РѕС‡РЅРѕСЃС‚Рё Р·РЅР°С‡РµРЅРёРµ
     if (val_round < std::numeric_limits<double>::epsilon () && val>tolerance) {
         return false;
     }
@@ -680,7 +680,7 @@ bool check_accuracy (double val, double tolerance)
 }
 
 // --------------------------------------------------------------------
-// Сравнение double c учётом точности
+// РЎСЂР°РІРЅРµРЅРёРµ double c СѓС‡С‘С‚РѕРј С‚РѕС‡РЅРѕСЃС‚Рё
 // --------------------------------------------------------------------
 bool is_equal (double x, double y)
 {
@@ -688,7 +688,7 @@ bool is_equal (double x, double y)
 }
 
 // --------------------------------------------------------------------
-// Содержит ли значения элементиз списка игнорируемых
+// РЎРѕРґРµСЂР¶РёС‚ Р»Рё Р·РЅР°С‡РµРЅРёСЏ СЌР»РµРјРµРЅС‚РёР· СЃРїРёСЃРєР° РёРіРЅРѕСЂРёСЂСѓРµРјС‹С…
 // --------------------------------------------------------------------
 bool CheckIgnoreVal (const std::string & ignoreval, const GS::UniString & val)
 {
@@ -699,7 +699,7 @@ bool CheckIgnoreVal (const std::string & ignoreval, const GS::UniString & val)
 bool CheckIgnoreVal (const GS::UniString & ignoreval, const GS::UniString & val)
 {
     if (ignoreval.IsEmpty ()) return false;
-    if ((ignoreval.ToLowerCase () == "empty" || ignoreval.ToLowerCase () == u8"пусто") && val.GetLength () < 1) {
+    if ((ignoreval.ToLowerCase () == "empty" || ignoreval.ToLowerCase () == u8"РїСѓСЃС‚Рѕ") && val.GetLength () < 1) {
         return true;
     }
     if (val == ignoreval) {
@@ -709,7 +709,7 @@ bool CheckIgnoreVal (const GS::UniString & ignoreval, const GS::UniString & val)
 }
 
 // --------------------------------------------------------------------
-// Содержит ли значения элементиз списка игнорируемых
+// РЎРѕРґРµСЂР¶РёС‚ Р»Рё Р·РЅР°С‡РµРЅРёСЏ СЌР»РµРјРµРЅС‚РёР· СЃРїРёСЃРєР° РёРіРЅРѕСЂРёСЂСѓРµРјС‹С…
 // --------------------------------------------------------------------
 bool CheckIgnoreVal (const GS::Array<GS::UniString>&ignorevals, const GS::UniString & val)
 {
@@ -722,7 +722,7 @@ bool CheckIgnoreVal (const GS::Array<GS::UniString>&ignorevals, const GS::UniStr
 }
 
 // --------------------------------------------------------------------
-// Перевод строки в число
+// РџРµСЂРµРІРѕРґ СЃС‚СЂРѕРєРё РІ С‡РёСЃР»Рѕ
 // --------------------------------------------------------------------
 bool UniStringToDouble (const GS::UniString & var, double& x)
 {
@@ -741,7 +741,7 @@ bool UniStringToDouble (const GS::UniString & var, double& x)
 }
 
 // --------------------------------------------------------------------
-// Округлить целое n вверх до ближайшего целого числа, кратного k
+// РћРєСЂСѓРіР»РёС‚СЊ С†РµР»РѕРµ n РІРІРµСЂС… РґРѕ Р±Р»РёР¶Р°Р№С€РµРіРѕ С†РµР»РѕРіРѕ С‡РёСЃР»Р°, РєСЂР°С‚РЅРѕРіРѕ k
 // --------------------------------------------------------------------
 Int32 ceil_mod (Int32 n, Int32 k)
 {
@@ -752,7 +752,7 @@ Int32 ceil_mod (Int32 n, Int32 k)
 }
 
 // --------------------------------------------------------------------
-// Перевод метров, заданных типом double в мм Int32
+// РџРµСЂРµРІРѕРґ РјРµС‚СЂРѕРІ, Р·Р°РґР°РЅРЅС‹С… С‚РёРїРѕРј double РІ РјРј Int32
 // --------------------------------------------------------------------
 Int32 DoubleM2IntMM (const double& value)
 {
@@ -764,7 +764,7 @@ Int32 DoubleM2IntMM (const double& value)
 }
 
 // -----------------------------------------------------------------------------
-// Замена \n на перенос строки
+// Р—Р°РјРµРЅР° \n РЅР° РїРµСЂРµРЅРѕСЃ СЃС‚СЂРѕРєРё
 // -----------------------------------------------------------------------------
 void ReplaceCR (GS::UniString & val, bool clear)
 {
@@ -783,12 +783,12 @@ void ReplaceCR (GS::UniString & val, bool clear)
 }
 
 // -----------------------------------------------------------------------------
-// Дополнение строки заданным количеством пробелов или табуляций
+// Р”РѕРїРѕР»РЅРµРЅРёРµ СЃС‚СЂРѕРєРё Р·Р°РґР°РЅРЅС‹Рј РєРѕР»РёС‡РµСЃС‚РІРѕРј РїСЂРѕР±РµР»РѕРІ РёР»Рё С‚Р°Р±СѓР»СЏС†РёР№
 // -----------------------------------------------------------------------------
 void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl)
 {
 
-    //Ищем указание длины строки
+    //РС‰РµРј СѓРєР°Р·Р°РЅРёРµ РґР»РёРЅС‹ СЃС‚СЂРѕРєРё
     Int32 stringlen = 0;
     GS::UniString part = "";
     if (outstring.Contains (symb)) {
@@ -808,7 +808,7 @@ void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl
 }
 
 // -----------------------------------------------------------------------------
-// Замена символов \\TAB и др. на юникод
+// Р—Р°РјРµРЅР° СЃРёРјРІРѕР»РѕРІ \\TAB Рё РґСЂ. РЅР° СЋРЅРёРєРѕРґ
 // -----------------------------------------------------------------------------
 void ReplaceSymbSpase (GS::UniString & outstring)
 {
@@ -826,7 +826,7 @@ void ReplaceSymbSpase (GS::UniString & outstring)
 
 
 // -----------------------------------------------------------------------------
-// Проверка статуса и получение ID пользователя Teamwork
+// РџСЂРѕРІРµСЂРєР° СЃС‚Р°С‚СѓСЃР° Рё РїРѕР»СѓС‡РµРЅРёРµ ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ Teamwork
 // -----------------------------------------------------------------------------
 GSErrCode IsTeamwork (bool& isteamwork, short& userid)
 {
@@ -847,8 +847,8 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
 
 
 // -----------------------------------------------------------------------------
-// Вычисление выражений, заключённых в < >
-// Что не может вычислить - заменит на пустоту
+// Р’С‹С‡РёСЃР»РµРЅРёРµ РІС‹СЂР°Р¶РµРЅРёР№, Р·Р°РєР»СЋС‡С‘РЅРЅС‹С… РІ < >
+// Р§С‚Рѕ РЅРµ РјРѕР¶РµС‚ РІС‹С‡РёСЃР»РёС‚СЊ - Р·Р°РјРµРЅРёС‚ РЅР° РїСѓСЃС‚РѕС‚Сѓ
 // -----------------------------------------------------------------------------
 bool EvalExpression (GS::UniString & unistring_expression)
 {
@@ -902,7 +902,7 @@ bool		MenuInvertItemMark (short menuResID, short itemIndex)
 
 
 // -----------------------------------------------------------------------------
-// Возвращает уникальные вхождения текста
+// Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРЅРёРєР°Р»СЊРЅС‹Рµ РІС…РѕР¶РґРµРЅРёСЏ С‚РµРєСЃС‚Р°
 // -----------------------------------------------------------------------------
 GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & delim)
 {
@@ -918,7 +918,7 @@ GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & 
 }
 
 // -----------------------------------------------------------------------------
-// Возвращает уникальные вхождения текста
+// Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРЅРёРєР°Р»СЊРЅС‹Рµ РІС…РѕР¶РґРµРЅРёСЏ С‚РµРєСЃС‚Р°
 // -----------------------------------------------------------------------------
 UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring)
 {
@@ -945,7 +945,7 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
 
 
 // -----------------------------------------------------------------------------
-// Делит строку по разделителю, возвращает кол-во частей
+// Р”РµР»РёС‚ СЃС‚СЂРѕРєСѓ РїРѕ СЂР°Р·РґРµР»РёС‚РµР»СЋ, РІРѕР·РІСЂР°С‰Р°РµС‚ РєРѕР»-РІРѕ С‡Р°СЃС‚РµР№
 // -----------------------------------------------------------------------------
 UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring)
 {
@@ -973,8 +973,8 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 }
 
 // -----------------------------------------------------------------------------
-// Делит строку по разделителю, возвращает кол-во частей
-// Записывает в массив только части, содержащие строку filter
+// Р”РµР»РёС‚ СЃС‚СЂРѕРєСѓ РїРѕ СЂР°Р·РґРµР»РёС‚РµР»СЋ, РІРѕР·РІСЂР°С‰Р°РµС‚ РєРѕР»-РІРѕ С‡Р°СЃС‚РµР№
+// Р—Р°РїРёСЃС‹РІР°РµС‚ РІ РјР°СЃСЃРёРІ С‚РѕР»СЊРєРѕ С‡Р°СЃС‚Рё, СЃРѕРґРµСЂР¶Р°С‰РёРµ СЃС‚СЂРѕРєСѓ filter
 // -----------------------------------------------------------------------------
 UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, const GS::UniString & filter)
 {
@@ -996,7 +996,7 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 
 
 // -----------------------------------------------------------------------------
-// Возвращает elemType и elemGuid для корректного чтение параметров элементов навесной стены
+// Р’РѕР·РІСЂР°С‰Р°РµС‚ elemType Рё elemGuid РґР»СЏ РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ С‡С‚РµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ СЌР»РµРјРµРЅС‚РѕРІ РЅР°РІРµСЃРЅРѕР№ СЃС‚РµРЅС‹
 // -----------------------------------------------------------------------------
 void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & elem_head, API_ElemTypeID & elemType, API_Guid & elemGuid)
 {
@@ -1031,7 +1031,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
 }
 
 // -----------------------------------------------------------------------------
-// Возвращает список параметров API_AddParType
+// Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃРїРёСЃРѕРє РїР°СЂР°РјРµС‚СЂРѕРІ API_AddParType
 // -----------------------------------------------------------------------------
 GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & elemGuid, API_AddParType * *&params)
 {
@@ -1091,7 +1091,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 
 
 // --------------------------------------------------------------------
-// Получение списка GUID панелей, рам и аксессуаров навесной стены
+// РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° GUID РїР°РЅРµР»РµР№, СЂР°Рј Рё Р°РєСЃРµСЃСЃСѓР°СЂРѕРІ РЅР°РІРµСЃРЅРѕР№ СЃС‚РµРЅС‹
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&elementsSymbolGuids)
 {
@@ -1151,7 +1151,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 }
 
 // --------------------------------------------------------------------
-// Получение списка GUID элементов ограждения
+// РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° GUID СЌР»РµРјРµРЅС‚РѕРІ РѕРіСЂР°Р¶РґРµРЅРёСЏ
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>&elementsGuids)
 {
