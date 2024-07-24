@@ -35,12 +35,18 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
 // --------------------------------------------------------------------
 void MenuItemCheckAC (short itemInd, bool checked);
 
+// -----------------------------------------------------------------------------
+// Получить массив Guid выбранных элементов
+// Версия без чтения настроек
+// -----------------------------------------------------------------------------
+GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/);
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
-//	(функция должна принимать в качетве аргумента API_Guid
+//	(функция должна принимать в качетве аргумента API_Guid)
+//  Версия без чтения настроек
 // -----------------------------------------------------------------------------
-void CallOnSelectedElem (void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString& funcname /* = ""*/, bool addSubelement);
+void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString& funcname /* = ""*/, bool addSubelement);
 
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid

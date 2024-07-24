@@ -12,8 +12,9 @@
 #endif // AC_26
 namespace AutoFunc
 {
+void ProfileByLine ();
 void KM_ListUpdate ();
-GSErrCode WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords);
+GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords);
 }
 
 #endif

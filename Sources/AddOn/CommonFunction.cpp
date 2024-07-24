@@ -333,7 +333,7 @@ void	MenuItemCheckAC (short itemInd, bool checked)
 
 // -----------------------------------------------------------------------------
 // Получить массив Guid выбранных элементов
-// Версия без чтения настроект
+// Версия без чтения настроек
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/)
 {
@@ -378,7 +378,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid
-// Версия без чтения настроект
+// Версия без чтения настроек
 // -----------------------------------------------------------------------------
 void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString & funcname)
 {
