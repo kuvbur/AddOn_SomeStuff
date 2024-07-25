@@ -1220,3 +1220,12 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
+
+API_Coord3D GetWordCoordTM (const API_Coord3D vtx, const  API_Tranmat & tm)
+{
+    API_Coord3D	trCoord;	// world coordinates 
+    trCoord.x = tm.tmx[0] * vtx.x + tm.tmx[1] * vtx.y + tm.tmx[2] * vtx.z + tm.tmx[3];
+    trCoord.y = tm.tmx[4] * vtx.x + tm.tmx[5] * vtx.y + tm.tmx[6] * vtx.z + tm.tmx[7];
+    trCoord.z = tm.tmx[8] * vtx.x + tm.tmx[9] * vtx.y + tm.tmx[10] * vtx.z + tm.tmx[11];
+    return trCoord;
+}
