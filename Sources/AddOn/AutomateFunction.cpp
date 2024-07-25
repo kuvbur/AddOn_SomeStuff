@@ -10,6 +10,17 @@
 namespace AutoFunc
 {
 
+double angle (API_Coord3D& begC1, API_Coord3D& endC1, API_Coord3D& begC2, API_Coord3D& endC2)
+{
+    double x1 = endC1.x - begC1.x;
+    double y1 = endC1.y - begC1.y;
+    double x2 = endC2.x - begC2.x;
+    double y2 = endC2.y - begC2.y;
+    double t = (x1 * x2 + y1 * y2) / (sqrt (x1 * x1 + y1 * y1) * sqrt (x2 * x2 + y2 * y2));
+    if (t < -1.0) t = -1.0;
+    else if (t > 1.0) t = 1.0;
+    return acos (t);
+}
 
 bool GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
 {
@@ -30,7 +41,6 @@ bool GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         double ex = sline.endC.x * co + sline.endC.y * si;
         double ey = -sline.endC.x * si + sline.endC.y * co;
         double x = 0;
-        double angz = sline.angz;
         double dx = fabs (sx) - fabs (ex);
         double dy = fabs (sy) - fabs (ey);
         bool isx = false;
@@ -41,53 +51,72 @@ bool GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         if (fabs (dy) < 0.00001 && fabs (sy) > std::numeric_limits<double>::epsilon ()) {
             x = sy;
         }
-        (*cutInfo.shapes)[0].cutStatus = 0;
-        (*cutInfo.shapes)[0].cutPen = 3;
-        (*cutInfo.shapes)[0].cutMater = 11;
-        (*cutInfo.shapes)[0].pa = sin (-angz);
-        (*cutInfo.shapes)[0].pb = cos (-angz);
-        (*cutInfo.shapes)[0].pc = 0;
-        (*cutInfo.shapes)[0].pd = x;
+        Int32 inx = 0;
+        (*cutInfo.shapes)[inx].cutStatus = 0;
+        (*cutInfo.shapes)[inx].cutPen = 3;
+        (*cutInfo.shapes)[inx].cutMater = 11;
+        (*cutInfo.shapes)[inx].pa = sin (-sline.angz);
+        (*cutInfo.shapes)[inx].pb = cos (-sline.angz);
+        (*cutInfo.shapes)[inx].pc = 0;
+        (*cutInfo.shapes)[inx].pd = x;
+        double an = sline.angz * RADDEG;
+        double ann = sline.angz * RADDEG + 180;
 
-        (*cutInfo.shapes)[1].cutStatus = 0;
-        (*cutInfo.shapes)[1].cutPen = 3;
-        (*cutInfo.shapes)[1].cutMater = 11;
-        (*cutInfo.shapes)[1].pa = sin (-angz + 180 * DEGRAD);
-        (*cutInfo.shapes)[1].pb = cos (-angz + 180 * DEGRAD);
-        (*cutInfo.shapes)[1].pc = 0;
-        (*cutInfo.shapes)[1].pd = x + 1;
+        inx += 1;
+        co = cos (sline.angz + 180 * DEGRAD);
+        si = sin (sline.angz + 180 * DEGRAD);
+        sx = sline.begC.x * co + sline.begC.y * si;
+        sy = -sline.begC.x * si + sline.begC.y * co;
+        ex = sline.endC.x * co + sline.endC.y * si;
+        ey = -sline.endC.x * si + sline.endC.y * co;
+        double x2 = 0;
+        dx = fabs (sx) - fabs (ex);
+        dy = fabs (sy) - fabs (ey);
+        if (fabs (dx) < 0.00001 && fabs (sx) > std::numeric_limits<double>::epsilon ()) {
+            x2 = sx;
+        }
+        if (fabs (dy) < 0.00001 && fabs (sy) > std::numeric_limits<double>::epsilon ()) {
+            x2 = sy;
+        }
+        (*cutInfo.shapes)[inx].cutStatus = 0;
+        (*cutInfo.shapes)[inx].cutPen = 3;
+        (*cutInfo.shapes)[inx].cutMater = 11;
+        (*cutInfo.shapes)[inx].pa = sin (-sline.angz + 180 * DEGRAD);
+        (*cutInfo.shapes)[inx].pb = cos (-sline.angz + 180 * DEGRAD);
+        (*cutInfo.shapes)[inx].pc = 0;
+        (*cutInfo.shapes)[inx].pd = x2 + 1;
 
-        angz = angz - 0.5 * PI;
-        co = cos (angz);
-        si = sin (angz);
+        co = cos (sline.angz_1);
+        si = sin (sline.angz_1);
         if (isx) {
             x = sline.begC.x * co + sline.begC.y * si;
         } else {
             x = -sline.begC.x * si + sline.begC.y * co;
         }
-        (*cutInfo.shapes)[2].cutStatus = 0;
-        (*cutInfo.shapes)[2].cutPen = 3;
-        (*cutInfo.shapes)[2].cutMater = 11;
-        (*cutInfo.shapes)[2].pa = sin (-angz);
-        (*cutInfo.shapes)[2].pb = cos (-angz);
-        (*cutInfo.shapes)[2].pc = 0;
-        (*cutInfo.shapes)[2].pd = x;
+        inx += 1;
+        (*cutInfo.shapes)[inx].cutStatus = 0;
+        (*cutInfo.shapes)[inx].cutPen = 3;
+        (*cutInfo.shapes)[inx].cutMater = 11;
+        (*cutInfo.shapes)[inx].pa = sin (-sline.angz_1);
+        (*cutInfo.shapes)[inx].pb = cos (-sline.angz_1);
+        (*cutInfo.shapes)[inx].pc = 0;
+        (*cutInfo.shapes)[inx].pd = x;
 
-        angz = angz + PI;
-        co = cos (angz);
-        si = sin (angz);
+        co = cos (sline.angz_2);
+        si = sin (sline.angz_2);
         if (isx) {
             x = sline.endC.x * co + sline.endC.y * si;
         } else {
             x = -sline.endC.x * si + sline.endC.y * co;
         }
-        (*cutInfo.shapes)[3].cutStatus = 0;
-        (*cutInfo.shapes)[3].cutPen = 3;
-        (*cutInfo.shapes)[3].cutMater = 11;
-        (*cutInfo.shapes)[3].pa = sin (-angz);
-        (*cutInfo.shapes)[3].pb = cos (-angz);
-        (*cutInfo.shapes)[3].pc = 0;
-        (*cutInfo.shapes)[3].pd = x;
+        inx += 1;
+        (*cutInfo.shapes)[inx].cutStatus = 0;
+        (*cutInfo.shapes)[inx].cutPen = 3;
+        (*cutInfo.shapes)[inx].cutMater = 11;
+        (*cutInfo.shapes)[inx].pa = sin (-sline.angz_2);
+        (*cutInfo.shapes)[inx].pb = cos (-sline.angz_2);
+        (*cutInfo.shapes)[inx].pc = 0;
+        (*cutInfo.shapes)[inx].pd = x;
         return true;
     }
     return false;
@@ -119,36 +148,50 @@ bool Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz)
 
 bool Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id)
 {
+    BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     API_DatabaseUnId* dbases = NULL;
     GSErrCode err = NoError;
+    API_WindowInfo windowInfo;
+    windowInfo.typeID = APIWind_DocumentFrom3DID;
     err = ACAPI_Database (APIDb_GetDocumentFrom3DDatabasesID, &dbases, NULL);
     if (err != NoError) {
-        if (dbases != NULL) BMpFree (reinterpret_cast<GSPtr>(dbases));
+        if (dbases != nullptr) BMpFree (reinterpret_cast<GSPtr>(dbases));
         return false;
     }
     GSSize nDbases = BMpGetSize (reinterpret_cast<GSPtr>(dbases)) / Sizeof32 (API_DatabaseUnId);
     if (nDbases > 0) {
-
         API_DatabaseInfo dbPars = {};
-        dbPars.databaseUnId = dbases[k];
-        for (UInt32 inx = 0; inx < nDbases; inx++) {
-
+        for (Int32 inx = 0; inx < nDbases; inx++) {
+            dbInfo.databaseUnId = dbases[inx];
+            err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbInfo, nullptr);
+            if (err != NoError) {
+                if (dbases != nullptr) BMpFree (reinterpret_cast<GSPtr>(dbases));
+                return false;
+            }
+            GS::UniString n = GS::UniString (dbInfo.name);
+            GS::UniString i = GS::UniString (dbInfo.ref);
+            if (n == name && i == id) {
+                if (dbases != nullptr) BMpFree (reinterpret_cast<GSPtr>(dbases));
+                windowInfo.databaseUnId = dbInfo.databaseUnId;
+                err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
+                if (err != NoError) {
+                    return false;
+                }
+                return true;
+            }
         }
-        err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbPars, nullptr);
-
-
-        dbInfo.databaseUnId = ;
-        if (dbases != NULL) BMpFree (reinterpret_cast<GSPtr>(dbases));
-        return true;
     }
+    if (dbases != nullptr) BMpFree (reinterpret_cast<GSPtr>(dbases));
     dbInfo.typeID = APIWind_DocumentFrom3DID;
-    std::string n = name.ToCStr (0, MaxUSize, GChCode).Get ();
-    std::string i = name.ToCStr (0, MaxUSize, GChCode).Get ();
-    GS::snuprintf (dbInfo.name, sizeof (dbInfo.name), n.c_str ());
-    GS::snuprintf (dbInfo.ref, sizeof (dbInfo.ref), i.c_str ());
+    GS::snuprintf (dbInfo.name, sizeof (dbInfo.name), name.ToUStr ().Get ());
+    GS::snuprintf (dbInfo.ref, sizeof (dbInfo.ref), id.ToUStr ().Get ());
     err = ACAPI_Database (APIDb_NewDatabaseID, &dbInfo);
     if (err != NoError) {
-        if (dbases != NULL) BMpFree (reinterpret_cast<GSPtr>(dbases));
+        return false;
+    }
+    windowInfo.databaseUnId = dbInfo.databaseUnId;
+    err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
+    if (err != NoError) {
         return false;
     }
     return true;
@@ -170,15 +213,32 @@ void ProfileByLine ()
         ACAPI_DisposeElemMemoHdls (&memo);
         return;
     }
+
+    API_Element elemline;
+    BNZeroMemory (&elemline, sizeof (API_Element));
+    elemline.header.typeID = API_LineID;
+    ACAPI_Element_GetDefaults (&elemline, nullptr);
+    if (err != NoError) {
+        return;
+    }
+
+    API_DatabaseInfo    databasestart;
+    BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
+    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
+    if (err != NoError) {
+        return;
+    }
+    GS::UniString id = *memo.elemInfoString;
     GS::Array<SSectLine> lines;
     if (memo.morphBody->IsWireBody () && !memo.morphBody->IsSolidBody ()) {
         Int32 edgeCnt = memo.morphBody->GetEdgeCount ();
+        API_Tranmat tm = element.morph.tranmat;
         for (Int32 iEdge = 0; iEdge < edgeCnt; iEdge++) {
             const EDGE& edge = memo.morphBody->GetConstEdge (iEdge);
             const VERT& vtx1 = memo.morphBody->GetConstVertex (edge.vert1);
             const VERT& vtx2 = memo.morphBody->GetConstVertex (edge.vert2);
-            API_Coord begC = { vtx1.x, vtx1.y };
-            API_Coord endC = { vtx2.x, vtx2.y };
+            API_Coord3D begC = GetWordCoordTM ({ vtx1.x, vtx1.y, vtx1.z }, tm); begC.z = 0;
+            API_Coord3D endC = GetWordCoordTM ({ vtx2.x, vtx2.y, vtx2.z }, tm); endC.z = 0;
             double dx = endC.x - begC.x;
             double dy = endC.y - begC.y;
             double angz = 0.0;
@@ -199,14 +259,29 @@ void ProfileByLine ()
         return;
     }
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
-        if (i > 0) {
-            lines[i].angz_1 = lines[i - 1].angz;
-        }
-        if (i < lines.GetSize () - 1) {
-            lines[i].angz_2 = lines[i + 1].angz;
-        }
+        //if (i > 0) {
+        //    lines[i].angz_1 = lines[i].angz + 0.5 * angle (lines[i].begC, lines[i].endC, lines[i - 1].begC, lines[i - 1].endC);
+        //} else {
+        //    lines[i].angz_1 = lines[i].angz - 0.5 * PI;
+        //}
+        //if (i < lines.GetSize () - 1) {
+        //    lines[i].angz_2 = lines[i].angz - 0.5 * angle (lines[i + 1].begC, lines[i + 1].endC, lines[i].begC, lines[i].endC);
+        //} else {
+        //    lines[i].angz_2 = lines[i].angz + 0.5 * PI;
+        //}
+        lines[i].angz_1 = lines[i].angz - 0.5 * PI;
+        lines[i].angz_2 = lines[i].angz + 0.5 * PI;
     }
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
+        API_WindowInfo windowInfo;
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
+        windowInfo.typeID = APIWind_FloorPlanID;
+        windowInfo.databaseUnId = databasestart.databaseUnId;
+        err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
+        if (err != NoError) {
+            return;
+        }
+
         // Назначение секущих плоскостей по краям отрезка
         API_3DCutPlanesInfo cutInfo;
         double angz = 0;
@@ -227,13 +302,23 @@ void ProfileByLine ()
 
         // Создание 3д документа
         API_DatabaseInfo dbInfo = {};
-        GS::UniString name = GS::UniString::Printf ("Участок %d", i);
-        GS::UniString id = GS::UniString::Printf ("ТХ.КН % d", i);
-        if (!Get3DDocument (dbInfo, name, id)) {
+        GS::UniString name = GS::UniString::Printf ("Участок %d", i + 1);
+        if (!Get3DDocument (dbInfo, name, id + GS::UniString::Printf (".%d", i + 1))) {
             BMKillHandle ((GSHandle*) &(cutInfo.shapes));
             return;
         }
-
+        windowInfo.typeID = APIWind_DocumentFrom3DID;
+        windowInfo.databaseUnId = dbInfo.databaseUnId;
+        err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
+        if (err != NoError) {
+            BMKillHandle ((GSHandle*) &(cutInfo.shapes));
+            return;
+        }
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+        if (err != NoError) {
+            BMKillHandle ((GSHandle*) &(cutInfo.shapes));
+            return;
+        }
         // Обновление 3д документа
         API_DocumentFrom3DType documentFrom3DType;
         err = ACAPI_Environment (APIEnv_GetDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
@@ -242,7 +327,6 @@ void ProfileByLine ()
             BMKillHandle ((GSHandle*) &(cutInfo.shapes));
             return;
         }
-
         documentFrom3DType.cutSetting.isCutPlanes = cutInfo.isCutPlanes;
         documentFrom3DType.cutSetting.useCustom = cutInfo.useCustom;
         documentFrom3DType.cutSetting.nShapes = cutInfo.nShapes;
@@ -255,6 +339,28 @@ void ProfileByLine ()
         }
         documentFrom3DType.projectionSetting = proj3DInfo;
         err = ACAPI_Environment (APIEnv_ChangeDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
+        if (err != NoError) {
+            BMKillHandle (reinterpret_cast<GSHandle*> (&documentFrom3DType.cutSetting.shapes));
+            BMKillHandle ((GSHandle*) &(cutInfo.shapes));
+            return;
+        }
+
+        err = ACAPI_CallUndoableCommand ("Create text",
+        [&]() -> GSErrCode {
+            API_Coord3D endC = GetWordCoordTM (lines[i].begC, proj3DInfo.u.axono.tranmat);
+            elemline.line.begC.x = endC.x;
+            elemline.line.begC.y = 0;
+            elemline.line.endC.x = endC.x;
+            elemline.line.endC.y = 1;
+            GSErrCode err = ACAPI_Element_Create (&elemline, nullptr);
+            endC = GetWordCoordTM (lines[i].endC, proj3DInfo.u.axono.tranmat);
+            elemline.line.begC.x = endC.x;
+            elemline.line.begC.y = 0;
+            elemline.line.endC.x = endC.x;
+            elemline.line.endC.y = 1;
+            err = ACAPI_Element_Create (&elemline, nullptr);
+            return err;
+        });
         BMKillHandle (reinterpret_cast<GSHandle*> (&documentFrom3DType.cutSetting.shapes));
         BMKillHandle ((GSHandle*) &(cutInfo.shapes));
         if (err != NoError) return;

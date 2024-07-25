@@ -206,4 +206,5 @@ GSErrCode GetRElementsForCWall (const API_Guid& cwGuid, GS::Array<API_Guid>& ele
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForRailing (const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids);
 
+API_Coord3D GetWordCoordTM (const API_Coord3D vtx, const  API_Tranmat& tm);
 #endif
