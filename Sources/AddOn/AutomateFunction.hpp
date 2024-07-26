@@ -23,9 +23,10 @@ typedef struct
 namespace AutoFunc
 {
 double angle (API_Coord3D& begC1, API_Coord3D& endC1, API_Coord3D& begC2, API_Coord3D& endC2);
-bool GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo);
-bool Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz);
-bool Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id);
+GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo);
+GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz);
+GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id);
+GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniString& id);
 void ProfileByLine ();
 void KM_ListUpdate ();
 GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords);

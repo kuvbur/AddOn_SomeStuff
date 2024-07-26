@@ -22,11 +22,11 @@ double angle (API_Coord3D& begC1, API_Coord3D& endC1, API_Coord3D& begC2, API_Co
     return acos (t);
 }
 
-bool GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
+GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
 {
     BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
     GSErrCode err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
-    if (err != NoError) return false;
+    if (err != NoError) return err;
     if (cutInfo.shapes != nullptr) BMKillHandle ((GSHandle*) &(cutInfo.shapes));
     cutInfo.isCutPlanes = true;
     cutInfo.useCustom = false;
@@ -117,24 +117,30 @@ bool GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         (*cutInfo.shapes)[inx].pb = cos (-sline.angz_2);
         (*cutInfo.shapes)[inx].pc = 0;
         (*cutInfo.shapes)[inx].pd = x;
-        return true;
+        return err;
     }
-    return false;
+    return err;
 }
 
-bool Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz)
+GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz)
 {
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
     GSErrCode err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-    if (err != NoError) return false;
-    proj3DInfo.isPersp = false;
+    if (err != NoError) {
+        return err;
+    }
+    proj3DInfo.isPersp = err;
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 1;
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-    if (err != NoError) return false;
+    if (err != NoError) {
+        return err;
+    }
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
     err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-    if (err != NoError) return false;
+    if (err != NoError) {
+        return err;
+    }
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 15;
     proj3DInfo.u.axono.tranmat.tmx[0] = proj3DInfo.u.axono.tranmat.tmx[0] * 0.5;
@@ -142,11 +148,10 @@ bool Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz)
     proj3DInfo.u.axono.tranmat.tmx[1] = proj3DInfo.u.axono.tranmat.tmx[1] * 0.5;
     proj3DInfo.u.axono.tranmat.tmx[5] = proj3DInfo.u.axono.tranmat.tmx[5] * 0.5;
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-    if (err != NoError) return false;
-    return true;
+    return err;
 }
 
-bool Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id)
+GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id)
 {
     BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     API_DatabaseUnId* dbases = NULL;
@@ -156,7 +161,7 @@ bool Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const G
     err = ACAPI_Database (APIDb_GetDocumentFrom3DDatabasesID, &dbases, NULL);
     if (err != NoError) {
         if (dbases != nullptr) BMpFree (reinterpret_cast<GSPtr>(dbases));
-        return false;
+        return err;
     }
     GSSize nDbases = BMpGetSize (reinterpret_cast<GSPtr>(dbases)) / Sizeof32 (API_DatabaseUnId);
     if (nDbases > 0) {
@@ -166,7 +171,7 @@ bool Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const G
             err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbInfo, nullptr);
             if (err != NoError) {
                 if (dbases != nullptr) BMpFree (reinterpret_cast<GSPtr>(dbases));
-                return false;
+                return err;
             }
             GS::UniString n = GS::UniString (dbInfo.name);
             GS::UniString i = GS::UniString (dbInfo.ref);
@@ -174,10 +179,7 @@ bool Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const G
                 if (dbases != nullptr) BMpFree (reinterpret_cast<GSPtr>(dbases));
                 windowInfo.databaseUnId = dbInfo.databaseUnId;
                 err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
-                if (err != NoError) {
-                    return false;
-                }
-                return true;
+                return err;
             }
         }
     }
@@ -187,49 +189,29 @@ bool Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const G
     GS::snuprintf (dbInfo.ref, sizeof (dbInfo.ref), id.ToUStr ().Get ());
     err = ACAPI_Database (APIDb_NewDatabaseID, &dbInfo);
     if (err != NoError) {
-        return false;
+        return err;
     }
     windowInfo.databaseUnId = dbInfo.databaseUnId;
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
-    if (err != NoError) {
-        return false;
-    }
-    return true;
+    return err;
 }
 
-void ProfileByLine ()
+GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniString& id)
 {
-    GSErrCode err = NoError;
-    GS::Array<API_Guid> elems = GetSelectedElements2 (true, true);
     API_Element element;
     BNZeroMemory (&element, sizeof (API_Element));
-    element.header.guid = elems[0];
-    err = ACAPI_Element_Get (&element);
-    if (!element.header.hasMemo) return;
+    element.header.guid = elemguid;
+    GSErrCode err = ACAPI_Element_Get (&element);
+    if (err != NoError) return err;
+    if (!element.header.hasMemo) return err;
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
     if (err != NoError || memo.morphBody == nullptr) {
         ACAPI_DisposeElemMemoHdls (&memo);
-        return;
+        return err;
     }
-
-    API_Element elemline;
-    BNZeroMemory (&elemline, sizeof (API_Element));
-    elemline.header.typeID = API_LineID;
-    ACAPI_Element_GetDefaults (&elemline, nullptr);
-    if (err != NoError) {
-        return;
-    }
-
-    API_DatabaseInfo    databasestart;
-    BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
-    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
-    if (err != NoError) {
-        return;
-    }
-    GS::UniString id = *memo.elemInfoString;
-    GS::Array<SSectLine> lines;
+    id = *memo.elemInfoString;
     if (memo.morphBody->IsWireBody () && !memo.morphBody->IsSolidBody ()) {
         Int32 edgeCnt = memo.morphBody->GetEdgeCount ();
         API_Tranmat tm = element.morph.tranmat;
@@ -256,7 +238,7 @@ void ProfileByLine ()
         ACAPI_DisposeElemMemoHdls (&memo);
     } else {
         ACAPI_DisposeElemMemoHdls (&memo);
-        return;
+        return err;
     }
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
         //if (i > 0) {
@@ -271,6 +253,37 @@ void ProfileByLine ()
         //}
         lines[i].angz_1 = lines[i].angz - 0.5 * PI;
         lines[i].angz_2 = lines[i].angz + 0.5 * PI;
+    }
+    return err;
+}
+
+
+
+void ProfileByLine ()
+{
+    GSErrCode err = NoError;
+    GS::Array<API_Guid> elems = GetSelectedElements2 (true, true);
+
+
+    API_Element elemline;
+    BNZeroMemory (&elemline, sizeof (API_Element));
+    elemline.header.typeID = API_LineID;
+    ACAPI_Element_GetDefaults (&elemline, nullptr);
+    if (err != NoError) {
+        return;
+    }
+
+    API_DatabaseInfo    databasestart;
+    BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
+    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
+    if (err != NoError) {
+        return;
+    }
+    GS::Array<SSectLine> lines;
+    GS::UniString id = "";
+    err = GetSectLine (elems[0], lines, id);
+    if (err != NoError) {
+        return;
     }
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
         API_WindowInfo windowInfo;
@@ -295,7 +308,7 @@ void ProfileByLine ()
 
         // Установка камеры перпендикулярно отрезку
         API_3DProjectionInfo  proj3DInfo;
-        if (!Get3DProjectionInfo (proj3DInfo, lines[i].angz)) {
+        if (Get3DProjectionInfo (proj3DInfo, lines[i].angz) != NoError) {
             BMKillHandle ((GSHandle*) &(cutInfo.shapes));
             return;
         }
@@ -303,7 +316,7 @@ void ProfileByLine ()
         // Создание 3д документа
         API_DatabaseInfo dbInfo = {};
         GS::UniString name = GS::UniString::Printf ("Участок %d", i + 1);
-        if (!Get3DDocument (dbInfo, name, id + GS::UniString::Printf (".%d", i + 1))) {
+        if (Get3DDocument (dbInfo, name, id + GS::UniString::Printf (".%d", i + 1))) {
             BMKillHandle ((GSHandle*) &(cutInfo.shapes));
             return;
         }
@@ -363,7 +376,9 @@ void ProfileByLine ()
         });
         BMKillHandle (reinterpret_cast<GSHandle*> (&documentFrom3DType.cutSetting.shapes));
         BMKillHandle ((GSHandle*) &(cutInfo.shapes));
-        if (err != NoError) return;
+        if (err != NoError) {
+            return;
+        }
     }
 }
 
