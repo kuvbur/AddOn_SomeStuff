@@ -1247,17 +1247,18 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 {
     API_GetPointType	pointInfo = {};
     GSErrCode			err;
-
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_UserInput_GetPoint (&pointInfo);
+#else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
+#endif
     if (err != NoError) {
         return false;
     }
-
     c->x = pointInfo.pos.x;
     c->y = pointInfo.pos.y;
-
     return true;
-}		// ClickAPoint
+    }		// ClickAPoint
