@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include "alphanum.h"
 #include <Definitions.hpp>
+#include "Point2D.hpp"
 
 #define ELEMSTR_LEN 256
 static const GSCharCode GChCode = CC_Cyrillic;
@@ -206,5 +207,11 @@ GSErrCode GetRElementsForCWall (const API_Guid& cwGuid, GS::Array<API_Guid>& ele
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForRailing (const API_Guid& elemGuid, GS::Array<API_Guid>& elementsGuids);
 
-API_Coord3D GetWordCoordTM (const API_Coord3D vtx, const  API_Tranmat& tm);
+// --------------------------------------------------------------------
+// Возвращает координаты заданной точки после трансформации матрицей
+// --------------------------------------------------------------------
+API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const  API_Tranmat& tm);
+Point2D GetWordPoint2DTM (const Point2D vtx, const  API_Tranmat& tm);
+
+bool ClickAPoint (const char* prompt, Point2D* c);
 #endif
