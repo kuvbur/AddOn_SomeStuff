@@ -1221,7 +1221,10 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
     return err;
 }
 
-API_Coord3D GetWordCoordTM (const API_Coord3D vtx, const  API_Tranmat & tm)
+// --------------------------------------------------------------------
+// Возвращает координаты заданной точки после трансформации матрицей
+// --------------------------------------------------------------------
+API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat & tm)
 {
     API_Coord3D	trCoord;	// world coordinates 
     trCoord.x = tm.tmx[0] * vtx.x + tm.tmx[1] * vtx.y + tm.tmx[2] * vtx.z + tm.tmx[3];
@@ -1229,3 +1232,32 @@ API_Coord3D GetWordCoordTM (const API_Coord3D vtx, const  API_Tranmat & tm)
     trCoord.z = tm.tmx[8] * vtx.x + tm.tmx[9] * vtx.y + tm.tmx[10] * vtx.z + tm.tmx[11];
     return trCoord;
 }
+
+Point2D GetWordPoint2DTM (const Point2D vtx, const API_Tranmat & tm)
+{
+    API_Coord3D c = GetWordCoord3DTM ({ vtx.x, vtx.y, 0 }, tm);
+    return { c.x, c.y };
+}
+
+// -----------------------------------------------------------------------------
+// Ask the user to click a point
+// -----------------------------------------------------------------------------
+
+bool	ClickAPoint (const char* prompt, Point2D * c)
+{
+    API_GetPointType	pointInfo = {};
+    GSErrCode			err;
+
+    CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
+    pointInfo.changeFilter = false;
+    pointInfo.changePlane = false;
+    err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
+    if (err != NoError) {
+        return false;
+    }
+
+    c->x = pointInfo.pos.x;
+    c->y = pointInfo.pos.y;
+
+    return true;
+}		// ClickAPoint

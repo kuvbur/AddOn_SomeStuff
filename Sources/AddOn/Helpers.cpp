@@ -53,7 +53,7 @@ int IsDummyModeOn ()
 // -----------------------------------------------------------------------------
 GSErrCode	AttachObserver (const API_Guid& objectId, const SyncSettings& syncSettings)
 {
-    GSErrCode		err = NoError;
+    GSErrCode err = NoError;
     if (IsElementEditable (objectId, syncSettings, false)) {
 #ifdef AC_22
         API_Elem_Head elemHead;
