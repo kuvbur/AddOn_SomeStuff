@@ -63,13 +63,14 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline);
 // -----------------------------------------------------------------------------
 void ProfileByLine ();
 // -----------------------------------------------------------------------------
+// Возвращает список API_Guid чертежей, отсортированных по именам
+// -----------------------------------------------------------------------------
+GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems);
+// -----------------------------------------------------------------------------
 // Выравнивание одного чертежа
 // Возвращает сдвинутую на ширину чертежа координату
 // -----------------------------------------------------------------------------
-GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart, API_Coord& startpos, API_Coord& drawingpos);
-
-GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems);
-
+GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart, const API_Coord& zeropos, API_Coord& startpos, API_Coord& drawingpos);
 // -----------------------------------------------------------------------------
 // Выравнивание чертежей по расположенным в них hotspot
 // -----------------------------------------------------------------------------
