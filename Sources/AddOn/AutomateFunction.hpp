@@ -12,29 +12,70 @@
 #endif // AC_26
 #include	"Sector2DData.h"
 
-typedef struct {
-    double angz = 0;
-    double angz_1 = 0;
-    double angz_2 = 0;
-    Sector s;
-    API_DatabaseUnId databaseUnId;
-    API_Tranmat tm;
+namespace AutoFunc
+{
+
+// Структура с отрезками для создания 3д документов
+typedef struct
+{
+    double angz = 0; // Угол отрезка
+    double angz_1 = 0; // Угол подрезки начала отрезка
+    double angz_2 = 0; // Угол подрезки конца отрезка
+    Sector s; // Отрезок для построения 3д сечения
+    API_DatabaseUnId databaseUnId; // UnId базы данных созданного или найденного 3д документа
+    API_Tranmat tm; // Матрица преобразования координат, получена из API_3DProjectionInfo
 } SSectLine;
 
-namespace AutoFunc {
-    bool GetNear (const GS::Array<Sector>& k, const Point2D& start, UInt32& inx, bool& isend);
-    double angle (API_Coord3D& begC1, API_Coord3D& endC1, API_Coord3D& begC2, API_Coord3D& endC2);
-    GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo);
-    GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz);
-    GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id);
-    GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniString& id, Point2D& startpos);
-    GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id);
-    GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline);
-    void ProfileByLine ();
-    GSErrCode AlignOneDrawingsByPoints (API_Guid& elemguid, Point2D& startpos, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart);
-    void AlignDrawingsByPoints ();
-    void KM_ListUpdate ();
-    GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords);
+// -----------------------------------------------------------------------------
+// Ищет в массиве отрезок, начало или конец которого находятся возле точки start
+// Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
+// -----------------------------------------------------------------------------
+bool GetNear (const GS::Array<Sector>& k, const Point2D& start, UInt32& inx, bool& isend);
+// -----------------------------------------------------------------------------
+// Устанавливает подрезку по отрезку, возвращает  API_3DCutPlanesInfo cutInfo
+// -----------------------------------------------------------------------------
+GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo);
+// -----------------------------------------------------------------------------
+// Устанавливает камеру перпендикулярно направлению angz, задаёт масштаб по осям x y
+// -----------------------------------------------------------------------------
+GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& angz);
+// -----------------------------------------------------------------------------
+// Ищет 3д документ с именем и id. Если не находит - создаёт
+// Возвращает информацию о БД API_DatabaseInfo& dbInfo
+// -----------------------------------------------------------------------------
+GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id);
+// -----------------------------------------------------------------------------
+// Извлекает из морфа отрезки, сортирует их по удалению от startpos
+// Возвращает массив отрезков и ID морфа
+// -----------------------------------------------------------------------------
+GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniString& id, const  Point2D& startpos);
+// -----------------------------------------------------------------------------
+// Создание 3д документа для одного отрезка
+// -----------------------------------------------------------------------------
+GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id);
+// -----------------------------------------------------------------------------
+// Размещение на созданном отрезке элементов оформления
+// По краям отрезка устанавливаются hotspot
+// -----------------------------------------------------------------------------
+GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline);
+// -----------------------------------------------------------------------------
+// Построение 3д документов вдоль морфа
+// -----------------------------------------------------------------------------
+void ProfileByLine ();
+// -----------------------------------------------------------------------------
+// Выравнивание одного чертежа
+// Возвращает сдвинутую на ширину чертежа координату
+// -----------------------------------------------------------------------------
+GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart, API_Coord& startpos, API_Coord& drawingpos);
+
+GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems);
+
+// -----------------------------------------------------------------------------
+// Выравнивание чертежей по расположенным в них hotspot
+// -----------------------------------------------------------------------------
+void AlignDrawingsByPoints ();
+void KM_ListUpdate ();
+GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords);
 }
 
 #endif
