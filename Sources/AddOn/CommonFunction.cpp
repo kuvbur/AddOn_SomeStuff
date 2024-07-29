@@ -295,7 +295,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     GS::UniString msg = modulename + ": " + reportString + " " + error_type + "\n";
     ACAPI_WriteReport (msg, false);
     if (err != NoError) {
-        msg = "== SMSTF ERR ==";
+        msg = "== SMSTF ERR ==" + msg;
     }
     DBPrintf (msg.ToCStr ());
 }
@@ -1261,4 +1261,4 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
     c->x = pointInfo.pos.x;
     c->y = pointInfo.pos.y;
     return true;
-    }		// ClickAPoint
+}		// ClickAPoint
