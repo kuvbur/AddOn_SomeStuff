@@ -20,7 +20,7 @@
 
 #define ELEMSTR_LEN 256
 static const GSCharCode GChCode = CC_Cyrillic;
-
+typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName;
 // -----------------------------------------------------------------------------
 // Проверка языка Архикада. Для INT возвращает 1000
 // -----------------------------------------------------------------------------

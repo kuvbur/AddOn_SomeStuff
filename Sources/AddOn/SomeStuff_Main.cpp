@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	<stdio.h>
@@ -333,11 +333,12 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
 #ifdef PK_1
                 case AutoList_CommandID:
                     AutoFunc::KM_ListUpdate ();
-                    DimRoundAll (syncSettings);
                     break;
                 case Auto3D_CommandID:
                     AutoFunc::ProfileByLine ();
-                    DimRoundAll (syncSettings);
+                    break;
+                case AutoLay_CommandID:
+                    AutoFunc::AlignDrawingsByPoints ();
                     break;
 #endif
             }

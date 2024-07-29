@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Helpers.hpp"
@@ -120,7 +120,7 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_Pr
             }
         }
         return flag_reset;
-}
+    }
     GS::Array<API_DatabaseUnId>	dbases;
 #if defined(AC_27) || defined(AC_28)
     switch (commandID) {
@@ -146,7 +146,7 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_Pr
             err = ACAPI_Database_GetInteriorElevationDatabases (nullptr, &dbases);
             break;
         default:
-            break;;
+            break;
     }
 #else
     err = ACAPI_Database (commandID, nullptr, &dbases); // Получаем список БД
@@ -190,8 +190,8 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_Pr
                     } else {
                         msg_rep ("ResetElementsInDB", "ACAPI_Element_GetElemList_2", err, APINULLGuid);
                     }
-        }
-    }
+                }
+            }
         }
     }
     return flag_reset;
@@ -344,7 +344,7 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId, const GS::Array<API_Prop
                 properties[i].isDefault = true;
                 properties_to_reset.Push (properties.Get (i));
             }
-            }
+        }
         if (properties_to_reset.GetSize () > 0) {
 #if defined AC_26 || defined AC_27 || defined AC_28
             err = ACAPI_Element_SetPropertiesOfDefaultElem (type, properties);
@@ -352,9 +352,9 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId, const GS::Array<API_Prop
             err = ACAPI_Element_SetPropertiesOfDefaultElem (typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
 #endif // AC_26
             if (err != NoError) msg_rep ("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);
-    } else {
+        } else {
             err = APIERR_MISSINGCODE;
         }
-}
+    }
     return err;
 }
