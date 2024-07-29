@@ -9,7 +9,10 @@
 
 namespace AutoFunc
 {
-
+// -----------------------------------------------------------------------------
+// Ищет в массиве отрезок, начало или конец которого находятся возле точки start
+// Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
+// -----------------------------------------------------------------------------
 bool GetNear (const GS::Array<Sector>& k, const Point2D& start, UInt32& inx, bool& isend)
 {
     for (UInt32 i = 0; i < k.GetSize (); i++) {
@@ -26,19 +29,9 @@ bool GetNear (const GS::Array<Sector>& k, const Point2D& start, UInt32& inx, boo
     }
     return false;
 }
-
-double angle (API_Coord3D& begC1, API_Coord3D& endC1, API_Coord3D& begC2, API_Coord3D& endC2)
-{
-    double x1 = endC1.x - begC1.x;
-    double y1 = endC1.y - begC1.y;
-    double x2 = endC2.x - begC2.x;
-    double y2 = endC2.y - begC2.y;
-    double t = (x1 * x2 + y1 * y2) / (sqrt (x1 * x1 + y1 * y1) * sqrt (x2 * x2 + y2 * y2));
-    if (t < -1.0) t = -1.0;
-    else if (t > 1.0) t = 1.0;
-    return Geometry::ArcCos (t);
-}
-
+// -----------------------------------------------------------------------------
+// Устанавливает подрезку по отрезку, возвращает  API_3DCutPlanesInfo cutInfo
+// -----------------------------------------------------------------------------
 GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
 {
     BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
@@ -139,8 +132,11 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
     }
     return err;
 }
-
-GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz)
+// -----------------------------------------------------------------------------
+// Ищет 3д документ с именем и id. Если не находит - создаёт
+// Возвращает информацию о БД API_DatabaseInfo& dbInfo
+// -----------------------------------------------------------------------------
+GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& angz)
 {
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
     GSErrCode err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -175,7 +171,9 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, double& angz)
     }
     return err;
 }
-
+// -----------------------------------------------------------------------------
+// Создание 3д документа для одного отрезка
+// -----------------------------------------------------------------------------
 GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, const GS::UniString& id)
 {
     GSErrCode err = NoError;
@@ -211,8 +209,11 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
     }
     return err;
 }
-
-GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniString& id, Point2D& startpos)
+// -----------------------------------------------------------------------------
+// Извлекает из морфа отрезки, сортирует их по удалению от startpos
+// Возвращает массив отрезков и ID морфа
+// -----------------------------------------------------------------------------
+GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniString& id, const Point2D& startpos)
 {
     API_Element element;
     BNZeroMemory (&element, sizeof (API_Element));
@@ -307,7 +308,9 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
     }
     return err;
 }
-
+// -----------------------------------------------------------------------------
+// Построение 3д документов вдоль морфа
+// -----------------------------------------------------------------------------
 GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id)
 {
     GSErrCode err = NoError;
@@ -368,7 +371,10 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
     sline.databaseUnId = dbInfo.databaseUnId;
     return err;
 }
-
+// -----------------------------------------------------------------------------
+// Размещение на созданном отрезке элементов оформления
+// По краям отрезка устанавливаются hotspot
+// -----------------------------------------------------------------------------
 GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
 {
     GSErrCode err = NoError;
@@ -425,7 +431,9 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
     }
     return err;
 }
-
+// -----------------------------------------------------------------------------
+// Построение 3д документов вдоль морфа
+// -----------------------------------------------------------------------------
 void ProfileByLine ()
 {
     GSErrCode err = NoError;
@@ -519,55 +527,14 @@ void ProfileByLine ()
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
     }
 }
-
-GSErrCode GetdatabaseUnIdForDrawing (API_WindowTypeID databaseTypeID)
-{
-    GS::Array<API_DatabaseUnId> dbases;
-    GSErrCode err = NoError;
-    switch (databaseTypeID) {
-        case APIWind_ElevationID:
-            err = ACAPI_Database (APIDb_GetElevationDatabasesID, nullptr, &dbases);
-            break;
-        case APIWind_DetailID:
-            err = ACAPI_Database (APIDb_GetDetailDatabasesID, nullptr, &dbases);
-            break;
-        case APIWind_WorksheetID:
-            err = ACAPI_Database (APIDb_GetWorksheetDatabasesID, nullptr, &dbases);
-            break;
-        case APIWind_DocumentFrom3DID:
-            err = ACAPI_Database (APIDb_GetDocumentFrom3DDatabasesID, nullptr, &dbases);
-            break;
-        case APIWind_LayoutID:
-            err = ACAPI_Database (APIDb_GetLayoutDatabasesID, nullptr, &dbases);
-            break;
-        case APIWind_MasterLayoutID:
-            err = ACAPI_Database (APIDb_GetMasterLayoutDatabasesID, nullptr, &dbases);
-            break;
-        case APIWind_SectionID:
-            err = ACAPI_Database (APIDb_GetSectionDatabasesID, nullptr, &dbases);
-            break;
-        case APIWind_InteriorElevationID:
-            err = ACAPI_Database (APIDb_GetInteriorElevationDatabasesID, nullptr, &dbases);
-            break;
-        default:
-            break;
-    }
-    API_DatabaseInfo	dbInfo;
-    if (err != NoError) return err;
-
-    for (const auto& dbUnId : dbases) {
-        BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
-        dbInfo.databaseUnId = dbUnId;
-        err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbInfo, nullptr);
-
-    }
-    return err;
-}
-
-GSErrCode AlignOneDrawingsByPoints (API_Guid& elemguid, Point2D& startpos, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart)
+// -----------------------------------------------------------------------------
+// Выравнивание одного чертежа
+// Возвращает сдвинутую на ширину чертежа координату
+// -----------------------------------------------------------------------------
+GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart, API_Coord& startpos, API_Coord& drawingpos)
 {
     GSErrCode err = NoError;
-    API_Element element, mask;
+    API_Element element;
     BNZeroMemory (&element, sizeof (API_Element));
     element.header.guid = elemguid;
     err = ACAPI_Element_Get (&element);
@@ -575,14 +542,11 @@ GSErrCode AlignOneDrawingsByPoints (API_Guid& elemguid, Point2D& startpos, API_D
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Get", err, APINULLGuid);
         return err;
     }
-    if (element.header.typeID != API_DrawingID) return NoError;
+    if (element.header.typeID != API_DrawingID) return APIERR_GENERAL;
     API_DatabaseInfo	dbInfo;
     BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     dbInfo.typeID = APIWind_DrawingID;
-    dbInfo.linkedElement = element.header.guid;
-    BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
-    dbInfo.typeID = APIWind_DrawingID;
-    dbInfo.linkedElement = element.header.guid;
+    dbInfo.linkedElement = element.header.guid;;
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo);
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
@@ -608,12 +572,14 @@ GSErrCode AlignOneDrawingsByPoints (API_Guid& elemguid, Point2D& startpos, API_D
     }
     if (hotspotcoord.GetSize () < 2) return APIERR_GENERAL;
     double kscale = element.drawing.drawingScale;
-    API_Coord leftpos = { 0,0 }; API_Coord rightpos = { 0,0 };
-    for (UInt32 i = 0; i < hotspotcoord.GetSize (); i++) {
+    API_Coord leftpos = hotspotcoord[0]; API_Coord rightpos = hotspotcoord[0];
+    for (UInt32 i = 1; i < hotspotcoord.GetSize (); i++) {
         if (hotspotcoord[i].x < leftpos.x) leftpos = hotspotcoord[i];
         if (hotspotcoord[i].x > rightpos.x) rightpos = hotspotcoord[i];
     }
     double l = fabs (rightpos.x - leftpos.x);
+    drawingpos = { startpos.x - leftpos.x * kscale ,startpos.y };
+    startpos.x = startpos.x + l * kscale;
     // Возвращение на исходную БД и окно
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
     if (err != NoError) {
@@ -625,42 +591,48 @@ GSErrCode AlignOneDrawingsByPoints (API_Guid& elemguid, Point2D& startpos, API_D
         msg_rep ("AlignOneDrawingsByPoints", "APIDo_ChangeWindowID", err, APINULLGuid);
         return err;
     }
-    ACAPI_ELEMENT_MASK_CLEAR (mask);
-    ACAPI_ELEMENT_MASK_SET (mask, API_DrawingType, pos);
-    ACAPI_ELEMENT_MASK_SET (mask, API_DrawingType, useOwnOrigoAsAnchor);
-    ACAPI_ELEMENT_MASK_SET (mask, API_DrawingType, isCutWithFrame);
-    startpos.x = startpos.x - leftpos.x * kscale;
-    element.drawing.pos = { startpos.x ,startpos.y };
-    startpos.x = startpos.x + l * kscale;
-    element.drawing.useOwnOrigoAsAnchor = true;
-    element.drawing.isCutWithFrame = false;
-    err = ACAPI_CallUndoableCommand ("Create text",
-    [&]() -> GSErrCode {
-        GSErrCode err = NoError;
-        err = ACAPI_Element_Change (&element, &mask, nullptr, 0, true);
-        return err;
-    });
-    if (err != NoError) {
-        msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Change", err, APINULLGuid);
-        return err;
-    }
     return err;
 }
+GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
+{
+    GSErrCode err = NoError;
+    SortByName drawingId;
+    API_DrawingLinkInfo drawingLinkInfo;
+    GS::Array<API_Guid> drawings;
+    for (UInt32 i = 0; i < elems.GetSize (); i++) {
+        BNZeroMemory (&drawingLinkInfo, sizeof (API_DrawingLinkInfo));
+        err = ACAPI_Database (APIDb_GetDrawingLinkID, (void*) (&(elems[i])), &drawingLinkInfo);
+        if (err == NoError) {
+            if (drawingLinkInfo.linkPath != nullptr) delete drawingLinkInfo.linkPath;
+            if (drawingLinkInfo.viewPath != nullptr) BMKillPtr (&drawingLinkInfo.viewPath);
+            if (drawingLinkInfo.linkTypeID == API_DrawingLink_InternalViewID) {
+                GS::UniString name = GS::UniString (drawingLinkInfo.number) + GS::UniString (drawingLinkInfo.name);
+                std::string key = name.ToCStr (0, MaxUSize, GChCode).Get ();
+                drawingId[key] = elems[i];
+            }
+        }
+    }
+    for (SortByName::iterator i = drawingId.begin (); i != drawingId.end (); ++i) {
+        API_Guid& elemguid = i->second;
+        drawings.Push (elemguid);
+    }
+    return drawings;
+}
 
+
+// -----------------------------------------------------------------------------
+// Выравнивание чертежей по расположенным в них hotspot
+// -----------------------------------------------------------------------------
 void AlignDrawingsByPoints ()
 {
     GSErrCode err = NoError;
     GS::Array<API_Guid> elems = GetSelectedElements2 (true, true);
     if (elems.IsEmpty ()) return;
-    Point2D startpos;
-    if (!ClickAPoint ("Click point", &startpos))
+    Point2D startpos_;
+    if (!ClickAPoint ("Click point", &startpos_))
         return;
-    GS::IntPtr	store = 1;
-    err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
-    if (err != NoError) {
-        store = -1;
-        err = NoError;
-    }
+    API_Coord startpos = { startpos_.x, startpos_.y };
+    // Запоминаем настройки отображения 
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
@@ -675,25 +647,17 @@ void AlignDrawingsByPoints ()
         msg_rep ("AlignDrawingsByPoints", "APIDb_GetCurrentWindowID", err, APINULLGuid);
         return;
     }
-    SortByName drawingId;
-    API_DrawingLinkInfo drawingLinkInfo;
-    for (UInt32 i = 0; i < elems.GetSize (); i++) {
-        BNZeroMemory (&drawingLinkInfo, sizeof (API_DrawingLinkInfo));
-        err = ACAPI_Database (APIDb_GetDrawingLinkID, (void*) (&(elems[i])), &drawingLinkInfo);
-        if (err == NoError) {
-            if (drawingLinkInfo.linkPath != nullptr) delete drawingLinkInfo.linkPath;
-            if (drawingLinkInfo.viewPath != nullptr) BMKillPtr (&drawingLinkInfo.viewPath);
-            if (drawingLinkInfo.linkTypeID == API_DrawingLink_InternalViewID) {
-                GS::UniString name = GS::UniString (drawingLinkInfo.number) + GS::UniString (drawingLinkInfo.name);
-                std::string key = name.ToCStr (0, MaxUSize, GChCode).Get ();
-                drawingId[key] = elems[i];
-            }
-        }
-    }
-    for (UInt32 i = 0; i < elems.GetSize (); i++) {
-        err = AlignOneDrawingsByPoints (elems[i], startpos, databasestart, windowstart);
+    // Важно расставлять чертежи по-порядку.
+    GS::Array<API_Guid> drawingId = GetDrawingsSort (elems);
+    if (drawingId.IsEmpty ()) return;
+    GS::Array<API_Coord> coords;
+    for (UInt32 i = 0; i < drawingId.GetSize (); i++) {
+        API_Coord drawingpos = startpos;
+        err = AlignOneDrawingsByPoints (drawingId[i], databasestart, windowstart, startpos, drawingpos);
         if (err != NoError) {
             msg_rep ("AlignDrawingsByPoints", "AlignOneDrawingsByPoints", err, APINULLGuid);
+        } else {
+            coords.Push (drawingpos);
         }
     }
     // Возвращение на исходную БД и окно
@@ -707,9 +671,30 @@ void AlignDrawingsByPoints ()
         msg_rep ("AlignOneDrawingsByPoints", "APIDo_ChangeWindowID", err, APINULLGuid);
         return;
     }
-    if (store == 1) {
-        store = 0;
-        ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
+    if (drawingId.IsEmpty ()) return;
+    if (coords.IsEmpty ()) return;
+    API_Element element, mask;
+    err = ACAPI_CallUndoableCommand ("Create text",
+    [&]() -> GSErrCode {
+        GSErrCode err = NoError;
+        for (UInt32 i = 0; i < drawingId.GetSize (); i++) {
+            BNZeroMemory (&element, sizeof (API_Element));
+            element.header.guid = drawingId[i];
+            err = ACAPI_Element_Get (&element);
+            ACAPI_ELEMENT_MASK_CLEAR (mask);
+            ACAPI_ELEMENT_MASK_SET (mask, API_DrawingType, pos);
+            ACAPI_ELEMENT_MASK_SET (mask, API_DrawingType, useOwnOrigoAsAnchor);
+            ACAPI_ELEMENT_MASK_SET (mask, API_DrawingType, isCutWithFrame);
+            element.drawing.pos = coords[i];
+            element.drawing.useOwnOrigoAsAnchor = true;
+            element.drawing.isCutWithFrame = false;
+            err = ACAPI_Element_Change (&element, &mask, nullptr, 0, true);
+        }
+        return err;
+    });
+    if (err != NoError) {
+        msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Change", err, APINULLGuid);
+        return;
     }
     return;
 }
