@@ -316,7 +316,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
     GSErrCode err = NoError;
     // Назначение секущих плоскостей по краям отрезка
     API_3DCutPlanesInfo cutInfo;
-    if (GetCuplane (sline, cutInfo) != NoError) {
+    if (GetCuplane (sline, cutInfo) == NoError) {
         err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
         if (err != NoError) {
             msg_rep ("DoSect", "APIEnv_Change3DCuttingPlanesID", err, APINULLGuid);
@@ -467,7 +467,7 @@ void ProfileByLine ()
             return err;
         }
         elemline.header.layer = 1;
-
+        elemline.hotspot.pen = 143;
         BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
         err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
         if (err != NoError) {
@@ -531,7 +531,7 @@ void ProfileByLine ()
 // Выравнивание одного чертежа
 // Возвращает сдвинутую на ширину чертежа координату
 // -----------------------------------------------------------------------------
-GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart, API_Coord& startpos, API_Coord& drawingpos)
+GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart, const API_Coord& zeropos, API_Coord& startpos, API_Coord& drawingpos)
 {
     GSErrCode err = NoError;
     API_Element element;
@@ -558,19 +558,27 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_GetElemList", err, APINULLGuid);
         return err;
     }
-    if (hotspotList.GetSize () < 2) return APIERR_GENERAL;
+    if (hotspotList.IsEmpty ()) return APIERR_GENERAL;
     //Вычисление новых координат
     GS::Array<API_Coord> hotspotcoord;
     API_Element hotspotelem;
+    bool flag_find = false;
     for (UInt32 i = 0; i < hotspotList.GetSize (); i++) {
         BNZeroMemory (&hotspotelem, sizeof (API_Element));
         hotspotelem.header.guid = hotspotList[i];
         err = ACAPI_Element_Get (&hotspotelem);
         if (err == NoError) {
-            hotspotcoord.Push (hotspotelem.hotspot.pos);
+            // Точки для чертежей, которые должны совпадать с началом
+            if (hotspotelem.header.layer == 1 && hotspotelem.hotspot.pen == 163) {
+                flag_find = true;
+            }
+            // Автоматически расставленные точки по краям склейки
+            if (hotspotelem.header.layer == 1 && (hotspotelem.hotspot.pen == 143 || hotspotelem.hotspot.pen == 163)) {
+                hotspotcoord.Push (hotspotelem.hotspot.pos);
+            }
         }
     }
-    if (hotspotcoord.GetSize () < 2) return APIERR_GENERAL;
+    if (hotspotcoord.GetSize () < 2 && !flag_find) return APIERR_GENERAL;
     double kscale = element.drawing.drawingScale;
     API_Coord leftpos = hotspotcoord[0]; API_Coord rightpos = hotspotcoord[0];
     for (UInt32 i = 1; i < hotspotcoord.GetSize (); i++) {
@@ -578,8 +586,13 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         if (hotspotcoord[i].x > rightpos.x) rightpos = hotspotcoord[i];
     }
     double l = fabs (rightpos.x - leftpos.x);
-    drawingpos = { startpos.x - leftpos.x * kscale ,startpos.y };
-    startpos.x = startpos.x + l * kscale;
+    // Для чертежей с неподвижным началом не будем добавлять длину чертежа для последующих
+    if (flag_find) {
+        drawingpos = { zeropos.x - leftpos.x * kscale ,zeropos.y };
+    } else {
+        drawingpos = { startpos.x - leftpos.x * kscale ,startpos.y };
+        startpos.x = startpos.x + l * kscale;
+    }
     // Возвращение на исходную БД и окно
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
     if (err != NoError) {
@@ -593,6 +606,9 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
     }
     return err;
 }
+// -----------------------------------------------------------------------------
+// Возвращает список API_Guid чертежей, отсортированных по именам
+// -----------------------------------------------------------------------------
 GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
 {
     GSErrCode err = NoError;
@@ -605,7 +621,7 @@ GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
         if (err == NoError) {
             if (drawingLinkInfo.linkPath != nullptr) delete drawingLinkInfo.linkPath;
             if (drawingLinkInfo.viewPath != nullptr) BMKillPtr (&drawingLinkInfo.viewPath);
-            if (drawingLinkInfo.linkTypeID == API_DrawingLink_InternalViewID) {
+            if (!drawingLinkInfo.viewDeleted && drawingLinkInfo.linkTypeID == API_DrawingLink_InternalViewID) {
                 GS::UniString name = GS::UniString (drawingLinkInfo.number) + GS::UniString (drawingLinkInfo.name);
                 std::string key = name.ToCStr (0, MaxUSize, GChCode).Get ();
                 drawingId[key] = elems[i];
@@ -618,8 +634,6 @@ GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
     }
     return drawings;
 }
-
-
 // -----------------------------------------------------------------------------
 // Выравнивание чертежей по расположенным в них hotspot
 // -----------------------------------------------------------------------------
@@ -632,7 +646,14 @@ void AlignDrawingsByPoints ()
     if (!ClickAPoint ("Click point", &startpos_))
         return;
     API_Coord startpos = { startpos_.x, startpos_.y };
+    API_Coord zeropos = startpos;
     // Запоминаем настройки отображения 
+    GS::IntPtr	store = 1;
+    err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
+    if (err != NoError) {
+        store = -1;
+        err = NoError;
+    }
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
@@ -651,13 +672,15 @@ void AlignDrawingsByPoints ()
     GS::Array<API_Guid> drawingId = GetDrawingsSort (elems);
     if (drawingId.IsEmpty ()) return;
     GS::Array<API_Coord> coords;
+    GS::Array<API_Guid> gooddrawings;
     for (UInt32 i = 0; i < drawingId.GetSize (); i++) {
         API_Coord drawingpos = startpos;
-        err = AlignOneDrawingsByPoints (drawingId[i], databasestart, windowstart, startpos, drawingpos);
+        err = AlignOneDrawingsByPoints (drawingId[i], databasestart, windowstart, zeropos, startpos, drawingpos);
         if (err != NoError) {
             msg_rep ("AlignDrawingsByPoints", "AlignOneDrawingsByPoints", err, APINULLGuid);
         } else {
             coords.Push (drawingpos);
+            gooddrawings.Push (drawingId[i]);
         }
     }
     // Возвращение на исходную БД и окно
@@ -671,15 +694,15 @@ void AlignDrawingsByPoints ()
         msg_rep ("AlignOneDrawingsByPoints", "APIDo_ChangeWindowID", err, APINULLGuid);
         return;
     }
-    if (drawingId.IsEmpty ()) return;
+    if (gooddrawings.IsEmpty ()) return;
     if (coords.IsEmpty ()) return;
     API_Element element, mask;
-    err = ACAPI_CallUndoableCommand ("Create text",
+    err = ACAPI_CallUndoableCommand ("Move drawing",
     [&]() -> GSErrCode {
         GSErrCode err = NoError;
-        for (UInt32 i = 0; i < drawingId.GetSize (); i++) {
+        for (UInt32 i = 0; i < gooddrawings.GetSize (); i++) {
             BNZeroMemory (&element, sizeof (API_Element));
-            element.header.guid = drawingId[i];
+            element.header.guid = gooddrawings[i];
             err = ACAPI_Element_Get (&element);
             ACAPI_ELEMENT_MASK_CLEAR (mask);
             ACAPI_ELEMENT_MASK_SET (mask, API_DrawingType, pos);
@@ -692,6 +715,11 @@ void AlignDrawingsByPoints ()
         }
         return err;
     });
+    if (store == 1) {
+        store = 0;
+        ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
+    }
+    ACAPI_Automate (APIDo_ZoomID, nullptr, nullptr);
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Change", err, APINULLGuid);
         return;
