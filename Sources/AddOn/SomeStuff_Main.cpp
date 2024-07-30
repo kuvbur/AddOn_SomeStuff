@@ -2,11 +2,11 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	<stdio.h>
-#ifdef AC_25
-#include	"APICommon25.h"
 #ifdef PK_1
 #include	"AutomateFunction.hpp"
 #endif
+#ifdef AC_25
+#include	"APICommon25.h"
 #endif // AC_25
 #ifdef AC_26
 #include	"APICommon26.h"
