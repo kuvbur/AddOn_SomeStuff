@@ -27,8 +27,7 @@
 #define ADDSPACE 3	  // Добавлять пробелы с учётом разбивки
 #define ADDMAXSPACE 4
 
-class RenumPos
-{
+class RenumPos {
 public:
     API_Guid guid = APINULLGuid;
     std::string strpos = ""; // Полный текст позиции
@@ -36,15 +35,13 @@ public:
     bool isNum = false;		 // Есть численное значение
     std::string prefix = ""; // Префикс
     std::string suffix = ""; // Суффикс
-    RenumPos ()
-    {
+    RenumPos () {
     }
 
     // TODO Добавить парсинг префикса и суффикса позиции
-    RenumPos (ParamValue& param)
-    {
+    RenumPos (ParamValue& param) {
         guid = param.fromGuid;
-        if (param.val.canCalculate) {
+        if(param.val.canCalculate) {
             isNum = true;
             numpos = param.val.intValue;
         }

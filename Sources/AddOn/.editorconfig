@@ -2,6 +2,10 @@
 root = true
 
 [*.{c++,cc,cpp,cppm,cxx,h,h++,hh,hpp,hxx,inl,ipp,ixx,tlh,tli,grc}]
+end_of_line = crlf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
 indent_style = space
 cpp_indent_braces = false
 cpp_indent_multi_line_relative_to = innermost_parenthesis

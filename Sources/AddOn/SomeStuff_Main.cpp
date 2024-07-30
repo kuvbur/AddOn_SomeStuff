@@ -1,9 +1,12 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	<stdio.h>
 #ifdef AC_25
 #include	"APICommon25.h"
+#ifdef PK_1
+#include	"AutomateFunction.hpp"
+#endif
 #endif // AC_25
 #ifdef AC_26
 #include	"APICommon26.h"
@@ -115,7 +118,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
 #endif
-
     int dummymode = DUMMY_MODE_UNDEF;
 #ifdef PK_1
     syncSettings.syncMon = true;
@@ -150,10 +152,12 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     elementType = elemType->elemHead.typeID;
 #endif
     if (elementType == API_GroupID) return NoError;
+    if (elementType == API_DimensionID) return NoError;
     if (!CheckElementType (elementType, syncSettings)) return NoError;
-    if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true)) return NoError;
+    if (!IsElementEditable (elemType->elemHead.guid, syncSettings, false)) return NoError;
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
+    ClassificationFunc::SystemDict systemdict;
     switch (elemType->notifID) {
         case APINotifyElement_New:
         case APINotifyElement_Change:
@@ -181,9 +185,18 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 syncSettings.logMon = true;
                 WriteSyncSettingsToPreferences (syncSettings);
             }
-            SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode);
+            SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
             if (!paramToWrite.IsEmpty ()) {
-                ParamHelpers::ElementsWrite (paramToWrite);
+                GS::Array<API_Guid> rereadelem;
+                rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
+                if (!rereadelem.IsEmpty ()) {
+                    for (UInt32 i = 0; i < rereadelem.GetSize (); i++) {
+                        propertyParams.Clear ();
+                        paramToWrite.Clear ();
+                        SyncElement (rereadelem[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                        ParamHelpers::ElementsWrite (paramToWrite);
+                    }
+                }
                 ParamHelpers::InfoWrite (paramToWrite);
             }
         default:
@@ -261,7 +274,6 @@ void SetPaletteMenuText (short paletteItemInd)
 #endif
     return;
 }
-
 static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
 {
     GSErrCode err = NoError;
@@ -318,6 +330,17 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     RunParamSelected (syncSettings);
                     DimRoundAll (syncSettings);
                     break;
+#ifdef PK_1
+                case AutoList_CommandID:
+                    AutoFunc::KM_ListUpdate ();
+                    break;
+                case Auto3D_CommandID:
+                    AutoFunc::ProfileByLine ();
+                    break;
+                case AutoLay_CommandID:
+                    AutoFunc::AlignDrawingsByPoints ();
+                    break;
+#endif
             }
             break;
     }
@@ -370,6 +393,7 @@ GSErrCode Initialize (void)
 GSErrCode __ACENV_CALL Initialize (void)
 {
 #endif
+
     DBPrintf ("== SMSTF == Initialize\n");
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
