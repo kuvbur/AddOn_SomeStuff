@@ -460,7 +460,11 @@ void ProfileByLine ()
         GSErrCode err = NoError;
         // Получаем настройку хотспотов, которые будем расставлять на краях
         BNZeroMemory (&elemline, sizeof (API_Element));
+#if defined AC_26 || defined AC_27 || defined AC_28
+        elemline.header.type.typeID = API_HotspotID;
+#else
         elemline.header.typeID = API_HotspotID;
+#endif
         err = ACAPI_Element_GetDefaults (&elemline, nullptr);
         if (err != NoError) {
             msg_rep ("ProfileByLine", "ACAPI_Element_GetDefaults", err, APINULLGuid);
@@ -481,7 +485,8 @@ void ProfileByLine ()
             return err;
         }
 
-        API_3DImageInfo imageInfo;
+#ifdef AC_25
+        API_3DFilterModeID imageInfo;
         err = ACAPI_Environment (APIEnv_Get3DImageSetsID, &imageInfo);
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIEnv_Get3DImageSetsID", err, APINULLGuid);
@@ -495,6 +500,7 @@ void ProfileByLine ()
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIEnv_Change3DImageSetsID", err, APINULLGuid);
         }
+#endif
         err = ACAPI_Automate (APIDo_ShowAllIn3DID, nullptr, nullptr);
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIDo_ShowAllIn3DID", err, APINULLGuid);
@@ -561,7 +567,11 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Get", err, APINULLGuid);
         return err;
     }
+#if defined AC_26 || defined AC_27 || defined AC_28
+    if (element.header.type.typeID != API_DrawingID) return APIERR_GENERAL;
+#else
     if (element.header.typeID != API_DrawingID) return APIERR_GENERAL;
+#endif
     API_DatabaseInfo	dbInfo;
     BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     dbInfo.typeID = APIWind_DrawingID;
@@ -755,7 +765,11 @@ void KM_ListUpdate ()
         API_Elem_Head elem_head;
         elem_head.guid = guidArray[i];
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
+#if defined AC_26 || defined AC_27 || defined AC_28
+            API_ElemTypeID elementType = elem_head.type.typeID;
+#else
             API_ElemTypeID elementType = elem_head.typeID;
+#endif
             if (elementType == API_ObjectID) elements.Push (guidArray[i]);
             if (elementType == API_PolyLineID || elementType == API_LineID) lines.Push (guidArray[i]);
         }
@@ -793,7 +807,11 @@ GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
     BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
     apiOwner.guid = elemGuid;
+#if defined AC_26 || defined AC_27 || defined AC_28
+    apiOwner.type = elem_head.type;
+#else
     apiOwner.typeID = elem_head.typeID;
+#endif
     err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
     if (err != NoError) {
         ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr);
