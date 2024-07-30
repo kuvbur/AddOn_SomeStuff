@@ -282,7 +282,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
     GS::UniString custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
     bool flag_expression = false; //В описании найдена формула
     if (!dimrule.expression.IsEmpty ()) {
-        if (!ParamHelpers::hasProperyDefinitoin (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+        if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
         ParamDictValue pdictvalue = dimrule.paramDict;
 
         // Добавляем в словарь округлённое значение
@@ -292,7 +292,10 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
             pdictvalue.Get ("{@gdl:measuredvalue}").val = pvalue.val;
             pdictvalue.Get ("{@gdl:measuredvalue}").isValid = true;
         }
-        if (elemGuid != APINULLGuid) ParamHelpers::Read (elemGuid, pdictvalue, propertyParams); //Получим значения, если размер привязан к элементу
+        if (elemGuid != APINULLGuid) {
+            ClassificationFunc::SystemDict systemdict;
+            ParamHelpers::Read (elemGuid, pdictvalue, propertyParams, systemdict);
+        }//Получим значения, если размер привязан к элементу
         GS::UniString expression = dimrule.expression;
 
         // Заменяем вычисленное

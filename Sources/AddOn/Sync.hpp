@@ -18,6 +18,7 @@
 #include	"SyncSettings.hpp"
 #include	"Helpers.hpp"
 
+
 // Тип синхронизации
 #define SYNC_NO 0			// Не синхронизировать
 #define SYNC_FROM 1			// Взять значение свойства из другого места
@@ -51,7 +52,7 @@ typedef struct
     ParamValue paramFrom;
     ParamValue paramTo;
     GS::Array<GS::UniString> ignorevals;
-    GS::UniString stringformat = ""; //Формат строки (задаётся с помощью #mm или #0)
+    FormatString formatstring; //Формат строки (задаётся с помощью #mm или #0)
     bool toSub = false;
     bool fromSub = false;
 } WriteData;
@@ -77,12 +78,12 @@ void SyncAndMonAll (SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
 // -----------------------------------------------------------------------------
-bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Int32& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode);
+bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Int32& nPhase, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict);
 
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
 // -----------------------------------------------------------------------------
-void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode);
+void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict);
 
 void SetSyncGUID ();
 
@@ -96,7 +97,7 @@ void SyncSelected (const SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
 // -----------------------------------------------------------------------------
-void SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray);
+GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, ClassificationFunc::SystemDict& systemdict);
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметров выбранных элементов
@@ -116,7 +117,7 @@ bool SyncRelationsElement (const API_ElemTypeID& elementType, const SyncSettings
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode);
+void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict);
 
 void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite);
 
@@ -133,13 +134,13 @@ void SyncAddRule (const WriteData& writeSub, WriteDict& syncRules, ParamDictElem
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams);
+bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams, bool syncall, bool synccoord, bool syncclass);
 
 bool Name2Rawname (GS::UniString& name, GS::UniString& rawname);
 
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString (const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, GS::UniString& stringformat);
+bool SyncString (const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat, bool syncall, bool synccoord, bool syncclass);
 
 #endif

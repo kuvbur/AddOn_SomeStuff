@@ -73,7 +73,10 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
 #endif
         return NoError;
     });
-    if (flag_write) SyncArray (syncSettings, guidArray);
+    if (flag_write) {
+        ClassificationFunc::SystemDict systemdict;
+        SyncArray (syncSettings, guidArray, systemdict);
+    }
     return NoError;
 }
 
@@ -104,12 +107,14 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
         ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, guidArray[i]);
         if (!propertyParams.IsEmpty ()) {
             if (Sum_GetElement (guidArray[i], propertyParams, paramToRead, rules)) {
-                ParamHelpers::Read (guidArray[i], paramToRead, propertyParams);
+                ClassificationFunc::SystemDict systemdict;
+                ParamHelpers::Read (guidArray[i], paramToRead, propertyParams, systemdict);
                 ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
                 hasSum = true;
             }
         }
-}
+    }
+
     if (!hasSum) return false;
 
     // Суммируем, заполняе словарь для записи
@@ -120,7 +125,7 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
         const SumRule& rule = *cIt->value;
 #endif
         if (!rule.elemts.IsEmpty ()) Sum_OneRule (rule, paramToReadelem, paramToWriteelem);
-    }
+}
     return !paramToWriteelem.IsEmpty ();
 }
 
@@ -177,7 +182,6 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
 // -----------------------------------------------------------------------------------------------------------------------
 bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype)
 {
-
     // По типу данных свойства определим тим суммирования
     // Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
     paramtype.sum_type = 0;
@@ -193,6 +197,7 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
     if (propertyParams.ContainsKey ("{@" + partstring[0] + "}")) {
         paramtype.value = "{@" + partstring[0] + "}";
     } else {
+        msg_rep ("SumSelected", "Check that the property name is correct and must begin with Property:", NoError, elemGuid);
         return false;
     }
 
@@ -279,7 +284,7 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                     param.isValid = true;
                     summ.val.type = param.val.type;
                     if (rule.sum_type != TextSum) {
-                        summ.val.stringformat = param.val.stringformat;
+                        summ.val.formatstring = param.val.formatstring;
                         summ.val.uniStringValue = ParamHelpers::ToString (summ);
                     }
 

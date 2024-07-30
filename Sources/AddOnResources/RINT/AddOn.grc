@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.72a https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.72b https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' ID_ADDON_MENU "Strings for the Menu" {
@@ -16,7 +16,10 @@
 /* [  7] */		"Обрабатывать элементы навесных стен^E3^ES^EE^ED^EW^EL^32612"
 /* [  8] */		"Перенумеровать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32608"
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
-/* [  10] */		"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+/* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+/* [  11] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
+/* [  12] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
+/* [  13] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 
@@ -31,7 +34,10 @@
 /* [  7] */		"Обрабатывать элементы навесных стен"
 /* [  8] */		"Перенумеровать выделенные"
 /* [  9] */		"Просуммировать выделенные"
-/* [  10] */		"Запустить скрипт параметров выделенных"
+/* [  10] */	"Запустить скрипт параметров выделенных"
+/* [  11] */	"Обновить геометрию фасонки по выбранному"
+/* [  12] */	"Построить профиль по линии"
+/* [  13] */	"Выронять выделенные чертежи"
 }
 
 
@@ -85,6 +91,7 @@
 /* [  8] */		"Renumber the selections^E3^ES^EE^ED^EW^EL^S^R^T^32608"
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */		"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+/* [  11] */		"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
 }
 
 
@@ -100,6 +107,7 @@
 /* [  8] */		"Renumber the selections"
 /* [  9] */		"Sum the selections"
 /* [  10] */		"Run the script for the parameters of the selections"
+/* [  11] */		"Обновить геометрию фасонки по выбранному"
 }
 
 
@@ -171,6 +179,9 @@
 'GICN' 32614 "SetGUIDIcon" {
     "SetGUIDIcon"
 }
-'GICN' 32615 "ShowGUIDIcon" {
-    "ShowGUIDIcon"
+'GICN' 32615 "Auto3DIcon" {
+    "Auto3DIcon"
+}
+'GICN' 32616 "AlignDrawingsIcon" {
+    "AlignDrawingsIcon"
 }

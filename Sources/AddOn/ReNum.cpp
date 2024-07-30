@@ -24,7 +24,6 @@
 // 3. Откидываем все с вфключенным флагом
 // 4. По количеству уникальных имён свойств-правил, взятых из Renum_flag{*имя свойства с правилом*}, разбиваем элементы
 // -----------------------------------------------------------------------------------------------------------------------
-
 GSErrCode ReNumSelected (SyncSettings& syncSettings)
 {
     GS::UniString funcname ("Numbering");
@@ -71,13 +70,15 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
 #endif
         return NoError;
     });
-    if (flag_write) SyncArray (syncSettings, guidArray);
+    if (flag_write) {
+        ClassificationFunc::SystemDict systemdict;
+        SyncArray (syncSettings, guidArray, systemdict);
+    }
     return NoError;
 }
 
 bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem)
 {
-
     // Получаем список правил суммирования
     Rules rules;
     ParamDictElement paramToReadelem;
@@ -106,7 +107,8 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
     }
     if (paramToReadelem.IsEmpty () || rules.IsEmpty ()) return false;
     ParamDictValue propertyParams; // Все свойства уже считаны, поэтому словарь просто пустой
-    ParamHelpers::ElementsRead (paramToReadelem, propertyParams); // Читаем значения
+    ClassificationFunc::SystemDict systemdict;
+    ParamHelpers::ElementsRead (paramToReadelem, propertyParams, systemdict); // Читаем значения
 
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -116,7 +118,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
         const RenumRule& rule = *cIt->value;
 #endif
         if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem);
-    }
+}
     return !paramToWriteelem.IsEmpty ();
 }
 
