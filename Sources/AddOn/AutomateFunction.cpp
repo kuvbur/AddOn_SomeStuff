@@ -481,6 +481,25 @@ void ProfileByLine ()
             return err;
         }
 
+        API_3DImageInfo imageInfo;
+        err = ACAPI_Environment (APIEnv_Get3DImageSetsID, &imageInfo);
+        if (err != NoError) {
+            msg_rep ("ProfileByLine", "APIEnv_Get3DImageSetsID", err, APINULLGuid);
+            return err;
+        }
+        bool setMustConvert = true;
+        imageInfo.allStories = true;
+        imageInfo.trimToMark = false;
+        imageInfo.trimToStoryRange = false;
+        err = ACAPI_Environment (APIEnv_Change3DImageSetsID, &imageInfo, &setMustConvert, nullptr);
+        if (err != NoError) {
+            msg_rep ("ProfileByLine", "APIEnv_Change3DImageSetsID", err, APINULLGuid);
+        }
+        err = ACAPI_Automate (APIDo_ShowAllIn3DID, nullptr, nullptr);
+        if (err != NoError) {
+            msg_rep ("ProfileByLine", "APIDo_ShowAllIn3DID", err, APINULLGuid);
+        }
+
         GS::UniString id = "";
         GS::UniString name = "Участок ";
         err = GetSectLine (elems[0], lines, id, startpos);
