@@ -26,6 +26,42 @@
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
 
+bool debugtestfunc ()
+{
+#if defined(DEBUG)
+    // Тест функции вычисления
+    //GS::UniString unistring_expression = ""; bool res = false;
+    //unistring_expression = "<3+1+1>";
+    //res = EvalExpression (unistring_expression);
+    //if (unistring_expression != "5") DBPrintf ("== SMSTF == ERR debugtestfunc\n");
+
+    //unistring_expression = "<3+1+1>.3mm";
+    //res = EvalExpression (unistring_expression);
+    //if (unistring_expression != "5000") DBPrintf ("== SMSTF == ERR debugtestfunc\n");
+
+    //unistring_expression = "<3+1+1>.3m";
+    //res = EvalExpression (unistring_expression);
+    //if (unistring_expression != "5") DBPrintf ("== SMSTF == ERR debugtestfunc\n");
+
+    //unistring_expression = "<3+1>.3mm+<3+1>.3mm";
+    //res = EvalExpression (unistring_expression);
+    //if (unistring_expression != "4000+4000") DBPrintf ("== SMSTF == ERR debugtestfunc\n");
+
+    //unistring_expression = "<3+1>.3m+<3+1>.3mm";
+    //res = EvalExpression (unistring_expression);
+
+    //unistring_expression = "<3+1>+<3+1>.3mm";
+    //res = EvalExpression (unistring_expression);
+
+    //unistring_expression = "<3+1>.3mm +<3+1>.3mm";
+    //res = EvalExpression (unistring_expression);
+    return true;
+#else
+    return true;
+#endif
+}
+
+
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
@@ -368,6 +404,9 @@ API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams * envir)
     RSGetIndString (&envir->addOnInfo.name, ID_ADDON_INFO + isEng (), AddOnNameID, ACAPI_GetOwnResModule ());
     RSGetIndString (&envir->addOnInfo.description, ID_ADDON_INFO + isEng (), AddOnDescriptionID, ACAPI_GetOwnResModule ());
     ACAPI_KeepInMemory (true);
+    if (!debugtestfunc ()) {
+        msg_rep ("debugtestfunc", "Error in test", APIERR_GENERAL, APINULLGuid);
+    }
     return APIAddon_Preload;
 }
 #if defined(AC_28)

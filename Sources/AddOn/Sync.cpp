@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Dimensions.hpp"
@@ -807,7 +807,7 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
     UInt32 nparam = StringSplt (tparamName, ";", params);
     if (nparam == 0) return false;
     GS::UniString paramName = params.Get (0);
-    GetFormatString (paramName);
+    FormatStringFunc::GetFormatString (paramName);
     paramName.ReplaceAll ("\\/", "/");
     rawname = paramNamePrefix + paramName.ToLowerCase () + "}";
     return true;
@@ -870,16 +870,25 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Material:") && rulestring_one.Contains ('"')) {
+        if (rulestring_one.Contains ("Material:") && (rulestring_one.Contains ('"') || (rulestring_one.Contains ('<') && rulestring_one.Contains ('>')))) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Material:", "");
             rulestring_one.ReplaceAll ("{Layers;", "{Layers,20;");
             rulestring_one.ReplaceAll ("{Layers_inv;", "{Layers_inv,20;");
             rulestring_one.ReplaceAll ("{Layers_auto;", "{Layers_auto,20;");
             paramNamePrefix = "{@material:";
-            GS::UniString templatestring = rulestring_one.GetSubstring ('"', '"', 0);
-            param.val.uniStringValue = templatestring;
-            rulestring_one.ReplaceAll (templatestring, "");
+            GS::UniString templatestring = "";
+            if (rulestring_one.Contains ('"')) {
+                templatestring = rulestring_one.GetSubstring ('"', '"', 0);
+                param.val.uniStringValue = templatestring;
+                param.val.hasFormula = false;
+                rulestring_one.ReplaceAll (templatestring, "");
+            } else {
+                templatestring = rulestring_one.GetSubstring ('<', '>', 0);
+                param.val.uniStringValue = '<' + templatestring + '>';
+                rulestring_one.ReplaceAll (templatestring, "");
+                param.val.hasFormula = true;
+            }
             param.fromMaterial = true;
             param.composite_pen = 20;
             rulestring_one.ReplaceAll (" ", "");
@@ -888,7 +897,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                 short pen = std::atoi (penstring.ToCStr ());
                 if (pen > 0) param.composite_pen = pen;
             }
-            syncdirection = SYNC_FROM;
+            if (!templatestring.IsEmpty ()) syncdirection = SYNC_FROM;
         }
     }
     if (synctypefind == false) {
@@ -998,12 +1007,19 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     // Параметры не найдены - выходим
     if (nparam == 0) return false;
     GS::UniString paramName = params.Get (0);
-    GS::UniString stringformat_raw = GetFormatString (paramName);
-    stringformat = PropertyHelpers::ParseFormatString (stringformat_raw);
+    GS::UniString stringformat_raw = FormatStringFunc::GetFormatString (paramName);
+    stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
     paramName.ReplaceAll ("\\/", "/");
     if (param.fromMaterial) {
-        param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "}";
         param.name = paramName;
+        GS::UniString stringformat_raw = FormatStringFunc::GetFormatString (params.Get (1));
+        stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
+        if (param.val.hasFormula) {
+            param.val.formatstring = stringformat;
+            param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + stringformat.stringformat + "}";
+        } else {
+            param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "}";
+        }
     }
     UInt32 start_ignore = 0;
     if (param.fromClassification) {

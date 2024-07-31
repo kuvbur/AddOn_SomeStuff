@@ -1,8 +1,9 @@
 //------------ kuvbur 2022 ------------
-#include "CommonFunction.hpp"
-#include	<cmath>
-#include	<limits>
-#include	<math.h>
+#include    "CommonFunction.hpp"
+#include    "StringConversion.hpp"
+#include    <cmath>
+#include    <limits>
+#include    <math.h>
 
 // -----------------------------------------------------------------------------
 // Проверка языка Архикада. Для INT возвращает 1000
@@ -845,7 +846,6 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
     return err;
 }
 
-
 // -----------------------------------------------------------------------------
 // Вычисление выражений, заключённых в < >
 // Что не может вычислить - заменит на пустоту
@@ -854,20 +854,59 @@ bool EvalExpression (GS::UniString & unistring_expression)
 {
     if (unistring_expression.IsEmpty ()) return false;
     if (!unistring_expression.Contains ('<')) return false;
-    GS::UniString part = "";
     GS::UniString texpression = unistring_expression;
-    while (unistring_expression.Contains ('<') && unistring_expression.Contains ('>')) {
+    GS::UniString part = "";
+    GS::UniString part_clean = "";
+    GS::UniString stringformat = "";
+    FormatString fstring;
+    FormatString fstring_def = FormatStringFunc::ParseFormatString (".3m");
+    bool flag_change = true;
+    bool change_delim = true;
+    while (unistring_expression.Contains ('<') && unistring_expression.Contains ('>') && flag_change) {
+        GS::UniString expression_old = unistring_expression;
         typedef double T;
         part = unistring_expression.GetSubstring ('<', '>', 0);
+        part_clean = part;
+        // Ищем строку-формат
+        stringformat = "";
+        fstring = fstring_def;
+        if (unistring_expression.Contains ('.')) {
+            texpression = unistring_expression;
+            FormatStringFunc::ReplaceMeters (texpression);
+            if (texpression.Contains ('m')) {
+                UInt32 n_start = texpression.FindFirst (part) + part.GetLength (); // Индекс начала поиска строки-формата
+                GS::UniString stringformat_ = texpression.GetSubstring ('>', 'm', n_start) + 'm'; // Предположительно, строка-формат
+                if (stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
+                    // Проверим, не обрезали ли лишнюю m
+                    UInt32 n_end = n_start + stringformat_.GetLength ();
+                    if (n_end + 1 < texpression.GetLength ()) {
+                        if (texpression.GetSubstring (n_end + 1, 1) == "m") {
+                            n_end = n_end + 1;
+                        }
+                    }
+                    stringformat = unistring_expression.GetSubstring (n_start + 1, n_end - n_start);
+                    fstring = FormatStringFunc::ParseFormatString (stringformat);
+                }
+            }
+        }
+        if (part_clean.Contains (',')) {
+            part_clean.ReplaceAll (',', '.');
+            change_delim = true;
+        } else {
+            change_delim = false;
+        }
         typedef exprtk::expression<T>   expression_t;
         typedef exprtk::parser<T>       parser_t;
-        std::string expression_string (part.ToCStr (0, MaxUSize, GChCode).Get ());
+        std::string expression_string (part_clean.ToCStr (0, MaxUSize, GChCode).Get ());
         expression_t expression;
         parser_t parser;
         parser.compile (expression_string, expression);
         const T result = expression.value ();
-        GS::UniString rezult_txt = GS::UniString::Printf ("%.3g", result);
-        unistring_expression.ReplaceAll ("<" + part + ">", rezult_txt);
+        //GS::UniString rezult_txt = GS::UniString::Printf ("%.3g", result);
+        GS::UniString rezult_txt = FormatStringFunc::NumToString (result, fstring);
+        if (change_delim) rezult_txt.ReplaceAll ('.', ',');
+        unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
+        if (expression_old.IsEqual (unistring_expression)) flag_change = false;
     }
     return (!unistring_expression.IsEmpty ());
 }
@@ -875,7 +914,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
 // -----------------------------------------------------------------------------
 // Toggle a checked menu item
 // -----------------------------------------------------------------------------
-bool		MenuInvertItemMark (short menuResID, short itemIndex)
+bool MenuInvertItemMark (short menuResID, short itemIndex)
 {
     API_MenuItemRef		itemRef;
     GSFlags				itemFlags;
@@ -899,7 +938,6 @@ bool		MenuInvertItemMark (short menuResID, short itemIndex)
 #endif
     return (bool) ((itemFlags & API_MenuItemChecked) != 0);
 }
-
 
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
@@ -1262,3 +1300,214 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
     c->y = pointInfo.pos.y;
     return true;
 }		// ClickAPoint
+
+namespace FormatStringFunc
+{
+
+// -----------------------------------------------------------------------------
+// Обработка количества нулей и единиц измерения в имени свойства
+// Удаляет из имени paramName найденные единицы измерения
+// Возвращает строку для скармливания функции NumToStig
+// -----------------------------------------------------------------------------
+GS::UniString GetFormatString (GS::UniString& paramName)
+{
+    GS::UniString formatstring = "";
+    Int32 iseng = isEng ();
+    if (!paramName.Contains (".")) return formatstring;
+    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
+    if (!paramName.Contains ('m') && !paramName.Contains (meterString)) return formatstring;
+    GS::Array<GS::UniString> partstring;
+    UInt32 n = StringSplt (paramName, ".", partstring);
+    if (n > 1) {
+        formatstring = partstring[n - 1];
+        if (formatstring.Contains ('m') || formatstring.Contains (meterString)) {
+            if (formatstring.Contains (CharENTER)) {
+                UIndex attribinx = formatstring.FindLast (CharENTER);
+                formatstring = formatstring.GetSubstring (0, attribinx);
+            }
+            paramName.ReplaceAll ('.' + formatstring, "");
+            ReplaceMeters (formatstring, iseng);
+        }
+    }
+    return formatstring;
+}
+
+void ReplaceMeters (GS::UniString& formatstring)
+{
+    Int32 iseng = isEng ();
+    ReplaceMeters (formatstring, iseng);
+}
+
+void ReplaceMeters (GS::UniString& formatstring, Int32& iseng)
+{
+    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
+    formatstring.ReplaceAll (meterString, "m");
+    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, DMeterStringID, ACAPI_GetOwnResModule ());
+    formatstring.ReplaceAll (meterString, "d");
+    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, CMeterStringID, ACAPI_GetOwnResModule ());
+    formatstring.ReplaceAll (meterString, "c");
+}
+
+
+// -----------------------------------------------------------------------------
+// Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
+// -----------------------------------------------------------------------------
+FormatStringDict GetFotmatStringForMeasureType ()
+{
+    FormatStringDict fdict = {};
+    // Получаем данные об округлении и типе расчёта
+    API_CalcUnitPrefs unitPrefs1;
+#if defined(AC_27) || defined(AC_28)
+    ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
+#else
+    ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
+#endif
+    API_WorkingUnitPrefs unitPrefs;
+#if defined(AC_27) || defined(AC_28)
+    ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
+#else
+    ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
+#endif
+    FormatString fstring = {};
+    fstring.needRound = unitPrefs1.useDisplayedValues;
+
+    fstring.n_zero = 2; fstring.stringformat = "2";
+    fdict.Add (API_PropertyUndefinedMeasureType, fstring);
+
+    fstring.n_zero = 2; fstring.stringformat = "2";
+    fdict.Add (API_PropertyDefaultMeasureType, fstring);
+
+    fstring.n_zero = unitPrefs.areaDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.areaDecimals);
+    fdict.Add (API_PropertyAreaMeasureType, fstring);
+
+    fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf ("0%dmm", unitPrefs.lenDecimals);
+    fdict.Add (API_PropertyLengthMeasureType, fstring);
+
+    fstring.n_zero = unitPrefs.volumeDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.volumeDecimals);
+    fdict.Add (API_PropertyVolumeMeasureType, fstring);
+
+    fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.angleDecimals);
+    fdict.Add (API_PropertyAngleMeasureType, fstring);
+    return fdict;
+}
+
+// -----------------------------------------------------------------------------
+// Извлекает из строки информацио о единицах измерении и округлении
+// -----------------------------------------------------------------------------
+FormatString ParseFormatString (const GS::UniString& stringformat)
+{
+    int n_zero = 3;
+    Int32 krat = 0; // Крутность округления
+    double koeff = 1; //Коэфф. увеличения
+    bool trim_zero = true; //Требуется образать нули после запятой
+    bool needround = false; //Требуется округлить численное значение для вычислений
+    GS::UniString delimetr = ","; // Разделитель дробной части
+    FormatString format;
+    format.stringformat = stringformat;
+    format.isEmpty = true;
+    if (!stringformat.IsEmpty ()) {
+        GS::UniString outstringformat = stringformat;
+        if (stringformat.Contains (".")) {
+            outstringformat.ReplaceAll (".", "");
+            format.stringformat.ReplaceAll (".", "");
+        }
+        ReplaceMeters (outstringformat);
+        if (outstringformat.Contains ("mm")) {
+            n_zero = 0;
+            koeff = 1000;
+            outstringformat.ReplaceAll ("mm", "");
+        }
+        if (outstringformat.Contains ("cm")) {
+            n_zero = 1;
+            koeff = 100;
+            outstringformat.ReplaceAll ("cm", "");
+        }
+        if (outstringformat.Contains ("dm")) {
+            n_zero = 2;
+            koeff = 10;
+            outstringformat.ReplaceAll ("dm", "");
+        }
+        if (outstringformat.Contains ("gm")) {
+            koeff = 1 / 100;
+            outstringformat.ReplaceAll ("gm", "");
+        }
+        if (outstringformat.Contains ("km")) {
+            koeff = 1 / 1000;
+            outstringformat.ReplaceAll ("km", "");
+        }
+        if (outstringformat.Contains ("m")) {
+            n_zero = 3;
+            outstringformat.ReplaceAll ("m", "");
+        }
+        if (outstringformat.Contains ("p")) {
+            delimetr = ".";
+            outstringformat.ReplaceAll ("p", "");
+        }
+        if (outstringformat.Contains ("r")) {
+            needround = true;
+            outstringformat.ReplaceAll ("r", "");
+        }
+
+        // Принудительный вывод заданного кол-ва нулей после запятой
+        if (outstringformat.Contains ("0")) {
+            outstringformat.ReplaceAll ("0", "");
+            outstringformat.Trim ();
+            if (!outstringformat.IsEmpty ()) trim_zero = false;
+        }
+        if (!outstringformat.IsEmpty ()) {
+            // Кратность округления
+            if (outstringformat.Contains ("/")) {
+                GS::Array<GS::UniString> params;
+                UInt32 nparam = StringSplt (outstringformat, "/", params);
+                if (params.GetSize () > 0) n_zero = std::atoi (params[0].ToCStr ());
+                if (params.GetSize () > 1) krat = std::atoi (params[0].ToCStr ());
+            } else {
+                n_zero = std::atoi (outstringformat.ToCStr ());
+            }
+        }
+        format.isEmpty = false;
+        format.isRead = true;
+    }
+    format.needRound = needround;
+    format.delimetr = delimetr;
+    format.n_zero = n_zero;
+    format.krat = krat;
+    format.koeff = koeff;
+    format.trim_zero = trim_zero;
+    return format;
+}
+
+
+// -----------------------------------------------------------------------------
+// Переводит число в строку согласно настройкам строки-формата
+// -----------------------------------------------------------------------------
+// TODO Придумать более изящную обработку округления
+GS::UniString NumToString (const double& var, const FormatString& stringformat)
+{
+    if (fabs (var) < 0.00000001) return "0";
+    GS::UniString out = "";
+    Int32 n_zero = stringformat.n_zero;
+    Int32 krat = stringformat.krat;
+    double koeff = stringformat.koeff;
+    bool trim_zero = stringformat.trim_zero;
+    GS::UniString delimetr = stringformat.delimetr;
+    double outvar = var * koeff;
+    outvar = round (outvar * pow (10, n_zero)) / pow (10, n_zero);
+    if (krat > 0) outvar = ceil_mod ((GS::Int32) var, krat);
+    out = GS::UniString::Printf ("%f", outvar);
+    out.ReplaceAll (".", delimetr);
+    out.ReplaceAll (",", delimetr);
+    out.TrimRight ('0');
+    if (trim_zero) {
+        out.TrimRight (delimetr.GetChar (0));
+    } else {
+        Int32 addzero = n_zero - (out.GetLength () - out.FindFirst (delimetr.GetChar (0)) - 1);
+        if (addzero > 0) {
+            for (Int32 i = 0; i < addzero; i++) {
+                out = out + "0";
+            }
+        }
+    }
+    return out;
+}
+}
