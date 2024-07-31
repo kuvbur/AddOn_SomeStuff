@@ -38,7 +38,7 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo);
 // -----------------------------------------------------------------------------
 // Устанавливает камеру перпендикулярно направлению angz, задаёт масштаб по осям x y
 // -----------------------------------------------------------------------------
-GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& angz);
+GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& angz, const double& koeff);
 // -----------------------------------------------------------------------------
 // Ищет 3д документ с именем и id. Если не находит - создаёт
 // Возвращает информацию о БД API_DatabaseInfo& dbInfo
@@ -52,7 +52,7 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
 // -----------------------------------------------------------------------------
 // Создание 3д документа для одного отрезка
 // -----------------------------------------------------------------------------
-GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id);
+GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id, const double& koeff);
 // -----------------------------------------------------------------------------
 // Размещение на созданном отрезке элементов оформления
 // По краям отрезка устанавливаются hotspot

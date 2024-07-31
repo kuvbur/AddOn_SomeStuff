@@ -136,7 +136,7 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
 // Ищет 3д документ с именем и id. Если не находит - создаёт
 // Возвращает информацию о БД API_DatabaseInfo& dbInfo
 // -----------------------------------------------------------------------------
-GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& angz)
+GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& angz, const double& koeff)
 {
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
     GSErrCode err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -160,13 +160,17 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     }
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 15;
-    proj3DInfo.u.axono.tranmat.tmx[0] = proj3DInfo.u.axono.tranmat.tmx[0] * 0.5;
-    proj3DInfo.u.axono.tranmat.tmx[4] = proj3DInfo.u.axono.tranmat.tmx[4] * 0.5;
-    proj3DInfo.u.axono.tranmat.tmx[1] = proj3DInfo.u.axono.tranmat.tmx[1] * 0.5;
-    proj3DInfo.u.axono.tranmat.tmx[5] = proj3DInfo.u.axono.tranmat.tmx[5] * 0.5;
+    proj3DInfo.u.axono.tranmat.tmx[0] = proj3DInfo.u.axono.tranmat.tmx[0] * koeff;
+    proj3DInfo.u.axono.tranmat.tmx[4] = proj3DInfo.u.axono.tranmat.tmx[4] * koeff;
+    proj3DInfo.u.axono.tranmat.tmx[1] = proj3DInfo.u.axono.tranmat.tmx[1] * koeff;
+    proj3DInfo.u.axono.tranmat.tmx[5] = proj3DInfo.u.axono.tranmat.tmx[5] * koeff;
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Change3DProjectionSetsID", err, APINULLGuid);
+        return err;
+    }
+    if (err != NoError) {
+        msg_rep ("Get3DProjectionInfo", "APIEnv_Get3DProjectionSetsID", err, APINULLGuid);
         return err;
     }
     return err;
@@ -311,7 +315,7 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
 // -----------------------------------------------------------------------------
 // Построение 3д документов вдоль морфа
 // -----------------------------------------------------------------------------
-GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id)
+GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id, const double& koeff)
 {
     GSErrCode err = NoError;
     // Назначение секущих плоскостей по краям отрезка
@@ -327,7 +331,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
 
     // Установка камеры перпендикулярно отрезку
     API_3DProjectionInfo  proj3DInfo;
-    if (Get3DProjectionInfo (proj3DInfo, sline.angz) != NoError) {
+    if (Get3DProjectionInfo (proj3DInfo, sline.angz, koeff) != NoError) {
         msg_rep ("DoSect", "Get3DProjectionInfo", err, APINULLGuid);
         BMKillHandle ((GSHandle*) &(cutInfo.shapes));
         return err;
@@ -486,7 +490,7 @@ void ProfileByLine ()
         }
 
 #ifdef AC_25
-        API_3DFilterModeID imageInfo;
+        API_3DImageInfo imageInfo;
         err = ACAPI_Environment (APIEnv_Get3DImageSetsID, &imageInfo);
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIEnv_Get3DImageSetsID", err, APINULLGuid);
@@ -513,27 +517,40 @@ void ProfileByLine ()
             msg_rep ("ProfileByLine", "GetSectLine", err, APINULLGuid);
             return err;
         }
+        double koeff = 0.2;
+        if (id.Contains ("@")) {
+            GS::Array<GS::UniString> sr;
+            UInt32 nsr = StringSplt (id, "@", sr);
+            if (nsr > 1) {
+                double x;
+                if (UniStringToDouble (sr[1], x)) {
+                    if (x > 0) koeff = (1 / x) * 100.0;
+                }
+            }
+            id = sr[0];
+        }
         for (UInt32 i = 0; i < lines.GetSize (); i++) {
             GS::UniString id_ = id + GS::UniString::Printf (".%d", i + 1);
-            err = DoSect (lines[i], name + GS::UniString::Printf (" %d", i + 1), id_);
+            err = DoSect (lines[i], name + GS::UniString::Printf (" %d", i + 1), id_, koeff);
             if (err != NoError) return err;
         }
         return err;
-    });
+});
 
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
         if (PlaceDocSect (lines[i], elemline) != NoError) {
+            msg_rep ("ProfileByLine", "PlaceDocSect", err, APINULLGuid);
             // Возвращение на исходную БД и окно
-            err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
-            if (err != NoError) {
-                msg_rep ("ProfileByLine", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
-                return;
-            }
-            err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
-            if (err != NoError) {
-                msg_rep ("ProfileByLine", "APIDo_ChangeWindowID", err, APINULLGuid);
-                return;
-            }
+            //err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
+            //if (err != NoError) {
+            //    msg_rep ("ProfileByLine", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
+            //    return;
+            //}
+            //err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
+            //if (err != NoError) {
+            //    msg_rep ("ProfileByLine", "APIDo_ChangeWindowID", err, APINULLGuid);
+            //    return;
+            //}
         }
     }
     // Возвращение на исходную БД и окно
@@ -547,6 +564,19 @@ void ProfileByLine ()
         msg_rep ("ProfileByLine", "APIDo_ChangeWindowID", err, APINULLGuid);
         return;
     }
+    API_3DCutPlanesInfo cutInfo;
+    BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
+    err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
+    if (err != NoError) {
+        msg_rep ("ProfileByLine", "APIEnv_Get3DCuttingPlanesID", err, APINULLGuid);
+    } else {
+        cutInfo.isCutPlanes = false;
+        err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
+        if (err != NoError) {
+            msg_rep ("ProfileByLine", "APIEnv_Change3DCuttingPlanesID", err, APINULLGuid);
+        }
+    }
+    BMKillHandle ((GSHandle*) &(cutInfo.shapes));
     if (store == 1) {
         store = 0;
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
