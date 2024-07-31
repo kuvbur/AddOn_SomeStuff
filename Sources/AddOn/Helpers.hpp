@@ -17,7 +17,6 @@
 #endif // AC_28
 #include "basicgeometry.h"
 #include "StringConversion.hpp"
-#include "ResourceIds.hpp"
 #include "SyncSettings.hpp"
 #include "ClassificationFunction.hpp"
 
@@ -59,9 +58,6 @@ static const Int32 RenumIgnoreID = 13;
 static const Int32 RenumAddID = 14;
 static const Int32 RenumSkipID = 15;
 static const Int32 BuildingMaterialCutFillID = 16;
-static const Int32 MeterStringID = 17;
-static const Int32 CMeterStringID = 18;
-static const Int32 DMeterStringID = 19;
 
 static const Int32 N_StringID = 20;
 static const Int32 NW_StringID = 21;
@@ -90,19 +86,6 @@ typedef struct
     Point2D start;
 } OrientedSegments;
 
-typedef struct
-{
-    int n_zero = 2; //Количество нулей после запятой
-    GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
-    bool needRound = false; //Использовать в расчётах округлённые значения
-    Int32 krat = 0; // Крутность округления
-    double koeff = 1; //Коэфф. увеличения
-    bool trim_zero = true; //Требуется образать нули после запятой
-    bool isRead = false; // Строка успешно распарсена
-    bool isEmpty = true; //Строка не задана
-    GS::UniString delimetr = ",";
-} FormatString;
-
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
 // name - имя для поиска
@@ -119,6 +102,7 @@ typedef struct
     double rawDoubleValue = 0.0; //прочитанное значение
     API_Guid guidval = APINULLGuid;
     bool canCalculate = false;			// Может ли быть использован в формулах?
+    bool hasFormula = false; // В поле uniStringValue содержится выражение, которое надо вычислить
     FormatString formatstring; 	// Формат строки (задаётся с помощью .mm или .0)
     int array_row_start = 0;				// Начальная строка массива
     int array_row_end = 0;				// Последняя строка массива
@@ -136,8 +120,6 @@ typedef struct
     bool isCore = false;		//Является ядром?
     int num = 0;
 } ParamValueComposite;
-// Словарь с форматированием и округлением
-typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
@@ -237,18 +219,6 @@ void GetRelationsElement (const API_Guid& elemGuid, const SyncSettings& syncSett
 void GetRelationsElement (const API_Guid& elemGuid, const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid);
 
 // -----------------------------------------------------------------------------
-// Обработка количества нулей и единиц измерения в имени свойства
-// Удаляет из имени paramName найденные единицы измерения
-// Возвращает строку для скармливания функции NumToStig
-// -----------------------------------------------------------------------------
-GS::UniString GetFormatString (GS::UniString& paramName);
-
-// -----------------------------------------------------------------------------
-// Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
-// -----------------------------------------------------------------------------
-FormatStringDict GetFotmatStringForMeasureType ();
-
-// -----------------------------------------------------------------------------
 // По заданному углу поворота и глобальному углу направления на север возвращает ориентацию объекта
 // и текст с обозначением стороны света (RUS+ENG)
 // -----------------------------------------------------------------------------
@@ -271,16 +241,6 @@ GS::UniString GetPropertyENGName (GS::UniString& name);
 
 namespace PropertyHelpers
 {
-
-// -----------------------------------------------------------------------------
-// Извлекает из строки информацио о единицах измерении и округлении
-// -----------------------------------------------------------------------------
-FormatString ParseFormatString (const GS::UniString& stringformat);
-
-// -----------------------------------------------------------------------------
-// Переводит число в строку согласно настройкам строки-формата
-// -----------------------------------------------------------------------------
-GS::UniString NumToString (const double& var, const FormatString& stringformat);
 GS::UniString ToString (const API_Variant& variant, const FormatString& stringformat);
 GS::UniString ToString (const API_Variant& variant);
 GS::UniString ToString (const API_Property& property, const FormatString& stringformat);
