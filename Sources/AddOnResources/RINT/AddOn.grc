@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.72b https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.72a https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' ID_ADDON_MENU "Strings for the Menu" {
@@ -76,7 +76,7 @@
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters v1.70 https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters v1.72a https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' ID_ADDON_MENU_ENG "Strings for the Menu" {
@@ -92,6 +92,8 @@
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */		"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */		"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
+/* [  12] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
+/* [  13] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 
@@ -108,6 +110,8 @@
 /* [  9] */		"Sum the selections"
 /* [  10] */		"Run the script for the parameters of the selections"
 /* [  11] */		"Обновить геометрию фасонки по выбранному"
+/* [  12] */	"Построить профиль по линии"
+/* [  13] */	"Выронять выделенные чертежи"
 }
 
 
