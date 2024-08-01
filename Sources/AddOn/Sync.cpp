@@ -862,14 +862,6 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Property:")) {
-            synctypefind = true;
-            rulestring_one.ReplaceAll ("Property:", "");
-            paramNamePrefix = "{@property:";
-            param.fromProperty = true;
-        }
-    }
-    if (synctypefind == false) {
         if (rulestring_one.Contains ("Material:") && (rulestring_one.Contains ('"') || (rulestring_one.Contains ('<') && rulestring_one.Contains ('>')))) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Material:", "");
@@ -878,16 +870,21 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             rulestring_one.ReplaceAll ("{Layers_auto;", "{Layers_auto,20;");
             paramNamePrefix = "{@material:";
             GS::UniString templatestring = "";
-            if (rulestring_one.Contains ('"')) {
+            if (rulestring_one.Contains ('<') && rulestring_one.Contains ('>')) {
+                if (rulestring_one.Contains ('"')) {
+                    templatestring = rulestring_one.GetSubstring ('"', '"', 0);
+                    param.val.uniStringValue = templatestring;
+                } else {
+                    templatestring = rulestring_one.GetSubstring ('<', '>', 0);
+                    param.val.uniStringValue = '<' + templatestring + '>';
+                }
+                rulestring_one.ReplaceAll (templatestring, "");
+                param.val.hasFormula = true;
+            } else {
                 templatestring = rulestring_one.GetSubstring ('"', '"', 0);
                 param.val.uniStringValue = templatestring;
                 param.val.hasFormula = false;
                 rulestring_one.ReplaceAll (templatestring, "");
-            } else {
-                templatestring = rulestring_one.GetSubstring ('<', '>', 0);
-                param.val.uniStringValue = '<' + templatestring + '>';
-                rulestring_one.ReplaceAll (templatestring, "");
-                param.val.hasFormula = true;
             }
             param.fromMaterial = true;
             param.composite_pen = 20;
@@ -917,6 +914,14 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.fromCoord = true;
             if (rulestring_one.Contains ("orth")) param.fromGlob = true;
             syncdirection = SYNC_FROM;
+        }
+    }
+    if (synctypefind == false) {
+        if (rulestring_one.Contains ("Property:")) {
+            synctypefind = true;
+            rulestring_one.ReplaceAll ("Property:", "");
+            paramNamePrefix = "{@property:";
+            param.fromProperty = true;
         }
     }
     if (synctypefind == false) {

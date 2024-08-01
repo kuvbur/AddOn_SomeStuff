@@ -662,7 +662,7 @@ GS::UniString ParamHelpers::NameToRawName (const GS::UniString& name, FormatStri
     if (!rawname_prefix.Contains ("@")) {
         rawname_prefix = "@" + rawname_prefix;
     }
-
+    name_.ReplaceAll ("\\/", "/");
     GS::UniString rawName = "{" + rawname_prefix + name_ + "}";
     return rawName;
 }
@@ -3452,8 +3452,22 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
                 }
             }
             Int32 nlayers = param_composite.composite.GetSize ();
+            if (param_composite.val.hasFormula) {
+                //Если есть формула - заменим повторим все участки, заключенные в <> по количеству слоёв
+                // Например, 1+<толщина> -> 1+<&2<&1><&0>
+                outstring = param_composite.val.uniStringValue;
+                GS::UniString part = outstring.GetSubstring ('<', '>', 0);
+                for (Int32 i = 0; i < nlayers; ++i) {
+                    if (i == nlayers - 1) {
+                        outstring.ReplaceAll ('<' + part + '>', GS::UniString::Printf ("<&%d>", i));
+                    } else {
+                        outstring.ReplaceAll ('<' + part + '>', '<' + part + '>' + GS::UniString::Printf ("<&%d>", i));
+                    }
+                }
+            }
             for (Int32 i = 0; i < nlayers; ++i) {
                 GS::UniString templatestring = param_composite.val.uniStringValue;
+                // Для формул возьмём только часть в <>, только она повторяется для каждого слоя
                 if (param_composite.val.hasFormula) templatestring = param_composite.val.uniStringValue.GetSubstring ('<', '>', 0);
                 Int32 indx = i;
                 if (inverse) indx = nlayers - i - 1;
@@ -3495,13 +3509,19 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
                     flag = true;
                     flag_add = true;
                     ReplaceSymbSpase (templatestring);
-                    outstring = outstring + templatestring;
+                    if (param_composite.val.hasFormula) {
+                        outstring.ReplaceAll (GS::UniString::Printf ("<&%d>", i), templatestring);
+                    } else {
+                        outstring = outstring + templatestring;
+                    }
                 }
             }
         }
         if (flag) {
-            params.Get (rawName).val.uniStringValue = outstring;
             if (params.Get (rawName).val.hasFormula) {
+                if (outstring.Contains ("{")) {
+                    ParamHelpers::ReplaceParamInExpression (params, outstring);
+                }
                 GS::UniString expression = "<" + outstring + ">";
                 if (!params.Get (rawName).val.formatstring.isEmpty) expression = expression + '.' + params.Get (rawName).val.formatstring.stringformat;
                 if (EvalExpression (expression)) params.Get (rawName).val.uniStringValue = expression;
@@ -3516,6 +3536,8 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
                         params.Get (rawName).val.doubleValue = 1.0;
                     }
                 }
+            } else {
+                params.Get (rawName).val.uniStringValue = outstring;
             }
             params.Get (rawName).val.rawDoubleValue = params.Get (rawName).val.doubleValue;
             params.Get (rawName).isValid = true;
@@ -3623,7 +3645,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData& pvalue, const API_AddPar
                 param_real = 1.0;
             }
         }
-            } else {
+    } else {
         param_real = round (param_real * 100000) / 100000;
         if (preal - param_real > 0.00001) param_real += 0.00001;
         param_int = (GS::Int32) param_real;
@@ -3716,10 +3738,10 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData& pvalue, const API_AddPar
 #endif
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
-            } else {
+        } else {
                 return false;
             }
-        }
+}
     }
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
@@ -3727,7 +3749,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData& pvalue, const API_AddPar
     pvalue.intValue = param_int;
     pvalue.uniStringValue = param_string;
     return true;
-        }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация параметра-массива библиотечного элемента (тип API_ParArray) в ParamValue
@@ -3961,7 +3983,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue& pvalue, const API_Property& 
     pvalue.definition = property.definition;
     pvalue.property = property;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -4240,7 +4262,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex& constrinx
         layer.fillThick = fillThick_ven;
         param_composite.composite.Push (layer);
         ParamHelpers::GetAttributeValues (constrinx_ven, params, paramsAdd);
-}
+    }
     ParamValueComposite layer = {};
     layer.inx = constrinx;
     layer.fillThick = fillThick;
@@ -4255,7 +4277,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex& constrinx
     }
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
@@ -4294,7 +4316,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid& elemguid, API_A
             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
             existsmaterial.Add (constrinxL, true);
         }
-}
+    }
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
@@ -4305,7 +4327,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid& elemguid, API_A
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
-}
+        }
 
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля
@@ -4391,13 +4413,13 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
         d2.cut_direction = Geometry::SectorVector (cut2);
         if (lines.ContainsKey (6)) {
             lines.Set (6, d2);
-    } else {
+        } else {
             lines.Add (6, d2);
         }
         ParamValue p;
         param_composite.Add (20, p);
         param_composite.Add (6, p);
-} else {
+    } else {
 
         // Проходим по сегментам, соединяем их в одну линию
         for (GS::HashTable<short, GS::Array<Sector>>::PairIterator cIt = segment.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -4429,7 +4451,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
                     cutline.c2 = segment[j].c2;
                     min_r = r;
                 }
-                }
+            }
 #if defined(AC_28)
             lines.Get (cIt->key).cut_start = cutline.c2;
             lines.Get (cIt->key).cut_direction = Geometry::SectorVector (cutline);
@@ -4437,8 +4459,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
 #endif
+                }
             }
-        }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     while (!profileDescriptionIt1.IsEOI ()) {
@@ -4491,16 +4513,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
                                             existsmaterial.Add (constrinxL, true);
                                         }
                                         hasData = true;
-                                    }
                                 }
                             }
-                                }
-                        } else {
+                        }
+                    }
+                } else {
                         DBPrintf ("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
                     }
-                    }
-                break;
         }
+                break;
+    }
         ++profileDescriptionIt1;
     }
     if (hasData) {
@@ -4522,7 +4544,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
                 GS::Array<ParamValueComposite> paramout;
                 for (std::map<double, ParamValueComposite>::iterator k = comps.begin (); k != comps.end (); ++k) {
                     paramout.Push (k->second);
-                }
+            }
 #if defined(AC_28)
                 paramlayers.Get (cIt->key).composite = paramout;
 #else
@@ -4531,9 +4553,9 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
         }
     }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
-    }
-    return hasData;
 }
+    return hasData;
+    }
 #endif
 
 // --------------------------------------------------------------------
