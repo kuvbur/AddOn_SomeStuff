@@ -89,7 +89,7 @@ bool CheckElementType (const API_ElemTypeID& elementType, const SyncSettings& sy
            elementType == API_ZoneID ||
            elementType == API_LampID))
         return true;
-    if (syncSettings.objS &&
+    if (syncSettings.cwallS &&
        (elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
            elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
            elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
@@ -2496,7 +2496,25 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             if (param.fromGDLdescription || param.fromCoord || param.fromMorph || param.fromMaterial || param.fromAttribDefinition) {
                 needGetElement = true;
             }
-            if (eltype == API_CurtainWallPanelID || eltype == API_RailingBalusterID || eltype == API_RailingHandrailID) {
+            if (eltype == API_CurtainWallPanelID || eltype == API_CurtainWallFrameID
+                                                || eltype == API_CurtainWallJunctionID
+                                                || eltype == API_CurtainWallAccessoryID
+                                                || eltype == API_RailingToprailID
+                                                || eltype == API_RailingHandrailID
+                                                || eltype == API_RailingRailID
+                                                || eltype == API_RailingPostID
+                                                || eltype == API_RailingInnerPostID
+                                                || eltype == API_RailingBalusterID
+                                                || eltype == API_RailingPanelID
+                                                || eltype == API_RailingNodeID
+                                                || eltype == API_RailingToprailEndID
+                                                || eltype == API_RailingHandrailEndID
+                                                || eltype == API_RailingRailEndID
+                                                || eltype == API_RailingToprailConnectionID
+                                                || eltype == API_RailingHandrailConnectionID
+                                                || eltype == API_RailingRailConnectionID
+                                                || eltype == API_RailingEndFinishID
+                ) {
                 needGetElement = true;
             }
             if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
@@ -3101,6 +3119,10 @@ bool ParamHelpers::ReadGDLValues (const API_Element& element, const API_Elem_Hea
 #else
     eltype = elem_head.typeID;
 #endif
+    // Обрабатываем только вложенные элементы иерархических структур (навесных стен и ограждений)
+    if (eltype == API_RailingID || eltype == API_CurtainWallID || eltype == API_CurtainWallID) {
+        return false;
+    }
     ParamDictValue paramBydescription;
     ParamDictValue paramByName;
     GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramnamearray;
@@ -3738,10 +3760,10 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData& pvalue, const API_AddPar
 #endif
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
-        } else {
+            } else {
                 return false;
             }
-}
+        }
     }
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
@@ -3983,7 +4005,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue& pvalue, const API_Property& 
     pvalue.definition = property.definition;
     pvalue.property = property;
     return true;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -4327,7 +4349,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid& elemguid, API_A
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
-        }
+}
 
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля
@@ -4459,8 +4481,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
 #endif
-                }
-            }
+        }
+    }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     while (!profileDescriptionIt1.IsEOI ()) {
@@ -4513,16 +4535,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
                                             existsmaterial.Add (constrinxL, true);
                                         }
                                         hasData = true;
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
+                    } else {
                         DBPrintf ("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
                     }
-        }
+                }
                 break;
-    }
+        }
         ++profileDescriptionIt1;
     }
     if (hasData) {
@@ -4544,18 +4566,18 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
                 GS::Array<ParamValueComposite> paramout;
                 for (std::map<double, ParamValueComposite>::iterator k = comps.begin (); k != comps.end (); ++k) {
                     paramout.Push (k->second);
-            }
+                }
 #if defined(AC_28)
                 paramlayers.Get (cIt->key).composite = paramout;
 #else
                 paramlayers.Get (*cIt->key).composite = paramout;
 #endif
+            }
         }
-    }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
-}
-    return hasData;
     }
+    return hasData;
+}
 #endif
 
 // --------------------------------------------------------------------
