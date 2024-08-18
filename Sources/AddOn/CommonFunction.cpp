@@ -1047,12 +1047,12 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             elemGuid = element.cwPanel.symbolID;
             elemType = API_ObjectID;
             break;
-        case API_RailingBalusterID:
-            elemGuid = element.railingBaluster.symbID;
+        case API_CurtainWallJunctionID:
+            elemGuid = element.cwJunction.symbolID;
             elemType = API_ObjectID;
             break;
-        case API_RailingHandrailID:
-            elemGuid = element.railingHandrail.symbID;
+        case API_CurtainWallAccessoryID:
+            elemGuid = element.cwAccessory.symbolID;
             elemType = API_ObjectID;
             break;
         default:
@@ -1079,10 +1079,31 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
     BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
 
+    if (elemType == API_RailingToprailID
+        || elemType == API_RailingHandrailID
+        || elemType == API_RailingRailID
+        || elemType == API_RailingPostID
+        || elemType == API_RailingInnerPostID
+        || elemType == API_RailingBalusterID
+        || elemType == API_RailingPanelID
+        || elemType == API_RailingNodeID
+        || elemType == API_RailingToprailEndID
+        || elemType == API_RailingHandrailEndID
+        || elemType == API_RailingRailEndID
+        || elemType == API_RailingToprailConnectionID
+        || elemType == API_RailingHandrailConnectionID
+        || elemType == API_RailingRailConnectionID
+        || elemType == API_RailingEndFinishID) {
+        API_ElementMemo	memo = {};
+        err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
+        params = memo.params;
+        return err;
+    }
+
 #if defined(AC_27) || defined(AC_28)
     if (elemType == API_ExternalElemID) {
         API_ElementMemo	memo = {};
-        err = ACAPI_Element_GetMemo (elemGuid, &memo);
+        err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
         params = memo.params;
         return err;
     }
@@ -1196,7 +1217,7 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
     API_Element      element = {};
     element.header.guid = elemGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
-    if (err != NoError || !element.header.hasMemo) {
+    if (err != NoError) {
         return err;
     }
     API_ElementMemo	memo = {};
