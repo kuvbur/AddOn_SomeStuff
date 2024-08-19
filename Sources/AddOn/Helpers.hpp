@@ -287,7 +287,7 @@ bool ReplaceParamInExpression (const ParamDictValue& pdictvalue, GS::UniString& 
 // -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
 // -----------------------------------------------------------------------------
-bool ParseParamNameMaterial (GS::UniString& expression, ParamDictValue& paramDict);
+bool ParseParamNameMaterial (GS::UniString& expression, ParamDictValue& paramDict, bool fromMaterial = true);
 
 // -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки {}
@@ -554,6 +554,11 @@ bool GDLParamByDescription (const API_Element& element, ParamDictValue& params, 
 // Поиск по имени GDL параметра (чтение/запись)
 // -----------------------------------------------------------------------------
 bool GDLParamByName (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>& paramnamearray);
+
+// -----------------------------------------------------------------------------
+// Обработка свойств с формулами
+// -----------------------------------------------------------------------------
+bool ReadFormula (ParamDictValue& paramByType, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
