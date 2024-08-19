@@ -1407,14 +1407,20 @@ GS::UniString GetPropertyENGName (GS::UniString& name)
 // -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ParseParamNameMaterial (GS::UniString& expression, ParamDictValue& paramDict)
+bool ParamHelpers::ParseParamNameMaterial (GS::UniString& expression, ParamDictValue& paramDict, bool fromMaterial)
 {
     GS::UniString part = "";
     bool flag_change = true;
     while (expression.Count ('%') > 1 && flag_change) {
         GS::UniString expression_old = expression;
         part = expression.GetSubstring ('%', '%', 0);
-        if (!part.IsEmpty ()) expression.ReplaceAll ('%' + part + '%', "{@property:" + part.ToLowerCase () + '}');
+        if (!part.IsEmpty ()) {
+            if (fromMaterial) {
+                expression.ReplaceAll ('%' + part + '%', "{@property:" + part.ToLowerCase () + '}');
+            } else {
+                expression.ReplaceAll ('%' + part + '%', "{" + part.ToLowerCase () + '}');
+            }
+        }
         if (expression_old.IsEqual (expression)) flag_change = false;
     }
     return ParamHelpers::ParseParamName (expression, paramDict);
@@ -1440,6 +1446,17 @@ bool ParamHelpers::ParseParamName (GS::UniString& expression, ParamDictValue& pa
             ParamValue pvalue;
             GS::UniString name_ = part_clean.ToLowerCase ();
             pvalue.rawName = part_;
+            if (part_.Contains ("{@property:")) pvalue.fromPropertyDefinition = true;
+            if (part_.Contains ("{@coord:")) pvalue.fromCoord = true;
+            if (part_.Contains ("{@gdl:")) pvalue.fromGDLparam = true;
+            if (part_.Contains ("{@info:")) pvalue.fromInfo = true;
+            if (part_.Contains ("{@ifc:")) pvalue.fromIFCProperty = true;
+            if (part_.Contains ("{@morph:")) pvalue.fromMorph = true;
+            if (part_.Contains ("{@material:")) pvalue.fromMaterial = true;
+            if (part_.Contains ("{@glob:")) pvalue.fromGlob = true;
+            if (part_.Contains ("{@id:")) pvalue.fromID = true;
+            if (part_.Contains ("{@class:")) pvalue.fromClassification = true;
+            if (part_.Contains ("{@formula:")) pvalue.val.hasFormula = true;
             pvalue.name = name_;
             pvalue.val.formatstring = formatstring;
             paramDict.Add (part_, pvalue);
@@ -1542,6 +1559,7 @@ void ParamHelpers::GetParamTypeList (GS::Array<GS::UniString>& paramTypesList)
     paramTypesList.Push ("{@glob:");
     paramTypesList.Push ("{@id:");
     paramTypesList.Push ("{@class:");
+    paramTypesList.Push ("{@formula:");
 }
 
 GS::UniString PropertyHelpers::ToString (const API_Variant& variant, const FormatString& stringformat)
@@ -2609,6 +2627,9 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 if (ParamHelpers::ReadMaterial (element, params, propertyParams)) DBPrintf ("== SMSTF ==          CompareParamDictValue\n");
                 needCompare = false;
             }
+            if (paramType.IsEqual ("{@formula:")) {
+                needCompare = ParamHelpers::ReadFormula (paramByType, params);
+            }
             if (needCompare) {
                 DBPrintf ("== SMSTF ==          CompareParamDictValue\n");
                 ParamHelpers::CompareParamDictValue (paramByType, params);
@@ -3393,6 +3414,31 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
 }
 
 // -----------------------------------------------------------------------------
+// Обработка свойств с формулами
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ReadFormula (ParamDictValue& paramByType, ParamDictValue& params)
+{
+    DBPrintf ("== SMSTF ==      ReadFormula\n");
+    bool flag_find = false;
+    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        ParamValue& param = cIt->value;
+#else
+        ParamValue& param = *cIt->value;
+#endif
+        GS::UniString expression = param.val.uniStringValue;
+        if (!param.val.formatstring.isEmpty) expression = expression + '.' + param.val.formatstring.stringformat;
+        if (ParamHelpers::ReplaceParamInExpression (params, expression)) {
+            if (EvalExpression (expression)) {
+                flag_find = true;
+                param.val.uniStringValue = expression;
+            }
+        }
+    }
+    return flag_find;
+}
+
+// -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& params, ParamDictValue& propertyParams)
@@ -3476,7 +3522,7 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
             Int32 nlayers = param_composite.composite.GetSize ();
             if (param_composite.val.hasFormula) {
                 //Если есть формула - заменим повторим все участки, заключенные в <> по количеству слоёв
-                // Например, 1+<толщина> -> 1+<&2<&1><&0>
+                // Например, 1+<толщина> -> 1+<&2><&1><&0>
                 outstring = param_composite.val.uniStringValue;
                 GS::UniString part = outstring.GetSubstring ('<', '>', 0);
                 for (Int32 i = 0; i < nlayers; ++i) {
