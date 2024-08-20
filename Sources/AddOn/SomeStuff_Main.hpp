@@ -33,14 +33,6 @@ static const Int32 AutoList_CommandID = 11;
 static const Int32 Auto3D_CommandID = 12;
 static const Int32 AutoLay_CommandID = 13;
 
-// -----------------------------------------------------------------------------
-// Функция для тестирования поведения некоторых функций
-// Срабатывает при загрузке аддона
-// При обычном режиме всегда возвращает истину
-// При дебаге возвращает истину если все тесты сработали
-// -----------------------------------------------------------------------------
-bool debugtestfunc ();
-
 #if defined(AC_28)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
