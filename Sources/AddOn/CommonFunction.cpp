@@ -864,7 +864,6 @@ bool EvalExpression (GS::UniString & unistring_expression)
     bool change_delim = true;
     while (unistring_expression.Contains ('<') && unistring_expression.Contains ('>') && flag_change) {
         GS::UniString expression_old = unistring_expression;
-        typedef double T;
         part = unistring_expression.GetSubstring ('<', '>', 0);
         part_clean = part;
         // Ищем строку-формат
@@ -889,12 +888,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
                 }
             }
         }
-        if (part_clean.Contains (',')) {
-            part_clean.ReplaceAll (',', '.');
-            change_delim = true;
-        } else {
-            change_delim = false;
-        }
+        typedef double T;
         typedef exprtk::expression<T>   expression_t;
         typedef exprtk::parser<T>       parser_t;
         std::string expression_string (part_clean.ToCStr (0, MaxUSize, GChCode).Get ());
@@ -902,9 +896,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
         parser_t parser;
         parser.compile (expression_string, expression);
         const T result = expression.value ();
-        //GS::UniString rezult_txt = GS::UniString::Printf ("%.3g", result);
         GS::UniString rezult_txt = FormatStringFunc::NumToString (result, fstring);
-        if (change_delim) rezult_txt.ReplaceAll ('.', ',');
         unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
         if (expression_old.IsEqual (unistring_expression)) flag_change = false;
     }
@@ -953,7 +945,7 @@ GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & 
         if (i < n - 1) outsting = outsting + delim;
     }
     return outsting;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
@@ -1066,7 +1058,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1146,7 +1138,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1194,9 +1186,9 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
         for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
             if (memo.cWallJunctions[idx].hasSymbol) {
                 elementsSymbolGuids.Push (std::move (memo.cWallJunctions[idx].head.guid));
-            }
-        }
     }
+    }
+}
     const GSSize nWallAccessories = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallAccessories)) / sizeof (API_CWAccessoryType);
     if (nWallAccessories > 0) {
         for (Int32 idx = 0; idx < nWallAccessories; ++idx) {

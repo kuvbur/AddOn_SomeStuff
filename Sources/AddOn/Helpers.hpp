@@ -282,7 +282,7 @@ bool ReadElemCoords (const API_Element& element, ParamDictValue& params);
 // Замена имен параметров на значения в выражении
 // Значения передаются словарём, вычисление значений см. GetParamValueDict
 // -----------------------------------------------------------------------------
-bool ReplaceParamInExpression (const ParamDictValue& pdictvalue, GS::UniString& expression);
+bool ReplaceParamInExpression (const ParamDictValue& pdictvalue, GS::UniString& expression, bool change_delim = false);
 
 // -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
