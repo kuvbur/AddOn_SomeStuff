@@ -1477,7 +1477,7 @@ bool ParamHelpers::ParseParamName (GS::UniString& expression, ParamDictValue& pa
 // Замена имен параметров на значения в выражении
 // Значения передаются словарём, вычисление значений см. GetParamValueDict
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, GS::UniString& expression)
+bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, GS::UniString& expression, bool change_delim)
 {
     if (pdictvalue.IsEmpty ()) return false;
     if (expression.IsEmpty ()) return false;
@@ -1515,6 +1515,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
                     ParamValue pvalue = pdictvalue.Get (partc);
                     if (pvalue.isValid) {
                         if (!formatstring.isEmpty) pvalue.val.formatstring = formatstring;
+                        if (change_delim) pvalue.val.formatstring.delimetr = ".";
                         val = ParamHelpers::ToString (pvalue);
                         flag_find = true;
                         flag = true;
@@ -1527,6 +1528,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
                     ParamValue pvalue = pdictvalue.Get (partc);
                     if (pvalue.isValid) {
                         if (!formatstring.isEmpty) pvalue.val.formatstring = formatstring;
+                        if (change_delim) pvalue.val.formatstring.delimetr = ".";
                         val = ParamHelpers::ToString (pvalue);
                         flag_find = true;
                         flag = true;
@@ -3430,7 +3432,7 @@ bool ParamHelpers::ReadFormula (ParamDictValue& paramByType, ParamDictValue& par
 #endif
         GS::UniString expression = param.val.uniStringValue;
         if (!param.val.formatstring.isEmpty) expression = expression + '.' + param.val.formatstring.stringformat;
-        if (ParamHelpers::ReplaceParamInExpression (params, expression)) {
+        if (ParamHelpers::ReplaceParamInExpression (params, expression, true)) {
             if (EvalExpression (expression)) {
                 flag_find = true;
                 ParamValue pvalue;
@@ -3584,7 +3586,7 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
                 }
                 templatestring.ReplaceAll ("{@material:n}", GS::UniString::Printf ("%d", i + 1));
                 templatestring.ReplaceAll ("}", attribsuffix);
-                if (ParamHelpers::ReplaceParamInExpression (params, templatestring)) {
+                if (ParamHelpers::ReplaceParamInExpression (params, templatestring, param_composite.val.hasFormula)) {
                     flag = true;
                     flag_add = true;
                     ReplaceSymbSpase (templatestring);
@@ -3599,7 +3601,7 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
         if (flag) {
             if (params.Get (rawName).val.hasFormula) {
                 if (outstring.Contains ("{")) {
-                    ParamHelpers::ReplaceParamInExpression (params, outstring);
+                    ParamHelpers::ReplaceParamInExpression (params, outstring, param_composite.val.hasFormula);
                 }
                 GS::UniString expression = "<" + outstring + ">";
                 if (!params.Get (rawName).val.formatstring.isEmpty) expression = expression + '.' + params.Get (rawName).val.formatstring.stringformat;
