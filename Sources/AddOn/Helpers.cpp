@@ -3423,15 +3423,26 @@ bool ParamHelpers::ReadFormula (ParamDictValue& paramByType, ParamDictValue& par
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
         ParamValue& param = cIt->value;
+        GS::UniString key = cIt->key;
 #else
         ParamValue& param = *cIt->value;
+        GS::UniString key = *cIt->key;
 #endif
         GS::UniString expression = param.val.uniStringValue;
         if (!param.val.formatstring.isEmpty) expression = expression + '.' + param.val.formatstring.stringformat;
         if (ParamHelpers::ReplaceParamInExpression (params, expression)) {
             if (EvalExpression (expression)) {
                 flag_find = true;
-                param.val.uniStringValue = expression;
+                ParamValue pvalue;
+                ParamHelpers::ConvertStringToParamValue (pvalue, key, expression);
+                paramByType.Get (key).val = pvalue.val;
+                GS::UniString expression_ = "<" + expression + ">";
+                if (EvalExpression (expression_)) {
+                    ParamHelpers::ConvertStringToParamValue (pvalue, key, expression_);
+                    paramByType.Get (key).val = pvalue.val;
+                    paramByType.Get (key).val.uniStringValue = expression;
+                }
+                paramByType.Get (key).isValid = true;
             }
         }
     }
