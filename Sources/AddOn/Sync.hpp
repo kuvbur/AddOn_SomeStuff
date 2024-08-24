@@ -1,4 +1,5 @@
 //------------ kuvbur 2022 ------------
+#pragma once
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
 #ifdef AC_25

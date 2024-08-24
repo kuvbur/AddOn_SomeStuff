@@ -25,6 +25,7 @@
 #include	"ReNum.hpp"
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
+#include	"Spec.hpp"
 
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
@@ -294,17 +295,14 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
 #endif // PK_1
                     Do_ElementMonitor (syncSettings.syncMon);
                     MonAll (syncSettings);
-                    DimRoundAll (syncSettings);
                     break;
                 case SyncAll_CommandID:
                     syncSettings.syncAll = true;
                     SyncAndMonAll (syncSettings);
-                    DimRoundAll (syncSettings);
                     syncSettings.syncAll = false;
                     break;
                 case SyncSelect_CommandID:
                     SyncSelected (syncSettings);
-                    DimRoundAll (syncSettings);
                     break;
                 case wallS_CommandID:
                     syncSettings.wallS = !syncSettings.wallS;
@@ -320,15 +318,15 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                 case ReNum_CommandID:
                     err = ReNumSelected (syncSettings);
-                    DimRoundAll (syncSettings);
                     break;
                 case Sum_CommandID:
                     err = SumSelected (syncSettings);
-                    DimRoundAll (syncSettings);
                     break;
                 case RunParam_CommandID:
                     RunParamSelected (syncSettings);
-                    DimRoundAll (syncSettings);
+                    break;
+                case Spec_CommandID:
+                    Spec::SpecAll (syncSettings);
                     break;
 #ifdef PK_1
                 case AutoList_CommandID:

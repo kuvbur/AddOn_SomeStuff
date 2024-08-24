@@ -284,6 +284,8 @@ bool ReadElemCoords (const API_Element& element, ParamDictValue& params);
 // -----------------------------------------------------------------------------
 bool ReplaceParamInExpression (const ParamDictValue& pdictvalue, GS::UniString& expression, bool change_delim = false);
 
+bool GetParamValueForElements (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue);
+
 // -----------------------------------------------------------------------------
 // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
 // -----------------------------------------------------------------------------

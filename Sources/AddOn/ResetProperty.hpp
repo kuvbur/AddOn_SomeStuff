@@ -1,4 +1,5 @@
 ﻿//------------ kuvbur 2022 ------------
+#pragma once
 #if !defined (RESET_HPP)
 #define	RESET_HPP
 #ifdef AC_25
