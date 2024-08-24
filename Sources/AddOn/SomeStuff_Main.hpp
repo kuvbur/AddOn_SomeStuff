@@ -13,11 +13,10 @@
 #define	 Menu_ReNum			8
 #define	 Menu_Sum			9
 #define	 Menu_RunParam		10
-#define	 Menu_SetGUID		11
-#define	 Menu_ShowGUID		12
-#define	 Menu_AutoList		13
-#define	 Menu_AutoProfile	14
-#define	 Menu_AutoLay	15
+#define	 Menu_Spec		11
+#define	 Menu_AutoList		12
+#define	 Menu_AutoProfile	13
+#define	 Menu_AutoLay	14
 
 static const Int32 MonAll_CommandID = 1;
 static const Int32 SyncAll_CommandID = 2;
@@ -29,9 +28,10 @@ static const Int32 cwallS_CommandID = 7;
 static const Int32 ReNum_CommandID = 8;
 static const Int32 Sum_CommandID = 9;
 static const Int32 RunParam_CommandID = 10;
-static const Int32 AutoList_CommandID = 11;
-static const Int32 Auto3D_CommandID = 12;
-static const Int32 AutoLay_CommandID = 13;
+static const Int32 Spec_CommandID = 11;
+static const Int32 AutoList_CommandID = 12;
+static const Int32 Auto3D_CommandID = 13;
+static const Int32 AutoLay_CommandID = 14;
 
 #if defined(AC_28)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);

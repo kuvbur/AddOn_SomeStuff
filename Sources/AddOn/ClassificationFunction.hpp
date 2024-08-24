@@ -1,4 +1,5 @@
 //------------ kuvbur 2022 ------------
+#pragma once
 #if !defined (CLASSIF_HPP)
 #define	CLASSIF_HPP
 #ifdef AC_25
@@ -25,10 +26,10 @@ typedef struct
     GS::UniString itemname = "";
 } ClassificationValues;
 
-// Словарь с классами
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 typedef GS::HashTable<GS::UniString, ClassificationValues> ClassificationDict;
 
-// Словарь с системами
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 typedef GS::HashTable<GS::UniString, ClassificationDict> SystemDict;
 
 GSErrCode GetAllClassification (SystemDict& systemdict);

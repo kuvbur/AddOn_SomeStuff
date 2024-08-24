@@ -5,7 +5,7 @@
 /* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.72a https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
-'STR#' ID_ADDON_MENU "Strings for the Menu" {
+'STR#' 32500 "Strings for the Menu" {
 /* [ 1] */	"SomeStuff Addon (Sync of properties and parameters)"
 /* [  1] */		"Отслеживать^E3^ES^EE^ED^EW^EL^32602"
 /* [  2] */		"Синхронизировать все^E3^ES^EE^ED^EW^EL^T^32603"
@@ -17,13 +17,11 @@
 /* [  8] */		"Перенумеровать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32608"
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
-/* [  11] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
-/* [  12] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  13] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  11] */	"Создать элементы для выборки^E3^ES^EE^ED^EW^EL^S^R^T^32617"
 }
 
 
-'STR#' ID_ADDON_PROMT "Strings for the Menu" {
+'STR#' 32502 "Strings for the Menu" {
 /* [  ] */	"SomeStuff Addon (Sync of properties and parameters)"
 /* [  1] */		"Отслеживать"
 /* [  2] */		"Синхронизировать все"
@@ -35,9 +33,43 @@
 /* [  8] */		"Перенумеровать выделенные"
 /* [  9] */		"Просуммировать выделенные"
 /* [  10] */	"Запустить скрипт параметров выделенных"
-/* [  11] */	"Обновить геометрию фасонки по выбранному"
-/* [  12] */	"Построить профиль по линии"
-/* [  13] */	"Выронять выделенные чертежи"
+/* [  11] */	"Создать элементы для выборки"
+}
+
+'STR#' 35500 "Strings for the Menu" {
+/* [ 1] */	"SomeStuff Addon (Sync of properties and parameters)"
+/* [  1] */		"Отслеживать^E3^ES^EE^ED^EW^EL^32602"
+/* [  2] */		"Синхронизировать все^E3^ES^EE^ED^EW^EL^T^32603"
+/* [  3] */		"Синхронизировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32604"
+/* [  4] */		"Обрабатывать стены/перекрытия^E3^ES^EE^ED^EW^EL^32605"
+/* [  5] */		"Обрабатывать окна/двери^E3^ES^EE^ED^EW^EL^32606"
+/* [  6] */		"Обрабатывать объекты/зоны^E3^ES^EE^ED^EW^EL^32607"
+/* [  7] */		"Обрабатывать элементы навесных стен и ограждений^E3^ES^EE^ED^EW^EL^32612"
+/* [  8] */		"Перенумеровать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32608"
+/* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
+/* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+/* [  11] */	"Создать элементы для выборки^E3^ES^EE^ED^EW^EL^S^R^T^32617"
+/* [  12] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
+/* [  13] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
+/* [  14] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+}
+
+'STR#' 35502 "Strings for the Menu" {
+/* [  ] */	"SomeStuff Addon (Sync of properties and parameters)"
+/* [  1] */		"Отслеживать"
+/* [  2] */		"Синхронизировать все"
+/* [  3] */		"Синхронизировать выделенные"
+/* [  4] */		"Обрабатывать стены/перекрытия"
+/* [  5] */		"Обрабатывать окна/двери"
+/* [  6] */		"Обрабатывать объекты/зоны"
+/* [  7] */		"Обрабатывать элементы навесных стен и ограждений"
+/* [  8] */		"Перенумеровать выделенные"
+/* [  9] */		"Просуммировать выделенные"
+/* [  10] */	"Запустить скрипт параметров выделенных"
+/* [  11] */	"Создать элементы для выборки"
+/* [  12] */	"Обновить геометрию фасонки по выбранному"
+/* [  13] */	"Построить профиль по линии"
+/* [  14] */	"Выронять выделенные чертежи"
 }
 
 
@@ -79,7 +111,7 @@
 /* [  2] */		"Sync of GDL properties and parameters v1.72a https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
-'STR#' ID_ADDON_MENU_ENG "Strings for the Menu" {
+'STR#' 33500 "Strings for the Menu" {
 /* [ 1] */	"Sync of GDL properties and parameters"
 /* [  1] */		"Track^E3^ES^EE^ED^EW^EL^32602"
 /* [  2] */		"Sync all^E3^ES^EE^ED^EW^EL^T^32603"
@@ -91,13 +123,11 @@
 /* [  8] */		"Renumber the selections^E3^ES^EE^ED^EW^EL^S^R^T^32608"
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */		"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
-/* [  11] */		"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
-/* [  12] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  13] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  11] */		"Создать элементы для выборки^E3^ES^EE^ED^EW^EL^S^R^T^32617"
 }
 
 
-'STR#' ID_ADDON_PROMT_ENG "Strings for the Menu" {
+'STR#' 33502 "Strings for the Menu" {
 /* [  ] */		"Sync of GDL properties and parameters"
 /* [  1] */		"Track"
 /* [  2] */		"Sync all"
@@ -109,9 +139,44 @@
 /* [  8] */		"Renumber the selections"
 /* [  9] */		"Sum the selections"
 /* [  10] */		"Run the script for the parameters of the selections"
-/* [  11] */		"Обновить геометрию фасонки по выбранному"
-/* [  12] */	"Построить профиль по линии"
-/* [  13] */	"Выронять выделенные чертежи"
+/* [  12] */		"Создать элементы для выборки"
+}
+
+'STR#' 36500 "Strings for the Menu" {
+/* [ 1] */	"Sync of GDL properties and parameters"
+/* [  1] */		"Track^E3^ES^EE^ED^EW^EL^32602"
+/* [  2] */		"Sync all^E3^ES^EE^ED^EW^EL^T^32603"
+/* [  3] */		"Sync the selections^E3^ES^EE^ED^EW^EL^S^R^T^32604"
+/* [  4] */		"Processing walls/slabs^E3^ES^EE^ED^EW^EL^32605"
+/* [  5] */		"Processing windows/doors^E3^ES^EE^ED^EW^EL^32606"
+/* [  6] */		"Processing objects/zones^E3^ES^EE^ED^EW^EL^32607"
+/* [  7] */		"Processing curtain wall and railing elements^E3^ES^EE^ED^EW^EL^32612"
+/* [  8] */		"Renumber the selections^E3^ES^EE^ED^EW^EL^S^R^T^32608"
+/* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
+/* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
+/* [  11] */	"Создать элементы для выборки^E3^ES^EE^ED^EW^EL^S^R^T^32617"
+/* [  12] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
+/* [  13] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
+/* [  14] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+}
+
+
+'STR#' 36502 "Strings for the Menu" {
+/* [  ] */		"Sync of GDL properties and parameters"
+/* [  1] */		"Track"
+/* [  2] */		"Sync all"
+/* [  3] */		"Sync the selections"
+/* [  4] */		"Processing walls/slabs"
+/* [  5] */		"Processing windows/doors"
+/* [  6] */		"Processing objects/zones"
+/* [  7] */		"Processing curtain wall and railing elements"
+/* [  8] */		"Renumber the selections"
+/* [  9] */		"Sum the selections"
+/* [  10] */		"Run the script for the parameters of the selections"
+/* [  12] */		"Создать элементы для выборки"
+/* [  13] */		"Обновить геометрию фасонки по выбранному"
+/* [  14] */	"Построить профиль по линии"
+/* [  15] */	"Выронять выделенные чертежи"
 }
 
 
@@ -188,4 +253,7 @@
 }
 'GICN' 32616 "AlignDrawingsIcon" {
     "AlignDrawingsIcon"
+}
+'GICN' 32617 "SetGUIDIcon" {
+    "SetGUIDIcon"
 }
