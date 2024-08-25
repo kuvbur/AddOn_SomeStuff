@@ -591,7 +591,12 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
             }
             pos.y += 2 * dy;
             API_Guid groupGuid = APINULLGuid;
+#if defined(AC_27) || defined(AC_28)
+            err = ACAPI_Grouping_CreateGroup (group, &groupGuid);
+#else
             err = ACAPI_ElementGroup_Create (group, &groupGuid);
+#endif
+
         }
         return NoError;
     });
