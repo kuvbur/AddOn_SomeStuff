@@ -295,9 +295,9 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
 #endif
                 ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
             }
-            }
-                }
-            }
+        }
+    }
+}
 
 Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements)
 {
@@ -471,7 +471,11 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 {
     API_Element element = {};
     API_ElementMemo memo = {};
-    element.header.typeID = API_ElemTypeID::API_ObjectID;
+#if defined AC_26 || defined AC_27 || defined AC_28
+    element.header.type.typeID = API_ObjectID;
+#else
+    element.header.typeID = API_ObjectID;
+#endif
     GSErrCode err = ACAPI_Element_GetDefaults (&element, &memo);
     double dx = 0; double dy = 0;
     GS::Array <API_AddParType> params;
@@ -588,7 +592,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
             pos.y += 2 * dy;
             API_Guid groupGuid = APINULLGuid;
             err = ACAPI_ElementGroup_Create (group, &groupGuid);
-    }
+        }
         return NoError;
     });
     ACAPI_DisposeElemMemoHdls (&memo);
@@ -601,4 +605,4 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
     }
     return NoError;
 }
-        }
+}

@@ -1987,7 +1987,9 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
     if (flag_rec) {
         property.isDefault = false;
         if (property.value.variantStatus != API_VariantStatusNormal) property.value.variantStatus = API_VariantStatusNormal;
+#if !defined(AC_22) || !defined(AC_23)
         if (property.status != API_Property_HasValue) property.status = API_Property_HasValue;
+#endif
     }
     return flag_rec;
 }
