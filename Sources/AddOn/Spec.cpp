@@ -54,7 +54,11 @@ void ShowSub (const SyncSettings& syncSettings)
             }
         }
     }
+#if defined(AC_27) || defined(AC_28)
+    GSErrCode err = ACAPI_Selection_Select (selNeigs, true);
+#else
     GSErrCode err = ACAPI_Element_Select (selNeigs, true);
+#endif
     return;
 }
 
@@ -139,7 +143,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
                         break;
                     }
                 }
-            }
+    }
             ElementDict elements;
             n_elements += GetElementsForRule (rule, paramToRead, elements);
             if (!elements.IsEmpty ()) elementstocreate.Push (elements);
@@ -152,8 +156,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #else
     i = 3; ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-
-
     Point2D startpos;
     if (!ClickAPoint ("Click point", &startpos))
         return NoError;
@@ -171,7 +173,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #endif
 
     return err;
-}
+    }
 
 // --------------------------------------------------------------------
 // Проверяет значение свойства с правилом и формрует правила
@@ -269,7 +271,7 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
                 GS::UniString rawname = *cItt.key;
 #endif
                 ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
-            }
+        }
             if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramDict);
             // Добавляем параметры для каждого элемента
             for (UInt32 i = 0; i < rule.elements.GetSize (); i++) {
@@ -294,8 +296,8 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
                 GS::UniString rawname = *cItt.key;
 #endif
                 ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
-            }
-        }
+}
+}
     }
 }
 
@@ -588,7 +590,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 }
                 paramOut.Add (element.header.guid, param);
                 group.Push (element.header.guid);
-            }
+        }
             pos.y += 2 * dy;
             API_Guid groupGuid = APINULLGuid;
 #if defined(AC_27) || defined(AC_28)
@@ -597,7 +599,8 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
             err = ACAPI_ElementGroup_Create (group, &groupGuid);
 #endif
 
-        }
+
+    }
         return NoError;
     });
     ACAPI_DisposeElemMemoHdls (&memo);
