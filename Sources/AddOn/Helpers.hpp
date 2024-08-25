@@ -200,7 +200,7 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
 // -----------------------------------------------------------------------------
 // Получить массив Guid выбранных элементов в соответсвии с настройками обработки
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, SyncSettings& syncSettings, bool addSubelement);
+GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, const SyncSettings& syncSettings, bool addSubelement);
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
@@ -604,6 +604,8 @@ GS::UniString ToString (const ParamValue& pvalue, const FormatString stringforma
 // -----------------------------------------------------------------------------
 GS::UniString ToString (const ParamValue& pvalue);
 }
+
+ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs);
 
 bool operator==(const ParamValue& lhs, const ParamValue& rhs);
 
