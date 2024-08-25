@@ -328,6 +328,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case Spec_CommandID:
                     Spec::SpecAll (syncSettings);
                     break;
+                case ShowSub_CommandID:
+                    Spec::ShowSub (syncSettings);
+                    break;
 #ifdef PK_1
                 case AutoList_CommandID:
                     AutoFunc::KM_ListUpdate ();
