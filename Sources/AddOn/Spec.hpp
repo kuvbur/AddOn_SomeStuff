@@ -16,52 +16,57 @@
 #endif // AC_28
 #include	"Helpers.hpp"
 
-namespace Spec {
+namespace Spec
+{
 
-    typedef GS::HashTable<GS::UniString, SortGUID> SpecDict;
+typedef GS::HashTable<GS::UniString, SortGUID> SpecDict;
 
 
-    typedef struct {
-        GS::Array<GS::UniString> unic_paramrawname;
-        GS::Array<GS::UniString> sum_paramrawname;
-        bool is_Valid = true;
-    } GroupSpec;
+typedef struct
+{
+    GS::Array<GS::UniString> unic_paramrawname;
+    GS::Array<GS::UniString> sum_paramrawname;
+    GS::Array<GS::UniString> flag_paramrawname;
+    bool is_Valid = true;
+} GroupSpec;
 
-    typedef struct {
-        GS::Array<ParamValue> out_unic_param;
-        GS::Array<ParamValue> out_sum_param;
-        GS::Array<GS::UniString> out_unic_paramrawname;
-        GS::Array<GS::UniString> out_sum_paramrawname;
-        GS::UniString subguid_paramrawname;
-        GS::Array<API_Guid> elements;
-    } Element;
-    typedef GS::HashTable<GS::UniString, Element> ElementDict;
+typedef struct
+{
+    GS::Array<ParamValue> out_unic_param;
+    GS::Array<ParamValue> out_sum_param;
+    GS::Array<GS::UniString> out_unic_paramrawname;
+    GS::Array<GS::UniString> out_sum_paramrawname;
+    GS::UniString subguid_paramrawname = "";
+    GS::Array<API_Guid> elements;
+} Element;
+typedef GS::HashTable<GS::UniString, Element> ElementDict;
 
-    typedef struct {
-        GS::Array<GroupSpec> groups;
-        GS::Array<GS::UniString> out_unic_paramrawname;
-        GS::Array<GS::UniString> out_sum_paramrawname;
-        GS::UniString subguid_paramrawname;
-        GS::Array<API_Guid> elements;
-        bool is_Valid = true;
-    } SpecRule;
+typedef struct
+{
+    GS::Array<GroupSpec> groups;
+    GS::Array<GS::UniString> out_unic_paramrawname;
+    GS::Array<GS::UniString> out_sum_paramrawname;
+    GS::UniString subguid_paramrawname = "";
+    GS::Array<API_Guid> elements;
+    bool is_Valid = true;
+} SpecRule;
 
-    typedef GS::HashTable<GS::UniString, SpecRule> SpecRuleDict;
+typedef GS::HashTable<GS::UniString, SpecRule> SpecRuleDict;
 
-    void ShowSub (const SyncSettings& syncSettings);
-    GSErrCode SpecAll (const SyncSettings& syncSettings);
-    GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray);
-    GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules);
-    SpecRule GetRuleFromDescription (GS::UniString& description);
+void ShowSub (const SyncSettings& syncSettings);
+GSErrCode SpecAll (const SyncSettings& syncSettings);
+GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray);
+GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules);
+SpecRule GetRuleFromDescription (GS::UniString& description);
 
-    // --------------------------------------------------------------------
-    // Выбирает из параметров групп имена свойств для дальнейшего чтения
-    // --------------------------------------------------------------------
-    void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& propertyParams, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
+// --------------------------------------------------------------------
+// Выбирает из параметров групп имена свойств для дальнейшего чтения
+// --------------------------------------------------------------------
+void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& propertyParams, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
 
-    Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements);
+Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements);
 
-    GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValue& paramToWrite, ParamDictElement& paramOut, Point2D& startpos);
+GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValue& paramToWrite, ParamDictElement& paramOut, Point2D& startpos);
 }
 
 #endif
