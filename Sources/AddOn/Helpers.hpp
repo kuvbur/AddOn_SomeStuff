@@ -27,6 +27,7 @@
 #define SYNC 2
 
 // Типы операций по переводу значений массива гдл параметра в совйство
+#define ARRAY_UNDEF 0
 #define ARRAY_UNIC 1	// Вывод уникальных значений
 #define ARRAY_SUM 2		// Вывод суммы (для текста - конкатенация)
 #define ARRAY_MAX 3
@@ -108,7 +109,7 @@ typedef struct
     int array_row_end = 0;				// Последняя строка массива
     int array_column_start = 0;			// Начальный столбец массива
     int array_column_end = 0;				// Последний столбец массива
-    int array_format_out = ARRAY_SUM;	// В каком виде выводить в свойство
+    int array_format_out = ARRAY_UNDEF;	// В каком виде выводить в свойство
 } ParamValueData;
 
 // Структура для описания слоя в многослойной конструкции
