@@ -26,7 +26,7 @@ typedef struct
 {
     GS::Array<GS::UniString> unic_paramrawname;
     GS::Array<GS::UniString> sum_paramrawname;
-    GS::Array<GS::UniString> flag_paramrawname;
+    GS::UniString flag_paramrawname;
     bool is_Valid = true;
 } GroupSpec;
 
