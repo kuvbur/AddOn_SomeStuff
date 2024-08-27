@@ -2,6 +2,7 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Spec.hpp"
+#include	"Sync.hpp"
 
 namespace Spec
 {
@@ -89,7 +90,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #else
     i = 1; ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-
     int dummymode = IsDummyModeOn ();
     GSErrCode err = NoError;
     SpecRuleDict rules;
@@ -174,7 +174,16 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-
+    GS::Array<API_Guid> guidArraysync;
+    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramOut.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        API_Guid elemGuid = cIt->key;
+#else
+        API_Guid elemGuid = *cIt->key;
+#endif
+        guidArraysync.Push (elemGuid);
+    }
+    SyncArray (syncSettings, guidArraysync, systemdict);
     return err;
 }
 
@@ -429,12 +438,12 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
                         for (Int32 inx_row = 1; inx_row < n_row; inx_row++) {
                             GS::UniString rawName_ = rawName;
                             rawName_.ReplaceAll ("}", GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", inx_row, inx_row, 1, 1, ARRAY_UNIC) + "}");
-                            if (part == 0) rule.out_sum_paramrawname.Push (rawName_);
-                            if (part == 1) rule.out_unic_paramrawname.Push (rawName_);
+                            if (part == 1) rule.out_sum_paramrawname.Push (rawName_);
+                            if (part == 0) rule.out_unic_paramrawname.Push (rawName_);
                         }
                     } else {
-                        if (part == 0) rule.out_sum_paramrawname.Push (rawName);
-                        if (part == 1) rule.out_unic_paramrawname.Push (rawName);
+                        if (part == 1) rule.out_sum_paramrawname.Push (rawName);
+                        if (part == 0) rule.out_unic_paramrawname.Push (rawName);
                     }
                 }
             }
@@ -501,7 +510,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
         }
         if (min_row > 0) {
             // создаём группы для параметров с массивами
-            for (Int32 jj = 1; jj < min_row; jj++) {
+            for (Int32 jj = 1; jj <= min_row; jj++) {
                 GroupSpec group_add;
 
                 for (UInt32 i = 0; i < group.unic_paramrawname.GetSize (); i++) {
@@ -542,26 +551,26 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
 
 GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValue& paramToWrite, ParamDictElement& paramOut, Point2D& startpos)
 {
-    API_Element element = {};
-    API_ElementMemo memo = {};
+    API_Element elementt = {};
+    API_ElementMemo memot = {};
 #if defined AC_26 || defined AC_27 || defined AC_28
-    element.header.type.typeID = API_ObjectID;
+    elementt.header.type.typeID = API_ObjectID;
 #else
-    element.header.typeID = API_ObjectID;
+    elementt.header.typeID = API_ObjectID;
 #endif
-    GSErrCode err = ACAPI_Element_GetDefaults (&element, &memo);
+    GSErrCode err = ACAPI_Element_GetDefaults (&elementt, &memot);
     if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
-        msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
+        ACAPI_DisposeElemMemoHdls (&memot);
+        msg_rep ("Spec::PlaceElements", "ACAPI_Element_GetDefaults", err, APINULLGuid);
         return err;
     }
     double dx = 0; double dy = 0;
     GS::Array <API_AddParType> params;
     GS::Array <API_Elem_Head> elemsheader;
-    const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
+    const GSSize nParams = BMGetHandleSize ((GSHandle) memot.params) / sizeof (API_AddParType);
     for (GSIndex ii = 0; ii < nParams; ++ii) {
-        API_AddParType& actParam = (*memo.params)[ii];
-        params.Push ((*memo.params)[ii]);
+        API_AddParType& actParam = (*memot.params)[ii];
+        params.Push ((*memot.params)[ii]);
         const GS::String name (actParam.name);
         if (name.IsEqual ("A")) {
             dx = actParam.value.real;
@@ -570,6 +579,8 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
             dy = actParam.value.real;
         }
     }
+    ACAPI_DisposeElemMemoHdls (&memot);
+
     API_Coord pos = { startpos.x, startpos.y };
     ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
         int n_elem = 0;
@@ -581,6 +592,20 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #else
                 Element el = *cIt.value;
 #endif
+
+                API_Element element = {};
+                API_ElementMemo memo = {};
+#if defined AC_26 || defined AC_27 || defined AC_28
+                element.header.type.typeID = API_ObjectID;
+#else
+                element.header.typeID = API_ObjectID;
+#endif
+                err = ACAPI_Element_GetDefaults (&element, &memo);
+                if (err != NoError) {
+                    ACAPI_DisposeElemMemoHdls (&memo);
+                    msg_rep ("Spec::PlaceElements", "ACAPI_Element_GetDefaults", err, APINULLGuid);
+                    return err;
+                }
                 // Запись параметров
                 ParamDictValue param;
                 if (!el.subguid_paramrawname.IsEmpty ()) {
@@ -622,46 +647,112 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 }
                 for (GSIndex ii = 0; ii < nParams; ++ii) {
                     API_AddParType& actParam = (*memo.params)[ii];
-                    actParam = params[ii];
                     const GS::String name (actParam.name);
-                    GS::UniString rawname = "{@gdl:" + name.ToLowerCase () + "}";
-                    if (param.ContainsKey (rawname)) {
-                        ParamValueData paramfrom = param.Get (rawname).val;
-                        if (actParam.typeMod == API_ParSimple) {
-                            switch (actParam.typeID) {
-                                case APIParT_ColRGB:
-                                case APIParT_Intens:
-                                case APIParT_Length:
-                                case APIParT_RealNum:
-                                case APIParT_Angle:
-                                    actParam.value.real = paramfrom.doubleValue;	break;
-                                case APIParT_Boolean:
-                                    actParam.value.real = paramfrom.doubleValue;	break;
-                                case APIParT_Integer:
-                                case APIParT_PenCol:
-                                case APIParT_LineTyp:
-                                case APIParT_Mater:
-                                case APIParT_FillPat:
-                                case APIParT_BuildingMaterial:
-                                case APIParT_Profile:
-                                    actParam.value.real = paramfrom.intValue;	break;
-                                case APIParT_CString:
-                                case APIParT_Title:
-                                    GS::ucscpy (actParam.value.uStr, paramfrom.uniStringValue.ToUStr (0, GS::Min (paramfrom.uniStringValue.GetLength (), (USize) API_UAddParStrLen)).Get ());
-                                default:
-                                case APIParT_Dictionary:
-                                    break;
+                    GS::UniString rawname = "";
+                    bool flag_find = false;
+                    if (actParam.typeMod == API_ParSimple) {
+                        rawname = "{@gdl:" + name.ToLowerCase () + "}";
+                        flag_find = param.ContainsKey (rawname);
+                    }
+                    if (actParam.typeMod == API_ParArray) {
+                        for (Int32 kdim1 = 0; kdim1 < actParam.dim1; kdim1++) {
+                            for (Int32 jdim2 = 0; jdim2 < actParam.dim2; jdim2++) {
+                                rawname = "{@gdl:" + name.ToLowerCase () + GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", kdim1 + 1, kdim1 + 1, jdim2 + 1, jdim2 + 1, ARRAY_UNIC) + "}";
+                                if (param.ContainsKey (rawname)) {
+                                    flag_find = true;
+                                }
                             }
-                            param.Delete (rawname);
                         }
                     }
+                    if (actParam.typeMod == API_ParSimple && flag_find) {
+                        ParamValueData paramfrom = param.Get (rawname).val;
+                        switch (actParam.typeID) {
+                            case APIParT_ColRGB:
+                            case APIParT_Intens:
+                            case APIParT_Length:
+                            case APIParT_RealNum:
+                            case APIParT_Angle:
+                                if (actParam.typeMod == API_ParSimple) actParam.value.real = paramfrom.doubleValue;
+                                if (actParam.typeMod == API_ParArray) {
+                                    double** arrHdl = reinterpret_cast<double**>(actParam.value.array);
+                                    for (Int32 kdim1 = 0; kdim1 < actParam.dim1; kdim1++) {
+                                        for (Int32 jdim2 = 0; jdim2 < actParam.dim2; jdim2++) {
+                                            if (kdim1 == paramfrom.array_row_start && kdim1 == paramfrom.array_row_start) {
+                                                (*arrHdl)[kdim1 * actParam.dim2 + jdim2] = paramfrom.doubleValue;
+                                            }
+                                        }
+                                    }
+                                }
+                                break;
+                            case APIParT_Boolean:
+                                if (actParam.typeMod == API_ParSimple) actParam.value.real = paramfrom.doubleValue;
+                                break;
+                            case APIParT_Integer:
+                            case APIParT_PenCol:
+                            case APIParT_LineTyp:
+                            case APIParT_Mater:
+                            case APIParT_FillPat:
+                            case APIParT_BuildingMaterial:
+                            case APIParT_Profile:
+                                if (actParam.typeMod == API_ParSimple) actParam.value.real = paramfrom.intValue;
+                                break;
+                            case APIParT_CString:
+                            case APIParT_Title:
+                                if (actParam.typeMod == API_ParSimple) {
+                                    GS::ucscpy (actParam.value.uStr, paramfrom.uniStringValue.ToUStr (0, GS::Min (paramfrom.uniStringValue.GetLength (), (USize) API_UAddParStrLen)).Get ());
+                                }
+                                break;
+                            default:
+                            case APIParT_Dictionary:
+                                break;
+                        }
+                        param.Delete (rawname);
+                    }
+                    /*                   if (actParam.typeMod == API_ParArray && flag_find) {
+                                           double** arrHdl = reinterpret_cast<double**>(actParam.value.array);
+                                           switch (actParam.typeID) {
+                                               case APIParT_ColRGB:
+                                               case APIParT_Intens:
+                                               case APIParT_Length:
+                                               case APIParT_RealNum:
+                                               case APIParT_Angle:
+                                                   for (Int32 kdim1 = 0; kdim1 < actParam.dim1; kdim1++) {
+                                                       for (Int32 jdim2 = 0; jdim2 < actParam.dim2; jdim2++) {
+                                                           rawname = "{@gdl:" + name.ToLowerCase () + GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", kdim1 + 1, kdim1 + 1, jdim2 + 1, jdim2 + 1, ARRAY_UNIC) + "}";
+                                                           if (param.ContainsKey (rawname)) {
+                                                               (*arrHdl)[kdim1 * actParam.dim2 + jdim2] = param.Get (rawname).val.doubleValue;
+                                                           }
+                                                       }
+                                                   }
+
+                                                   break;
+                                               case APIParT_Boolean:
+
+                                                   break;
+                                               case APIParT_Integer:
+                                               case APIParT_PenCol:
+                                               case APIParT_LineTyp:
+                                               case APIParT_Mater:
+                                               case APIParT_FillPat:
+                                               case APIParT_BuildingMaterial:
+                                               case APIParT_Profile:
+
+                                                   break;
+                                               case APIParT_CString:
+                                               case APIParT_Title:
+                                                   break;
+                                               default:
+                                               case APIParT_Dictionary:
+                                                   break;
+                                           }
+                                       }*/
                 }
                 element.object.pos = pos;
                 err = ACAPI_Element_Create (&element, &memo);
                 if (err == NoError) {
                     elemsheader.Push (element.header);
                     n_elem += 1;
-                    if (n_elem % 5 == 0) {
+                    if (n_elem % 8 == 0) {
                         pos.x = startpos.x;
                         pos.y += dy;
                     } else {
@@ -672,6 +763,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 } else {
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
+                ACAPI_DisposeElemMemoHdls (&memo);
             }
             pos.y += 2 * dy;
             API_Guid groupGuid = APINULLGuid;
@@ -684,7 +776,6 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         }
         return NoError;
     });
-    ACAPI_DisposeElemMemoHdls (&memo);
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
