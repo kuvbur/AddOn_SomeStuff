@@ -25,6 +25,7 @@ typedef GS::HashTable<GS::UniString, SortGUID> SpecDict;
 typedef struct
 {
     GS::Array<GS::UniString> unic_paramrawname;
+    GS::Array<GS::UniString> out_paramrawname;
     GS::Array<GS::UniString> sum_paramrawname;
     GS::UniString flag_paramrawname;
     bool is_Valid = true;
@@ -32,11 +33,13 @@ typedef struct
 
 typedef struct
 {
-    GS::Array<ParamValue> out_unic_param;
+    GS::Array<ParamValue> out_param;
     GS::Array<ParamValue> out_sum_param;
-    GS::Array<GS::UniString> out_unic_paramrawname;
+    GS::Array<GS::UniString> out_paramrawname;
     GS::Array<GS::UniString> out_sum_paramrawname;
     GS::UniString subguid_paramrawname = "";
+    GS::UniString subguid_rulename = "";
+    GS::UniString subguid_rulevalue = "";
     GS::Array<API_Guid> elements;
 } Element;
 typedef GS::HashTable<GS::UniString, Element> ElementDict;
@@ -44,9 +47,11 @@ typedef GS::HashTable<GS::UniString, Element> ElementDict;
 typedef struct
 {
     GS::Array<GroupSpec> groups;
-    GS::Array<GS::UniString> out_unic_paramrawname;
+    GS::Array<GS::UniString> out_paramrawname;
     GS::Array<GS::UniString> out_sum_paramrawname;
     GS::UniString subguid_paramrawname = "";
+    GS::UniString subguid_rulename = "";
+    GS::UniString subguid_rulevalue = "";
     GS::Array<API_Guid> elements;
     bool is_Valid = true;
 } SpecRule;
