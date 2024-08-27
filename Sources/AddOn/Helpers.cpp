@@ -2289,7 +2289,7 @@ void ParamHelpers::WriteGDLValues (const API_Guid& elemGuid, ParamDictValue& par
         API_AddParType& actualParam = (*apiParams.params)[i];
         GS::UniString name = actualParam.name;
         GS::UniString rawname = "{@gdl:" + name.ToLowerCase () + "}";
-        if (params.ContainsKey (rawname)) {
+        if (params.ContainsKey (rawname) && actualParam.typeMod == API_ParSimple) {
             ParamValueData paramfrom = params.Get (rawname).val;
             BNZeroMemory (&chgParam, sizeof (API_ChangeParamType));
             chgParam.index = actualParam.index;
@@ -3330,16 +3330,16 @@ bool ParamHelpers::ReadGDLValues (const API_Element& element, const API_Elem_Hea
             paramnamearray.Get (rawName).Push (param.rawName);
             if (param.fromGDLdescription && eltype == API_ObjectID) {
                 paramBydescription.Add (rawName, param);
-        } else {
+            } else {
                 if (param.fromGDLparam) paramByName.Add (rawName, param);
             }
-    }
+        }
         if (param.fromGDLdescription && eltype == API_ObjectID) {
             paramBydescription.Add (param.rawName, param);
         } else {
             if (param.fromGDLparam) paramByName.Add (param.rawName, param);
         }
-}
+    }
     if (paramBydescription.IsEmpty () && paramByName.IsEmpty ()) return false;
 
     // Поиск по описанию
@@ -3597,9 +3597,9 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
                         if (ParamHelpers::GetAttributeValues (constrinx, paramsAdd, paramsAdd_1)) {
                             flag = true;
                             existsmaterial.Add (constrinx, true);
+                        }
                     }
                 }
-            }
                 if (flag) {
                     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
@@ -3609,9 +3609,9 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
 #endif
                     }
                 }
+            }
         }
     }
-}
     bool flag_add = false;
 
     // Если есть строка-шаблон - заполним её
@@ -3820,13 +3820,13 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData& pvalue, const API_AddPar
             param_int = (GS::Int32) param_real;
             if (param_int / 1 < param_real) param_int += 1;
             pvalue.canCalculate = true;
-    } else {
+        } else {
             if (param_bool) {
                 param_int = 1;
                 param_real = 1.0;
             }
         }
-} else {
+    } else {
         param_real = round (param_real * 100000) / 100000;
         if (preal - param_real > 0.00001) param_real += 0.00001;
         param_int = (GS::Int32) param_real;
@@ -4035,7 +4035,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue& pvalue, const API_AddParType
     pvalue.fromGDLparam = true;
     pvalue.isValid = true;
     return true;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация свойства в ParamValue
@@ -4709,14 +4709,14 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage& profileDescri
                                 }
                             }
                         }
-        } else {
+                    } else {
                         DBPrintf ("== SMSTF ERR == syHatch.ToPolygon2D ====================\n");
                     }
-    }
+                }
                 break;
         }
         ++profileDescriptionIt1;
-}
+    }
     if (hasData) {
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
