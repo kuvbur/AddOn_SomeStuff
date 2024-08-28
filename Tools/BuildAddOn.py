@@ -306,11 +306,10 @@ def GetSubVersion(sourceFolder):
 def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, platformName, configuration, languageCode=None, isRelease=False):
     packageFolder = packageRootFolder / version
     sourceFolder = buildFolder / addOnName / version
+    if languageCode is not None:
+        sourceFolder = sourceFolder / languageCode
     subversion = GetSubVersion(sourceFolder)
     print("subversion = " + subversion)
-    if languageCode is not None:
-        # packageFolder = packageFolder / languageCode
-        sourceFolder = sourceFolder / languageCode
     sourceFolder = sourceFolder / configuration
 
     if not packageFolder.exists():
