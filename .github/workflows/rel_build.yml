@@ -41,7 +41,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SomeStuff AC${{ matrix.ac-version }} Win ${{ $TIMESTAMP }}
+          name: SomeStuff AC${{ matrix.ac-version }} Win ${{ TIMESTAMP }}
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
   build_mac:
     strategy:
