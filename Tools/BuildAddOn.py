@@ -237,7 +237,6 @@ def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKi
     buildPath = buildFolder / addOnName / version
     if languageCode is not None:
         buildPath = buildPath / languageCode
-
     # Add params to configure cmake
     projGenParams = GetProjectGenerationParams(
         workspaceRootFolder, buildPath, platformName, devKitFolder, version, languageCode, optionalParams)
@@ -290,10 +289,25 @@ def Check7ZInstallation():
         raise Exception('7Zip not installed!')
 
 
+def GetSubVersion(sourceFolder):
+    subversion = ''
+    fname = sourceFolder / f'ResourceObjects' / f'AddOn.grc.i'
+    with open(fname, encoding='utf-8') as file:
+        for line in file:
+            if 'parameters' in line and 'https:' in line:
+                subversion = line.split('parameters')[1].split('https:')[0]
+                subversion = subversion.strip()
+                subversion = subversion.replace(" ", "_")
+                subversion = subversion.replace("-", "_")
+                return "_"+subversion
+    return subversion
+
+
 def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, platformName, configuration, languageCode=None, isRelease=False):
     packageFolder = packageRootFolder / version
     sourceFolder = buildFolder / addOnName / version
-
+    subversion = GetSubVersion(sourceFolder)
+    print("subversion = " + subversion)
     if languageCode is not None:
         # packageFolder = packageFolder / languageCode
         sourceFolder = sourceFolder / languageCode
@@ -303,14 +317,15 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
         packageFolder.mkdir(parents=True)
 
     if platformName == 'WIN':
+
         shutil.copy(
             sourceFolder / f'{addOnName}.apx',
-            packageFolder / f'{addOnName}_{version}.apx',
+            packageFolder / f'{addOnName}_{version}{subversion}.apx',
         )
         if configuration == 'Debug':
             shutil.copy(
                 sourceFolder / f'{addOnName}.pdb',
-                packageFolder / f'{addOnName}_{version}.pdb',
+                packageFolder / f'{addOnName}_{version}{subversion}.pdb',
             )
 
     elif platformName == 'MAC':
@@ -335,14 +350,6 @@ def PackageAddOns(args, addOnName, platformName, acVersionList, languageList, bu
             CopyResultToPackage(packageRootFolder, buildFolder,
                                 version, addOnName, platformName, 'RelWithDebInfo')
 
-        # buildType = 'Release' if args.release else 'Daily'
-        # subprocess.call([
-        #     '7z', 'a',
-        #     str(packageRootFolder.parent /
-        #         f'{addOnName}_AC{version}_{platformName}.zip'),
-        #     str(packageRootFolder / version / '*')
-        # ])
-
 
 def Main():
     try:
@@ -357,7 +364,6 @@ def Main():
 
         BuildAddOns(args, configData, platformName, languageList,
                     workspaceRootFolder, buildFolder, devKitFolderList)
-
         if args.package:
             PackageAddOns(args, addOnName, platformName, acVersionList,
                           languageList, buildFolder, packageRootFolder)
