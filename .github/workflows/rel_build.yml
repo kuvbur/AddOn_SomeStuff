@@ -35,10 +35,18 @@ jobs:
       - name: Run build script
         run: |
           python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
+      - name: Get Time
+        id: time
+        uses: nanzm/get-time-action@master
+        with:
+          timeZone: UTC+3
+          format: 'YYYY-MM-DD-HH-mm'
       - name: Upload Artifact
+        env:
+          TIME: "${{ steps.time.outputs.time }}"
         uses: actions/upload-artifact@v4
         with:
-          name: SomeStuff AC${{ matrix.ac-version }} Win
+          name: SomeStuff AC${{ matrix.ac-version }} Win ${{ env.TIME }}
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
   build_mac:
     strategy:
