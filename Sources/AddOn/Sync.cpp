@@ -1018,7 +1018,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
 
     // Проверка включенных флагов
     if (!syncall) {
-        if (!param.fromCoord) synctypefind = false;
+        if (!param.fromCoord && !param.fromClassification) synctypefind = false;
     }
     if (!synccoord) {
         if (param.fromCoord) synctypefind = false;

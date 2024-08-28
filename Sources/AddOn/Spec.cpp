@@ -133,7 +133,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         }
     }
 
-
     for (auto& cIt : rules) {
 #if defined(AC_28)
         SpecRule rule = cIt.value;

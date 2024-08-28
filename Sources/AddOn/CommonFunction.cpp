@@ -945,7 +945,7 @@ GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & 
         if (i < n - 1) outsting = outsting + delim;
     }
     return outsting;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
@@ -1058,7 +1058,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1138,7 +1138,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -1186,9 +1186,9 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
         for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
             if (memo.cWallJunctions[idx].hasSymbol) {
                 elementsSymbolGuids.Push (std::move (memo.cWallJunctions[idx].head.guid));
+            }
+        }
     }
-    }
-}
     const GSSize nWallAccessories = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallAccessories)) / sizeof (API_CWAccessoryType);
     if (nWallAccessories > 0) {
         for (Int32 idx = 0; idx < nWallAccessories; ++idx) {
