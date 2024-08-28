@@ -35,10 +35,13 @@ jobs:
       - name: Run build script
         run: |
           python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
+      - name: Set Timestamp
+        id: timestamp
+        run: echo "TIMESTAMP=$("%Y-%m-%d-%H-%M")" >> $GITHUB_ENV
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SomeStuff AC${{ matrix.ac-version }} Win
+          name: SomeStuff AC${{ matrix.ac-version }} Win $TIMESTAMP
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
   build_mac:
     strategy:
