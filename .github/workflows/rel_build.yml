@@ -42,9 +42,11 @@ jobs:
           timeZone: UTC+3
           format: 'YYYY-MM-DD-HH-mm'
       - name: Upload Artifact
+        env:
+          TIME: "${{ steps.time.outputs.time }}"
         uses: actions/upload-artifact@v4
         with:
-          name: SomeStuff AC${{ matrix.ac-version }} Win ${{ env.TIM }}
+          name: SomeStuff AC${{ matrix.ac-version }} Win ${{ env.TIME }}
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
   build_mac:
     strategy:
