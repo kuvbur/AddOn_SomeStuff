@@ -40,7 +40,7 @@ jobs:
         uses: nanzm/get-time-action@master
         with:
           timeZone: UTC+3
-          format: 'YYYY-MM-DD-HH-mm'
+          format: 'YYYY-MM-DD-HH'
       - name: Upload Artifact
         env:
           TIME: "${{ steps.time.outputs.time }}"
@@ -75,9 +75,18 @@ jobs:
       - name: Run build script
         run: |
           python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
+      - name: Get Time
+        id: time
+        uses: nanzm/get-time-action@master
+        with:
+          timeZone: UTC+3
+          format: 'YYYY-MM-DD-HH'
+      - name: Upload Artifact
+        env:
+          TIME: "${{ steps.time.outputs.time }}"
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SomeStuff AC${{ matrix.ac-version }} Mac
+          name: SomeStuff AC${{ matrix.ac-version }} Mac ${{ env.TIME }}
           path: Build/Package/SomeStuff/${{ matrix.ac-version }}
 
