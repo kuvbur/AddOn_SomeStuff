@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.17)
 
 include (Tools/CMakeCommon.cmake)
 
+set(ADDON_VERSION "v1.72a")
+
 set (API_DEVKIT_DIR $ENV{AC_API_DEVKIT_DIR})
 
 set_property (GLOBAL PROPERTY USE_FOLDERS ON)

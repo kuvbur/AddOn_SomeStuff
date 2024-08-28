@@ -197,6 +197,15 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         add_library (${addOnName} MODULE ${AddOnFiles})
     endif ()
 
+    string(TIMESTAMP addonsubversion "%Y-%m-%d-%H")
+    set(ADDON_SUBVERSION ${addonsubversion})
+    
+    configure_file(
+                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.grc.in"
+                "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RINT/AddOn.grc"
+                @ONLY
+            )
+
     set_target_properties (${addOnName} PROPERTIES OUTPUT_NAME ${addOnName})
     if (WIN32)
         set_target_properties (${addOnName} PROPERTIES SUFFIX ".apx")
@@ -204,6 +213,11 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         target_link_options (${addOnName} PUBLIC "${ResourceObjectsDir}/${addOnName}.res")
         target_link_options (${addOnName} PUBLIC /export:GetExportedFuncAddrs,@1 /export:SetImportedFuncAddrs,@2)
     else ()
+        configure_file(
+                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.plist.in"
+                "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist"
+                @ONLY
+            )
         set_target_properties (${addOnName} PROPERTIES BUNDLE TRUE)
         set_target_properties (${addOnName} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist")
         set_target_properties (${addOnName} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>")
