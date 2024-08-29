@@ -1213,23 +1213,54 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
         return err;
     }
     API_ElementMemo	memo = {};
-    UInt64 mask = APIMemoMask_RailingPost | APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail | APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster | APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd | APIMemoMask_RailingRailConnection;
+
+    UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost | APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail | APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster | APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd | APIMemoMask_RailingHandrailEnd | APIMemoMask_RailingToprailEnd | APIMemoMask_RailingRailConnection | APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
     err = ACAPI_Element_GetMemo (elemGuid, &memo, mask);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     GSSize n = 0;
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingPosts)) / sizeof (API_RailingPostType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRailConnections)) / sizeof (API_RailingRailConnectionType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
-            elementsGuids.Push (std::move (memo.railingPosts[idx].head.guid));
+            elementsGuids.Push (std::move (memo.railingRailConnections[idx].head.guid));
+        }
+    }
+    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrailConnections)) / sizeof (API_RailingRailConnectionType);
+    if (n > 0) {
+        for (Int32 idx = 0; idx < n; ++idx) {
+            elementsGuids.Push (std::move (memo.railingHandrailConnections[idx].head.guid));
+        }
+    }
+    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprailConnections)) / sizeof (API_RailingRailConnectionType);
+    if (n > 0) {
+        for (Int32 idx = 0; idx < n; ++idx) {
+            elementsGuids.Push (std::move (memo.railingToprailConnections[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRailEnds)) / sizeof (API_RailingRailEndType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingRailEnds[idx].head.guid));
+        }
+    }
+    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrailEnds)) / sizeof (API_RailingRailEndType);
+    if (n > 0) {
+        for (Int32 idx = 0; idx < n; ++idx) {
+            elementsGuids.Push (std::move (memo.railingHandrailEnds[idx].head.guid));
+        }
+    }
+    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprailEnds)) / sizeof (API_RailingRailEndType);
+    if (n > 0) {
+        for (Int32 idx = 0; idx < n; ++idx) {
+            elementsGuids.Push (std::move (memo.railingToprailEnds[idx].head.guid));
+        }
+    }
+    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingPosts)) / sizeof (API_RailingPostType);
+    if (n > 0) {
+        for (Int32 idx = 0; idx < n; ++idx) {
+            elementsGuids.Push (std::move (memo.railingPosts[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRails)) / sizeof (API_RailingRailType);
@@ -1341,9 +1372,9 @@ GS::UniString GetFormatString (GS::UniString& paramName)
             paramName.ReplaceAll ('.' + formatstring, "");
             ReplaceMeters (formatstring, iseng);
         }
-    }
+        }
     return formatstring;
-}
+    }
 
 void ReplaceMeters (GS::UniString& formatstring)
 {

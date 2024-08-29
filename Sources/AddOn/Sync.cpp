@@ -29,6 +29,7 @@ void MonAll (SyncSettings& syncSettings)
     MonByType (API_MeshID, syncSettings);
     MonByType (API_MorphID, syncSettings);
     MonByType (API_CurtainWallID, syncSettings);
+    MonByType (API_RailingID, syncSettings);
     long time_end = clock ();
     GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
     msg_rep ("MonAll", time, NoError, APINULLGuid);
@@ -51,6 +52,18 @@ void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSetti
         if (err != NoError) {
             msg_rep ("MonByType", "AttachObserver", err, guidArray[i]);
             return;
+        }
+        // Получаем список связанных элементов
+        GS::Array<API_Guid> subelemGuids;
+        GetRelationsElement (guidArray[i], elementType, syncSettings, subelemGuids);
+        for (UInt32 j = 0; j < subelemGuids.GetSize (); j++) {
+            err = AttachObserver (subelemGuids[j], syncSettings);
+            if (err == APIERR_LINKEXIST)
+                err = NoError;
+            if (err != NoError) {
+                msg_rep ("MonByType", "AttachObserver", err, subelemGuids[j]);
+                return;
+            }
         }
     }
 }
@@ -84,9 +97,13 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     int dummymode = IsDummyModeOn ();
     if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType (API_ObjectID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
+    if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType (API_LampID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
+    nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType (API_WindowID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType (API_DoorID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
+    nPhase = nPhase + 1;
+    if (!flag_chanel && syncSettings.widoS) flag_chanel = SyncByType (API_SkylightID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType (API_ZoneID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
@@ -105,6 +122,8 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType (API_MorphID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_CurtainWallID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
+    nPhase = nPhase + 1;
+    if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_RailingID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     long time_end = clock ();
     GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
     msg_rep ("SyncAll - read", time, NoError, APINULLGuid);
