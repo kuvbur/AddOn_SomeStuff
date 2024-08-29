@@ -4,6 +4,7 @@
 #include	<stdio.h>
 #ifdef PK_1
 #include	"AutomateFunction.hpp"
+#include	"Revision.hpp"
 #endif
 #ifdef AC_25
 #include	"APICommon25.h"
@@ -26,6 +27,7 @@
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
 #include	"Spec.hpp"
+
 
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
@@ -340,6 +342,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                 case AutoLay_CommandID:
                     AutoFunc::AlignDrawingsByPoints ();
+                    break;
+                case SetRevision_CommandID:
+                    SetRevision ();
                     break;
 #endif
             }

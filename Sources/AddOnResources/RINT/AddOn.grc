@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.72a 2024-08-28-18 https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.72a 2024-08-29-14 https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 32500 "Strings for the Menu" {
@@ -18,7 +18,7 @@
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Создать элементы для выборки^E3^32618"
-/* [  12] */	"Показать связанные элементы^E3^32617"
+/* [  12] */	"Показать связанные элементы^E3^S^32617"
 }
 
 
@@ -38,7 +38,7 @@
 /* [  12] */	"Показать связанные элементы"
 }
 
-'STR#' 35500 "Strings for the Menu" {
+'STR#' 30500 "Strings for the Menu" {
 /* [ 1] */	"SomeStuff Addon (Sync of properties and parameters)"
 /* [  1] */		"Отслеживать^E3^ES^EE^ED^EW^EL^32602"
 /* [  2] */		"Синхронизировать все^E3^ES^EE^ED^EW^EL^T^32603"
@@ -51,13 +51,14 @@
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Создать элементы для выборки^E3^ES^EE^ED^EW^EL^S^R^T^32618"
-/* [  12] */	"Показать связанные элементы^E3^32617"
+/* [  12] */	"Показать связанные элементы^E3^S^32617"
 /* [  13] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
 /* [  14] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  15] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  16] */	"Проставить номера изменений^T^D2^EL^32617"
 }
 
-'STR#' 35502 "Strings for the Menu" {
+'STR#' 30502 "Strings for the Menu" {
 /* [  ] */	"SomeStuff Addon (Sync of properties and parameters)"
 /* [  1] */		"Отслеживать"
 /* [  2] */		"Синхронизировать все"
@@ -74,6 +75,7 @@
 /* [  13] */	"Обновить геометрию фасонки по выбранному"
 /* [  14] */	"Построить профиль по линии"
 /* [  15] */	"Выронять выделенные чертежи"
+/* [  16] */	"Проставить номера изменений"
 }
 
 
@@ -112,7 +114,7 @@
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters v1.72a 2024-08-28-18 https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters v1.72a 2024-08-29-14 https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 33500 "Strings for the Menu" {
@@ -128,7 +130,7 @@
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Создать элементы для выборки^E3^ES^EE^ED^EW^EL^S^R^T^32618"
-/* [  12] */	"Показать связанные элементы^E3^32617"
+/* [  12] */	"Показать связанные элементы^E3^S^32617"
 }
 
 
@@ -148,7 +150,7 @@
 /* [  13] */	"Показать связанные элементы^E3^32618"
 }
 
-'STR#' 36500 "Strings for the Menu" {
+'STR#' 31500 "Strings for the Menu" {
 /* [ 1] */	"Sync of GDL properties and parameters"
 /* [  1] */		"Track^E3^ES^EE^ED^EW^EL^32602"
 /* [  2] */		"Sync all^E3^ES^EE^ED^EW^EL^T^32603"
@@ -161,14 +163,15 @@
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Создать элементы для выборки^E3^ES^EE^ED^EW^EL^S^R^T^32618"
-/* [  12] */	"Показать связанные элементы^E3^32617"
+/* [  12] */	"Показать связанные элементы^E3^S^32617"
 /* [  13] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
 /* [  14] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  15] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  16] */	"Проставить номера изменений^T^D2^EL^32617"
 }
 
 
-'STR#' 36502 "Strings for the Menu" {
+'STR#' 31502 "Strings for the Menu" {
 /* [ 1] */		"Sync of GDL properties and parameters"
 /* [  1] */		"Track"
 /* [  2] */		"Sync all"
@@ -185,6 +188,7 @@
 /* [  13] */	"Обновить геометрию фасонки по выбранному"
 /* [  14] */	"Построить профиль по линии"
 /* [  15] */	"Выронять выделенные чертежи"
+/* [  16] */	"Проставить номера изменений"
 }
 
 
