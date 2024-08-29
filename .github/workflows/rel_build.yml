@@ -39,7 +39,7 @@ jobs:
         id: time
         uses: nanzm/get-time-action@master
         with:
-          timeZone: UTC+3
+          timeZone: UTC+5
           format: 'YYYY-MM-DD-HH'
       - name: Upload Artifact
         env:
@@ -79,7 +79,7 @@ jobs:
         id: time
         uses: nanzm/get-time-action@master
         with:
-          timeZone: UTC+3
+          timeZone: UTC+5
           format: 'YYYY-MM-DD-HH'
       - name: Upload Artifact
         env:
