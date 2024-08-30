@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Summ.hpp"
@@ -125,7 +125,7 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
         const SumRule& rule = *cIt->value;
 #endif
         if (!rule.elemts.IsEmpty ()) Sum_OneRule (rule, paramToReadelem, paramToWriteelem);
-}
+    }
     return !paramToWriteelem.IsEmpty ();
 }
 
@@ -168,7 +168,7 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
                 has_sum = true;
             }
         }
-}
+    }
     return has_sum;
 }// Sum_GetElement
 
@@ -201,6 +201,19 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
         return false;
     }
 
+
+    // Ищём определение свойства-критерия
+    if (nparam > 1) {
+        if (propertyParams.ContainsKey ("{@" + partstring[1] + "}")) {
+            paramtype.criteria = "{@" + partstring[1] + "}";
+        } else {
+            if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
+            if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
+            if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum) paramtype.delimetr = partstring[1].ToCStr ().Get ();
+        }
+    }
+
+
     // Ищём определение свойства-критерия
     if (nparam > 1) {
         if (propertyParams.ContainsKey ("{@" + partstring[1] + "}")) {
@@ -211,16 +224,20 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
     }
 
     // Если задан и разделитель - пропишем его
-    if (nparam == 3) {
-        if (paramtype.delimetr.empty ()) {
-            paramtype.delimetr = partstring[3].ToCStr ().Get ();
+    if (nparam > 2) {
+        if (propertyParams.ContainsKey ("{@" + partstring[2] + "}")) {
+            paramtype.criteria = "{@" + partstring[2] + "}";
         } else {
-            paramtype.ignore_val = partstring[3].ToCStr ().Get ();
+            if (paramtype.delimetr.empty ()) {
+                paramtype.delimetr = partstring[2].ToCStr ().Get ();
+            } else {
+                paramtype.ignore_val = partstring[2].ToCStr ().Get ();
+            }
         }
     }
 
     // Если заданы игнорируемые значения
-    if (nparam == 4) paramtype.ignore_val = partstring[4].ToCStr ().Get ();
+    if (nparam > 3) paramtype.ignore_val = partstring[3].ToCStr ().Get ();
     return true;
 } // ReNumRule
 
@@ -260,9 +277,11 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                         summ.val.uniStringValue = summ.val.uniStringValue + param.val.uniStringValue;
                         if (j < eleminpos.GetSize () - 1) summ.val.uniStringValue = summ.val.uniStringValue + delimetr;
                     } else {
-                        summ.val.doubleValue = summ.val.doubleValue + param.val.doubleValue;
-                        summ.val.intValue = summ.val.intValue + param.val.intValue;
-                        summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
+                        if (rule.sum_type == NumSum) {
+                            summ.val.doubleValue = summ.val.doubleValue + param.val.doubleValue;
+                            summ.val.intValue = summ.val.intValue + param.val.intValue;
+                            summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
+                        }
                     }
                 }
             }

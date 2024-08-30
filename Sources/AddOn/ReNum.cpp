@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Helpers.hpp"
@@ -118,7 +118,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
         const RenumRule& rule = *cIt->value;
 #endif
         if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem);
-}
+    }
     return !paramToWriteelem.IsEmpty ();
 }
 
@@ -182,7 +182,7 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams,
                         if (!rawNamedelimetr.IsEmpty () && !rawNamedelimetr.Contains ("property")) rawNamedelimetr.ReplaceAll ("{", "{@gdl:");
 
                         // Если такие свойства есть - записываем правило
-                        if (propertyParams.ContainsKey (rawNamecriteria) && (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ()) && (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ())) {
+                        if (propertyParams.ContainsKey (rawNamecriteria) && (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ())) {
                             rulecritetia.state = true;
                             //if (definition.valueType != API_PropertyBooleanValueType)
                             rulecritetia.oldalgoritm = false;

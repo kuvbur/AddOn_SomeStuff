@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #pragma once
 #if !defined (SUMM_HPP)
 #define	SUMM_HPP
@@ -19,6 +19,8 @@
 
 static const short TextSum = 1;
 static const short NumSum = 2;
+static const short MinSum = 3;
+static const short MaxSum = 4;
 
 typedef struct
 {
