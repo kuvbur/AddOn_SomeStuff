@@ -106,6 +106,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     ParamDictValue propertyParams;
     ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
     GetParamToReadFromRule (rules, propertyParams, paramToRead, paramToWrite);
+    // TODO Добавить сообщения об ошибке
     if (paramToRead.IsEmpty ()) return APIERR_GENERAL;
     if (paramToWrite.IsEmpty ()) return APIERR_GENERAL;
     subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
@@ -213,6 +214,7 @@ GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules)
             if (description.Contains ("Spec_rule") && description.Contains ("{") && description.Contains ("}")) {
                 bool flagfindspec = false;
                 // Проверяем - включено ли свойство
+                // TODO Вынести это в отдельную функцию, убрать повторение в GetElemState
                 API_Property propertyflag = {};
                 if (ACAPI_Element_GetPropertyValue (elemguid, definitions[i].guid, propertyflag) == NoError) {
 #if defined(AC_22) || defined(AC_23)
@@ -258,12 +260,14 @@ GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules)
                     } else {
                         // Добавление группы и элемента
                         SpecRule rule = GetRuleFromDescription (description);
-                        GS::UniString fname;
-                        GetPropertyFullName (definitions[i], fname);
-                        rule.subguid_paramrawname = fname;
-                        rule.subguid_rulevalue = fname;
-                        rule.elements.Push (elemguid);
-                        rules.Add (key, rule);
+                        if (rule.is_Valid) {
+                            GS::UniString fname;
+                            GetPropertyFullName (definitions[i], fname);
+                            rule.subguid_paramrawname = fname;
+                            rule.subguid_rulevalue = fname;
+                            rule.elements.Push (elemguid);
+                        }
+                        rules.Add (key, rule); //Добавляем в любом случае, чтоб потом дважды не обрабатывать
                     }
                 }
             }
@@ -291,7 +295,7 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
                     for (UInt32 j = 0; j < rule.groups[i].sum_paramrawname.GetSize (); j++) {
                         GS::UniString rawname = rule.groups[i].sum_paramrawname[j];
                         if (!params.ContainsKey (rawname)) params.Add (rawname, true);
-            }
+                    }
                     for (UInt32 j = 0; j < rule.groups[i].unic_paramrawname.GetSize (); j++) {
                         GS::UniString rawname = rule.groups[i].unic_paramrawname[j];
                         if (!params.ContainsKey (rawname)) params.Add (rawname, true);
@@ -300,10 +304,10 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
                         GS::UniString rawname = rule.groups[i].out_paramrawname[j];
                         if (!params.ContainsKey (rawname)) params.Add (rawname, true);
                     }
-        }
+                }
                 GS::UniString rawname = rule.groups[i].flag_paramrawname;
                 if (!params.ContainsKey (rawname)) params.Add (rawname, true);
-    }
+            }
             ParamDictValue paramDict;
             for (auto& cItt : params) {
 #if defined(AC_28)
@@ -318,7 +322,7 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
                 API_Guid elemguid = rule.elements[i];
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
             }
-
+            // Добавляем параметры для записи
             ParamDict paramswrite;
             for (UInt32 j = 0; j < rule.out_sum_paramrawname.GetSize (); j++) {
                 GS::UniString rawname = rule.out_sum_paramrawname[j];
@@ -337,8 +341,8 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
 #endif
                 ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
             }
-}
-}
+        }
+    }
     if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
 }
 
@@ -350,7 +354,7 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
         for (UInt32 igroup = 0; igroup < rule.groups.GetSize (); igroup++) {
             if (rule.groups[igroup].is_Valid) {
                 GroupSpec group = rule.groups[igroup];
-                // Проверяем значение флага
+                // Проверяем значение флага, если он не найден - всё равно добавляем
                 bool flag = true;
                 if (!group.flag_paramrawname.IsEmpty ()) {
                     ParamValue pvalue;
@@ -743,7 +747,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                                     double** arrHdl = reinterpret_cast<double**>(actParam.value.array);
                                     for (Int32 kdim1 = 0; kdim1 < actParam.dim1; kdim1++) {
                                         for (Int32 jdim2 = 0; jdim2 < actParam.dim2; jdim2++) {
-                                            if (kdim1 == paramfrom.array_row_start && kdim1 == paramfrom.array_row_start) {
+                                            if (kdim1 == paramfrom.array_row_start && jdim2 == paramfrom.array_column_start) {
                                                 (*arrHdl)[kdim1 * actParam.dim2 + jdim2] = paramfrom.doubleValue;
                                             }
                                         }
@@ -830,7 +834,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-                }
+            }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -841,7 +845,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-            }
+        }
 
         return NoError;
     });
@@ -854,5 +858,5 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         if (err != NoError) msg_rep ("Spec::PlaceElements", "APIAny_RunGDLParScriptID", err, APINULLGuid);
     }
     return NoError;
-        }
+}
 }
