@@ -3038,7 +3038,7 @@ void ParamHelpers::CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictV
         } else {
             if (addInNotEx) {
                 ParamValue paramFrom = paramsFrom.Get (k);
-                paramsTo.Set (paramFrom.rawName, paramFrom);
+                paramsTo.Add (paramFrom.rawName, paramFrom);
             }
         }
     }

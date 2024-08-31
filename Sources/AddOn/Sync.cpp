@@ -30,6 +30,7 @@ void MonAll (SyncSettings& syncSettings)
     MonByType (API_MorphID, syncSettings);
     MonByType (API_CurtainWallID, syncSettings);
     MonByType (API_RailingID, syncSettings);
+    if (HasDimAutotext ()) MonByType (API_DimensionID, syncSettings);
     long time_end = clock ();
     GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
     msg_rep ("MonAll", time, NoError, APINULLGuid);
@@ -54,15 +55,17 @@ void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSetti
             return;
         }
         // Получаем список связанных элементов
-        GS::Array<API_Guid> subelemGuids;
-        GetRelationsElement (guidArray[i], elementType, syncSettings, subelemGuids);
-        for (UInt32 j = 0; j < subelemGuids.GetSize (); j++) {
-            err = AttachObserver (subelemGuids[j], syncSettings);
-            if (err == APIERR_LINKEXIST)
-                err = NoError;
-            if (err != NoError) {
-                msg_rep ("MonByType", "AttachObserver", err, subelemGuids[j]);
-                return;
+        if (syncSettings.cwallS) {
+            GS::Array<API_Guid> subelemGuids;
+            GetRelationsElement (guidArray[i], elementType, syncSettings, subelemGuids);
+            for (UInt32 j = 0; j < subelemGuids.GetSize (); j++) {
+                err = AttachObserver (subelemGuids[j], syncSettings);
+                if (err == APIERR_LINKEXIST)
+                    err = NoError;
+                if (err != NoError) {
+                    msg_rep ("MonByType", "AttachObserver", err, subelemGuids[j]);
+                    return;
+                }
             }
         }
     }
@@ -448,8 +451,6 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     GSErrCode	err = NoError;
     API_ElemTypeID elementType;
     if (!IsElementEditable (elemGuid, syncSettings, true, elementType)) return;
-    if (elementType == API_DimensionID) return;
-    ClassificationFunc::SetAutoclass (systemdict, elemGuid);
     // Если включён мониторинг - привязываем элемент к отслеживанию
     if (syncSettings.syncMon) {
         err = AttachObserver (elemGuid, syncSettings);
@@ -460,6 +461,8 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
             return;
         }
     }
+    if (elementType == API_DimensionID) return;
+    ClassificationFunc::SetAutoclass (systemdict, elemGuid);
     GS::Array<API_PropertyDefinition> definitions;
     err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
     if (err != NoError) {

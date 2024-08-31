@@ -73,6 +73,7 @@ GSErrCode SpecAll (const SyncSettings& syncSettings)
 
 GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
 {
+    long time_start = clock ();
     GS::UniString funcname = "SpecAll";
     GS::Int32 nPhase = 4;
     GS::UniString subtitle = ""; Int32 maxval = 1; short i = 1;
@@ -98,7 +99,10 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         err = GetRuleFromElement (guidArray[i], rules);
         if (err == NoError) flagfindspec = true;
     }
-    if (!flagfindspec) return APIERR_GENERAL;
+    if (!flagfindspec) {
+        msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid);
+        return APIERR_GENERAL;
+    }
 
     // Теперь пройдём по прочитанным правилам и сформируем список параметров для чтения
     ParamDictElement paramToRead; // Словарь с параметрами для чтения
@@ -107,8 +111,14 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
     GetParamToReadFromRule (rules, propertyParams, paramToRead, paramToWrite);
     // TODO Добавить сообщения об ошибке
-    if (paramToRead.IsEmpty ()) return APIERR_GENERAL;
-    if (paramToWrite.IsEmpty ()) return APIERR_GENERAL;
+    if (paramToRead.IsEmpty ()) {
+        msg_rep ("Spec::SpecArray", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
+        return APIERR_GENERAL;
+    }
+    if (paramToWrite.IsEmpty ()) {
+        msg_rep ("Spec::SpecArray", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
+        return APIERR_GENERAL;
+    }
     subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
 #if defined(AC_27) || defined(AC_28)
     maxval = 2; ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -171,9 +181,14 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #else
     i = 3; ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-    if (elementstocreate.IsEmpty ()) return APIERR_GENERAL;
+    if (elementstocreate.IsEmpty ()) {
+        msg_rep ("Spec::SpecArray", "Elements list empty", APIERR_GENERAL, APINULLGuid);
+        return APIERR_GENERAL;
+    }
     Point2D startpos;
+    long time_end = clock ();
     if (!ClickAPoint ("Click point", &startpos)) return APIERR_CANCEL;
+    long time_start_1 = clock ();
     ParamDictElement paramOut;
     PlaceElements (elementstocreate, paramToWrite, paramOut, startpos);
     ACAPI_CallUndoableCommand ("Write properties", [&]() -> GSErrCode {
@@ -195,6 +210,9 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #endif
         guidArraysync.Push (elemGuid);
     }
+    long time_end_1 = clock ();
+    GS::UniString time = GS::UniString::Printf (" %d s", ((time_end - time_start) + (time_end_1 - time_start_1)) / 1000);
+    GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", n_elements) + time;
     SyncArray (syncSettings, guidArraysync, systemdict);
     return err;
 }
@@ -732,7 +750,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     //                flag_find = true;
                     //            }
                     //        }
-                    //    }
+                    //    } 
                     //}
                     if (actParam.typeMod == API_ParSimple && flag_find) {
                         ParamValueData paramfrom = param.Get (rawname).val;
