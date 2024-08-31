@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #pragma once
 #ifndef DIM_HPP
 #define	DIM_HPP
@@ -21,6 +21,8 @@ typedef struct
     short	pen_rounded = 0;
     UInt32	round_value = 0;
     bool	flag_change = false;
+    bool	flag_deletewall = false;
+    bool	flag_reset = false;
     GS::UniString expression = "";
     GS::UniString layer = "";
     ParamDictValue paramDict;
@@ -30,16 +32,50 @@ typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
 
 typedef GS::HashTable<GS::UniString, DimRule> DimRules;
 
-GSErrCode DimReadPref (DimRules& dimrules);
 
+bool HasDimAutotext ();
+
+// -----------------------------------------------------------------------------
+// Чтение настроек из информации о проекте
+//	Имя свойства: "Addon_Dimenstions"
+// -----------------------------------------------------------------------------
+bool GetDimAutotext (GS::UniString& autotext);
+
+// -----------------------------------------------------------------------------
+// Чтение настроек из информации о проекте
+//	Имя свойства: "Addon_Dimenstions"
+//	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
+//					"Слой" - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
+// -----------------------------------------------------------------------------
+bool DimReadPref (DimRules& dimrules, GS::UniString& autotext);
+
+// -----------------------------------------------------------------------------
+// Обработка текста правила
+// -----------------------------------------------------------------------------
 bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression);
 
-GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams);
+// -----------------------------------------------------------------------------
+// Обработка одного размера
+// -----------------------------------------------------------------------------
+GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings);
 
+// -----------------------------------------------------------------------------
+// Обрабатывает размер и решает - что с ним делать
+//	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
+//	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
+// -----------------------------------------------------------------------------
 bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule, ParamDictValue& propertyParams);
 
+void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings);
+
+// -----------------------------------------------------------------------------
+// Округление всего доступного согласно настроек
+// -----------------------------------------------------------------------------
 void DimRoundAll (const SyncSettings& syncSettings);
 
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams);
+// -----------------------------------------------------------------------------
+// Округление одного типа размеров
+// -----------------------------------------------------------------------------
+bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings);
 
 #endif
