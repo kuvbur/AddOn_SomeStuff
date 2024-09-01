@@ -219,7 +219,9 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
         if (propertyParams.ContainsKey ("{@" + partstring[1] + "}")) {
             paramtype.criteria = "{@" + partstring[1] + "}";
         } else {
-            paramtype.delimetr = partstring[1].ToCStr ().Get ();
+            if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
+            if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
+            if (paramtype.delimetr.empty () && (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum)) paramtype.delimetr = partstring[1].ToCStr ().Get ();
         }
     }
 
@@ -228,16 +230,25 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
         if (propertyParams.ContainsKey ("{@" + partstring[2] + "}")) {
             paramtype.criteria = "{@" + partstring[2] + "}";
         } else {
-            if (paramtype.delimetr.empty ()) {
-                paramtype.delimetr = partstring[2].ToCStr ().Get ();
-            } else {
-                paramtype.ignore_val = partstring[2].ToCStr ().Get ();
+            if (partstring[2].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
+            if (partstring[2].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
+            if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum) {
+                if (paramtype.delimetr.empty ()) {
+                    paramtype.delimetr = partstring[2].ToCStr ().Get ();
+                } else {
+                    paramtype.ignore_val = partstring[2].ToCStr ().Get ();
+                }
             }
         }
     }
 
     // Если заданы игнорируемые значения
-    if (nparam > 3) paramtype.ignore_val = partstring[3].ToCStr ().Get ();
+    if (nparam > 3) {
+        if (partstring[3].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
+        if (partstring[3].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
+        if (paramtype.ignore_val.empty () && (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum))
+            paramtype.ignore_val = partstring[3].ToCStr ().Get ();
+    }
     return true;
 } // ReNumRule
 
@@ -272,7 +283,6 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                 // Проверяем - было ли считано значение
                 ParamValue param = params.Get (rule.value);
                 if (param.isValid) {
-                    has_sum = true;
                     if (rule.sum_type == TextSum) {
                         summ.val.uniStringValue = summ.val.uniStringValue + param.val.uniStringValue;
                         if (j < eleminpos.GetSize () - 1) summ.val.uniStringValue = summ.val.uniStringValue + delimetr;
@@ -281,20 +291,36 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                             summ.val.doubleValue = summ.val.doubleValue + param.val.doubleValue;
                             summ.val.intValue = summ.val.intValue + param.val.intValue;
                             summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
+                        } else {
+                            if (!has_sum && (rule.sum_type == MinSum || rule.sum_type == MaxSum)) {
+                                summ.val.doubleValue = param.val.doubleValue;
+                                summ.val.intValue = param.val.intValue;
+                                summ.val.boolValue = param.val.boolValue;
+                            } else {
+                                if (rule.sum_type == MinSum) {
+                                    summ.val.doubleValue = fmin (summ.val.doubleValue, param.val.doubleValue);
+                                    summ.val.intValue = summ.val.intValue > param.val.intValue ? param.val.intValue : summ.val.intValue;
+                                    summ.val.boolValue = summ.val.boolValue || param.val.boolValue;
+                                }
+                                if (rule.sum_type == MaxSum) {
+                                    summ.val.doubleValue = fmax (summ.val.doubleValue, param.val.doubleValue);
+                                    summ.val.intValue = summ.val.intValue < param.val.intValue ? param.val.intValue : summ.val.intValue;
+                                    summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
+                                }
+                            }
                         }
                     }
+                    has_sum = true;
                 }
             }
         }
-
-        // Для конкатенации текста определим уникальные значения
-        if (rule.sum_type == TextSum) {
-            GS::UniString unic = StringUnic (summ.val.uniStringValue, delimetr);
-            summ.val.uniStringValue = unic;
-        }
-
         // Заполнение словаря записи
-        if (has_sum == true) {
+        if (has_sum) {
+            // Для конкатенации текста определим уникальные значения
+            if (rule.sum_type == TextSum) {
+                GS::UniString unic = StringUnic (summ.val.uniStringValue, delimetr);
+                summ.val.uniStringValue = unic;
+            }
             for (UInt32 j = 0; j < eleminpos.GetSize (); j++) {
                 API_Guid elemGuid = rule.elemts[eleminpos[j]];
                 ParamDictValue params = paramToReadelem.Get (elemGuid);
