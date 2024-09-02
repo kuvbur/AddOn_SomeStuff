@@ -150,6 +150,7 @@ typedef struct
     bool fromPropertyDefinition = false; // Задан определением свойства, искать не нужно
     bool fromMaterial = false;			 // Взять инфо из состава конструкции
     bool fromAttribDefinition = false;	 // Взять инфо из свойств аттрибута
+    bool fromAttribElement = false;	     // Взять инфо из аттрибута элемента (слой и т.д.)
     bool fromGDLArray = false;			 // Взять из массива
     bool needPreRead = false;			 // Необходимо прочитать значения диапазонов из параметров элемента
     GS::UniString rawName_row_start = "";// Имя параметра со значением начала диапазона чтения строк
@@ -398,6 +399,11 @@ bool ReadIFCValues (const API_Guid& elemGuid, ParamDictValue& params);
 bool ReadClassification (const API_Guid& elemGuid, const ClassificationFunc::SystemDict& systemdict, ParamDictValue& paramByType);
 
 // -----------------------------------------------------------------------------
+// Обработка данных о аттрибутах
+// -----------------------------------------------------------------------------
+bool ReadAttributeValues (const API_Elem_Head& elem_head, ParamDictValue& propertyParams, ParamDictValue& params);
+
+// -----------------------------------------------------------------------------
 // Получение ID элемента
 // -----------------------------------------------------------------------------
 bool ReadIDValues (const API_Elem_Head& elem_head, ParamDictValue& params);
@@ -433,6 +439,16 @@ bool WriteClassification (const API_Guid& elemGuid, ParamDictValue& params);
 void WriteIDValues (const API_Guid& elemGuid, ParamDictValue& params);
 
 // --------------------------------------------------------------------
+// Запись ParamDictValue в аттрибуты элемента (слой)
+// --------------------------------------------------------------------
+void WriteAttributeValues (const API_Guid& elemGuid, ParamDictValue& params);
+
+// --------------------------------------------------------------------
+// Запись ParamDictValue в координаты элемента
+// --------------------------------------------------------------------
+void WriteCoordValues (const API_Guid& elemGuid, ParamDictValue& params);
+
+// --------------------------------------------------------------------
 // Запись ParamDictValue в GDL параметры
 // --------------------------------------------------------------------
 void WriteGDLValues (const API_Guid& elemGuid, ParamDictValue& params);
@@ -446,9 +462,13 @@ bool hasGlob (ParamDictValue& propertyParams);
 
 bool hasInfo (ParamDictValue& propertyParams);
 
+bool hasAttribute (ParamDictValue& propertyParams);
+
 bool hasProperyDefinition (ParamDictValue& propertyParams);
 
 bool hasUnreadProperyDefinition (ParamDictElement& paramToRead);
+
+bool hasUnreadAttribute (ParamDictElement& paramToRead);
 
 bool hasUnreadInfo (ParamDictElement& paramToRead, ParamDictValue& propertyParams);
 
@@ -472,6 +492,11 @@ bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, c
 // Конвертация параметров библиотечного элемента в ParamValue
 // -----------------------------------------------------------------------------
 bool ConvertBoolToParamValue (ParamValue& pvalue, const GS::UniString& paramName, const bool boolValue);
+
+// -----------------------------------------------------------------------------
+// Конвертация аттрибута в ParamValue
+// -----------------------------------------------------------------------------
+bool ConvertAttributeToParamValue (ParamValue& pvalue, const GS::UniString& paramName, const API_Attribute attr);
 
 // -----------------------------------------------------------------------------
 // Конвертация параметров библиотечного элемента в ParamValue
@@ -515,6 +540,14 @@ void ConvertByFormatString (ParamValue& pvalue);
 // --------------------------------------------------------------------
 void GetAllInfoToParamDict (ParamDictValue& propertyParams);
 
+// --------------------------------------------------------------------
+// Получение списка аттрибутов (имён слоёв, материалов)
+// --------------------------------------------------------------------
+void GetAllAttributeToParamDict (ParamDictValue& propertyParams);
+
+// --------------------------------------------------------------------
+// Получение списка глобальных переменных о местоположении проекта, солнца
+// --------------------------------------------------------------------
 void GetAllGlobToParamDict (ParamDictValue& propertyParams);
 
 // --------------------------------------------------------------------

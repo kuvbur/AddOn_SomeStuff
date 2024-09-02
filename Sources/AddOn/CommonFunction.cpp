@@ -311,7 +311,7 @@ void	MenuItemCheckAC (short itemInd, bool checked)
     GSFlags         itemFlags;
 
     BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
-    itemRef.menuResID = 32500;
+    itemRef.menuResID = ID_ADDON_MENU + isEng ();
     itemRef.itemIndex = itemInd;
 
     itemFlags = 0;
@@ -1372,9 +1372,9 @@ GS::UniString GetFormatString (GS::UniString& paramName)
             paramName.ReplaceAll ('.' + formatstring, "");
             ReplaceMeters (formatstring, iseng);
         }
-        }
-    return formatstring;
     }
+    return formatstring;
+}
 
 void ReplaceMeters (GS::UniString& formatstring)
 {

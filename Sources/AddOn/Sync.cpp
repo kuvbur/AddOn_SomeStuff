@@ -832,6 +832,13 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
             synctypefind = true;
         }
     }
+    if (synctypefind == false) {
+        if (name.Contains ("Attribute:")) {
+            synctypefind = true;
+            name.ReplaceAll ("Attribute:", "");
+            paramNamePrefix = "{@attrib:";
+        }
+    }
     if (synctypefind == false) return false;
     GS::Array<GS::UniString> params;
     GS::UniString tparamName = name.GetSubstring ('{', '}', 0);
@@ -960,7 +967,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             paramNamePrefix = "{@coord:";
             param.fromCoord = true;
             if (rulestring_one.Contains ("orth")) param.fromGlob = true;
-            syncdirection = SYNC_FROM;
+            if (!rulestring_one.Contains ("symb_pos_")) syncdirection = SYNC_FROM;
         }
     }
     if (synctypefind == false) {
@@ -1006,6 +1013,15 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
 
+    if (synctypefind == false) {
+        if (rulestring_one.Contains ("Attribute:")) {
+            synctypefind = true;
+            rulestring_one.ReplaceAll ("Attribute:", "");
+            paramNamePrefix = "{@attrib:";
+            param.fromAttribElement = true;
+            syncdirection = SYNC_TO;
+        }
+    }
     if (synctypefind == false) return false;
     param.eltype = elementType;
 
