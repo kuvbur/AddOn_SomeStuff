@@ -14,10 +14,10 @@ typedef std::map<std::string, Revision, doj::alphanum_less<std::string>> Revisio
 
 void SetRevision (void)
 {
-    GSErrCode err = NoError;
-    GS::Array<API_DatabaseUnId>		dbases;
-    err = ACAPI_Database (APIDb_GetLayoutDatabasesID, nullptr, &dbases);
-    if (err != NoError) return;
+    //GSErrCode err = NoError;
+    //GS::Array<API_DatabaseUnId>		dbases;
+    //err = ACAPI_Database (APIDb_GetLayoutDatabasesID, nullptr, &dbases);
+    //if (err != NoError) return;
 
 
     //API_DatabaseInfo dbInfo;

@@ -366,6 +366,7 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
 
 Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements)
 {
+    ParamDict not_found_paramname;
     Int32 n_elements = 0;
     for (UInt32 ielem = 0; ielem < rule.elements.GetSize (); ielem++) {
         API_Guid elemguid = rule.elements[ielem];
@@ -378,6 +379,8 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                     ParamValue pvalue;
                     if (ParamHelpers::GetParamValueForElements (elemguid, group.flag_paramrawname, paramToRead, pvalue)) {
                         flag = pvalue.val.boolValue;
+                    } else {
+                        if (!not_found_paramname.ContainsKey ("flag:" + group.flag_paramrawname)) not_found_paramname.Add ("flag:" + group.flag_paramrawname, false);
                     }
                 }
                 if (flag) {
@@ -387,7 +390,9 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                     for (UInt32 j = 0; j < group.unic_paramrawname.GetSize (); j++) {
                         GS::UniString rawname = group.unic_paramrawname[j];
                         ParamValue pvalue;
-                        ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue);
+                        if (!ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue)) {
+                            if (!not_found_paramname.ContainsKey ("unic:" + rawname)) not_found_paramname.Add ("unic:" + rawname, false);
+                        }
                         key = key + "@" + pvalue.val.uniStringValue;
                     }
                     for (UInt32 j = 0; j < group.sum_paramrawname.GetSize (); j++) {
@@ -397,8 +402,11 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                             ParamHelpers::ConvertIntToParamValue (pvalue, rawname, 1);
                             element.out_sum_param.Push (pvalue);
                         } else {
-                            if (ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue))
+                            if (ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue)) {
                                 element.out_sum_param.Push (pvalue);
+                            } else {
+                                if (!not_found_paramname.ContainsKey ("sum:" + rawname)) not_found_paramname.Add ("sum:" + rawname, false);
+                            }
                         }
                     }
                     if (elements.ContainsKey (key) && !key.IsEmpty ()) {
@@ -415,8 +423,11 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                         for (UInt32 j = 0; j < group.out_paramrawname.GetSize (); j++) {
                             GS::UniString rawname = group.out_paramrawname[j];
                             ParamValue pvalue;
-                            if (ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue))
+                            if (ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue)) {
                                 element.out_param.Push (pvalue);
+                            } else {
+                                if (!not_found_paramname.ContainsKey (rawname)) not_found_paramname.Add ("out:" + rawname, false);
+                            }
                         }
                         if (!element.out_sum_param.IsEmpty () && !element.out_param.IsEmpty () &&
                             element.out_sum_param.GetSize () == rule.out_sum_paramrawname.GetSize () &&
@@ -431,16 +442,43 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                             elements.Add (key, element);
                             n_elements += 1;
                         } else {
-                            if (element.out_sum_param.IsEmpty ()) msg_rep ("Spec::GetElementsForRule", "element.out_sum_param.IsEmpty ()", APIERR_BADINDEX, APINULLGuid);
-                            if (element.out_param.IsEmpty ()) msg_rep ("Spec::GetElementsForRule", "element.out_param.IsEmpty ()", APIERR_BADINDEX, APINULLGuid);
-                            if (element.out_sum_param.GetSize () != rule.out_sum_paramrawname.GetSize ()) msg_rep ("Spec::GetElementsForRule", "element.out_sum_param.GetSize () != rule.out_sum_paramrawname.GetSize ()", APIERR_BADINDEX, APINULLGuid);
-                            if (element.out_param.GetSize () != rule.out_paramrawname.GetSize ()) msg_rep ("Spec::GetElementsForRule", "element.out_param.GetSize () != rule.out_paramrawname.GetSize ()", APIERR_BADINDEX, APINULLGuid);
+                            GS::UniString error = "";
+                            if (element.out_sum_param.IsEmpty ()) error = "element.out_sum_param.IsEmpty";
+                            if (!not_found_paramname.ContainsKey ("error:" + error)) not_found_paramname.Add ("error:" + error, false);
+                            if (element.out_param.IsEmpty ()) error = "element.out_param.IsEmpty";
+                            if (!not_found_paramname.ContainsKey ("error:" + error)) not_found_paramname.Add ("error:" + error, false);
+                            if (element.out_sum_param.GetSize () < rule.out_sum_paramrawname.GetSize ()) "element.out_sum_param < rule.out_sum_paramrawname";
+                            if (!not_found_paramname.ContainsKey ("error:" + error)) not_found_paramname.Add ("error:" + error, false);
+                            if (element.out_sum_param.GetSize () > rule.out_sum_paramrawname.GetSize ()) "element.out_sum_param > rule.out_sum_paramrawname";
+                            if (!not_found_paramname.ContainsKey ("error:" + error)) not_found_paramname.Add ("error:" + error, false);
+                            if (element.out_param.GetSize () > rule.out_paramrawname.GetSize ()) "element.out_param > rule.out_paramrawname";
+                            if (!not_found_paramname.ContainsKey ("error:" + error)) not_found_paramname.Add ("error:" + error, false);
+                            if (element.out_param.GetSize () < rule.out_paramrawname.GetSize ()) "element.out_param < rule.out_paramrawname";
+                            if (!not_found_paramname.ContainsKey ("error:" + error)) not_found_paramname.Add ("error:" + error, false);
                             n_elements = 0;
                         }
                     }
                 }
             }
         }
+    }
+    if (!not_found_paramname.IsEmpty ()) {
+        GS::UniString notfound_paramname = "";
+        for (auto& cIt : not_found_paramname) {
+#if defined(AC_28)
+            GS::UniString name = cIt.key;
+#else
+            GS::UniString name = *cIt.key;
+#endif
+            if (notfound_paramname.IsEmpty ()) {
+                notfound_paramname = name;
+            } else {
+                notfound_paramname = notfound_paramname + " ; " + name;
+            }
+        }
+        notfound_paramname = "Error - " + notfound_paramname;
+        msg_rep ("Spec::GetElementsForRule", notfound_paramname, APIERR_BADINDEX, APINULLGuid);
+        n_elements = 0;
     }
     return n_elements;
 }
@@ -852,7 +890,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-            }
+        }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -863,10 +901,10 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-        }
+    }
 
         return NoError;
-    });
+});
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -874,7 +912,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elemsheader[i], 0);
 #endif
         if (err != NoError) msg_rep ("Spec::PlaceElements", "APIAny_RunGDLParScriptID", err, APINULLGuid);
-    }
+}
     return NoError;
 }
-}
+    }
