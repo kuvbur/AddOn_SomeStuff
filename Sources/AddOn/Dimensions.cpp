@@ -43,6 +43,7 @@ bool GetDimAutotext (GS::UniString& autotext)
             return true;
         }
     }
+    DBPrintf ("== SMSTF == DimReadPref rules not found\n");
     return false;
 }
 
@@ -225,7 +226,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
                 find_rule = true;
                 break;
             }
-        }
+    }
 }
 
     // Нет подходящего привали - выходим
@@ -488,9 +489,9 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
 #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
 #endif
-        }
-    } else {
+            }
+        } else {
         msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
     }
     return false;
-}
+    }
