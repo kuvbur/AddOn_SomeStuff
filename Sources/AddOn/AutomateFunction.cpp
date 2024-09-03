@@ -815,12 +815,12 @@ void KM_ListUpdate ()
         }
     }
     ACAPI_CallUndoableCommand ("undoString", [&]() -> GSErrCode {
-        GSErrCode err = KM_WriteGDLValues (elements.Get (0), coords);
+        GSErrCode err = KM_WriteGDL (elements.Get (0), coords);
         return err;
     });
 }
 
-GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords)
+GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
 {
     if (coords.IsEmpty ()) return APIERR_GENERAL;
     if (elemGuid == APINULLGuid) return APIERR_GENERAL;

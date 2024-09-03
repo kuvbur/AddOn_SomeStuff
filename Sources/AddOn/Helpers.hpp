@@ -278,7 +278,7 @@ void SetParamValueSourseByName (ParamValue& pvalue);
 // Для колонны или объекта - центр колонны и отм. низа
 // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 // -----------------------------------------------------------------------------
-bool ReadElemCoords (const API_Element& element, ParamDictValue& params);
+bool ReadCoords (const API_Element& element, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
 // Замена имен параметров на значения в выражении
@@ -386,12 +386,12 @@ void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo
 // --------------------------------------------------------------------
 // Чтение значений свойств в ParamDictValue
 // --------------------------------------------------------------------
-bool ReadPropertyValues (const API_Guid& elemGuid, ParamDictValue& params);
+bool ReadProperty (const API_Guid& elemGuid, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
 // Получение значения IFC свойств в ParamDictValue
 // -----------------------------------------------------------------------------
-bool ReadIFCValues (const API_Guid& elemGuid, ParamDictValue& params);
+bool ReadIFC (const API_Guid& elemGuid, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
 // Обработка данных о классификации
@@ -406,12 +406,12 @@ bool ReadAttributeValues (const API_Elem_Head& elem_head, ParamDictValue& proper
 // -----------------------------------------------------------------------------
 // Получение ID элемента
 // -----------------------------------------------------------------------------
-bool ReadIDValues (const API_Elem_Head& elem_head, ParamDictValue& params);
+bool ReadID (const API_Elem_Head& elem_head, ParamDictValue& params);
 
 // -----------------------------------------------------------------------------
 // Получить значение GDL параметра по его имени или описанию в ParamValue
 // -----------------------------------------------------------------------------
-bool ReadGDLValues (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
+bool ReadGDL (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов
@@ -436,27 +436,27 @@ bool WriteClassification (const API_Guid& elemGuid, ParamDictValue& params);
 // --------------------------------------------------------------------
 // Запись ParamDictValue в ID
 // --------------------------------------------------------------------
-void WriteIDValues (const API_Guid& elemGuid, ParamDictValue& params);
+void WriteID (const API_Guid& elemGuid, ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в аттрибуты элемента (слой)
 // --------------------------------------------------------------------
-void WriteAttributeValues (const API_Guid& elemGuid, ParamDictValue& params);
+void WriteAttribute (const API_Guid& elemGuid, ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в координаты элемента
 // --------------------------------------------------------------------
-void WriteCoordValues (const API_Guid& elemGuid, ParamDictValue& params);
+void WriteCoord (const API_Guid& elemGuid, ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в GDL параметры
 // --------------------------------------------------------------------
-void WriteGDLValues (const API_Guid& elemGuid, ParamDictValue& params);
+void WriteGDL (const API_Guid& elemGuid, ParamDictValue& params);
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
 // --------------------------------------------------------------------
-void WritePropertyValues (const API_Guid& elemGuid, ParamDictValue& params);
+void WriteProperty (const API_Guid& elemGuid, ParamDictValue& params);
 
 bool hasGlob (ParamDictValue& propertyParams);
 
