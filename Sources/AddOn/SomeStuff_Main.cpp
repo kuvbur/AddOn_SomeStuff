@@ -4,7 +4,6 @@
 #include	<stdio.h>
 #ifdef PK_1
 #include	"AutomateFunction.hpp"
-#include	"Revision.hpp"
 #endif
 #ifdef AC_25
 #include	"APICommon25.h"
@@ -26,6 +25,7 @@
 #include	"ReNum.hpp"
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
+#include	"Revision.hpp"
 #include	"Spec.hpp"
 
 
@@ -334,6 +334,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case ShowSub_CommandID:
                     Spec::ShowSub (syncSettings);
                     break;
+                case SetRevision_CommandID:
+                    SetRevision ();
+                    break;
 #ifdef PK_1
                 case AutoList_CommandID:
                     AutoFunc::KM_ListUpdate ();
@@ -343,9 +346,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                 case AutoLay_CommandID:
                     AutoFunc::AlignDrawingsByPoints ();
-                    break;
-                case SetRevision_CommandID:
-                    SetRevision ();
                     break;
 #endif
             }
