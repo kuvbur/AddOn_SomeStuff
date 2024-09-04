@@ -77,7 +77,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
 // -----------------------------------------------------------------------------
 void AlignDrawingsByPoints ();
 void KM_ListUpdate ();
-GSErrCode KM_WriteGDLValues (API_Guid elemGuid, GS::Array<API_Coord>& coords);
+GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords);
 }
 
 #endif
