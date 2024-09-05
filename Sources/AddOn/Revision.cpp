@@ -5,13 +5,6 @@
 #include	<stdlib.h> /* atoi */
 #include	<time.h>
 
-typedef struct
-{
-    GS::Array<API_Guid> guids;
-} Revision;
-
-typedef std::map<std::string, Revision, doj::alphanum_less<std::string>> RevisionDict;
-
 //bool GetAllChanges (void)
 //{
 //    GS::Array<API_RVMChange> changes;
@@ -74,7 +67,7 @@ static void		Do_GetChangeCustomScheme (void)
     }
 }
 
-void ChangeMarkerText (API_Guid& markerguid, GS::UniString& text)
+void ChangeMarkerText (API_Guid& markerguid, GS::UniString& number, GS::UniString& inx)
 {
     GSErrCode err = NoError;
     API_Element markerElement;
@@ -83,31 +76,43 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& text)
 
     err = ACAPI_Element_Get (&markerElement);
     if (err != NoError) {
+        msg_rep ("ChangeMarkerText", "ACAPI_Element_Get", err, markerguid);
         return;
     }
-
-    API_ElementMemo memo;
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    err = ACAPI_Element_GetMemo (markerElement.header.guid, &memo, APIMemoMask_AddPars);
-    if (err != NoError) {
-        return;
-    }
-
     API_Element markerMask;
     ACAPI_ELEMENT_MASK_CLEAR (markerMask);
 
-    GS::ucscpy ((*memo.params)[2].value.uStr, GS::UniString ("Arial Black Central European").ToUStr ());
-
-    err = ACAPI_Element_Change (&markerElement, &markerMask, &memo, APIMemoMask_AddPars, true);
-    if (err != NoError) {
-        return;
+    API_ElementMemo memo;
+    BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_AddPars);
+    if (err == NoError) {
+        bool find_nuch = false; bool find_izm = false;
+        Int32	addParNum = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
+        for (Int32 i = 0; i < addParNum; ++i) {
+            API_AddParType& actualParam = (*memo.params)[i];
+            GS::UniString name = actualParam.name;
+            if (name.Contains ("somestuff_number_change")) {
+                GS::ucscpy ((*memo.params)[i].value.uStr, number.ToUStr ());
+                find_nuch = true;
+            }
+            if (name.Contains ("somestuff_inx_change")) {
+                GS::ucscpy ((*memo.params)[i].value.uStr, inx.ToUStr ());
+                find_izm = true;
+            }
+            if (find_nuch && find_izm) {
+                err = ACAPI_Element_Change (&markerElement, &markerMask, &memo, APIMemoMask_AddPars, true);
+                if (err != NoError) {
+                    msg_rep ("ChangeMarkerText", "ACAPI_Element_Change", err, markerguid);
+                }
+                break;
+            }
+        }
+    } else {
+        msg_rep ("ChangeMarkerText", "ACAPI_Element_GetMemo", err, markerguid);
     }
-
     ACAPI_DisposeElemMemoHdls (&memo);
+    return;
 }
-
-
-
 
 bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint)
 {
@@ -127,13 +132,13 @@ bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint)
     return false;
 }
 
-bool GetMarkerText (API_Guid& markerguid, GS::UniString& text, GS::UniString& number, GS::UniString& inx)
+bool GetMarkerText (API_Guid& markerguid, GS::UniString& text, GS::UniString& number, GS::UniString& inx, GS::Int32& typeizm)
 {
-    bool find_nuch = false; bool find_izm = false; bool find_text = false;
     GSErrCode err = NoError;
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_AddPars);
+    bool find_nuch = false; bool find_izm = false; bool find_text = false; bool find_type = false;
     if (err == NoError) {
         Int32	addParNum = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
         for (Int32 i = 0; i < addParNum; ++i) {
@@ -151,7 +156,11 @@ bool GetMarkerText (API_Guid& markerguid, GS::UniString& text, GS::UniString& nu
                 inx = actualParam.value.uStr;
                 find_izm = true;
             }
-            if (find_nuch && find_izm && find_text) {
+            if (name.Contains ("somestuff_type_change")) {
+                typeizm = (int) actualParam.value.real;
+                find_type = true;
+            }
+            if (find_nuch && find_izm && find_text && find_type) {
                 ACAPI_DisposeElemMemoHdls (&memo);
                 return true;
             }
@@ -163,9 +172,12 @@ bool GetMarkerText (API_Guid& markerguid, GS::UniString& text, GS::UniString& nu
     return find_nuch && find_izm && find_text;
 }
 
-
-bool GetChangesMarker (GS::Array<Change>& changes)
+bool GetChangesMarker (ChangeMarkerDict& changes)
 {
+    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
     GSErrCode err = NoError;
     API_ElemTypeID elementType = API_ChangeMarkerID;
     GS::Array<API_Guid>	guidArray;
@@ -181,8 +193,8 @@ bool GetChangesMarker (GS::Array<Change>& changes)
             element.header.guid = guidArray[i];
             err = ACAPI_Element_Get (&element);
             if (err == NoError && element.header.hasMemo) {
-                GS::UniString text = ""; GS::UniString number = ""; GS::UniString inx = ""; API_Coord startpoint;
-                if (GetMarkerPos (guidArray[i], startpoint) && GetMarkerText (element.changeMarker.markerGuid, text, number, inx)) {
+                GS::UniString text = ""; GS::UniString number = ""; GS::UniString inx = ""; API_Coord startpoint; GS::Int32 typeizm;
+                if (GetMarkerPos (guidArray[i], startpoint) && GetMarkerText (element.changeMarker.markerGuid, text, number, inx, typeizm)) {
                     Change ch;
                     ch.markerguid = element.changeMarker.markerGuid;
                     ch.changeId = element.changeMarker.changeId;
@@ -191,12 +203,55 @@ bool GetChangesMarker (GS::Array<Change>& changes)
                     ch.number = number;
                     ch.inx = inx;
                     ch.text = text;
-                    changes.Push (ch);
+                    if (typeizm > TypeNone && typeizm <= TypeAnnul) {
+                        ch.typeizm = typeizm;
+                    } else {
+                        if (ch.changeId.Contains (izmString)) ch.typeizm = TypeIzm;
+                        if (ch.changeId.Contains (zamString)) ch.typeizm = TypeZam;
+                        if (ch.changeId.Contains (novString)) ch.typeizm = TypeNov;
+                        if (ch.changeId.Contains (annulString)) ch.typeizm = TypeAnnul;
+                    }
+                    ch.changeId.ReplaceAll (izmString + ".", "");
+                    ch.changeId.ReplaceAll (zamString + ".", "");
+                    ch.changeId.ReplaceAll (novString + ".", "");
+                    ch.changeId.ReplaceAll (annulString + ".", "");
+                    ch.changeId.ReplaceAll (izmString, "");
+                    ch.changeId.ReplaceAll (zamString, "");
+                    ch.changeId.ReplaceAll (novString, "");
+                    ch.changeId.ReplaceAll (annulString, "");
+                    ch.changeId.ReplaceAll ("  ", " ");
+                    ch.changeId.Trim ();
+                    ch.changeName.Trim ();
+                    ch.number.Trim ();
+                    ch.inx.Trim ();
+                    ch.text.Trim ();
+                    std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
+                    if (changes.count (key) == 0) changes[key] = {};
+                    changes[key].arr.Push (ch);
                 }
             }
         }
     }
-    return false;
+
+    if (!changes.empty ()) {
+        GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
+        ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
+            for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
+                int number_n = 0;
+                Changes& change = ch->second;
+                for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
+                    if (change.arr[i].typeizm == TypeIzm) {
+                        number_n += 1;
+                        change.arr[i].number = GS::UniString::Printf ("%d", number_n);
+                        ChangeMarkerText (change.arr[i].markerguid, change.arr[i].number, change.arr[i].changeName);
+                        change.nuch = number_n;
+                    }
+                }
+            }
+            return NoError;
+        });
+    }
+    return !changes.empty ();
 }
 
 
@@ -206,8 +261,9 @@ bool GetAllChangesMarker (void)
     GS::Array<API_DatabaseUnId> dbases;
     err = ACAPI_Database (APIDb_GetLayoutDatabasesID, nullptr, &dbases);
     if (err != NoError) return false;
-    GS::Array<Change> changes;
+    ChangeMarkerByListDict allchanges;
     for (const auto& dbUnId : dbases) {
+        ChangeMarkerDict changes;
         API_DatabaseInfo dbInfo = {};
         dbInfo.typeID = APIWind_LayoutID;
         dbInfo.databaseUnId = dbUnId;
@@ -234,11 +290,12 @@ bool GetAllChangesMarker (void)
 }
 
 
+
+
 void SetRevision (void)
 {
     GSErrCode err = NoError;
     //bool haschanges = GetAllChanges ();
-
 
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
