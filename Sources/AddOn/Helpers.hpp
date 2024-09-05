@@ -69,6 +69,11 @@ static const Int32 SE_StringID = 25;
 static const Int32 E_StringID = 26;
 static const Int32 NE_StringID = 27;
 
+static const Int32 Izm_StringID = 28;
+static const Int32 Zam_StringID = 29;
+static const Int32 Nov_StringID = 30;
+static const Int32 Annul_StringID = 31;
+
 typedef struct
 {
     GS::Array<API_Guid> guid;
