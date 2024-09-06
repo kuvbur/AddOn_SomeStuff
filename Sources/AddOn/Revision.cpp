@@ -196,13 +196,7 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                 GS::UniString text = ""; GS::UniString number = ""; GS::UniString inx = ""; API_Coord startpoint; GS::Int32 typeizm;
                 if (GetMarkerPos (guidArray[i], startpoint) && GetMarkerText (element.changeMarker.markerGuid, text, number, inx, typeizm)) {
                     Change ch;
-                    ch.markerguid = element.changeMarker.markerGuid;
                     ch.changeId = element.changeMarker.changeId;
-                    ch.changeName = element.changeMarker.changeName;
-                    ch.startpoint = startpoint;
-                    ch.number = number;
-                    ch.inx = inx;
-                    ch.text = text;
                     if (typeizm > TypeNone && typeizm <= TypeAnnul) {
                         ch.typeizm = typeizm;
                     } else {
@@ -211,23 +205,31 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                         if (ch.changeId.Contains (novString)) ch.typeizm = TypeNov;
                         if (ch.changeId.Contains (annulString)) ch.typeizm = TypeAnnul;
                     }
-                    ch.changeId.ReplaceAll (izmString + ".", "");
-                    ch.changeId.ReplaceAll (zamString + ".", "");
-                    ch.changeId.ReplaceAll (novString + ".", "");
-                    ch.changeId.ReplaceAll (annulString + ".", "");
-                    ch.changeId.ReplaceAll (izmString, "");
-                    ch.changeId.ReplaceAll (zamString, "");
-                    ch.changeId.ReplaceAll (novString, "");
-                    ch.changeId.ReplaceAll (annulString, "");
-                    ch.changeId.ReplaceAll ("  ", " ");
-                    ch.changeId.Trim ();
-                    ch.changeName.Trim ();
-                    ch.number.Trim ();
-                    ch.inx.Trim ();
-                    ch.text.Trim ();
-                    std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
-                    if (changes.count (key) == 0) changes[key] = {};
-                    changes[key].arr.Push (ch);
+                    if (ch.typeizm != TypeNone) {
+                        ch.markerguid = element.changeMarker.markerGuid;
+                        ch.changeName = element.changeMarker.changeName;
+                        ch.startpoint = startpoint;
+                        ch.number = number;
+                        ch.inx = inx;
+                        ch.text = text;
+                        ch.changeId.ReplaceAll (izmString + ".", "");
+                        ch.changeId.ReplaceAll (zamString + ".", "");
+                        ch.changeId.ReplaceAll (novString + ".", "");
+                        ch.changeId.ReplaceAll (annulString + ".", "");
+                        ch.changeId.ReplaceAll (izmString, "");
+                        ch.changeId.ReplaceAll (zamString, "");
+                        ch.changeId.ReplaceAll (novString, "");
+                        ch.changeId.ReplaceAll (annulString, "");
+                        ch.changeId.ReplaceAll ("  ", " ");
+                        ch.changeId.Trim ();
+                        ch.changeName.Trim ();
+                        ch.number.Trim ();
+                        ch.inx.Trim ();
+                        ch.text.Trim ();
+                        std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
+                        if (changes.count (key) == 0) changes[key] = {};
+                        changes[key].arr.Push (ch);
+                    }
                 }
             }
         }
@@ -254,39 +256,87 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
     return !changes.empty ();
 }
 
+void GetScheme ()
+{
+    GSErrCode err = NoError;
+    /// Свойства выпуска
+    GS::HashTable<API_Guid, GS::UniString> vipcheme;
+    err = ACAPI_Database (APIDb_GetRVMIssueCustomSchemeID, &vipcheme);
+    /// Свойства изменения
+    GS::HashTable<API_Guid, GS::UniString> izmScheme;
+    err = ACAPI_Database (APIDb_GetRVMChangeCustomSchemeID, &izmScheme);
+}
+
 
 bool GetAllChangesMarker (void)
 {
     GSErrCode err = NoError;
-    GS::Array<API_DatabaseUnId> dbases;
-    err = ACAPI_Database (APIDb_GetLayoutDatabasesID, nullptr, &dbases);
-    if (err != NoError) return false;
     ChangeMarkerByListDict allchanges;
-    for (const auto& dbUnId : dbases) {
-        ChangeMarkerDict changes;
-        API_DatabaseInfo dbInfo = {};
-        dbInfo.typeID = APIWind_LayoutID;
-        dbInfo.databaseUnId = dbUnId;
-        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
-        if (err != NoError) {
-            msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
-        } else {
-            GetChangesMarker (changes);
-        }
-        API_LayoutInfo	layoutInfo;
-        BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
-        if (ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &dbInfo.databaseUnId) == NoError) {
-            if (layoutInfo.customData != nullptr) {
-                for (auto it = layoutInfo.customData->EnumeratePairs (); it != nullptr; ++it) {
-                    *it->value += " - Modified via API";
+    // Получаем выпуски
+    GS::Array<API_RVMDocumentRevision> api_revisions;
+    err = ACAPI_Database (APIDb_GetRVMDocumentRevisionsID, &api_revisions);
+    if (err != NoError) {
+        msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionsID", err, APINULLGuid);
+        return false;
+    }
+    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
+    for (auto revision : api_revisions) {
+        GS::Array<API_RVMChange> api_changes;
+        err = ACAPI_Database (APIDb_GetRVMDocumentRevisionChangesID, &revision.guid, &api_changes);
+        if (err == NoError) {
+            ChangeMarkerDict changes;
+            API_DatabaseInfo dbInfo = {};
+            dbInfo.typeID = APIWind_LayoutID;
+            dbInfo.databaseUnId = revision.layoutInfo.dbId;
+            err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+            if (err == NoError) {
+                GS::Array<API_RVMChange> change;
+                err = ACAPI_Database (APIDb_GetRVMLayoutCurrentRevisionChangesID, &(dbInfo.databaseUnId), &change);
+                if (change.GetSize () > 1) {
+                    // Обрабатываем маркеры
+                    GetChangesMarker (changes);
+                    // Обрабатываем изменения, не привязанные к маркерам
+                    for (auto c : change) {
+                        Change ch;
+                        if (c.id.Contains (izmString)) ch.typeizm = TypeIzm;
+                        if (c.id.Contains (zamString)) ch.typeizm = TypeZam;
+                        if (c.id.Contains (novString)) ch.typeizm = TypeNov;
+                        if (c.id.Contains (annulString)) ch.typeizm = TypeAnnul;
+                        if (ch.typeizm != TypeNone) {
+                            ch.markerguid = APINULLGuid;
+                            ch.changeId = c.id;
+                            ch.changeName = c.description;
+                            ch.changeId.ReplaceAll (izmString + ".", "");
+                            ch.changeId.ReplaceAll (zamString + ".", "");
+                            ch.changeId.ReplaceAll (novString + ".", "");
+                            ch.changeId.ReplaceAll (annulString + ".", "");
+                            ch.changeId.ReplaceAll (izmString, "");
+                            ch.changeId.ReplaceAll (zamString, "");
+                            ch.changeId.ReplaceAll (novString, "");
+                            ch.changeId.ReplaceAll (annulString, "");
+                            ch.changeId.ReplaceAll ("  ", " ");
+                            ch.changeId.Trim ();
+                            ch.changeName.Trim ();
+                            std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
+                            if (changes.count (key) == 0) changes[key] = {};
+                            changes[key].arr.Push (ch);
+                        }
+                    }
+                    GS::UniString key = revision.layoutInfo.id + revision.layoutInfo.name;
+                    std::string key_ = key.ToCStr (0, MaxUSize, GChCode).Get ();
+                    if (allchanges.count (key_) == 0) allchanges[key_] = changes;
                 }
-                ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &dbInfo.databaseUnId);
+            } else {
+                msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
             }
-            if (layoutInfo.customData != nullptr) delete layoutInfo.customData;
-
+        } else {
+            msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionChangesID", err, revision.guid);
         }
     }
-    return false;
+    return !allchanges.empty ();
 }
 
 
