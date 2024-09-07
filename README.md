@@ -15,6 +15,8 @@
 [Скачать последнюю версию](https://github.com/kuvbur/AddOn_SomeStuff/releases/latest)
 
 ### Совместимость с версиями:
+Archicad WIN / MAC 28
+
 Archicad WIN / MAC 27
 
 Archicad WIN / MAC 26
@@ -23,4 +25,6 @@ Archicad WIN / MAC 25
 
 Archicad WIN 24
 
-Archicad WIN 23
+Archicad WIN 23 (ограниченный режим)
+
+Archicad WIN 22 (ограниченный режим)
