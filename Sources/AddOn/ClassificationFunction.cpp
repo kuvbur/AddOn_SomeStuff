@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"ClassificationFunction.hpp"
@@ -75,7 +75,7 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
         classificationitem.parentname = parent.id.ToLowerCase ();
         classifications.Add (itemname, classificationitem);
     }
-    if (desc.Contains ("some_stuff_class")) {
+    if (desc.ToLowerCase ().Contains ("some_stuff_class") || desc.ToLowerCase ().Contains ("somestuff_class") || desc.ToLowerCase ().Contains ("somestuffclass")) {
         ClassificationValues classificationitem;
         classificationitem.item = item;
         classificationitem.system = system;
