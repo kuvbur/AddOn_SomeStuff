@@ -18,6 +18,15 @@
 #include <Definitions.hpp>
 #include "Point2D.hpp"
 
+#ifdef AC_22
+#define API_AttributeIndex short
+#define Vector2D Vector
+#define Point2D Coord
+#define API_BeamSegmentID API_BeamID
+#define API_ColumnSegmentID API_ColumnID
+#define API_OpeningID API_WindowID
+#endif
+
 static const Int32 MeterStringID = 17;
 static const Int32 CMeterStringID = 18;
 static const Int32 DMeterStringID = 19;
@@ -234,8 +243,9 @@ GSErrCode GetRElementsForRailing (const API_Guid& elemGuid, GS::Array<API_Guid>&
 // Возвращает координаты заданной точки после трансформации матрицей
 // --------------------------------------------------------------------
 API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const  API_Tranmat& tm);
-Point2D GetWordPoint2DTM (const Point2D vtx, const  API_Tranmat& tm);
 
+
+Point2D GetWordPoint2DTM (const Point2D vtx, const  API_Tranmat& tm);
 bool ClickAPoint (const char* prompt, Point2D* c);
 
 namespace FormatStringFunc

@@ -1,4 +1,5 @@
 //------------ kuvbur 2022 ------------
+#ifndef AC_22
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Helpers.hpp"
@@ -518,3 +519,4 @@ short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition
     }
     return RENUM_SKIP;
 }
+#endif

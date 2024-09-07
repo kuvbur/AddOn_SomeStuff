@@ -9,6 +9,7 @@ namespace Spec
 
 void ShowSub (const SyncSettings& syncSettings)
 {
+#ifndef AC_22
     ParamDictValue propertyParams;
     ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
     ParamDictValue paramDict;
@@ -59,6 +60,7 @@ void ShowSub (const SyncSettings& syncSettings)
     GSErrCode err = ACAPI_Selection_Select (selNeigs, true);
 #else
     GSErrCode err = ACAPI_Element_Select (selNeigs, true);
+#endif
 #endif
     return;
 }
@@ -709,7 +711,6 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #else
                 Element el = *cIt.value;
 #endif
-
                 API_Element element = {};
                 API_ElementMemo memo = {};
 #if defined AC_26 || defined AC_27 || defined AC_28
@@ -829,8 +830,11 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                                 }
                                 break;
                             default:
+#ifndef AC_22
                             case APIParT_Dictionary:
+#endif
                                 break;
+
                         }
                         param.Delete (rawname);
                     }
@@ -878,7 +882,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 if (err == NoError) {
                     elemsheader.Push (element.header);
                     n_elem += 1;
-                    if (n_elem % 8 == 0) {
+                    if (n_elem % 10 == 0) {
                         pos.x = startpos.x;
                         pos.y += dy;
                     } else {
@@ -890,7 +894,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-        }
+            }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -901,10 +905,10 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-    }
+        }
 
         return NoError;
-});
+    });
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -912,7 +916,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elemsheader[i], 0);
 #endif
         if (err != NoError) msg_rep ("Spec::PlaceElements", "APIAny_RunGDLParScriptID", err, APINULLGuid);
-}
+    }
     return NoError;
 }
-    }
+}
