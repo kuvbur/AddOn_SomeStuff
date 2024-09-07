@@ -20,9 +20,6 @@
 #include "SyncSettings.hpp"
 #include "ClassificationFunction.hpp"
 
-
-// #define	CURR_ADDON_VERS			0x0006
-
 #define SYNC_RESET 1
 #define SYNC 2
 
@@ -85,13 +82,13 @@ typedef struct
 } SortInx;
 
 // Массив отрезков с указанием точки начала
+
 typedef struct
 {
     Vector2D cut_direction;
     Point2D cut_start;
     Point2D start;
 } OrientedSegments;
-
 // Хранение данных параметра
 // type - API_VariantType (как у свойств)
 // name - имя для поиска
@@ -619,9 +616,8 @@ bool ComponentsCompositeStructure (const API_Guid& elemguid, API_AttributeIndex&
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля, для АС24 и выше
 // --------------------------------------------------------------------
-#ifndef AC_23
+
 bool ComponentsProfileStructure (ProfileVectorImage& profileDescription, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial);
-#endif
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента

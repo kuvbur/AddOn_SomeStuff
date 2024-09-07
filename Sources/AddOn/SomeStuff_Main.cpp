@@ -23,7 +23,9 @@
 #include	"APIdefs_Properties.h"
 #include	"SomeStuff_Main.hpp"
 #include	"Sync.hpp"
+#ifndef AC_22
 #include	"ReNum.hpp"
+#endif
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
 #include	"Spec.hpp"
@@ -319,9 +321,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case cwallS_CommandID:
                     syncSettings.cwallS = !syncSettings.cwallS;
                     break;
+#ifndef AC_22
                 case ReNum_CommandID:
                     err = ReNumSelected (syncSettings);
                     break;
+#endif
                 case Sum_CommandID:
                     err = SumSelected (syncSettings);
                     break;

@@ -372,8 +372,8 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
     }
-    return guidArray;
 #endif // AC_22
+    return guidArray;
 }
 
 // -----------------------------------------------------------------------------
@@ -578,7 +578,11 @@ void UnhideUnlockAllLayer (void)
     UInt32 count, i;
     err = ACAPI_Attribute_GetNum (API_LayerID, count);
 #else
+#if defined(AC_22)
+    short count, i;
+#else
     API_AttributeIndex count, i;
+#endif
     err = ACAPI_Attribute_GetNum (API_LayerID, &count);
 #endif
     if (err != NoError) msg_rep ("UnhideUnlockAllLayer", "ACAPI_Attribute_GetNum", err, APINULLGuid);
@@ -634,7 +638,7 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
 #else
     if (ACAPI_TeamworkControl_HasConnection () && !ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
 #endif
-#if defined(AC_24) || defined(AC_23)
+#if defined(AC_24) || defined(AC_23) || defined(AC_22)
         GS::PagedArray<API_Guid>	elements;
 #else
         GS::Array<API_Guid>	elements;
@@ -1314,6 +1318,7 @@ API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat & tm)
     trCoord.z = tm.tmx[8] * vtx.x + tm.tmx[9] * vtx.y + tm.tmx[10] * vtx.z + tm.tmx[11];
     return trCoord;
 }
+
 
 Point2D GetWordPoint2DTM (const Point2D vtx, const API_Tranmat & tm)
 {

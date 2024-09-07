@@ -336,7 +336,7 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId, const GS::Array<API_Prop
     if (err != NoError) msg_rep ("ResetOneElemenDefault", "ACAPI_Element_GetPropertyValuesOfDefaultElem", err, APINULLGuid);
     if (err == NoError) {
         for (UInt32 i = 0; i < properties.GetSize (); i++) {
-#if defined(AC_23)
+#if defined(AC_23) || defined(AC_22)
             if (!properties[i].isDefault && properties[i].isEvaluated) {
 #else
             if (!properties[i].isDefault && properties[i].status == API_Property_HasValue) {
