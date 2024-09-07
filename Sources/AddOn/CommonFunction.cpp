@@ -25,7 +25,7 @@ Int32 isEng ()
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
 // -----------------------------------------------------------------------------
-void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid)
+void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid, bool show)
 {
     GS::UniString error_type = "";
     if (err != NoError) {
@@ -293,8 +293,11 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
         }
     }
-    GS::UniString msg = modulename + ": " + reportString + " " + error_type + "\n";
+    GS::UniString msg = modulename + ": " + reportString;
+    if (!show) msg = msg + " " + error_type;
+    msg = msg + "\n";
     ACAPI_WriteReport (msg, false);
+    if (show) ACAPI_WriteReport (msg, show);
     if (err != NoError) {
         msg = "== SMSTF ERR ==" + msg;
     }
@@ -358,7 +361,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
         BMKillHandle ((GSHandle*) &selNeigs);
 #endif // AC_22
         return GS::Array<API_Guid> ();
-    }
+}
     GS::Array<API_Guid> guidArray;
 #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
@@ -407,7 +410,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
 #endif
-        }
+    }
         long time_end = clock ();
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
@@ -417,9 +420,9 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-    } else if (!assertIfNoSel) {
-        function (APINULLGuid);
-    }
+} else if (!assertIfNoSel) {
+    function (APINULLGuid);
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -442,7 +445,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
     elementType = elem_head.typeID;
 #endif
     return err;
-}
+    }
 
 #if defined AC_26 || defined AC_27 || defined AC_28
 // -----------------------------------------------------------------------------
@@ -518,7 +521,7 @@ void DeleteElementUserData (const API_Guid & elemguid)
         err = ACAPI_Element_DeleteUserData (&tElemHead);
 #endif
         msg_rep ("Del user data", " ", NoError, APINULLGuid);
-    }
+}
     BMKillHandle (&userData.dataHdl);
     GS::Array<API_Guid> setGuids;
     err = ACAPI_ElementSet_Identify (elemguid, &setGuids);
@@ -661,7 +664,7 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
         }
     };
     return false; // Не получилось зарезервировать
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1062,7 +1065,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1102,7 +1105,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
         err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
         params = memo.params;
         return err;
-    }
+}
 #endif
     apiOwner.guid = elemGuid;
 #if defined AC_26 || defined AC_27 || defined AC_28
@@ -1142,7 +1145,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1175,8 +1178,8 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
-        }
     }
+}
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {

@@ -102,7 +102,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         if (err == NoError) flagfindspec = true;
     }
     if (!flagfindspec) {
-        msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid);
+        msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid, true);
         return APIERR_GENERAL;
     }
 
@@ -114,11 +114,11 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     GetParamToReadFromRule (rules, propertyParams, paramToRead, paramToWrite);
     // TODO Добавить сообщения об ошибке
     if (paramToRead.IsEmpty ()) {
-        msg_rep ("Spec::SpecArray", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
+        msg_rep ("Spec::SpecArray", "Parameters for read not found", APIERR_GENERAL, APINULLGuid, true);
         return APIERR_GENERAL;
     }
     if (paramToWrite.IsEmpty ()) {
-        msg_rep ("Spec::SpecArray", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
+        msg_rep ("Spec::SpecArray", "Parameters for write not found", APIERR_GENERAL, APINULLGuid, true);
         return APIERR_GENERAL;
     }
     subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
@@ -176,7 +176,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             if (!elements.IsEmpty ()) elementstocreate.Push (elements);
         }
     }
-
     subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
 #if defined(AC_27) || defined(AC_28)
     maxval = 3; ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -479,8 +478,9 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
             }
         }
         notfound_paramname = "Error - " + notfound_paramname;
-        msg_rep ("Spec::GetElementsForRule", notfound_paramname, APIERR_BADINDEX, APINULLGuid);
+        msg_rep ("Spec::GetElementsForRule", notfound_paramname, APIERR_BADINDEX, APINULLGuid, true);
         n_elements = 0;
+        elements.Clear ();
     }
     return n_elements;
 }
@@ -894,7 +894,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-            }
+        }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -905,10 +905,10 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-        }
+    }
 
         return NoError;
-    });
+});
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -916,7 +916,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elemsheader[i], 0);
 #endif
         if (err != NoError) msg_rep ("Spec::PlaceElements", "APIAny_RunGDLParScriptID", err, APINULLGuid);
-    }
+}
     return NoError;
 }
 }
