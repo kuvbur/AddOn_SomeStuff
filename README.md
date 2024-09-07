@@ -8,7 +8,7 @@
 * [Видеообзор от Егора Захарова /1](https://www.youtube.com/watch?v=msOBRXge0ec)
 * [Видеообзор от Егора Захарова /2](https://youtu.be/s541ycUumtI)
 * [Видеообзор версии v1.0b](https://youtu.be/XJ23-R5Rl7Y)
-* [Чат в телеграмм](https://t.me/joinchat/G4VyxoQ9-S1mNDQy)
+* [Оповещение о выходе версий в Телеграмм](https://t.me/archicad_somestuff)
 
 [Установка](https://github.com/kuvbur/AddOn_SomeStuff/wiki/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0)
 
