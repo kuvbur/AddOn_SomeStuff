@@ -1,4 +1,5 @@
 //------------ kuvbur 2022 ------------
+#ifdef PK_1
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Revision.hpp"
@@ -433,3 +434,4 @@ void SetRevision (void)
     //	ACAPI_WriteReport(buffer, false);
     //}
 }
+#endif
