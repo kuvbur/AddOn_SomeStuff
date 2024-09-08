@@ -1084,14 +1084,13 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
         if (param.val.hasFormula) {
             param.val.formatstring = stringformat;
-            param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + stringformat.stringformat + "}";
+            param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + stringformat.stringformat + "}"; 
         } else {
             param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "}";
         }
     }
     if (!param.fromMaterial && param.val.hasFormula) {
-        GS::UniString stringformat_raw = FormatStringFunc::GetFormatString (params.Get (0));
-        stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
+        stringformat = FormatStringFunc::ParseFormatString ("");
         param.val.formatstring = stringformat;
         param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + stringformat.stringformat + "}";
     }
