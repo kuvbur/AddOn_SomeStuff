@@ -46,7 +46,8 @@ typedef struct
     double koeff = 1; //Коэфф. увеличения
     bool trim_zero = true; //Требуется образать нули после запятой
     bool isRead = false; // Строка успешно распарсена
-    bool isEmpty = true; //Строка не задана
+    bool isEmpty = true; // Строка не задана
+    bool forceRaw = false; // Использовать неокруглённое значение для записи
     GS::UniString delimetr = ",";
 } FormatString;
 

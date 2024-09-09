@@ -606,19 +606,19 @@ bool ParamHelpers::ReadMorphParam (const API_Element& element, ParamDictValue& p
         B = Max_y - Min_y;
         ZZYZX = Max_z - Min_z;
         ParamDictValue pdictvaluemorph;
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "l", L);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "lx", Lx);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "ly", Ly);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "lz", Lz);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "max_x", Max_x);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "min_x", Min_x);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "max_y", Max_y);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "min_y", Min_y);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "max_z", Max_z);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "min_z", Min_z);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "a", A);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "b", B);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "zzyzx", ZZYZX);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "l", L);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "lx", Lx);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "ly", Ly);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "lz", Lz);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "max_x", Max_x);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "min_x", Min_x);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "max_y", Max_y);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "min_y", Min_y);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "max_z", Max_z);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "min_z", Min_z);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "a", A);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "b", B);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, "morph:", "zzyzx", ZZYZX);
         ParamHelpers::CompareParamDictValue (pdictvaluemorph, pdictvalue);
         ACAPI_DisposeElemMemoHdls (&memo);
         return true;
@@ -762,6 +762,13 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
 
         // Приводим к единому виду перед проверкой
         if (!stringformat.isEmpty) {
+            // Если в правиле задана более высокая точность - нужно использовать значение до предыдущего округления.
+            if (paramTo.val.formatstring.n_zero < stringformat.n_zero || (!stringformat.needRound && paramTo.val.formatstring.needRound) || paramTo.val.formatstring.forceRaw != stringformat.forceRaw) {
+                paramTo.val.doubleValue = paramTo.val.rawDoubleValue;
+            }
+            if (paramFrom.val.formatstring.n_zero < stringformat.n_zero || (!stringformat.needRound && paramFrom.val.formatstring.needRound) || paramFrom.val.formatstring.forceRaw != stringformat.forceRaw) {
+                paramFrom.val.doubleValue = paramFrom.val.rawDoubleValue;
+            }
             paramTo.val.formatstring = stringformat;
             paramFrom.val.formatstring = stringformat;
             ParamHelpers::ConvertByFormatString (paramTo);
@@ -832,24 +839,35 @@ bool ParamHelpers::AddProperty (ParamDictValue& params, GS::Array<API_Property>&
     UInt32 nparams = params.GetSize ();
     if (nparams < 1) return false;
     bool flag_find = false;
-    for (UInt32 i = 0; i < properties.GetSize (); i++) {
+    for (auto property : properties) {
         ParamValue pvalue;
-        API_Property property = properties.Get (i);
-        if (ParamHelpers::ConvertToParamValue (pvalue, property)) {
-            GS::UniString rawName = pvalue.rawName;
-            if (params.ContainsKey (rawName)) {
-                params.Get (rawName) = pvalue;
-                nparams--;
-                flag_find = true;
-                if (nparams == 0) {
-                    return flag_find;
-                }
-            } else {
-                if (ParamHelpers::needAdd (params, rawName)) {
-                    params.Add (rawName, pvalue);
+        ParamHelpers::SetrawNameFromProperty (pvalue, property);
+        GS::UniString rawName = pvalue.rawName;
+        bool hasname = params.ContainsKey (rawName);
+        // Заполняем stringformat
+        FormatString fstring;
+        if (hasname || ParamHelpers::needAdd (params, rawName)) {
+            if (hasname) {
+                fstring = params.Get (rawName).val.formatstring;
+                if (!fstring.isEmpty) pvalue.val.formatstring = fstring;
+            }
+            if (ParamHelpers::ConvertToParamValue (pvalue, property)) {
+                if (hasname) {
+                    params.Get (rawName) = pvalue;
+                    nparams--;
                     flag_find = true;
+                    if (nparams == 0) {
+                        return flag_find;
+                    }
+                } else {
+                    if (ParamHelpers::needAdd (params, rawName)) {
+                        params.Add (rawName, pvalue);
+                        flag_find = true;
+                    }
                 }
             }
+        } else {
+            fstring.isEmpty = true;
         }
     }
     return flag_find;
@@ -866,6 +884,21 @@ void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const A
     ParamHelpers::ConvertBoolToParamValue (pvalue, "", val);
     params.Add (pvalue.rawName, pvalue);
 }
+
+
+// -----------------------------------------------------------------------------
+// Добавление значения длины в словарь ParamDictValue
+// -----------------------------------------------------------------------------
+void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val)
+{
+    ParamValue pvalue;
+    pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase () + "}";
+    pvalue.name = name.ToLowerCase ();
+    pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", val);
+    params.Add (pvalue.rawName, pvalue);
+}
+
 
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
@@ -1008,12 +1041,12 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         ParamHelpers::AddStringValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "north_dir_str", angznorthtxt);
         ParamHelpers::AddStringValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "north_dir_eng", angznorthtxteng);
 
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx_);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy_);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx_);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy_);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex_);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey_);
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod (angz, 5.0));
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod (angz, 10.0));
@@ -1047,7 +1080,6 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct_1000", true);
         }
-
         ParamHelpers::CompareParamDictValue (pdictvaluecoord, params);
         return true;
     }
@@ -1176,9 +1208,9 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         } else {
             angz = 0.0;
         }
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
         if (bsync_coord_correct) {
             bool bsymb_pos_x_correct = check_accuracy (x, tolerance_coord);
             bool bsymb_pos_y_correct = check_accuracy (y, tolerance_coord);
@@ -1216,12 +1248,12 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     }
     if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
     if (hasLine && !hasSymbpos) {
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
-        ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", sx);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
         if (bsync_coord_correct) {
             if (isFliped) {
                 dx = ex - sx;
@@ -1932,6 +1964,10 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
     }
     isEval = (property.status == API_Property_HasValue);
 #endif
+
+    double dval = pvalue.val.doubleValue;
+    if (pvalue.val.formatstring.forceRaw) dval = pvalue.val.rawDoubleValue;
+
     switch (property.definition.valueType) {
         case API_PropertyIntegerValueType:
             if (value.singleVariant.variant.intValue != pvalue.val.intValue || !isEval) {
@@ -1943,13 +1979,13 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
 
             // Конвертация угла из радиан в градусы
             if (property.definition.measureType == API_PropertyAngleMeasureType) {
-                if (!is_equal (pvalue.val.doubleValue * PI / 180.0, value.singleVariant.variant.doubleValue) || !isEval) {
-                    property.value.singleVariant.variant.doubleValue = pvalue.val.doubleValue * PI / 180.0;
+                if (!is_equal (dval * PI / 180.0, value.singleVariant.variant.doubleValue) || !isEval) {
+                    property.value.singleVariant.variant.doubleValue = dval * PI / 180.0;
                     flag_rec = true;
                 }
             } else {
-                if (!is_equal (value.singleVariant.variant.doubleValue, pvalue.val.doubleValue) || !isEval) {
-                    property.value.singleVariant.variant.doubleValue = pvalue.val.doubleValue;
+                if (!is_equal (value.singleVariant.variant.doubleValue, dval) || !isEval) {
+                    property.value.singleVariant.variant.doubleValue = dval;
                     flag_rec = true;
                 }
             }
@@ -2009,7 +2045,6 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
         if (guidValue == APINULLGuid) flag_rec = false;
     }
     if (flag_rec) {
-
         property.isDefault = false;
         if (property.value.variantStatus != API_VariantStatusNormal) property.value.variantStatus = API_VariantStatusNormal;
 #if defined(AC_22) || defined(AC_23)
@@ -2365,102 +2400,207 @@ void ParamHelpers::WriteCoord (const API_Guid& elemGuid, ParamDictValue& params)
     API_Element mask;
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     bool flag_write = false;
+    double dval = 0;
+    ParamValueData pval;
     switch (elemType) {
         case API_WindowID:
             if (params.ContainsKey ("{@coord:symb_pos_x}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_WindowType, objLoc);
-                element.window.objLoc = params.Get ("{@coord:symb_pos_x}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_x}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.window.objLoc = dval;
             }
             break;
         case API_DoorID:
             if (params.ContainsKey ("{@coord:symb_pos_x}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_DoorType, objLoc);
-                element.door.objLoc = params.Get ("{@coord:symb_pos_x}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_x}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.door.objLoc = dval;
             }
             break;
         case API_ObjectID:
             if (params.ContainsKey ("{@coord:symb_pos_x}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
-                element.object.pos.x = params.Get ("{@coord:symb_pos_x}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_x}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.object.pos.x = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_y}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
-                element.object.pos.y = params.Get ("{@coord:symb_pos_y}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_y}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.object.pos.y = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_z}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, level);
-                element.object.level = params.Get ("{@coord:symb_pos_z}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_z}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.object.level = dval;
             }
             if (params.ContainsKey ("{@coord:symb_rotangle}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, angle);
-                element.object.angle = params.Get ("{@coord:symb_rotangle}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_rotangle}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+
+                element.object.angle = dval;
             }
             break;
         case API_ColumnID:
             if (params.ContainsKey ("{@coord:symb_pos_x}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_ColumnType, origoPos);
-                element.column.origoPos.x = params.Get ("{@coord:symb_pos_x}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_x}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.column.origoPos.x = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_y}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_ColumnType, origoPos);
-                element.column.origoPos.y = params.Get ("{@coord:symb_pos_y}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_y}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.column.origoPos.y = dval;
             }
             if (params.ContainsKey ("{@coord:symb_rotangle}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_ColumnType, slantAngle);
-                element.column.slantAngle = params.Get ("{@coord:symb_rotangle}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_rotangle}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.column.slantAngle = dval;
             }
             break;
         case API_WallID:
             if (params.ContainsKey ("{@coord:symb_pos_sx}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_WallType, begC);
-                element.wall.begC.x = params.Get ("{@coord:symb_pos_sx}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_sx}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.wall.begC.x = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_sy}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_WallType, begC);
-                element.wall.begC.y = params.Get ("{@coord:symb_pos_sy}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_sy}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.wall.begC.y = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_ex}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_WallType, endC);
-                element.wall.endC.x = params.Get ("{@coord:symb_pos_ex}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_ex}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.wall.endC.x = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_ey}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_WallType, endC);
-                element.wall.endC.y = params.Get ("{@coord:symb_pos_ey}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_ey}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.wall.endC.y = dval;
             }
             break;
         case API_BeamID:
             if (params.ContainsKey ("{@coord:symb_pos_sx}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, begC);
-                element.beam.begC.x = params.Get ("{@coord:symb_pos_sx}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_sx}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.beam.begC.x = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_sy}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, begC);
-                element.beam.begC.y = params.Get ("{@coord:symb_pos_sy}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_sy}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.beam.begC.y = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_ex}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, endC);
-                element.beam.endC.x = params.Get ("{@coord:symb_pos_ex}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_ex}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.beam.endC.x = dval;
             }
             if (params.ContainsKey ("{@coord:symb_pos_ey}")) {
                 flag_write = true;
                 ACAPI_ELEMENT_MASK_SET (mask, API_BeamType, endC);
-                element.beam.endC.y = params.Get ("{@coord:symb_pos_ey}").val.doubleValue;
+                pval = params.Get ("{@coord:symb_pos_ey}").val;
+                if (pval.formatstring.forceRaw) {
+                    dval = pval.rawDoubleValue;
+                } else {
+                    dval = pval.doubleValue;
+                }
+                element.beam.endC.y = dval;
             }
             break;
         default:
@@ -2569,13 +2709,25 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
                 chgParam.realValue = paramfrom.intValue;
             }
             if (actualParam.typeID == APIParT_Length) {
-                chgParam.realValue = paramfrom.doubleValue;
+                if (paramfrom.formatstring.forceRaw) {
+                    chgParam.realValue = paramfrom.rawDoubleValue;
+                } else {
+                    chgParam.realValue = paramfrom.doubleValue;
+                }
             }
             if (actualParam.typeID == APIParT_Angle) {
-                chgParam.realValue = paramfrom.doubleValue;
+                if (paramfrom.formatstring.forceRaw) {
+                    chgParam.realValue = paramfrom.rawDoubleValue;
+                } else {
+                    chgParam.realValue = paramfrom.doubleValue;
+                }
             }
             if (actualParam.typeID == APIParT_RealNum) {
-                chgParam.realValue = paramfrom.doubleValue;
+                if (paramfrom.formatstring.forceRaw) {
+                    chgParam.realValue = paramfrom.rawDoubleValue;
+                } else {
+                    chgParam.realValue = paramfrom.doubleValue;
+                }
             }
             if (actualParam.typeID == APIParT_Boolean) {
                 chgParam.realValue = paramfrom.boolValue;
@@ -3320,10 +3472,14 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
                             propertyParams.Add (pvalue.rawName, pvalue);
                         } else {
                             ParamValue pvalue = propertyParams.Get (rawName);
+                            FormatString fstring = pvalue.val.formatstring;
                             if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
                                 pvalue.rawName = rawName;
                                 pvalue.name = name;
                                 ParamHelpers::ConvertToParamValue (pvalue, definitions[j]);
+                                if (!fstring.isEmpty) {
+                                    pvalue.val.formatstring = fstring;
+                                }
                                 propertyParams.Get (pvalue.rawName) = pvalue;
                                 nparams--;
                                 if (nparams == 0) {
@@ -3908,16 +4064,20 @@ bool ParamHelpers::GDLParamByName (const API_Element & element, const API_Elem_H
                 for (UInt32 j = 0; j < paramarray.GetSize (); ++j) {
                     nfind--;
                     ParamValue pvalue = params.Get (paramarray[j]);
+                    FormatString fstring = pvalue.val.formatstring;
                     ParamHelpers::ConvertToParamValue (pvalue, actualParam);
                     if (pvalue.isValid) {
+                        if (!fstring.isEmpty) pvalue.val.formatstring = fstring;
                         params.Set (pvalue.rawName, pvalue);
                         flagFind = true;
                     }
                 }
                 if (params.ContainsKey (rawname)) {
                     ParamValue pvalue = params.Get (rawname);
+                    FormatString fstring = pvalue.val.formatstring;
                     ParamHelpers::ConvertToParamValue (pvalue, actualParam);
                     if (pvalue.isValid) {
+                        if (!fstring.isEmpty) pvalue.val.formatstring = fstring;
                         params.Set (rawname, pvalue);
                         flagFind = true;
                     }
@@ -3928,8 +4088,10 @@ bool ParamHelpers::GDLParamByName (const API_Element & element, const API_Elem_H
             } else {
                 if (params.ContainsKey (rawname)) {
                     ParamValue pvalue = params.Get (rawname);
+                    FormatString fstring = pvalue.val.formatstring;
                     ParamHelpers::ConvertToParamValue (pvalue, actualParam);
                     if (pvalue.isValid) {
+                        if (!fstring.isEmpty) pvalue.val.formatstring = fstring;
                         params.Set (rawname, pvalue);
                         flagFind = true;
                     }
@@ -4483,9 +4645,9 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_AddParTyp
 }
 
 // -----------------------------------------------------------------------------
-// Конвертация свойства в ParamValue
+// Заполнение rawName для ParamValue по описанию в API_Property
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property & property)
+void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Property & property)
 {
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) {
         GS::UniString fname;
@@ -4493,6 +4655,16 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
         if (pvalue.rawName.IsEmpty ()) pvalue.rawName = "{@property:" + fname.ToLowerCase () + "}";
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
+    if (property.definition.description.Contains ("Sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
+}
+
+
+// -----------------------------------------------------------------------------
+// Конвертация свойства в ParamValue
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property & property)
+{
+    if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) ParamHelpers::SetrawNameFromProperty (pvalue, property);
     if (property.definition.description.Contains ("Sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
     API_PropertyValue value;
 #if defined(AC_22) || defined(AC_23)
@@ -4533,15 +4705,17 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             // Конвертация угла из радиан в градусы
             if (property.definition.measureType == API_PropertyAngleMeasureType) {
                 double ang = value.singleVariant.variant.doubleValue * 180.0 / PI;
+                pvalue.val.rawDoubleValue = ang;
                 pvalue.val.doubleValue = round (ang * 100000.0) / 100000.0;
             } else {
+                pvalue.val.rawDoubleValue = value.singleVariant.variant.doubleValue;
                 pvalue.val.doubleValue = round (value.singleVariant.variant.doubleValue * 100000.0) / 100000.0;
                 if (value.singleVariant.variant.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
             }
+            //pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
             pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
             if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
             if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
-            pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
             pvalue.val.type = API_PropertyRealValueType;
             formatstringdict = FormatStringFunc::GetFotmatStringForMeasureType ();
             if (formatstringdict.ContainsKey (property.definition.measureType)) {
@@ -4880,7 +5054,7 @@ void ParamHelpers::ConvertByFormatString (ParamValue & pvalue)
         Int32 krat = pvalue.val.formatstring.krat;
         double koeff = pvalue.val.formatstring.koeff;
         bool trim_zero = pvalue.val.formatstring.trim_zero;
-        pvalue.val.rawDoubleValue = pvalue.val.doubleValue; // До округлений
+        if (is_equal (pvalue.val.rawDoubleValue, 0)) pvalue.val.rawDoubleValue = pvalue.val.doubleValue; // До округлений
         pvalue.val.uniStringValue = ParamHelpers::ToString (pvalue);
         if (koeff != 1) n_zero = n_zero + (GS::Int32) log10 (koeff);
         pvalue.val.doubleValue = round (pvalue.val.doubleValue * pow (10, n_zero)) / pow (10, n_zero);
