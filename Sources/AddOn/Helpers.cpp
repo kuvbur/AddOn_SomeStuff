@@ -1756,8 +1756,10 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
 ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs)
 {
     ParamValueData out = lhs;
+    if (!lhs.hasrawDouble || !rhs.hasrawDouble) out.hasrawDouble = false;
+    if (lhs.hasrawDouble && rhs.hasrawDouble) out.hasrawDouble = true;
     out.doubleValue = lhs.doubleValue + rhs.doubleValue;
-    out.rawDoubleValue = lhs.rawDoubleValue + rhs.rawDoubleValue;
+    if (out.hasrawDouble) out.rawDoubleValue = lhs.rawDoubleValue + rhs.rawDoubleValue;
     out.uniStringValue = lhs.uniStringValue + ";" + rhs.uniStringValue;
     out.intValue = lhs.intValue + rhs.intValue;
     return out;
@@ -1771,15 +1773,13 @@ bool operator== (const ParamValue& lhs, const ParamValue& rhs)
         case API_PropertyIntegerValueType:
             return lhs.val.intValue == rhs.val.intValue;
         case API_PropertyRealValueType:
-            if (lhs.val.formatstring.needRound) {
-                lhsd = lhs.val.doubleValue;
-            } else {
+            lhsd = lhs.val.doubleValue;
+            rhsd = rhs.val.doubleValue;
+            if (!lhs.val.formatstring.needRound && !is_equal (lhs.val.rawDoubleValue, 0) && lhs.val.hasrawDouble) {
                 lhsd = lhs.val.rawDoubleValue;
             }
-            if (rhs.val.formatstring.needRound) {
-                rhsd = rhs.val.doubleValue;
-            } else {
-                rhsd = rhs.val.rawDoubleValue;
+            if (!rhs.val.formatstring.needRound && !is_equal (rhs.val.rawDoubleValue, 0) && rhs.val.hasrawDouble) {
+                rhsd = lhs.val.rawDoubleValue;
             }
             return is_equal (lhsd, rhsd);
         case API_PropertyStringValueType:
@@ -1966,7 +1966,7 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
 #endif
 
     double dval = pvalue.val.doubleValue;
-    if (pvalue.val.formatstring.forceRaw) dval = pvalue.val.rawDoubleValue;
+    if (pvalue.val.formatstring.forceRaw && pvalue.val.hasrawDouble) dval = pvalue.val.rawDoubleValue;
 
     switch (property.definition.valueType) {
         case API_PropertyIntegerValueType:
@@ -3775,6 +3775,7 @@ bool ParamHelpers::ReadID (const API_Elem_Head & elem_head, ParamDictValue & par
             param.val.doubleValue = param.val.intValue * 1.0;
         }
         param.val.rawDoubleValue = param.val.doubleValue;
+        param.val.hasrawDouble = true;
         param.val.uniStringValue = infoString;
         params.Set (param.rawName, param);
         return true;
@@ -4276,6 +4277,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     }
                     params.Get (layer_thickness).val.doubleValue = fillThick;
                     params.Get (layer_thickness).val.rawDoubleValue = fillThick;
+                    params.Get (layer_thickness).val.hasrawDouble = true;
                     params.Get (layer_thickness).val.type = API_PropertyRealValueType;
                     params.Get (layer_thickness).isValid = true;
                 }
@@ -4316,6 +4318,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 params.Get (rawName).val.uniStringValue = outstring;
             }
             params.Get (rawName).val.rawDoubleValue = params.Get (rawName).val.doubleValue;
+            params.Get (rawName).val.hasrawDouble = true;
             params.Get (rawName).isValid = true;
             params.Get (rawName).val.type = API_PropertyStringValueType;
         }
@@ -4398,6 +4401,7 @@ void ParamHelpers::Array2ParamValue (GS::Array<ParamValueData>&pvalue, ParamValu
     pvalrezult.boolValue = param_bool;
     pvalrezult.doubleValue = param_real;
     pvalrezult.rawDoubleValue = param_real;
+    pvalrezult.hasrawDouble = true;
     pvalrezult.intValue = param_int;
     pvalrezult.canCalculate = canCalculate;
 }
@@ -4534,6 +4538,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
     pvalue.rawDoubleValue = param_real;
+    pvalue.hasrawDouble = true;
     pvalue.intValue = param_int;
     pvalue.uniStringValue = param_string;
     return true;
@@ -4694,6 +4699,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             pvalue.val.intValue = value.singleVariant.variant.intValue;
             pvalue.val.doubleValue = value.singleVariant.variant.intValue * 1.0;
             pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+            pvalue.val.hasrawDouble = true;
             if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
             pvalue.val.type = API_PropertyIntegerValueType;
             pvalue.val.canCalculate = true;
@@ -4706,9 +4712,11 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             if (property.definition.measureType == API_PropertyAngleMeasureType) {
                 double ang = value.singleVariant.variant.doubleValue * 180.0 / PI;
                 pvalue.val.rawDoubleValue = ang;
+                pvalue.val.hasrawDouble = true;
                 pvalue.val.doubleValue = round (ang * 100000.0) / 100000.0;
             } else {
                 pvalue.val.rawDoubleValue = value.singleVariant.variant.doubleValue;
+                pvalue.val.hasrawDouble = true;
                 pvalue.val.doubleValue = round (value.singleVariant.variant.doubleValue * 100000.0) / 100000.0;
                 if (value.singleVariant.variant.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
             }
@@ -4746,6 +4754,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             pvalue.val.canCalculate = true;
             pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
             pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+            pvalue.val.hasrawDouble = true;
             pvalue.val.uniStringValue = PropertyHelpers::ToString (property);
             break;
         case API_PropertyStringValueType:
@@ -4764,6 +4773,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
                 }
             }
             pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+            pvalue.val.hasrawDouble = true;
             break;
         case API_PropertyUndefinedValueType:
             return false;
@@ -4861,6 +4871,7 @@ bool ParamHelpers::ConvertStringToParamValue (ParamValue & pvalue, const GS::Uni
         }
     }
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+    pvalue.val.hasrawDouble = true;
     pvalue.val.type = API_PropertyStringValueType;
     pvalue.type = API_PropertyStringValueType;
     pvalue.isValid = true;
@@ -4887,6 +4898,7 @@ bool ParamHelpers::ConvertBoolToParamValue (ParamValue & pvalue, const GS::UniSt
         pvalue.val.doubleValue = 0.0;
     }
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+    pvalue.val.hasrawDouble = true;
     pvalue.val.canCalculate = true;
     pvalue.isValid = true;
     pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
@@ -4907,6 +4919,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
 #endif
     pvalue.val.doubleValue = pvalue.val.intValue * 1.0;
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+    pvalue.val.hasrawDouble = true;
     if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
     pvalue.val.uniStringValue = GS::UniString (attr.header.name);
     pvalue.val.type = API_PropertyStringValueType;
@@ -4929,6 +4942,7 @@ bool ParamHelpers::ConvertIntToParamValue (ParamValue & pvalue, const GS::UniStr
     pvalue.val.intValue = intValue;
     pvalue.val.doubleValue = intValue * 1.0;
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+    pvalue.val.hasrawDouble = true;
     if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
     pvalue.val.uniStringValue = GS::UniString::Printf ("%d", intValue);
     pvalue.isValid = true;
@@ -4949,6 +4963,7 @@ bool ParamHelpers::ConvertDoubleToParamValue (ParamValue & pvalue, const GS::Uni
     pvalue.val.intValue = (GS::Int32) doubleValue;
     pvalue.val.doubleValue = doubleValue;
     pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+    pvalue.val.hasrawDouble = true;
     pvalue.val.boolValue = false;
     if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
     pvalue.val.uniStringValue = GS::UniString::Printf ("%.3f", doubleValue);
@@ -4984,6 +4999,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
                     }
                 }
                 pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+                pvalue.val.hasrawDouble = true;
                 break;
             case API_IFCPropertyAnyValueRealType:
                 pvalue.val.canCalculate = true;
@@ -4995,6 +5011,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
                 if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
                 pvalue.val.uniStringValue = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
                 pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+                pvalue.val.hasrawDouble = true;
                 break;
             case API_IFCPropertyAnyValueIntegerType:
                 pvalue.val.canCalculate = true;
@@ -5005,6 +5022,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
                 pvalue.val.uniStringValue = GS::UniString::Printf ("%d", pvalue.val.intValue);
                 pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
                 pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+                pvalue.val.hasrawDouble = true;
                 break;
             case API_IFCPropertyAnyValueBooleanType:
                 pvalue.val.canCalculate = true;
@@ -5020,6 +5038,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
                     pvalue.val.doubleValue = 0.0;
                 }
                 pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+                pvalue.val.hasrawDouble = true;
                 break;
             case API_IFCPropertyAnyValueLogicalType:
                 pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
@@ -5037,6 +5056,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
                     pvalue.val.doubleValue = 0.0;
                 }
                 pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+                pvalue.val.hasrawDouble = true;
                 break;
             default:
                 pvalue.val.canCalculate = false;
@@ -5054,7 +5074,10 @@ void ParamHelpers::ConvertByFormatString (ParamValue & pvalue)
         Int32 krat = pvalue.val.formatstring.krat;
         double koeff = pvalue.val.formatstring.koeff;
         bool trim_zero = pvalue.val.formatstring.trim_zero;
-        if (is_equal (pvalue.val.rawDoubleValue, 0)) pvalue.val.rawDoubleValue = pvalue.val.doubleValue; // До округлений
+        if (!pvalue.val.hasrawDouble) {
+            pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+            pvalue.val.hasrawDouble = true;
+        }
         pvalue.val.uniStringValue = ParamHelpers::ToString (pvalue);
         if (koeff != 1) n_zero = n_zero + (GS::Int32) log10 (koeff);
         pvalue.val.doubleValue = round (pvalue.val.doubleValue * pow (10, n_zero)) / pow (10, n_zero);
