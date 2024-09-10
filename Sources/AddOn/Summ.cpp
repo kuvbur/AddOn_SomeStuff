@@ -289,21 +289,25 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                     } else {
                         if (rule.sum_type == NumSum) {
                             summ.val.doubleValue = summ.val.doubleValue + param.val.doubleValue;
+                            summ.val.rawDoubleValue = summ.val.rawDoubleValue + param.val.rawDoubleValue;
                             summ.val.intValue = summ.val.intValue + param.val.intValue;
                             summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
                         } else {
                             if (!has_sum && (rule.sum_type == MinSum || rule.sum_type == MaxSum)) {
                                 summ.val.doubleValue = param.val.doubleValue;
+                                summ.val.rawDoubleValue = param.val.rawDoubleValue;
                                 summ.val.intValue = param.val.intValue;
                                 summ.val.boolValue = param.val.boolValue;
                             } else {
                                 if (rule.sum_type == MinSum) {
                                     summ.val.doubleValue = fmin (summ.val.doubleValue, param.val.doubleValue);
+                                    summ.val.rawDoubleValue = fmin (summ.val.rawDoubleValue, param.val.rawDoubleValue);
                                     summ.val.intValue = summ.val.intValue > param.val.intValue ? param.val.intValue : summ.val.intValue;
                                     summ.val.boolValue = summ.val.boolValue || param.val.boolValue;
                                 }
                                 if (rule.sum_type == MaxSum) {
                                     summ.val.doubleValue = fmax (summ.val.doubleValue, param.val.doubleValue);
+                                    summ.val.rawDoubleValue = fmax (summ.val.rawDoubleValue, param.val.rawDoubleValue);
                                     summ.val.intValue = summ.val.intValue < param.val.intValue ? param.val.intValue : summ.val.intValue;
                                     summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
                                 }
@@ -311,6 +315,8 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                         }
                     }
                     has_sum = true;
+                } else {
+                    msg_rep ("Sum_OneRule", "Param not valid :" + rule.value, NoError, elemGuid);
                 }
             }
         }
@@ -332,7 +338,6 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
                         summ.val.formatstring = param.val.formatstring;
                         summ.val.uniStringValue = ParamHelpers::ToString (summ);
                     }
-
                     // Записываем только изменённые значения
                     if (param != summ) {
                         param.val = summ.val;
