@@ -7,7 +7,9 @@
 #include	"Sync.hpp"
 #include	<stdlib.h> /* atoi */
 #include	<time.h>
-
+#ifdef TESTING
+#include "TestFunc.hpp"
+#endif
 Int32 nLib = 0;
 // -----------------------------------------------------------------------------
 // Подключение мониторинга
@@ -1084,7 +1086,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
         if (param.val.hasFormula) {
             param.val.formatstring = stringformat;
-            param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + stringformat.stringformat + "}"; 
+            param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + stringformat.stringformat + "}";
         } else {
             param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "}";
         }

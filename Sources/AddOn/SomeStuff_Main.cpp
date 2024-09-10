@@ -2,6 +2,10 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	<stdio.h>
+
+#ifdef TESTING
+#include "TestFunc.hpp"
+#endif
 #ifdef PK_1
 #include	"Revision.hpp"
 #include	"AutomateFunction.hpp"
