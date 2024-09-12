@@ -1114,8 +1114,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (start_ignore == 0) start_ignore = 1;
         GS::UniString arrtype = params[1].ToLowerCase ();
         bool hasArray = false;
-        if (!hasArray && arrtype.Contains ("uniq")) {
+        if (!hasArray && (arrtype.Contains ("uniq") || arrtype.Contains ("unic"))) {
             arrtype.ReplaceAll ("uniq", "");
+            arrtype.ReplaceAll ("unic", "");
             param.val.array_format_out = ARRAY_UNIC;
             hasArray = true;
         }
