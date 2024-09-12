@@ -141,7 +141,7 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
-}
+    }
 
 bool GetMarkerPos (API_Guid & markerguid, API_Coord & startpoint)
 {
@@ -408,7 +408,7 @@ void SetRevision (void)
         msg_rep ("SetRevision", "APIDb_GetCurrentWindowID", err, APINULLGuid);
         return;
     }
-    Do_GetChangeCustomScheme ();
+    GetScheme ();
     bool haschanges = GetAllChangesMarker ();
 
     // Возвращение на исходную БД и окно
