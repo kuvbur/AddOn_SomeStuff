@@ -314,7 +314,7 @@ void	MenuItemCheckAC (short itemInd, bool checked)
     GSFlags         itemFlags;
 
     BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
-    itemRef.menuResID = ID_ADDON_MENU + isEng ();
+    itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = itemInd;
 
     itemFlags = 0;

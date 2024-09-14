@@ -34,7 +34,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
 #endif
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true);
     if (guidArray.IsEmpty ()) return NoError;
-    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
+    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSumId, ACAPI_GetOwnResModule ());
     bool flag_write = true;
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());; short i = 1;
