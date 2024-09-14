@@ -844,9 +844,10 @@ bool ParamHelpers::AddProperty (ParamDictValue& params, GS::Array<API_Property>&
         ParamHelpers::SetrawNameFromProperty (pvalue, property);
         GS::UniString rawName = pvalue.rawName;
         bool hasname = params.ContainsKey (rawName);
+        bool needAdd = ParamHelpers::needAdd (params, rawName);
         // Заполняем stringformat
         FormatString fstring;
-        if (hasname || ParamHelpers::needAdd (params, rawName)) {
+        if (hasname || needAdd) {
             if (hasname) {
                 fstring = params.Get (rawName).val.formatstring;
                 if (!fstring.isEmpty) pvalue.val.formatstring = fstring;
@@ -860,7 +861,7 @@ bool ParamHelpers::AddProperty (ParamDictValue& params, GS::Array<API_Property>&
                         return flag_find;
                     }
                 } else {
-                    if (ParamHelpers::needAdd (params, rawName)) {
+                    if (needAdd) {
                         params.Add (rawName, pvalue);
                         flag_find = true;
                     }
@@ -940,6 +941,19 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     double sx = 0; double sy = 0;
     double ex = 0; double ey = 0;
     double dx = 0; double dy = 0;
+    // Координаты относительно пользовательского начала
+    double xu = 0; double yu = 0; double zu = 0;
+    double sxu = 0; double syu = 0;
+    double exu = 0; double eyu = 0;
+
+    double lox = 0; double loy = 0; double loz = 0;
+    GS::UniString locorig = "{@coord:locorigin_x}";
+    if (params.ContainsKey (locorig)) lox = params.Get (locorig).val.rawDoubleValue;
+    locorig = "{@coord:locorigin_y}";
+    if (params.ContainsKey (locorig)) loy = params.Get (locorig).val.rawDoubleValue;
+    locorig = "{@coord:locorigin_z}";
+    if (params.ContainsKey (locorig)) loz = params.Get (locorig).val.rawDoubleValue;
+
     double tolerance_coord = 0.001;
     double tolerance_coord_hard = 0.000001;
     double tolerance_ang = 0.00001;
@@ -981,6 +995,8 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         isFliped = element.curtainWall.flipped;
         double sx_ = 0; double sy_ = 0;
         double ex_ = 0; double ey_ = 0;
+        double sxu_ = 0; double syu_ = 0;
+        double exu_ = 0; double eyu_ = 0;
         GS::UniString angznorthtxteng_ = "";
         bool bsymb_pos_sx_correct_ = false;
         bool bsymb_pos_sy_correct_ = false;
@@ -991,6 +1007,13 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         bool bsymb_pos_correct_ = false;
         bool bsymb_rotangle_correct_ = false;
         bool bsymb_rotangle_correct_1000_ = false;
+        bool bsymb_pos_sx_correctu_ = false;
+        bool bsymb_pos_sy_correctu_ = false;
+        bool bsymb_pos_ex_correctu_ = false;
+        bool bsymb_pos_ey_correctu_ = false;
+        bool bsymb_pos_e_correctu_ = false;
+        bool bsymb_pos_s_correctu_ = false;
+        bool bsymb_pos_correctu_ = false;
         API_ElementMemo  memo;
         if (ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
             Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallSegments)) / sizeof (API_CWSegmentType);
@@ -999,11 +1022,16 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
                 sy = memo.cWallSegments[inx_segment].begC.y;
                 ex = memo.cWallSegments[inx_segment].endC.x;
                 ey = memo.cWallSegments[inx_segment].endC.y;
+                sxu = sx - lox; syu = sy - loy;
+                exu = ex - lox; eyu = ey - loy;
                 if (inx_segment == 0) {
                     sx_ = sx; sy_ = sy;
                     ex_ = ex; ey_ = ey;
+                    sxu_ = sxu; syu_ = syu;
+                    exu_ = exu; eyu_ = eyu;
                 } else {
                     ex_ = ex; ey_ = ey;
+                    exu_ = exu; eyu_ = eyu;
                 }
                 CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
                 bsymb_rotangle_correct = CoordCorrectAngle (angz, tolerance_ang, symb_rotangle_fraction, bsymb_rotangle_correct_1000);
@@ -1020,6 +1048,14 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
                 bool bsymb_pos_s_correct = bsymb_pos_ex_correct && bsymb_pos_ey_correct;
                 bool bsymb_pos_correct = bsymb_pos_e_correct && bsymb_pos_s_correct;
 
+                bool bsymb_pos_sx_correctu = check_accuracy (sxu, tolerance_coord);
+                bool bsymb_pos_sy_correctu = check_accuracy (syu, tolerance_coord);
+                bool bsymb_pos_ex_correctu = check_accuracy (exu, tolerance_coord);
+                bool bsymb_pos_ey_correctu = check_accuracy (eyu, tolerance_coord);
+                bool bsymb_pos_e_correctu = bsymb_pos_sx_correctu && bsymb_pos_sy_correctu;
+                bool bsymb_pos_s_correctu = bsymb_pos_ex_correctu && bsymb_pos_ey_correctu;
+                bool bsymb_pos_correctu = bsymb_pos_e_correctu && bsymb_pos_s_correctu;
+
                 if (bsymb_rotangle_correct) bsymb_rotangle_correct_ = true;
                 if (bsymb_rotangle_correct_1000) bsymb_rotangle_correct_1000_ = true;
                 if (bsymb_pos_sx_correct) bsymb_pos_sx_correct_ = true;
@@ -1029,6 +1065,14 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
                 if (bsymb_pos_e_correct) bsymb_pos_e_correct_ = true;
                 if (bsymb_pos_s_correct) bsymb_pos_s_correct_ = true;
                 if (bsymb_pos_correct) bsymb_pos_correct_ = true;
+
+                if (bsymb_pos_sx_correctu) bsymb_pos_sx_correctu_ = true;
+                if (bsymb_pos_sy_correctu) bsymb_pos_sy_correctu_ = true;
+                if (bsymb_pos_ex_correctu) bsymb_pos_ex_correctu_ = true;
+                if (bsymb_pos_ey_correctu) bsymb_pos_ey_correctu_ = true;
+                if (bsymb_pos_e_correctu) bsymb_pos_e_correctu_ = true;
+                if (bsymb_pos_s_correctu) bsymb_pos_s_correctu_ = true;
+                if (bsymb_pos_correctu) bsymb_pos_correctu_ = true;
             }
         }
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -1047,6 +1091,14 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy_);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex_);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey_);
+
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x", sxu_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y", syu_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx", sxu_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy", syu_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex", exu_);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey", eyu_);
+
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle", angz);
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod5", fmod (angz, 5.0));
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod10", fmod (angz, 10.0));
@@ -1054,6 +1106,16 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod90", fmod (angz, 90.0));
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_mod180", fmod (angz, 180.0));
         if (bsync_coord_correct) {
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct", bsymb_pos_s_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_e_correct", bsymb_pos_e_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct", bsymb_pos_sx_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct", bsymb_pos_sy_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct", bsymb_pos_sx_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct", bsymb_pos_sy_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex_correct", bsymb_pos_ex_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey_correct", bsymb_pos_ey_correctu_);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct", bsymb_pos_correctu_);
+
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_s_correct_);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct", bsymb_pos_e_correct_);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_sx_correct_);
@@ -1075,6 +1137,17 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", true);
+
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_e_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct", true);
+
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", true);
             ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_fraction", 0.0);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_rotangle_correct", true);
@@ -1208,29 +1281,51 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         } else {
             angz = 0.0;
         }
+        xu = x - lox; yu = y - loy; zu = z - loz;
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x", xu);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y", yu);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_z", zu);
         if (bsync_coord_correct) {
             bool bsymb_pos_x_correct = check_accuracy (x, tolerance_coord);
             bool bsymb_pos_y_correct = check_accuracy (y, tolerance_coord);
             bool bsymb_pos_correct = bsymb_pos_x_correct && bsymb_pos_y_correct;
+            bool bsymb_pos_x_correct_hard = check_accuracy (x, tolerance_coord_hard);
+            bool bsymb_pos_y_correct_hard = check_accuracy (y, tolerance_coord_hard);
+            bool bsymb_pos_correct_hard = bsymb_pos_x_correct_hard && bsymb_pos_y_correct_hard;
+
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", bsymb_pos_x_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", bsymb_pos_y_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct", bsymb_pos_x_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct", bsymb_pos_y_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", bsymb_pos_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
-
-            bool bsymb_pos_x_correct_hard = check_accuracy (x, tolerance_coord_hard);
-            bool bsymb_pos_y_correct_hard = check_accuracy (y, tolerance_coord_hard);
-            bool bsymb_pos_correct_hard = bsymb_pos_x_correct_hard && bsymb_pos_y_correct_hard;
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct_hard", bsymb_pos_x_correct_hard);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct_hard", bsymb_pos_y_correct_hard);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct_hard", bsymb_pos_x_correct_hard);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct_hard", bsymb_pos_y_correct_hard);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct_hard", bsymb_pos_correct_hard);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct_hard", bsymb_pos_correct_hard);
+            bool bsymb_pos_x_correctu = check_accuracy (xu, tolerance_coord);
+            bool bsymb_pos_y_correctu = check_accuracy (yu, tolerance_coord);
+            bool bsymb_pos_correctu = bsymb_pos_x_correctu && bsymb_pos_y_correctu;
+            bool bsymb_pos_x_correct_hardu = check_accuracy (xu, tolerance_coord_hard);
+            bool bsymb_pos_y_correct_hardu = check_accuracy (yu, tolerance_coord_hard);
+            bool bsymb_pos_correct_hardu = bsymb_pos_x_correct_hardu && bsymb_pos_y_correct_hardu;
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct", bsymb_pos_x_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct", bsymb_pos_y_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct", bsymb_pos_x_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct", bsymb_pos_y_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct", bsymb_pos_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct", bsymb_pos_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct_hard", bsymb_pos_x_correct_hardu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct_hard", bsymb_pos_y_correct_hardu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct_hard", bsymb_pos_x_correct_hardu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct_hard", bsymb_pos_y_correct_hardu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct_hard", bsymb_pos_correct_hardu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct_hard", bsymb_pos_correct_hardu);
         } else {
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct", true);
@@ -1244,9 +1339,24 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct_hard", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct_hard", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct_hard", true);
+
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct_hard", true);
         }
     }
     if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
+    sxu = sx - lox; syu = sy - loy;
+    exu = ex - lox; eyu = ey - loy;
     if (hasLine && !hasSymbpos) {
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
@@ -1254,6 +1364,14 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", sy);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex", ex);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey", ey);
+
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x", sxu);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y", syu);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx", sxu);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy", syu);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex", exu);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey", eyu);
+
         if (bsync_coord_correct) {
             if (isFliped) {
                 dx = ex - sx;
@@ -1282,6 +1400,22 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", bsymb_pos_ey_correct);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", bsymb_pos_correct);
 
+            bool bsymb_pos_sx_correctu = check_accuracy (sxu, tolerance_coord);
+            bool bsymb_pos_sy_correctu = check_accuracy (syu, tolerance_coord);
+            bool bsymb_pos_ex_correctu = check_accuracy (exu, tolerance_coord);
+            bool bsymb_pos_ey_correctu = check_accuracy (eyu, tolerance_coord);
+            bool bsymb_pos_e_correctu = bsymb_pos_sx_correctu && bsymb_pos_sy_correctu;
+            bool bsymb_pos_s_correctu = bsymb_pos_ex_correctu && bsymb_pos_ey_correctu;
+            bool bsymb_pos_correctu = bsymb_pos_e_correctu && bsymb_pos_s_correctu;
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct", bsymb_pos_s_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_e_correct", bsymb_pos_e_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct", bsymb_pos_sx_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct", bsymb_pos_sy_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct", bsymb_pos_sx_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct", bsymb_pos_sy_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex_correct", bsymb_pos_ex_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey_correct", bsymb_pos_ey_correctu);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct", bsymb_pos_correctu);
 
             bool bl_correct_hard = check_accuracy (l, tolerance_coord_hard);
             bool bsymb_pos_sx_correct_hard = check_accuracy (sx, tolerance_coord_hard);
@@ -1301,6 +1435,22 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct_hard", bsymb_pos_ex_correct_hard);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct_hard", bsymb_pos_ey_correct_hard);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct_hard", bsymb_pos_correct_hard);
+            bool bsymb_pos_sx_correctu_hard = check_accuracy (sxu, tolerance_coord_hard);
+            bool bsymb_pos_sy_correctu_hard = check_accuracy (syu, tolerance_coord_hard);
+            bool bsymb_pos_ex_correctu_hard = check_accuracy (exu, tolerance_coord_hard);
+            bool bsymb_pos_ey_correctu_hard = check_accuracy (eyu, tolerance_coord_hard);
+            bool bsymb_pos_e_correctu_hard = bsymb_pos_sx_correctu_hard && bsymb_pos_sy_correctu_hard;
+            bool bsymb_pos_s_correctu_hard = bsymb_pos_ex_correctu_hard && bsymb_pos_ey_correctu_hard;
+            bool bsymb_pos_correctu_hard = bsymb_pos_e_correctu_hard && bsymb_pos_s_correctu_hard;
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct_hard", bsymb_pos_s_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_e_correct_hard", bsymb_pos_e_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct_hard", bsymb_pos_sx_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct_hard", bsymb_pos_sy_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct_hard", bsymb_pos_sx_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct_hard", bsymb_pos_sy_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex_correct_hard", bsymb_pos_ex_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey_correct_hard", bsymb_pos_ey_correctu_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct_hard", bsymb_pos_correctu_hard);
         } else {
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "l_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct", true);
@@ -1312,6 +1462,34 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct", true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "l_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_s_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_e_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ex_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_ey_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_e_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_s_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_e_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_x_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_y_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ex_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_ey_correct_hard", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_correct_hard", true);
         }
     }
 
@@ -2851,6 +3029,30 @@ bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement& paramToRead)
     return false;
 }
 
+bool ParamHelpers::hasUnreadCoord (ParamDictElement& paramToRead)
+{
+    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        ParamDictValue& params = cIt->value;
+#else
+        ParamDictValue& params = *cIt->value;
+#endif
+        if (!params.IsEmpty ()) {
+            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+                ParamValue& param = cIt->value;
+#else
+                ParamValue& param = *cIt->value;
+#endif
+                if (param.fromCoord) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 bool ParamHelpers::hasUnreadAttribute (ParamDictElement& paramToRead)
 {
     for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -2920,6 +3122,13 @@ bool ParamHelpers::hasInfo (ParamDictValue& propertyParams)
     return true;
 }
 
+bool ParamHelpers::has_LocOrigin (ParamDictValue& propertyParams)
+{
+    if (propertyParams.IsEmpty ()) return false;
+    if (!propertyParams.ContainsKey ("{@flag:has_LocOrigin}")) return false;
+    return true;
+}
+
 bool ParamHelpers::hasAttribute (ParamDictValue& propertyParams)
 {
     if (propertyParams.IsEmpty ()) return false;
@@ -2985,7 +3194,9 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& 
     if (!ParamHelpers::hasAttribute (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_attrib}")) {
         if (ParamHelpers::hasUnreadAttribute (paramToRead)) ParamHelpers::GetAllAttributeToParamDict (propertyParams);
     }
-
+    if (!ParamHelpers::has_LocOrigin (propertyParams)) {
+        if (ParamHelpers::hasUnreadCoord (paramToRead)) ParamHelpers::GetLocOriginToParamDict (propertyParams);
+    }
     // Выбираем по-элементно параметры для чтения
     for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
@@ -3124,13 +3335,20 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 // Для определения угла к северу нам потребуется значение направления на север.
                 // Оно должно быть в Info, проверим и добавим, если оно есть
                 GS::UniString globnorthkey = "{@glob:glob_north_dir}";
-                if (propertyParams.ContainsKey (globnorthkey)) {
+                if (propertyParams.ContainsKey (globnorthkey) && !paramByType.ContainsKey (globnorthkey)) {
                     paramByType.Add (globnorthkey, propertyParams.Get (globnorthkey));
                 }
                 GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
-                if (params.ContainsKey (sync_coord_correctkey)) {
+                if (params.ContainsKey (sync_coord_correctkey) && !paramByType.ContainsKey (sync_coord_correctkey)) {
                     paramByType.Add (sync_coord_correctkey, params.Get (sync_coord_correctkey));
                 }
+                GS::UniString locorig = "{@coord:locorigin_x}";
+                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+                locorig = "{@coord:locorigin_y}";
+                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+                locorig = "{@coord:locorigin_z}";
+                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+
                 needCompare = ParamHelpers::ReadCoords (element, paramByType);
             }
             if (paramType.IsEqual ("{@gdl:")) {
@@ -3197,6 +3415,43 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
     }
 }
 
+// --------------------------------------------------------------------
+// Заполнение информации о локальном начале координат
+// --------------------------------------------------------------------
+void ParamHelpers::GetLocOriginToParamDict (ParamDictValue& propertyParams)
+{
+    DBPrintf ("== SMSTF == GetLocOriginToParamDict start\n");
+    //Пользовательское начало
+    API_Coord3D locOrigin;
+    GSErrCode err = NoError;
+#if defined AC_27 || defined AC_28
+    err = ACAPI_Database_GetLocOrigo (&locOrigin);
+#else
+    err = ACAPI_Database (APIDb_GetLocOrigoID, &locOrigin);
+#endif
+    if (err != NoError) {
+        msg_rep ("GetLocOriginToParamDict", "APIDb_GetLocOrigoID", err, APINULLGuid);
+        return;
+    }
+    ParamValue pvalue;
+    pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+    pvalue.fromCoord = true;
+    pvalue.name = "locOrigin_x"; pvalue.rawName = "{@coord:" + pvalue.name.ToLowerCase () + "}";
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", locOrigin.x);
+    propertyParams.Add (pvalue.rawName, pvalue);
+    pvalue.name = "locOrigin_y"; pvalue.rawName = "{@coord:" + pvalue.name.ToLowerCase () + "}";
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", locOrigin.y);
+    propertyParams.Add (pvalue.rawName, pvalue);
+    pvalue.name = "locOrigin_z"; pvalue.rawName = "{@coord:" + pvalue.name.ToLowerCase () + "}";
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", locOrigin.z);
+    propertyParams.Add (pvalue.rawName, pvalue);
+    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_LocOrigin");
+    DBPrintf ("== SMSTF == GetLocOriginToParamDict end\n");
+}
+
+// --------------------------------------------------------------------
+// Заполнение информации о проекте
+// --------------------------------------------------------------------
 void ParamHelpers::GetAllInfoToParamDict (ParamDictValue& propertyParams)
 {
     DBPrintf ("== SMSTF == GetAllInfoToParamDict start\n");
@@ -3540,12 +3795,12 @@ void ParamHelpers::CompareParamDictValue (ParamDictValue & paramsFrom, ParamDict
 #endif
         if (paramsTo.ContainsKey (k)) {
             ParamValue paramFrom = paramsFrom.Get (k);
-            paramFrom.fromGuid = paramsTo.Get (paramFrom.rawName).fromGuid; // Чтоб GUID не перезаписался
-            paramsTo.Set (paramFrom.rawName, paramFrom);
+            paramFrom.fromGuid = paramsTo.Get (k).fromGuid; // Чтоб GUID не перезаписался
+            paramsTo.Set (k, paramFrom);
         } else {
             if (addInNotEx) {
                 ParamValue paramFrom = paramsFrom.Get (k);
-                paramsTo.Add (paramFrom.rawName, paramFrom);
+                paramsTo.Add (k, paramFrom);
             }
         }
     }
@@ -4901,7 +5156,7 @@ bool ParamHelpers::ConvertBoolToParamValue (ParamValue & pvalue, const GS::UniSt
     pvalue.val.hasrawDouble = true;
     pvalue.val.canCalculate = true;
     pvalue.isValid = true;
-    pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+    if (pvalue.val.formatstring.isEmpty) pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
     return true;
 }
 
@@ -4946,7 +5201,7 @@ bool ParamHelpers::ConvertIntToParamValue (ParamValue & pvalue, const GS::UniStr
     if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
     pvalue.val.uniStringValue = GS::UniString::Printf ("%d", intValue);
     pvalue.isValid = true;
-    pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+    if (pvalue.val.formatstring.isEmpty) pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
     return true;
 }
 

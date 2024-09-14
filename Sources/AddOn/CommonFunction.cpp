@@ -903,7 +903,13 @@ bool EvalExpression (GS::UniString & unistring_expression)
         parser_t parser;
         parser.compile (expression_string, expression);
         const T result = expression.value ();
-        GS::UniString rezult_txt = FormatStringFunc::NumToString (result, fstring);
+        GS::UniString rezult_txt = "";
+        if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
+        if (std::isnan (result)) {
+            DBPrintf ("== SMSTF ERR == Formula is nan ");
+            DBPrintf (expression_string.c_str ());
+            DBPrintf ("== \n");
+        }
         unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
         if (expression_old.IsEqual (unistring_expression)) flag_change = false;
     }
@@ -1065,7 +1071,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
@@ -1121,7 +1127,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return err;
-    }
+}
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -1206,7 +1212,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение списка GUID элементов ограждения
