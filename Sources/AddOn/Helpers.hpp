@@ -470,11 +470,15 @@ bool hasGlob (ParamDictValue& propertyParams);
 
 bool hasInfo (ParamDictValue& propertyParams);
 
+bool has_LocOrigin (ParamDictValue& propertyParams);
+
 bool hasAttribute (ParamDictValue& propertyParams);
 
 bool hasProperyDefinition (ParamDictValue& propertyParams);
 
 bool hasUnreadProperyDefinition (ParamDictElement& paramToRead);
+
+bool hasUnreadCoord (ParamDictElement& paramToRead);
 
 bool hasUnreadAttribute (ParamDictElement& paramToRead);
 
@@ -547,6 +551,11 @@ bool ConvertDoubleToParamValue (ParamValue& pvalue, const GS::UniString& paramNa
 bool ConvertToParamValue (ParamValue& pvalue, const API_IFCProperty& property);
 
 void ConvertByFormatString (ParamValue& pvalue);
+
+// --------------------------------------------------------------------
+// Заполнение информации о локальном начале координат
+// --------------------------------------------------------------------
+void GetLocOriginToParamDict (ParamDictValue& propertyParams);
 
 // --------------------------------------------------------------------
 // Заполнение информации о проекте
