@@ -40,7 +40,7 @@ static const Int32 AddOnDescriptionID = 2;
 static const Int32 UndoSyncId = 1;
 static const Int32 SyncAllId = 2;
 static const Int32 UndoReNumId = 3;
-static const Int32 UndoSumId = 6;
+static const Int32 UndoSumId = 32;
 
 static const Int32 TrueId = 4;
 static const Int32 FalseId = 5;

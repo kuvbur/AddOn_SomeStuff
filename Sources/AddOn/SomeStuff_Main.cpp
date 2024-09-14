@@ -263,7 +263,7 @@ void MenuSetState (SyncSettings & syncSettings)
     MenuItemCheckAC (Menu_objS, syncSettings.objS);
     MenuItemCheckAC (Menu_cwallS, syncSettings.cwallS);
     if (isEng () > 0) {
-        for (UInt32 i = 0; i < 11; i++) {
+        for (UInt32 i = 0; i < 13; i++) {
             SetPaletteMenuText (i);
         }
     }
