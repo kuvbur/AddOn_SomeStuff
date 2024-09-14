@@ -1957,7 +1957,7 @@ bool operator== (const ParamValue& lhs, const ParamValue& rhs)
                 lhsd = lhs.val.rawDoubleValue;
             }
             if (!rhs.val.formatstring.needRound && !is_equal (rhs.val.rawDoubleValue, 0) && rhs.val.hasrawDouble) {
-                rhsd = lhs.val.rawDoubleValue;
+                rhsd = rhs.val.rawDoubleValue;
             }
             return is_equal (lhsd, rhsd);
         case API_PropertyStringValueType:
@@ -2944,6 +2944,15 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
     err = ACAPI_Element_ChangeMemo (elemGuidt, APIMemoMask_AddPars, &elemMemo);
     if (err != NoError) msg_rep ("ParamHelpers::WriteGDL", "ACAPI_Element_ChangeMemo", err, elem_head.guid);
     ACAPI_DisposeAddParHdl (&apiParams.params);
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_LibraryManagement_RunGDLParScript (&elem_head, 0);
+#else
+    err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elem_head, 0);
+#endif
+    if (err != NoError) {
+        msg_rep ("ParamHelpers::WriteGDL", "APIAny_RunGDLParScriptID", err, elemGuid);
+        return;
+    }
 }
 
 // --------------------------------------------------------------------
