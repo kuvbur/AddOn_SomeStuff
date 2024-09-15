@@ -17,7 +17,7 @@ Int32 nLib = 0;
 void MonAll (SyncSettings& syncSettings)
 {
     if (!syncSettings.syncMon) return;
-    DBPrintf ("== SMSTF == MonAll start\n");
+    DBprnt ("MonAll start");
     long time_start = clock ();
     MonByType (API_ObjectID, syncSettings);
     MonByType (API_WindowID, syncSettings);
@@ -36,7 +36,7 @@ void MonAll (SyncSettings& syncSettings)
     long time_end = clock ();
     GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
     msg_rep ("MonAll", time, NoError, APINULLGuid);
-    DBPrintf ("== SMSTF == MonAll end\n");
+    DBprnt ("MonAll end");
 }
 
 // -----------------------------------------------------------------------------
@@ -45,7 +45,7 @@ void MonAll (SyncSettings& syncSettings)
 void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings)
 {
     GS::Array<API_Guid>	guidArray;
-    DBPrintf ("== SMSTF == MonByType\n");
+    DBprnt ("MonByType");
     GSErrCode err = ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
     if (err != NoError || guidArray.IsEmpty ()) return;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
@@ -78,7 +78,7 @@ void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 // -----------------------------------------------------------------------------
 void SyncAndMonAll (SyncSettings& syncSettings)
 {
-    DBPrintf ("== SMSTF == SyncAndMonAll start\n");
+    DBprnt ("SyncAndMonAll start");
 
     // Сразу прочитаем свойства и разложим их по элементам
     ParamDictValue propertyParams;
@@ -155,15 +155,16 @@ void SyncAndMonAll (SyncSettings& syncSettings)
         msg_rep ("SyncAll - write", "No data to write", NoError, APINULLGuid);
     }
     ParamHelpers::InfoWrite (paramToWrite);
+    if (!rereadelem.IsEmpty ()) {
+        DBprnt ("===== REREAD =======");
+        SyncArray (syncSettings, rereadelem, systemdict);
+    }
+    DBprnt ("SyncAndMonAll end");
 #if defined(AC_27) || defined(AC_28)
     ACAPI_ProcessWindow_CloseProcessWindow ();
 #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-    if (!rereadelem.IsEmpty ()) {
-        SyncArray (syncSettings, rereadelem, systemdict);
-    }
-    DBPrintf ("== SMSTF == SyncAndMonAll end\n");
 }
 
 // -----------------------------------------------------------------------------
@@ -177,6 +178,9 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     long time_start = clock ();
     ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
     if (guidArray.IsEmpty ()) return false;
+#ifdef TESTING
+    TestFunc::ResetSyncPropertyArray (guidArray);
+#endif
 #if defined AC_26 || defined AC_27 || defined AC_28
     API_ElemType elemType;
     elemType.typeID = elementType;
@@ -256,6 +260,7 @@ void SyncSelected (const SyncSettings& syncSettings)
     ClassificationFunc::GetAllClassification (systemdict);
     GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, guidArray, systemdict);
     if (!rereadelem.IsEmpty ()) {
+        DBprnt ("===== REREAD =======");
         SyncArray (syncSettings, rereadelem, systemdict);
     }
 }
@@ -371,7 +376,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
 // -----------------------------------------------------------------------------
 void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
 {
-    DBPrintf ("== SMSTF == RunParam\n");
+    DBprnt ("RunParam");
     API_Elem_Head	tElemHead;
     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
     tElemHead.guid = elemGuid;
@@ -942,11 +947,14 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             GS::UniString templatestring = "";
             if (rulestring_one.Contains ('"')) {
                 templatestring = rulestring_one.GetSubstring ('"', '"', 0);
+                stringformat = FormatStringFunc::ParseFormatString (templatestring);
                 param.val.uniStringValue = templatestring;
             } else {
                 templatestring = rulestring_one.GetSubstring ('<', '>', 0);
+                stringformat = FormatStringFunc::ParseFormatString (templatestring);
                 param.val.uniStringValue = '<' + templatestring + '>';
             }
+            param.val.formatstring = stringformat;
             synctypefind = true;
             paramNamePrefix = "{@formula:";
             param.val.hasFormula = true;
@@ -1092,9 +1100,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (!param.fromMaterial && param.val.hasFormula) {
-        stringformat = FormatStringFunc::ParseFormatString ("");
-        param.val.formatstring = stringformat;
-        param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + stringformat.stringformat + "}";
+        param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "." + stringformat.stringformat + "}";
     }
     UInt32 start_ignore = 0;
     if (param.fromClassification) {

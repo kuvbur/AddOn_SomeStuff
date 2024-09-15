@@ -5,11 +5,82 @@
 #include    <limits>
 #include    <math.h>
 
+void DBprnt (GS::UniString msg, GS::UniString reportString) {
+#if defined(DEBUG)
+    if(msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") || reportString.Contains ("ERROR")) {
+        DBPrint ("== ERROR == ");
+    }
+    DBPrint ("== SMSTF == ");
+    std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
+    DBPrint (var_str.c_str ());
+    if(!reportString.IsEmpty ()) {
+        DBPrint (" : ");
+        std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
+        DBPrint (reportString_str.c_str ());
+    }
+    DBPrint ("\n");
+#else
+    UNUSED_VARIABLE (msg);
+    UNUSED_VARIABLE (reportString);
+#endif
+}
+
+void DBtest (bool usl, GS::UniString reportString, bool asserton) {
+#if defined(DEBUG)
+    if(usl) {
+        DBprnt (reportString, "ok");
+    } else {
+        DBprnt ("=== ERROR IN TEST ===", reportString);
+    }
+    if(asserton) assert (usl);
+#else
+    UNUSED_VARIABLE (usl);
+    UNUSED_VARIABLE (reportString);
+#endif
+}
+
+void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton) {
+#if defined(DEBUG)
+    GS::UniString out = a + " = " + b;
+    if(a.IsEqual (b)) {
+        reportString = "test " + reportString + " ok";
+        DBprnt (out, reportString);
+    } else {
+        out = "=== ERROR IN TEST === " + out;
+        DBprnt (out, reportString);
+    }
+    if(asserton) (a.IsEqual (b));
+#else
+    UNUSED_VARIABLE (usl);
+    UNUSED_VARIABLE (reportString);
+#endif
+}
+
+void DBtest (double a, double b, GS::UniString reportString, bool asserton) {
+#if defined(DEBUG)
+    GS::UniString out = GS::UniString::Printf ("%d = %d", a, b);
+    if(is_equal (a, b)) {
+        reportString = "test " + reportString + " ok";
+        DBprnt (out, reportString);
+    } else {
+        out = "=== ERROR IN TEST === " + out;
+        DBprnt (out, reportString);
+    }
+    if(asserton) (is_equal (a, b));
+#else
+    UNUSED_VARIABLE (usl);
+    UNUSED_VARIABLE (reportString);
+#endif
+}
+
+
 // -----------------------------------------------------------------------------
 // Проверка языка Архикада. Для INT возвращает 1000
 // -----------------------------------------------------------------------------
-Int32 isEng ()
-{
+Int32 isEng () {
+#ifdef PK_1
+    return 0;
+#endif
     GSErrCode err = NoError;
     API_ServerApplicationInfo AppInfo;
 #if defined(AC_27) || defined(AC_28)
@@ -17,19 +88,18 @@ Int32 isEng ()
 #else
     err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
 #endif // AC_27
-    if (err != NoError) return 0;
-    if (!AppInfo.language.IsEqual ("RUS")) return 1000;
+    if(err != NoError) return 0;
+    if(!AppInfo.language.IsEqual ("RUS")) return 1000;
     return 0;
 }
 
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
 // -----------------------------------------------------------------------------
-void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid, bool show)
-{
+void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid, bool show) {
     GS::UniString error_type = "";
-    if (err != NoError) {
-        switch (err) {
+    if(err != NoError) {
+        switch(err) {
             case APIERR_GENERAL:
                 error_type = "APIERR_GENERAL - General error code";
                 break;
@@ -268,20 +338,20 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 break;
         }
     }
-    if (elemGuid != APINULLGuid) {
+    if(elemGuid != APINULLGuid) {
         error_type = "GUID: " + APIGuid2GSGuid (elemGuid).ToUniString () + " " + error_type;
         API_Elem_Head	elem_head = {};
         elem_head.guid = elemGuid;
-        if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
+        if(ACAPI_Element_GetHeader (&elem_head) == NoError) {
             GS::UniString elemName;
 
 #if defined(AC_27) || defined(AC_28)
-            if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
+            if(ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
 #else
 #ifdef AC_26
-            if (ACAPI_Goodies_GetElemTypeName (elem_head.type, elemName) == NoError) {
+            if(ACAPI_Goodies_GetElemTypeName (elem_head.type, elemName) == NoError) {
 #else
-            if (ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) elem_head.typeID, &elemName) == NoError) {
+            if(ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) elem_head.typeID, &elemName) == NoError) {
 #endif
 #endif
                 error_type = error_type + " type:" + elemName;
@@ -290,26 +360,25 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             BNZeroMemory (&layer, sizeof (API_Attribute));
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
-            if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
+            if(ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
         }
     }
     GS::UniString msg = modulename + ": " + reportString;
-    if (!show) msg = msg + " " + error_type;
+    if(!show) msg = msg + " " + error_type;
     msg = msg + "\n";
     ACAPI_WriteReport (msg, false);
-    if (show) ACAPI_WriteReport (msg, show);
-    if (err != NoError) {
+    if(show) ACAPI_WriteReport (msg, show);
+    if(err != NoError) {
         msg = "== SMSTF ERR ==" + msg;
     }
-    DBPrintf (msg.ToCStr ());
+    DBprnt (msg);
 }
 
 
 // --------------------------------------------------------------------
 // Отмечает заданный пункт активным/неактивным
 // --------------------------------------------------------------------
-void	MenuItemCheckAC (short itemInd, bool checked)
-{
+void	MenuItemCheckAC (short itemInd, bool checked) {
     API_MenuItemRef itemRef;
     GSFlags         itemFlags;
 
@@ -323,7 +392,7 @@ void	MenuItemCheckAC (short itemInd, bool checked)
 #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
 #endif
-    if (checked)
+    if(checked)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
@@ -339,8 +408,7 @@ void	MenuItemCheckAC (short itemInd, bool checked)
 // Получить массив Guid выбранных элементов
 // Версия без чтения настроек
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/)
-{
+GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/) {
     GSErrCode            err;
     API_SelectionInfo    selectionInfo;
     GS::UniString errorString = "Empty";
@@ -351,12 +419,12 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 #endif
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, onlyEditable);
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
-    if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
-        if (assertIfNoSel) {
+    if(err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
+        if(assertIfNoSel) {
             DGAlert (DG_ERROR, "Error", errorString, "", "Ok");
         }
     }
-    if (err != NoError) {
+    if(err != NoError) {
 #ifdef AC_22
         BMKillHandle ((GSHandle*) &selNeigs);
 #endif // AC_22
@@ -365,12 +433,12 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
     GS::Array<API_Guid> guidArray;
 #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
-    for (USize i = 0; i < nSel; i++) {
+    for(USize i = 0; i < nSel; i++) {
         guidArray.Push ((*selNeigs)[i].guid);
     }
     BMKillHandle ((GSHandle*) &selNeigs);
 #else
-    for (const API_Neig& neig : selNeigs) {
+    for(const API_Neig& neig : selNeigs) {
 
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
@@ -384,10 +452,9 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 //	(функция должна принимать в качетве аргумента API_Guid
 // Версия без чтения настроек
 // -----------------------------------------------------------------------------
-void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString & funcname)
-{
+void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString & funcname) {
     GS::Array<API_Guid> guidArray = GetSelectedElements2 (assertIfNoSel, onlyEditable);
-    if (!guidArray.IsEmpty ()) {
+    if(!guidArray.IsEmpty ()) {
         long time_start = clock ();
         GS::UniString subtitle ("working...");
         GS::Int32 nPhase = 1;
@@ -398,17 +465,17 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
         ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
 #endif
-        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+        for(UInt32 i = 0; i < guidArray.GetSize (); i++) {
 #if defined(AC_27) || defined(AC_28)
-            if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+            if(i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
-            if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+            if(i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
             function (guidArray[i]);
 #if defined(AC_27) || defined(AC_28)
-            if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
+            if(ACAPI_ProcessWindow_IsProcessCanceled ()) return;
 #else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
+            if(ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
 #endif
         }
         long time_end = clock ();
@@ -420,7 +487,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-    } else if (!assertIfNoSel) {
+    } else if(!assertIfNoSel) {
         function (APINULLGuid);
     }
 }
@@ -428,14 +495,13 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid
 // -----------------------------------------------------------------------------
-GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType)
-{
+GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType) {
     GSErrCode		err = NoError;
     API_Elem_Head elem_head;
     BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
-    if (err != NoError) {
+    if(err != NoError) {
         msg_rep ("GetTypeByGUID", "", err, elemGuid);
         return err;
     }
@@ -451,8 +517,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------
-bool GetElementTypeString (API_ElemType elemType, char* elemStr)
-{
+bool GetElementTypeString (API_ElemType elemType, char* elemStr) {
     GS::UniString	ustr;
     GSErrCode	err = NoError;
 #if defined(AC_27) || defined(AC_28)
@@ -460,7 +525,7 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 #else
     err = ACAPI_Goodies_GetElemTypeName (elemType, ustr);
 #endif
-    if (err == NoError) {
+    if(err == NoError) {
         CHTruncate (ustr.ToCStr (), elemStr, ELEMSTR_LEN - 1);
         return true;
     }
@@ -470,11 +535,10 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------
-bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
-{
+bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr) {
     GS::UniString	ustr;
     GSErrCode	err = ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) typeID, &ustr);
-    if (err == NoError) {
+    if(err == NoError) {
         CHTruncate (ustr.ToCStr (), elemStr, ELEMSTR_LEN - 1);
         return true;
     }
@@ -485,17 +549,16 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
 // -----------------------------------------------------------------------------
 // Получить полное имя свойства (включая имя группы)
 // -----------------------------------------------------------------------------
-GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::UniString & name)
-{
-    if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
+GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::UniString & name) {
+    if(definision.groupGuid == APINULLGuid) return APIERR_BADID;
     GSErrCode error = NoError;
-    if (definision.name.Contains ("ync_name")) {
+    if(definision.name.Contains ("ync_name")) {
         name = definision.name;
     } else {
         API_PropertyGroup group;
         group.guid = definision.groupGuid;
         error = ACAPI_Property_GetPropertyGroup (group);
-        if (error == NoError) {
+        if(error == NoError) {
             name = group.name + "/" + definision.name;
         } else {
             msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
@@ -508,13 +571,12 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
 // -----------------------------------------------------------------------------
 // Удаление данных аддона из элемента
 // -----------------------------------------------------------------------------
-void DeleteElementUserData (const API_Guid & elemguid)
-{
+void DeleteElementUserData (const API_Guid & elemguid) {
     API_Elem_Head	tElemHead = {};
     tElemHead.guid = elemguid;
     API_ElementUserData userData = {};
     GSErrCode err = ACAPI_Element_GetUserData (&tElemHead, &userData);
-    if (err == NoError && userData.dataHdl != nullptr) {
+    if(err == NoError && userData.dataHdl != nullptr) {
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_UserData_DeleteUserData (&tElemHead);
 #else
@@ -525,12 +587,12 @@ void DeleteElementUserData (const API_Guid & elemguid)
     BMKillHandle (&userData.dataHdl);
     GS::Array<API_Guid> setGuids;
     err = ACAPI_ElementSet_Identify (elemguid, &setGuids);
-    if (err == NoError) {
+    if(err == NoError) {
         USize nSet = setGuids.GetSize ();
-        if (nSet > 0) {
-            for (UIndex i = 0; i < nSet; i++) {
+        if(nSet > 0) {
+            for(UIndex i = 0; i < nSet; i++) {
                 err = ACAPI_ElementSet_Delete (setGuids[i]);
-                if (err != NoError) {
+                if(err != NoError) {
                     DBPRINTF ("Delete Element Set error: %d\n", err);
                 }
             }
@@ -543,14 +605,13 @@ void DeleteElementUserData (const API_Guid & elemguid)
 // -----------------------------------------------------------------------------
 // Удаление данных аддона из всех элементов
 // -----------------------------------------------------------------------------
-void DeleteElementsUserData ()
-{
+void DeleteElementsUserData () {
     GSErrCode err = NoError;
     GS::Array<API_Guid> addonelemList;
     err = ACAPI_AddOnObject_GetObjectList (&addonelemList);
     USize ngl = addonelemList.GetSize ();
-    if (ngl > 0) {
-        for (UIndex ii = 0; ii < ngl; ii++) {
+    if(ngl > 0) {
+        for(UIndex ii = 0; ii < ngl; ii++) {
             err = ACAPI_AddOnObject_DeleteObject (addonelemList[ii]);
         }
         GS::UniString intString = GS::UniString::Printf (" %d", ngl);
@@ -559,22 +620,21 @@ void DeleteElementsUserData ()
     GS::Array<API_Guid> elemList;
     ACAPI_Element_GetElemList (API_ZombieElemID, &elemList, APIFilt_IsEditable | APIFilt_HasAccessRight);
     USize ng = elemList.GetSize ();
-    if (err == NoError) {
+    if(err == NoError) {
         ACAPI_CallUndoableCommand ("Delete Element Set",
-                                   [&]() -> GSErrCode {
-            for (UIndex ii = 0; ii < ng; ii++) {
-                DeleteElementUserData (elemList[ii]);
-            }
-            return NoError;
-        });
+                                   [&] () -> GSErrCode {
+                                       for(UIndex ii = 0; ii < ng; ii++) {
+                                           DeleteElementUserData (elemList[ii]);
+                                       }
+                                       return NoError;
+                                   });
     }
 }
 
 // -----------------------------------------------------------------------------
 // Включение и разблокирование всех слоёв
 // -----------------------------------------------------------------------------
-void UnhideUnlockAllLayer (void)
-{
+void UnhideUnlockAllLayer (void) {
     API_Attribute		attrib;
     GSErrCode			err;
 #if defined(AC_27) || defined(AC_28)
@@ -588,9 +648,9 @@ void UnhideUnlockAllLayer (void)
 #endif
     err = ACAPI_Attribute_GetNum (API_LayerID, &count);
 #endif
-    if (err != NoError) msg_rep ("UnhideUnlockAllLayer", "ACAPI_Attribute_GetNum", err, APINULLGuid);
-    if (err == NoError) {
-        for (i = 2; i <= count; i++) {
+    if(err != NoError) msg_rep ("UnhideUnlockAllLayer", "ACAPI_Attribute_GetNum", err, APINULLGuid);
+    if(err == NoError) {
+        for(i = 2; i <= count; i++) {
             BNZeroMemory (&attrib, sizeof (API_Attribute));
             attrib.header.typeID = API_LayerID;
 #if defined(AC_27) || defined(AC_28)
@@ -599,20 +659,20 @@ void UnhideUnlockAllLayer (void)
             attrib.header.index = i;
 #endif
             err = ACAPI_Attribute_Get (&attrib);
-            if (err != NoError) msg_rep ("UnhideUnlockAllLayer", "ACAPI_Attribute_Get", err, APINULLGuid);
-            if (err == NoError) {
+            if(err != NoError) msg_rep ("UnhideUnlockAllLayer", "ACAPI_Attribute_Get", err, APINULLGuid);
+            if(err == NoError) {
                 bool flag_write = false;
-                if (attrib.header.flags & APILay_Hidden) {
+                if(attrib.header.flags & APILay_Hidden) {
                     attrib.layer.head.flags |= !APILay_Hidden;
                     flag_write = true;
                 }
-                if (attrib.header.flags & APILay_Locked) {
+                if(attrib.header.flags & APILay_Locked) {
                     attrib.layer.head.flags |= !APILay_Locked;
                     flag_write = true;
                 }
-                if (flag_write) {
+                if(flag_write) {
                     err = ACAPI_Attribute_Modify (&attrib, NULL);
-                    if (err != NoError) msg_rep ("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
+                    if(err != NoError) msg_rep ("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
                 }
             }
         }
@@ -624,22 +684,21 @@ void UnhideUnlockAllLayer (void)
 // Резервируем, разблокируем, вообщем - делаем элемент редактируемым
 // Единственное, что может нас остановить - объект находится в модуле.
 // -----------------------------------------------------------------------------
-bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
-{
+bool ReserveElement (const API_Guid & objectId, GSErrCode & err) {
     (void) err;
 
     // Проверяем - на находится ли объект в модуле
     API_Elem_Head	tElemHead;
     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
     tElemHead.guid = objectId;
-    if (ACAPI_Element_GetHeader (&tElemHead) != NoError) return false;
-    if (tElemHead.hotlinkGuid != APINULLGuid) return false; // С объектами в модуле сделать ничего не получится
+    if(ACAPI_Element_GetHeader (&tElemHead) != NoError) return false;
+    if(tElemHead.hotlinkGuid != APINULLGuid) return false; // С объектами в модуле сделать ничего не получится
 
     // Проверяем - зарезервирован ли объект и резервируем, если надо
 #if defined(AC_27) || defined(AC_28)
-    if (ACAPI_Teamwork_HasConnection () && !ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
+    if(ACAPI_Teamwork_HasConnection () && !ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
 #else
-    if (ACAPI_TeamworkControl_HasConnection () && !ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
+    if(ACAPI_TeamworkControl_HasConnection () && !ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
 #endif
 #if defined(AC_24) || defined(AC_23) || defined(AC_22)
         GS::PagedArray<API_Guid>	elements;
@@ -654,11 +713,11 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
 #else
         ACAPI_TeamworkControl_ReserveElements (elements, &conflicts);
 #endif
-        if (!conflicts.IsEmpty ()) return false; // Не получилось зарезервировать
+        if(!conflicts.IsEmpty ()) return false; // Не получилось зарезервировать
     }
-    if (ACAPI_Element_Filter (objectId, APIFilt_HasAccessRight)) {
-        if (ACAPI_Element_Filter (objectId, APIFilt_IsEditable)) {
-            if (ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
+    if(ACAPI_Element_Filter (objectId, APIFilt_HasAccessRight)) {
+        if(ACAPI_Element_Filter (objectId, APIFilt_IsEditable)) {
+            if(ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
                 return true;; // Зарезервировали
             }
         }
@@ -670,14 +729,13 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool check_accuracy (double val, double tolerance)
-{
-    if (std::isinf (val) || std::isnan (val)) return true;
+bool check_accuracy (double val, double tolerance) {
+    if(std::isinf (val) || std::isnan (val)) return true;
     val = std::fabs (val * 1000.0);
-    if (val < std::numeric_limits<double>::epsilon ()) return true;
+    if(val < std::numeric_limits<double>::epsilon ()) return true;
     double reciprocal = std::round ((1 / tolerance)); // Коэффицент домножения для заданной точности
     double val_round = std::round (val * reciprocal) / reciprocal; // Приведённое к заданной точности значение
-    if (val_round < std::numeric_limits<double>::epsilon () && val>tolerance) {
+    if(val_round < std::numeric_limits<double>::epsilon () && val>tolerance) {
         return false;
     }
     double val_correct1 = std::fabs (val_round - std::round (val_round));
@@ -690,27 +748,24 @@ bool check_accuracy (double val, double tolerance)
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
 // --------------------------------------------------------------------
-bool is_equal (double x, double y)
-{
+bool is_equal (double x, double y) {
     return std::fabs (x - y) < std::numeric_limits<double>::epsilon ();
 }
 
 // --------------------------------------------------------------------
 // Содержит ли значения элементиз списка игнорируемых
 // --------------------------------------------------------------------
-bool CheckIgnoreVal (const std::string & ignoreval, const GS::UniString & val)
-{
+bool CheckIgnoreVal (const std::string & ignoreval, const GS::UniString & val) {
     GS::UniString unignoreval = GS::UniString (ignoreval.c_str (), GChCode);
     return CheckIgnoreVal (unignoreval, val);
 }
 
-bool CheckIgnoreVal (const GS::UniString & ignoreval, const GS::UniString & val)
-{
-    if (ignoreval.IsEmpty ()) return false;
-    if ((ignoreval.ToLowerCase () == "empty" || ignoreval.ToLowerCase () == u8"пусто") && val.GetLength () < 1) {
+bool CheckIgnoreVal (const GS::UniString & ignoreval, const GS::UniString & val) {
+    if(ignoreval.IsEmpty ()) return false;
+    if((ignoreval.ToLowerCase () == "empty" || ignoreval.ToLowerCase () == u8"пусто") && val.GetLength () < 1) {
         return true;
     }
-    if (val == ignoreval) {
+    if(val == ignoreval) {
         return true;
     }
     return false;
@@ -719,11 +774,10 @@ bool CheckIgnoreVal (const GS::UniString & ignoreval, const GS::UniString & val)
 // --------------------------------------------------------------------
 // Содержит ли значения элементиз списка игнорируемых
 // --------------------------------------------------------------------
-bool CheckIgnoreVal (const GS::Array<GS::UniString>&ignorevals, const GS::UniString & val)
-{
-    if (ignorevals.GetSize () > 0) {
-        for (UInt32 i = 0; i < ignorevals.GetSize (); i++) {
-            if (CheckIgnoreVal (ignorevals[i], val)) return true;
+bool CheckIgnoreVal (const GS::Array<GS::UniString>&ignorevals, const GS::UniString & val) {
+    if(ignorevals.GetSize () > 0) {
+        for(UInt32 i = 0; i < ignorevals.GetSize (); i++) {
+            if(CheckIgnoreVal (ignorevals[i], val)) return true;
         }
     }
     return false;
@@ -732,15 +786,14 @@ bool CheckIgnoreVal (const GS::Array<GS::UniString>&ignorevals, const GS::UniStr
 // --------------------------------------------------------------------
 // Перевод строки в число
 // --------------------------------------------------------------------
-bool UniStringToDouble (const GS::UniString & var, double& x)
-{
-    if (var.IsEmpty ()) return false;
+bool UniStringToDouble (const GS::UniString & var, double& x) {
+    if(var.IsEmpty ()) return false;
     GS::UniString var_clear = var;
     var_clear.Trim ();
     var_clear.ReplaceAll (",", ".");
     std::string var_str = var_clear.ToCStr (0, MaxUSize, GChCode).Get ();
     int n = sscanf (var_str.c_str (), "%lf", &x);
-    if (n <= 0) {
+    if(n <= 0) {
         var_clear.ReplaceAll (".", ",");
         var_str = var_clear.ToCStr (0, MaxUSize, GChCode).Get ();
         n = sscanf (var_str.c_str (), "%lf", &x);
@@ -751,21 +804,19 @@ bool UniStringToDouble (const GS::UniString & var, double& x)
 // --------------------------------------------------------------------
 // Округлить целое n вверх до ближайшего целого числа, кратного k
 // --------------------------------------------------------------------
-Int32 ceil_mod (Int32 n, Int32 k)
-{
-    if (!k) return 0;
+Int32 ceil_mod (Int32 n, Int32 k) {
+    if(!k) return 0;
     Int32 tmp = abs (n % k);
-    if (tmp) n += (n > -1 ? (abs (k) - tmp) : (tmp));
+    if(tmp) n += (n > -1 ? (abs (k) - tmp) : (tmp));
     return n;
 }
 
 // --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
-Int32 DoubleM2IntMM (const double& value)
-{
+Int32 DoubleM2IntMM (const double& value) {
     double param_real = round (value * 1000.0) / 1000.0;
-    if (value - param_real > 0.001) param_real += 0.001;
+    if(value - param_real > 0.001) param_real += 0.001;
     param_real = param_real * 1000.0;
     Int32 param_int = ceil_mod ((GS::Int32) param_real, 1);
     return param_int;
@@ -774,12 +825,11 @@ Int32 DoubleM2IntMM (const double& value)
 // -----------------------------------------------------------------------------
 // Замена \n на перенос строки
 // -----------------------------------------------------------------------------
-void ReplaceCR (GS::UniString & val, bool clear)
-{
+void ReplaceCR (GS::UniString & val, bool clear) {
     GS::UniString p = "\\n";
-    if (val.Contains (p)) {
-        if (!clear) {
-            for (UInt32 i = 0; i < val.Count (p); i++) {
+    if(val.Contains (p)) {
+        if(!clear) {
+            for(UInt32 i = 0; i < val.Count (p); i++) {
                 UIndex inx = val.FindFirst (p);
                 val.ReplaceFirst (p, "");
                 val.SetChar (inx, CharCR);
@@ -793,22 +843,21 @@ void ReplaceCR (GS::UniString & val, bool clear)
 // -----------------------------------------------------------------------------
 // Дополнение строки заданным количеством пробелов или табуляций
 // -----------------------------------------------------------------------------
-void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl)
-{
+void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl) {
 
     //Ищем указание длины строки
     Int32 stringlen = 0;
     GS::UniString part = "";
-    if (outstring.Contains (symb)) {
+    if(outstring.Contains (symb)) {
         part = outstring.GetSubstring (symb, ' ', 0);
-        if (!part.IsEmpty () && part.GetLength () < 4)
+        if(!part.IsEmpty () && part.GetLength () < 4)
             stringlen = std::atoi (part.ToCStr ());
-        if (stringlen > 0) part = symb + part;
+        if(stringlen > 0) part = symb + part;
     }
-    if (stringlen > 0) {
+    if(stringlen > 0) {
         Int32 modlen = outstring.GetLength () - part.GetLength () - 1;
         Int32 addspace = stringlen - modlen;
-        if (modlen > stringlen) {
+        if(modlen > stringlen) {
             addspace = modlen % stringlen;
         }
         outstring.ReplaceAll (part + ' ', GS::UniString::Printf ("%s", std::string (addspace, charrepl).c_str ()));
@@ -818,8 +867,7 @@ void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl
 // -----------------------------------------------------------------------------
 // Замена символов \\TAB и др. на юникод
 // -----------------------------------------------------------------------------
-void ReplaceSymbSpase (GS::UniString & outstring)
-{
+void ReplaceSymbSpase (GS::UniString & outstring) {
     GetNumSymbSpase (outstring, '~', ' ');
     GetNumSymbSpase (outstring, '@', CharTAB);
     outstring.ReplaceAll ("\\TAB", u8"\u0009");
@@ -836,8 +884,7 @@ void ReplaceSymbSpase (GS::UniString & outstring)
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
 // -----------------------------------------------------------------------------
-GSErrCode IsTeamwork (bool& isteamwork, short& userid)
-{
+GSErrCode IsTeamwork (bool& isteamwork, short& userid) {
     isteamwork = false;
     API_ProjectInfo projectInfo = {};
     GSErrCode err = NoError;
@@ -846,7 +893,7 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
 #else
     err = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
 #endif
-    if (err == NoError) {
+    if(err == NoError) {
         isteamwork = projectInfo.teamwork;
         userid = projectInfo.userId;
     }
@@ -857,10 +904,9 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
 // Вычисление выражений, заключённых в < >
 // Что не может вычислить - заменит на пустоту
 // -----------------------------------------------------------------------------
-bool EvalExpression (GS::UniString & unistring_expression)
-{
-    if (unistring_expression.IsEmpty ()) return false;
-    if (!unistring_expression.Contains ('<')) return false;
+bool EvalExpression (GS::UniString & unistring_expression) {
+    if(unistring_expression.IsEmpty ()) return false;
+    if(!unistring_expression.Contains ('<')) return false;
     GS::UniString texpression = unistring_expression;
     GS::UniString part = "";
     GS::UniString part_clean = "";
@@ -869,24 +915,32 @@ bool EvalExpression (GS::UniString & unistring_expression)
     FormatString fstring_def = FormatStringFunc::ParseFormatString (".3m");
     bool flag_change = true;
     bool change_delim = true;
-    while (unistring_expression.Contains ('<') && unistring_expression.Contains ('>') && flag_change) {
+
+    GS::UniString delim = ".";
+    GS::UniString baddelim = ",";
+    GS::UniString delim_test = GS::UniString::Printf ("%.3f", 3.1456);
+    if(delim_test.Contains (baddelim)) {
+        baddelim = ".";
+        delim = ",";
+    }
+    while(unistring_expression.Contains ('<') && unistring_expression.Contains ('>') && flag_change) {
         GS::UniString expression_old = unistring_expression;
         part = unistring_expression.GetSubstring ('<', '>', 0);
         part_clean = part;
         // Ищем строку-формат
         stringformat = "";
         fstring = fstring_def;
-        if (unistring_expression.Contains ('.')) {
+        if(unistring_expression.Contains ('.')) {
             texpression = unistring_expression;
             FormatStringFunc::ReplaceMeters (texpression);
-            if (texpression.Contains ('m')) {
+            if(texpression.Contains ('m')) {
                 UInt32 n_start = texpression.FindFirst (part) + part.GetLength (); // Индекс начала поиска строки-формата
                 GS::UniString stringformat_ = texpression.GetSubstring ('>', 'm', n_start) + 'm'; // Предположительно, строка-формат
-                if (stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
+                if(stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
                     // Проверим, не обрезали ли лишнюю m
                     UInt32 n_end = n_start + stringformat_.GetLength ();
-                    if (n_end + 1 < texpression.GetLength ()) {
-                        if (texpression.GetSubstring (n_end + 1, 1) == "m") {
+                    if(n_end + 1 < texpression.GetLength ()) {
+                        if(texpression.GetSubstring (n_end + 1, 1) == "m") {
                             n_end = n_end + 1;
                         }
                     }
@@ -895,6 +949,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
                 }
             }
         }
+        if(part_clean.Contains (baddelim)) part_clean.ReplaceAll (baddelim, delim);
         typedef double T;
         typedef exprtk::expression<T>   expression_t;
         typedef exprtk::parser<T>       parser_t;
@@ -904,14 +959,12 @@ bool EvalExpression (GS::UniString & unistring_expression)
         parser.compile (expression_string, expression);
         const T result = expression.value ();
         GS::UniString rezult_txt = "";
-        if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
-        if (std::isnan (result)) {
-            DBPrintf ("== SMSTF ERR == Formula is nan ");
-            DBPrintf (expression_string.c_str ());
-            DBPrintf ("== \n");
+        if(!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
+        if(std::isnan (result)) {
+            DBprnt ("Formula is nan", part_clean);
         }
         unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
-        if (expression_old.IsEqual (unistring_expression)) flag_change = false;
+        if(expression_old.IsEqual (unistring_expression)) flag_change = false;
     }
     return (!unistring_expression.IsEmpty ());
 }
@@ -919,8 +972,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
 // -----------------------------------------------------------------------------
 // Toggle a checked menu item
 // -----------------------------------------------------------------------------
-bool MenuInvertItemMark (short menuResID, short itemIndex)
-{
+bool MenuInvertItemMark (short menuResID, short itemIndex) {
     API_MenuItemRef		itemRef;
     GSFlags				itemFlags;
     BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
@@ -932,7 +984,7 @@ bool MenuInvertItemMark (short menuResID, short itemIndex)
 #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
 #endif
-    if ((itemFlags & API_MenuItemChecked) == 0)
+    if((itemFlags & API_MenuItemChecked) == 0)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
@@ -947,15 +999,14 @@ bool MenuInvertItemMark (short menuResID, short itemIndex)
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
 // -----------------------------------------------------------------------------
-GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & delim)
-{
-    if (!instring.Contains (delim)) return instring;
+GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & delim) {
+    if(!instring.Contains (delim)) return instring;
     GS::Array<GS::UniString> partstring;
     GS::UniString outsting = "";
     UInt32 n = StringSpltUnic (instring, delim, partstring);
-    for (UInt32 i = 0; i < n; i++) {
+    for(UInt32 i = 0; i < n; i++) {
         outsting = outsting + partstring[i];
-        if (i < n - 1) outsting = outsting + delim;
+        if(i < n - 1) outsting = outsting + delim;
     }
     return outsting;
 }
@@ -963,21 +1014,20 @@ GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & 
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
 // -----------------------------------------------------------------------------
-UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring)
-{
-    if (!instring.Contains (delim)) {
+UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring) {
+    if(!instring.Contains (delim)) {
         partstring.Push (instring);
         return 1;
     }
     GS::Array<GS::UniString> tpartstring;
     UInt32 n = StringSplt (instring, delim, tpartstring);
     std::map<std::string, int, doj::alphanum_less<std::string> > unic = {};
-    for (UInt32 i = 0; i < n; i++) {
+    for(UInt32 i = 0; i < n; i++) {
         std::string s = tpartstring[i].ToCStr (0, MaxUSize, GChCode).Get ();
         unic[s];
     }
     UInt32 nout = 0;
-    for (std::map<std::string, int, doj::alphanum_less<std::string> >::iterator k = unic.begin (); k != unic.end (); ++k) {
+    for(std::map<std::string, int, doj::alphanum_less<std::string> >::iterator k = unic.begin (); k != unic.end (); ++k) {
         std::string s = k->first;
         GS::UniString unis = GS::UniString (s.c_str (), GChCode);
         partstring.Push (unis);
@@ -990,9 +1040,8 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring)
-{
-    if (!instring.Contains (delim)) {
+UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring) {
+    if(!instring.Contains (delim)) {
         partstring.Push (instring);
         return 1;
     }
@@ -1000,13 +1049,13 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
     GS::UniString tinstring = instring;
     UInt32 npart = instring.Split (delim, &parts);
     UInt32 n = 0;
-    for (UInt32 i = 0; i < npart; i++) {
+    for(UInt32 i = 0; i < npart; i++) {
         GS::UniString part = parts[i];
-        if (!part.IsEmpty ()) {
+        if(!part.IsEmpty ()) {
             part.Trim ('\r');
             part.Trim ('\n');
             part.Trim ();
-            if (!part.IsEmpty ()) {
+            if(!part.IsEmpty ()) {
                 partstring.Push (part);
                 n += 1;
             }
@@ -1019,17 +1068,16 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 // Делит строку по разделителю, возвращает кол-во частей
 // Записывает в массив только части, содержащие строку filter
 // -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, const GS::UniString & filter)
-{
-    if (!instring.Contains (delim) || !instring.Contains (filter)) {
+UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, const GS::UniString & filter) {
+    if(!instring.Contains (delim) || !instring.Contains (filter)) {
         partstring.Push (instring);
         return 1;
     }
     GS::Array<GS::UniString> parts;
     UInt32 n = 0;
     UInt32 npart = StringSplt (instring, delim, parts);
-    for (UInt32 i = 0; i < npart; i++) {
-        if (parts[i].Contains (filter)) {
+    for(UInt32 i = 0; i < npart; i++) {
+        if(parts[i].Contains (filter)) {
             partstring.Push (parts.Get (i));
             n += 1;
         }
@@ -1041,12 +1089,11 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 // -----------------------------------------------------------------------------
 // Возвращает elemType и elemGuid для корректного чтение параметров элементов навесной стены
 // -----------------------------------------------------------------------------
-void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & elem_head, API_ElemTypeID & elemType, API_Guid & elemGuid)
-{
+void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & elem_head, API_ElemTypeID & elemType, API_Guid & elemGuid) {
 #if defined AC_26 || defined AC_27 || defined AC_28
-    switch (elem_head.type.typeID) {
+    switch(elem_head.type.typeID) {
 #else
-    switch (elem_head.typeID) {
+    switch(elem_head.typeID) {
 #endif // AC_26
         case API_CurtainWallPanelID:
             elemGuid = element.cwPanel.symbolID;
@@ -1071,34 +1118,33 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
 // -----------------------------------------------------------------------------
-GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & elemGuid, API_AddParType * *&params)
-{
+GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & elemGuid, API_AddParType * *&params) {
     GSErrCode	err = NoError;
     API_ParamOwnerType	apiOwner = {};
     API_GetParamsType	apiParams = {};
     BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
     BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
 
-    if (elemType == API_RailingToprailID
-        || elemType == API_RailingHandrailID
-        || elemType == API_RailingRailID
-        || elemType == API_RailingPostID
-        || elemType == API_RailingInnerPostID
-        || elemType == API_RailingBalusterID
-        || elemType == API_RailingPanelID
-        || elemType == API_RailingNodeID
-        || elemType == API_RailingToprailEndID
-        || elemType == API_RailingHandrailEndID
-        || elemType == API_RailingRailEndID
-        || elemType == API_RailingToprailConnectionID
-        || elemType == API_RailingHandrailConnectionID
-        || elemType == API_RailingRailConnectionID
-        || elemType == API_RailingEndFinishID) {
+    if(elemType == API_RailingToprailID
+       || elemType == API_RailingHandrailID
+       || elemType == API_RailingRailID
+       || elemType == API_RailingPostID
+       || elemType == API_RailingInnerPostID
+       || elemType == API_RailingBalusterID
+       || elemType == API_RailingPanelID
+       || elemType == API_RailingNodeID
+       || elemType == API_RailingToprailEndID
+       || elemType == API_RailingHandrailEndID
+       || elemType == API_RailingRailEndID
+       || elemType == API_RailingToprailConnectionID
+       || elemType == API_RailingHandrailConnectionID
+       || elemType == API_RailingRailConnectionID
+       || elemType == API_RailingEndFinishID) {
         API_ElementMemo	memo = {};
         err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
         params = memo.params;
@@ -1106,7 +1152,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     }
 
 #if defined(AC_27) || defined(AC_28)
-    if (elemType == API_ExternalElemID) {
+    if(elemType == API_ExternalElemID) {
         API_ElementMemo	memo = {};
         err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
         params = memo.params;
@@ -1124,23 +1170,23 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #else
     err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
 #endif
-    if (err != NoError) {
+    if(err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return err;
-}
+    }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
     err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams);
 #endif
-    if (err != NoError) {
+    if(err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryPart_CloseParameters ();
 #else
         err = ACAPI_Goodies (APIAny_CloseParametersID);
 #endif
-        if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
+        if(err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
         return err;
     }
     params = apiParams.params;
@@ -1149,7 +1195,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #else
     err = ACAPI_Goodies (APIAny_CloseParametersID);
 #endif
-    if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
+    if(err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
 }
 
@@ -1157,159 +1203,157 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 // --------------------------------------------------------------------
 // Получение списка GUID панелей, рам и аксессуаров навесной стены
 // --------------------------------------------------------------------
-GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&elementsSymbolGuids)
-{
+GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&elementsSymbolGuids) {
     API_Element      element = {};
     element.header.guid = cwGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
-    if (err != NoError || !element.header.hasMemo) {
+    if(err != NoError || !element.header.hasMemo) {
         return err;
     }
     API_ElementMemo	memo = {};
     UInt64 mask = APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
     err = ACAPI_Element_GetMemo (cwGuid, &memo, mask);
-    if (err != NoError) {
+    if(err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     bool isDegenerate = false;
     const GSSize nPanels = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof (API_CWPanelType);
-    if (nPanels > 0) {
-        for (Int32 idx = 0; idx < nPanels; ++idx) {
+    if(nPanels > 0) {
+        for(Int32 idx = 0; idx < nPanels; ++idx) {
 #if defined(AC_27) || defined(AC_28)
             err = ACAPI_CurtainWall_IsCWPanelDegenerate (&memo.cWallPanels[idx].head.guid, &isDegenerate);
 #else
             err = ACAPI_Database (APIDb_IsCWPanelDegenerateID, (void*) (&memo.cWallPanels[idx].head.guid), &isDegenerate);
 #endif
-            if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
+            if(err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
         }
     }
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
-    if (nWallFrames > 0) {
-        for (Int32 idx = 0; idx < nWallFrames; ++idx) {
-            if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
+    if(nWallFrames > 0) {
+        for(Int32 idx = 0; idx < nWallFrames; ++idx) {
+            if(memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
                 elementsSymbolGuids.Push (std::move (memo.cWallFrames[idx].head.guid));
             }
         }
     }
     const GSSize nWallJunctions = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallJunctions)) / sizeof (API_CWJunctionType);
-    if (nWallJunctions > 0) {
-        for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
-            if (memo.cWallJunctions[idx].hasSymbol) {
+    if(nWallJunctions > 0) {
+        for(Int32 idx = 0; idx < nWallJunctions; ++idx) {
+            if(memo.cWallJunctions[idx].hasSymbol) {
                 elementsSymbolGuids.Push (std::move (memo.cWallJunctions[idx].head.guid));
             }
         }
     }
     const GSSize nWallAccessories = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallAccessories)) / sizeof (API_CWAccessoryType);
-    if (nWallAccessories > 0) {
-        for (Int32 idx = 0; idx < nWallAccessories; ++idx) {
-            if (memo.cWallAccessories[idx].hasSymbol) {
+    if(nWallAccessories > 0) {
+        for(Int32 idx = 0; idx < nWallAccessories; ++idx) {
+            if(memo.cWallAccessories[idx].hasSymbol) {
                 elementsSymbolGuids.Push (std::move (memo.cWallAccessories[idx].head.guid));
             }
         }
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение списка GUID элементов ограждения
 // --------------------------------------------------------------------
-GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>&elementsGuids)
-{
+GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>&elementsGuids) {
     API_Element      element = {};
     element.header.guid = elemGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
-    if (err != NoError) {
+    if(err != NoError) {
         return err;
     }
     API_ElementMemo	memo = {};
 
     UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost | APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail | APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster | APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd | APIMemoMask_RailingHandrailEnd | APIMemoMask_RailingToprailEnd | APIMemoMask_RailingRailConnection | APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
     err = ACAPI_Element_GetMemo (elemGuid, &memo, mask);
-    if (err != NoError) {
+    if(err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     GSSize n = 0;
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRailConnections)) / sizeof (API_RailingRailConnectionType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingRailConnections[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrailConnections)) / sizeof (API_RailingRailConnectionType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingHandrailConnections[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprailConnections)) / sizeof (API_RailingRailConnectionType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingToprailConnections[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRailEnds)) / sizeof (API_RailingRailEndType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingRailEnds[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrailEnds)) / sizeof (API_RailingRailEndType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingHandrailEnds[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprailEnds)) / sizeof (API_RailingRailEndType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingToprailEnds[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingPosts)) / sizeof (API_RailingPostType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingPosts[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRails)) / sizeof (API_RailingRailType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingRails[idx].visible) elementsGuids.Push (std::move (memo.railingRails[idx].head.guid));
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
+            if(memo.railingRails[idx].visible) elementsGuids.Push (std::move (memo.railingRails[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprails)) / sizeof (API_RailingToprailType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingToprails[idx].visible) elementsGuids.Push (std::move (memo.railingToprails[idx].head.guid));
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
+            if(memo.railingToprails[idx].visible) elementsGuids.Push (std::move (memo.railingToprails[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrails)) / sizeof (API_RailingHandrailType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingHandrails[idx].visible) elementsGuids.Push (std::move (memo.railingHandrails[idx].head.guid));
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
+            if(memo.railingHandrails[idx].visible) elementsGuids.Push (std::move (memo.railingHandrails[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingInnerPosts)) / sizeof (API_RailingInnerPostType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingInnerPosts[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingBalusters)) / sizeof (API_RailingBalusterType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingBalusters[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingPanels)) / sizeof (API_RailingPanelType);
-    if (n > 0) {
-        for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingPanels[idx].visible) elementsGuids.Push (std::move (memo.railingPanels[idx].head.guid));
+    if(n > 0) {
+        for(Int32 idx = 0; idx < n; ++idx) {
+            if(memo.railingPanels[idx].visible) elementsGuids.Push (std::move (memo.railingPanels[idx].head.guid));
         }
     }
     ACAPI_DisposeElemMemoHdls (&memo);
@@ -1319,8 +1363,7 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
 // --------------------------------------------------------------------
 // Возвращает координаты заданной точки после трансформации матрицей
 // --------------------------------------------------------------------
-API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat & tm)
-{
+API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat & tm) {
     API_Coord3D	trCoord;	// world coordinates 
     trCoord.x = tm.tmx[0] * vtx.x + tm.tmx[1] * vtx.y + tm.tmx[2] * vtx.z + tm.tmx[3];
     trCoord.y = tm.tmx[4] * vtx.x + tm.tmx[5] * vtx.y + tm.tmx[6] * vtx.z + tm.tmx[7];
@@ -1329,18 +1372,16 @@ API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat & tm)
 }
 
 
-Point2D GetWordPoint2DTM (const Point2D vtx, const API_Tranmat & tm)
-{
-    API_Coord3D c = GetWordCoord3DTM ({ vtx.x, vtx.y, 0 }, tm);
-    return { c.x, c.y };
+Point2D GetWordPoint2DTM (const Point2D vtx, const API_Tranmat & tm) {
+    API_Coord3D c = GetWordCoord3DTM ({vtx.x, vtx.y, 0}, tm);
+    return {c.x, c.y};
 }
 
 // -----------------------------------------------------------------------------
 // Ask the user to click a point
 // -----------------------------------------------------------------------------
 
-bool	ClickAPoint (const char* prompt, Point2D * c)
-{
+bool	ClickAPoint (const char* prompt, Point2D * c) {
     API_GetPointType	pointInfo = {};
     GSErrCode			err;
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
@@ -1351,7 +1392,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 #else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
 #endif
-    if (err != NoError) {
+    if(err != NoError) {
         return false;
     }
     c->x = pointInfo.pos.x;
@@ -1359,223 +1400,213 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
     return true;
 }		// ClickAPoint
 
-namespace FormatStringFunc
-{
+namespace FormatStringFunc {
 
-// -----------------------------------------------------------------------------
-// Обработка количества нулей и единиц измерения в имени свойства
-// Удаляет из имени paramName найденные единицы измерения
-// Возвращает строку для скармливания функции NumToStig
-// -----------------------------------------------------------------------------
-GS::UniString GetFormatString (GS::UniString& paramName)
-{
-    GS::UniString formatstring = "";
-    Int32 iseng = isEng ();
-    if (!paramName.Contains (".")) return formatstring;
-    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
-    if (!paramName.Contains ('m') && !paramName.Contains (meterString)) return formatstring;
-    GS::Array<GS::UniString> partstring;
-    UInt32 n = StringSplt (paramName, ".", partstring);
-    if (n > 1) {
-        formatstring = partstring[n - 1];
-        if (formatstring.Contains ('m') || formatstring.Contains (meterString)) {
-            if (formatstring.Contains (CharENTER)) {
-                UIndex attribinx = formatstring.FindLast (CharENTER);
-                formatstring = formatstring.GetSubstring (0, attribinx);
+
+    // -----------------------------------------------------------------------------
+    // Обработка количества нулей и единиц измерения в имени свойства
+    // Удаляет из имени paramName найденные единицы измерения
+    // Возвращает строку для скармливания функции NumToStig
+    // -----------------------------------------------------------------------------
+    GS::UniString GetFormatString (GS::UniString& paramName) {
+        GS::UniString formatstring = "";
+        Int32 iseng = isEng ();
+        if(!paramName.Contains (".")) return formatstring;
+        GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
+        if(!paramName.Contains ('m') && !paramName.Contains (meterString)) return formatstring;
+        GS::Array<GS::UniString> partstring;
+        UInt32 n = StringSplt (paramName, ".", partstring);
+        if(n > 1) {
+            formatstring = partstring[n - 1];
+            if(formatstring.Contains ('m') || formatstring.Contains (meterString)) {
+                if(formatstring.Contains (CharENTER)) {
+                    UIndex attribinx = formatstring.FindLast (CharENTER);
+                    formatstring = formatstring.GetSubstring (0, attribinx);
+                }
+                paramName.ReplaceAll ('.' + formatstring, "");
+                ReplaceMeters (formatstring, iseng);
             }
-            paramName.ReplaceAll ('.' + formatstring, "");
-            ReplaceMeters (formatstring, iseng);
         }
+        return formatstring;
     }
-    return formatstring;
-}
 
-void ReplaceMeters (GS::UniString& formatstring)
-{
-    Int32 iseng = isEng ();
-    ReplaceMeters (formatstring, iseng);
-}
+    void ReplaceMeters (GS::UniString& formatstring) {
+        Int32 iseng = isEng ();
+        ReplaceMeters (formatstring, iseng);
+    }
 
-void ReplaceMeters (GS::UniString& formatstring, Int32& iseng)
-{
-    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
-    formatstring.ReplaceAll (meterString, "m");
-    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, DMeterStringID, ACAPI_GetOwnResModule ());
-    formatstring.ReplaceAll (meterString, "d");
-    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, CMeterStringID, ACAPI_GetOwnResModule ());
-    formatstring.ReplaceAll (meterString, "c");
-}
+    void ReplaceMeters (GS::UniString& formatstring, Int32& iseng) {
+        GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
+        formatstring.ReplaceAll (meterString, "m");
+        meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, DMeterStringID, ACAPI_GetOwnResModule ());
+        formatstring.ReplaceAll (meterString, "d");
+        meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, CMeterStringID, ACAPI_GetOwnResModule ());
+        formatstring.ReplaceAll (meterString, "c");
+    }
 
 
-// -----------------------------------------------------------------------------
-// Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
-// -----------------------------------------------------------------------------
-FormatStringDict GetFotmatStringForMeasureType ()
-{
-    FormatStringDict fdict = {};
-    // Получаем данные об округлении и типе расчёта
-    API_CalcUnitPrefs unitPrefs1;
+    // -----------------------------------------------------------------------------
+    // Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
+    // -----------------------------------------------------------------------------
+    FormatStringDict GetFotmatStringForMeasureType () {
+        FormatStringDict fdict = {};
+        // Получаем данные об округлении и типе расчёта
+        API_CalcUnitPrefs unitPrefs1;
 #if defined(AC_27) || defined(AC_28)
-    ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
+        ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
 #else
-    ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
+        ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
 #endif
-    API_WorkingUnitPrefs unitPrefs;
+        API_WorkingUnitPrefs unitPrefs;
 #if defined(AC_27) || defined(AC_28)
-    ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
+        ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
 #else
-    ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
+        ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
 #endif
-    FormatString fstring = {};
-    fstring.needRound = unitPrefs1.useDisplayedValues;
+        FormatString fstring = {};
+        fstring.needRound = unitPrefs1.useDisplayedValues;
 
-    fstring.n_zero = 2; fstring.stringformat = "2";
-    fdict.Add (API_PropertyUndefinedMeasureType, fstring);
+        fstring.n_zero = 2; fstring.stringformat = "2";
+        fdict.Add (API_PropertyUndefinedMeasureType, fstring);
 
-    fstring.n_zero = 2; fstring.stringformat = "2";
-    fdict.Add (API_PropertyDefaultMeasureType, fstring);
+        fstring.n_zero = 2; fstring.stringformat = "2";
+        fdict.Add (API_PropertyDefaultMeasureType, fstring);
 
-    fstring.n_zero = unitPrefs.areaDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.areaDecimals);
-    fdict.Add (API_PropertyAreaMeasureType, fstring);
+        fstring.n_zero = unitPrefs.areaDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.areaDecimals);
+        fdict.Add (API_PropertyAreaMeasureType, fstring);
 
-    fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf ("0%dmm", unitPrefs.lenDecimals);
-    fdict.Add (API_PropertyLengthMeasureType, fstring);
+        fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf ("0%dmm", unitPrefs.lenDecimals);
+        fdict.Add (API_PropertyLengthMeasureType, fstring);
 
-    fstring.n_zero = unitPrefs.volumeDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.volumeDecimals);
-    fdict.Add (API_PropertyVolumeMeasureType, fstring);
+        fstring.n_zero = unitPrefs.volumeDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.volumeDecimals);
+        fdict.Add (API_PropertyVolumeMeasureType, fstring);
 
-    fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.angleDecimals);
-    fdict.Add (API_PropertyAngleMeasureType, fstring);
-    return fdict;
-}
+        fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.angleDecimals);
+        fdict.Add (API_PropertyAngleMeasureType, fstring);
+        return fdict;
+    }
 
-// -----------------------------------------------------------------------------
-// Извлекает из строки информацио о единицах измерении и округлении
-// -----------------------------------------------------------------------------
-FormatString ParseFormatString (const GS::UniString& stringformat)
-{
-    int n_zero = 3;
-    Int32 krat = 0; // Крутность округления
-    double koeff = 1; //Коэфф. увеличения
-    bool trim_zero = true; //Требуется образать нули после запятой
-    bool needround = false; //Требуется округлить численное значение для вычислений
-    bool forceRaw = false; // Использовать неокруглённое значение для записи
-    GS::UniString delimetr = ","; // Разделитель дробной части
-    FormatString format;
-    format.stringformat = stringformat;
-    format.isEmpty = true;
-    if (!stringformat.IsEmpty ()) {
-        GS::UniString outstringformat = stringformat;
-        if (stringformat.Contains (".")) {
-            outstringformat.ReplaceAll (".", "");
-            format.stringformat.ReplaceAll (".", "");
+    // -----------------------------------------------------------------------------
+    // Извлекает из строки информацио о единицах измерении и округлении
+    // -----------------------------------------------------------------------------
+    FormatString ParseFormatString (const GS::UniString& stringformat) {
+        int n_zero = 3;
+        Int32 krat = 0; // Крутность округления
+        double koeff = 1; //Коэфф. увеличения
+        bool trim_zero = true; //Требуется образать нули после запятой
+        bool needround = false; //Требуется округлить численное значение для вычислений
+        bool forceRaw = false; // Использовать неокруглённое значение для записи
+        GS::UniString delimetr = ","; // Разделитель дробной части
+        FormatString format;
+        format.stringformat = stringformat;
+        format.isEmpty = true;
+        if(!stringformat.IsEmpty ()) {
+            GS::UniString outstringformat = stringformat;
+            if(stringformat.Contains (".")) {
+                outstringformat.ReplaceAll (".", "");
+                format.stringformat.ReplaceAll (".", "");
+            }
+            ReplaceMeters (outstringformat);
+            if(outstringformat.Contains ("mm")) {
+                n_zero = 0;
+                koeff = 1000;
+                outstringformat.ReplaceAll ("mm", "");
+            }
+            if(outstringformat.Contains ("cm")) {
+                n_zero = 1;
+                koeff = 100;
+                outstringformat.ReplaceAll ("cm", "");
+            }
+            if(outstringformat.Contains ("dm")) {
+                n_zero = 2;
+                koeff = 10;
+                outstringformat.ReplaceAll ("dm", "");
+            }
+            if(outstringformat.Contains ("gm")) {
+                koeff = 1 / 100;
+                outstringformat.ReplaceAll ("gm", "");
+            }
+            if(outstringformat.Contains ("km")) {
+                koeff = 1 / 1000;
+                outstringformat.ReplaceAll ("km", "");
+            }
+            if(outstringformat.Contains ("m")) {
+                koeff = 1;
+                n_zero = 3;
+                outstringformat.ReplaceAll ("m", "");
+            }
+            if(outstringformat.Contains ("p")) {
+                delimetr = ".";
+                outstringformat.ReplaceAll ("p", "");
+            }
+            if(outstringformat.Contains ("r")) {
+                needround = true;
+                outstringformat.ReplaceAll ("r", "");
+            }
+            if(outstringformat.Contains ("f")) {
+                forceRaw = true;
+                outstringformat.ReplaceAll ("f", "");
+            }
+            // Принудительный вывод заданного кол-ва нулей после запятой
+            if(outstringformat.Contains ("0")) {
+                outstringformat.ReplaceAll ("0", "");
+                outstringformat.Trim ();
+                if(!outstringformat.IsEmpty ()) trim_zero = false;
+            }
+            if(!outstringformat.IsEmpty ()) {
+                // Кратность округления
+                if(outstringformat.Contains ("/")) {
+                    GS::Array<GS::UniString> params;
+                    UInt32 nparam = StringSplt (outstringformat, "/", params);
+                    if(params.GetSize () > 0) n_zero = std::atoi (params[0].ToCStr ());
+                    if(params.GetSize () > 1) krat = std::atoi (params[0].ToCStr ());
+                } else {
+                    n_zero = std::atoi (outstringformat.ToCStr ());
+                }
+            }
+            format.isEmpty = false;
+            format.isRead = true;
         }
-        ReplaceMeters (outstringformat);
-        if (outstringformat.Contains ("mm")) {
-            n_zero = 0;
-            koeff = 1000;
-            outstringformat.ReplaceAll ("mm", "");
-        }
-        if (outstringformat.Contains ("cm")) {
-            n_zero = 1;
-            koeff = 100;
-            outstringformat.ReplaceAll ("cm", "");
-        }
-        if (outstringformat.Contains ("dm")) {
-            n_zero = 2;
-            koeff = 10;
-            outstringformat.ReplaceAll ("dm", "");
-        }
-        if (outstringformat.Contains ("gm")) {
-            koeff = 1 / 100;
-            outstringformat.ReplaceAll ("gm", "");
-        }
-        if (outstringformat.Contains ("km")) {
-            koeff = 1 / 1000;
-            outstringformat.ReplaceAll ("km", "");
-        }
-        if (outstringformat.Contains ("m")) {
-            koeff = 1;
-            n_zero = 3;
-            outstringformat.ReplaceAll ("m", "");
-        }
-        if (outstringformat.Contains ("p")) {
-            delimetr = ".";
-            outstringformat.ReplaceAll ("p", "");
-        }
-        if (outstringformat.Contains ("r")) {
-            needround = true;
-            outstringformat.ReplaceAll ("r", "");
-        }
-        if (outstringformat.Contains ("r")) {
-            needround = true;
-            outstringformat.ReplaceAll ("r", "");
-        }
-        if (outstringformat.Contains ("f")) {
-            forceRaw = true;
-            outstringformat.ReplaceAll ("f", "");
-        }
-        // Принудительный вывод заданного кол-ва нулей после запятой
-        if (outstringformat.Contains ("0")) {
-            outstringformat.ReplaceAll ("0", "");
-            outstringformat.Trim ();
-            if (!outstringformat.IsEmpty ()) trim_zero = false;
-        }
-        if (!outstringformat.IsEmpty ()) {
-            // Кратность округления
-            if (outstringformat.Contains ("/")) {
-                GS::Array<GS::UniString> params;
-                UInt32 nparam = StringSplt (outstringformat, "/", params);
-                if (params.GetSize () > 0) n_zero = std::atoi (params[0].ToCStr ());
-                if (params.GetSize () > 1) krat = std::atoi (params[0].ToCStr ());
-            } else {
-                n_zero = std::atoi (outstringformat.ToCStr ());
+        format.forceRaw = forceRaw;
+        format.needRound = needround;
+        format.delimetr = delimetr;
+        format.n_zero = n_zero;
+        format.krat = krat;
+        format.koeff = koeff;
+        format.trim_zero = trim_zero;
+        return format;
+    }
+
+
+    // -----------------------------------------------------------------------------
+    // Переводит число в строку согласно настройкам строки-формата
+    // -----------------------------------------------------------------------------
+    // TODO Придумать более изящную обработку округления
+    GS::UniString NumToString (const double& var, const FormatString& stringformat) {
+        if(fabs (var) < 0.00000001) return "0";
+        GS::UniString out = "";
+        Int32 n_zero = stringformat.n_zero;
+        Int32 krat = stringformat.krat;
+        double koeff = stringformat.koeff;
+        bool trim_zero = stringformat.trim_zero;
+        GS::UniString delimetr = stringformat.delimetr;
+        double outvar = var * koeff;
+        outvar = round (outvar * pow (10, n_zero)) / pow (10, n_zero);
+        if(krat > 0) outvar = ceil_mod ((GS::Int32) var, krat);
+        out = GS::UniString::Printf ("%f", outvar);
+        out.ReplaceAll (".", delimetr);
+        out.ReplaceAll (",", delimetr);
+        out.TrimRight ('0');
+        if(trim_zero) {
+            out.TrimRight (delimetr.GetChar (0));
+        } else {
+            Int32 addzero = n_zero - (out.GetLength () - out.FindFirst (delimetr.GetChar (0)) - 1);
+            if(addzero > 0) {
+                for(Int32 i = 0; i < addzero; i++) {
+                    out = out + "0";
+                }
             }
         }
-        format.isEmpty = false;
-        format.isRead = true;
+        return out;
     }
-    format.forceRaw = forceRaw;
-    format.needRound = needround;
-    format.delimetr = delimetr;
-    format.n_zero = n_zero;
-    format.krat = krat;
-    format.koeff = koeff;
-    format.trim_zero = trim_zero;
-    return format;
-}
-
-
-// -----------------------------------------------------------------------------
-// Переводит число в строку согласно настройкам строки-формата
-// -----------------------------------------------------------------------------
-// TODO Придумать более изящную обработку округления
-GS::UniString NumToString (const double& var, const FormatString& stringformat)
-{
-    if (fabs (var) < 0.00000001) return "0";
-    GS::UniString out = "";
-    Int32 n_zero = stringformat.n_zero;
-    Int32 krat = stringformat.krat;
-    double koeff = stringformat.koeff;
-    bool trim_zero = stringformat.trim_zero;
-    GS::UniString delimetr = stringformat.delimetr;
-    double outvar = var * koeff;
-    outvar = round (outvar * pow (10, n_zero)) / pow (10, n_zero);
-    if (krat > 0) outvar = ceil_mod ((GS::Int32) var, krat);
-    out = GS::UniString::Printf ("%f", outvar);
-    out.ReplaceAll (".", delimetr);
-    out.ReplaceAll (",", delimetr);
-    out.TrimRight ('0');
-    if (trim_zero) {
-        out.TrimRight (delimetr.GetChar (0));
-    } else {
-        Int32 addzero = n_zero - (out.GetLength () - out.FindFirst (delimetr.GetChar (0)) - 1);
-        if (addzero > 0) {
-            for (Int32 i = 0; i < addzero; i++) {
-                out = out + "0";
-            }
-        }
-    }
-    return out;
-}
 }

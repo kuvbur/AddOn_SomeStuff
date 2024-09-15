@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"SyncSettings.hpp"
@@ -51,7 +51,6 @@ GSErrCode SyncSettings::Write (GS::OChannel& oc) const
 
 bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings)
 {
-    DBPrintf ("== SMSTF == LoadSyncSettingsFromPreferences\n");
     GSErrCode err = NoError;
     Int32 version = 3;
     GSSize bytes = 0;
@@ -82,7 +81,6 @@ bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings)
 
 bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings)
 {
-    DBPrintf ("== SMSTF == WriteSyncSettingsToPreferences\n");
     GSErrCode err = NoError;
     MemoryOChannel outputChannel;
     err = syncSettings.Write (outputChannel);

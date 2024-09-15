@@ -23,7 +23,7 @@ bool HasDimAutotext ()
 // -----------------------------------------------------------------------------
 bool GetDimAutotext (GS::UniString& autotext)
 {
-    DBPrintf ("== SMSTF == DimReadPref start\n");
+    DBprnt ("DimReadPref start");
     GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
     API_AutotextType	type = APIAutoText_Custom;
     GSErrCode	err = NoError;
@@ -39,11 +39,11 @@ bool GetDimAutotext (GS::UniString& autotext)
     for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
         if (autotexts[i][0].Contains ("Addon_Dimens") && !autotexts[i][2].IsEmpty ()) {
             autotext = autotexts[i][2];
-            DBPrintf ("== SMSTF == DimReadPref found rule\n");
+            DBprnt ("DimReadPref found rule");
             return true;
         }
     }
-    DBPrintf ("== SMSTF == DimReadPref rules not found\n");
+    DBprnt ("DimReadPref rules not found");
     return false;
 }
 
@@ -226,8 +226,8 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
                 find_rule = true;
                 break;
             }
+        }
     }
-}
 
     // Нет подходящего привали - выходим
     if (!find_rule) return err;
@@ -349,7 +349,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
     if (err != NoError) msg_rep ("DimAutoRound", "ACAPI_Element_Change_1", err, elemGuid);
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Обрабатывает размер и решает - что с ним делать
@@ -440,7 +440,7 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     (void) syncSettings;
     DoneElemGuid doneelemguid;
     DimRules dimrules;
-    DBPrintf ("== SMSTF == DimRoundAll start\n");
+    DBprnt ("DimRoundAll start");
     GS::UniString autotext = "";
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
@@ -456,7 +456,7 @@ void DimRoundAll (const SyncSettings& syncSettings)
 {
     DoneElemGuid doneelemguid;
     DimRules dimrules;
-    DBPrintf ("== SMSTF == DimRoundAll start\n");
+    DBprnt ("DimRoundAll start");
     GS::UniString autotext = "";
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
@@ -466,7 +466,7 @@ void DimRoundAll (const SyncSettings& syncSettings)
 
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
-    DBPrintf ("== SMSTF == DimRoundAll end\n");
+    DBprnt ("DimRoundAll end");
 }
 
 // -----------------------------------------------------------------------------
@@ -489,9 +489,9 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
 #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
 #endif
-            }
-        } else {
+        }
+    } else {
         msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
     }
     return false;
-    }
+}
