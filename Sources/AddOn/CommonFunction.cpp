@@ -942,58 +942,39 @@ bool EvalExpression (GS::UniString & unistring_expression)
 {
     if (unistring_expression.IsEmpty ()) return false;
     if (!unistring_expression.Contains ('<')) return false;
-    GS::UniString texpression = unistring_expression;
     GS::UniString part = "";
     GS::UniString part_clean = "";
     GS::UniString stringformat = "";
+    GS::UniString rezult_txt = "";
     FormatString fstring;
-    FormatString fstring_def = FormatStringFunc::ParseFormatString (".3m");
     bool flag_change = true;
-    bool change_delim = true;
 
+    // Определение правильного разделителя для расчётов
     GS::UniString delim = ".";
     GS::UniString baddelim = ",";
     GS::UniString delim_test = GS::UniString::Printf ("%.3f", 3.1456);
     if (delim_test.Contains (baddelim)) {
+        DBprnt ("EvalExpression", "delimetr change");
         baddelim = ".";
         delim = ",";
     }
     while (unistring_expression.Contains ('<') && unistring_expression.Contains ('>') && flag_change) {
         GS::UniString expression_old = unistring_expression;
         part = unistring_expression.GetSubstring ('<', '>', 0);
-        part_clean = part;
         // Ищем строку-формат
         stringformat = "";
-        fstring = fstring_def;
-        if (unistring_expression.Contains ('.')) {
-            texpression = unistring_expression;
-            FormatStringFunc::ReplaceMeters (texpression);
-            if (texpression.Contains ('m')) {
-                UInt32 n_start = texpression.FindFirst (part) + part.GetLength (); // Индекс начала поиска строки-формата
-                GS::UniString stringformat_ = texpression.GetSubstring ('>', 'm', n_start) + 'm'; // Предположительно, строка-формат
-                if (stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
-                    // Проверим, не обрезали ли лишнюю m
-                    UInt32 n_end = n_start + stringformat_.GetLength ();
-                    if (n_end + 1 < texpression.GetLength ()) {
-                        if (texpression.GetSubstring (n_end + 1, 1) == "m") {
-                            n_end = n_end + 1;
-                        }
-                    }
-                    stringformat = unistring_expression.GetSubstring (n_start + 1, n_end - n_start);
-                    fstring = FormatStringFunc::ParseFormatString (stringformat);
-                }
-            }
-        }
-        if (part_clean.Contains (baddelim)) part_clean.ReplaceAll (baddelim, delim);
+        fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
         typedef double T;
         typedef exprtk::expression<T>   expression_t;
         typedef exprtk::parser<T>       parser_t;
+        part_clean = part;
+        if (part_clean.Contains (baddelim)) part_clean.ReplaceAll (baddelim, delim);
         std::string expression_string (part_clean.ToCStr (0, MaxUSize, GChCode).Get ());
         expression_t expression;
         parser_t parser;
         parser.compile (expression_string, expression);
         const T result = expression.value ();
-        GS::UniString rezult_txt = "";
+        rezult_txt = "";
         if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
         if (std::isnan (result)) {
             DBprnt ("Formula is nan", part_clean);
@@ -1449,7 +1430,29 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 
 namespace FormatStringFunc
 {
-
+FormatString GetFormatStringFromFormula (GS::UniString& formula, GS::UniString& part, GS::UniString& stringformat)
+{
+    FormatString f = ParseFormatString (".3m");
+    if (!formula.Contains ('.')) return f;
+    GS::UniString texpression = formula;
+    FormatStringFunc::ReplaceMeters (texpression);
+    if (!texpression.Contains ('m')) return f;
+    UInt32 n_start = texpression.FindFirst (part) + part.GetLength (); // Индекс начала поиска строки-формата
+    GS::UniString stringformat_ = texpression.GetSubstring ('>', 'm', n_start) + 'm'; // Предположительно, строка-формат
+    if (stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
+        // Проверим, не обрезали ли лишнюю m
+        UInt32 n_end = n_start + stringformat_.GetLength ();
+        if (n_end + 1 < texpression.GetLength ()) {
+            GS::UniString endm = texpression.ToLowerCase ().GetSubstring (n_end + 1, 1);
+            if (endm.IsEqual ("m") || endm.IsEqual ("p") || endm.IsEqual ("r") || endm.IsEqual ("f")) {
+                n_end = n_end + 1;
+            }
+        }
+        stringformat = formula.GetSubstring (n_start + 1, n_end - n_start);
+        f = FormatStringFunc::ParseFormatString (stringformat);
+    }
+    return f;
+}
 
 // -----------------------------------------------------------------------------
 // Обработка количества нулей и единиц измерения в имени свойства
@@ -1607,15 +1610,7 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
             if (!outstringformat.IsEmpty ()) trim_zero = false;
         }
         if (!outstringformat.IsEmpty ()) {
-            // Кратность округления
-            if (outstringformat.Contains ("/")) {
-                GS::Array<GS::UniString> params;
-                UInt32 nparam = StringSplt (outstringformat, "/", params);
-                if (params.GetSize () > 0) n_zero = std::atoi (params[0].ToCStr ());
-                if (params.GetSize () > 1) krat = std::atoi (params[0].ToCStr ());
-            } else {
-                n_zero = std::atoi (outstringformat.ToCStr ());
-            }
+            n_zero = std::atoi (outstringformat.ToCStr ());
         }
         format.isEmpty = false;
         format.isRead = true;

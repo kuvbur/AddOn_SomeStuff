@@ -23,6 +23,7 @@ void TestCalc ()
     bool usl = false;
     GS::UniString test_expression = "";
     GS::UniString rep = "";
+
     test_expression = "2*2"; rep = test_expression;
     DBtest (!EvalExpression (test_expression), rep, true); DBtest (test_expression, rep, rep, true);
 
@@ -43,6 +44,10 @@ void TestCalc ()
 
     test_expression = "<0.001+0.001>.3mp"; rep = test_expression;
     DBtest (EvalExpression (test_expression), rep, true); DBtest (test_expression, "0.002", rep, true);
+
+    test_expression = "<0.001+0.001>.3mp+<0.001+0.001>.03mm"; rep = test_expression;
+    DBtest (EvalExpression (test_expression), rep, true); DBtest (test_expression, "0.002+2,000", rep, true);
+
     return;
 }
 
@@ -58,17 +63,34 @@ void TestFormula ()
 
     pvalue.name = "<%ac_postWidth%*1000> * <%ac_postThickness%*1000>";
     pvalue.val.uniStringValue = "53 * 3";
-    pvalue.val.intValue = 159;
+    pvalue.val.intValue = 159; pvalue.val.doubleValue = 159;
+    formula.Push (pvalue);
+
+    pvalue.name = "<%ac_postWidth.3m%*2>";
+    pvalue.val.uniStringValue = "0,106";
+    pvalue.val.intValue = 1; pvalue.val.doubleValue = 0.106;
+    formula.Push (pvalue);
+
+    pvalue.name = "<%ac_postWidth.2m%*2>.03mp";
+    pvalue.val.uniStringValue = "0.100";
+    pvalue.val.intValue = 1; pvalue.val.doubleValue = 0.100;
+    formula.Push (pvalue);
+
+    pvalue.name = "<%ac_postWidth.3m%*3>.2m";
+    pvalue.val.uniStringValue = "0,16";
+    pvalue.val.intValue = 1; pvalue.val.doubleValue = 0.160;
+    formula.Push (pvalue);
+
+    pvalue.name = "<%ac_postWidth.2m%*3>.03m";
+    pvalue.val.uniStringValue = "0,150";
+    pvalue.val.intValue = 1; pvalue.val.doubleValue = 0.150;
     formula.Push (pvalue);
 
     for (UInt32 j = 0; j < formula.GetSize (); j++) {
         GS::UniString f = formula.Get (j).name;
         pvalue.name = f;
-        GS::UniString stringformat_raw = FormatStringFunc::GetFormatString (f);
-        FormatString fstring = FormatStringFunc::ParseFormatString (stringformat_raw);
         pvalue.val.uniStringValue = f;
-        pvalue.val.formatstring = fstring;
-        pvalue.rawName = "{@formula:" + f.ToLowerCase () + ";" + pvalue.val.uniStringValue + "." + pvalue.val.formatstring.stringformat + "}";
+        pvalue.rawName = "{@formula:" + f.ToLowerCase () + ";" + pvalue.val.uniStringValue + "}";
         GS::UniString templatestring = pvalue.val.uniStringValue;
         DBtest (ParamHelpers::ParseParamNameMaterial (templatestring, params, false), templatestring, true);
         pvalue.val.uniStringValue = templatestring;
@@ -105,13 +127,13 @@ void TestFormula ()
         ParamValue rezult = formula.Get (j);
         DBtest (paramByType.ContainsKey (rezult.rawName), rezult.rawName, true);
         ParamValue test = paramByType.Get (rezult.rawName);
+        DBtest (test.val.formatstring.stringformat, rezult.val.formatstring.stringformat, "formatstring", true);
         DBtest (test.isValid == rezult.isValid, "isValid", true);
-        DBtest (pvalue.val.uniStringValue, rezult.val.uniStringValue, "uniStringValue", true);
-        DBtest (pvalue.val.intValue, rezult.val.intValue, "intValue", true);
-        DBtest (pvalue.val.doubleValue, rezult.val.doubleValue, "doubleValue", true);
+        DBtest (test.val.uniStringValue, rezult.val.uniStringValue, "uniStringValue", true);
+        DBtest (test.val.intValue, rezult.val.intValue, "intValue", true);
+        DBtest (test.val.doubleValue, rezult.val.doubleValue, "doubleValue", true);
     }
     return;
-
 }
 
 void TestFormatString ()
@@ -129,29 +151,14 @@ void TestFormatString ()
     // =============================================================================
     test_expression = "ConWidth_1"; test_name = "ConWidth_1";
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
-    // -----------------------------------------------------------------------------
-    test_expression = "<%ConWidth_1.0mm%*1000>"; test_name = "<%ConWidth_1.0mm%*1000>";
-    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
     // =============================================================================
     fstring.isEmpty = false; fstring.isRead = true; fstring.koeff = 1000;
     fstring.stringformat = "0mm"; fstring.n_zero = 0;
     // =============================================================================
     test_expression = "ConWidth_1.0mm"; test_name = "ConWidth_1";
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
-    // -----------------------------------------------------------------------------
-    test_expression = "<%ConWidth_1%>.0mm"; test_name = "<%ConWidth_1%>";
-    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
-    // =============================================================================
-    fstring.isEmpty = false; fstring.isRead = true; fstring.koeff = 1000;
-    fstring.stringformat = "3mm"; fstring.n_zero = 3;
-    // =============================================================================
-    test_expression = "<%ConWidth_1.0mm%*1000>.3mm"; test_name = "<%ConWidth_1.0mm%*1000>";
-    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
-    // -----------------------------------------------------------------------------
-    test_expression = "<%layer_thickness.4mp% / %BuildingMaterialProperties/Building Material Thermal Conductivity.3mp%>.3mm ";
-    test_name = "<%layer_thickness.4mp% / %BuildingMaterialProperties/Building Material Thermal Conductivity.3mp%>";
-    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
-    // -----------------------------------------------------------------------------
+
     DBtest (tests.GetSize () == rezult_format.GetSize (), "tests.GetSize() == rezult_format.GetSize ()", true);
     DBtest (tests.GetSize () == rezult_name.GetSize (), "tests.GetSize() == rezult_name.GetSize ()", true);
     for (UInt32 j = 0; j < tests.GetSize (); j++) {
