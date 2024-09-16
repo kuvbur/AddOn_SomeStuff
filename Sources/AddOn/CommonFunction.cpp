@@ -7,7 +7,7 @@
 
 void DBprnt (GS::UniString msg, GS::UniString reportString)
 {
-#if defined(DEBUG)
+#if defined(TESTING)
     if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") || reportString.Contains ("ERROR")) {
         DBPrint ("== ERROR == ");
     }
@@ -28,7 +28,7 @@ void DBprnt (GS::UniString msg, GS::UniString reportString)
 
 void DBtest (bool usl, GS::UniString reportString, bool asserton)
 {
-#if defined(DEBUG)
+#if defined(TESTING)
     if (usl) {
         DBprnt (reportString, "ok");
     } else {
@@ -44,7 +44,7 @@ void DBtest (bool usl, GS::UniString reportString, bool asserton)
 
 void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton)
 {
-#if defined(DEBUG)
+#if defined(TESTING)
     GS::UniString out = a + " = " + b;
     if (a.IsEqual (b)) {
         reportString = "test " + reportString + " ok";
@@ -53,7 +53,7 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
         out = "=== ERROR IN TEST === " + out;
         DBprnt (out, reportString);
     }
-    if (asserton) (a.IsEqual (b));
+    if (asserton) assert (a.IsEqual (b));
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
@@ -64,7 +64,7 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
 
 void DBtest (double a, double b, GS::UniString reportString, bool asserton)
 {
-#if defined(DEBUG)
+#if defined(TESTING)
     GS::UniString out = GS::UniString::Printf ("%d = %d", a, b);
     if (is_equal (a, b)) {
         reportString = "test " + reportString + " ok";
@@ -73,7 +73,7 @@ void DBtest (double a, double b, GS::UniString reportString, bool asserton)
         out = "=== ERROR IN TEST === " + out;
         DBprnt (out, reportString);
     }
-    if (asserton) (is_equal (a, b));
+    if (asserton) assert (is_equal (a, b));
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
