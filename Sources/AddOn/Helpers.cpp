@@ -759,12 +759,12 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
     if (!paramTo.isValid) {
         DBtest (paramTo.isValid, paramTo.rawName + " paramTo.isValid");
     } else {
-        if (!paramTo.val.hasrawDouble) DBtest (paramTo.val.hasrawDouble, paramTo.rawName + " paramTo.val.hasrawDouble");
+        if (!paramTo.val.hasrawDouble && paramTo.val.type != API_PropertyStringValueType) DBtest (paramTo.val.hasrawDouble, paramTo.rawName + " CompareParamValue::paramTo.val.hasrawDouble");
     }
     if (!paramFrom.isValid) {
         DBtest (paramFrom.isValid, paramFrom.rawName + " paramFrom.isValid");
     } else {
-        if (!paramFrom.val.hasrawDouble) DBtest (paramFrom.val.hasrawDouble, paramFrom.rawName + " (paramFrom.val.hasrawDouble");
+        if (!paramFrom.val.hasrawDouble && paramFrom.val.type != API_PropertyStringValueType) DBtest (paramFrom.val.hasrawDouble, paramFrom.rawName + " CompareParamValue::paramFrom.val.hasrawDouble");
     }
 #endif
     if (!paramFrom.isValid) return false;
@@ -2163,6 +2163,8 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
             if (value.singleVariant.variant.intValue != pvalue.val.intValue || !isEval) {
                 property.value.singleVariant.variant.intValue = pvalue.val.intValue;
                 flag_rec = true;
+            } else {
+                DBprnt ("ParamHelpers::ConvertToProperty err", "value.singleVariant.variant.intValue != pvalue.val.intValue || !isEval");
             }
             break;
         case API_PropertyRealValueType:
@@ -2172,11 +2174,15 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
                 if (!is_equal (dval * PI / 180.0, value.singleVariant.variant.doubleValue) || !isEval) {
                     property.value.singleVariant.variant.doubleValue = dval * PI / 180.0;
                     flag_rec = true;
+                } else {
+                    DBprnt ("!is_equal (dval * PI / 180.0, value.singleVariant.variant.doubleValue) || !isEval");
                 }
             } else {
                 if (!is_equal (value.singleVariant.variant.doubleValue, dval) || !isEval) {
                     property.value.singleVariant.variant.doubleValue = dval;
                     flag_rec = true;
+                } else {
+                    DBprnt ("!is_equal (value.singleVariant.variant.doubleValue, dval) || !isEval");
                 }
             }
             break;
@@ -2184,6 +2190,8 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
             if (value.singleVariant.variant.boolValue != pvalue.val.boolValue || !isEval) {
                 property.value.singleVariant.variant.boolValue = pvalue.val.boolValue;
                 flag_rec = true;
+            } else {
+                DBprnt ("ParamHelpers::ConvertToProperty err", "value.singleVariant.variant.boolValue != pvalue.val.boolValue || !isEval");
             }
             break;
         case API_PropertyStringValueType:
@@ -2192,6 +2200,8 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
             if (value.singleVariant.variant.uniStringValue != val || !isEval) {
                 property.value.singleVariant.variant.uniStringValue = val;
                 flag_rec = true;
+            } else {
+                DBprnt ("ParamHelpers::ConvertToProperty err", "value.singleVariant.variant.uniStringValue != val || !isEval");
             }
             break;
         default:
@@ -2205,22 +2215,22 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
         for (UInt32 i = 0; i < possibleEnumValues.GetSize (); i++) {
             switch (property.definition.valueType) {
                 case API_PropertyIntegerValueType:
-                    if (value.singleVariant.variant.intValue == possibleEnumValues[i].displayVariant.intValue) {
+                    if (property.value.singleVariant.variant.intValue == possibleEnumValues[i].displayVariant.intValue) {
                         guidValue = possibleEnumValues[i].keyVariant.guidValue;
                     }
                     break;
                 case API_PropertyRealValueType:
-                    if (!is_equal (value.singleVariant.variant.doubleValue, possibleEnumValues[i].displayVariant.doubleValue)) {
+                    if (!is_equal (property.value.singleVariant.variant.doubleValue, possibleEnumValues[i].displayVariant.doubleValue)) {
                         guidValue = possibleEnumValues[i].keyVariant.guidValue;
                     }
                     break;
                 case API_PropertyBooleanValueType:
-                    if (value.singleVariant.variant.boolValue == possibleEnumValues[i].displayVariant.boolValue) {
+                    if (property.value.singleVariant.variant.boolValue == possibleEnumValues[i].displayVariant.boolValue) {
                         guidValue = possibleEnumValues[i].keyVariant.guidValue;
                     }
                     break;
                 case API_PropertyStringValueType:
-                    if (value.singleVariant.variant.uniStringValue == possibleEnumValues[i].displayVariant.uniStringValue) {
+                    if (property.value.singleVariant.variant.uniStringValue == possibleEnumValues[i].displayVariant.uniStringValue) {
                         guidValue = possibleEnumValues[i].keyVariant.guidValue;
                     }
                     break;
@@ -2232,7 +2242,10 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
                 break;
             }
         }
-        if (guidValue == APINULLGuid) flag_rec = false;
+        if (guidValue == APINULLGuid) {
+            DBprnt ("ParamHelpers::ConvertToProperty err", "guidValue == APINULLGuid");
+            flag_rec = false;
+        }
     }
     if (flag_rec) {
         property.isDefault = false;
@@ -2991,6 +3004,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
     }
 
     if (!propertyDefinitions.IsEmpty ()) {
+        DBprnt ("    WriteProperty", "!propertyDefinitions.IsEmpty()");
         GS::Array<API_Property> properties;
         error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
         if (error != NoError) {
@@ -3018,10 +3032,12 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
             API_Property property = param.property;
             if (ParamHelpers::ConvertToProperty (param, property)) {
                 error = ACAPI_Element_SetProperty (elemGuid, property);
-                if (error != NoError) msg_rep ("WriteProperty", "ACAPI_Element_SetProperty", error, elemGuid);
+                if (error != NoError) msg_rep ("WriteProperty", "ACAPI_Element_SetProperty " + property.definition.name, error, elemGuid);
             } else {
-                msg_rep ("WriteProperty", "Cant convert property " + property.definition.name, error, elemGuid);
+                msg_rep ("WriteProperty", "Cant convert property " + property.definition.name, NoError, elemGuid);
             }
+        } else {
+            DBprnt ("err WriteProperty", "param.isValid && param.property.definition.guid != APINULLGuid");
         }
     }
 }
@@ -4532,11 +4548,13 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 // Например, 1+<толщина> -> 1+<&2><&1><&0>
                 outstring = param_composite.val.uniStringValue;
                 GS::UniString part = outstring.GetSubstring ('<', '>', 0);
+                stringformat = "";
+                FormatStringFunc::GetFormatStringFromFormula (outstring, part, stringformat);
                 for (Int32 i = 0; i < nlayers; ++i) {
                     if (i == nlayers - 1) {
-                        outstring.ReplaceAll ('<' + part + '>', GS::UniString::Printf ("<&%d>", i));
+                        outstring.ReplaceAll (part, GS::UniString::Printf ("&%d&", i));
                     } else {
-                        outstring.ReplaceAll ('<' + part + '>', '<' + part + '>' + GS::UniString::Printf ("<&%d>", i));
+                        outstring.ReplaceAll (part, part + GS::UniString::Printf ("&%d&", i));
                     }
                 }
             }
@@ -4544,9 +4562,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 GS::UniString templatestring = param_composite.val.uniStringValue;
                 // Для формул возьмём только часть в <>, только она повторяется для каждого слоя
                 if (param_composite.val.hasFormula) {
+                    if (!stringformat.IsEmpty ()) templatestring.ReplaceAll (">" + stringformat, ">");
                     templatestring = param_composite.val.uniStringValue.GetSubstring ('<', '>', 0);
-                    stringformat = "";
-                    FormatStringFunc::GetFormatStringFromFormula (param_composite.val.uniStringValue, templatestring, stringformat);
                 }
                 Int32 indx = i;
                 if (inverse) indx = nlayers - i - 1;
@@ -4588,7 +4605,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     flag_add = true;
                     ReplaceSymbSpase (templatestring);
                     if (param_composite.val.hasFormula) {
-                        outstring.ReplaceAll (GS::UniString::Printf ("<&%d>", i), templatestring);
+                        outstring.ReplaceAll (GS::UniString::Printf ("&%d&", i), templatestring);
                     } else {
                         outstring = outstring + templatestring;
                     }
@@ -4598,6 +4615,18 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
         if (flag) {
             if (params.Get (rawName).val.hasFormula) {
                 if (outstring.Contains ("{")) ParamHelpers::ReplaceParamInExpression (params, outstring);
+                if (!stringformat.IsEmpty ()) {
+                    GS::UniString expression = outstring.GetSubstring ('<', '>', 0);
+                    expression = "<" + expression + ">" + stringformat;
+                    GS::UniString expression_clean = expression;
+                    EvalExpression (expression);
+                    outstring.ReplaceAll (expression_clean, expression);
+                }
+                if (outstring.Contains ("<") && outstring.Contains (">")) {
+                    outstring.ReplaceAll ("<", "");
+                    outstring.ReplaceAll (">", "");
+                }
+                outstring = "<" + outstring + ">";
             }
             params.Get (rawName).val.uniStringValue = outstring;
             params.Get (rawName).isValid = true;

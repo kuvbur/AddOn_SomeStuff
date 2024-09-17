@@ -376,7 +376,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
-    msg = msg + "\n";
+    msg = "SomeStuff addon: " + msg + "\n";
     ACAPI_WriteReport (msg, false);
     if (show) ACAPI_WriteReport (msg, show);
     if (err != NoError) {
@@ -977,7 +977,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
         rezult_txt = "";
         if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
         if (std::isnan (result)) {
-            DBprnt ("Formula is nan", part_clean);
+            DBprnt ("err Formula is nan", part_clean);
         }
         unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
         if (expression_old.IsEqual (unistring_expression)) flag_change = false;
