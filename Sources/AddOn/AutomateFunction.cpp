@@ -535,7 +535,7 @@ void ProfileByLine ()
             if (err != NoError) return err;
         }
         return err;
-});
+    });
 
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
         if (PlaceDocSect (lines[i], elemline) != NoError) {
