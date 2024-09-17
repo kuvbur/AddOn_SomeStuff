@@ -141,7 +141,7 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
-    }
+}
 
 bool GetMarkerPos (API_Guid & markerguid, API_Coord & startpoint)
 {
@@ -285,18 +285,24 @@ bool GetChangesMarker (ChangeMarkerDict & changes)
     return !changes.empty ();
 }
 
-void GetScheme ()
+bool GetScheme (GS::HashTable< GS::UniString, API_Guid>&layout_note_guid)
 {
-    GS::Array<API_Guid> layout_nuch_guid;
-    GS::Array<API_Guid> layout_note_guid;
     GSErrCode err = NoError;
     API_LayoutBook layoutScheme;
     err = ACAPI_Database (APIDb_GetLayoutBookID, &layoutScheme);
-
-    return;
+    if (err != NoError) return false;
+    for (auto layout : layoutScheme.customScheme) {
+        GS::UniString name = *layout.value;
+        name = name.ToLowerCase ();
+        API_Guid guid = *layout.key;
+        if (name.Contains ("somestuff_")) {
+            layout_note_guid.Add (name, guid);
+        }
+    }
+    return !layout_note_guid.IsEmpty ();
 }
 
-bool GetAllChangesMarker (void)
+bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_guid)
 {
     GSErrCode err = NoError;
     ChangeMarkerByListDict allchanges;
@@ -327,14 +333,6 @@ bool GetAllChangesMarker (void)
                     API_LayoutInfo	layoutInfo;			// temporary here
                     BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
                     ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
-
-                    if (layoutInfo.customData != nullptr) {
-                        for (auto it = layoutInfo.customData->EnumeratePairs (); it != nullptr; ++it) {
-                            *it->value += " - Modified via API";
-                        }
-                    }
-                    ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
-                    if (layoutInfo.customData != nullptr) delete layoutInfo.customData;
                     // Обрабатываем маркеры
                     GetChangesMarker (changes);
                     // Обрабатываем изменения, не привязанные к маркерам
@@ -369,6 +367,21 @@ bool GetAllChangesMarker (void)
                     GS::UniString key = revision.layoutInfo.id + revision.layoutInfo.name;
                     std::string key_ = key.ToCStr (0, MaxUSize, GChCode).Get ();
                     if (allchanges.count (key_) == 0) allchanges[key_] = changes;
+                    /// Запись в свойства макета
+                    bool flag_write = false;
+                    if (layoutInfo.customData != nullptr) {
+                        if (layout_note_guid.ContainsKey ("somestuff_note")) {
+                            API_Guid prop_guid = layout_note_guid.Get ("somestuff_note");
+                            if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                                flag_write = true;
+                                layoutInfo.customData->Set (prop_guid, "test");
+                            } else {
+                                int gg = 1;
+                            }
+                        }
+                    }
+                    if (flag_write) ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
+                    if (layoutInfo.customData != nullptr) delete layoutInfo.customData;
                 }
             } else {
                 msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
@@ -386,7 +399,8 @@ bool GetAllChangesMarker (void)
 void SetRevision (void)
 {
     GSErrCode err = NoError;
-    //bool haschanges = GetAllChanges ();
+    GS::HashTable<GS::UniString, API_Guid> layout_note_guid;
+    if (!GetScheme (layout_note_guid)) return;
 
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
@@ -408,8 +422,7 @@ void SetRevision (void)
         msg_rep ("SetRevision", "APIDb_GetCurrentWindowID", err, APINULLGuid);
         return;
     }
-    GetScheme ();
-    bool haschanges = GetAllChangesMarker ();
+    bool haschanges = GetAllChangesMarker (layout_note_guid);
 
     // Возвращение на исходную БД и окно
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
