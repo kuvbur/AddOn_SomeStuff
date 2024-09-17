@@ -20,9 +20,8 @@ static const Int32 TypeZam = 2;
 static const Int32 TypeNov = 3;
 static const Int32 TypeAnnul = 4;
 
-typedef struct
-{
-    API_Coord startpoint = { 0,0 };
+typedef struct {
+    API_Coord startpoint = {0,0};
     API_Guid markerguid = APINULLGuid;
     GS::UniString changeId = "";
     GS::UniString changeName = "";
@@ -32,8 +31,7 @@ typedef struct
     GS::Int32 typeizm = TypeNone;
 } Change; // Хранение одного изменения (облака)
 
-typedef struct
-{
+typedef struct {
     GS::Array<Change> arr;
     GS::Int32 nuch = 0; // Количество участков
 } Changes; // Массив изменений на листе
@@ -52,9 +50,9 @@ bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nu
 
 bool GetChangesMarker (ChangeMarkerDict& changes);
 
-void GetScheme ();
+bool GetScheme (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
-bool GetAllChangesMarker (void);
+bool GetAllChangesMarker (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
 void SetRevision (void);
 
