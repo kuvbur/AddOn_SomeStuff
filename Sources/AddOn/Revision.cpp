@@ -161,13 +161,13 @@ bool GetMarkerPos (API_Guid & markerguid, API_Coord & startpoint)
     return false;
 }
 
-bool GetMarkerText (API_Guid & markerguid, GS::UniString & note, GS::UniString & nuch, GS::UniString & nizm, GS::Int32 & typeizm)
+bool GetMarkerText (API_Guid & markerguid, GS::UniString & note, GS::UniString & nuch, GS::UniString & nizm, GS::Int32 & typeizm, GS::UniString & fam)
 {
     GSErrCode err = NoError;
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_AddPars);
-    bool find_nuch = false; bool find_izm = false; bool find_note = false; bool find_type = false;
+    bool find_nuch = false; bool find_izm = false; bool find_note = false; bool find_type = false; bool find_fam = false;
     if (err == NoError) {
         Int32	addParNum = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
         for (Int32 i = 0; i < addParNum; ++i) {
@@ -192,7 +192,13 @@ bool GetMarkerText (API_Guid & markerguid, GS::UniString & note, GS::UniString &
                 typeizm = (int) actualParam.value.real;
                 find_type = true;
             }
-            if (find_nuch && find_izm && find_note && find_type) {
+            if (name.Contains ("somestuff_surname")) {
+                fam = actualParam.value.uStr;
+                fam.Trim ();
+                find_fam = true;
+            }
+
+            if (find_nuch && find_izm && find_note && find_type && find_fam) {
                 ACAPI_DisposeElemMemoHdls (&memo);
                 return true;
             }
@@ -225,8 +231,9 @@ bool GetChangesMarker (ChangeMarkerDict & changes)
             element.header.guid = guidArray[i];
             err = ACAPI_Element_Get (&element);
             if (err == NoError && element.header.hasMemo) {
+                GS::UniString fam = "";
                 GS::UniString note = ""; GS::UniString nuch = ""; GS::UniString nizm = ""; API_Coord startpoint; GS::Int32 typeizm = TypeNone;
-                if (GetMarkerPos (guidArray[i], startpoint) && GetMarkerText (element.changeMarker.markerGuid, note, nuch, nizm, typeizm)) {
+                if (GetMarkerPos (guidArray[i], startpoint) && GetMarkerText (element.changeMarker.markerGuid, note, nuch, nizm, typeizm, fam)) {
                     Change ch;
                     GS::UniString changeId = element.changeMarker.changeId;
                     changeId.Trim ();
@@ -254,6 +261,7 @@ bool GetChangesMarker (ChangeMarkerDict & changes)
                         ch.nizm = nizm;
                         ch.nuch = nuch;
                         ch.note = note;
+                        ch.fam = fam;
                         ch.changeId.Trim ();
                         ch.changeName.Trim ();
                         std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
@@ -330,9 +338,6 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
                 GS::Array<API_RVMChange> change;
                 err = ACAPI_Database (APIDb_GetRVMLayoutCurrentRevisionChangesID, &(dbInfo.databaseUnId), &change);
                 if (change.GetSize () > 1) {
-                    API_LayoutInfo	layoutInfo;			// temporary here
-                    BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
-                    ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
                     // Обрабатываем маркеры
                     GetChangesMarker (changes);
                     // Обрабатываем изменения, не привязанные к маркерам
@@ -364,24 +369,69 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
                             changes[key].arr.Push (ch);
                         }
                     }
+                    for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
+                        Changes& change = ch->second;
+                        for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
+                            if (change.arr[i].fam.GetLength () > 3 && change.fam.GetLength () > 3 && !change.fam.IsEqual (change.arr[i].fam)) {
+                                msg_rep ("GetChangesMarker", "Different surname", err, APINULLGuid);
+                            }
+                            if (change.fam.IsEmpty () && change.arr[i].fam.GetLength () > 3) change.fam = change.arr[i].fam;
+                            if (change.typeizm != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != change.typeizm) {
+                                msg_rep ("GetChangesMarker", "Different type", err, APINULLGuid);
+                            }
+                            if (change.typeizm == TypeNone && change.arr[i].typeizm != TypeNone) change.typeizm = change.arr[i].typeizm;
+                            if (change.changeId.IsEmpty ()) change.changeId = change.arr[i].changeId;
+                        }
+                    }
                     GS::UniString key = revision.layoutInfo.id + revision.layoutInfo.name;
                     std::string key_ = key.ToCStr (0, MaxUSize, GChCode).Get ();
                     if (allchanges.count (key_) == 0) allchanges[key_] = changes;
                     /// Запись в свойства макета
                     bool flag_write = false;
-                    if (layoutInfo.customData != nullptr) {
-                        if (layout_note_guid.ContainsKey ("somestuff_note")) {
-                            API_Guid prop_guid = layout_note_guid.Get ("somestuff_note");
-                            if (layoutInfo.customData->ContainsKey (prop_guid)) {
-                                flag_write = true;
-                                layoutInfo.customData->Set (prop_guid, "test");
-                            } else {
-                                int gg = 1;
+                    API_LayoutInfo	layoutInfo;			// temporary here
+                    BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
+                    err = ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
+                    if (err == NoError) {
+                        if (layoutInfo.customData != nullptr) {
+                            UInt32 n_izm = 1;
+                            UInt32 n_prop = layout_note_guid.GetSize ();
+                            for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
+                                GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", n_izm);
+                                if (layout_note_guid.ContainsKey (prop_name)) {
+                                    API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                                    Changes change = ch->second;
+                                    GS::UniString str = change.changeId;
+                                    str = str + "@" + GS::UniString::Printf ("%d", change.nuch);
+                                    if (change.typeizm == TypeIzm) str = str + "@" + izmString;
+                                    if (change.typeizm == TypeZam) str = str + "@" + zamString;
+                                    if (change.typeizm == TypeNov) str = str + "@" + novString;
+                                    if (change.typeizm == TypeAnnul) str = str + "@" + annulString;
+                                    if (!change.fam.IsEmpty ()) str = str + "@" + change.fam;
+                                    layoutInfo.customData->Set (prop_guid, str);
+                                } else {
+                                    DBprnt ("GetChangesMarker err", "not found " + prop_name);
+                                }
+                                n_izm += 1;
                             }
+                            if (n_izm < n_prop) {
+                                for (UInt32 i = n_izm; i < n_prop; i++) {
+                                    GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
+                                    if (layout_note_guid.ContainsKey (prop_name)) {
+                                        API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                                        GS::UniString str = "";
+                                        layoutInfo.customData->Set (prop_guid, str);
+                                    } else {
+                                        DBprnt ("GetChangesMarker err", "not found " + prop_name);
+                                    }
+                                }
+                            }
+                            err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
+                            if (err != NoError) msg_rep ("GetChangesMarker", "APIEnv_ChangeLayoutSetsID", err, APINULLGuid);
+                            delete layoutInfo.customData;
                         }
+                    } else {
+                        msg_rep ("GetChangesMarker", "APIEnv_GetLayoutSetsID", err, APINULLGuid);
                     }
-                    if (flag_write) ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
-                    if (layoutInfo.customData != nullptr) delete layoutInfo.customData;
                 }
             } else {
                 msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
@@ -392,8 +442,6 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
     }
     return !allchanges.empty ();
 }
-
-
 
 
 void SetRevision (void)
