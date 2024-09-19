@@ -40,6 +40,7 @@ typedef struct
     GS::UniString fam = "";  // Фамилия
     GS::Int32 typeizm = TypeNone;
     GS::UniString changeId = "";
+    GS::UniString nizm = ""; // Номер изменения
 } Changes; // Массив изменений на листе
 
 typedef std::map<std::string, Changes, doj::alphanum_less<std::string>> ChangeMarkerDict; // Словарь изменений листа, ключ - Имя изменения (П АР Изм 0)
