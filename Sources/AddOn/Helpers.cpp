@@ -4435,16 +4435,25 @@ bool ParamHelpers::ReadFormula (ParamDictValue & paramByType, ParamDictValue & p
         GS::UniString key = *cIt->key;
 #endif
         GS::UniString expression = param.val.uniStringValue;
+        FormatString f = param.val.formatstring;
+        if (!param.val.formatstring.isEmpty) expression = expression + '.' + param.val.formatstring.stringformat;
         if (ParamHelpers::ReplaceParamInExpression (params, expression)) {
             if (EvalExpression (expression)) {
                 flag_find = true;
                 ParamValue pvalue;
                 ParamHelpers::ConvertStringToParamValue (pvalue, key, expression);
+                pvalue.val.formatstring = f;
                 paramByType.Get (key).val = pvalue.val;
                 // Если выражение можно вычислить ещё раз - запишем в чиловое значение результат, текст трогать не будем
-                GS::UniString expression_ = "<" + expression + ">";
+                GS::UniString expression_ = "";
+                if (!param.val.formatstring.isEmpty) {
+                    expression_ = "<" + expression + ">" + '.' + param.val.formatstring.stringformat;
+                } else {
+                    expression_ = "<" + expression + ">";
+                }
                 if (EvalExpression (expression_)) {
                     ParamHelpers::ConvertStringToParamValue (pvalue, key, expression_);
+                    pvalue.val.formatstring = f;
                     paramByType.Get (key).val = pvalue.val;
                     paramByType.Get (key).val.uniStringValue = expression;
                 }
@@ -4617,9 +4626,11 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 if (outstring.Contains ("{")) ParamHelpers::ReplaceParamInExpression (params, outstring);
                 if (!stringformat.IsEmpty ()) {
                     GS::UniString expression = outstring.GetSubstring ('<', '>', 0);
+                    GS::UniString first_char = expression.GetSubstring (0, 1);
                     expression = "<" + expression + ">" + stringformat;
                     GS::UniString expression_clean = expression;
                     EvalExpression (expression);
+                    expression = first_char + expression;
                     outstring.ReplaceAll (expression_clean, expression);
                 }
                 if (outstring.Contains ("<") && outstring.Contains (">")) {
@@ -4844,7 +4855,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 return false;
             }
         }
-    }
+}
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
     pvalue.rawDoubleValue = param_real;
@@ -4852,7 +4863,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
     pvalue.intValue = param_int;
     pvalue.uniStringValue = param_string;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Конвертация параметра-массива библиотечного элемента (тип API_ParArray) в ParamValue
@@ -4988,7 +4999,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
         value = property.definition.defaultValue.basicValue;
     } else {
         value = property.value;
-    }
+}
 #else
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {
@@ -5445,7 +5456,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
 #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
 #endif
-    }
+}
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
 }
@@ -5530,7 +5541,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             ParamValue p;
             param_composite.Add (pen, p);
         }
-    }
+}
     bool hasLine = !lines.IsEmpty ();
     bool profilehasLine = false;
 
@@ -5631,8 +5642,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
 #endif
-        }
-    }
+                }
+            }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     while (!profileDescriptionIt1.IsEOI ()) {
@@ -5687,14 +5698,14 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
-                            }
                         }
-                    } else {
+                    }
+                } else {
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                     }
-                }
-                break;
         }
+                break;
+    }
         ++profileDescriptionIt1;
     }
     if (hasData) {
@@ -5722,8 +5733,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
 #else
                 paramlayers.Get (*cIt->key).composite = paramout;
 #endif
+                }
             }
-        }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
     }
     return hasData;
@@ -5841,7 +5852,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-    }
+}
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -5894,7 +5905,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
 #endif
     return hasData;
-}
+    }
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -5979,7 +5990,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
             }
         }
-    }
+}
 #ifndef AC_22
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;

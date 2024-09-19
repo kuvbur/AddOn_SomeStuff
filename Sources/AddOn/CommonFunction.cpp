@@ -1430,17 +1430,27 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 
 namespace FormatStringFunc
 {
-FormatString GetFormatStringFromFormula (GS::UniString& formula, GS::UniString& part, GS::UniString& stringformat)
+FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat)
 {
     FormatString f = ParseFormatString (".3m");
     if (!formula.Contains ('.')) return f;
     GS::UniString texpression = formula;
+    GS::UniString texpression_ = formula;
     FormatStringFunc::ReplaceMeters (texpression);
     if (!texpression.Contains ('m')) return f;
-    UInt32 n_start = texpression.FindFirst (part) + part.GetLength (); // Индекс начала поиска строки-формата
+    GS::UniString tpart = part;
+    texpression.ReplaceAll ("{", "");
+    texpression.ReplaceAll ("}", "");
+    texpression_.ReplaceAll ("{", "");
+    texpression_.ReplaceAll ("}", "");
+    tpart.ReplaceAll ("{", "");
+    tpart.ReplaceAll ("}", "");
+    UInt32 n_start = texpression.FindFirst (tpart) + tpart.GetLength (); // Индекс начала поиска строки-формата
     GS::UniString stringformat_ = texpression.GetSubstring ('>', 'm', n_start) + 'm'; // Предположительно, строка-формат
+    if (stringformat_.IsEmpty ()) stringformat_ = texpression.GetSubstring ('"', 'm', n_start) + 'm';
     if (stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
         // Проверим, не обрезали ли лишнюю m
+        n_start = texpression.FindFirst (stringformat_) - 1;
         UInt32 n_end = n_start + stringformat_.GetLength ();
         if (n_end + 1 < texpression.GetLength ()) {
             GS::UniString endm = texpression.ToLowerCase ().GetSubstring (n_end + 1, 1);
@@ -1448,7 +1458,7 @@ FormatString GetFormatStringFromFormula (GS::UniString& formula, GS::UniString& 
                 n_end = n_end + 1;
             }
         }
-        stringformat = formula.GetSubstring (n_start + 1, n_end - n_start);
+        stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
         f = FormatStringFunc::ParseFormatString (stringformat);
     }
     return f;

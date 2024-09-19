@@ -906,6 +906,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
         }
     }
+    GS::UniString stringformat_raw = "";
     if (synctypefind == false) {
         if (rulestring_one.Contains ("Material:") && (rulestring_one.Contains ('"') || hasformula)) {
             synctypefind = true;
@@ -918,12 +919,17 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             if (hasformula) {
                 if (rulestring_one.Contains ('"')) {
                     templatestring = rulestring_one.GetSubstring ('"', '"', 0);
+                    FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
+                    stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                     param.val.uniStringValue = templatestring;
                 } else {
                     templatestring = rulestring_one.GetSubstring ('<', '>', 0);
+                    FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
+                    stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                     param.val.uniStringValue = '<' + templatestring + '>';
                 }
                 rulestring_one.ReplaceAll (templatestring, "");
+                rulestring_one.ReplaceAll (stringformat_raw, "");
                 param.val.hasFormula = true;
             } else {
                 templatestring = rulestring_one.GetSubstring ('"', '"', 0);
@@ -931,6 +937,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                 param.val.hasFormula = false;
                 rulestring_one.ReplaceAll (templatestring, "");
             }
+            param.val.formatstring = stringformat;
             param.fromMaterial = true;
             param.composite_pen = 20;
             rulestring_one.ReplaceAll (" ", "");
@@ -947,13 +954,17 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             GS::UniString templatestring = "";
             if (rulestring_one.Contains ('"')) {
                 templatestring = rulestring_one.GetSubstring ('"', '"', 0);
-                stringformat = FormatStringFunc::ParseFormatString (templatestring);
+                FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
+                stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                 param.val.uniStringValue = templatestring;
             } else {
                 templatestring = rulestring_one.GetSubstring ('<', '>', 0);
-                stringformat = FormatStringFunc::ParseFormatString (templatestring);
+                FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
+                stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                 param.val.uniStringValue = '<' + templatestring + '>';
             }
+            rulestring_one.ReplaceAll (templatestring, "");
+            rulestring_one.ReplaceAll (stringformat_raw, "");
             param.val.formatstring = stringformat;
             synctypefind = true;
             paramNamePrefix = "{@formula:";
@@ -1085,13 +1096,12 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     // Параметры не найдены - выходим
     if (nparam == 0) return false;
     GS::UniString paramName = params.Get (0);
-    GS::UniString stringformat_raw = FormatStringFunc::GetFormatString (paramName);
-    stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
     paramName.ReplaceAll ("\\/", "/");
     if (param.fromMaterial || param.val.hasFormula) {
-        param.name = param.val.uniStringValue;
-        param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "}";
-        stringformat = FormatStringFunc::ParseFormatString ("");
+        param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "." + stringformat.stringformat + "}";
+    } else {
+        stringformat_raw = FormatStringFunc::GetFormatString (paramName);
+        stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
     }
     UInt32 start_ignore = 0;
     if (param.fromClassification) {
