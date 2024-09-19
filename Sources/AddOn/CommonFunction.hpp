@@ -258,7 +258,7 @@ bool ClickAPoint (const char* prompt, Point2D* c);
 
 namespace FormatStringFunc
 {
-FormatString GetFormatStringFromFormula (GS::UniString& formula, GS::UniString& part, GS::UniString& stringformat);
+FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
 // -----------------------------------------------------------------------------
 // Обработка количества нулей и единиц измерения в имени свойства
 // Удаляет из имени paramName найденные единицы измерения

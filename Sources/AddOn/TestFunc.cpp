@@ -86,6 +86,12 @@ void TestFormula ()
     pvalue.val.intValue = 1; pvalue.val.doubleValue = 0.150;
     formula.Push (pvalue);
 
+    pvalue.name = "<%ac_postWidth.2m%*3>.03mp";
+    pvalue.val.uniStringValue = "0.150";
+    pvalue.val.intValue = 1; pvalue.val.doubleValue = 0.150;
+    formula.Push (pvalue);
+
+
     for (UInt32 j = 0; j < formula.GetSize (); j++) {
         GS::UniString f = formula.Get (j).name;
         pvalue.name = f;
@@ -146,6 +152,7 @@ void TestFormatString ()
     GS::UniString test_expression = "";
     GS::UniString test_name = "";
     FormatString fstring;
+
     // =============================================================================
     fstring.stringformat = ""; fstring.n_zero = 3;
     // =============================================================================
@@ -165,9 +172,23 @@ void TestFormatString ()
         GS::UniString test_name = tests.Get (j);
         GS::UniString expressiont = tests.Get (j);
         GS::UniString expressionr = rezult_name.Get (j);
-        GS::UniString stringformat_raw = FormatStringFunc::GetFormatString (expressiont);
+        GS::UniString stringformat_raw = "";
+        FormatString fstringt;
+        if (expressiont.Contains ('"')) {
+            GS::UniString templatestring = expressiont.GetSubstring ('"', '"', 0);
+            FormatStringFunc::GetFormatStringFromFormula (expressiont, templatestring, stringformat_raw);
+            fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
+        }
+        if (expressiont.Contains ('<') && expressiont.Contains ('>')) {
+            GS::UniString templatestring = expressiont.GetSubstring ('<', '>', 0);
+            FormatStringFunc::GetFormatStringFromFormula (expressiont, templatestring, stringformat_raw);
+            fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
+        }
+        if (!expressiont.Contains ('"') && !expressiont.Contains ('<') && !expressiont.Contains ('>')) {
+            stringformat_raw = FormatStringFunc::GetFormatString (expressiont);
+            fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
+        }
         FormatString fstringr = rezult_format.Get (j);
-        FormatString fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
         DBtest (expressiont, expressionr, "expression", true);
         DBtest (fstringt.isEmpty == fstringr.isEmpty, "isEmpty", true);
         DBtest (fstringt.isRead == fstringr.isRead, "isRead", true);
