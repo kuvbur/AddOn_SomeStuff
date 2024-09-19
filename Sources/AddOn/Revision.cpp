@@ -125,10 +125,12 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
                 find_izm = true;
             }
             if (find_nuch && find_izm && flag_write) {
+                DBprnt ("ACAPI_Element_Change", "start");
                 err = ACAPI_Element_Change (&markerElement, &markerMask, &memo, APIMemoMask_AddPars, true);
                 if (err != NoError) {
                     msg_rep ("ChangeMarkerText", "ACAPI_Element_Change", err, markerguid);
                 }
+                DBprnt ("ACAPI_Element_Change", "end");
                 break;
             }
             if (find_nuch && find_izm && !flag_write) {
@@ -265,7 +267,8 @@ bool GetChangesMarker (ChangeMarkerDict & changes)
                         ch.changeId.Trim ();
                         ch.changeName.Trim ();
                         std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
-                        if (changes.count (key) == 0) changes[key] = {};
+                        if (changes.count (key) == 0)changes[key] = {};
+                        if (changes[key].typeizm == TypeNone) changes[key].typeizm = ch.typeizm;
                         changes[key].arr.Push (ch);
                     }
                 }
@@ -282,9 +285,11 @@ bool GetChangesMarker (ChangeMarkerDict & changes)
                     if (change.arr[i].typeizm == TypeIzm) {
                         number_n += 1;
                         change.arr[i].nuch = GS::UniString::Printf ("%d", number_n);
-                        ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
                         change.nuch = number_n;
+                    } else {
+                        change.arr[i].nuch = "";
                     }
+                    ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
                 }
             }
             return NoError;
@@ -366,6 +371,8 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
                             ch.nizm = nizm;
                             std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
                             if (changes.count (key) == 0) changes[key] = {};
+                            if (changes[key].typeizm != TypeNone) ch.typeizm = changes[key].typeizm;
+                            if (changes[key].typeizm == TypeNone) changes[key].typeizm = ch.typeizm;
                             changes[key].arr.Push (ch);
                         }
                     }
@@ -373,65 +380,85 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
                         Changes& change = ch->second;
                         for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
                             if (change.arr[i].fam.GetLength () > 3 && change.fam.GetLength () > 3 && !change.fam.IsEqual (change.arr[i].fam)) {
-                                msg_rep ("GetChangesMarker", "Different surname", err, APINULLGuid);
+                                msg_rep ("GetChangesMarker", "Different surname " + change.fam + "<->" + change.arr[i].fam + " on " + change.changeId + " sheet ID " + revision.layoutInfo.subsetName + "/" + revision.layoutInfo.id, err, APINULLGuid, true);
                             }
                             if (change.fam.IsEmpty () && change.arr[i].fam.GetLength () > 3) change.fam = change.arr[i].fam;
                             if (change.typeizm != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != change.typeizm) {
-                                msg_rep ("GetChangesMarker", "Different type", err, APINULLGuid);
+                                msg_rep ("GetChangesMarker", "Different type on " + change.changeId + " sheet ID " + revision.layoutInfo.subsetName + "/" + revision.layoutInfo.id, err, APINULLGuid, true);
                             }
                             if (change.typeizm == TypeNone && change.arr[i].typeizm != TypeNone) change.typeizm = change.arr[i].typeizm;
                             if (change.changeId.IsEmpty ()) change.changeId = change.arr[i].changeId;
+                            if (change.nizm.IsEmpty ()) change.nizm = change.arr[i].nizm;
                         }
                     }
                     GS::UniString key = revision.layoutInfo.id + revision.layoutInfo.name;
                     std::string key_ = key.ToCStr (0, MaxUSize, GChCode).Get ();
                     if (allchanges.count (key_) == 0) allchanges[key_] = changes;
-                    /// Запись в свойства макета
-                    bool flag_write = false;
-                    API_LayoutInfo	layoutInfo;			// temporary here
-                    BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
-                    err = ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
-                    if (err == NoError) {
-                        if (layoutInfo.customData != nullptr) {
-                            UInt32 n_izm = 1;
-                            UInt32 n_prop = layout_note_guid.GetSize ();
-                            for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
-                                GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", n_izm);
+                }
+                /// Запись в свойства макета
+                bool flag_write = false;
+                API_LayoutInfo	layoutInfo;			// temporary here
+                BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
+                err = ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
+                if (err == NoError) {
+                    if (layoutInfo.customData != nullptr) {
+                        UInt32 n_izm = 1;
+                        UInt32 n_prop = layout_note_guid.GetSize ();
+                        GS::UniString note = "";
+                        for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
+                            GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", n_izm);
+                            Changes change = ch->second;
+                            if (layout_note_guid.ContainsKey (prop_name)) {
+                                API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                                GS::UniString str = change.changeId;
+                                str = str + "@" + GS::UniString::Printf ("%d", change.nuch);
+                                if (change.typeizm == TypeIzm) str = str + "@" + izmString;
+                                if (change.typeizm == TypeZam) str = str + "@" + zamString;
+                                if (change.typeizm == TypeNov) str = str + "@" + novString;
+                                if (change.typeizm == TypeAnnul) str = str + "@" + annulString;
+                                if (!change.fam.IsEmpty ()) str = str + "@" + change.fam;
+                                layoutInfo.customData->Set (prop_guid, str);
+                            } else {
+                                msg_rep ("GetChangesMarker err", "not found " + prop_name, err, APINULLGuid, true);
+                            }
+                            if (note.IsEmpty ()) note = "Изм. ";
+                            GS::UniString str = change.nizm;
+                            if (change.typeizm == TypeZam) str = str + " (" + zamString + ".)";
+                            if (change.typeizm == TypeNov) str = str + " (" + novString + ".)";
+                            if (change.typeizm == TypeAnnul) str = str + " (" + annulString + ".)";
+                            str = str + "; ";
+                            note = note + str;
+                            n_izm += 1;
+                        }
+                        GS::UniString prop_name = "somestuff_note";
+                        if (layout_note_guid.ContainsKey (prop_name)) {
+                            note.Trim ();
+                            note.Trim (';');
+                            API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                            layoutInfo.customData->Set (prop_guid, note);
+                        } else {
+                            msg_rep ("GetChangesMarker err", "not found " + prop_name, err, APINULLGuid, true);
+                        }
+                        if (n_izm < n_prop) {
+                            for (UInt32 i = n_izm; i < n_prop; i++) {
+                                GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
                                 if (layout_note_guid.ContainsKey (prop_name)) {
                                     API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                                    Changes change = ch->second;
-                                    GS::UniString str = change.changeId;
-                                    str = str + "@" + GS::UniString::Printf ("%d", change.nuch);
-                                    if (change.typeizm == TypeIzm) str = str + "@" + izmString;
-                                    if (change.typeizm == TypeZam) str = str + "@" + zamString;
-                                    if (change.typeizm == TypeNov) str = str + "@" + novString;
-                                    if (change.typeizm == TypeAnnul) str = str + "@" + annulString;
-                                    if (!change.fam.IsEmpty ()) str = str + "@" + change.fam;
+                                    GS::UniString str = "";
                                     layoutInfo.customData->Set (prop_guid, str);
                                 } else {
-                                    DBprnt ("GetChangesMarker err", "not found " + prop_name);
-                                }
-                                n_izm += 1;
-                            }
-                            if (n_izm < n_prop) {
-                                for (UInt32 i = n_izm; i < n_prop; i++) {
-                                    GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
-                                    if (layout_note_guid.ContainsKey (prop_name)) {
-                                        API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                                        GS::UniString str = "";
-                                        layoutInfo.customData->Set (prop_guid, str);
-                                    } else {
-                                        DBprnt ("GetChangesMarker err", "not found " + prop_name);
-                                    }
+                                    msg_rep ("GetChangesMarker err", "not found " + prop_name, err, APINULLGuid, true);
                                 }
                             }
-                            err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
-                            if (err != NoError) msg_rep ("GetChangesMarker", "APIEnv_ChangeLayoutSetsID", err, APINULLGuid);
-                            delete layoutInfo.customData;
                         }
-                    } else {
-                        msg_rep ("GetChangesMarker", "APIEnv_GetLayoutSetsID", err, APINULLGuid);
+                        DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
+                        err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
+                        DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "end");
+                        if (err != NoError) msg_rep ("GetChangesMarker", "APIEnv_ChangeLayoutSetsID", err, APINULLGuid);
+                        delete layoutInfo.customData;
                     }
+                } else {
+                    msg_rep ("GetChangesMarker", "APIEnv_GetLayoutSetsID", err, APINULLGuid);
                 }
             } else {
                 msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
