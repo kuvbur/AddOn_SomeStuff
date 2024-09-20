@@ -1959,17 +1959,27 @@ bool operator== (const ParamValue& lhs, const ParamValue& rhs)
 {
     double lhsd = 0.0;
     double rhsd = 0.0;
+    if (!lhs.isValid) return false;
+    if (!rhs.isValid) return false;
     switch (rhs.val.type) {
         case API_PropertyIntegerValueType:
             return lhs.val.intValue == rhs.val.intValue;
         case API_PropertyRealValueType:
-            lhsd = lhs.val.doubleValue;
             rhsd = rhs.val.doubleValue;
+            if (!rhs.val.formatstring.needRound && !is_equal (rhs.val.rawDoubleValue, 0) && rhs.val.hasrawDouble) {
+                rhsd = rhs.val.rawDoubleValue;
+            }
+            lhsd = lhs.val.doubleValue;
             if (!lhs.val.formatstring.needRound && !is_equal (lhs.val.rawDoubleValue, 0) && lhs.val.hasrawDouble) {
                 lhsd = lhs.val.rawDoubleValue;
             }
-            if (!rhs.val.formatstring.needRound && !is_equal (rhs.val.rawDoubleValue, 0) && rhs.val.hasrawDouble) {
-                rhsd = rhs.val.rawDoubleValue;
+            if (lhs.val.type == API_PropertyStringValueType && lhs.val.canCalculate) {
+                Int32 n_zero = lhs.val.formatstring.n_zero;
+                Int32 krat = lhs.val.formatstring.krat;
+                double koeff = lhs.val.formatstring.koeff;
+                bool trim_zero = lhs.val.formatstring.trim_zero;
+                if (koeff != 1) n_zero = n_zero + (GS::Int32) log10 (koeff);
+                lhsd = round (lhsd * pow (10, n_zero)) / pow (10, n_zero);
             }
             return is_equal (lhsd, rhsd);
         case API_PropertyStringValueType:
@@ -4855,7 +4865,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 return false;
             }
         }
-}
+    }
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
     pvalue.rawDoubleValue = param_real;
@@ -4863,7 +4873,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
     pvalue.intValue = param_int;
     pvalue.uniStringValue = param_string;
     return true;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация параметра-массива библиотечного элемента (тип API_ParArray) в ParamValue
@@ -4999,7 +5009,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
         value = property.definition.defaultValue.basicValue;
     } else {
         value = property.value;
-}
+    }
 #else
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {
@@ -5456,7 +5466,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
 #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
 #endif
-}
+    }
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
 }
@@ -5541,7 +5551,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             ParamValue p;
             param_composite.Add (pen, p);
         }
-}
+    }
     bool hasLine = !lines.IsEmpty ();
     bool profilehasLine = false;
 
@@ -5642,8 +5652,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
 #endif
-                }
-            }
+        }
+    }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     while (!profileDescriptionIt1.IsEOI ()) {
@@ -5698,14 +5708,14 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
+                            }
                         }
-                    }
-                } else {
+                    } else {
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                     }
-        }
+                }
                 break;
-    }
+        }
         ++profileDescriptionIt1;
     }
     if (hasData) {
@@ -5733,8 +5743,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
 #else
                 paramlayers.Get (*cIt->key).composite = paramout;
 #endif
-                }
             }
+        }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
     }
     return hasData;
@@ -5852,7 +5862,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-}
+    }
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -5905,7 +5915,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
 #endif
     return hasData;
-    }
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -5990,7 +6000,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
             }
         }
-}
+    }
 #ifndef AC_22
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;

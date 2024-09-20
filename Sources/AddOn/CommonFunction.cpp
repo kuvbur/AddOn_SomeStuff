@@ -1459,6 +1459,11 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
             }
         }
         stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
+        stringformat.Trim ('"');
+        stringformat.Trim ('>');
+        stringformat.Trim ('%');
+        stringformat.Trim ('}');
+        stringformat.Trim ();
         f = FormatStringFunc::ParseFormatString (stringformat);
     }
     return f;
