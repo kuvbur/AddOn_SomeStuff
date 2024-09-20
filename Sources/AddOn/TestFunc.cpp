@@ -153,10 +153,18 @@ void TestFormatString ()
     GS::UniString test_name = "";
     FormatString fstring;
 
+
     // =============================================================================
     fstring.stringformat = ""; fstring.n_zero = 3;
     // =============================================================================
     test_expression = "ConWidth_1"; test_name = "ConWidth_1";
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    test_expression = "\"<0.001+0.001>.3mp+<0.001+0.001>.03mm\""; test_name = "<0.001+0.001>.3mp+<0.001+0.001>.03mm";
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    test_expression = "from{Layers, 6; \"1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>\"}";
+    test_name = "1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>";
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
 
     // =============================================================================
@@ -164,6 +172,30 @@ void TestFormatString ()
     fstring.stringformat = "0mm"; fstring.n_zero = 0;
     // =============================================================================
     test_expression = "ConWidth_1.0mm"; test_name = "ConWidth_1";
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    test_expression = "ConWidth_1.0mm"; test_name = "ConWidth_1";
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    // =============================================================================
+    fstring.isEmpty = false; fstring.isRead = true; fstring.koeff = 1;
+    fstring.stringformat = "3m"; fstring.n_zero = 3;
+    // =============================================================================
+    test_expression = "from{Layers, 6; \"1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>\".3m}";
+    test_name = "1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>";
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    test_expression = "<0.001+0.001>.3m"; test_name = "0.001+0.001";
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    // =============================================================================
+    fstring.isEmpty = false; fstring.isRead = true; fstring.koeff = 1;
+    fstring.stringformat = "3mp"; fstring.n_zero = 3; fstring.delimetr = ".";
+    // =============================================================================
+    test_expression = "from{Material:Layers, 6; \"1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%толщина.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>\".3mp}";
+    test_name = "1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%толщина.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>";
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+    test_expression = "<0.001+0.001>.3mp"; test_name = "0.001+0.001";
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
 
     DBtest (tests.GetSize () == rezult_format.GetSize (), "tests.GetSize() == rezult_format.GetSize ()", true);
@@ -178,15 +210,17 @@ void TestFormatString ()
             GS::UniString templatestring = expressiont.GetSubstring ('"', '"', 0);
             FormatStringFunc::GetFormatStringFromFormula (expressiont, templatestring, stringformat_raw);
             fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
-        }
-        if (expressiont.Contains ('<') && expressiont.Contains ('>')) {
-            GS::UniString templatestring = expressiont.GetSubstring ('<', '>', 0);
-            FormatStringFunc::GetFormatStringFromFormula (expressiont, templatestring, stringformat_raw);
-            fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
-        }
-        if (!expressiont.Contains ('"') && !expressiont.Contains ('<') && !expressiont.Contains ('>')) {
-            stringformat_raw = FormatStringFunc::GetFormatString (expressiont);
-            fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
+            expressiont = templatestring;
+        } else {
+            if (expressiont.Contains ('<') && expressiont.Contains ('>')) {
+                GS::UniString templatestring = expressiont.GetSubstring ('<', '>', 0);
+                FormatStringFunc::GetFormatStringFromFormula (expressiont, templatestring, stringformat_raw);
+                fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
+                expressiont = templatestring;
+            } else {
+                stringformat_raw = FormatStringFunc::GetFormatString (expressiont);
+                fstringt = FormatStringFunc::ParseFormatString (stringformat_raw);
+            }
         }
         FormatString fstringr = rezult_format.Get (j);
         DBtest (expressiont, expressionr, "expression", true);
