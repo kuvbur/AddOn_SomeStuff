@@ -1492,6 +1492,8 @@ GS::UniString GetFormatString (GS::UniString& paramName)
             }
             paramName.ReplaceAll ('.' + formatstring, "");
             ReplaceMeters (formatstring, iseng);
+        } else {
+            formatstring = "";
         }
     }
     return formatstring;

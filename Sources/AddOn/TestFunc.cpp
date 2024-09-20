@@ -167,6 +167,10 @@ void TestFormatString ()
     test_name = "1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>";
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
 
+
+
+    test_expression = "Спецификация сэндвич/Площадь, кв.м. (без подрезок)"; test_name = test_expression;
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
     // =============================================================================
     fstring.isEmpty = false; fstring.isRead = true; fstring.koeff = 1000;
     fstring.stringformat = "0mm"; fstring.n_zero = 0;
