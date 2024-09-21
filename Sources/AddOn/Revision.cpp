@@ -6,68 +6,6 @@
 #include	<stdlib.h> /* atoi */
 #include	<time.h>
 
-//bool GetAllChanges (void)
-//{
-//    GS::Array<API_RVMChange> changes;
-//    GSErrCode err = ACAPI_Database (APIDb_GetRVMChangesID, &changes);
-//    if (err != NoError) {
-//        return false;
-//    }
-//    if (changes.IsEmpty ()) {
-//        return false;
-//    }
-//    char	buffer[256];
-//    for (auto& change : changes.AsConst ()) {
-//        sprintf (buffer, "ID: %s, Description: %s", change.id.ToCStr ().Get (), change.description.ToCStr ().Get ());
-//    }
-//    return false;
-//}
-
-
-static void		Do_GetChangeCustomScheme (void)
-{
-    GS::Array<API_RVMChange> changes;
-    GSErrCode err = ACAPI_Database (APIDb_GetRVMChangesID, &changes);
-    if (err != NoError) {
-        return;
-    }
-
-    if (changes.IsEmpty ()) {
-        return;
-    }
-
-    GS::HashTable<API_Guid, GS::UniString> changeCustomSchemes;
-    err = ACAPI_Database (APIDb_GetRVMChangeCustomSchemeID, &changeCustomSchemes);
-    if (err != NoError) {
-
-        return;
-    }
-
-    if (changeCustomSchemes.IsEmpty ()) {
-
-        return;
-    }
-
-    GS::UniString buffer;
-    for (auto& change : changes.AsConst ()) {
-        buffer = GS::UniString::Printf ("ID: %T, ", change.id.ToPrintf ());
-        bool firstLoop = true;
-        for (auto& cIt : changeCustomSchemes) {
-            const API_Guid& guid = *cIt.key;
-            const GS::UniString& customFieldName = *cIt.value;
-            GS::UniString			customFieldValue;
-
-            if (!firstLoop)
-                buffer.Append (", ");
-
-            change.customData.Get (guid, &customFieldValue);
-            buffer.Append (customFieldName + ": " + customFieldValue);
-
-            firstLoop = false;
-        }
-    }
-}
-
 void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm)
 {
     GSErrCode err = NoError;
@@ -84,7 +22,7 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
         return;
     }
 #if defined(AC_27) || defined(AC_28)
-    if (ACAPI_Teamwork_HasConnection () && !ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) {
+    if (ACAPI_Teamwork_HasConnection () && !ACAPI_Element_Filter (markerguid, APIFilt_InMyWorkspace)) {
 #else
     if (ACAPI_TeamworkControl_HasConnection () && !ACAPI_Element_Filter (markerguid, APIFilt_InMyWorkspace)) {
 #endif
@@ -302,8 +240,15 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>&layout_note_guid)
 {
     GSErrCode err = NoError;
     API_LayoutBook layoutScheme;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Navigator_GetLayoutBook (&layoutScheme);
+#else
     err = ACAPI_Database (APIDb_GetLayoutBookID, &layoutScheme);
-    if (err != NoError) return false;
+#endif
+    if (err != NoError) {
+        msg_rep ("GetScheme", "APIDb_GetLayoutBookID", err, APINULLGuid);
+        return false;
+    }
     for (auto layout : layoutScheme.customScheme) {
         GS::UniString name = *layout.value;
         name = name.ToLowerCase ();
@@ -321,7 +266,11 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
     ChangeMarkerByListDict allchanges;
     // Получаем выпуски
     GS::Array<API_RVMDocumentRevision> api_revisions;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Revision_GetRVMDocumentRevisions (&api_revisions);
+#else
     err = ACAPI_Database (APIDb_GetRVMDocumentRevisionsID, &api_revisions);
+#endif
     if (err != NoError) {
         msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionsID", err, APINULLGuid);
         return false;
@@ -332,16 +281,28 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
     GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
     for (auto revision : api_revisions) {
         GS::Array<API_RVMChange> api_changes;
+#if defined(AC_27) || defined(AC_28)
+        err = ACAPI_Revision_GetRVMDocumentRevisionChanges (&revision.guid, &api_changes);
+#else
         err = ACAPI_Database (APIDb_GetRVMDocumentRevisionChangesID, &revision.guid, &api_changes);
+#endif
         if (err == NoError) {
             ChangeMarkerDict changes;
             API_DatabaseInfo dbInfo = {};
             dbInfo.typeID = APIWind_LayoutID;
             dbInfo.databaseUnId = revision.layoutInfo.dbId;
+#if defined(AC_27) || defined(AC_28)
+            err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
+#else
             err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
+#endif
             if (err == NoError) {
                 GS::Array<API_RVMChange> change;
+#if defined(AC_27) || defined(AC_28)
+                err = ACAPI_Revision_GetRVMLayoutCurrentRevisionChanges (&(dbInfo.databaseUnId), &change);
+#else
                 err = ACAPI_Database (APIDb_GetRVMLayoutCurrentRevisionChangesID, &(dbInfo.databaseUnId), &change);
+#endif
                 if (change.GetSize () > 1) {
                     // Обрабатываем маркеры
                     GetChangesMarker (changes);
@@ -399,7 +360,11 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
                 bool flag_write = false;
                 API_LayoutInfo	layoutInfo;			// temporary here
                 BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
+#if defined(AC_27) || defined(AC_28)
+                err = ACAPI_Navigator_GetLayoutSets (&layoutInfo, &(dbInfo.databaseUnId));
+#else
                 err = ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
+#endif
                 if (err == NoError) {
                     if (layoutInfo.customData != nullptr) {
                         UInt32 n_izm = 1;
@@ -452,7 +417,11 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>&layout_note_gu
                             }
                         }
                         DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
+#if defined(AC_27) || defined(AC_28)
+                        err = ACAPI_Navigator_ChangeLayoutSets (&layoutInfo, &(dbInfo.databaseUnId));
+#else
                         err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(dbInfo.databaseUnId));
+#endif
                         DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "end");
                         if (err != NoError) msg_rep ("GetChangesMarker", "APIEnv_ChangeLayoutSetsID", err, APINULLGuid);
                         delete layoutInfo.customData;
@@ -480,19 +449,31 @@ void SetRevision (void)
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     GS::IntPtr	store = 1;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_View_StoreViewSettings (store);
+#else
     err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
+#endif
     if (err != NoError) {
         store = -1;
         err = NoError;
     }
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Database_GetCurrentDatabase (&databasestart);
+#else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("SetRevision", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
         return;
     }
     BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Window_GetCurrentWindow (&windowstart);
+#else
     err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("SetRevision", "APIDb_GetCurrentWindowID", err, APINULLGuid);
         return;
@@ -500,19 +481,31 @@ void SetRevision (void)
     bool haschanges = GetAllChangesMarker (layout_note_guid);
 
     // Возвращение на исходную БД и окно
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
+#else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("SetRevision", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return;
     }
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Window_ChangeWindow (&windowstart);
+#else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("SetRevision", "APIDo_ChangeWindowID", err, APINULLGuid);
         return;
     }
     if (store == 1) {
         store = 0;
+#if defined(AC_27) || defined(AC_28)
+        ACAPI_View_StoreViewSettings (store);
+#else
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
+#endif
     }
 }
 #endif
