@@ -139,7 +139,12 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
 GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& angz, const double& koeff)
 {
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
-    GSErrCode err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
+    GSErrCode err = NoError;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
+#else
+    err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Get3DProjectionSetsID", err, APINULLGuid);
         return err;
@@ -147,13 +152,21 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     proj3DInfo.isPersp = false;
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 1;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
+#else
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Change3DProjectionSetsID", err, APINULLGuid);
         return err;
     }
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
+#else
     err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Get3DProjectionSetsID", err, APINULLGuid);
         return err;
@@ -164,7 +177,11 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     proj3DInfo.u.axono.tranmat.tmx[4] = proj3DInfo.u.axono.tranmat.tmx[4] * koeff;
     proj3DInfo.u.axono.tranmat.tmx[1] = proj3DInfo.u.axono.tranmat.tmx[1] * koeff;
     proj3DInfo.u.axono.tranmat.tmx[5] = proj3DInfo.u.axono.tranmat.tmx[5] * koeff;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
+#else
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Change3DProjectionSetsID", err, APINULLGuid);
         return err;
@@ -452,7 +469,6 @@ void ProfileByLine ()
     GS::Array<SSectLine> lines;
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
-
     GS::IntPtr	store = 1;
     err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
     if (err != NoError) {
@@ -605,7 +621,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
     API_DatabaseInfo	dbInfo;
     BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     dbInfo.typeID = APIWind_DrawingID;
-    dbInfo.linkedElement = element.header.guid;;
+    dbInfo.linkedElement = element.header.guid;
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo);
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
@@ -776,9 +792,17 @@ void AlignDrawingsByPoints ()
     });
     if (store == 1) {
         store = 0;
+#if defined(AC_27) || defined(AC_28)
+        ACAPI_View_StoreViewSettings (store);
+#else
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
+#endif
     }
+#if defined(AC_27) || defined(AC_28)
+    ACAPI_View_Zoom (nullptr, nullptr);
+#else
     ACAPI_Automate (APIDo_ZoomID, nullptr, nullptr);
+#endif
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Change", err, APINULLGuid);
         return;
@@ -842,6 +866,18 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
 #else
     apiOwner.typeID = elem_head.typeID;
 #endif
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_LibraryPart_OpenParameters (&apiOwner);
+    if (err != NoError) {
+        ACAPI_LibraryPart_CloseParameters ();
+        return err;
+    }
+    err = ACAPI_LibraryPart_GetActParameters (&apiParams);
+    if (err != NoError) {
+        ACAPI_LibraryPart_CloseParameters ();
+        return err;
+    }
+#else
     err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
     if (err != NoError) {
         ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr);
@@ -852,6 +888,7 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
         ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr);
         return err;
     }
+#endif
     Int32 n_t = coords.GetSize ();
     Int32 inx_kontur = 0;
     API_ChangeParamType	chgParam;
@@ -866,18 +903,31 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
             chgParam.realValue = 0;
             chgParam.ind1 = (*apiParams.params)[i].dim1;
             chgParam.ind2 = (*apiParams.params)[i].dim2;
+#if defined(AC_27) || defined(AC_28)
+            err = ACAPI_LibraryPart_ChangeAParameter (&chgParam); if (err != NoError) return err;
+#else
             err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr); if (err != NoError) return err;
+#endif
         }
         if (name.IsEqual ("n_t")) {
             BNZeroMemory (&chgParam, sizeof (API_ChangeParamType));
             chgParam.index = (*apiParams.params)[i].index;
             CHTruncate ((*apiParams.params)[i].name, chgParam.name, API_NameLen);
             chgParam.realValue = n_t;
+#if defined(AC_27) || defined(AC_28)
+            err = ACAPI_LibraryPart_ChangeAParameter (&chgParam); if (err != NoError) return err;
+#else
             err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr); if (err != NoError) return err;
+#endif
         }
     }
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_LibraryPart_GetActParameters (&apiParams); if (err != NoError) return err;
+    err = ACAPI_LibraryPart_CloseParameters (); if (err != NoError) return err;
+#else
     err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams); if (err != NoError) return err;
     err = ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr); if (err != NoError) return err;
+#endif
 
     Int32 inDim1 = (*apiParams.params)[inx_kontur].dim1;
     Int32 inDim2 = (*apiParams.params)[inx_kontur].dim2;
