@@ -20,7 +20,6 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 // 5. Записываем их через разделитель
 // TODO Попробовать сделать диапазоны 1...10 и т.д.
 // -----------------------------------------------------------------------------------------------------------------------
-
 GSErrCode SumSelected (SyncSettings& syncSettings)
 {
     long time_start = clock ();
