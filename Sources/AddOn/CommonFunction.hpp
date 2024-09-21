@@ -54,6 +54,8 @@ typedef struct
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
+GS::UniString GetPropertyNameByGUID (const API_Guid& guid);
+
 void DBprnt (GS::UniString msg, GS::UniString reportString = "");
 
 void DBtest (bool usl, GS::UniString reportString, bool asserton = false);

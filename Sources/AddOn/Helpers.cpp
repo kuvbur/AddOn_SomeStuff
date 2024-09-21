@@ -17,6 +17,9 @@
 #ifdef AC_28
 #include	"APICommon28.h"
 #endif // AC_28
+#ifdef TESTING
+#include "TestFunc.hpp"
+#endif
 #include    "Helpers.hpp"
 #include    "Model3D/model.h"
 #include    "Model3D/MeshBody.hpp"
@@ -3749,10 +3752,20 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
         msg_rep ("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
         return;
     }
+#ifdef TESTING
+    TestFunc::DumpAllBuiltInProperties ();
+#endif
     UInt32 nparams = propertyParams.GetSize ();
     // Созданим словарь с определением всех свойств
     for (UInt32 i = 0; i < groups.GetSize (); i++) {
-        if (groups[i].groupType == API_PropertyCustomGroupType || (groups[i].groupType == API_PropertyStaticBuiltInGroupType && groups[i].name.Contains ("Material"))) {
+        bool filter = true;
+#if defined(AC_28)
+        GS::UniString strguid = APIGuidToString (groups[i].guid);
+        filter = (strguid.IsEqual ("3CF63E55-AA52-4AB4-B1C3-0920B2F352BF") || strguid.IsEqual ("6EE946D2-E840-4909-8EF1-F016AE905C52") || strguid.IsEqual ("BF31D3E0-A2B1-4543-A3DA-C1191D059FD8"));
+#else
+        filter = (groups[i].name.Contains ("Material"));
+#endif
+        if (groups[i].groupType == API_PropertyCustomGroupType || (groups[i].groupType == API_PropertyStaticBuiltInGroupType && filter)) {
             GS::Array<API_PropertyDefinition> definitions;
             err = ACAPI_Property_GetPropertyDefinitions (groups[i].guid, definitions);
             if (err != NoError) msg_rep ("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
@@ -3760,7 +3773,6 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
                 for (UInt32 j = 0; j < definitions.GetSize (); j++) {
                     GS::UniString name = "";
                     GS::UniString rawName = "";
-
                     // TODO Когда в проекте есть два и более свойств с описанием Sync_name возникает ошибка
                     if (definitions[j].description.Contains ("Sync_name")) {
                         for (UInt32 inx = 0; inx < 20; inx++) {
@@ -3775,7 +3787,12 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
                         ParamHelpers::ConvertToParamValue (pvalue, definitions[j]);
                         propertyParams.Add (pvalue.rawName, pvalue);
                     } else {
+#if defined(AC_28)
+                        name = GetPropertyNameByGUID (definitions[j].guid);
+                        if (name.IsEmpty ()) name = groups[i].name + "/" + definitions[j].name;
+#else
                         name = groups[i].name + "/" + definitions[j].name;
+#endif
                         rawName = "{@property:" + name.ToLowerCase () + "}";
                         if (!propertyParams.ContainsKey (rawName)) {
                             ParamValue pvalue;
@@ -5009,7 +5026,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
         value = property.definition.defaultValue.basicValue;
     } else {
         value = property.value;
-    }
+}
 #else
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {

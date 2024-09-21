@@ -13,15 +13,17 @@
 #include "APICommon27.h"
 #endif // AC_26
 
-namespace TestFunc {
-    void Test ();
-    void TestCalc ();
-    void TestFormula ();
-    void TestFormatString ();
-    void TestFormatStringFormula ();
-    void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray);
-    void ResetSyncPropertyOne (const API_Guid& elemGuid);
-    void ResetSyncPropertyOne (const API_Guid& elemGuid, GS::Array<API_Property>& propertywrite);
+namespace TestFunc
+{
+void Test ();
+void TestCalc ();
+void TestFormula ();
+void TestFormatString ();
+void TestFormatStringFormula ();
+void DumpAllBuiltInProperties ();
+void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray);
+void ResetSyncPropertyOne (const API_Guid& elemGuid);
+void ResetSyncPropertyOne (const API_Guid& elemGuid, GS::Array<API_Property>& propertywrite);
 }
 
 #endif

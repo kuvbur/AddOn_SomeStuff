@@ -5,6 +5,23 @@
 #include    <limits>
 #include    <math.h>
 
+GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
+{
+    GS::UniString strguid = APIGuidToString (guid);
+    if (strguid.IsEqual ("2E906CCE-9A42-4E49-AE45-193D0D709CC4")) return "BuildingMaterialProperties/Building Material CutFill";
+    if (strguid.IsEqual ("FAF74D9D-3CD4-4A03-9840-A39DB757DB1C")) return "BuildingMaterialProperties/Building Material Density";
+    if (strguid.IsEqual ("68947382-7220-449A-AE47-F6F8CB47DE49")) return "BuildingMaterialProperties/Building Material Description";
+    if (strguid.IsEqual ("902756A0-71D1-402B-B639-640BA5837A95")) return "BuildingMaterialProperties/Building Material ID";
+    if (strguid.IsEqual ("A01BCC22-D1FC-4CD8-AD34-95BBE73BDD5E")) return "BuildingMaterialProperties/Building Material Manufacturer";
+    if (strguid.IsEqual ("294C063C-98D8-42B5-B2C1-C27DE7CAB756")) return "BuildingMaterialProperties/Building Material Thermal Conductivity";
+    if (strguid.IsEqual ("F99C8A52-810A-4D01-A33A-AB5FDBA43A20")) return "BuildingMaterialProperties/Building Material Heat Capacity";
+    if (strguid.IsEqual ("A01BCC22-D1FC-4CD8-AD34-95BBE73BDD5E")) return "BuildingMaterialProperties/Building Material Manufacturer";
+    if (strguid.IsEqual ("902756A0-71D1-402B-B639-640BA5837A95")) return "BuildingMaterialProperties/Building Material Name";
+
+    return "";
+}
+
+
 void DBprnt (GS::UniString msg, GS::UniString reportString)
 {
 #if defined(TESTING)
@@ -573,6 +590,18 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
     if (definision.name.Contains ("ync_name")) {
         name = definision.name;
     } else {
+#if defined(AC_28)
+        name = GetPropertyNameByGUID (definision.guid);
+        if (!name.IsEmpty ()) {
+            if (definision.name.Contains (CharENTER)) {
+                UInt32 n = definision.name.FindFirst (CharENTER);
+                UInt32 l = definision.name.GetLength ();
+                GS::UniString attribsiffix = definision.name.GetSuffix (l - n);
+                name = name + attribsiffix;
+            }
+            return NoError;
+        }
+#endif
         API_PropertyGroup group;
         group.guid = definision.groupGuid;
         error = ACAPI_Property_GetPropertyGroup (group);
@@ -1459,6 +1488,12 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
             }
         }
         stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
+#ifdef TESTING
+        DBtest (!stringformat.Contains ('"'), "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat, false);
+        DBtest (!stringformat.Contains ('>'), "GetFormatStringFromFormula : stringformat.Contains('>') " + stringformat, false);
+        DBtest (!stringformat.Contains ('%'), "GetFormatStringFromFormula : stringformat.Contains('%') " + stringformat, false);
+        DBtest (!stringformat.Contains ('}'), "GetFormatStringFromFormula : stringformat.Contains('}') " + stringformat, false);
+#endif
         stringformat.Trim ('"');
         stringformat.Trim ('>');
         stringformat.Trim ('%');
@@ -1493,6 +1528,7 @@ GS::UniString GetFormatString (GS::UniString& paramName)
             paramName.ReplaceAll ('.' + formatstring, "");
             ReplaceMeters (formatstring, iseng);
         } else {
+            // Если .м найдена не в последнем блоке - то это не строка-формат
             formatstring = "";
         }
     }

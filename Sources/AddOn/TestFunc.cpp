@@ -240,6 +240,30 @@ void TestFormatString ()
     return;
 }
 
+void DumpAllBuiltInProperties ()
+{
+    GS::Array<API_PropertyGroup> groups;
+    ACAPI_Property_GetPropertyGroups (groups);
+    for (const API_PropertyGroup& group : groups) {
+        GS::Array<API_PropertyDefinition> definitions;
+        ACAPI_Property_GetPropertyDefinitions (group.guid, definitions);
+        GS::UniString report_ =
+            "======" + group.name + "\t" +
+            APIGuidToString (group.guid);
+        ACAPI_WriteReport (report_, false);
+        for (const API_PropertyDefinition& definition : definitions) {
+            if (definition.definitionType != API_PropertyStaticBuiltInDefinitionType) {
+                continue;
+            }
+            GS::UniString report =
+                group.name + "\t" +
+                definition.name + "\t" +
+                APIGuidToString (definition.guid);
+            ACAPI_WriteReport (report, false);
+        }
+    }
+}
+
 void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray)
 {
     if (guidArray.IsEmpty ()) return;
