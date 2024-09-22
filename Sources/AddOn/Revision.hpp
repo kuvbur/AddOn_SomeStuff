@@ -47,20 +47,21 @@ typedef std::map<std::string, Changes, doj::alphanum_less<std::string>> ChangeMa
 
 typedef std::map<std::string, ChangeMarkerDict, doj::alphanum_less<std::string>> ChangeMarkerByListDict;
 
-static void Do_GetChangeCustomScheme (void);
-
-void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm);
-
-bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint);
-
-bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam);
-
-bool GetChangesMarker (ChangeMarkerDict& changes);
+namespace Revision
+{
+void SetRevision (void);
 
 bool GetScheme (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
 bool GetAllChangesMarker (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
-void SetRevision (void);
+bool GetChangesMarker (ChangeMarkerDict& changes);
+
+bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint);
+
+bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam);
+
+void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm);
+}
 
 #endif
