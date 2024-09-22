@@ -43,9 +43,12 @@ typedef struct
     GS::UniString nizm = ""; // Номер изменения
 } Changes; // Массив изменений на листе
 
-typedef std::map<std::string, Changes, doj::alphanum_less<std::string>> ChangeMarkerDict; // Словарь изменений листа, ключ - Имя изменения (П АР Изм 0)
+//typedef std::map<std::string, Changes, doj::alphanum_less<std::string>> ChangeMarkerDict; // Словарь изменений листа, ключ - Имя изменения (П АР Изм 0)
+//typedef std::map<std::string, ChangeMarkerDict, doj::alphanum_less<std::string>> ChangeMarkerByListDict;
 
-typedef std::map<std::string, ChangeMarkerDict, doj::alphanum_less<std::string>> ChangeMarkerByListDict;
+typedef GS::HashTable < GS::UniString, Changes> ChangeMarkerDict;
+
+typedef GS::HashTable< GS::UniString, ChangeMarkerDict> ChangeMarkerByListDict;
 
 namespace Revision
 {
