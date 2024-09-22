@@ -147,6 +147,7 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
 #else
                 err = ACAPI_Database (APIDb_GetRVMLayoutCurrentRevisionChangesID, &(dbInfo.databaseUnId), &change);
 #endif
+                std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {}; //Для корректной сотировки по имени
                 if (change.GetSize () > 1) {
                     // Обрабатываем маркеры
                     GetChangesMarker (changes);
@@ -184,11 +185,14 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                             changes[key].arr.Push (ch);
                         }
                     }
+                    // Проверка данных в изменениях
                     for (auto ch : changes) {
 #if defined(AC_28)
-                        Changes change = ch.value;
+                        Changes& change = ch.value;
+                        GS::UniString id = ch.key;
 #else
-                        Changes change = *ch.value;
+                        Changes& change = *ch.value;
+                        GS::UniString id = *ch.key;
 #endif
                         for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
                             if (change.arr[i].fam.GetLength () > 3 && change.fam.GetLength () > 3 && !change.fam.IsEqual (change.arr[i].fam)) {
@@ -202,6 +206,8 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                             if (change.changeId.IsEmpty ()) change.changeId = change.arr[i].changeId;
                             if (change.nizm.IsEmpty ()) change.nizm = change.arr[i].nizm;
                         }
+                        std::string s = change.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
+                        abc_changes[s] = id;
                     }
                     //GS::UniString key = revision.layoutInfo.id + revision.layoutInfo.name;
                     //std::string key_ = key.ToCStr (0, MaxUSize, GChCode).Get ();
@@ -225,12 +231,10 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                         UInt32 n_izm = 1;
                         UInt32 n_prop = layout_note_guid.GetSize ();
                         GS::UniString note = "";
-                        for (auto ch : changes) {
-#if defined(AC_28)
-                            Changes change = ch.value;
-#else
-                            Changes change = *ch.value;
-#endif
+                        for (std::map<std::string, GS::UniString, doj::alphanum_less<std::string> >::iterator k = abc_changes.begin (); k != abc_changes.end (); ++k) {
+                            GS::UniString s = k->second;
+                            Changes change;
+                            if (changes.ContainsKey (s)) change = changes.Get (s);
                             GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", n_izm);
                             if (layout_note_guid.ContainsKey (prop_name)) {
                                 API_Guid prop_guid = layout_note_guid.Get (prop_name);
