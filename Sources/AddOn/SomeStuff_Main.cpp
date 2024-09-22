@@ -353,7 +353,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     AutoFunc::AlignDrawingsByPoints ();
                     break;
                 case SetRevision_CommandID:
-                    SetRevision ();
+                    Revision::SetRevision ();
                     break;
 #endif
             }
