@@ -1,5 +1,5 @@
 //------------ kuvbur 2022 ------------
-#ifdef PK_1
+#if !defined(AC_22) && !defined(AC_23)
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Revision.hpp"

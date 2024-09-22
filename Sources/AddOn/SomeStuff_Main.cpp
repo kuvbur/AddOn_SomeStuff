@@ -3,7 +3,6 @@
 #include	"APIEnvir.h"
 #include	<stdio.h>
 #ifdef PK_1
-#include	"Revision.hpp"
 #include	"AutomateFunction.hpp"
 #endif
 #ifdef TESTING
@@ -28,6 +27,9 @@
 #include	"Sync.hpp"
 #ifndef AC_22
 #include	"ReNum.hpp"
+#endif
+#if !defined(AC_22) && !defined(AC_23)
+#include	"Revision.hpp"
 #endif
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
@@ -263,7 +265,7 @@ void MenuSetState (SyncSettings & syncSettings)
     MenuItemCheckAC (Menu_objS, syncSettings.objS);
     MenuItemCheckAC (Menu_cwallS, syncSettings.cwallS);
     if (isEng () > 0) {
-        for (UInt32 i = 0; i < 13; i++) {
+        for (UInt32 i = 0; i < 14; i++) {
             SetPaletteMenuText (i);
         }
     }
@@ -342,6 +344,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case ShowSub_CommandID:
                     Spec::ShowSub (syncSettings);
                     break;
+#if !defined(AC_22) && !defined(AC_23)
+                case SetRevision_CommandID:
+                    Revision::SetRevision ();
+                    break;
+#endif
 #ifdef PK_1
                 case AutoList_CommandID:
                     AutoFunc::KM_ListUpdate ();
@@ -351,9 +358,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                 case AutoLay_CommandID:
                     AutoFunc::AlignDrawingsByPoints ();
-                    break;
-                case SetRevision_CommandID:
-                    Revision::SetRevision ();
                     break;
 #endif
             }
