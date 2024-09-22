@@ -28,9 +28,7 @@
 #ifndef AC_22
 #include	"ReNum.hpp"
 #endif
-#if !defined(AC_22) && !defined(AC_23)
 #include	"Revision.hpp"
-#endif
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
 #include	"Spec.hpp"
@@ -344,11 +342,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case ShowSub_CommandID:
                     Spec::ShowSub (syncSettings);
                     break;
-#if !defined(AC_22) && !defined(AC_23)
                 case SetRevision_CommandID:
                     Revision::SetRevision ();
                     break;
-#endif
 #ifdef PK_1
                 case AutoList_CommandID:
                     AutoFunc::KM_ListUpdate ();

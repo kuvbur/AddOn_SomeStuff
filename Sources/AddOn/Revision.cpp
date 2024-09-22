@@ -1,5 +1,4 @@
 //------------ kuvbur 2022 ------------
-#if !defined(AC_22) && !defined(AC_23)
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Revision.hpp"
@@ -90,9 +89,14 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
         return false;
     }
     for (auto layout : layoutScheme.customScheme) {
+#if defined(AC_28)
+        GS::UniString name = layout.value;
+        API_Guid guid = layout.key;
+#else
         GS::UniString name = *layout.value;
-        name = name.ToLowerCase ();
         API_Guid guid = *layout.key;
+#endif
+        name = name.ToLowerCase ();
         if (name.Contains ("somestuff_")) {
             layout_note_guid.Add (name, guid);
         }
@@ -103,7 +107,7 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
 bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
 {
     GSErrCode err = NoError;
-    ChangeMarkerByListDict allchanges;
+    //ChangeMarkerByListDict allchanges;
     // Получаем выпуски
     GS::Array<API_RVMDocumentRevision> api_revisions;
 #if defined(AC_27) || defined(AC_28)
@@ -170,15 +174,22 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                             ch.changeName = c.description;
                             ch.changeName.Trim ();
                             ch.nizm = nizm;
-                            std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
-                            if (changes.count (key) == 0) changes[key] = {};
+                            GS::UniString key = ch.changeId;
+                            if (!changes.ContainsKey (key)) {
+                                Changes chs;
+                                changes.Add (key, chs);
+                            }
                             if (changes[key].typeizm != TypeNone) ch.typeizm = changes[key].typeizm;
                             if (changes[key].typeizm == TypeNone) changes[key].typeizm = ch.typeizm;
                             changes[key].arr.Push (ch);
                         }
                     }
-                    for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
-                        Changes& change = ch->second;
+                    for (auto ch : changes) {
+#if defined(AC_28)
+                        Changes change = ch.value;
+#else
+                        Changes change = *ch.value;
+#endif
                         for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
                             if (change.arr[i].fam.GetLength () > 3 && change.fam.GetLength () > 3 && !change.fam.IsEqual (change.arr[i].fam)) {
                                 msg_rep ("GetChangesMarker", "Different surname " + change.fam + "<->" + change.arr[i].fam + " on " + change.changeId + " sheet ID " + revision.layoutInfo.subsetName + "/" + revision.layoutInfo.id, err, APINULLGuid, true);
@@ -192,9 +203,12 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                             if (change.nizm.IsEmpty ()) change.nizm = change.arr[i].nizm;
                         }
                     }
-                    GS::UniString key = revision.layoutInfo.id + revision.layoutInfo.name;
-                    std::string key_ = key.ToCStr (0, MaxUSize, GChCode).Get ();
-                    if (allchanges.count (key_) == 0) allchanges[key_] = changes;
+                    //GS::UniString key = revision.layoutInfo.id + revision.layoutInfo.name;
+                    //std::string key_ = key.ToCStr (0, MaxUSize, GChCode).Get ();
+                    //if (!allchanges.ContainsKey(key_)) {
+                    //    ChangeMarkerDict chs;
+                    //    allchanges.Add (key_, chs);
+                    //}
                 }
                 /// Запись в свойства макета
                 bool flag_write = false;
@@ -211,9 +225,13 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                         UInt32 n_izm = 1;
                         UInt32 n_prop = layout_note_guid.GetSize ();
                         GS::UniString note = "";
-                        for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
+                        for (auto ch : changes) {
+#if defined(AC_28)
+                            Changes change = ch.value;
+#else
+                            Changes change = *ch.value;
+#endif
                             GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", n_izm);
-                            Changes change = ch->second;
                             if (layout_note_guid.ContainsKey (prop_name)) {
                                 API_Guid prop_guid = layout_note_guid.Get (prop_name);
                                 GS::UniString str = change.changeId;
@@ -294,7 +312,7 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
             msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionChangesID", err, revision.guid);
         }
     }
-    return !allchanges.empty ();
+    return true;
 }
 
 bool GetChangesMarker (ChangeMarkerDict& changes)
@@ -351,8 +369,11 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                         ch.fam = fam;
                         ch.changeId.Trim ();
                         ch.changeName.Trim ();
-                        std::string key = ch.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
-                        if (changes.count (key) == 0)changes[key] = {};
+                        GS::UniString key = ch.changeId;
+                        if (!changes.ContainsKey (key)) {
+                            Changes chs;
+                            changes.Add (key, chs);
+                        }
                         if (changes[key].typeizm == TypeNone) changes[key].typeizm = ch.typeizm;
                         changes[key].arr.Push (ch);
                     }
@@ -360,12 +381,16 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
             }
         }
     }
-    if (!changes.empty ()) {
+    if (!changes.IsEmpty ()) {
         GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
-            for (ChangeMarkerDict::iterator ch = changes.begin (); ch != changes.end (); ++ch) {
+            for (auto ch : changes) {
+#if defined(AC_28)
+                Changes& change = ch.value;
+#else
+                Changes& change = *ch.value;
+#endif
                 int number_n = 0;
-                Changes& change = ch->second;
                 for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
                     if (change.arr[i].typeizm == TypeIzm) {
                         number_n += 1;
@@ -380,7 +405,7 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
             return NoError;
         });
     }
-    return !changes.empty ();
+    return !changes.IsEmpty ();
 }
 
 bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint)
@@ -526,4 +551,3 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
     return;
 }
 }
-#endif
