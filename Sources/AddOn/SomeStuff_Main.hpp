@@ -33,8 +33,8 @@ static const Int32 RunParam_CommandID = 10;
 static const Int32 Spec_CommandID = 11;
 static const Int32 ShowSub_CommandID = 12;
 static const Int32 SetRevision_CommandID = 13;
-static const Int32 AutoList_CommandID = 15;
-static const Int32 Auto3D_CommandID = 16;
+static const Int32 AutoList_CommandID = 14;
+static const Int32 Auto3D_CommandID = 15;
 static const Int32 AutoLay_CommandID = 16;
 
 #if defined(AC_28)
