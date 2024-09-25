@@ -43,9 +43,6 @@ typedef struct
     GS::UniString nizm = ""; // Номер изменения
 } Changes; // Массив изменений на листе
 
-//typedef std::map<std::string, Changes, doj::alphanum_less<std::string>> ChangeMarkerDict; // Словарь изменений листа, ключ - Имя изменения (П АР Изм 0)
-//typedef std::map<std::string, ChangeMarkerDict, doj::alphanum_less<std::string>> ChangeMarkerByListDict;
-
 typedef GS::HashTable < GS::UniString, Changes> ChangeMarkerDict;
 
 typedef GS::HashTable< GS::UniString, ChangeMarkerDict> ChangeMarkerByListDict;
@@ -57,6 +54,12 @@ void SetRevision (void);
 bool GetScheme (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
 bool GetAllChangesMarker (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
+
+bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId);
+
+void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::UniString& layoutid);
+
+void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes);
 
 bool GetChangesMarker (ChangeMarkerDict& changes);
 
