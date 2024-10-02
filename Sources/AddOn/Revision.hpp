@@ -30,6 +30,7 @@ typedef struct
     GS::UniString nizm = ""; // Номер изменения
     GS::UniString nuch = ""; // Номер участка
     GS::UniString fam = "";  // Фамилия
+    GS::Int32 code = 0; // Код изменения
     GS::Int32 typeizm = TypeNone;
 } Change; // Хранение одного изменения (облака)
 
@@ -41,11 +42,11 @@ typedef struct
     GS::Int32 typeizm = TypeNone;
     GS::UniString changeId = "";
     GS::UniString nizm = ""; // Номер изменения
+    GS::UniString note = ""; // Описание изменений
+    GS::Int32 code = 0; // Код изменения
 } Changes; // Массив изменений на листе
 
 typedef GS::HashTable < GS::UniString, Changes> ChangeMarkerDict;
-
-typedef GS::HashTable< GS::UniString, ChangeMarkerDict> ChangeMarkerByListDict;
 
 namespace Revision
 {
@@ -55,17 +56,17 @@ bool GetScheme (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
 bool GetAllChangesMarker (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
-bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId);
+bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId, GS::UniString& layoutId);
 
 void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::UniString& layoutid);
 
-void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes);
+void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
 bool GetChangesMarker (ChangeMarkerDict& changes);
 
 bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint);
 
-bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam);
+bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam, GS::Int32& code);
 
 void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm);
 }

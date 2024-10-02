@@ -103,13 +103,32 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
             layout_note_guid.Add (name, guid);
         }
     }
+    GS::HashTable<API_Guid, GS::UniString> customScheme;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Revision_GetRVMChangeCustomScheme (&customScheme);
+#else
+    err = ACAPI_Database (APIDb_GetRVMChangeCustomSchemeID, &customScheme);
+#endif
+    for (auto rev : customScheme) {
+#if defined(AC_28)
+        GS::UniString name = rev.value;
+        API_Guid guid = rev.key;
+#else
+        GS::UniString name = *rev.value;
+        API_Guid guid = *rev.key;
+#endif
+        name = name.ToLowerCase ();
+        if (name.Contains ("somestuff_code_change")) {
+            layout_note_guid.Add ("somestuff_code_change", guid);
+            break;
+        }
+    }
     return !layout_note_guid.IsEmpty ();
 }
 
 bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
 {
     GSErrCode err = NoError;
-    ChangeMarkerByListDict allchanges;
     // Получаем выпуски
     GS::Array<API_RVMDocumentRevision> api_revisions;
 #if defined(AC_27) || defined(AC_28)
@@ -149,16 +168,9 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                 if (!layoutchange.IsEmpty ()) {
                     // Обрабатываем маркеры
                     GetChangesMarker (changes);
-                    GetChangesLayout (layoutchange, changes);
+                    GetChangesLayout (layoutchange, changes, layout_note_guid);
                     CheckChanges (changes, revision.layoutInfo.subsetName, revision.layoutInfo.id);
-                    ChangeLayoutProperty (changes, layout_note_guid, dbInfo.databaseUnId);
-                    if (!changes.IsEmpty ()) {
-                        GS::UniString key = revision.layoutInfo.subsetName + revision.layoutInfo.subsetId + "/" + revision.layoutInfo.id + revision.layoutInfo.name;
-                        if (!allchanges.ContainsKey (key)) {
-                            ChangeMarkerDict chs;
-                            allchanges.Add (key, chs);
-                        }
-                    }
+                    ChangeLayoutProperty (changes, layout_note_guid, dbInfo.databaseUnId, revision.layoutInfo.id);
                 }
             } else {
                 msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
@@ -170,7 +182,7 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
     return true;
 }
 
-bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId)
+bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId, GS::UniString& layoutId)
 {
     /// Запись в свойства макета
     bool flag_write = false;
@@ -207,8 +219,37 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         std::string s = change.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
         abc_changes[s] = id;
     }
-    UInt32 n_izm = 1;
     UInt32 n_prop = layout_note_guid.GetSize ();
+    // Очистка полей
+    for (UInt32 i = 0; i < n_prop; i++) {
+        GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
+        if (layout_note_guid.ContainsKey (prop_name)) {
+            API_Guid prop_guid = layout_note_guid.Get (prop_name);
+            GS::UniString str = "";
+            if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                flag_write = true;
+                layoutInfo.customData->Set (prop_guid, str);
+            }
+        }
+        for (UInt32 j = 1; j < 6; j++) {
+            GS::UniString prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_%d", i, j);
+            if (layout_note_guid.ContainsKey (prop_name)) {
+                API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                GS::UniString str = "";
+                if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                    flag_write = true;
+                    layoutInfo.customData->Set (prop_guid, str);
+                }
+            }
+        }
+    }
+    GS::UniString prop_name = "somestuff_note";
+    if (layout_note_guid.ContainsKey (prop_name)) {
+        API_Guid prop_guid = layout_note_guid.Get (prop_name);
+        flag_write = true;
+        if (layoutInfo.customData->ContainsKey (prop_guid)) layoutInfo.customData->Set (prop_guid, "");
+    }
+    UInt32 n_izm = 1;
     GS::UniString note = "";
     for (std::map<std::string, GS::UniString, doj::alphanum_less<std::string> >::iterator k = abc_changes.begin (); k != abc_changes.end (); ++k) {
         GS::UniString s = k->second;
@@ -224,11 +265,11 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
             if (change.typeizm == TypeNov) str = str + "@" + novString;
             if (change.typeizm == TypeAnnul) str = str + "@" + annulString;
             if (!change.fam.IsEmpty ()) str = str + "@" + change.fam;
+            flag_write = true;
             if (layoutInfo.customData->ContainsKey (prop_guid)) {
-                flag_write = true;
                 layoutInfo.customData->Set (prop_guid, str);
             } else {
-                msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+                layoutInfo.customData->Put (prop_guid, str);
             }
         } else {
             msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
@@ -241,37 +282,75 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         str = str + "; ";
         note = note + str;
         n_izm += 1;
-    }
-    GS::UniString prop_name = "somestuff_note";
-    if (layout_note_guid.ContainsKey (prop_name)) {
-        note.Trim ();
-        note.Trim (';');
-        API_Guid prop_guid = layout_note_guid.Get (prop_name);
-        if (layoutInfo.customData->ContainsKey (prop_guid)) {
+        // Запись для таблицы регистрации
+        prop_name = "somestuff_izm_" + change.nizm + "_column_1";
+        if (layout_note_guid.ContainsKey (prop_name)) {
+            API_Guid prop_guid = layout_note_guid.Get (prop_name);
+            GS::UniString str = change.nizm;
             flag_write = true;
-            layoutInfo.customData->Set (prop_guid, note);
+            if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                layoutInfo.customData->Set (prop_guid, str);
+            } else {
+                layoutInfo.customData->Put (prop_guid, str);
+            }
         } else {
             msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
         }
-    } else {
-        msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
-    }
-    if (n_izm < n_prop) {
-        for (UInt32 i = n_izm; i < n_prop; i++) {
-            GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
-            if (layout_note_guid.ContainsKey (prop_name)) {
-                API_Guid prop_guid = layout_note_guid.Get (prop_name);
-                GS::UniString str = "";
-                if (layoutInfo.customData->ContainsKey (prop_guid)) {
-                    flag_write = true;
-                    layoutInfo.customData->Set (prop_guid, str);
-                } else {
-                    msg_rep ("GetChangesMarker err", "not found " + prop_name, err, APINULLGuid, false);
-                }
+        prop_name = "somestuff_izm_" + change.nizm + "_column_2";
+        if (layout_note_guid.ContainsKey (prop_name)) {
+            API_Guid prop_guid = layout_note_guid.Get (prop_name);
+            GS::UniString str = layoutId;
+            flag_write = true;
+            if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                layoutInfo.customData->Set (prop_guid, str);
             } else {
-                msg_rep ("GetChangesMarker err", "not found " + prop_name, err, APINULLGuid, false);
+                layoutInfo.customData->Put (prop_guid, str);
             }
+        } else {
+            msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
         }
+
+        prop_name = "somestuff_izm_" + change.nizm + "_column_3";
+        if (layout_note_guid.ContainsKey (prop_name) && !change.note.IsEmpty ()) {
+            API_Guid prop_guid = layout_note_guid.Get (prop_name);
+            GS::UniString str = change.note;
+            flag_write = true;
+            if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                layoutInfo.customData->Set (prop_guid, str);
+            } else {
+                layoutInfo.customData->Put (prop_guid, str);
+            }
+        } else {
+            if (!change.note.IsEmpty ()) msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+        }
+
+        prop_name = "somestuff_izm_" + change.nizm + "_column_4";
+        if (layout_note_guid.ContainsKey (prop_name) && change.code > 0) {
+            API_Guid prop_guid = layout_note_guid.Get (prop_name);
+            GS::UniString str = GS::UniString::Printf ("%d", change.code);
+            flag_write = true;
+            if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                layoutInfo.customData->Set (prop_guid, str);
+            } else {
+                layoutInfo.customData->Put (prop_guid, str);
+            }
+        } else {
+            if (change.code > 0) msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+        }
+    }
+    prop_name = "somestuff_note";
+    if (layout_note_guid.ContainsKey (prop_name) && !note.IsEmpty ()) {
+        note.Trim ();
+        note.Trim (';');
+        API_Guid prop_guid = layout_note_guid.Get (prop_name);
+        flag_write = true;
+        if (layoutInfo.customData->ContainsKey (prop_guid)) {
+            layoutInfo.customData->Set (prop_guid, note);
+        } else {
+            layoutInfo.customData->Put (prop_guid, note);
+        }
+    } else {
+        if (!note.IsEmpty ()) msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
     }
     if (flag_write) {
         DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
@@ -298,22 +377,27 @@ void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
         Changes& change = *ch.value;
         GS::UniString id = *ch.key;
 #endif
+        GS::UniString note = "";
         for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
-            if (change.arr[i].fam.GetLength () > 3 && change.fam.GetLength () > 3 && !change.fam.IsEqual (change.arr[i].fam)) {
-                msg_rep ("GetChangesMarker", "Different surname " + change.fam + "<->" + change.arr[i].fam + " on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
-            }
-            if (change.fam.IsEmpty () && change.arr[i].fam.GetLength () > 3) change.fam = change.arr[i].fam;
-            if (change.typeizm != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != change.typeizm) {
-                msg_rep ("GetChangesMarker", "Different type on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
-            }
+            //if (change.arr[i].fam.GetLength () > 3 && change.fam.GetLength () > 3 && !change.fam.IsEqual (change.arr[i].fam)) {
+            //    msg_rep ("GetChangesMarker", "Different surname " + change.fam + "<->" + change.arr[i].fam + " on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+            //}
+            //if (change.fam.IsEmpty () && change.arr[i].fam.GetLength () > 3) change.fam = change.arr[i].fam;
+            //if (change.typeizm != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != change.typeizm) {
+            //    msg_rep ("GetChangesMarker", "Different type on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+            //}
             if (change.typeizm == TypeNone && change.arr[i].typeizm != TypeNone) change.typeizm = change.arr[i].typeizm;
             if (change.changeId.IsEmpty ()) change.changeId = change.arr[i].changeId;
             if (change.nizm.IsEmpty ()) change.nizm = change.arr[i].nizm;
+            if (!note.IsEmpty () && !change.arr[i].note.IsEmpty ()) note = note + " ; " + change.arr[i].note;
+            if (note.IsEmpty () && !change.arr[i].note.IsEmpty ()) note = change.arr[i].note;
+            if (change.code == 0 && change.arr[i].code > 0) change.code = change.arr[i].code;
         }
+        change.note = StringUnic (note, ";");
     }
 }
 
-void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes)
+void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid)
 {
     GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
     GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
@@ -339,6 +423,13 @@ void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict&
             nizm.Trim ();
         }
         if (ch.typeizm != TypeNone && !nizm.IsEqual ("0")) {
+            if (layout_note_guid.ContainsKey ("somestuff_code_change")) {
+                API_Guid guid = layout_note_guid.Get ("somestuff_code_change");
+                if (c.customData.ContainsKey (guid)) {
+                    GS::UniString code = c.customData.Get (guid);
+                    ch.code = std::atoi (code.ToCStr ());
+                }
+            }
             ch.markerguid = APINULLGuid;
             ch.changeName = c.description;
             ch.changeName.Trim ();
@@ -378,8 +469,8 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
         err = ACAPI_Element_Get (&element);
         if (err == NoError && element.header.hasMemo) {
             GS::UniString fam = "";
-            GS::UniString note = ""; GS::UniString nuch = ""; GS::UniString nizm = ""; API_Coord startpoint; GS::Int32 typeizm = TypeNone;
-            if (GetMarkerPos (guidArray[i], startpoint) && GetMarkerText (element.changeMarker.markerGuid, note, nuch, nizm, typeizm, fam)) {
+            GS::UniString note = ""; GS::UniString nuch = ""; GS::UniString nizm = ""; API_Coord startpoint; GS::Int32 typeizm = TypeNone; GS::Int32 code = 0;
+            if (GetMarkerPos (guidArray[i], startpoint) && GetMarkerText (element.changeMarker.markerGuid, note, nuch, nizm, typeizm, fam, code)) {
                 Change ch;
                 GS::UniString changeId = element.changeMarker.changeId;
                 changeId.Trim ();
@@ -410,6 +501,7 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                     ch.fam = fam;
                     ch.changeId.Trim ();
                     ch.changeName.Trim ();
+                    ch.code = code;
                     GS::UniString key = ch.changeId;
                     if (!changes.ContainsKey (key)) {
                         Changes chs;
@@ -465,30 +557,30 @@ bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint)
     return false;
 }
 
-bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam)
+bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam, GS::Int32& code)
 {
     GSErrCode err = NoError;
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_AddPars);
-    bool find_nuch = false; bool find_izm = false; bool find_note = false; bool find_type = false; bool find_fam = false;
+    bool find_nuch = false; bool find_izm = false; bool find_note = false; bool find_type = false; bool find_fam = false; bool find_code = false;
     if (err == NoError) {
         Int32	addParNum = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
         for (Int32 i = 0; i < addParNum; ++i) {
             API_AddParType& actualParam = (*memo.params)[i];
             GS::UniString name = actualParam.name;
             if (name.Contains ("somestuff_change_text")) {
-                note = actualParam.value.uStr;
+                note = GS::UniString (actualParam.value.uStr);
                 note.Trim ();
                 find_note = true;
             }
             if (name.Contains ("somestuff_nuch_change")) {
-                nuch = actualParam.value.uStr;
+                nuch = GS::UniString (actualParam.value.uStr);
                 nuch.Trim ();
                 find_nuch = true;
             }
             if (name.Contains ("somestuff_nizm_change")) {
-                nizm = actualParam.value.uStr;
+                nizm = GS::UniString (actualParam.value.uStr);
                 nizm.Trim ();
                 find_izm = true;
             }
@@ -496,13 +588,16 @@ bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nu
                 typeizm = (int) actualParam.value.real;
                 find_type = true;
             }
+            if (name.Contains ("somestuff_code_change")) {
+                code = (int) actualParam.value.real;
+                find_code = true;
+            }
             if (name.Contains ("somestuff_surname")) {
-                fam = actualParam.value.uStr;
+                fam = GS::UniString (actualParam.value.uStr);
                 fam.Trim ();
                 find_fam = true;
             }
-
-            if (find_nuch && find_izm && find_note && find_type && find_fam) {
+            if (find_nuch && find_izm && find_note && find_type && find_fam && find_code) {
                 ACAPI_DisposeElemMemoHdls (&memo);
                 return true;
             }
@@ -580,7 +675,7 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
                 break;
             }
             if (find_nuch && find_izm && !flag_write) {
-                //Ничего не изминилось, можно не записывать
+                //Ничего не изменилось, можно не записывать
                 break;
             }
         }
