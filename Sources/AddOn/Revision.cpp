@@ -130,6 +130,7 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
 {
     GSErrCode err = NoError;
     // Получаем выпуски
+    ChangeMarkerByListDict allchanges;
     GS::Array<API_RVMDocumentRevision> api_revisions;
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Revision_GetRVMDocumentRevisions (&api_revisions);
@@ -171,6 +172,10 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                     GetChangesLayout (layoutchange, changes, layout_note_guid);
                     CheckChanges (changes, revision.layoutInfo.subsetName, revision.layoutInfo.id);
                     ChangeLayoutProperty (changes, layout_note_guid, dbInfo.databaseUnId, revision.layoutInfo.id);
+                    if (!changes.IsEmpty ()) {
+                        GS::UniString key = revision.layoutInfo.subsetName + revision.layoutInfo.subsetId + "/" + revision.layoutInfo.id + revision.layoutInfo.name;
+                        if (!allchanges.ContainsKey (key)) allchanges.Add (key, changes);
+                    }
                 }
             } else {
                 msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
