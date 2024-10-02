@@ -48,6 +48,8 @@ typedef struct
 
 typedef GS::HashTable < GS::UniString, Changes> ChangeMarkerDict;
 
+typedef GS::HashTable< GS::UniString, ChangeMarkerDict> ChangeMarkerByListDict;
+
 namespace Revision
 {
 void SetRevision (void);
