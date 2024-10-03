@@ -75,6 +75,7 @@ void SetRevision (void)
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
 #endif
     }
+    msg_rep ("SetRevision", "end", NoError, APINULLGuid);
 }
 
 bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
@@ -171,6 +172,7 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                     GetChangesMarker (changes);
                     GetChangesLayout (layoutchange, changes, layout_note_guid);
                     CheckChanges (changes, revision.layoutInfo.subsetName, revision.layoutInfo.id);
+                    ChangeMarkerTextOnLayout (changes);
                     ChangeLayoutProperty (changes, layout_note_guid, dbInfo.databaseUnId, revision.layoutInfo.id);
                     if (!changes.IsEmpty ()) {
                         GS::UniString key = revision.layoutInfo.subsetName + revision.layoutInfo.subsetId + "/" + revision.layoutInfo.id + revision.layoutInfo.name;
@@ -383,15 +385,42 @@ void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
         GS::UniString id = *ch.key;
 #endif
         GS::UniString note = "";
+        // Проверим тиы изменений
+        // Если есть облачко с типом Изм - то ставим Изм
+        // Если есть облачка без проставленного изменения и у листа стоит Зам - ставим Изм
+        GS::Int32 typeizm_marker = TypeNone;
+        GS::Int32 typeizm_layout = TypeNone;
+        GS::Int32 typeizm = TypeNone;
+        GS::UniString fam_marker = "";
+        GS::UniString fam_layout = "";
+        bool hasmarker = false;
+        bool hasmarkerIzm = false;
         for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
-            //if (change.arr[i].fam.GetLength () > 3 && change.fam.GetLength () > 3 && !change.fam.IsEqual (change.arr[i].fam)) {
-            //    msg_rep ("GetChangesMarker", "Different surname " + change.fam + "<->" + change.arr[i].fam + " on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
-            //}
-            //if (change.fam.IsEmpty () && change.arr[i].fam.GetLength () > 3) change.fam = change.arr[i].fam;
-            //if (change.typeizm != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != change.typeizm) {
-            //    msg_rep ("GetChangesMarker", "Different type on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
-            //}
-            if (change.typeizm == TypeNone && change.arr[i].typeizm != TypeNone) change.typeizm = change.arr[i].typeizm;
+            if (change.arr[i].markerguid == APINULLGuid) {
+                if (change.arr[i].typeizm != TypeNone) typeizm_layout = change.arr[i].typeizm;
+                if (change.arr[i].fam.GetLength () > 3) fam_layout = change.arr[i].fam;
+            } else {
+                hasmarker = true;
+                if (change.arr[i].typeizm == TypeIzm) hasmarkerIzm = true;
+                if (typeizm_marker != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != typeizm_marker) {
+                    msg_rep ("GetChangesMarker", "Different type on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                }
+                if (change.arr[i].fam.GetLength () > 3 && fam_marker.GetLength () > 3 && !fam_marker.IsEqual (change.arr[i].fam)) {
+                    msg_rep ("GetChangesMarker", "Different surname " + fam_marker + "<->" + change.arr[i].fam + " on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                }
+                if (change.arr[i].fam.GetLength () > 3) fam_marker = change.arr[i].fam;
+                if (change.arr[i].typeizm != TypeNone) typeizm_marker = change.arr[i].typeizm;
+            }
+        }
+        if (fam_marker.GetLength () > 3) fam_layout = fam_marker;
+        if (hasmarker && typeizm_marker != TypeNone) typeizm = typeizm_marker;
+        if (!hasmarker) typeizm = typeizm_layout;
+        if (hasmarkerIzm && hasmarker) typeizm = TypeIzm;
+        if (typeizm == TypeNone && hasmarker) typeizm = TypeIzm;
+        change.typeizm = typeizm;
+        change.fam = fam_layout;
+        for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
+            change.arr[i].typeizm = typeizm;
             if (change.changeId.IsEmpty ()) change.changeId = change.arr[i].changeId;
             if (change.nizm.IsEmpty ()) change.nizm = change.arr[i].nizm;
             if (!note.IsEmpty () && !change.arr[i].note.IsEmpty ()) note = note + " ; " + change.arr[i].note;
@@ -444,8 +473,6 @@ void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict&
                 Changes chs;
                 changes.Add (key, chs);
             }
-            if (changes[key].typeizm != TypeNone) ch.typeizm = changes[key].typeizm;
-            if (changes[key].typeizm == TypeNone) changes[key].typeizm = ch.typeizm;
             changes[key].arr.Push (ch);
         }
     }
@@ -484,19 +511,12 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                 UInt32 n = StringSplt (changeId, " ", partstring);
                 ch.changeId = changeId;
                 if (n > 3) {
-                    if (typeizm > TypeNone && typeizm <= TypeAnnul) {
-                        ch.typeizm = typeizm;
-                    } else {
-                        if (ch.typeizm == TypeNone && partstring[2].Contains (izmString)) ch.typeizm = TypeIzm;
-                        if (ch.typeizm == TypeNone && partstring[2].Contains (zamString)) ch.typeizm = TypeZam;
-                        if (ch.typeizm == TypeNone && partstring[2].Contains (novString)) ch.typeizm = TypeNov;
-                        if (ch.typeizm == TypeNone && partstring[2].Contains (annulString)) ch.typeizm = TypeAnnul;
-                    }
+                    if (typeizm > TypeNone && typeizm <= TypeAnnul) ch.typeizm = typeizm;
                     ch.changeId = partstring[0] + " " + partstring[1] + " " + partstring[3];
                     nizm = partstring[3];
                     nizm.Trim ();
                 }
-                if (ch.typeizm != TypeNone && !nizm.IsEqual ("0")) {
+                if (!nizm.IsEqual ("0")) {
                     ch.markerguid = element.changeMarker.markerGuid;
                     ch.changeName = element.changeMarker.changeName;
                     ch.startpoint = startpoint;
@@ -512,35 +532,11 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                         Changes chs;
                         changes.Add (key, chs);
                     }
-                    if (changes[key].typeizm == TypeNone) changes[key].typeizm = ch.typeizm;
                     changes[key].arr.Push (ch);
                 }
             }
         }
     }
-    if (changes.IsEmpty ())  return false;
-    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
-    ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
-        for (auto ch : changes) {
-#if defined(AC_28)
-            Changes& change = ch.value;
-#else
-            Changes& change = *ch.value;
-#endif
-            int number_n = 0;
-            for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
-                if (change.arr[i].typeizm == TypeIzm) {
-                    number_n += 1;
-                    change.arr[i].nuch = GS::UniString::Printf ("%d", number_n);
-                    change.nuch = number_n;
-                } else {
-                    change.arr[i].nuch = "";
-                }
-                ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
-            }
-        }
-        return NoError;
-    });
     return !changes.IsEmpty ();
 }
 
@@ -613,6 +609,32 @@ bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nu
     ACAPI_DisposeElemMemoHdls (&memo);
     return find_nuch && find_izm && find_note;
 }
+void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
+{
+    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
+    ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
+        for (auto ch : changes) {
+#if defined(AC_28)
+            Changes& change = ch.value;
+#else
+            Changes& change = *ch.value;
+#endif
+            int number_n = 0;
+            for (UInt32 i = 0; i < change.arr.GetSize (); i++) {
+                if (change.arr[i].typeizm == TypeIzm && change.arr[i].markerguid != APINULLGuid) {
+                    number_n += 1;
+                    change.arr[i].nuch = GS::UniString::Printf ("%d", number_n);
+                    change.nuch = number_n;
+                } else {
+                    change.arr[i].nuch = "";
+                }
+                ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
+            }
+    }
+        return NoError;
+});
+}
+
 
 void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm)
 {
@@ -689,5 +711,5 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
-}
-}
+    }
+    }
