@@ -70,6 +70,8 @@ bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint);
 
 bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam, GS::Int32& code);
 
+void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes);
+
 void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm);
 }
 
