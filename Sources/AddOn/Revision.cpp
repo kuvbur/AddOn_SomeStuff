@@ -142,7 +142,9 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
         msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionsID", err, APINULLGuid);
         return false;
     }
-
+    bool isteamwork = false;
+    short ownner_userid = 0;
+    err = IsTeamwork (isteamwork, ownner_userid);
     for (auto revision : api_revisions) {
         GS::Array<API_RVMChange> api_changes;
 #if defined(AC_27) || defined(AC_28)
@@ -151,10 +153,26 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
         err = ACAPI_Database (APIDb_GetRVMDocumentRevisionChangesID, &revision.guid, &api_changes);
 #endif
         if (err == NoError) {
+            if (isteamwork) {
+#if defined(AC_27) || defined(AC_28)
+                err = ACAPI_Revision_GetRVMDocumentRevisionChanges (&revision.guid, &api_changes);
+#else
+                short userId;
+                err = ACAPI_Database (APIDb_GetTWOwnerID, &revision.layoutInfo.dbId, &userId);
+#endif
+                if (err == NoError) {
+                    if (userId != ownner_userid) {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+            }
             ChangeMarkerDict changes;
             API_DatabaseInfo dbInfo = {};
             dbInfo.typeID = APIWind_LayoutID;
             dbInfo.databaseUnId = revision.layoutInfo.dbId;
+
 #if defined(AC_27) || defined(AC_28)
             err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
 #else
@@ -403,13 +421,24 @@ void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
                 hasmarker = true;
                 if (change.arr[i].typeizm == TypeIzm) hasmarkerIzm = true;
                 if (typeizm_marker != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != typeizm_marker) {
-                    msg_rep ("GetChangesMarker", "Different type on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                    msg_rep ("GetChangesMarker", "Different type : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
                 }
                 if (change.arr[i].fam.GetLength () > 3 && fam_marker.GetLength () > 3 && !fam_marker.IsEqual (change.arr[i].fam)) {
-                    msg_rep ("GetChangesMarker", "Different surname " + fam_marker + "<->" + change.arr[i].fam + " on " + change.changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                    msg_rep ("GetChangesMarker", "Different surname : " + fam_marker + "<->" + change.arr[i].fam + " on " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
                 }
                 if (change.arr[i].fam.GetLength () > 3) fam_marker = change.arr[i].fam;
                 if (change.arr[i].typeizm != TypeNone) typeizm_marker = change.arr[i].typeizm;
+                if (ACAPI_Element_Filter (change.arr[i].markerguid, APIFilt_InMyWorkspace)) {
+                    if (ACAPI_Element_Filter (change.arr[i].markerguid, APIFilt_HasAccessRight)) {
+                        if (!ACAPI_Element_Filter (change.arr[i].markerguid, APIFilt_IsEditable)) {
+                            msg_rep ("GetChangesMarker", "Marker not editable : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                        }
+                    } else {
+                        msg_rep ("GetChangesMarker", "Marker has not access right : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                    }
+                } else {
+                    msg_rep ("GetChangesMarker", "Marker not in on workspace : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                }
             }
         }
         if (fam_marker.GetLength () > 3) fam_layout = fam_marker;
@@ -630,9 +659,9 @@ void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
                 }
                 ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
             }
-    }
+        }
         return NoError;
-});
+    });
 }
 
 
@@ -712,4 +741,4 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
     }
-    }
+}
