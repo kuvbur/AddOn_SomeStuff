@@ -46,7 +46,7 @@ void SetRevision (void)
         msg_rep ("SetRevision", "APIDb_GetCurrentWindowID", err, APINULLGuid);
         return;
     }
-    bool haschanges = GetAllChangesMarker (layout_note_guid);
+    GetAllChangesMarker (layout_note_guid);
 
     // Возвращение на исходную БД и окно
 #if defined(AC_27) || defined(AC_28)
@@ -103,6 +103,9 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
         if (name.Contains ("somestuff_")) {
             layout_note_guid.Add (name, guid);
         }
+        if (name.Contains ("somestuff_layout_type")) {
+            layout_note_guid.Add ("somestuff_layout_type", guid);
+        }
     }
     GS::HashTable<API_Guid, GS::UniString> customScheme;
 #if defined(AC_27) || defined(AC_28)
@@ -127,11 +130,12 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
     return !layout_note_guid.IsEmpty ();
 }
 
-bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
+void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
 {
     GSErrCode err = NoError;
     // Получаем выпуски
-    ChangeMarkerByListDict allchanges;
+    NoteByChangeDict allchanges;
+    LayoutRevisionDict layoutRVI;
     GS::Array<API_RVMDocumentRevision> api_revisions;
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Revision_GetRVMDocumentRevisions (&api_revisions);
@@ -140,7 +144,7 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
 #endif
     if (err != NoError) {
         msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionsID", err, APINULLGuid);
-        return false;
+        return;
     }
     bool isteamwork = false;
     short ownner_userid = 0;
@@ -154,10 +158,10 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
 #endif
         if (err == NoError) {
             if (isteamwork) {
-#if defined(AC_27) || defined(AC_28)
-                err = ACAPI_Revision_GetRVMDocumentRevisionChanges (&revision.guid, &api_changes);
-#else
                 short userId;
+#if defined(AC_27) || defined(AC_28)
+                err = ACAPI_Teamwork_GetTWOwner (&revision.layoutInfo.dbId, &userId)
+#else
                 err = ACAPI_Database (APIDb_GetTWOwnerID, &revision.layoutInfo.dbId, &userId);
 #endif
                 if (err == NoError) {
@@ -191,11 +195,7 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                     GetChangesLayout (layoutchange, changes, layout_note_guid);
                     CheckChanges (changes, revision.layoutInfo.subsetName, revision.layoutInfo.id);
                     ChangeMarkerTextOnLayout (changes);
-                    ChangeLayoutProperty (changes, layout_note_guid, dbInfo.databaseUnId, revision.layoutInfo.id);
-                    if (!changes.IsEmpty ()) {
-                        GS::UniString key = revision.layoutInfo.subsetName + revision.layoutInfo.subsetId + "/" + revision.layoutInfo.id + revision.layoutInfo.name;
-                        if (!allchanges.ContainsKey (key)) allchanges.Add (key, changes);
-                    }
+                    ChangeLayoutProperty (changes, layout_note_guid, dbInfo.databaseUnId, revision.layoutInfo.id, layoutRVI, allchanges);
                 }
             } else {
                 msg_rep ("GetChangesMarker", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
@@ -204,10 +204,153 @@ bool GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
             msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionChangesID", err, revision.guid);
         }
     }
-    return true;
+    if (layoutRVI.IsEmpty () || allchanges.IsEmpty ()) return;
+    for (auto ch : allchanges) {
+#if defined(AC_28)
+        NoteDict change = ch.value;
+        GS::UniString id = ch.key;
+#else
+        NoteDict change = *ch.value;
+        GS::UniString id = *ch.key;
+#endif
+        if (!layoutRVI.ContainsKey (id)) continue;
+        API_DatabaseUnId databaseUnId = layoutRVI.Get (id);
+        bool flag_write = false;
+        API_LayoutInfo	layoutInfo;
+#if defined(AC_27) || defined(AC_28)
+        err = ACAPI_Navigator_GetLayoutSets (&layoutInfo, &(databaseUnId));
+#else
+        err = ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(databaseUnId));
+#endif
+        if (err != NoError) {
+            msg_rep ("GetAllChangesMarker", "APIEnv_GetLayoutSetsID", err, APINULLGuid);
+            continue;
+        }
+        UInt32 n_prop = layout_note_guid.GetSize ();
+        // Очистка полей
+        for (UInt32 i = 0; i < n_prop; i++) {
+            GS::UniString prop_name = GS::UniString::Printf ("somestuff_qtyissue_%d", i);
+            if (layout_note_guid.ContainsKey (prop_name)) {
+                API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                GS::UniString str = "";
+                if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                    flag_write = true;
+                    layoutInfo.customData->Set (prop_guid, str);
+                }
+            }
+            for (UInt32 j = 1; j < 6; j++) {
+                GS::UniString prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_%d", i, j);
+                if (layout_note_guid.ContainsKey (prop_name)) {
+                    API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                    GS::UniString str = "";
+                    if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                        flag_write = true;
+                        layoutInfo.customData->Set (prop_guid, str);
+                    }
+                }
+            }
+        }
+        GS::Int32 n_row = 1;
+        for (auto n : change) {
+#if defined(AC_28)
+            Notes note = n.value;
+            GS::UniString note_txt = n.key;
+#else
+            Notes note = *n.value;
+            GS::UniString note_txt = *n.key;
+#endif
+            if (note_txt.IsEmpty ()) continue;
+            // Запись для таблицы регистрации
+            GS::UniString prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_1", n_row);
+            if (layout_note_guid.ContainsKey (prop_name)) {
+                API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                GS::UniString str = note.nizm;
+                flag_write = true;
+                if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                    layoutInfo.customData->Set (prop_guid, str);
+                } else {
+                    layoutInfo.customData->Put (prop_guid, str);
+                }
+            } else {
+                msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+            }
+            prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_2", n_row);
+            if (layout_note_guid.ContainsKey (prop_name)) {
+                API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                GS::UniString str = "";
+                // Правильная сортировка по алфавиту
+                std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {};
+                for (auto l : note.layoutId) {
+#if defined(AC_28)
+                    GS::Int32 change = l.value;
+                    GS::UniString id = l.key;
+#else
+                    GS::Int32 change = *l.value;
+                    GS::UniString id = *l.key;
+#endif
+                    std::string s = id.ToCStr (0, MaxUSize, GChCode).Get ();
+                    abc_changes[s] = id;
+            }
+                for (std::map<std::string, GS::UniString, doj::alphanum_less<std::string> >::iterator k = abc_changes.begin (); k != abc_changes.end (); ++k) {
+                    GS::UniString s = k->second;
+                    if (str.IsEmpty ()) {
+                        str = s;
+                    } else {
+                        str = str + ", " + s;
+                    }
+                }
+                flag_write = true;
+                if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                    layoutInfo.customData->Set (prop_guid, str);
+                } else {
+                    layoutInfo.customData->Put (prop_guid, str);
+                }
+        } else {
+                msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+            }
+            prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_3", n_row);
+            if (layout_note_guid.ContainsKey (prop_name) && !note_txt.IsEmpty ()) {
+                API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                GS::UniString str = note_txt;
+                flag_write = true;
+                if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                    layoutInfo.customData->Set (prop_guid, str);
+                } else {
+                    layoutInfo.customData->Put (prop_guid, str);
+                }
+            } else {
+                if (!note_txt.IsEmpty ()) msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+            }
+            prop_name = GS::UniString::Printf ("somestuff_izm_%d_column_4", n_row);
+            if (layout_note_guid.ContainsKey (prop_name) && note.code > 0) {
+                API_Guid prop_guid = layout_note_guid.Get (prop_name);
+                GS::UniString str = GS::UniString::Printf ("%d", note.code);
+                flag_write = true;
+                if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                    layoutInfo.customData->Set (prop_guid, str);
+                } else {
+                    layoutInfo.customData->Put (prop_guid, str);
+                }
+            } else {
+                if (note.code > 0) msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+            }
+            n_row += 1;
+    }
+        if (flag_write) {
+            DBprnt ("GetAllChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
+#if defined(AC_27) || defined(AC_28)
+            err = ACAPI_Navigator_ChangeLayoutSets (&layoutInfo, &(databaseUnId));
+#else
+            err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(databaseUnId));
+#endif
+            DBprnt ("GetAllChangesMarker::APIEnv_ChangeLayoutSetsID", "end");
+            if (err != NoError) msg_rep ("GetAllChangesMarker", "APIEnv_ChangeLayoutSetsID", err, APINULLGuid);
+        }
+        delete layoutInfo.customData;
+}
 }
 
-bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId, GS::UniString& layoutId)
+bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId, GS::UniString& layoutId, LayoutRevisionDict& layoutRVI, NoteByChangeDict& allchanges)
 {
     /// Запись в свойства макета
     bool flag_write = false;
@@ -227,10 +370,12 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         msg_rep ("ChangeLayoutProperty", "layoutInfo.customData == nullptr", err, APINULLGuid);
         return false;
     }
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
+    Int32 isEng_ = isEng ();
+    GS::UniString RVIString = RSGetIndString (ID_ADDON_STRINGS + isEng_, RVI_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
     // Правильная сортировка по алфавиту
     std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {};
     for (auto ch : changes) {
@@ -243,7 +388,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
 #endif
         std::string s = change.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
         abc_changes[s] = id;
-    }
+}
     UInt32 n_prop = layout_note_guid.GetSize ();
     // Очистка полей
     for (UInt32 i = 0; i < n_prop; i++) {
@@ -339,6 +484,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         if (layout_note_guid.ContainsKey (prop_name) && !change.note.IsEmpty ()) {
             API_Guid prop_guid = layout_note_guid.Get (prop_name);
             GS::UniString str = change.note;
+            str.ReplaceAll ("@", "");
             flag_write = true;
             if (layoutInfo.customData->ContainsKey (prop_guid)) {
                 layoutInfo.customData->Set (prop_guid, str);
@@ -361,6 +507,41 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
             }
         } else {
             if (change.code > 0) msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
+        }
+        //Добавление листов с РВИ в словарь
+        prop_name = "somestuff_layout_type";
+        if (layout_note_guid.ContainsKey (prop_name)) {
+            API_Guid prop_guid = layout_note_guid.Get (prop_name);
+            if (layoutInfo.customData->ContainsKey (prop_guid)) {
+                GS::UniString type = layoutInfo.customData->Get (prop_guid).ToLowerCase ();
+                if (type.IsEqual (RVIString)) {
+                    if (!layoutRVI.ContainsKey (change.changeId)) {
+                        layoutRVI.Add (change.changeId, databaseUnId);
+                    }
+                }
+            }
+            if (!allchanges.ContainsKey (change.changeId)) {
+                NoteDict notesd;
+                allchanges.Add (change.changeId, notesd);
+            }
+            if (allchanges.ContainsKey (change.changeId)) {
+                GS::Array<GS::UniString> partnote;
+                UInt32 n = StringSplt (change.note, ";@", partnote);
+                for (auto noteone : partnote) {
+                    if (!allchanges.Get (change.changeId).ContainsKey (noteone)) {
+                        Notes notesd;
+                        notesd.code = change.code;
+                        notesd.nizm = change.nizm;
+                        allchanges.Get (change.changeId).Add (noteone, notesd);
+                    }
+                    if (allchanges.Get (change.changeId).ContainsKey (noteone)) {
+                        if (!allchanges.Get (change.changeId).Get (noteone).layoutId.ContainsKey (layoutId)) {
+                            allchanges.Get (change.changeId).Get (noteone).layoutId.Add (layoutId, change.typeizm);
+                        }
+                    }
+                }
+            }
+
         }
     }
     prop_name = "somestuff_note";
@@ -389,7 +570,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
     }
     delete layoutInfo.customData;
     return true;
-}
+    }
 
 void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::UniString& layoutid)
 {
@@ -452,20 +633,21 @@ void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
             change.arr[i].typeizm = typeizm;
             if (change.changeId.IsEmpty ()) change.changeId = change.arr[i].changeId;
             if (change.nizm.IsEmpty ()) change.nizm = change.arr[i].nizm;
-            if (!note.IsEmpty () && !change.arr[i].note.IsEmpty ()) note = note + " ; " + change.arr[i].note;
+            if (!note.IsEmpty () && !change.arr[i].note.IsEmpty ()) note = note + " ;@ " + change.arr[i].note;
             if (note.IsEmpty () && !change.arr[i].note.IsEmpty ()) note = change.arr[i].note;
             if (change.code == 0 && change.arr[i].code > 0) change.code = change.arr[i].code;
         }
-        change.note = StringUnic (note, ";");
-    }
+        change.note = StringUnic (note, ";@");
+}
 }
 
 void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid)
 {
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
+    Int32 isEng_ = isEng ();
+    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
     // Обрабатываем изменения, не привязанные к маркерам
     for (auto c : layoutchange) {
         Change ch;
@@ -509,10 +691,11 @@ void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict&
 
 bool GetChangesMarker (ChangeMarkerDict& changes)
 {
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
+    Int32 isEng_ = isEng ();
+    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
     GSErrCode err = NoError;
     API_ElemTypeID elementType = API_ChangeMarkerID;
     GS::Array<API_Guid>	guidArray;
@@ -659,11 +842,10 @@ void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
                 }
                 ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
             }
-        }
+    }
         return NoError;
-    });
-}
-
+});
+    }
 
 void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm)
 {
@@ -741,4 +923,4 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
     }
-}
+    }

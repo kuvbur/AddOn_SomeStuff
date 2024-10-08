@@ -48,7 +48,16 @@ typedef struct
 
 typedef GS::HashTable < GS::UniString, Changes> ChangeMarkerDict;
 
-typedef GS::HashTable< GS::UniString, ChangeMarkerDict> ChangeMarkerByListDict;
+typedef struct
+{
+    GS::HashTable < GS::UniString, GS::Int32> layoutId; // Список листов. Ключ - ID макета, значение - тип изменения
+    GS::Int32 code = 0; // Код изменения
+    GS::UniString nizm = ""; // Номер изменения
+} Notes;
+
+typedef GS::HashTable< GS::UniString, Notes> NoteDict; //Словарь с описаниями. Ключ - описание изменения (note)
+typedef GS::HashTable< GS::UniString, NoteDict> NoteByChangeDict; //Словарь с описаниями по изменениям. Ключ - ID изменения
+typedef GS::HashTable< GS::UniString, API_DatabaseUnId> LayoutRevisionDict; //Словарь листов с РВИ. Ключ - ID изменения
 
 namespace Revision
 {
@@ -56,9 +65,9 @@ void SetRevision (void);
 
 bool GetScheme (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
-bool GetAllChangesMarker (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
+void GetAllChangesMarker (GS::HashTable<GS::UniString, API_Guid>& layout_note_guid);
 
-bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId, GS::UniString& layoutId);
+bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid, API_DatabaseUnId& databaseUnId, GS::UniString& layoutId, LayoutRevisionDict& layoutRVI, NoteByChangeDict& allchanges);
 
 void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::UniString& layoutid);
 

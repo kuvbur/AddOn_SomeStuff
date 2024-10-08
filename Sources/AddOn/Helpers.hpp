@@ -70,6 +70,7 @@ static const Int32 Izm_StringID = 28;
 static const Int32 Zam_StringID = 29;
 static const Int32 Nov_StringID = 30;
 static const Int32 Annul_StringID = 31;
+static const Int32 RVI_StringID = 33;
 
 typedef struct
 {
