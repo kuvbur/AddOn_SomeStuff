@@ -143,7 +143,12 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams,
 
                 // Разбираем - что записано в свойстве с флагом
                 // В нём должно быть имя свойства и, возможно, флаг добавления нулей
-                GS::UniString paramName = definition.description.ToLowerCase ().GetSubstring ('{', '}', 0);
+                GS::UniString paramName = definition.description.ToLowerCase ();
+                GS::Array<GS::UniString> partstring;
+                if (StringSplt (paramName, "}", partstring, "enum_flag") > 0) {
+                    paramName = partstring[0] + "}";
+                }
+                paramName = paramName.GetSubstring ('{', '}', 0);
                 paramName.ReplaceAll ("\\/", "/");
                 GS::UniString rawNameposition = "{@";
                 if (paramName.Contains (";")) { // Есть указание на нули
@@ -168,6 +173,10 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams,
                     GS::UniString ruleparamName = propertyParams.Get (rawNameposition).definition.description;
                     ruleparamName.ReplaceAll ("\\/", "/");
                     if (ruleparamName.Contains ("Renum") && ruleparamName.Contains ("{") && ruleparamName.Contains ("}")) {
+                        GS::Array<GS::UniString> partstring;
+                        if (StringSplt (ruleparamName, "}", partstring, "enum") > 0) {
+                            ruleparamName = partstring[0] + "}";
+                        }
                         ruleparamName = ruleparamName.ToLowerCase ().GetSubstring ('{', '}', 0);
                         GS::UniString rawNamecriteria = "{@";
                         GS::UniString rawNamedelimetr = "";
