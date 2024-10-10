@@ -187,10 +187,14 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
     if (definition.valueType == API_PropertyStringValueType) paramtype.sum_type = TextSum;
     if (definition.valueType == API_PropertyRealValueType || definition.valueType == API_PropertyIntegerValueType) paramtype.sum_type = NumSum;
     if (!paramtype.sum_type) return false;
-
-    GS::UniString paramName = definition.description.GetSubstring ('{', '}', 0);
+    GS::UniString paramName = definition.description;
+    GS::Array<GS::UniString> partstring;
+    if (StringSplt (paramName.ToLowerCase (), "}", partstring, "sum") > 0) {
+        paramName = partstring[0] + "}";
+    }
+    paramName = paramName.GetSubstring ('{', '}', 0);
     paramName.ReplaceAll ("\\/", "/");
-    GS::Array<GS::UniString>	partstring;
+    partstring.Clear ();
     int nparam = StringSplt (paramName.ToLowerCase (), ";", partstring);
     if (nparam == 0) return false;
     if (propertyParams.ContainsKey ("{@" + partstring[0] + "}")) {

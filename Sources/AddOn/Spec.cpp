@@ -61,6 +61,7 @@ void ShowSub (const SyncSettings& syncSettings)
 #if defined(AC_27) || defined(AC_28)
     GSErrCode err = ACAPI_Selection_Select (selNeigs, true);
 #else
+    //TODO Проверить - почему выделение субэлементов не работает на окнах и дверях
     GSErrCode err = ACAPI_Element_Select (selNeigs, true);
 #endif
 #endif
@@ -511,6 +512,10 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
 {
     // Получаем критерий
     SpecRule rule;
+    GS::Array<GS::UniString> partstring;
+    if (StringSplt (description, "}", partstring, "pec_rule") > 0) {
+        description = partstring[0] + "}";
+    }
     GS::UniString criteria = description.GetSubstring ('{', ';', 0);
     description = description.GetSubstring ('{', '}', 0);
     description.ReplaceAll (criteria + ";", "");
@@ -519,7 +524,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     GS::Array<GS::UniString> paramss;
     // Разбивка на группы и итог
     GS::Array<GS::UniString> rulestring_summ;
-    if (StringSplt (description, "s%", rulestring_summ) < 1) {
+    if (StringSplt (description, "s%", rulestring_summ) < 2) {
         rule.is_Valid = false;
         return rule;
     }
@@ -697,15 +702,32 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
     GS::Array <API_AddParType> params;
     GS::Array <API_Elem_Head> elemsheader;
     const GSSize nParams = BMGetHandleSize ((GSHandle) memot.params) / sizeof (API_AddParType);
+    bool flag_find_row = false;
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memot.params)[ii];
         params.Push ((*memot.params)[ii]);
         const GS::String name (actParam.name);
-        if (name.IsEqual ("A")) {
-            dx = actParam.value.real;
-        }
-        if (name.IsEqual ("B")) {
+        if (name.IsEqual ("somestuff_spec_hrow")) {
             dy = actParam.value.real;
+            flag_find_row = true;
+            break;
+        }
+    }
+    if (!flag_find_row) {
+        bool flag_find_dx = false; bool flag_find_dy = false;
+        for (GSIndex ii = 0; ii < nParams; ++ii) {
+            API_AddParType& actParam = (*memot.params)[ii];
+            params.Push ((*memot.params)[ii]);
+            const GS::String name (actParam.name);
+            if (name.IsEqual ("A") && !flag_find_dx) {
+                dx = actParam.value.real;
+                flag_find_dx = true;
+            }
+            if (name.IsEqual ("B") && !flag_find_dy) {
+                dy = actParam.value.real;
+                flag_find_dy = true;
+            }
+            if (flag_find_dx && flag_find_dy) break;
         }
     }
     ACAPI_DisposeElemMemoHdls (&memot);
@@ -892,11 +914,15 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 if (err == NoError) {
                     elemsheader.Push (element.header);
                     n_elem += 1;
-                    if (n_elem % 10 == 0) {
-                        pos.x = startpos.x;
+                    if (flag_find_row) {
                         pos.y += dy;
                     } else {
-                        pos.x += dx;
+                        if (n_elem % 10 == 0) {
+                            pos.x = startpos.x;
+                            pos.y += dy;
+                        } else {
+                            pos.x += dx;
+                        }
                     }
                     paramOut.Add (element.header.guid, param);
                     group.Push (element.header.guid);
