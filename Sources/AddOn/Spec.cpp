@@ -68,15 +68,72 @@ void ShowSub (const SyncSettings& syncSettings)
     return;
 }
 
-GSErrCode SpecAll (const SyncSettings& syncSettings)
+bool GetRuleFromDefaultElem (SpecRuleDict& rules)
 {
-    GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false);
-    if (guidArray.IsEmpty ()) ACAPI_Element_GetElemList (API_ZombieElemID, &guidArray, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
-    if (guidArray.IsEmpty ()) return NoError;
-    return SpecArray (syncSettings, guidArray);
+    GSErrCode error = NoError;
+    GS::Array<API_PropertyDefinition> definitions;
+#if defined(AC_27) || defined(AC_28)
+    error = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (API_ObjectID, API_PropertyDefinitionFilter_UserDefined, definitions);
+#else
+    error = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (API_ObjectID, APIVarId_Generic, API_PropertyDefinitionFilter_UserDefined, definitions);
+#endif
+    if (error != NoError) {
+        msg_rep ("Spec::GetRuleFromDefaultElem", "ACAPI_Element_GetPropertyDefinitionsOfDefaultElem", error, APINULLGuid, false);
+        return false;
+    }
+    for (UInt32 i = 0; i < definitions.GetSize (); i++) {
+        GS::UniString description = definitions[i].description;
+        if (!description.IsEmpty ()) {
+            if (description.Contains ("Spec_rule") && description.Contains ("{") && description.Contains ("}")) {
+                AddRule (definitions[i], APINULLGuid, rules);
+            }
+        }
+    }
+    if (rules.IsEmpty ()) return false;
+    bool has_element = false;
+    for (auto& cIt : rules) {
+#if defined(AC_28)
+        SpecRule& rule = cIt.value;
+#else
+        SpecRule& rule = *cIt.value;
+#endif
+        if (rule.is_Valid) {
+            for (UInt32 i = 0; i < rule.rule_definitions.availability.GetSize (); i++) {
+                GS::Array<API_Guid> elemGuids;
+                API_Guid classificationItemGuid = rule.rule_definitions.availability[i];
+                if (ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids) == NoError) {
+                    if (!elemGuids.IsEmpty ()) {
+                        rule.elements.Append (elemGuids);
+                        has_element = true;
+                    }
+                    //for (UInt32 j = 0; j < elemGuids.GetSize (); j++) {
+                        //if (ACAPI_Element_Filter (elemGuids[j], APIFilt_OnVisLayer)) {
+                        //    if (ACAPI_Element_Filter (elemGuids[j], APIFilt_IsVisibleByRenovation)) {
+                        //        if (ACAPI_Element_Filter (elemGuids[j], APIFilt_IsInStructureDisplay)) {
+                        //            rule.elements.Append (elemGuids[j]);
+                        //            has_element = true;
+                        //        }
+                        //    }
+                        //}
+                    //}
+                }
+            }
+        }
+    }
+    return has_element;
 }
 
-GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray)
+GSErrCode SpecAll (const SyncSettings& syncSettings)
+{
+    SpecRuleDict rules; bool hasrule = false;
+    GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false);
+    if (guidArray.IsEmpty ()) hasrule = GetRuleFromDefaultElem (rules);
+    if (guidArray.IsEmpty () && !hasrule) ACAPI_Element_GetElemList (API_ZombieElemID, &guidArray, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
+    if (guidArray.IsEmpty () && !hasrule) return NoError;
+    return SpecArray (syncSettings, guidArray, rules);
+}
+
+GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules)
 {
     long time_start = clock ();
     GS::UniString funcname = "SpecAll";
@@ -98,15 +155,16 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #endif
     int dummymode = IsDummyModeOn ();
     GSErrCode err = NoError;
-    SpecRuleDict rules;
-    bool flagfindspec = false;
-    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        err = GetRuleFromElement (guidArray[i], rules);
-        if (err == NoError) flagfindspec = true;
-    }
-    if (!flagfindspec) {
-        msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid, true);
-        return APIERR_GENERAL;
+    if (!guidArray.IsEmpty ()) {
+        bool flagfindspec = false;
+        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+            err = GetRuleFromElement (guidArray[i], rules);
+            if (err == NoError) flagfindspec = true;
+        }
+        if (!flagfindspec) {
+            msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid, true);
+            return APIERR_GENERAL;
+        }
     }
 
     // Теперь пройдём по прочитанным правилам и сформируем список параметров для чтения
@@ -179,6 +237,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             if (!elements.IsEmpty ()) elementstocreate.Push (elements);
         }
     }
+    if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
     subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
 #if defined(AC_27) || defined(AC_28)
     maxval = 3; ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -259,52 +318,61 @@ GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules)
                     }
 #endif
                 }
-                if (flagfindspec) {
-                    // Чистим описание
-                    description.ReplaceAll ("\n", "");
-                    description.ReplaceAll ("\r", "");
-                    description.ReplaceAll ("\t", "");
-                    description.ReplaceAll ("  ", " ");
-                    description.ReplaceAll ("  ", " ");
-                    description.ReplaceAll ("  ", " ");
-                    description.ReplaceAll ("  ", " ");
-                    description.ReplaceAll ("  ", " ");
-                    description.ReplaceAll ("  ", " ");
-                    description.ReplaceAll (" {", "{");
-                    description.ReplaceAll ("{ ", "{");
-                    description.ReplaceAll (" }", "}");
-                    description.ReplaceAll ("} ", "}");
-                    description.ReplaceAll (" ;", ";");
-                    description.ReplaceAll ("; ", ";");
-                    description.ReplaceAll ("g (", "g(");
-                    description.ReplaceAll ("s (", "s(");
-                    description.ReplaceAll (" g(", "g(");
-                    description.ReplaceAll (" s(", "s(");
-                    description.ReplaceAll ("g(", "g%");
-                    description.ReplaceAll ("s(", "s%");
-                    description.ReplaceAll (")s", "%s");
-                    description.ReplaceAll (")g", "%g");
-                    description.ReplaceAll ("))", ")%");
-                    GS::UniString key = description.GetSubstring ('{', '}', 0);
-                    if (rules.ContainsKey (key)) {
-                        if (rules.Get (key).is_Valid) rules.Get (key).elements.Push (elemguid);
-                    } else {
-                        // Добавление группы и элемента
-                        SpecRule rule = GetRuleFromDescription (description);
-                        if (rule.is_Valid) {
-                            GS::UniString fname;
-                            GetPropertyFullName (definitions[i], fname);
-                            rule.subguid_paramrawname = fname;
-                            rule.subguid_rulevalue = fname;
-                            rule.elements.Push (elemguid);
-                        }
-                        rules.Add (key, rule); //Добавляем в любом случае, чтоб потом дважды не обрабатывать
-                    }
-                }
+                if (flagfindspec) AddRule (definitions[i], elemguid, rules);
             }
         }
     }
     return NoError;
+}
+
+void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid, SpecRuleDict& rules)
+{
+    // Чистим описание
+    GS::UniString description = definition.description;
+    description.ReplaceAll ("\n", "");
+    description.ReplaceAll ("\r", "");
+    description.ReplaceAll ("\t", "");
+    description.ReplaceAll ("  ", " ");
+    description.ReplaceAll ("  ", " ");
+    description.ReplaceAll ("  ", " ");
+    description.ReplaceAll ("  ", " ");
+    description.ReplaceAll ("  ", " ");
+    description.ReplaceAll ("  ", " ");
+    description.ReplaceAll (" {", "{");
+    description.ReplaceAll ("{ ", "{");
+    description.ReplaceAll (" }", "}");
+    description.ReplaceAll ("} ", "}");
+    description.ReplaceAll (" ;", ";");
+    description.ReplaceAll ("; ", ";");
+    description.ReplaceAll ("g (", "g(");
+    description.ReplaceAll ("s (", "s(");
+    description.ReplaceAll (" g(", "g(");
+    description.ReplaceAll (" s(", "s(");
+    description.ReplaceAll ("g(", "g%");
+    description.ReplaceAll ("s(", "s%");
+    description.ReplaceAll (")s", "%s");
+    description.ReplaceAll (")g", "%g");
+    description.ReplaceAll ("))", ")%");
+    GS::Array<GS::UniString> partstring;
+    if (StringSplt (description, "}", partstring, "pec_rule") > 0) {
+        description = partstring[0] + "}";
+    }
+    GS::UniString key = description.GetSubstring ('{', '}', 0);
+    if (rules.ContainsKey (key)) {
+        if (rules.Get (key).is_Valid && elemguid != APINULLGuid) rules.Get (key).elements.Push (elemguid);
+    } else {
+        // Добавление группы и элемента
+        SpecRule rule = GetRuleFromDescription (description);
+        if (rule.is_Valid) {
+            GS::UniString fname;
+            GetPropertyFullName (definition, fname);
+            rule.subguid_paramrawname = fname;
+            rule.subguid_rulevalue = fname;
+            rule.rule_definitions = definition;
+            if (elemguid != APINULLGuid) rule.elements.Push (elemguid);
+        }
+        rules.Add (key, rule); //Добавляем в любом случае, чтоб потом дважды не обрабатывать
+    }
 }
 
 // --------------------------------------------------------------------
@@ -374,7 +442,6 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
             }
         }
     }
-    if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
 }
 
 Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements)
@@ -393,7 +460,9 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                     if (ParamHelpers::GetParamValueForElements (elemguid, group.flag_paramrawname, paramToRead, pvalue)) {
                         flag = pvalue.val.boolValue;
                     } else {
-                        if (!not_found_paramname.ContainsKey ("flag:" + group.flag_paramrawname)) not_found_paramname.Add ("flag:" + group.flag_paramrawname, false);
+                        if (!not_found_paramname.ContainsKey ("flag:" + group.flag_paramrawname)) {
+                            not_found_paramname.Add ("flag:" + group.flag_paramrawname, false);
+                        }
                     }
                 }
                 if (flag) {
@@ -404,7 +473,9 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                         GS::UniString rawname = group.unic_paramrawname[j];
                         ParamValue pvalue;
                         if (!ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue)) {
-                            if (!not_found_paramname.ContainsKey ("unic:" + rawname)) not_found_paramname.Add ("unic:" + rawname, false);
+                            if (!not_found_paramname.ContainsKey ("unic:" + rawname)) {
+                                not_found_paramname.Add ("unic:" + rawname, false);
+                            }
                         }
                         key = key + "@" + pvalue.val.uniStringValue;
                     }

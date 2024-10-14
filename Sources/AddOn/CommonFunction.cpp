@@ -685,7 +685,6 @@ void DeleteElementsUserData ()
 // -----------------------------------------------------------------------------
 void UnhideUnlockAllLayer (void)
 {
-    API_Attribute		attrib;
     GSErrCode			err;
 #if defined(AC_27) || defined(AC_28)
     UInt32 count, i;
@@ -701,33 +700,43 @@ void UnhideUnlockAllLayer (void)
     if (err != NoError) msg_rep ("UnhideUnlockAllLayer", "ACAPI_Attribute_GetNum", err, APINULLGuid);
     if (err == NoError) {
         for (i = 2; i <= count; i++) {
-            BNZeroMemory (&attrib, sizeof (API_Attribute));
-            attrib.header.typeID = API_LayerID;
+            API_AttributeIndex index;
 #if defined(AC_27) || defined(AC_28)
-            attrib.header.index = ACAPI_CreateAttributeIndex (i);
+            index = ACAPI_CreateAttributeIndex (i);
 #else
-            attrib.header.index = i;
+            index = i;
 #endif
-            err = ACAPI_Attribute_Get (&attrib);
-            if (err != NoError) msg_rep ("UnhideUnlockAllLayer", "ACAPI_Attribute_Get", err, APINULLGuid);
-            if (err == NoError) {
-                bool flag_write = false;
-                if (attrib.header.flags & APILay_Hidden) {
-                    attrib.layer.head.flags |= !APILay_Hidden;
-                    flag_write = true;
-                }
-                if (attrib.header.flags & APILay_Locked) {
-                    attrib.layer.head.flags |= !APILay_Locked;
-                    flag_write = true;
-                }
-                if (flag_write) {
-                    err = ACAPI_Attribute_Modify (&attrib, NULL);
-                    if (err != NoError) msg_rep ("UnhideUnlockAllLayer", attrib.header.name, err, APINULLGuid);
-                }
-            }
+            UnhideUnlockLayer (index);
         }
     }
     return;
+}
+
+void UnhideUnlockLayer (const API_AttributeIndex & index)
+{
+    API_Attribute attrib;
+    GSErrCode			err;
+    BNZeroMemory (&attrib, sizeof (API_Attribute));
+    attrib.header.typeID = API_LayerID;
+    attrib.header.index = index;
+    err = ACAPI_Attribute_Get (&attrib);
+    if (err != NoError) {
+        msg_rep ("UnhideUnlockLayer", "ACAPI_Attribute_Get", err, APINULLGuid);
+        return;
+    }
+    bool flag_write = false;
+    if (attrib.header.flags & APILay_Hidden) {
+        attrib.layer.head.flags |= !APILay_Hidden;
+        flag_write = true;
+    }
+    if (attrib.header.flags & APILay_Locked) {
+        attrib.layer.head.flags |= !APILay_Locked;
+        flag_write = true;
+    }
+    if (flag_write) {
+        err = ACAPI_Attribute_Modify (&attrib, NULL);
+        if (err != NoError) msg_rep ("UnhideUnlockLayer", attrib.header.name, err, APINULLGuid);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1173,6 +1182,18 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
 }
 
 // -----------------------------------------------------------------------------
+// Возвращает список параметров API_AddParType из memo
+// -----------------------------------------------------------------------------
+GSErrCode GetGDLParametersFromMemo (const API_Guid & elemGuid, API_AddParType * *&params)
+{
+    API_ElementMemo	memo = {};
+    GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
+    params = memo.params;
+    if (err != NoError) msg_rep ("GetGDLParametersFromMemo", "ACAPI_Element_GetMemo", err, elemGuid);
+    return err;
+}
+
+// -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType
 // -----------------------------------------------------------------------------
 GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & elemGuid, API_AddParType * *&params)
@@ -1198,10 +1219,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
        || elemType == API_RailingHandrailConnectionID
        || elemType == API_RailingRailConnectionID
        || elemType == API_RailingEndFinishID) {
-        API_ElementMemo	memo = {};
-        err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
-        params = memo.params;
-        return err;
+        return GetGDLParametersFromMemo (elemGuid, params);
     }
 
 #if defined(AC_27) || defined(AC_28)
@@ -1225,7 +1243,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #endif
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
-        return err;
+        return GetGDLParametersFromMemo (elemGuid, params);
     }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
