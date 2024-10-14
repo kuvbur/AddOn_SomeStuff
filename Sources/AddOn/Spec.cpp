@@ -70,9 +70,12 @@ void ShowSub (const SyncSettings& syncSettings)
 
 bool GetRuleFromDefaultElem (SpecRuleDict& rules)
 {
+#if defined(AC_22)
+    return false;
+#else
     GSErrCode error = NoError;
     GS::Array<API_PropertyDefinition> definitions;
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
     error = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (API_ObjectID, API_PropertyDefinitionFilter_UserDefined, definitions);
 #else
     error = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (API_ObjectID, APIVarId_Generic, API_PropertyDefinitionFilter_UserDefined, definitions);
@@ -121,6 +124,7 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules)
         }
     }
     return has_element;
+#endif
 }
 
 GSErrCode SpecAll (const SyncSettings& syncSettings)
