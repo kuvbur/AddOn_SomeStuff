@@ -33,6 +33,10 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
 #endif
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true);
     if (guidArray.IsEmpty ()) return NoError;
+    GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions;
+    if (guidArray.GetSize () == 1) {
+        if (GetSumRuleFromSelected (guidArray[0], rule_definitions)) GetSumElementForPropertyDefinition (rule_definitions, guidArray);
+    }
     GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSumId, ACAPI_GetOwnResModule ());
     bool flag_write = true;
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
@@ -44,7 +48,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
         ParamDictElement paramToWriteelem;
-        if (!GetSumValuesOfElements (guidArray, paramToWriteelem)) {
+        if (!GetSumValuesOfElements (guidArray, paramToWriteelem, rule_definitions)) {
             flag_write = false;
             msg_rep ("SumSelected", "No data to write", NoError, APINULLGuid);
 #if defined(AC_27) || defined(AC_28)
@@ -79,7 +83,59 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     return NoError;
 }
 
-bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem)
+
+// -----------------------------------------------------------------------------------------------------------------------
+// В случае, если выбран только один элемент - обрабатываем ТОЛЬКО правила, видимые у него
+// Функция для сбора правил с элемента
+// -----------------------------------------------------------------------------------------------------------------------
+bool GetSumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions)
+{
+#if defined(AC_22)
+    return false;
+#else
+    GS::Array<API_PropertyDefinition> definitions_;
+    GSErrCode err = ACAPI_Element_GetPropertyDefinitions (elemguid, API_PropertyDefinitionFilter_UserDefined, definitions_);
+    if (err == NoError && !definitions_.IsEmpty ()) {
+        for (UInt32 i = 0; i < definitions_.GetSize (); i++) {
+            if (!definitions_[i].description.IsEmpty ()) {
+                if (definitions_[i].description.Contains ("Renum_flag")) {
+                    if (!definitions.ContainsKey (definitions_[i].guid)) definitions.Add (definitions_[i].guid, definitions_[i]);
+                }
+            }
+        }
+    }
+    return (!definitions.IsEmpty ());
+#endif
+}
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Функция для выбора элементов, в которых видимо выбранное свойство
+// -----------------------------------------------------------------------------------------------------------------------
+void GetSumElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray)
+{
+#if defined(AC_22)
+    return;
+#else
+    for (auto& cIt : definitions) {
+#if defined(AC_28)
+        API_PropertyDefinition definition = cIt.value;
+#else
+        API_PropertyDefinition definition = *cIt.value;
+#endif
+        for (UInt32 i = 0; i < definition.availability.GetSize (); i++) {
+            GS::Array<API_Guid> elemGuids;
+            API_Guid classificationItemGuid = definition.availability[i];
+            if (ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids) == NoError) {
+                for (UInt32 j = 0; j < elemGuids.GetSize (); j++) {
+                    if (ACAPI_Element_Filter (elemGuids[j], APIFilt_OnVisLayer)) guidArray.Push (elemGuids[j]);
+                }
+            }
+        }
+    }
+#endif
+}
+
+bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
 {
     if (guidArray.IsEmpty ()) return false;
     SumRules rules;
@@ -105,7 +161,7 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
         ParamDictValue paramToRead;
         ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, guidArray[i]);
         if (!propertyParams.IsEmpty ()) {
-            if (Sum_GetElement (guidArray[i], propertyParams, paramToRead, rules)) {
+            if (Sum_GetElement (guidArray[i], propertyParams, paramToRead, rules, rule_definitions)) {
                 ClassificationFunc::SystemDict systemdict;
                 ParamHelpers::Read (guidArray[i], paramToRead, propertyParams, systemdict);
                 ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
@@ -131,7 +187,7 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, SumRules& rules)
+bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, SumRules& rules, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
 {
     bool has_sum = false;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -144,17 +200,23 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
         // Является ли свойство описанием системы суммирования?
         if (param.definition.description.Contains ("Sum") && param.definition.description.Contains ("{") && param.definition.description.Contains ("}")) {
             bool flag_add = false;
-            if (!rules.ContainsKey (definition.guid)) {
-                SumRule paramtype = {};
-                if (Sum_Rule (elemGuid, definition, propertyParams, paramtype)) {
-                    paramtype.position = param.rawName;
-                    rules.Add (definition.guid, paramtype);
+            bool flag_hasrule = true;
+            if (!rule_definitions.IsEmpty ()) {
+                if (!rule_definitions.ContainsKey (definition.guid)) flag_hasrule = false;
+            }
+            if (flag_hasrule) {
+                if (!rules.ContainsKey (definition.guid)) {
+                    SumRule paramtype = {};
+                    if (Sum_Rule (elemGuid, definition, propertyParams, paramtype)) {
+                        paramtype.position = param.rawName;
+                        rules.Add (definition.guid, paramtype);
+                        flag_add = true;
+                    }
+                } else {
                     flag_add = true;
                 }
-            } else {
-                flag_add = true;
             }
-            if (flag_add == true) {
+            if (flag_add) {
 
                 // Дописываем элемент в правило
                 rules.Get (definition.guid).elemts.Push (elemGuid);
@@ -203,8 +265,6 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
         msg_rep ("SumSelected", "Check that the property name is correct and must begin with Property:", NoError, elemGuid);
         return false;
     }
-
-
     // Ищём определение свойства-критерия
     if (nparam > 1) {
         if (propertyParams.ContainsKey ("{@" + partstring[1] + "}")) {
@@ -215,8 +275,6 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
             if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum) paramtype.delimetr = partstring[1].ToCStr ().Get ();
         }
     }
-
-
     // Ищём определение свойства-критерия
     if (nparam > 1) {
         if (propertyParams.ContainsKey ("{@" + partstring[1] + "}")) {
