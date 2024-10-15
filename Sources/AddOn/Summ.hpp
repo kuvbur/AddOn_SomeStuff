@@ -22,8 +22,7 @@ static const short NumSum = 2;
 static const short MinSum = 3;
 static const short MaxSum = 4;
 
-typedef struct
-{
+typedef struct {
     GS::UniString position = "";
     GS::UniString value = "";
     GS::UniString criteria = "";
@@ -37,9 +36,13 @@ typedef GS::HashTable<API_Guid, SumRule> SumRules;
 
 GSErrCode SumSelected (SyncSettings& syncSettings);
 
-bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem);
+bool GetSumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions);
 
-bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, SumRules& rules);
+void GetSumElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray);
+
+bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
+
+bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, SumRules& rules, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
 
 bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype);
 
