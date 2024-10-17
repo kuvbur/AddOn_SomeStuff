@@ -1259,7 +1259,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         case API_ColumnID:
             x = element.column.origoPos.x;
             y = element.column.origoPos.y;
-            angz = element.column.slantAngle;
+            angz = element.column.slantDirectionAngle;
             hasSymbpos = true;
             break;
         case API_WallID:
