@@ -1,5 +1,5 @@
 //------------ kuvbur 2022 ------------
-#if defined(AC_27)
+#if defined(AC_27) || defined(AC_28)
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"MEPv1.hpp"
@@ -7,13 +7,23 @@ using namespace ACAPI::MEP;
 
 API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
+#endif
         return ACAPI::MEP::VentilationRigidSegmentID;
-
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
+#endif
         return ACAPI::MEP::PipingRigidSegmentID;
-
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
+#endif
         return ACAPI::MEP::CableCarrierRigidSegmentID;
 
     return APINULLGuid;
@@ -21,13 +31,25 @@ API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid& routingEl
 
 API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
+#endif
         return ACAPI::MEP::VentilationBendID;
 
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
+#endif
         return ACAPI::MEP::PipingBendID;
 
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
+#endif
         return ACAPI::MEP::CableCarrierBendID;
 
     return APINULLGuid;
@@ -35,13 +57,25 @@ API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid& routingElemClassI
 
 API_Guid GetTransitionClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
+#endif
         return ACAPI::MEP::VentilationTransitionID;
 
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
+#endif
         return ACAPI::MEP::PipingTransitionID;
 
+#if defined (AC_28)
+    if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
+#else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
+#endif
         return ACAPI::MEP::CableCarrierTransitionID;
 
     return APINULLGuid;
@@ -62,7 +96,31 @@ void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& sube
     API_ElemType mepElemType;
     mepElemType.typeID = API_ExternalElemID;
     mepElemType.variationID = APIVarId_Generic;
-
+    if (!routingNodeIds.empty ()) {
+        for (UInt32 inx_segment = 0; inx_segment < routingNodeIds.size (); ++inx_segment) {
+            ACAPI::Result<RoutingNode> routingNode = RoutingNode::Get (routingNodeIds[inx_segment]);
+            if (routingNode.IsErr ()) {
+                ACAPI_WriteReport (routingNode.UnwrapErr ().text.c_str (), false);
+                return;
+            }
+            API_Guid rguid = GSGuid2APIGuid (routingNodeIds[inx_segment].GetGuid ());
+            subelemGuid.Push (rguid);
+            std::vector<ACAPI::MEP::UniqueID> bendsIds = routingNode->GetBendIds ();
+            std::vector<ACAPI::MEP::UniqueID> transitionsIds = routingNode->GetTransitionIds ();
+            if (!bendsIds.empty ()) {
+                for (UInt32 inx_rigid = 0; inx_rigid < bendsIds.size (); ++inx_rigid) {
+                    API_Guid rguid = GSGuid2APIGuid (bendsIds[inx_rigid].GetGuid ());
+                    subelemGuid.Push (rguid);
+                }
+            }
+            if (!transitionsIds.empty ()) {
+                for (UInt32 inx_rigid = 0; inx_rigid < transitionsIds.size (); ++inx_rigid) {
+                    API_Guid rguid = GSGuid2APIGuid (transitionsIds[inx_rigid].GetGuid ());
+                    subelemGuid.Push (rguid);
+                }
+            }
+        }
+    }
     if (!routingSegmentIds.empty ()) {
         for (UInt32 inx_segment = 0; inx_segment < routingSegmentIds.size (); ++inx_segment) {
             ACAPI::Result<RoutingSegment> routingSegment = RoutingSegment::Get (routingSegmentIds[inx_segment]);
@@ -83,7 +141,8 @@ void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& sube
     }
 }
 void GetRouting (const API_Guid& elemGuid)
-{}
+{
+}
 
 void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
 {

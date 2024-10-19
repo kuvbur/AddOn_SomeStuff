@@ -1224,10 +1224,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 
 #if defined(AC_27) || defined(AC_28)
     if (elemType == API_ExternalElemID) {
-        API_ElementMemo	memo = {};
-        err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
-        params = memo.params;
-        return err;
+        return GetGDLParametersFromMemo (elemGuid, params);
     }
 #endif
     apiOwner.guid = elemGuid;
@@ -1244,7 +1241,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-    }
+}
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -1300,9 +1297,9 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 #endif
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
-            }
         }
     }
+}
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
@@ -1470,7 +1467,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 #endif
     if (err != NoError) {
         return false;
-    }
+}
     c->x = pointInfo.pos.x;
     c->y = pointInfo.pos.y;
     return true;
