@@ -2,7 +2,7 @@
 #pragma once
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
-#if defined(AC_27)
+#if defined(AC_27) || defined(AC_28)
 #include "Definitions.hpp"
 // ACAPI
 
@@ -35,11 +35,13 @@
 #include "ACAPI/MEPEquipmentDefault.hpp"
 #include "ACAPI/MEPUniqueID.hpp"
 #include "ACAPI/MEPPreferenceTableContainerBase.hpp"
+#include "GSUnID.hpp"
+#if defined(AC_27)
 #include "ACAPI/MEPDuctPreferenceTableContainer.hpp"
 #include "ACAPI/MEPPipePreferenceTableContainer.hpp"
 #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
 #include "ACAPI/MEPPreferenceTableBase.hpp"
-#include "GSUnID.hpp"
+#endif
 
 namespace MEPv1
 {
