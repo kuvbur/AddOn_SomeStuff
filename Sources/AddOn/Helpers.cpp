@@ -899,6 +899,10 @@ void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const A
 {
     ParamValue pvalue;
     pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase () + "}";
+    if (params.ContainsKey (pvalue.rawName)) {
+        DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
+        return;
+    }
     pvalue.name = name.ToLowerCase ();
     ParamHelpers::ConvertBoolToParamValue (pvalue, "", val);
     params.Add (pvalue.rawName, pvalue);
@@ -912,6 +916,10 @@ void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const
 {
     ParamValue pvalue;
     pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase () + "}";
+    if (params.ContainsKey (pvalue.rawName)) {
+        DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
+        return;
+    }
     pvalue.name = name.ToLowerCase ();
     pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
     ParamHelpers::ConvertDoubleToParamValue (pvalue, "", val);
@@ -927,6 +935,10 @@ void ParamHelpers::AddDoubleValueToParamDictValue (ParamDictValue& params, const
 {
     ParamValue pvalue;
     pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase () + "}";
+    if (params.ContainsKey (pvalue.rawName)) {
+        DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
+        return;
+    }
     pvalue.name = name.ToLowerCase ();
     ParamHelpers::ConvertDoubleToParamValue (pvalue, "", val);
     params.Add (pvalue.rawName, pvalue);
@@ -939,6 +951,10 @@ void ParamHelpers::AddStringValueToParamDictValue (ParamDictValue& params, const
 {
     ParamValue pvalue;
     pvalue.rawName = "{@" + rawName_prefix + name.ToLowerCase () + "}";
+    if (params.ContainsKey (pvalue.rawName)) {
+        DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
+        return;
+    }
     pvalue.name = name.ToLowerCase ();
     ParamHelpers::ConvertStringToParamValue (pvalue, "", val);
     params.Add (pvalue.rawName, pvalue);
@@ -958,14 +974,14 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     bool isFliped = false;
     double x = 0; double y = 0; double z = 0; double angz = 0;
     double sx = 0; double sy = 0;
-    double swx = 0; double swy = 0;
+    double ww = 0; double hw = 0;  //Размеры проёма
     double ex = 0; double ey = 0;
     double dx = 0; double dy = 0;
     // Координаты относительно пользовательского начала
     double xu = 0; double yu = 0; double zu = 0;
     double sxu = 0; double syu = 0;
     double exu = 0; double eyu = 0;
-
+    double zw = 0; //Высота стены, в которой размещён проём
     double lox = 0; double loy = 0; double loz = 0;
     GS::UniString locorig = "{@coord:locorigin_x}";
     if (params.ContainsKey (locorig)) lox = params.Get (locorig).val.rawDoubleValue;
@@ -986,7 +1002,6 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
 
     double slantDirectionAngle = 0;
     double axisRotationAngle = 0;
-
     GS::UniString angznorthtxt = "UNDEF"; GS::UniString angznorthtxteng = "UNDEF";
     GS::UniString globnorthkey = "{@glob:glob_north_dir}";
     if (!params.ContainsKey (globnorthkey)) {
@@ -1181,7 +1196,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     }
 
     // Если нужно определить направление окон или дверей - запрашиваем родительский элемент
-    if (!skip_north && (eltype == API_WindowID || eltype == API_DoorID || eltype == API_CurtainWallPanelID)) {
+    if (eltype == API_WindowID || eltype == API_DoorID || (!skip_north && eltype == API_CurtainWallPanelID)) {
         BNZeroMemory (&owner, sizeof (API_Element));
         if (eltype == API_CurtainWallPanelID) owner.header.guid = element.cwPanel.owner;
         if (eltype == API_WindowID) owner.header.guid = element.window.owner;
@@ -1198,6 +1213,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             sy = owner.wall.begC.y;
             ex = owner.wall.endC.x;
             ey = owner.wall.endC.y;
+            zw = owner.wall.height;
             isFliped = owner.wall.flipped;
             hasLine = true;
         }
@@ -1230,12 +1246,16 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             x = element.window.objLoc;
             y = 0;
             z = element.window.lower;
+            ww = element.window.openingBase.width;
+            hw = element.window.openingBase.height;
             hasSymbpos = true;
             break;
         case API_DoorID:
             x = element.door.objLoc;
             y = 0;
             z = element.door.lower;
+            ww = element.window.openingBase.width;
+            hw = element.window.openingBase.height;
             hasSymbpos = true;
             break;
         case API_CurtainWallPanelID:
@@ -1343,6 +1363,32 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
             angz = 0.0;
         }
         xu = x - lox; yu = y - loy; zu = z - loz;
+        if (eltype == API_WindowID || eltype == API_DoorID) {
+            yu = 0; zu = 0;
+            if (isFliped) {
+                dx = ex - sx;
+                dy = ey - sy;
+            } else {
+                dx = sx - ex;
+                dy = sy - ey;
+            }
+            double l_wall = sqrt (dx * dx + dy * dy);
+            double koeff = x / l_wall;
+            double swx = sx + (ex - sx) * koeff; double swy = sy + (ey - sy) * koeff; //Абсолютные координаты середины проёма
+            double swx_lo = swx - lox; double swy_lo = swy - loy; //Координаты относительно ПН середины проёма
+            bool windoor_in_wall = true;
+            if (x + ww / 2 < tolerance_coord_hard) windoor_in_wall = false;
+            if (x - ww / 2 - l_wall > tolerance_coord_hard) windoor_in_wall = false;
+            if (z + hw < tolerance_coord_hard) windoor_in_wall = false;
+            if (z - zw > tolerance_coord_hard) windoor_in_wall = false;
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "windoor_in_wall", windoor_in_wall);
+            ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sx", swx);
+            ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_sy", swy);
+            ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sx", swx_lo);
+            ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_lo_sy", swy_lo);
+        } else {
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "windoor_in_wall", true);
+        }
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", x);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", y);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_z", z);
@@ -1418,9 +1464,6 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
     sxu = sx - lox; syu = sy - loy;
     exu = ex - lox; eyu = ey - loy;
-    if (eltype == API_WindowID || eltype == API_DoorID) {
-        //TODO дописать определение абсолютных координат окон и дверей и проверку выхода за границу стены
-    }
     if (hasLine && !hasSymbpos) {
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
@@ -1921,7 +1964,7 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
         value = &property.definition.defaultValue.basicValue;
     } else {
         value = &property.value;
-    }
+}
 #else
     if (property.status == API_Property_NotAvailable) {
         return string;
@@ -1960,7 +2003,7 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
 #else // AC_25
                 string += ToString (value->singleEnumVariant.displayVariant, stringformat);
 #endif
-            } break;
+                } break;
         case API_PropertyMultipleChoiceEnumerationCollectionType:
             {
 #if defined(AC_25) || defined(AC_26) || defined(AC_27) || defined(AC_28)
@@ -1991,9 +2034,9 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
             {
                 break;
             }
-    }
+            }
     return string;
-}
+    }
 
 ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs)
 {
@@ -2366,7 +2409,7 @@ bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinit
                         return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
                     } else {
                         return propertyflag.value.singleVariant.variant.boolValue;
-                    }
+                }
 #else
                     if (propertyflag.status == API_Property_NotAvailable) {
                         return false;
@@ -2377,12 +2420,12 @@ bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinit
                         return propertyflag.value.singleVariant.variant.boolValue;
                     }
 #endif
-                } else {
+            } else {
                     return false;
                 }
-            }
         }
     }
+}
     return false;
 }
 
@@ -2405,7 +2448,7 @@ bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_Property
                         return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
                     } else {
                         return propertyflag.value.singleVariant.variant.boolValue;
-                    }
+                }
 #else
                     if (propertyflag.status == API_Property_NotAvailable) {
                         return true;
@@ -2416,12 +2459,12 @@ bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_Property
                         return propertyflag.value.singleVariant.variant.boolValue;
                     }
 #endif
-                } else {
+            } else {
                     return true;
                 }
-            }
         }
     }
+}
     return true;
 }
 
@@ -2445,7 +2488,7 @@ GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement& paramToWrite)
         if (!params.IsEmpty ()) {
             if (ParamHelpers::Write (elemGuid, params)) rereadelem.Push (elemGuid);
         }
-    }
+}
     if (!rereadelem.IsEmpty ()) DBprnt ("ElementsWrite ReRead");
     DBprnt ("ElementsWrite end");
     return rereadelem;
@@ -2475,7 +2518,7 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
             ParamValue& param = *cIt->value;
 #endif
             if (param.rawName.Contains (paramType)) paramByType.Add (param.rawName, param);
-        }
+    }
         if (!paramByType.IsEmpty ()) {
 
             // Проходим поиском, специфичным для каждого типа
@@ -2498,7 +2541,7 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
                 ParamHelpers::WriteCoord (elemGuid, paramByType);
             }
         }
-    }
+}
     return needReread;
 }
 
@@ -2523,8 +2566,8 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
                 ParamValue& param = *cIt->value;
 #endif
                 if (param.fromInfo && !paramsinfo.ContainsKey (param.rawName)) paramsinfo.Add (param.rawName, param);
-            }
         }
+}
     }
     if (paramsinfo.IsEmpty ()) return;
     DBprnt ("InfoWrite start");
@@ -2565,7 +2608,7 @@ bool ParamHelpers::WriteClassification (const API_Guid& elemGuid, ParamDictValue
             if (err == NoError) needReread = true;
             if (err != NoError) msg_rep ("WriteClassification", "ACAPI_Element_AddClassificationItem", err, APINULLGuid);
         }
-    }
+}
     return needReread;
     msg_rep ("WriteClassification", "write", err, elemGuid);
 }
@@ -3027,7 +3070,7 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
                 msg_rep ("ParamHelpers::WriteGDL", "APIAny_ChangeAParameterID", err, elem_head.guid);
                 return;
             }
-        }
+            }
     }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
@@ -3063,7 +3106,7 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
             return;
         }
     }
-}
+        }
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -3086,7 +3129,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
             API_PropertyDefinition definition = param.definition;
             propertyDefinitions.Push (definition);
         }
-    }
+}
 
     if (!propertyDefinitions.IsEmpty ()) {
         DBprnt ("    WriteProperty", "!propertyDefinitions.IsEmpty()");
@@ -3125,7 +3168,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
             DBprnt ("err WriteProperty", "param.isValid && param.property.definition.guid != APINULLGuid");
         }
     }
-}
+    }
 
 bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement& paramToRead)
 {
@@ -3145,8 +3188,8 @@ bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement& paramToRead)
                 if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) {
                     return true;
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3169,8 +3212,8 @@ bool ParamHelpers::hasUnreadCoord (ParamDictElement& paramToRead)
                 if (param.fromCoord) {
                     return true;
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3193,8 +3236,8 @@ bool ParamHelpers::hasUnreadAttribute (ParamDictElement& paramToRead)
                 if (param.fromAttribElement) {
                     return true;
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3224,8 +3267,8 @@ bool ParamHelpers::hasUnreadInfo (ParamDictElement& paramToRead, ParamDictValue&
                         return true; // В списке общих параметров не найден, перечитаем
                     }
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3290,8 +3333,8 @@ bool ParamHelpers::hasUnreadGlob (ParamDictElement& paramToRead, ParamDictValue&
                         return true; // В списке общих параметров не найден, перечитаем
                     }
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3333,7 +3376,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& 
             if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, params); // Сопоставляем свойства
             ParamHelpers::Read (elemGuid, params, propertyParams, systemdict);
         }
-    }
+}
     DBprnt ("ElementsRead end");
 }
 
@@ -3397,7 +3440,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             }
             if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
         }
-    }
+}
 
     if (needGetAllDefinitions) AllPropertyDefinitionToParamDict (params, elemGuid);  // Проверим - для всех ли свойств подобраны определения
 
@@ -3436,7 +3479,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                     if (param.rawName.Contains (paramType)) paramByType.Add (param.rawName, param);
                 }
             }
-        }
+    }
         if (!paramByType.IsEmpty ()) {
             bool needCompare = false; // Флаг необходимости записи в словарь. Поднимается только при наличии результата на каждом этапе
 
@@ -3457,9 +3500,9 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                             API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, systemname);
                             paramByType.Get (parambt.rawName).val.guidval = classguid;
                         }
-                    }
                 }
             }
+        }
             if (paramType.IsEqual ("{@coord:")) {
 
                 // Для определения угла к северу нам потребуется значение направления на север.
@@ -3672,7 +3715,7 @@ void ParamHelpers::GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     }
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_attrib");
     DBprnt ("  GetAllAttributeToParamDict end");
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
@@ -3918,8 +3961,8 @@ void ParamHelpers::CompareParamDictElement (ParamDictElement & paramsFrom, Param
         if (paramsFrom.ContainsKey (elemGuid)) {
             ParamHelpers::CompareParamDictValue (paramsFrom.Get (elemGuid), paramTo, false);
         }
-    }
 }
+    }
 
 // --------------------------------------------------------------------
 // Сопоставление двух словарей ParamDictValue 
@@ -3953,7 +3996,7 @@ void ParamHelpers::CompareParamDictValue (ParamDictValue & paramsFrom, ParamDict
                 paramsTo.Add (k, paramFrom);
             }
         }
-    }
+}
     return;
 }
 
