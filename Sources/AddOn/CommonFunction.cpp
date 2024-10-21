@@ -1,9 +1,25 @@
 //------------ kuvbur 2022 ------------
 #include    "CommonFunction.hpp"
+#include    "qrcodegen.hpp"
 #include    "StringConversion.hpp"
+#include    <bitset>
 #include    <cmath>
 #include    <limits>
 #include    <math.h>
+
+GS::UniString TextToQRCode (GS::UniString& text)
+{
+    const qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText (text.ToCStr ().Get (), qrcodegen::QrCode::Ecc::MEDIUM);
+    GS::UniString qr_txt = GS::UniString::Printf ("QRCODESOMESTUFF %d;", qr.getSize ());
+    for (int y = 0; y < qr.getSize (); y++) {
+        std::bitset<256> b1 (qr.getSize ());
+        for (int x = 0; x < qr.getSize (); x++) {
+            b1.set (x, qr.getModule (x, y));
+        }
+        qr_txt = qr_txt + GS::UniString::Printf ("%d=", b1.to_ulong ());
+    }
+    return qr_txt;
+}
 
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 {
@@ -1241,7 +1257,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-}
+    }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -1297,9 +1313,9 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 #endif
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
+            }
         }
     }
-}
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
@@ -1467,7 +1483,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 #endif
     if (err != NoError) {
         return false;
-}
+    }
     c->x = pointInfo.pos.x;
     c->y = pointInfo.pos.y;
     return true;

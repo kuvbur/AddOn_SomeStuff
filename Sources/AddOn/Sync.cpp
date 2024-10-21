@@ -885,6 +885,10 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         rulestring_one.ReplaceAll ("{symb_pos_", "{Coord:symb_pos_");
     }
     bool hasformula = rulestring_one.Contains ('<') && rulestring_one.Contains ('>');
+    if (rulestring_one.Contains ("QRCode:")) {
+        rulestring_one.ReplaceAll ("QRCode:", "");
+        param.toQRCode = true;
+    }
     if (synctypefind == false) {
         if (rulestring_one.Contains ("{id}") || rulestring_one.Contains ("{ID}")) {
             paramNamePrefix = "{@id:";

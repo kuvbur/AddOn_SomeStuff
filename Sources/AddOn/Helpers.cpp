@@ -958,6 +958,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     bool isFliped = false;
     double x = 0; double y = 0; double z = 0; double angz = 0;
     double sx = 0; double sy = 0;
+    double swx = 0; double swy = 0;
     double ex = 0; double ey = 0;
     double dx = 0; double dy = 0;
     // Координаты относительно пользовательского начала
@@ -1228,13 +1229,13 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         case API_WindowID:
             x = element.window.objLoc;
             y = 0;
-            z = 0;
+            z = element.window.lower;
             hasSymbpos = true;
             break;
         case API_DoorID:
             x = element.door.objLoc;
             y = 0;
-            z = 0;
+            z = element.door.lower;
             hasSymbpos = true;
             break;
         case API_CurtainWallPanelID:
@@ -1417,6 +1418,9 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
     sxu = sx - lox; syu = sy - loy;
     exu = ex - lox; eyu = ey - loy;
+    if (eltype == API_WindowID || eltype == API_DoorID) {
+        //TODO дописать определение абсолютных координат окон и дверей и проверку выхода за границу стены
+    }
     if (hasLine && !hasSymbpos) {
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_x", sx);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "symb_pos_y", sy);
@@ -3538,6 +3542,10 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 param.fromAttribElement = true;
             }
         }
+        if (param.isValid && param.toQRCode) {
+            GS::UniString qr = TextToQRCode (param.val.uniStringValue);
+            param.val.uniStringValue = qr;
+        }
     }
 }
 
@@ -3937,6 +3945,7 @@ void ParamHelpers::CompareParamDictValue (ParamDictValue & paramsFrom, ParamDict
         if (paramsTo.ContainsKey (k)) {
             ParamValue paramFrom = paramsFrom.Get (k);
             paramFrom.fromGuid = paramsTo.Get (k).fromGuid; // Чтоб GUID не перезаписался
+            paramFrom.toQRCode = paramsTo.Get (k).toQRCode;
             paramsTo.Set (k, paramFrom);
         } else {
             if (addInNotEx) {
@@ -3973,7 +3982,7 @@ bool ParamHelpers::ReadProperty (const API_Guid & elemGuid, ParamDictValue & par
                 propertyDefinitions.Push (definition);
             }
         }
-    }
+}
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;
         GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
@@ -4059,7 +4068,7 @@ bool ParamHelpers::ReadClassification (const API_Guid & elemGuid, const Classifi
             param.val.uniStringValue = ""; // Если система не найдена - обнулим значение
             msg_rep ("System not found", param.name, NoError, APINULLGuid);
         }
-    }
+}
     if (elementsystem.IsEmpty ()) return false;
     bool flag_find = false;
     for (GS::HashTable<GS::UniString, API_Guid>::PairIterator cIt = elementsystem.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -4122,7 +4131,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Elem_Head & elem_head, ParamDi
         } else {
             msg_rep ("ParamHelpers::ReadAttributeValues", "Layer not found - " + name, NoError, elem_head.guid);
         }
-    } else {
+} else {
         API_Attribute	attrib = {};
         GS::UniString name = "";
         BNZeroMemory (&attrib, sizeof (API_Attribute));
@@ -4371,7 +4380,7 @@ bool ParamHelpers::ReadGDL (const API_Element & element, const API_Elem_Head & e
     }
     if (flag_find_name) ParamHelpers::CompareParamDictValue (paramByName, params);
     return (flag_find_name);
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Поиск по описанию GDL параметра
@@ -4560,7 +4569,7 @@ bool ParamHelpers::ReadFormula (ParamDictValue & paramByType, ParamDictValue & p
                 paramByType.Get (key).isValid = true;
             }
         }
-    }
+}
     return flag_find;
 }
 
@@ -4623,8 +4632,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 }
             }
     }
-                }
-            }
+        }
+    }
     bool flag_add = false;
 
     // Если есть строка-шаблон - заполним её
@@ -4745,7 +4754,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
         }
     }
     return flag_add;
-        }
+}
 
 
 void ParamHelpers::Array2ParamValue (GS::Array<ParamValueData>&pvalue, ParamValueData & pvalrezult)
@@ -5097,9 +5106,9 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     pvalue.isValid = property.isEvaluated;
     if (property.isDefault && !property.isEvaluated) {
         value = property.definition.defaultValue.basicValue;
-} else {
+    } else {
         value = property.value;
-    }
+}
 #else
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {
@@ -5225,7 +5234,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     pvalue.definition = property.definition;
     pvalue.property = property;
     return true;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
@@ -5742,7 +5751,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
 #endif
-        }
+            }
     }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
@@ -5841,7 +5850,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
 #else
     return false;
 #endif
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -5952,7 +5961,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-}
+    }
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -5970,7 +5979,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                 paramlayers.Add (param.rawName, param);
             }
         }
-    }
+}
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramlayers.IsEmpty ()) {
@@ -6005,7 +6014,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
 #endif
     return hasData;
-    }
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -6113,4 +6122,4 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     }
 #endif
     return flag_find;
-        }
+}
