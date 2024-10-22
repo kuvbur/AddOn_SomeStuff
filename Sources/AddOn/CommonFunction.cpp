@@ -10,14 +10,29 @@
 GS::UniString TextToQRCode (GS::UniString& text)
 {
     const qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText (text.ToCStr ().Get (), qrcodegen::QrCode::Ecc::MEDIUM);
-    GS::UniString qr_txt = GS::UniString::Printf ("QRCODESOMESTUFF %d;", qr.getSize ());
-    for (int y = 0; y < qr.getSize (); y++) {
-        std::bitset<256> b1 (qr.getSize ());
-        for (int x = 0; x < qr.getSize (); x++) {
-            b1.set (x, qr.getModule (x, y));
+    GS::UniString qr_txt = GS::UniString::Printf ("%d;", qr.getSize ());
+    for (int x = 0; x < qr.getSize (); x++) {
+        for (int y = 0; y < qr.getSize (); y += 4) {
+            std::bitset<4> b1 (0);
+            b1.set (0, qr.getModule (x, y));
+            b1.set (1, qr.getModule (x, y + 1));
+            b1.set (2, qr.getModule (x, y + 2));
+            b1.set (3, qr.getModule (x, y + 3));
+            int d = b1.to_ulong ();
+            if (d < 10) {
+                qr_txt = qr_txt + GS::UniString::Printf ("%d", d);
+            } else {
+                if (d == 10) qr_txt = qr_txt + "A";
+                if (d == 11) qr_txt = qr_txt + "B";
+                if (d == 12) qr_txt = qr_txt + "C";
+                if (d == 13) qr_txt = qr_txt + "D";
+                if (d == 14) qr_txt = qr_txt + "E";
+                if (d == 15) qr_txt = qr_txt + "F";
+            }
         }
-        qr_txt = qr_txt + GS::UniString::Printf ("%d=", b1.to_ulong ());
+        qr_txt = qr_txt + "=";
     }
+    //if (qr_txt.GetLength () > 2045) qr_txt = "ERROR: data Too long";
     return qr_txt;
 }
 
@@ -405,8 +420,8 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-        }
-    }
+            }
+            }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     msg = "SomeStuff addon: " + msg + "\n";
@@ -416,7 +431,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         msg = "== SMSTF ERR ==" + msg;
     }
     DBprnt (msg);
-}
+        }
 
 
 // --------------------------------------------------------------------
@@ -475,7 +490,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
         BMKillHandle ((GSHandle*) &selNeigs);
 #endif // AC_22
         return GS::Array<API_Guid> ();
-    }
+}
     GS::Array<API_Guid> guidArray;
 #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
@@ -491,7 +506,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
     }
 #endif // AC_22
     return guidArray;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
@@ -524,7 +539,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
 #endif
-        }
+    }
         long time_end = clock ();
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
@@ -534,9 +549,9 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-    } else if (!assertIfNoSel) {
-        function (APINULLGuid);
-    }
+} else if (!assertIfNoSel) {
+    function (APINULLGuid);
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -559,7 +574,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
     elementType = elem_head.typeID;
 #endif
     return err;
-}
+    }
 
 #if defined AC_26 || defined AC_27 || defined AC_28
 // -----------------------------------------------------------------------------
@@ -616,7 +631,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
                 name = name + attribsiffix;
             }
             return NoError;
-        }
+    }
 #endif
         API_PropertyGroup group;
         group.guid = definision.groupGuid;
@@ -626,7 +641,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
         } else {
             msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
         }
-    }
+}
     return error;
 }
 
@@ -647,7 +662,7 @@ void DeleteElementUserData (const API_Guid & elemguid)
         err = ACAPI_Element_DeleteUserData (&tElemHead);
 #endif
         msg_rep ("Del user data", " ", NoError, APINULLGuid);
-    }
+}
     BMKillHandle (&userData.dataHdl);
     GS::Array<API_Guid> setGuids;
     err = ACAPI_ElementSet_Identify (elemguid, &setGuids);
@@ -799,7 +814,7 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
         }
     };
     return false; // Не получилось зарезервировать
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1195,7 +1210,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo
@@ -1241,7 +1256,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #if defined(AC_27) || defined(AC_28)
     if (elemType == API_ExternalElemID) {
         return GetGDLParametersFromMemo (elemGuid, params);
-    }
+}
 #endif
     apiOwner.guid = elemGuid;
 #if defined AC_26 || defined AC_27 || defined AC_28
@@ -1281,7 +1296,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1314,8 +1329,8 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
-        }
     }
+}
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
