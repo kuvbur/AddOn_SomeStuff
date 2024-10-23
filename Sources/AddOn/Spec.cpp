@@ -810,6 +810,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
     GSErrCode err = NoError;
+#ifndef AC_22
     if (!favorite_name.IsEmpty ()) {
         API_Favorite favorite (favorite_name);
         favorite.memo.New ();
@@ -824,6 +825,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
             ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
         }
     }
+#endif
 #if defined AC_26 || defined AC_27 || defined AC_28
     element.header.type.typeID = API_ObjectID;
 #else
