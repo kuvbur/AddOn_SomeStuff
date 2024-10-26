@@ -638,13 +638,13 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
         description = partstring[0] + "}";
     }
     GS::UniString criteria = description.GetSubstring ('{', ';', 0);
-    if (criteria.Contains ("\"")) criteria = criteria.GetSubstring ('"', '"', 0);
-    criteria.Trim ();
-    rule.favorite_name = criteria;
     description = description.GetSubstring ('{', '}', 0);
     description.ReplaceAll (criteria + ";", "");
     description.Trim (')');
     description.Trim ();
+    if (criteria.Contains ("\"")) criteria = criteria.GetSubstring ('"', '"', 0);
+    criteria.Trim ();
+    rule.favorite_name = criteria;
     GS::Array<GS::UniString> paramss;
     // Разбивка на группы и итог
     GS::Array<GS::UniString> rulestring_summ;
