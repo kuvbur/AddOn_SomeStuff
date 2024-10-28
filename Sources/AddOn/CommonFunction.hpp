@@ -53,6 +53,8 @@ typedef struct {
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
+GS::UniString TextToQRCode (GS::UniString& text, int error_lvl);
+
 GS::UniString TextToQRCode (GS::UniString& text);
 
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid);
