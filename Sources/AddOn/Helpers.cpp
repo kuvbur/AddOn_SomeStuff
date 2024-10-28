@@ -771,10 +771,21 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
     }
 #endif
     if (!paramFrom.isValid) return false;
+    if (paramFrom.fromClassification && paramTo.fromClassification && paramFrom.val.guidval == APINULLGuid) {
+        return false;
+    }
+    if (paramFrom.fromClassification && paramTo.fromClassification) {
+        if (paramFrom.val.guidval != paramTo.val.guidval) {
+            paramTo.val = paramFrom.val;
+            paramTo.isValid = true;
+            return true;
+        } else {
+            return false;
+        }
+    }
     if (paramTo.isValid || paramTo.fromProperty || paramTo.fromPropertyDefinition) {
         if (stringformat.isEmpty) stringformat = paramTo.val.formatstring;
         if (stringformat.isEmpty) stringformat = paramFrom.val.formatstring;
-
         // Приводим к единому виду перед проверкой
         if (!stringformat.isEmpty) {
             // Если в правиле задана более высокая точность - нужно использовать значение до предыдущего округления.
@@ -3498,7 +3509,12 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                             if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
                             GS::UniString systemname = parambt.val.uniStringValue.ToLowerCase ();
                             API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, systemname);
-                            paramByType.Get (parambt.rawName).val.guidval = classguid;
+                            if (classguid != APINULLGuid && parambt.val.guidval == APINULLGuid) {
+                                paramByType.Get (parambt.rawName).val.guidval = classguid;
+                            } else {
+                                if (parambt.val.guidval != APINULLGuid) DBprnt ("Compare classification err - double class");
+                                if (classguid == APINULLGuid) DBprnt ("Compare classification err - empty class");
+                            }
                         }
                     }
                 }
