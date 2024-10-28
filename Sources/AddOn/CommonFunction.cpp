@@ -7,10 +7,27 @@
 #include    <limits>
 #include    <math.h>
 
-GS::UniString TextToQRCode (GS::UniString& text)
+GS::UniString TextToQRCode (GS::UniString& text, int error_lvl)
 {
-    const qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText (text.ToCStr ().Get (), qrcodegen::QrCode::Ecc::MEDIUM);
-    GS::UniString qr_txt = GS::UniString::Printf ("%d;", qr.getSize ());
+    GS::UniString qr_txt = "";
+    if (text.IsEmpty ()) return qr_txt;
+    qrcodegen::QrCode::Ecc lvl = qrcodegen::QrCode::Ecc::HIGH;
+    switch (error_lvl) {
+        case 1:
+            lvl = qrcodegen::QrCode::Ecc::LOW;
+            break;
+        case 2:
+            lvl = qrcodegen::QrCode::Ecc::MEDIUM;
+        case 3:
+            lvl = qrcodegen::QrCode::Ecc::QUARTILE;
+        case 4:
+            lvl = qrcodegen::QrCode::Ecc::HIGH;
+            break;
+        default:
+            break;
+    }
+    const qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText (text.ToCStr ().Get (), lvl);
+    qr_txt = GS::UniString::Printf ("%d;", qr.getSize ());
     for (int x = 0; x < qr.getSize (); x++) {
         for (int y = 0; y < qr.getSize (); y += 4) {
             std::bitset<4> b1 (0);
@@ -32,7 +49,30 @@ GS::UniString TextToQRCode (GS::UniString& text)
         }
         qr_txt = qr_txt + "=";
     }
-    //if (qr_txt.GetLength () > 2045) qr_txt = "ERROR: data Too long";
+    return qr_txt;
+}
+
+GS::UniString TextToQRCode (GS::UniString& text)
+{
+    GS::UniString qr_txt = "";
+    if (text.IsEmpty ()) return qr_txt;
+    try {
+        qr_txt = TextToQRCode (text, 4);
+    } catch (std::length_error) {
+        try {
+            qr_txt = TextToQRCode (text, 3);
+        } catch (std::length_error) {
+            try {
+                qr_txt = TextToQRCode (text, 2);
+            } catch (std::length_error) {
+                try {
+                    qr_txt = TextToQRCode (text, 1);
+                } catch (std::length_error) {
+                    qr_txt = "ERROR: data Too long";
+                }
+            }
+        }
+    }
     return qr_txt;
 }
 
@@ -421,7 +461,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
             }
-            }
+        }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     msg = "SomeStuff addon: " + msg + "\n";
@@ -431,7 +471,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         msg = "== SMSTF ERR ==" + msg;
     }
     DBprnt (msg);
-        }
+    }
 
 
 // --------------------------------------------------------------------
@@ -490,7 +530,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
         BMKillHandle ((GSHandle*) &selNeigs);
 #endif // AC_22
         return GS::Array<API_Guid> ();
-}
+    }
     GS::Array<API_Guid> guidArray;
 #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
@@ -506,7 +546,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
     }
 #endif // AC_22
     return guidArray;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
@@ -574,7 +614,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
     elementType = elem_head.typeID;
 #endif
     return err;
-    }
+}
 
 #if defined AC_26 || defined AC_27 || defined AC_28
 // -----------------------------------------------------------------------------
@@ -594,7 +634,7 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
         return true;
     }
     return false;
-}
+    }
 #else
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
@@ -738,7 +778,7 @@ void UnhideUnlockAllLayer (void)
             index = i;
 #endif
             UnhideUnlockLayer (index);
-        }
+    }
     }
     return;
 }
@@ -814,7 +854,7 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
         }
     };
     return false; // Не получилось зарезервировать
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -1256,7 +1296,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #if defined(AC_27) || defined(AC_28)
     if (elemType == API_ExternalElemID) {
         return GetGDLParametersFromMemo (elemGuid, params);
-}
+    }
 #endif
     apiOwner.guid = elemGuid;
 #if defined AC_26 || defined AC_27 || defined AC_28
@@ -1329,7 +1369,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
-    }
+}
 }
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
@@ -1547,9 +1587,9 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
         stringformat.Trim ('}');
         stringformat.Trim ();
         f = FormatStringFunc::ParseFormatString (stringformat);
-    }
+        }
     return f;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Обработка количества нулей и единиц измерения в имени свойства
