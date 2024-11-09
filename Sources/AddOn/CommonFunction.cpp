@@ -78,6 +78,7 @@ GS::UniString TextToQRCode (GS::UniString& text)
 
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 {
+    if (guid == APINULLGuid) return "";
     GS::UniString strguid = APIGuidToString (guid);
     if (strguid.IsEqual ("2E906CCE-9A42-4E49-AE45-193D0D709CC4")) return "BuildingMaterialProperties/Building Material CutFill";
     if (strguid.IsEqual ("FAF74D9D-3CD4-4A03-9840-A39DB757DB1C")) return "BuildingMaterialProperties/Building Material Density";
@@ -87,8 +88,7 @@ GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
     if (strguid.IsEqual ("294C063C-98D8-42B5-B2C1-C27DE7CAB756")) return "BuildingMaterialProperties/Building Material Thermal Conductivity";
     if (strguid.IsEqual ("F99C8A52-810A-4D01-A33A-AB5FDBA43A20")) return "BuildingMaterialProperties/Building Material Heat Capacity";
     if (strguid.IsEqual ("A01BCC22-D1FC-4CD8-AD34-95BBE73BDD5E")) return "BuildingMaterialProperties/Building Material Manufacturer";
-    if (strguid.IsEqual ("902756A0-71D1-402B-B639-640BA5837A95")) return "BuildingMaterialProperties/Building Material Name";
-
+    if (strguid.IsEqual ("A936C5CB-5126-4135-BD87-D2A46AEF5A07")) return "BuildingMaterialProperties/Building Material Name";
     return "";
 }
 
@@ -460,8 +460,8 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-            }
         }
+    }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     msg = "SomeStuff addon: " + msg + "\n";
@@ -471,7 +471,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         msg = "== SMSTF ERR ==" + msg;
     }
     DBprnt (msg);
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -579,7 +579,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
 #endif
-    }
+        }
         long time_end = clock ();
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
@@ -589,9 +589,9 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
-} else if (!assertIfNoSel) {
-    function (APINULLGuid);
-}
+    } else if (!assertIfNoSel) {
+        function (APINULLGuid);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -634,7 +634,7 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
         return true;
     }
     return false;
-    }
+}
 #else
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
@@ -671,7 +671,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
                 name = name + attribsiffix;
             }
             return NoError;
-    }
+        }
 #endif
         API_PropertyGroup group;
         group.guid = definision.groupGuid;
@@ -681,7 +681,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
         } else {
             msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
         }
-}
+    }
     return error;
 }
 
@@ -702,7 +702,7 @@ void DeleteElementUserData (const API_Guid & elemguid)
         err = ACAPI_Element_DeleteUserData (&tElemHead);
 #endif
         msg_rep ("Del user data", " ", NoError, APINULLGuid);
-}
+    }
     BMKillHandle (&userData.dataHdl);
     GS::Array<API_Guid> setGuids;
     err = ACAPI_ElementSet_Identify (elemguid, &setGuids);
@@ -778,7 +778,7 @@ void UnhideUnlockAllLayer (void)
             index = i;
 #endif
             UnhideUnlockLayer (index);
-    }
+        }
     }
     return;
 }
@@ -1250,7 +1250,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo
@@ -1336,7 +1336,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -1369,8 +1369,8 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
-}
-}
+        }
+    }
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
@@ -1587,9 +1587,9 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
         stringformat.Trim ('}');
         stringformat.Trim ();
         f = FormatStringFunc::ParseFormatString (stringformat);
-        }
-    return f;
     }
+    return f;
+}
 
 // -----------------------------------------------------------------------------
 // Обработка количества нулей и единиц измерения в имени свойства
