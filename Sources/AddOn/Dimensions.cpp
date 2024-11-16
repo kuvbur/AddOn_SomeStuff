@@ -104,7 +104,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
         } else {
             dimrule.pen_original = std::atoi (partstring_1[0].ToCStr ());
         }
-        if (partstring_1[1].IsEqual ("Delete_Wall")) {
+        if (partstring_1[1].IsEqual ("DeleteWall")) {
             dimrule.flag_change = true;
             dimrule.flag_deletewall = true;
             dimrule.pen_rounded = dimrule.pen_original;
@@ -114,6 +114,11 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
             dimrule.flag_change = true;
             dimrule.flag_reset = true;
             dimrule.pen_rounded = dimrule.pen_original;
+            return true;
+        }
+        if (partstring_1[1].IsEqual ("CheckCustom")) {
+            dimrule.flag_change = false;
+            dimrule.flag_custom = true;
             return true;
         }
         GS::Array<GS::UniString> partstring_2;
@@ -131,6 +136,11 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
                     dimrule.flag_reset = true;
                     return true;
                 }
+                if (partstring_2[2].IsEqual ("CheckCustom")) {
+                    dimrule.flag_change = false;
+                    dimrule.flag_custom = true;
+                    return true;
+                }
                 if (partstring_2[2].Contains ("{") && partstring_2[2].Contains ("}")) {
                     ParamDictValue paramDict;
                     GS::UniString expression = partstring_2[2];
@@ -142,7 +152,6 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
                 } else {
                     dimrule.flag_change = (std::atoi (partstring_2[2].ToCStr ()) > 0);
                 }
-
             }
             if (partstring_2.GetSize () == 4) {
                 if (partstring_2[3].IsEqual ("Delete_Wall")) {
@@ -205,10 +214,15 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
     short pen_original = element.dimension.defNote.notePen;
     short pen_rounded = 0;
     bool flag_change_rule = false;
-    bool find_rule = false;
     GS::UniString kstr = GS::UniString::Printf ("%d", pen_dimenstion);
-    if (pen_dimenstion > 0 && dimrules.ContainsKey (kstr)) find_rule = true;
-    if (!find_rule) {
+    GS::Array<DimRule> rules; //Массив найденных правил
+
+    if (pen_dimenstion > 0 && dimrules.ContainsKey (kstr)) {
+        DimRule d = dimrules.Get (kstr);
+        rules.Push (d);
+    }
+    // Если в файле только одно правило, и оно уже найдено - не смыслы запрашивать имя слоя
+    if (!(!rules.IsEmpty () && dimrules.GetSize () == 1)) {
         API_Attribute layer;
         BNZeroMemory (&layer, sizeof (API_Attribute));
         layer.header.typeID = API_LayerID;
@@ -222,21 +236,13 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
             const GS::UniString& regexpstring = *cIt->key;
 #endif
             if (layert.Contains (regexpstring)) {
-                kstr = regexpstring;
-                find_rule = true;
-                break;
+                DimRule d = dimrules.Get (regexpstring);
+                rules.Push (d);
             }
         }
-    }
-
+}
     // Нет подходящего привали - выходим
-    if (!find_rule) return err;
-    DimRule dimrule = dimrules[kstr];
-    pen_rounded = dimrule.pen_rounded;
-    flag_change_rule = dimrule.flag_change;
-    short pen = pen_rounded;
-    pen_original = pen_dimenstion; // Быстрофикс
-    bool flag_write = false;
+    if (rules.IsEmpty ()) return err;
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
@@ -245,79 +251,98 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
-    API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
-    for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
-        UInt32 flag_change = DIM_NOCHANGE;
-        UInt32 flag_highlight = DIM_NOCHANGE;
-        auto& dimElem = (*memo.dimElems)[k];
-        API_ElemTypeID elementType;
+    bool flag_write = false;
+    for (auto dimrule : rules) {
+        pen_rounded = dimrule.pen_rounded;
+        flag_change_rule = dimrule.flag_change;
+        short pen = pen_rounded;
+        pen_original = pen_dimenstion; // Быстрофикс
+        API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
+        for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
+            UInt32 flag_change = DIM_NOCHANGE;
+            UInt32 flag_highlight = DIM_NOCHANGE;
+            auto& dimElem = (*memo.dimElems)[k];
+            API_ElemTypeID elementType;
 #if defined AC_26 || defined AC_27 || defined AC_28
-        elementType = dimElem.base.base.type.typeID;
+            elementType = dimElem.base.base.type.typeID;
 #else
-        elementType = dimElem.base.base.typeID;
+            elementType = dimElem.base.base.typeID;
 #endif // AC_26
 
-        // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
-        if (dimElem.dimVal == 0 && elementType == API_ColumnID) {
-            ACAPI_DisposeElemMemoHdls (&memo);
-            return err;
-        };
-        if (dimElem.dimVal == 0) continue;
-        GS::UniString content = GS::UniString::Printf ("%s", dimElem.note.content);
-        API_Guid ref_elemGuid = dimElem.base.base.guid;
-        if (ref_elemGuid != bef_elemGuid) ref_elemGuid = APINULLGuid;
-        API_NoteContentType contentType = dimElem.note.contentType;
-        if (DimParse (dimElem.dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
-            if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
-            if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
-                flag_write = true;
-                (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
-                if ((*memo.dimElems)[k].note.contentUStr != nullptr)
-                    delete (*memo.dimElems)[k].note.contentUStr;
-                (*memo.dimElems)[k].note.contentUStr = new GS::UniString (content);
+            // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
+            if (dimElem.dimVal == 0 && elementType == API_ColumnID) {
+                ACAPI_DisposeElemMemoHdls (&memo);
+                return err;
+            };
+            if (dimElem.dimVal == 0) continue;
+            GS::UniString content = GS::UniString::Printf ("%s", dimElem.note.content);
+            API_Guid ref_elemGuid = dimElem.base.base.guid;
+            if (ref_elemGuid != bef_elemGuid) ref_elemGuid = APINULLGuid;
+            API_NoteContentType contentType = dimElem.note.contentType;
+            if (DimParse (dimElem.dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
+                if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
+                if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
+                    flag_write = true;
+                    (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
+                    if ((*memo.dimElems)[k].note.contentUStr != nullptr)
+                        delete (*memo.dimElems)[k].note.contentUStr;
+                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString (content);
+                }
+                if (flag_change == DIM_CHANGE_OFF && dimElem.note.contentType != API_NoteContent_Measured && flag_change_rule) {
+                    flag_write = true;
+                    (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
+                    if ((*memo.dimElems)[k].note.contentUStr != nullptr)
+                        delete (*memo.dimElems)[k].note.contentUStr;
+                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
+                }
+                if (flag_highlight == DIM_HIGHLIGHT_ON) pen = pen_rounded;
+                if (flag_highlight == DIM_HIGHLIGHT_OFF) pen = pen_original;
+                if (flag_highlight != DIM_NOCHANGE && dimElem.note.notePen != pen) {
+                    flag_write = true;
+                    (*memo.dimElems)[k].note.notePen = pen;
+                }
             }
-            if (flag_change == DIM_CHANGE_OFF && dimElem.note.contentType != API_NoteContent_Measured) {
+            // Отключение показа толщин стен
+            if (dimrule.flag_deletewall) {
+                // Текс был пустой, запись не планировалась - но это не стена. Возвращаем текст.
+                if (content.IsEmpty () && !flag_write && (elementType != API_WallID || ref_elemGuid == APINULLGuid)) {
+                    flag_write = true;
+                    (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
+                    if ((*memo.dimElems)[k].note.contentUStr != nullptr)
+                        delete (*memo.dimElems)[k].note.contentUStr;
+                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
+                }
+                // Текст не пустой и это стена
+                if (!content.IsEmpty () && elementType == API_WallID && ref_elemGuid != APINULLGuid) {
+                    flag_write = true;
+                    (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
+                    if ((*memo.dimElems)[k].note.contentUStr != nullptr)
+                        delete (*memo.dimElems)[k].note.contentUStr;
+                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
+                }
+            }
+            // Сброс пользовательского текста
+            if (dimrule.flag_reset && dimElem.note.contentType != API_NoteContent_Measured) {
                 flag_write = true;
+                (*memo.dimElems)[k].note.notePen = pen_original;
                 (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
                 if ((*memo.dimElems)[k].note.contentUStr != nullptr)
                     delete (*memo.dimElems)[k].note.contentUStr;
                 (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
             }
-            if (flag_highlight == DIM_HIGHLIGHT_ON) pen = pen_rounded;
-            if (flag_highlight == DIM_HIGHLIGHT_OFF) pen = pen_original;
-            if (flag_highlight != DIM_NOCHANGE && dimElem.note.notePen != pen) {
-                flag_write = true;
-                (*memo.dimElems)[k].note.notePen = pen;
+            // Проверка перебитых размеров
+            if (dimrule.flag_custom) {
+                if (contentType == API_NoteContent_Custom && dimElem.note.notePen != pen_rounded) {
+                    flag_write = true;
+                    (*memo.dimElems)[k].note.notePen = pen_rounded;
+                }
+                if (contentType == API_NoteContent_Measured && dimElem.note.notePen != pen_original && !flag_write) {
+                    flag_write = true;
+                    (*memo.dimElems)[k].note.notePen = pen_original;
+                }
             }
+            bef_elemGuid = dimElem.base.base.guid;
         }
-        // Отключение показа толщин стен
-        if (dimrule.flag_deletewall) {
-            // Текс был пустой, запись не планировалась - но это не стена. Возвращаем текст.
-            if (content.IsEmpty () && !flag_write && (elementType != API_WallID || ref_elemGuid == APINULLGuid)) {
-                flag_write = true;
-                (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
-                if ((*memo.dimElems)[k].note.contentUStr != nullptr)
-                    delete (*memo.dimElems)[k].note.contentUStr;
-                (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
-            }
-            // Текст не пустой и это стена
-            if (!content.IsEmpty () && elementType == API_WallID && ref_elemGuid != APINULLGuid) {
-                flag_write = true;
-                (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
-                if ((*memo.dimElems)[k].note.contentUStr != nullptr)
-                    delete (*memo.dimElems)[k].note.contentUStr;
-                (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
-            }
-        }
-        // Сброс пользовательского текста
-        if (dimrule.flag_reset && dimElem.note.contentType != API_NoteContent_Measured) {
-            flag_write = true;
-            (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
-            if ((*memo.dimElems)[k].note.contentUStr != nullptr)
-                delete (*memo.dimElems)[k].note.contentUStr;
-            (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
-        }
-        bef_elemGuid = dimElem.base.base.guid;
     }
     if (flag_write) {
         API_Element mask;

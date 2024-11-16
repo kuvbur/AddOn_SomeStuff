@@ -103,12 +103,12 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             break;
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
+            DimRoundAll (syncSettings);
             break;
         default:
             break;
     }
     (void) param;
-    DimRoundAll (syncSettings);
     return NoError;
 }	// ProjectEventHandlerProc
 

@@ -3731,7 +3731,7 @@ void ParamHelpers::GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     }
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_attrib");
     DBprnt ("  GetAllAttributeToParamDict end");
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
