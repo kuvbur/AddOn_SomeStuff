@@ -97,17 +97,38 @@ void DBprnt (GS::UniString msg, GS::UniString reportString)
 {
 #if defined(TESTING)
     if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") || reportString.Contains ("ERROR")) {
+#if defined(AC_22)
+        DBPrintf ("== ERROR == ");
+#else
         DBPrint ("== ERROR == ");
+#endif
     }
+#if defined(AC_22)
+    DBPrintf ("== SMSTF == ");
+#else
     DBPrint ("== SMSTF == ");
+#endif
     std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
+#if defined(AC_22)
+    DBPrintf (var_str.c_str ());
+#else
     DBPrint (var_str.c_str ());
+#endif
     if (!reportString.IsEmpty ()) {
-        DBPrint (" : ");
         std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
+#if defined(AC_22)
+        DBPrintf (" : ");
+        DBPrintf (reportString_str.c_str ());
+#else
+        DBPrint (" : ");
         DBPrint (reportString_str.c_str ());
+#endif
     }
+#if defined(AC_22)
+    DBPrintf ("\n");
+#else
     DBPrint ("\n");
+#endif
 #else
     UNUSED_VARIABLE (msg);
     UNUSED_VARIABLE (reportString);

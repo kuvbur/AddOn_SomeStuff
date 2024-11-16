@@ -831,6 +831,9 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
 #else
     element.header.typeID = API_ObjectID;
 #endif
+#ifdef AC_22
+    element.header.variationID = APIVarId_Object;
+#endif
     err = ACAPI_Element_GetDefaults (&element, &memo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -894,6 +897,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 if (err != NoError) {
                     ACAPI_DisposeElemMemoHdls (&memo);
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_GetDefaults", err, APINULLGuid);
+                    continue;
                 }
                 bool flag_find_row = GetSizePlaceElement (element, memo, dx, dy);
                 // Запись параметров
@@ -1033,7 +1037,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elemsheader[i], 0);
 #endif
         if (err != NoError) msg_rep ("Spec::PlaceElements", "APIAny_RunGDLParScriptID", err, APINULLGuid);
-    }
+}
     return NoError;
 }
 }

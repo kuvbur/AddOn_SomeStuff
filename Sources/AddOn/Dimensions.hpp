@@ -23,6 +23,7 @@ typedef struct
     bool	flag_change = false;
     bool	flag_deletewall = false;
     bool	flag_reset = false;
+    bool	flag_custom = false;
     GS::UniString expression = "";
     GS::UniString layer = "";
     ParamDictValue paramDict;
