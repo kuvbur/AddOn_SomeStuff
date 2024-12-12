@@ -26,6 +26,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
+
+      - name: Setup Xcode
+        run: sudo xcode-select -s /Applications/Xcode_14.2.app
           
       - name: Install dependencies
         run: |
