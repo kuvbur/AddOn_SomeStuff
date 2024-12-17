@@ -288,7 +288,8 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                     GS::Int32 change = *l.value;
                     GS::UniString id = *l.key;
 #endif
-                    std::string s = id.ToCStr (0, MaxUSize, GChCode).Get ();
+                    GSCharCode chcode = GetCharCode (id);
+                    std::string s = id.ToCStr (0, MaxUSize, chcode).Get ();
                     abc_changes[s] = id;
                 }
                 for (std::map<std::string, GS::UniString, doj::alphanum_less<std::string> >::iterator k = abc_changes.begin (); k != abc_changes.end (); ++k) {
@@ -386,7 +387,8 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         Changes& change = *ch.value;
         GS::UniString id = *ch.key;
 #endif
-        std::string s = change.changeId.ToCStr (0, MaxUSize, GChCode).Get ();
+        GSCharCode chcode = GetCharCode (change.changeId);
+        std::string s = change.changeId.ToCStr (0, MaxUSize, chcode).Get ();
         abc_changes[s] = id;
     }
     UInt32 n_prop = layout_note_guid.GetSize ();

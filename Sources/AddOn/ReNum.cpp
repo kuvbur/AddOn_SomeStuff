@@ -522,14 +522,20 @@ bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramTo
                 std::string delimetr = "";
                 if (params.ContainsKey (rule.delimetr)) {
                     ParamValue param = params.Get (rule.delimetr);
-                    if (param.isValid) delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
+                    if (param.isValid) {
+                        GSCharCode chcode = GetCharCode (param.val.uniStringValue);
+                        delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+                    }
                 }
 
                 // Получаем критерий, если он есть
                 std::string criteria = "";
                 if (params.ContainsKey (rule.criteria)) {
                     ParamValue param = params.Get (rule.criteria);
-                    if (param.isValid) criteria = param.val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
+                    if (param.isValid) {
+                        GSCharCode chcode = GetCharCode (param.val.uniStringValue);
+                        criteria = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+                    }
                 }
                 if (state != RENUM_SKIP) {
                     if (delimetrList.count (delimetr) == 0) delimetrList[delimetr] = {};

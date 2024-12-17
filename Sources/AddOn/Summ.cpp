@@ -323,7 +323,8 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
         if (paramToReadelem.ContainsKey (rule.elemts[i])) {
             ParamDictValue params = paramToReadelem.Get (rule.elemts[i]);
             if (!rule.criteria.IsEmpty () && params.ContainsKey (rule.criteria)) {
-                std::string criteria = params.Get (rule.criteria).val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
+                GSCharCode chcode = GetCharCode (params.Get (rule.criteria).val.uniStringValue);
+                std::string criteria = params.Get (rule.criteria).val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
                 criteriaList[criteria].inx.Push (i);
             } else {
                 criteriaList["all"].inx.Push (i);

@@ -3769,7 +3769,7 @@ void ParamHelpers::GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     }
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_attrib");
     DBprnt ("  GetAllAttributeToParamDict end");
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
@@ -4904,14 +4904,16 @@ void ParamHelpers::Array2ParamValue (GS::Array<ParamValueData>&pvalue, ParamValu
             }
         }
         if (array_format_out == ARRAY_MAX) {
-            std::string s = pval.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
-            std::string p = param_string.ToCStr (0, MaxUSize, GChCode).Get ();
-            if (doj::alphanum_comp (s, p) > 0) param_string = GS::UniString (s.c_str (), GChCode);
+            GSCharCode chcode = GetCharCode (pval.uniStringValue);
+            std::string s = pval.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+            std::string p = param_string.ToCStr (0, MaxUSize, chcode).Get ();
+            if (doj::alphanum_comp (s, p) > 0) param_string = GS::UniString (s.c_str (), chcode);
         }
         if (array_format_out == ARRAY_MIN) {
-            std::string s = pval.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
-            std::string p = param_string.ToCStr (0, MaxUSize, GChCode).Get ();
-            if (doj::alphanum_comp (s, p) < 0) param_string = GS::UniString (s.c_str (), GChCode);
+            GSCharCode chcode = GetCharCode (pval.uniStringValue);
+            std::string s = pval.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+            std::string p = param_string.ToCStr (0, MaxUSize, chcode).Get ();
+            if (doj::alphanum_comp (s, p) < 0) param_string = GS::UniString (s.c_str (), chcode);
         }
     }
     pvalrezult = pvalue.Get (0);
@@ -5219,7 +5221,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     }
 
     pvalue.val.uniStringValue = PropertyHelpers::ToString (property);
-    std::string var = pvalue.val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
+    //std::string var = pvalue.val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
     FormatStringDict formatstringdict;
     switch (property.definition.valueType) {
         case API_PropertyIntegerValueType:
