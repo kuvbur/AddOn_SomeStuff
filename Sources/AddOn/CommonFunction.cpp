@@ -208,6 +208,8 @@ Int32 isEng ()
     err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
 #endif // AC_27
     if (err != NoError) return 0;
+    if (AppInfo.language.IsEqual ("RUS")) CHSetDefaultCharCode (CC_Cyrillic);
+    if (AppInfo.language.IsEqual ("KOR")) CHSetDefaultCharCode (CC_Korean);
     if (!AppInfo.language.IsEqual ("RUS")) return 1000;
     return 0;
 }
@@ -949,11 +951,12 @@ bool UniStringToDouble (const GS::UniString & var, double& x)
     GS::UniString var_clear = var;
     var_clear.Trim ();
     var_clear.ReplaceAll (",", ".");
-    std::string var_str = var_clear.ToCStr (0, MaxUSize, GChCode).Get ();
+    GSCharCode chcode = GetCharCode (var);
+    std::string var_str = var_clear.ToCStr (0, MaxUSize, chcode).Get ();
     int n = sscanf (var_str.c_str (), "%lf", &x);
     if (n <= 0) {
         var_clear.ReplaceAll (".", ",");
-        var_str = var_clear.ToCStr (0, MaxUSize, GChCode).Get ();
+        var_str = var_clear.ToCStr (0, MaxUSize, chcode).Get ();
         n = sscanf (var_str.c_str (), "%lf", &x);
     }
     return n > 0;
@@ -1089,6 +1092,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
         baddelim = ".";
         delim = ",";
     }
+    GSCharCode chcode = GetCharCode (unistring_expression);
     while (unistring_expression.Contains ('<') && unistring_expression.Contains ('>') && flag_change) {
         GS::UniString expression_old = unistring_expression;
         part = unistring_expression.GetSubstring ('<', '>', 0);
@@ -1100,7 +1104,7 @@ bool EvalExpression (GS::UniString & unistring_expression)
         typedef exprtk::parser<T>       parser_t;
         part_clean = part;
         if (part_clean.Contains (baddelim)) part_clean.ReplaceAll (baddelim, delim);
-        std::string expression_string (part_clean.ToCStr (0, MaxUSize, GChCode).Get ());
+        std::string expression_string (part_clean.ToCStr (0, MaxUSize, chcode).Get ());
         expression_t expression;
         parser_t parser;
         parser.compile (expression_string, expression);
@@ -1169,21 +1173,63 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
         partstring.Push (instring);
         return 1;
     }
+    bool findecode = true;
+    GSCharCode chcode = GetCharCode (instring, findecode);
+    GSCharCode chcode_ = chcode;
     GS::Array<GS::UniString> tpartstring;
     UInt32 n = StringSplt (instring, delim, tpartstring);
-    std::map<std::string, int, doj::alphanum_less<std::string> > unic = {};
+    std::map<std::string, GSCharCode, doj::alphanum_less<std::string> > unic = {};
     for (UInt32 i = 0; i < n; i++) {
-        std::string s = tpartstring[i].ToCStr (0, MaxUSize, GChCode).Get ();
-        unic[s];
+        if (!findecode) chcode_ = GetCharCode (tpartstring[i]);
+        std::string s = tpartstring[i].ToCStr (0, MaxUSize, chcode_).Get ();
+        unic[s] = chcode_;
     }
     UInt32 nout = 0;
-    for (std::map<std::string, int, doj::alphanum_less<std::string> >::iterator k = unic.begin (); k != unic.end (); ++k) {
+    for (std::map<std::string, GSCharCode, doj::alphanum_less<std::string> >::iterator k = unic.begin (); k != unic.end (); ++k) {
         std::string s = k->first;
-        GS::UniString unis = GS::UniString (s.c_str (), GChCode);
+        chcode_ = k->second;
+        GS::UniString unis = GS::UniString (s.c_str (), chcode_);
         partstring.Push (unis);
         nout = nout + 1;
     }
     return nout;
+}
+
+GSCharCode GetCharCode (const GS::UniString & instring)
+{
+    bool findecode = true;
+    return GetCharCode (instring, findecode);
+}
+
+GSCharCode GetCharCode (const GS::UniString & instring, bool& findecode)
+{
+    findecode = true;
+#ifdef PK_1
+    return CC_Cyrillic;
+#endif
+    if (ProbeCharCode (instring, CC_Cyrillic)) return CC_Cyrillic;
+    if (ProbeCharCode (instring, CC_Korean)) return CC_Korean;
+    if (ProbeCharCode (instring, CC_WestEuropean)) return CC_WestEuropean;
+    if (ProbeCharCode (instring, CC_EastEuropean)) return CC_EastEuropean;
+    if (ProbeCharCode (instring, CC_Greek)) return CC_Greek;
+    if (ProbeCharCode (instring, CC_Turkish)) return CC_Turkish;
+    if (ProbeCharCode (instring, CC_Hebrew)) return CC_Hebrew;
+    if (ProbeCharCode (instring, CC_Arabic)) return CC_Arabic;
+    if (ProbeCharCode (instring, CC_Thai)) return CC_Thai;
+    if (ProbeCharCode (instring, CC_Japanese)) return CC_Japanese;
+    if (ProbeCharCode (instring, CC_TradChinese)) return CC_TradChinese;
+    if (ProbeCharCode (instring, CC_SimpChinese)) return CC_SimpChinese;
+    if (ProbeCharCode (instring, CC_Symbol)) return CC_Symbol;
+    findecode = false;
+    return CC_Cyrillic;
+}
+
+bool ProbeCharCode (const GS::UniString & instring, GSCharCode chcode)
+{
+    std::string s = instring.ToCStr (0, MaxUSize, chcode).Get ();
+    GS::UniString unis = GS::UniString (s.c_str (), chcode);
+    bool b = unis.IsEqual (instring);
+    return b;
 }
 
 
@@ -1271,7 +1317,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo
@@ -1333,7 +1379,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-    }
+}
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -1389,9 +1435,9 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 #endif
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
-            }
         }
     }
+}
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
@@ -1559,7 +1605,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 #endif
     if (err != NoError) {
         return false;
-    }
+}
     c->x = pointInfo.pos.x;
     c->y = pointInfo.pos.y;
     return true;

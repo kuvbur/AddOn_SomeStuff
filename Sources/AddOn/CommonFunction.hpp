@@ -37,7 +37,8 @@ typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByN
 
 
 // Структура для хранения формата перевода чисел в строку и округления чисел
-typedef struct {
+typedef struct
+{
     int n_zero = 3; //Количество нулей после запятой
     GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
     bool needRound = false; //Использовать в расчётах округлённые значения
@@ -227,6 +228,12 @@ GS::UniString StringUnic (const GS::UniString& instring, const GS::UniString& de
 // -----------------------------------------------------------------------------
 UInt32 StringSpltUnic (const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 
+GSCharCode GetCharCode (const GS::UniString& instring);
+
+GSCharCode GetCharCode (const GS::UniString& instring, bool& findecode);
+
+bool ProbeCharCode (const GS::UniString& instring, GSCharCode chcode);
+
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
@@ -266,33 +273,34 @@ API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const  API_Tranmat& tm);
 Point2D GetWordPoint2DTM (const Point2D vtx, const  API_Tranmat& tm);
 bool ClickAPoint (const char* prompt, Point2D* c);
 
-namespace FormatStringFunc {
-    FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
-    // -----------------------------------------------------------------------------
-    // Обработка количества нулей и единиц измерения в имени свойства
-    // Удаляет из имени paramName найденные единицы измерения
-    // Возвращает строку для скармливания функции NumToStig
-    // -----------------------------------------------------------------------------
-    GS::UniString GetFormatString (GS::UniString& paramName);
+namespace FormatStringFunc
+{
+FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
+// -----------------------------------------------------------------------------
+// Обработка количества нулей и единиц измерения в имени свойства
+// Удаляет из имени paramName найденные единицы измерения
+// Возвращает строку для скармливания функции NumToStig
+// -----------------------------------------------------------------------------
+GS::UniString GetFormatString (GS::UniString& paramName);
 
-    // -----------------------------------------------------------------------------
-    // Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
-    // -----------------------------------------------------------------------------
-    FormatStringDict GetFotmatStringForMeasureType ();
+// -----------------------------------------------------------------------------
+// Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
+// -----------------------------------------------------------------------------
+FormatStringDict GetFotmatStringForMeasureType ();
 
-    // -----------------------------------------------------------------------------
-    // Извлекает из строки информацио о единицах измерении и округлении
-    // -----------------------------------------------------------------------------
-    FormatString ParseFormatString (const GS::UniString& stringformat);
+// -----------------------------------------------------------------------------
+// Извлекает из строки информацио о единицах измерении и округлении
+// -----------------------------------------------------------------------------
+FormatString ParseFormatString (const GS::UniString& stringformat);
 
-    // -----------------------------------------------------------------------------
-    // Переводит число в строку согласно настройкам строки-формата
-    // -----------------------------------------------------------------------------
-    GS::UniString NumToString (const double& var, const FormatString& stringformat);
+// -----------------------------------------------------------------------------
+// Переводит число в строку согласно настройкам строки-формата
+// -----------------------------------------------------------------------------
+GS::UniString NumToString (const double& var, const FormatString& stringformat);
 
-    void ReplaceMeters (GS::UniString& formatstring);
+void ReplaceMeters (GS::UniString& formatstring);
 
-    void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
+void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
 
 }
 #endif
