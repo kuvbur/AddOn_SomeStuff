@@ -25,7 +25,7 @@
 #define ADDZEROS 1	  // Добавлять нули с учётом разбивки
 #define ADDMAXZEROS 2 // Добавлять нули по максимальному количеству без учёта разбивки
 #define ADDSPACE 3	  // Добавлять пробелы с учётом разбивки
-#define ADDMAXSPACE 4
+#define ADDMAXSPACE 4 // Добавлять пробелы по максимальному количеству без учёта разбивки
 
 class RenumPos
 {
@@ -79,7 +79,7 @@ public:
         this->setStr ();
     }
 
-    void FormatToMax (RenumPos& pos, short nulltype)
+    void FormatToMax (RenumPos& pos, short nulltype, int nullcount)
     {
         // Длина от начала строки до конца числа должна быть как у pos
         // Для заполнения используем либо нули, либо пробелы
@@ -94,6 +94,9 @@ public:
             npos = pos.prefix.size () + std::to_string (pos.numpos).size ();
         } else {
             npos = pos.strpos.size ();
+        }
+        if (nullcount > 0 && npos < nullcount) {
+            npos = nullcount;
         }
         if (npos > nthis) {
             size_t nadd = npos - nthis;
@@ -179,6 +182,7 @@ typedef struct
     GS::UniString criteria = "";   // Описание свойства-критерия
     GS::UniString delimetr = "";   // Описание свойства-разбивки
     short nulltype = NOZEROS;	   // Тип постановки нулей в позиции
+    int nullcount = 0;             // Количество нулей, если задано жёское количество
     GS::Array<API_Guid> elemts;	   // Массив элементов
     API_Guid guid = APINULLGuid;   // GUID свойства с правилом
 } RenumRule;

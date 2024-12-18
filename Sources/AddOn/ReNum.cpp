@@ -229,10 +229,19 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams,
                     int nparam = StringSplt (paramName, ";", partstring);
                     rawNameposition = rawNameposition + partstring[0] + "}";
                     if (nparam > 1) {
-                        if (partstring[1] == "null") rulecritetia.nulltype = ADDZEROS;
-                        if (partstring[1] == "allnull") rulecritetia.nulltype = ADDMAXZEROS;
-                        if (partstring[1] == "space") rulecritetia.nulltype = ADDSPACE;
-                        if (partstring[1] == "allspace") rulecritetia.nulltype = ADDMAXSPACE;
+                        if (partstring[1].Contains ("null")) rulecritetia.nulltype = ADDZEROS;
+                        if (partstring[1].Contains ("allnull")) rulecritetia.nulltype = ADDMAXZEROS;
+                        if (partstring[1].Contains ("space")) rulecritetia.nulltype = ADDSPACE;
+                        if (partstring[1].Contains ("allspace")) rulecritetia.nulltype = ADDMAXSPACE;
+                        // Добавление нужного количества знаков
+                        if (rulecritetia.nulltype != NOZEROS && partstring[1].Contains ("_")) {
+                            GS::Array<GS::UniString> partstring_;
+                            if (StringSplt (partstring[1], "_", partstring_) > 0) {
+                                double nullcount = 0;
+                                if (UniStringToDouble (partstring_[0], nullcount)) rulecritetia.nullcount = (int) nullcount;
+                            }
+
+                        }
                     };
                 } else {
                     rawNameposition = rawNameposition + paramName + "}";
@@ -464,7 +473,7 @@ void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, Par
                     std::string criteria = k->first;
                     GS::Array<RenumPos> eleminpos = k->second.elements;
                     RenumPos pos = k->second.mostFrequentPos;
-                    pos.FormatToMax (maxposdelim, rule.nulltype);
+                    pos.FormatToMax (maxposdelim, rule.nulltype, rule.nullcount);
                     ParamValue posvalue = pos.ToParamValue (rawname_position);
                     for (UInt32 j = 0; j < eleminpos.GetSize (); j++) {
                         ParamValue paramposition = paramToReadelem.Get (eleminpos[j].guid).Get (rawname_position);
