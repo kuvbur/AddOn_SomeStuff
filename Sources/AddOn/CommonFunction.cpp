@@ -208,8 +208,6 @@ Int32 isEng ()
     err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
 #endif // AC_27
     if (err != NoError) return 0;
-    if (AppInfo.language.IsEqual ("RUS")) CHSetDefaultCharCode (CC_Cyrillic);
-    if (AppInfo.language.IsEqual ("KOR")) CHSetDefaultCharCode (CC_Korean);
     if (!AppInfo.language.IsEqual ("RUS")) return 1000;
     return 0;
 }
@@ -483,8 +481,8 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
+            }
         }
-    }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     msg = "SomeStuff addon: " + msg + "\n";
@@ -494,7 +492,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         msg = "== SMSTF ERR ==" + msg;
     }
     DBprnt (msg);
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -566,7 +564,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
-    }
+}
 #endif // AC_22
     return guidArray;
 }
@@ -1317,7 +1315,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo
@@ -1379,7 +1377,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-}
+    }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -1403,7 +1401,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1435,9 +1433,9 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 #endif
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
+            }
         }
     }
-}
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
@@ -1605,7 +1603,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 #endif
     if (err != NoError) {
         return false;
-}
+    }
     c->x = pointInfo.pos.x;
     c->y = pointInfo.pos.y;
     return true;

@@ -49,7 +49,7 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
 
 void Do_ElementMonitor (bool& syncMon);
 
-void SetPaletteMenuText (short paletteItemInd);
+void SetPaletteMenuText (short paletteItemInd, Int32& bisEng);
 
 void MenuSetState (SyncSettings& syncSettings);
 
