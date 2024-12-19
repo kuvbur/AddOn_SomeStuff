@@ -321,12 +321,12 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
 
         shutil.copy(
             sourceFolder / f'{addOnName}.apx',
-            packageFolder / f'{addOnName}_{version}{subversion}.apx',
+            packageFolder / f'{addOnName}.apx',
         )
         if configuration == 'Debug':
             shutil.copy(
                 sourceFolder / f'{addOnName}.pdb',
-                packageFolder / f'{addOnName}_{version}{subversion}.pdb',
+                packageFolder / f'{addOnName}.pdb',
             )
 
     elif platformName == 'MAC':
