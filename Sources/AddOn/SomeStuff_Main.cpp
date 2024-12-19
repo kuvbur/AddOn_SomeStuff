@@ -262,19 +262,20 @@ void MenuSetState (SyncSettings & syncSettings)
     MenuItemCheckAC (Menu_widoS, syncSettings.widoS);
     MenuItemCheckAC (Menu_objS, syncSettings.objS);
     MenuItemCheckAC (Menu_cwallS, syncSettings.cwallS);
-    if (isEng () > 0) {
+    Int32 bisEng = isEng ();
+    if (bisEng > 0) {
         for (UInt32 i = 0; i < 14; i++) {
-            SetPaletteMenuText (i);
+            SetPaletteMenuText (i, bisEng);
         }
     }
 }
 
-void SetPaletteMenuText (short paletteItemInd)
+void SetPaletteMenuText (short paletteItemInd, Int32 & bisEng)
 {
     API_MenuItemRef     itemRef;
     BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
     GS::UniString itemStr;
-    itemStr = RSGetIndString (ID_ADDON_PROMT + isEng (), paletteItemInd + 1, ACAPI_GetOwnResModule ());
+    itemStr = RSGetIndString (ID_ADDON_PROMT + bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = paletteItemInd;
 #if defined(AC_27) || defined(AC_28)
