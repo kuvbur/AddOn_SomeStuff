@@ -1258,3 +1258,140 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     }
     return true;
 }
+
+void SyncSetSubelement (SyncSettings& syncSettings)
+{
+    GSErrCode err = NoError;
+    GS::UniString fmane = "SyncSetSubelement";
+    GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, false);
+    if (guidArray.IsEmpty ()) return;
+    API_Element		element;
+    BNZeroMemory (&element, sizeof (API_Element));
+    if (!ClickAnElem ("Click an elem", API_ZombieElemID, nullptr, &element.header.typeID, &element.header.guid)) {
+        return;
+    }
+    if (!IsElementEditable (element.header.guid, syncSettings, false)) return;
+    GS::Array<API_Guid> exsistguid_linkTo;
+    err = ACAPI_Element_GetLinks (element.header.guid, &exsistguid_linkTo);
+    if (err != NoError) {
+        msg_rep ("SyncSetSubelement", "ACAPI_Element_GetLinks", err, element.header.guid);
+        return;
+    }
+    ParamDictValue propertyParams;
+    err = ACAPI_CallUndoableCommand ("SetSubelement",
+            [&]() -> GSErrCode {
+        if (!exsistguid_linkTo.IsEmpty ()) {
+            for (UInt32 i = 0; i < exsistguid_linkTo.GetSize (); i++) {
+                err = ACAPI_Element_Unlink (element.header.guid, exsistguid_linkTo[i]);
+                if (err != NoError) {
+                    msg_rep ("SyncSetSubelement", "ACAPI_Element_Unlink", err, exsistguid_linkTo[i]);
+                    return err;
+                }
+            }
+        }
+        GSFlags linkflag = 0;
+        err = SyncSetSubelementScope (element.header, guidArray, linkflag, propertyParams);
+        if (linkflag > 0) {
+            for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+                err = ACAPI_Element_Link (element.header.guid, guidArray[i], linkflag);
+                if (err != NoError) {
+                    return err;
+                }
+            }
+        }
+        SyncLabelScope (element.header.guid, propertyParams);
+        return err;
+    });
+}
+
+GSErrCode SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Array<API_Guid>& guid_linkTo, GSFlags& linkflag, ParamDictValue& propertyParams)
+{
+    GSErrCode err = NoError;
+    API_ElemTypeID elementType;
+#if defined AC_26 || defined AC_27 || defined AC_28
+    elementType = elemhead_linkFrom.type.typeID;
+#else
+    elementType = elemhead_linkFrom.typeID;
+#endif
+    if (elementType == API_LabelID) {
+        ParamDictValue params;
+        ClassificationFunc::SystemDict systemdict;
+        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_1");
+        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_2");
+        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_3");
+        ParamHelpers::Read (elemhead_linkFrom.guid, params, propertyParams, systemdict);
+        for (UInt32 i = 0; i < guid_linkTo.GetSize (); i++) {
+            GS::UniString name = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
+            if (params.ContainsKey (name)) {
+                if (params.Get (name).isValid) {
+                    params.Get (name).val.uniStringValue = APIGuid2GSGuid (guid_linkTo[i]).ToUniString ();
+                } else {
+                    return err;
+                }
+            } else {
+                return err;
+            }
+        }
+        ParamHelpers::Write (elemhead_linkFrom.guid, params);
+        linkflag = 1;
+        return err;
+    }
+    return err;
+}
+
+void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams)
+{
+    GSErrCode err = NoError;
+    err = ACAPI_CallUndoableCommand ("SetSubelement",
+            [&]() -> GSErrCode {
+        SyncLabelScope (guid, propertyParams);
+        return NoError;
+    });
+}
+
+void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams)
+{
+    API_Guid elemGuidfrom_1 = APINULLGuid;
+    API_Guid elemGuidfrom_2 = APINULLGuid;
+    API_Guid elemGuidfrom_3 = APINULLGuid;
+    GSErrCode err = NoError;
+    ParamDictValue params;
+    ClassificationFunc::SystemDict systemdict;
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_1");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_2");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_3");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subtext_1");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subtext_2");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subtext_3");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_property_name");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_property_guid");
+    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_read");
+    ParamHelpers::Read (guid, params, propertyParams, systemdict);
+    if (!params.Get ("{@gdl:somestuff_read}").isValid || !params.Get ("{@gdl:somestuff_read}").val.boolValue) return;
+    GS::Array<API_Guid> somestuff_subguids;
+    //for (UInt32 i = 0; i < 3; i++) {
+    //    API_Guid
+    //    GS::UniString name_guid = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
+    //    if (params.Get (name_guid).isValid && !params.Get (name_guid).val.uniStringValue.IsEmpty()) {
+    //        elemGuidfrom_1 = APIGuidFromString (propertyParams.Get ("{@gdl:somestuff_subguid_1}").val.uniStringValue.ToCStr ());
+    //    }
+    //}
+
+
+
+    elemGuidfrom_1 = APIGuidFromString (propertyParams.Get ("{@gdl:somestuff_subguid_1}").val.uniStringValue.ToCStr ());
+    if (elemGuidfrom_1 == APINULLGuid) return;
+
+    if (params.Get ("{@gdl:somestuff_property_name}").val.uniStringValue.IsEmpty () && params.Get ("{@gdl:somestuff_property_guid}").val.uniStringValue.IsEmpty ()) return;
+    if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+
+    ParamDictValue paramsread;
+
+    //if () {
+    //    API_PropertyDefinition definition;
+    //    definition.guid = guid;
+    //    err = ACAPI_Property_GetPropertyDefinition (definition);
+    //}
+
+    return;
+}

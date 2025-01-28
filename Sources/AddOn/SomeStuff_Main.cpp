@@ -346,6 +346,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case SetRevision_CommandID:
                     Revision::SetRevision ();
                     break;
+                case SetSub_CommandID:
+                    SyncSetSubelement (syncSettings);
+                    break;
 #ifdef PK_1
                 case AutoList_CommandID:
                     AutoFunc::KM_ListUpdate ();
