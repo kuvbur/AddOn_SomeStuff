@@ -34,8 +34,7 @@
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
-typedef struct
-{
+typedef struct {
     GS::UniString paramNameFrom = "";
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
@@ -46,8 +45,7 @@ typedef struct
     int syncdirection = 0;
 } SyncRule;
 
-typedef struct
-{
+typedef struct {
     API_Guid guidTo = APINULLGuid;
     API_Guid guidFrom = APINULLGuid;
     ParamValue paramFrom;
@@ -143,5 +141,13 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname);
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
 bool SyncString (const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat, bool syncall, bool synccoord, bool syncclass);
+
+void SyncSetSubelement (SyncSettings& syncSettings);
+
+GSErrCode SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Array<API_Guid>& guid_linkTo, GSFlags& linkflag, ParamDictValue& propertyParams);
+
+void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams);
+
+void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams);
 
 #endif

@@ -9,6 +9,7 @@
 
 namespace AutoFunc
 {
+
 // -----------------------------------------------------------------------------
 // Ищет в массиве отрезок, начало или конец которого находятся возле точки start
 // Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
@@ -1047,7 +1048,6 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams); if (err != NoError) return err;
     err = ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr); if (err != NoError) return err;
 #endif
-
     Int32 inDim1 = (*apiParams.params)[inx_kontur].dim1;
     Int32 inDim2 = (*apiParams.params)[inx_kontur].dim2;
     size_t ind = 0;
