@@ -161,9 +161,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
 #endif
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) return NoError;
+    ParamDictValue propertyParams = {};
+    if (elementType == API_LabelID) SyncLabelScope (elemType->elemHead.guid, propertyParams);
     if (!CheckElementType (elementType, syncSettings)) return NoError;
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, false)) return NoError;
-    ParamDictValue propertyParams = {};
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:no_attrib"); // Во время отслеживания не будем получать весь список слоёв
     ParamDictElement paramToWrite = {};
     ClassificationFunc::SystemDict systemdict;

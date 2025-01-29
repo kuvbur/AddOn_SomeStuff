@@ -226,7 +226,7 @@ void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     API_ElemTypeID elementType;
     GSErrCode err = GetTypeByGUID (elemGuid, elementType);
     if (err != NoError) return;
-
+    if (elementType == API_LabelID) SyncLabelScope (elemGuid, propertyParams);
     // Получаем список связанных элементов
     GS::Array<API_Guid> subelemGuids;
     GetRelationsElement (elemGuid, elementType, syncSettings, subelemGuids);
@@ -1302,6 +1302,13 @@ void SyncSetSubelement (SyncSettings& syncSettings)
         SyncLabelScope (element.header.guid, propertyParams);
         return err;
     });
+    err = AttachObserver (element.header.guid, syncSettings);
+    if (err == APIERR_LINKEXIST)
+        err = NoError;
+    if (err != NoError) {
+        msg_rep ("SyncSetSubelement", "AttachObserver", err, element.header.guid);
+        return;
+    }
 }
 
 GSErrCode SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Array<API_Guid>& guid_linkTo, GSFlags& linkflag, ParamDictValue& propertyParams)
@@ -1316,21 +1323,37 @@ GSErrCode SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Ar
     if (elementType == API_LabelID) {
         ParamDictValue params;
         ClassificationFunc::SystemDict systemdict;
-        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_1");
-        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_2");
-        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_3");
+        UInt32 max_guid = 3;
+        for (UInt32 i = 0; i < max_guid; i++) {
+            GS::UniString name = GS::UniString::Printf ("@gdl:somestuff_subguid_%d", i + 1);
+            ParamHelpers::AddValueToParamDictValue (params, name);
+            name = GS::UniString::Printf ("@gdl:somestuff_subtext_%d", i + 1);
+            ParamHelpers::AddValueToParamDictValue (params, name);
+        }
+        GS::UniString name = "@gdl:somestuff_read";
+        ParamHelpers::AddValueToParamDictValue (params, name);
         ParamHelpers::Read (elemhead_linkFrom.guid, params, propertyParams, systemdict);
         for (UInt32 i = 0; i < guid_linkTo.GetSize (); i++) {
             GS::UniString name = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
             if (params.ContainsKey (name)) {
                 if (params.Get (name).isValid) {
-                    params.Get (name).val.uniStringValue = APIGuid2GSGuid (guid_linkTo[i]).ToUniString ();
+                    if (i < guid_linkTo.GetSize ()) {
+                        params.Get (name).val.uniStringValue = APIGuidToString (guid_linkTo[i]);
+                    } else {
+                        params.Get (name).val.uniStringValue = "";
+                    }
                 } else {
                     return err;
                 }
             } else {
                 return err;
             }
+        }
+        name = "{@gdl:somestuff_read}";
+        if (params.ContainsKey (name)) {
+            params.Get (name).isValid = true;
+            params.Get (name).val.boolValue = true;
+            params.Get (name).val.intValue = 1;
         }
         ParamHelpers::Write (elemhead_linkFrom.guid, params);
         linkflag = 1;
@@ -1342,6 +1365,15 @@ GSErrCode SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Ar
 void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams)
 {
     GSErrCode err = NoError;
+    GS::Array<API_Guid> exsistguid_linkTo;
+    err = ACAPI_Element_GetLinks (guid, &exsistguid_linkTo);
+    if (err != NoError) {
+        msg_rep ("SyncLabel", "ACAPI_Element_GetLinks", err, guid);
+        return;
+    }
+    if (exsistguid_linkTo.IsEmpty ()) {
+        return;
+    }
     err = ACAPI_CallUndoableCommand ("SetSubelement",
             [&]() -> GSErrCode {
         SyncLabelScope (guid, propertyParams);
@@ -1351,47 +1383,89 @@ void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams)
 
 void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams)
 {
-    API_Guid elemGuidfrom_1 = APINULLGuid;
-    API_Guid elemGuidfrom_2 = APINULLGuid;
-    API_Guid elemGuidfrom_3 = APINULLGuid;
     GSErrCode err = NoError;
+    UInt32 max_guid = 3;
     ParamDictValue params;
-    ClassificationFunc::SystemDict systemdict;
-    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_1");
-    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_2");
-    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subguid_3");
-    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subtext_1");
-    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subtext_2");
-    ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_subtext_3");
     ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_property_name");
     ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_property_guid");
     ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_read");
+    for (UInt32 i = 0; i < max_guid; i++) {
+        GS::UniString name = GS::UniString::Printf ("@gdl:somestuff_subguid_%d", i + 1);
+        ParamHelpers::AddValueToParamDictValue (params, name);
+        name = GS::UniString::Printf ("@gdl:somestuff_subtext_%d", i + 1);
+        ParamHelpers::AddValueToParamDictValue (params, name);
+    }
+    ClassificationFunc::SystemDict systemdict;
     ParamHelpers::Read (guid, params, propertyParams, systemdict);
     if (!params.Get ("{@gdl:somestuff_read}").isValid || !params.Get ("{@gdl:somestuff_read}").val.boolValue) return;
     GS::Array<API_Guid> somestuff_subguids;
-    //for (UInt32 i = 0; i < 3; i++) {
-    //    API_Guid
-    //    GS::UniString name_guid = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
-    //    if (params.Get (name_guid).isValid && !params.Get (name_guid).val.uniStringValue.IsEmpty()) {
-    //        elemGuidfrom_1 = APIGuidFromString (propertyParams.Get ("{@gdl:somestuff_subguid_1}").val.uniStringValue.ToCStr ());
-    //    }
-    //}
+    for (UInt32 i = 0; i < max_guid; i++) {
+        GS::UniString name_guid = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
+        if (params.Get (name_guid).isValid && !params.Get (name_guid).val.uniStringValue.IsEmpty ()) {
+            API_Guid elemGuidfrom = APIGuidFromString (params.Get (name_guid).val.uniStringValue.ToCStr ());
+            if (elemGuidfrom != APINULLGuid) somestuff_subguids.Push (elemGuidfrom);
+        }
+    }
+    if (somestuff_subguids.IsEmpty ()) {
+        DBprnt ("SyncLabelScope", "somestuff_subguids.IsEmpty");
+        return;
+    }
+    ParamValue param;
+    GS::UniString somestuff_property_name = "";
+    if (!params.Get ("{@gdl:somestuff_property_name}").val.uniStringValue.IsEmpty ()) {
+        somestuff_property_name = "{@property:" + params.Get ("{@gdl:somestuff_property_name}").val.uniStringValue.ToLowerCase () + "}";
+        if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+        if (!propertyParams.ContainsKey (somestuff_property_name)) {
+            DBprnt ("SyncLabelScope", "!propertyParams.ContainsKey");
+        } else {
+            param = propertyParams.Get (somestuff_property_name);
+        }
+    }
 
-
-
-    elemGuidfrom_1 = APIGuidFromString (propertyParams.Get ("{@gdl:somestuff_subguid_1}").val.uniStringValue.ToCStr ());
-    if (elemGuidfrom_1 == APINULLGuid) return;
-
-    if (params.Get ("{@gdl:somestuff_property_name}").val.uniStringValue.IsEmpty () && params.Get ("{@gdl:somestuff_property_guid}").val.uniStringValue.IsEmpty ()) return;
-    if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-
-    ParamDictValue paramsread;
-
-    //if () {
-    //    API_PropertyDefinition definition;
-    //    definition.guid = guid;
-    //    err = ACAPI_Property_GetPropertyDefinition (definition);
-    //}
-
+    if (param.definition.guid == APINULLGuid) {
+        if (!params.Get ("{@gdl:somestuff_property_guid}").isValid) {
+            DBprnt ("SyncLabelScope", "!somestuff_property_guid.isValid");
+            return;
+        }
+        if (params.Get ("{@gdl:somestuff_property_guid}").val.uniStringValue.IsEmpty ()) {
+            DBprnt ("SyncLabelScope", "!somestuff_property_guid.IsEmpty");
+            return;
+        }
+        API_PropertyDefinition definition;
+        definition.guid = APIGuidFromString (params.Get ("{@gdl:somestuff_property_guid}").val.uniStringValue.ToCStr ());
+        err = ACAPI_Property_GetPropertyDefinition (definition);
+        if (err != NoError) {
+            DBprnt ("SyncLabelScope", "ACAPI_Property_GetPropertyDefinition");
+            return;
+        }
+        if (!ParamHelpers::ConvertToParamValue (param, definition)) {
+            DBprnt ("SyncLabelScope", "ConvertToParamValue");
+            return;
+        }
+        somestuff_property_name = param.rawName;
+    }
+    if (param.definition.guid == APINULLGuid) {
+        DBprnt ("SyncLabelScope", "param.definition.guid == APINULLGuid");
+        return;
+    }
+    ParamDictElement paramToRead;
+    for (UInt32 i = 0; i < somestuff_subguids.GetSize (); i++) {
+        ParamHelpers::AddParamValue2ParamDictElement (somestuff_subguids[i], param, paramToRead);
+    }
+    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+    ParamDictElement paramToWrite;
+    for (UInt32 i = 0; i < max_guid; i++) {
+        if (paramToRead.ContainsKey (somestuff_subguids[i])) {
+            GS::UniString name = GS::UniString::Printf ("{@gdl:somestuff_subtext_%d}", i + 1);
+            ParamValue paramFrom = paramToRead.Get (somestuff_subguids[i]).Get (somestuff_property_name);
+            ParamValue paramTo = params.Get (name);
+            FormatString formatstring = paramFrom.val.formatstring;
+            if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring)) {
+                paramTo.fromGuid = guid;
+                ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
+            }
+        }
+    }
+    if (!paramToWrite.IsEmpty ()) ParamHelpers::ElementsWrite (paramToWrite);
     return;
 }

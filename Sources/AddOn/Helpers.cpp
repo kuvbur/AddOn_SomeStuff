@@ -212,6 +212,8 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
 
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
+        GS::Guid ownerElemApiGuid = neig.guid;
+        
         if (addSubelement) {
             API_ElemTypeID elementType;
             API_NeigID neigID = neig.neigID;
@@ -234,11 +236,11 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
 #endif // AC_27
             if (err == NoError) GetRelationsElement (neig.guid, elementType, syncSettings, guidArray);
         }
-    }
+            }
 #endif // AC_22
     return guidArray;
 
-}
+        }
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
@@ -525,15 +527,15 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                         }
                     }
 #endif
-                }
+                    }
                 ACAPI_DisposeRoomRelationHdls (&relData);
-            }
+                }
             break;
         default:
             break;
-    }
+            }
 
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Получение размеров Морфа
@@ -2055,9 +2057,9 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
             {
                 break;
             }
-    }
+                }
     return string;
-}
+            }
 
 ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs)
 {
@@ -2401,9 +2403,9 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
             if (property.definition.collectionType == API_PropertySingleCollectionType && property.value.singleVariant.variant.type == API_PropertyUndefinedValueType) {
                 property.value.singleVariant.variant.type = property.definition.valueType;
             }
-        }
-#endif
     }
+#endif
+}
     return flag_rec;
 }
 
@@ -4312,7 +4314,7 @@ bool ParamHelpers::ReadGDL (const API_Element & element, const API_Elem_Head & e
     // Обрабатываем только вложенные элементы иерархических структур (навесных стен и ограждений)
     if (eltype == API_RailingID || eltype == API_CurtainWallID) {
         return false;
-    }
+}
     ParamDictValue paramBydescription;
     ParamDictValue paramByName;
     GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramnamearray;
@@ -4477,7 +4479,7 @@ bool ParamHelpers::ReadGDL (const API_Element & element, const API_Elem_Head & e
     }
     if (flag_find_name) ParamHelpers::CompareParamDictValue (paramByName, params);
     return (flag_find_name);
-}
+            }
 
 // -----------------------------------------------------------------------------
 // Поиск по описанию GDL параметра
@@ -6000,7 +6002,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                     msg_rep ("materialString::Components", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
                     return false;
                 }
-            } else {
+    } else {
                 msg_rep ("materialString::Components", "Multisegment column not supported", NoError, element.header.guid);
                 return false;
             }
@@ -6026,7 +6028,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                     msg_rep ("materialString::Components", "ACAPI_Element_GetMemo - BeamSegment", err, element.header.guid);
                     return false;
                 }
-            } else {
+} else {
                 msg_rep ("materialString::Components", "Multisegment beam not supported", NoError, element.header.guid);
                 return false;
             }
@@ -6060,7 +6062,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-    }
+}
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -6113,7 +6115,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
 #endif
     return hasData;
-}
+    }
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
