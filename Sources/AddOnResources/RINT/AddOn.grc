@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.76 2024-12-12-10 https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.76 2025-01-30-19 https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 32500 "Strings for the Menu" {
@@ -18,9 +18,9 @@
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Создать элементы^E3^32618"
-/* [  12] */	"Показать связанные элементы^E3^S^32617"
+/* [  12] */	"Показать связанные элементы^ES^E3^S^32617"
 /* [  13] */	"Заполнение изменений на макетах^T^D2^EL^32619"
-/* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32617"
+/* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
 }
 
 
@@ -55,9 +55,9 @@
 /* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Создать элементы^E3^32618"
-/* [  12] */	"Показать связанные элементы^E3^S^32617"
+/* [  12] */	"Показать связанные элементы^ES^E3^S^32617"
 /* [  13] */	"Заполнение изменений на макетах^T^D2^EL^32619"
-/* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32617"
+/* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
 /* [  15] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
@@ -122,13 +122,12 @@
 /* [  31] */	"Аннул"
 /* [  32] */	"Суммирование выделенных элементов"
 /* [  33] */	"рви"
-
 }
 
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters v1.76 2024-12-12-10 https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters v1.76 2025-01-30-19 https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 33500 "Strings for the Menu" {
@@ -144,9 +143,9 @@
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Create subelements^E3^32618"
-/* [  12] */	"Show element parents^E3^S^32617"
+/* [  12] */	"Show subelements^ES^E3^S^32617"
 /* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Link subelements^E3^ES^EE^ED^EW^EL^S^R^T^32617"
+/* [  14] */	"Set subelements^E3^ES^EE^ED^EW^EL^S^R^T^32620"
 }
 
 'STR#' 33502 "Strings for the Menu" {
@@ -162,9 +161,9 @@
 /* [  9] */		"Sum the selections"
 /* [  10] */	"Run the script for the parameters of the selections"
 /* [  11] */	"Create subelements"
-/* [  12] */	"Show element parents"
+/* [  12] */	"Show subelements"
 /* [  13] */	"Process changes on layouts (RU_GOST)"
-/* [  14] */	"Link subelements"
+/* [  14] */	"Set subelements"
 }
 
 'STR#' 31500 "Strings for the Menu" {
@@ -180,9 +179,9 @@
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Create subelements^E3^32618"
-/* [  12] */	"Show element parents^E3^S^32617"
+/* [  12] */	"Show subelements^ES^E3^S^32617"
 /* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Link subelements^E3^ES^EE^ED^EW^EL^S^R^T^32617"
+/* [  14] */	"Set subelements^E3^ES^EE^ED^EW^EL^S^R^T^32620"
 /* [  15] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
@@ -203,8 +202,8 @@
 /* [  10] */	"Run the script for the parameters of the selections"
 /* [  11] */	"Create subelements"
 /* [  12] */	"Show element parents"
-/* [  13] */	"Process changes on layouts (RU_GOST)"
-/* [  14] */	"Link subelements"
+/* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
+/* [  14] */	"Set subelements"
 /* [  15] */	"Обновить геометрию фасонки по выбранному"
 /* [  16] */	"Построить профиль по линии"
 /* [  17] */	"Выронять выделенные чертежи"
@@ -300,5 +299,8 @@
 }
 'GICN' 32619 "LauoutIcon" {
     "LauoutIcon"
+}
+'GICN' 32620 "SetSUBGUIDIcon" {
+    "SetSUBGUIDIcon"
 }
 

@@ -34,7 +34,8 @@
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
-typedef struct {
+typedef struct
+{
     GS::UniString paramNameFrom = "";
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
@@ -45,7 +46,8 @@ typedef struct {
     int syncdirection = 0;
 } SyncRule;
 
-typedef struct {
+typedef struct
+{
     API_Guid guidTo = APINULLGuid;
     API_Guid guidFrom = APINULLGuid;
     ParamValue paramFrom;
@@ -83,10 +85,6 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
 // Синхронизация элемента и его подэлементов
 // -----------------------------------------------------------------------------
 void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict);
-
-void SetSyncGUID ();
-
-void ShowSyncGUID ();
 
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
@@ -142,12 +140,26 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname);
 // -----------------------------------------------------------------------------
 bool SyncString (const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat, bool syncall, bool synccoord, bool syncclass);
 
+// -----------------------------------------------------------------------------
+// Связывает элементы, прописывая в основной элемент GUID привязанных элементов
+// -----------------------------------------------------------------------------
 void SyncSetSubelement (SyncSettings& syncSettings);
 
-GSErrCode SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Array<API_Guid>& guid_linkTo, GSFlags& linkflag, ParamDictValue& propertyParams);
+// -----------------------------------------------------------------------------
+// Запись в выноску Guid связанных элементов
+// Функция для вызова из ACAPI_CallUndoableCommand
+// -----------------------------------------------------------------------------
+GSFlags SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Array<API_Guid>& guid_linkTo, ParamDictValue& propertyParams);
 
+// -----------------------------------------------------------------------------
+// Обновление данных в выноске
+// -----------------------------------------------------------------------------
 void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams);
 
-void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams);
+// -----------------------------------------------------------------------------
+// Обновление данных в выноске
+// Функция для вызова из ACAPI_CallUndoableCommand
+// -----------------------------------------------------------------------------
+GSFlags SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
 #endif

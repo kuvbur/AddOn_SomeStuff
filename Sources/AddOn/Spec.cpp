@@ -14,53 +14,98 @@ namespace Spec
 // --------------------------------------------------------------------
 void ShowSub (const SyncSettings& syncSettings)
 {
-#ifndef AC_22
-    ParamDictValue propertyParams;
-    ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-    ParamDictValue paramDict;
-    for (auto& cItt : propertyParams) {
-#if defined(AC_28)
-        ParamValue param = cItt.value;
-#else
-        ParamValue param = *cItt.value;
-#endif
-        if (param.definition.description.Contains ("Sync_GUID")) {
-            paramDict.Add (param.rawName, param);
+    GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false);
+    GS::Array<API_Guid> guidArray;
+    GS::Array<API_Guid> guidArray_label;
+    for (UInt32 i = 0; i < guidArray_all.GetSize (); i++) {
+        API_ElemTypeID elementType;
+        if (GetTypeByGUID (guidArray_all[i], elementType) == NoError) {
+            if (elementType == API_LabelID) {
+                guidArray_label.Push (guidArray_all[i]);
+            } else {
+                guidArray.Push (guidArray_all[i]);
+            }
         }
     }
-    if (paramDict.IsEmpty ()) return;
-    ParamDictElement paramToRead;
-    GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, false);
-    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
-    }
     GS::Array<API_Neig> selNeigs;
-    ClassificationFunc::SystemDict systemdict;
-    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
-    for (auto& cIt : paramToRead) {
-#if defined(AC_28)
-        ParamDictValue params = cIt.value;
-#else
-        ParamDictValue params = *cIt.value;
-#endif
-        for (auto& cItt : params) {
-#if defined(AC_28)
-            ParamValue param = cItt.value;
-#else
-            ParamValue param = *cItt.value;
-#endif
-            if (param.isValid && !param.val.uniStringValue.IsEmpty ()) {
-                GS::Array<GS::UniString> rulestring_param;
-                UInt32 nrule_param = StringSplt (param.val.uniStringValue, ";", rulestring_param);
-                if (nrule_param > 0) {
-                    for (UInt32 i = 0; i < nrule_param; i++) {
-                        API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
-                        selNeigs.PushNew (guid);
+    if (!guidArray_label.IsEmpty ()) {
+        UInt32 max_guid = 3;
+        ParamDictValue params;
+        ParamDictElement paramToRead;
+        ParamDictValue propertyParams;
+        ClassificationFunc::SystemDict systemdict;
+        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_read");
+        for (UInt32 i = 0; i < max_guid; i++) {
+            GS::UniString name = GS::UniString::Printf ("@gdl:somestuff_subguid_%d", i + 1);
+            ParamHelpers::AddValueToParamDictValue (params, name);
+        }
+        for (UInt32 i = 0; i < guidArray_label.GetSize (); i++) {
+            ParamHelpers::AddParamDictValue2ParamDictElement (guidArray_label[i], params, paramToRead);
+        }
+        ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+        for (UInt32 j = 0; j < guidArray_label.GetSize (); j++) {
+            if (paramToRead.ContainsKey (guidArray_label[j])) {
+                if (paramToRead.Get (guidArray_label[j]).Get ("{@gdl:somestuff_read}").val.boolValue) {
+                    for (UInt32 i = 0; i < max_guid; i++) {
+                        GS::UniString name_guid = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
+                        if (paramToRead.Get (guidArray_label[j]).Get (name_guid).isValid && !paramToRead.Get (guidArray_label[j]).Get (name_guid).val.uniStringValue.IsEmpty ()) {
+                            API_Guid elemGuidfrom = APIGuidFromString (paramToRead.Get (guidArray_label[j]).Get (name_guid).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                            if (elemGuidfrom != APINULLGuid) selNeigs.PushNew (elemGuidfrom);
+                        }
                     }
                 }
             }
         }
     }
+
+    if (!guidArray.IsEmpty ()) {
+#ifndef AC_22
+        ParamDictValue propertyParams;
+        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+        ParamDictValue paramDict;
+        for (auto& cItt : propertyParams) {
+#if defined(AC_28)
+            ParamValue param = cItt.value;
+#else
+            ParamValue param = *cItt.value;
+#endif
+            if (param.definition.description.Contains ("Sync_GUID")) {
+                paramDict.Add (param.rawName, param);
+            }
+        }
+        if (paramDict.IsEmpty ()) return;
+        ParamDictElement paramToRead;
+        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+            ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
+        }
+        ClassificationFunc::SystemDict systemdict;
+        ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+        for (auto& cIt : paramToRead) {
+#if defined(AC_28)
+            ParamDictValue params = cIt.value;
+#else
+            ParamDictValue params = *cIt.value;
+#endif
+            for (auto& cItt : params) {
+#if defined(AC_28)
+                ParamValue param = cItt.value;
+#else
+                ParamValue param = *cItt.value;
+#endif
+                if (param.isValid && !param.val.uniStringValue.IsEmpty ()) {
+                    GS::Array<GS::UniString> rulestring_param;
+                    UInt32 nrule_param = StringSplt (param.val.uniStringValue, ";", rulestring_param);
+                    if (nrule_param > 0) {
+                        for (UInt32 i = 0; i < nrule_param; i++) {
+                            API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
+                            selNeigs.PushNew (guid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (selNeigs.IsEmpty ()) return;
 #if defined(AC_27) || defined(AC_28)
     GSErrCode err = ACAPI_Selection_Select (selNeigs, true);
 #else
