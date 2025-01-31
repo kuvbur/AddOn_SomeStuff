@@ -163,7 +163,18 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (elementType == API_DimensionID) return NoError;
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
-    if (elementType == API_LabelID) SyncLabelScope (elemType->elemHead.guid, propertyParams, paramToWrite);
+    GS::Array<API_Guid> exsistguid_linkTo;
+    if (elementType == API_LabelID) {
+        switch (elemType->notifID) {
+            case APINotifyElement_Change:
+            case APINotifyElement_Edit:
+                SyncLabelScope (elemType->elemHead.guid, propertyParams, paramToWrite);
+                if (!paramToWrite.IsEmpty ()) ParamHelpers::ElementsWrite (paramToWrite);
+                return NoError;
+            default:
+                break;
+        }
+    }
     if (!CheckElementType (elementType, syncSettings)) return NoError;
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, false)) return NoError;
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:no_attrib"); // Во время отслеживания не будем получать весь список слоёв
