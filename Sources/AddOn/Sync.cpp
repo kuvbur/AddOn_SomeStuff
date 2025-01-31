@@ -691,7 +691,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
             API_Guid elemGuidfrom = elemGuid;
 
             // Копировать из другого элемента
-            if (rulestring_one.Contains ("from_GUID{")) {
+            if (rulestring_one.Contains ("from_GUID{") || rulestring_one.Contains ("from_GUID_")) {
                 GS::Array<GS::UniString> params;
                 rulestring_one.ReplaceAll ("from_GUID", "");
                 UInt32 nparams = StringSplt (rulestring_one, ";", params);
@@ -700,7 +700,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                     Name2Rawname (params[0], rawname);
                     if (propertyParams.ContainsKey (rawname)) {
                         if (propertyParams.Get (rawname).isValid) {
-                            elemGuidfrom = APIGuidFromString (propertyParams.Get (rawname).val.uniStringValue.ToCStr ());
+                            elemGuidfrom = APIGuidFromString (propertyParams.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             rulestring_one = "Sync_from{" + params[1];
                         }
                     }
@@ -1277,65 +1277,57 @@ void SyncSetSubelement (SyncSettings& syncSettings)
 {
     GSErrCode err = NoError;
     GS::UniString fmane = "SyncSetSubelement";
-    GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, false);
-    if (guidArray.IsEmpty ()) return;
+    GS::Array<API_Guid> guidArray_ = GetSelectedElements (false, false, false);
+    if (guidArray_.IsEmpty ()) return;
     API_Element		element;
     BNZeroMemory (&element, sizeof (API_Element));
     if (!ClickAnElem ("Click an elem", API_ZombieElemID, nullptr, &element.header.typeID, &element.header.guid)) {
         return;
     }
     if (!IsElementEditable (element.header.guid, syncSettings, false)) return;
+    API_Elem_Head elemhead_linkTo;
     ParamDictValue propertyParams;
     GSFlags flag = 0;
+    if (element.header.typeID == API_SectElemID) {
+        API_Guid parentguid;
+        API_ElemTypeID elementType;
+        GetParentGUIDSectElem (element.header.guid, parentguid, elementType);
+        elemhead_linkTo.guid = parentguid;
+        elemhead_linkTo.typeID = elementType;
+    } else {
+        elemhead_linkTo = element.header;
+    }
+    GS::Array<API_Guid> guidArray;
+    for (UInt32 i = 0; i < guidArray_.GetSize (); i++) {
+        API_ElemTypeID elementType;
+        if (GetTypeByGUID (guidArray_[i], elementType) == NoError) {
+            if (CheckElementType (elementType, syncSettings) && elementType != API_DimensionID) {
+                if (guidArray_[i] != elemhead_linkTo.guid) guidArray.Push (guidArray_[i]);
+            } else {
+                if (elementType == API_SectElemID) {
+                    API_Guid parentguid;
+                    GetParentGUIDSectElem (guidArray_[i], parentguid, elementType);
+                    if (parentguid != elemhead_linkTo.guid) guidArray.Push (parentguid);
+                }
+            }
+        }
+    }
+    if (guidArray.IsEmpty ()) return;
     err = ACAPI_CallUndoableCommand ("SetSubelement",
             [&]() -> GSErrCode {
-        flag = SyncSetSubelementScope (element.header, guidArray, propertyParams);
-        err = ReLinkElement (element.header.guid, guidArray, flag);
-        return err;
+        flag = SyncSetSubelementScope (elemhead_linkTo, guidArray, propertyParams);
+        return NoError;
     });
     if (flag > 0) {
-        err = AttachObserver (element.header.guid, syncSettings);
-        if (err == APIERR_LINKEXIST)
-            err = NoError;
-        if (err != NoError) {
-            msg_rep ("SyncSetSubelement", "AttachObserver", err, element.header.guid);
-            return;
-        }
-        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            err = AttachObserver (guidArray[i], syncSettings);
+        if (elemhead_linkTo.typeID == API_LabelID) {
+            err = AttachObserver (element.header.guid, syncSettings);
             if (err == APIERR_LINKEXIST)
                 err = NoError;
             if (err != NoError) {
                 msg_rep ("SyncSetSubelement", "AttachObserver", err, element.header.guid);
                 return;
             }
-        }
-        SyncLabel (element.header.guid, propertyParams);
-    }
-}
-
-GSErrCode ReLinkElement (const API_Guid elementTo, GS::Array<API_Guid> guidArray, GSFlags& flag)
-{
-    GSErrCode err = NoError;
-    GS::Array<API_Guid> exsistguid_linkTo;
-    err = ACAPI_Element_GetLinks (elementTo, &exsistguid_linkTo);
-    if (err != NoError) {
-        msg_rep ("SyncSetSubelement", "ACAPI_Element_GetLinks", err, elementTo);
-        return err;
-    }
-    for (UInt32 i = 0; i < exsistguid_linkTo.GetSize (); i++) {
-        err = ACAPI_Element_Unlink (elementTo, exsistguid_linkTo[i]);
-        if (err != NoError) {
-            msg_rep ("SyncSetSubelement", "ACAPI_Element_Unlink", err, exsistguid_linkTo[i]);
-            return err;
-        }
-    }
-    if (flag > 0) {
-        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            err = ACAPI_Element_Link (elementTo, guidArray[i], flag);
-            if (err != NoError) {
-                return err;
-            }
+            SyncLabel (elemhead_linkTo.guid, propertyParams);
         }
     }
 }
@@ -1366,23 +1358,13 @@ GSFlags SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Arra
         GS::UniString name = "@gdl:somestuff_read";
         ParamHelpers::AddValueToParamDictValue (params, name);
         ParamHelpers::Read (elemhead_linkFrom.guid, params, propertyParams, systemdict);
-        if (params.ContainsKey ("{@gdl:somestuff_subguid_1}") && params.Get ("{@gdl:somestuff_subguid_1}").isValid) {
-
-        }
         for (UInt32 i = 0; i < guid_linkTo.GetSize (); i++) {
             GS::UniString name = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
             GS::UniString info = GS::UniString::Printf ("@gdl:somestuff_infostr_%d", i + 1);
             if (params.ContainsKey (name)) {
                 if (params.Get (name).isValid) {
                     if (i < guid_linkTo.GetSize ()) {
-                        API_Guid parentguid = guid_linkTo[i];
-                        API_ElemTypeID elementType;
-                        if (GetTypeByGUID (parentguid, elementType) == NoError) {
-                            if (elementType == API_SectElemID) GetParentGUIDSectElem (guid_linkTo[i], parentguid, elementType);
-                            params.Get (name).val.uniStringValue = APIGuidToString (parentguid);
-                        } else {
-                            params.Get (name).val.uniStringValue = "";
-                        }
+                        params.Get (name).val.uniStringValue = APIGuidToString (guid_linkTo[i]);
                     } else {
                         params.Get (name).val.uniStringValue = "";
                     }
@@ -1402,7 +1384,39 @@ GSFlags SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Arra
         ParamHelpers::Write (elemhead_linkFrom.guid, params);
         return 1;
     }
-    return 0;
+    if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    ParamDictValue paramDict;
+    for (auto& cItt : propertyParams) {
+#if defined(AC_28)
+        ParamValue param = cItt.value;
+#else
+        ParamValue param = *cItt.value;
+#endif
+        if (param.definition.description.Contains ("Sync_GUID")) {
+            paramDict.Add (param.rawName, param);
+        }
+    }
+    if (paramDict.IsEmpty ()) return 0;
+    ParamDictElement paramToRead;
+    ParamHelpers::AddParamDictValue2ParamDictElement (elemhead_linkFrom.guid, paramDict, paramToRead);
+    ClassificationFunc::SystemDict systemdict;
+    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+    ParamDictValue params = paramToRead.Get (elemhead_linkFrom.guid);
+    UInt32 inx = 0;
+    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        ParamValue& param = cIt->value;
+#else
+        ParamValue& param = *cIt->value;
+#endif
+        if (param.isValid && param.val.uniStringValue.IsEmpty ()) {
+            param.val.uniStringValue = APIGuidToString (guid_linkTo[inx]);
+            inx = inx + 1;
+        }
+        if (inx < guid_linkTo.GetSize ()) break;
+    }
+    ParamHelpers::Write (elemhead_linkFrom.guid, params);
+    return 1;
 }
 
 // -----------------------------------------------------------------------------
@@ -1475,15 +1489,12 @@ GSFlags SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, Pa
     }
     if (param.definition.guid == APINULLGuid) return 0;
     ParamDictElement paramToRead;
-    ParamValue pvalueid;
-    pvalueid.name = "id";
-    pvalueid.rawName = "{@id:id}";
     ParamValue pvaluelayer;
-    pvaluelayer.name = "layer";
-    pvaluelayer.rawName = "{@attrib:layer}";
+    pvaluelayer.name = "composite name";
+    pvaluelayer.rawName = "{@property:generalelemproperties/composite name}";
+    pvaluelayer.fromProperty = true;
     for (UInt32 i = 0; i < somestuff_subguids.GetSize (); i++) {
         ParamHelpers::AddParamValue2ParamDictElement (somestuff_subguids[i], param, paramToRead);
-        ParamHelpers::AddParamValue2ParamDictElement (somestuff_subguids[i], pvalueid, paramToRead);
         ParamHelpers::AddParamValue2ParamDictElement (somestuff_subguids[i], pvaluelayer, paramToRead);
     }
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
@@ -1498,16 +1509,13 @@ GSFlags SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, Pa
                 ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
             }
             name = GS::UniString::Printf ("{@gdl:somestuff_infostr_%d}", i + 1);
-            GS::UniString info = paramToRead.Get (somestuff_subguids[i]).Get ("{@id:id}").val.uniStringValue;
-            info = info + paramToRead.Get (somestuff_subguids[i]).Get ("{@attrib:layer}").val.uniStringValue;
-            paramFrom.val.uniStringValue = info;
+            paramFrom.val.uniStringValue = paramToRead.Get (somestuff_subguids[i]).Get (pvaluelayer.rawName).val.uniStringValue;
             paramTo = params.Get (name);
             formatstring = paramFrom.val.formatstring;
             if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring)) {
                 paramTo.fromGuid = guid;
                 ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
             }
-
         }
     }
     return 1;
