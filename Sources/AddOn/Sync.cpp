@@ -691,7 +691,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
             API_Guid elemGuidfrom = elemGuid;
 
             // Копировать из другого элемента
-            if (rulestring_one.Contains ("from_GUID{") || rulestring_one.Contains ("from_GUID_")) {
+            if (rulestring_one.Contains ("from_GUID{")) {
                 GS::Array<GS::UniString> params;
                 rulestring_one.ReplaceAll ("from_GUID", "");
                 UInt32 nparams = StringSplt (rulestring_one, ";", params);
