@@ -1281,19 +1281,32 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     if (guidArray_.IsEmpty ()) return;
     API_Element		element;
     BNZeroMemory (&element, sizeof (API_Element));
+    API_ElemTypeID elementTypeclick;
+#if defined(AC_27) || defined(AC_28)
+    if (!ClickAnElem ("Click an elem", API_ZombieElemID, nullptr, &element.header.type, &element.header.guid)) {
+        return;
+    }
+    elementTypeclick = element.header.type.typeID;
+#else
     if (!ClickAnElem ("Click an elem", API_ZombieElemID, nullptr, &element.header.typeID, &element.header.guid)) {
         return;
     }
+    elementTypeclick = element.header.typeID;
+#endif
     if (!IsElementEditable (element.header.guid, syncSettings, false)) return;
     API_Elem_Head elemhead_linkTo;
     ParamDictValue propertyParams;
     GSFlags flag = 0;
-    if (element.header.typeID == API_SectElemID) {
+    if (elementTypeclick == API_SectElemID) {
         API_Guid parentguid;
         API_ElemTypeID elementType;
         GetParentGUIDSectElem (element.header.guid, parentguid, elementType);
         elemhead_linkTo.guid = parentguid;
+#if defined(AC_27) || defined(AC_28)
+        elemhead_linkTo.type.typeID = elementType;
+#else
         elemhead_linkTo.typeID = elementType;
+#endif
     } else {
         elemhead_linkTo = element.header;
     }
@@ -1319,7 +1332,11 @@ void SyncSetSubelement (SyncSettings& syncSettings)
         return NoError;
     });
     if (flag > 0) {
+#if defined(AC_27) || defined(AC_28)
+        if (elemhead_linkTo.type.typeID == API_LabelID) {
+#else
         if (elemhead_linkTo.typeID == API_LabelID) {
+#endif
             err = AttachObserver (element.header.guid, syncSettings);
             if (err == APIERR_LINKEXIST)
                 err = NoError;
@@ -1336,7 +1353,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
 // Запись в выноску Guid связанных элементов
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-GSFlags SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Array<API_Guid>& guid_linkTo, ParamDictValue& propertyParams)
+GSFlags SyncSetSubelementScope (const API_Elem_Head & elemhead_linkFrom, GS::Array<API_Guid>&guid_linkTo, ParamDictValue & propertyParams)
 {
     GSErrCode err = NoError;
     API_ElemTypeID elementType;
@@ -1422,7 +1439,7 @@ GSFlags SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Arra
 // -----------------------------------------------------------------------------
 // Обновление данных в выноске
 // -----------------------------------------------------------------------------
-void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams)
+void SyncLabel (const API_Guid & guid, ParamDictValue & propertyParams)
 {
     GSErrCode err = NoError;
     ParamDictElement paramToWrite;
@@ -1438,7 +1455,7 @@ void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams)
 // Обновление данных в выноске
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-GSFlags SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, ParamDictElement& paramToWrite)
+GSFlags SyncLabelScope (const API_Guid & guid, ParamDictValue & propertyParams, ParamDictElement & paramToWrite)
 {
     GSErrCode err = NoError;
     UInt32 max_guid = 3;
@@ -1520,3 +1537,117 @@ GSFlags SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, Pa
     }
     return 1;
 }
+
+// --------------------------------------------------------------------
+// Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
+// --------------------------------------------------------------------
+void SyncShowSubelement (const SyncSettings & syncSettings)
+{
+    GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false);
+    GS::Array<API_Guid> guidArray;
+    GS::Array<API_Guid> guidArray_label;
+    for (UInt32 i = 0; i < guidArray_all.GetSize (); i++) {
+        API_ElemTypeID elementType;
+        if (GetTypeByGUID (guidArray_all[i], elementType) == NoError) {
+            if (elementType == API_LabelID) {
+                guidArray_label.Push (guidArray_all[i]);
+            } else {
+                if (elementType == API_SectElemID) {
+                    API_Guid parentguid;
+                    GetParentGUIDSectElem (guidArray_all[i], parentguid, elementType);
+                    guidArray.Push (parentguid);
+                } else {
+                    guidArray.Push (guidArray_all[i]);
+                }
+            }
+        }
+    }
+    GS::Array<API_Neig> selNeigs;
+    if (!guidArray_label.IsEmpty ()) {
+        UInt32 max_guid = 3;
+        ParamDictValue params;
+        ParamDictElement paramToRead;
+        ParamDictValue propertyParams;
+        ClassificationFunc::SystemDict systemdict;
+        ParamHelpers::AddValueToParamDictValue (params, "@gdl:somestuff_read");
+        for (UInt32 i = 0; i < max_guid; i++) {
+            GS::UniString name = GS::UniString::Printf ("@gdl:somestuff_subguid_%d", i + 1);
+            ParamHelpers::AddValueToParamDictValue (params, name);
+        }
+        for (UInt32 i = 0; i < guidArray_label.GetSize (); i++) {
+            ParamHelpers::AddParamDictValue2ParamDictElement (guidArray_label[i], params, paramToRead);
+        }
+        ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+        for (UInt32 j = 0; j < guidArray_label.GetSize (); j++) {
+            if (paramToRead.ContainsKey (guidArray_label[j])) {
+                if (paramToRead.Get (guidArray_label[j]).Get ("{@gdl:somestuff_read}").val.boolValue) {
+                    for (UInt32 i = 0; i < max_guid; i++) {
+                        GS::UniString name_guid = GS::UniString::Printf ("{@gdl:somestuff_subguid_%d}", i + 1);
+                        if (paramToRead.Get (guidArray_label[j]).Get (name_guid).isValid && !paramToRead.Get (guidArray_label[j]).Get (name_guid).val.uniStringValue.IsEmpty ()) {
+                            API_Guid elemGuidfrom = APIGuidFromString (paramToRead.Get (guidArray_label[j]).Get (name_guid).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                            if (elemGuidfrom != APINULLGuid) selNeigs.PushNew (elemGuidfrom);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (!guidArray.IsEmpty ()) {
+#ifndef AC_22
+        ParamDictValue propertyParams;
+        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+        ParamDictValue paramDict;
+        for (auto& cItt : propertyParams) {
+#if defined(AC_28)
+            ParamValue param = cItt.value;
+#else
+            ParamValue param = *cItt.value;
+#endif
+            if (param.definition.description.Contains ("Sync_GUID")) {
+                paramDict.Add (param.rawName, param);
+            }
+        }
+        if (paramDict.IsEmpty ()) return;
+        ParamDictElement paramToRead;
+        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+            ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
+        }
+        ClassificationFunc::SystemDict systemdict;
+        ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+        for (auto& cIt : paramToRead) {
+#if defined(AC_28)
+            ParamDictValue params = cIt.value;
+#else
+            ParamDictValue params = *cIt.value;
+#endif
+            for (auto& cItt : params) {
+#if defined(AC_28)
+                ParamValue param = cItt.value;
+#else
+                ParamValue param = *cItt.value;
+#endif
+                if (param.isValid && !param.val.uniStringValue.IsEmpty ()) {
+                    GS::Array<GS::UniString> rulestring_param;
+                    UInt32 nrule_param = StringSplt (param.val.uniStringValue, ";", rulestring_param);
+                    if (nrule_param > 0) {
+                        for (UInt32 i = 0; i < nrule_param; i++) {
+                            API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
+                            selNeigs.PushNew (guid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (selNeigs.IsEmpty ()) return;
+#if defined(AC_27) || defined(AC_28)
+    GSErrCode err = ACAPI_Selection_Select (selNeigs, true);
+#else
+    //TODO Проверить - почему выделение субэлементов не работает на окнах и дверях
+    GSErrCode err = ACAPI_Element_Select (selNeigs, true);
+#endif
+#endif
+    return;
+}
+
