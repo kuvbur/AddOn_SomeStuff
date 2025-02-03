@@ -353,7 +353,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     Spec::SpecAll (syncSettings);
                     break;
                 case ShowSub_CommandID:
-                    Spec::ShowSub (syncSettings);
+                    SyncShowSubelement (syncSettings);
                     break;
                 case SetRevision_CommandID:
                     Revision::SetRevision ();

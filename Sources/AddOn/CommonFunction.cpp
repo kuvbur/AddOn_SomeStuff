@@ -1617,11 +1617,23 @@ API_ElemTypeID	Neig_To_ElemID (API_NeigID neigID)
     API_ElemTypeID	typeID;
     GSErrCode		err;
 
+#if defined(AC_27) || defined(AC_28)
+    API_ElemType apiElemType;
+    err = ACAPI_Element_NeigIDToElemType (neigID, apiElemType);
+    if (err != NoError) {
+        typeID = API_ZombieElemID;
+    } else {
+        typeID = apiElemType.typeID;
+    }
+#else
     err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &typeID);
     if (err != NoError)
         typeID = API_ZombieElemID;
+}
+#endif
 
-    return typeID;
+
+return typeID;
 }		// Neig_To_ElemID
 
 // -----------------------------------------------------------------------------
@@ -1630,6 +1642,18 @@ API_ElemTypeID	Neig_To_ElemID (API_NeigID neigID)
 bool	ElemHead_To_Neig (API_Neig * neig,
                           const API_Elem_Head * elemHead)
 {
+    API_ElemTypeID typeID;
+#if defined(AC_27) || defined(AC_28)
+    *neig = {};
+    neig->guid = elemHead->guid;
+    API_ElemType type = elemHead->type;
+    if (type == API_ZombieElemID && neig->guid != APINULLGuid) {
+        API_Elem_Head elemHeadCopy = {};
+        elemHeadCopy.guid = elemHead->guid;
+        ACAPI_Element_GetHeader (&elemHeadCopy);
+        typeID = elemHeadCopy.type.typeID;
+    }
+#else
     BNZeroMemory (neig, sizeof (API_Neig));
     API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
     neig->guid = elemHead->guid;
@@ -1637,9 +1661,10 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         BNZeroMemory (elemHeadNonConst, sizeof (API_Elem_Head));
         elemHeadNonConst->guid = neig->guid;
         ACAPI_Element_GetHeader (elemHeadNonConst);
+        typeID = elemHeadNonConst->typeID;
     }
-
-    switch (elemHeadNonConst->typeID) {
+#endif
+    switch (typeID) {
         case API_WallID:					neig->neigID = APINeig_Wall;				neig->inIndex = 1;	break;
         case API_ColumnID:					neig->neigID = APINeig_Colu;				neig->inIndex = 0;	break;
         case API_BeamID:					neig->neigID = APINeig_Beam;				neig->inIndex = 1;	break;
@@ -1740,16 +1765,28 @@ bool	ClickAnElem (const char* prompt,
         BNZeroMemory (&elemHead, sizeof (API_Elem_Head));
         API_ElemSearchPars	pars;
         BNZeroMemory (&pars, sizeof (API_ElemSearchPars));
+#if defined(AC_27) || defined(AC_28)
+        pars.type.typeID = needTypeID;
+#else
         pars.typeID = needTypeID;
+#endif
         pars.loc.x = pointInfo.pos.x;
         pars.loc.y = pointInfo.pos.y;
         pars.z = 1.00E6;
         pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
+#if defined(AC_27) || defined(AC_28)
+        err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
+        if (err == NoError) {
+            elemHead.type = pars.type;
+            ElemHead_To_Neig (&pointInfo.neig, &elemHead);
+        }
+#else
         err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
         if (err == NoError) {
             elemHead.typeID = pars.typeID;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
         }
+#endif
     }
 
     if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
@@ -1778,7 +1815,11 @@ bool	ClickAnElem (const char* prompt,
         BNZeroMemory (&element, sizeof (API_Element));
         element.header.guid = pointInfo.neig.guid;
         if (ACAPI_Element_Get (&element) == NoError)
+#if defined(AC_27) || defined(AC_28)
+            good = (needTypeID == element.sectElem.parentType);
+#else
             good = (needTypeID == element.sectElem.parentID);
+#endif
     }
     return good;
 }		// ClickAnElem

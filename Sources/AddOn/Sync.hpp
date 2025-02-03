@@ -34,8 +34,7 @@
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
-typedef struct
-{
+typedef struct {
     GS::UniString paramNameFrom = "";
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
@@ -46,8 +45,7 @@ typedef struct
     int syncdirection = 0;
 } SyncRule;
 
-typedef struct
-{
+typedef struct {
     API_Guid guidTo = APINULLGuid;
     API_Guid guidFrom = APINULLGuid;
     ParamValue paramFrom;
@@ -161,5 +159,10 @@ void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams);
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
 GSFlags SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
+
+// --------------------------------------------------------------------
+// Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
+// --------------------------------------------------------------------
+void SyncShowSubelement (const SyncSettings& syncSettings);
 
 #endif
