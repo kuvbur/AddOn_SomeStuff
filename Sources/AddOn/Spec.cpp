@@ -23,7 +23,13 @@ void ShowSub (const SyncSettings& syncSettings)
             if (elementType == API_LabelID) {
                 guidArray_label.Push (guidArray_all[i]);
             } else {
-                guidArray.Push (guidArray_all[i]);
+                if (elementType == API_SectElemID) {
+                    API_Guid parentguid;
+                    GetParentGUIDSectElem (guidArray_all[i], parentguid, elementType);
+                    guidArray.Push (parentguid);
+                } else {
+                    guidArray.Push (guidArray_all[i]);
+                }
             }
         }
     }
@@ -102,9 +108,9 @@ void ShowSub (const SyncSettings& syncSettings)
                         }
                     }
                 }
+                    }
+                }
             }
-        }
-    }
     if (selNeigs.IsEmpty ()) return;
 #if defined(AC_27) || defined(AC_28)
     GSErrCode err = ACAPI_Selection_Select (selNeigs, true);
@@ -114,7 +120,7 @@ void ShowSub (const SyncSettings& syncSettings)
 #endif
 #endif
     return;
-}
+        }
 
 // --------------------------------------------------------------------
 // Получение правил из свойств элемента по умолчанию
@@ -142,7 +148,7 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules)
                 AddRule (definitions[i], APINULLGuid, rules);
             }
         }
-    }
+            }
     if (rules.IsEmpty ()) return false;
     bool has_element = false;
     for (auto& cIt : rules) {
@@ -191,13 +197,13 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules)
                             }
                         }
                     }
-                }
-            }
-        }
-    }
+                                        }
+                                    }
+                                }
+                            }
     return has_element;
 #endif
-}
+                        }
 
 GSErrCode SpecAll (const SyncSettings& syncSettings)
 {
@@ -281,8 +287,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         if (param.definition.description.Contains ("Spec_rule_name")) {
             paramToWrite.Add (param.rawName, param);
             subguid_rulename = param.rawName;
-        }
     }
+}
 
     for (auto& cIt : rules) {
 #if defined(AC_28)
@@ -306,13 +312,13 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
                         break;
                     }
                 }
-            }
+                    }
             rule.subguid_rulename = subguid_rulename;
             ElementDict elements;
             n_elements += GetElementsForRule (rule, paramToRead, elements);
             if (!elements.IsEmpty ()) elementstocreate.Push (elements);
+            }
         }
-    }
     if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
     subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
 #if defined(AC_27) || defined(AC_28)
@@ -621,9 +627,9 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                         }
                     }
                 }
-            }
         }
     }
+}
     if (!not_found_paramname.IsEmpty ()) {
         GS::UniString notfound_paramname = "";
         for (auto& cIt : not_found_paramname) {
@@ -661,7 +667,7 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
         msg_rep ("Spec::GetElementsForRule", not_found_unic_str, APIERR_BADINDEX, APINULLGuid);
     }
     return n_elements;
-}
+                }
 
 // --------------------------------------------------------------------
 // Разбивает строку на части. Будем постепенно заменять на пустоту обработанные части 
@@ -900,8 +906,8 @@ bool GetSizePlaceElement (const API_Element& elementt, const API_ElementMemo& me
             dx = 0;
             dy = actParam.value.real;
             return true;
-        }
     }
+            }
     bool flag_find_dx = false; bool flag_find_dy = false;
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memot.params)[ii];
@@ -917,7 +923,7 @@ bool GetSizePlaceElement (const API_Element& elementt, const API_ElementMemo& me
         if (flag_find_dx && flag_find_dy) return false;
     }
     return false;
-}
+        }
 
 
 GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValue& paramToWrite, ParamDictElement& paramOut, Point2D& startpos)
@@ -953,13 +959,13 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                         GS::UniString instring = APIGuidToString (el.elements[0]);
                         for (UInt32 k = 1; k < el.elements.GetSize (); k++) {
                             instring = instring + ";" + APIGuid2GSGuid (el.elements[k]).ToUniString ();
-                        }
+                    }
                         paramTo.val.uniStringValue = StringUnic (instring, ";");
                         paramTo.isValid = true;
                         paramTo.val.type = API_PropertyStringValueType;
                         param.Add (el.subguid_paramrawname, paramTo);
-                    }
                 }
+            }
                 if (!el.subguid_rulename.IsEmpty () && !el.subguid_rulevalue.IsEmpty ()) {
                     if (paramToWrite.ContainsKey (el.subguid_rulename)) {
                         ParamValue paramTo = paramToWrite.Get (el.subguid_rulename);
@@ -1060,7 +1066,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-            }
+        }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -1071,10 +1077,10 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-        }
+    }
 
         return NoError;
-    });
+});
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -1085,4 +1091,4 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
     }
     return NoError;
 }
-}
+    }

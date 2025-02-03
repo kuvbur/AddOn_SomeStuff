@@ -6102,7 +6102,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                 paramlayers.Add (param.rawName, param);
             }
         }
-}
+    }
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramlayers.IsEmpty ()) {
@@ -6222,7 +6222,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
             }
         }
-}
+    }
 #ifndef AC_22
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;
