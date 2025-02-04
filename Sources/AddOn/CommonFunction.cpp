@@ -1609,6 +1609,25 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
     return true;
 }		// ClickAPoint
 
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+// -----------------------------------------------------------------------------
+// Convert the NeigID to element type
+// -----------------------------------------------------------------------------
+API_ElemType	Neig_To_ElemID (API_NeigID neigID)
+{
+    API_ElemType	type;
+    GSErrCode		err;
+#if defined (AC_26)
+    err = ACAPI_Goodies_NeigIDToElemType (neigID, type);
+#else
+    err = ACAPI_Element_NeigIDToElemType (neigID, type);
+#endif
+    if (err != NoError)
+        type = API_ZombieElemID;
+
+    return type;
+}
+#else
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
@@ -1616,21 +1635,11 @@ API_ElemTypeID	Neig_To_ElemID (API_NeigID neigID)
 {
     API_ElemTypeID	typeID;
     GSErrCode		err;
-
-#if defined(AC_27) || defined(AC_28)
-    API_ElemType apiElemType;
-    err = ACAPI_Element_NeigIDToElemType (neigID, apiElemType);
-    if (err != NoError) {
-        typeID = API_ZombieElemID;
-    } else {
-        typeID = apiElemType.typeID;
-    }
-#else
     err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &typeID);
     if (err != NoError) typeID = API_ZombieElemID;
-#endif
     return typeID;
-}		// Neig_To_ElemID
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // Convert the element header to a neig
@@ -1639,7 +1648,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
                           const API_Elem_Head * elemHead)
 {
     API_ElemTypeID typeID = API_ZombieElemID;
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
     *neig = {};
     neig->guid = elemHead->guid;
     API_ElemType type = elemHead->type;
@@ -1731,6 +1740,81 @@ bool	ElemHead_To_Neig (API_Neig * neig,
 //	true:	the user clicked the correct element
 //	false:	the input is canceled or wrong type of element was clicked
 // -----------------------------------------------------------------------------
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+bool	ClickAnElem (const char* prompt,
+                     const API_ElemType & needType,
+                     API_Neig * neig /*= nullptr*/,
+                     API_ElemType * type /*= nullptr*/,
+                     API_Guid * guid /*= nullptr*/,
+                     API_Coord3D * c /*= nullptr*/,
+                     bool					ignorePartialSelection /*= true*/)
+{
+    API_GetPointType	pointInfo = {};
+    API_ElemType		clickedType;
+    GSErrCode			err;
+
+    CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
+    pointInfo.changeFilter = false;
+    pointInfo.changePlane = false;
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_UserInput_GetPoint (&pointInfo);
+#else
+    err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
+#endif
+    if (err != NoError) {
+        return false;
+    }
+
+    if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
+        API_Elem_Head		elemHead = {};
+        API_ElemSearchPars	pars = {};
+        pars.type = needType;
+        pars.loc.x = pointInfo.pos.x;
+        pars.loc.y = pointInfo.pos.y;
+        pars.z = 1.00E6;
+        pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
+#if defined(AC_27) || defined(AC_28)
+        err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
+#else
+        err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
+#endif
+        if (err == NoError) {
+            elemHead.type = pars.type;
+            ElemHead_To_Neig (&pointInfo.neig, &elemHead);
+        }
+    }
+
+    if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
+        pointInfo.neig.elemPartType = APINeigElemPart_None;
+        pointInfo.neig.elemPartIndex = 0;
+    }
+
+    clickedType = Neig_To_ElemID (pointInfo.neig.neigID);
+
+    if (neig != nullptr)
+        *neig = pointInfo.neig;
+    if (type != nullptr)
+        *type = clickedType;
+    if (guid != nullptr)
+        *guid = pointInfo.neig.guid;
+    if (c != nullptr)
+        *c = pointInfo.pos;
+
+    if (clickedType == API_ZombieElemID)
+        return false;
+
+    bool good = (needType == API_ZombieElemID || needType == clickedType);
+
+    if (!good && clickedType == API_SectElemID) {
+        API_Element element = {};
+        element.header.guid = pointInfo.neig.guid;
+        if (ACAPI_Element_Get (&element) == NoError)
+            good = (needType == element.sectElem.parentType);
+    }
+
+    return good;
+}		// ClickAnElem
+#else
 bool	ClickAnElem (const char* prompt,
                      API_ElemTypeID		needTypeID,
                      API_Neig * neig /*= nullptr*/,
@@ -1746,14 +1830,10 @@ bool	ClickAnElem (const char* prompt,
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-
-#if defined(AC_27) || defined(AC_28)
-    err = ACAPI_UserInput_GetPoint (&pointInfo);
-#else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
-#endif
     if (err != NoError) {
-        return false;
+        if (err != APIERR_CANCEL)
+            return false;
     }
 
     if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
@@ -1761,28 +1841,16 @@ bool	ClickAnElem (const char* prompt,
         BNZeroMemory (&elemHead, sizeof (API_Elem_Head));
         API_ElemSearchPars	pars;
         BNZeroMemory (&pars, sizeof (API_ElemSearchPars));
-#if defined(AC_27) || defined(AC_28)
-        pars.type.typeID = needTypeID;
-#else
         pars.typeID = needTypeID;
-#endif
         pars.loc.x = pointInfo.pos.x;
         pars.loc.y = pointInfo.pos.y;
-        pars.z = 1.00E6;
-        pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-#if defined(AC_27) || defined(AC_28)
-        err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
-        if (err == NoError) {
-            elemHead.type = pars.type;
-            ElemHead_To_Neig (&pointInfo.neig, &elemHead);
-        }
-#else
-        err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
+        //pars.z = 1.00E6;
+        //pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
+        //err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
         if (err == NoError) {
             elemHead.typeID = pars.typeID;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
         }
-#endif
     }
 
     if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
@@ -1811,15 +1879,12 @@ bool	ClickAnElem (const char* prompt,
         BNZeroMemory (&element, sizeof (API_Element));
         element.header.guid = pointInfo.neig.guid;
         if (ACAPI_Element_Get (&element) == NoError)
-#if defined(AC_27) || defined(AC_28)
-            good = (needTypeID == element.sectElem.parentType);
-#else
             good = (needTypeID == element.sectElem.parentID);
-#endif
     }
+
     return good;
 }		// ClickAnElem
-
+#endif
 
 namespace FormatStringFunc
 {
