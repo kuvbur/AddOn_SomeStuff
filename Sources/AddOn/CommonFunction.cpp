@@ -1638,7 +1638,7 @@ API_ElemTypeID	Neig_To_ElemID (API_NeigID neigID)
 bool	ElemHead_To_Neig (API_Neig * neig,
                           const API_Elem_Head * elemHead)
 {
-    API_ElemTypeID typeID;
+    API_ElemTypeID typeID = API_ZombieElemID;
 #if defined(AC_27) || defined(AC_28)
     *neig = {};
     neig->guid = elemHead->guid;
