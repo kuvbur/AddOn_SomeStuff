@@ -34,7 +34,8 @@
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
-typedef struct {
+typedef struct
+{
     GS::UniString paramNameFrom = "";
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
@@ -45,7 +46,8 @@ typedef struct {
     int syncdirection = 0;
 } SyncRule;
 
-typedef struct {
+typedef struct
+{
     API_Guid guidTo = APINULLGuid;
     API_Guid guidFrom = APINULLGuid;
     ParamValue paramFrom;
@@ -147,10 +149,10 @@ void SyncSetSubelement (SyncSettings& syncSettings);
 // Запись в выноску Guid связанных элементов
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-GSFlags SyncSetSubelementScope (const API_Elem_Head& elemhead_linkFrom, GS::Array<API_Guid>& guid_linkTo, ParamDictValue& propertyParams);
+void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<API_Guid>& subguidArray, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
 // -----------------------------------------------------------------------------
-// Обновление данных в выноске
+// Обновление данных в выноске c записью в выноску
 // -----------------------------------------------------------------------------
 void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams);
 
@@ -158,7 +160,7 @@ void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams);
 // Обновление данных в выноске
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-GSFlags SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
+void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
 // --------------------------------------------------------------------
 // Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
