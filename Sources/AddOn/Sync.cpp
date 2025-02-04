@@ -1299,7 +1299,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     API_Element parentelement; // Родительский элемент
     BNZeroMemory (&parentelement, sizeof (API_Element));
     API_ElemTypeID parentelementtype;
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.type, &parentelement.header.guid)) {
         return;
     }
@@ -1317,7 +1317,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
         API_ElemTypeID elementType;
         GetParentGUIDSectElem (parentelement.header.guid, parentguid, elementType);
         parentelementhead.guid = parentguid;
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
         parentelementhead.type.typeID = elementType;
         parentelementtype = elementType;
 #else
@@ -1326,7 +1326,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
 #endif
     } else {
         parentelementhead = parentelement.header;
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
         parentelementtype = parentelement.header.type.typeID;
 #else
         parentelementtype = parentelement.header.typeID;
@@ -1542,6 +1542,7 @@ void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, Param
 // --------------------------------------------------------------------
 void SyncShowSubelement (const SyncSettings& syncSettings)
 {
+#ifndef AC_22
     GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false);
     GS::Array<API_Guid> guidArray;
     GS::Array<API_Guid> guidArray_label;
@@ -1610,9 +1611,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             }
         }
     }
-
     if (!guidArray.IsEmpty ()) {
-#ifndef AC_22
         ParamDictValue propertyParams;
         ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
         ParamDictValue paramDict;
