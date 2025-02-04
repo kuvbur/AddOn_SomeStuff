@@ -1627,13 +1627,9 @@ API_ElemTypeID	Neig_To_ElemID (API_NeigID neigID)
     }
 #else
     err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &typeID);
-    if (err != NoError)
-        typeID = API_ZombieElemID;
-}
+    if (err != NoError) typeID = API_ZombieElemID;
 #endif
-
-
-return typeID;
+    return typeID;
 }		// Neig_To_ElemID
 
 // -----------------------------------------------------------------------------
