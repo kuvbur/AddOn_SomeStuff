@@ -3,18 +3,27 @@
 #ifndef HELPERS_HPP
 #define HELPERS_HPP
 #include "CommonFunction.hpp"
+#ifdef AC_22
+#include	"APICommon22.h"
+#endif // AC_25
+#ifdef AC_23
+#include	"APICommon23.h"
+#endif // AC_25
+#ifdef AC_24
+#include	"APICommon24.h"
+#endif // AC_25
 #ifdef AC_25
-#include "APICommon25.h"
+#include	"APICommon25.h"
 #endif // AC_25
 #ifdef AC_26
-#include "APICommon26.h"
+#include	"APICommon26.h"
 #endif // AC_26
-#if defined(AC_27)
-#include "APICommon27.h"
+#ifdef AC_27
+#include	"APICommon27.h"
 #endif // AC_27
 #ifdef AC_28
 #include	"APICommon28.h"
-#endif // AC_28
+#endif // AC_27
 #include "basicgeometry.h"
 #include "StringConversion.hpp"
 #include "SyncSettings.hpp"

@@ -478,39 +478,39 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 err = ACAPI_Element_GetRelations (elemGuid, API_ZombieElemID, &relData);
                 if (err == NoError) {
 #if defined(AC_23) || defined(AC_22)
-                    for (Int32 i = 0; i < relData.nObject - 1; i++) {
-                        API_Guid elGuid = *(relData.objects)[i];
+                    for (Int32 i = 0; i < relData.nObject; i++) {
+                        API_Guid elGuid = (*relData.objects)[i];
                         subelemGuid.Push (elGuid);
                     }
                     if (syncSettings.widoS) {
-                        for (Int32 i = 0; i < relData.nWindow - 1; i++) {
-                            API_Guid elGuid = *(relData.windows)[i];
+                        for (Int32 i = 0; i < relData.nWindow; i++) {
+                            API_Guid elGuid = (*relData.windows)[i];
                             subelemGuid.Push (elGuid);
                         }
-                        for (Int32 i = 0; i < relData.nDoor - 1; i++) {
-                            API_Guid elGuid = *(relData.doors)[i];
+                        for (Int32 i = 0; i < relData.nDoor; i++) {
+                            API_Guid elGuid = (*relData.doors)[i];
                             subelemGuid.Push (elGuid);
                         }
-                        for (Int32 i = 0; i < relData.nSkylight - 1; i++) {
-                            API_Guid elGuid = *(relData.skylights)[i];
+                        for (Int32 i = 0; i < relData.nSkylight; i++) {
+                            API_Guid elGuid = (*relData.skylights)[i];
                             subelemGuid.Push (elGuid);
                         }
                     }
                     if (syncSettings.wallS) {
-                        for (Int32 i = 0; i < relData.nColumn - 1; i++) {
-                            API_Guid elGuid = *(relData.columns)[i];
+                        for (Int32 i = 0; i < relData.nColumn; i++) {
+                            API_Guid elGuid = (*relData.columns)[i];
                             subelemGuid.Push (elGuid);
                         }
-                        for (Int32 i = 0; i < relData.nWallPart - 1; i++) {
-                            API_Guid elGuid = relData.wallPart[i]->guid;
+                        for (Int32 i = 0; i < relData.nWallPart; i++) {
+                            API_Guid elGuid = (*relData.wallPart)[i].guid;
                             subelemGuid.Push (elGuid);
                         }
-                        for (Int32 i = 0; i < relData.nBeamPart - 1; i++) {
-                            API_Guid elGuid = relData.beamPart[i]->guid;
+                        for (Int32 i = 0; i < relData.nBeamPart; i++) {
+                            API_Guid elGuid = (*relData.beamPart)[i].guid;
                             subelemGuid.Push (elGuid);
                         }
-                        for (Int32 i = 0; i < relData.nMorph - 1; i++) {
-                            API_Guid elGuid = *(relData.morphs)[i];
+                        for (Int32 i = 0; i < relData.nMorph; i++) {
+                            API_Guid elGuid = (*relData.morphs)[i];
                             subelemGuid.Push (elGuid);
                         }
                     }
@@ -3792,7 +3792,7 @@ void ParamHelpers::GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     }
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_attrib");
     DBprnt ("  GetAllAttributeToParamDict end");
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
