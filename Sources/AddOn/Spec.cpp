@@ -787,7 +787,7 @@ bool GetSizePlaceElement (const API_Element& elementt, const API_ElementMemo& me
     const GSSize nParams = BMGetHandleSize ((GSHandle) memot.params) / sizeof (API_AddParType);
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memot.params)[ii];
-        const GS::String name (actParam.name);
+        GS::UniString name = GS::UniString (actParam.name);
         if (name.IsEqual ("somestuff_spec_hrow")) {
             dx = 0;
             dy = actParam.value.real;
@@ -797,7 +797,7 @@ bool GetSizePlaceElement (const API_Element& elementt, const API_ElementMemo& me
     bool flag_find_dx = false; bool flag_find_dy = false;
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memot.params)[ii];
-        const GS::String name (actParam.name);
+        GS::UniString name = GS::UniString (actParam.name);
         if (name.IsEqual ("A") && !flag_find_dx) {
             dx = actParam.value.real;
             flag_find_dx = true;
@@ -888,7 +888,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
                 for (GSIndex ii = 0; ii < nParams; ++ii) {
                     API_AddParType& actParam = (*memo.params)[ii];
-                    const GS::String name (actParam.name);
+                    GS::UniString name = GS::UniString (actParam.name);
                     GS::UniString rawname = "";
                     bool flag_find = false;
                     if (actParam.typeMod == API_ParSimple) {
