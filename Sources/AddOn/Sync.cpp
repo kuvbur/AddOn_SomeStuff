@@ -17,7 +17,9 @@ Int32 nLib = 0;
 void MonAll (SyncSettings& syncSettings)
 {
     if (!syncSettings.syncMon) return;
+#if defined(TESTING)
     DBprnt ("MonAll start");
+#endif
     long time_start = clock ();
     MonByType (API_ObjectID, syncSettings);
     MonByType (API_WindowID, syncSettings);
@@ -36,7 +38,9 @@ void MonAll (SyncSettings& syncSettings)
     long time_end = clock ();
     GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
     msg_rep ("MonAll", time, NoError, APINULLGuid);
+#if defined(TESTING)
     DBprnt ("MonAll end");
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -45,7 +49,9 @@ void MonAll (SyncSettings& syncSettings)
 void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings)
 {
     GS::Array<API_Guid>	guidArray;
+#if defined(TESTING)
     DBprnt ("MonByType");
+#endif
     GSErrCode err = ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
     if (err != NoError || guidArray.IsEmpty ()) return;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
@@ -78,8 +84,9 @@ void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSetti
 // -----------------------------------------------------------------------------
 void SyncAndMonAll (SyncSettings& syncSettings)
 {
+#if defined(TESTING)
     DBprnt ("SyncAndMonAll start");
-
+#endif
     // Сразу прочитаем свойства и разложим их по элементам
     ParamDictValue propertyParams;
     ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
@@ -160,10 +167,14 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     }
     ParamHelpers::InfoWrite (paramToWrite);
     if (!rereadelem.IsEmpty ()) {
+#if defined(TESTING)
         DBprnt ("===== REREAD =======");
+#endif
         SyncArray (syncSettings, rereadelem, systemdict);
     }
+#if defined(TESTING)
     DBprnt ("SyncAndMonAll end");
+#endif
 #if defined(AC_27) || defined(AC_28)
     ACAPI_ProcessWindow_CloseProcessWindow ();
 #else
@@ -271,7 +282,9 @@ void SyncSelected (const SyncSettings& syncSettings)
     ClassificationFunc::GetAllClassification (systemdict);
     GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, guidArray, systemdict);
     if (!rereadelem.IsEmpty ()) {
+#if defined(TESTING)
         DBprnt ("===== REREAD =======");
+#endif
         SyncArray (syncSettings, rereadelem, systemdict);
     }
 }
@@ -387,7 +400,9 @@ void RunParamSelected (const SyncSettings& syncSettings)
 // -----------------------------------------------------------------------------
 void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
 {
+#if defined(TESTING)
     DBprnt ("RunParam");
+#endif
     API_Elem_Head	tElemHead;
     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
     tElemHead.guid = elemGuid;
@@ -1489,7 +1504,9 @@ void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, Param
         somestuff_property_name = "{@property:" + params.Get ("{@gdl:somestuff_property_name}").val.uniStringValue.ToLowerCase () + "}";
         if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
         if (!propertyParams.ContainsKey (somestuff_property_name)) {
+#if defined(TESTING)
             DBprnt ("SyncLabelScope", "!propertyParams.ContainsKey");
+#endif
         } else {
             param = propertyParams.Get (somestuff_property_name);
         }

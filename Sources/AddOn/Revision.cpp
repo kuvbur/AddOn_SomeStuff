@@ -338,13 +338,17 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
             n_row += 1;
         }
         if (flag_write) {
+#if defined(TESTING)
             DBprnt ("GetAllChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
+#endif
 #if defined(AC_27) || defined(AC_28)
             err = ACAPI_Navigator_ChangeLayoutSets (&layoutInfo, &(databaseUnId));
 #else
             err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(databaseUnId));
 #endif
+#if defined(TESTING)
             DBprnt ("GetAllChangesMarker::APIEnv_ChangeLayoutSetsID", "end");
+#endif
             if (err != NoError) msg_rep ("GetAllChangesMarker", "APIEnv_ChangeLayoutSetsID", err, APINULLGuid);
         }
         delete layoutInfo.customData;
@@ -561,13 +565,17 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         if (!note.IsEmpty ()) msg_rep ("ChangeLayoutProperty err", "not found " + prop_name, err, APINULLGuid, false);
     }
     if (flag_write) {
+#if defined(TESTING)
         DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
+#endif
 #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Navigator_ChangeLayoutSets (&layoutInfo, &(databaseUnId));
 #else
         err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(databaseUnId));
 #endif
+#if defined(TESTING)
         DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "end");
+#endif
         if (err != NoError) msg_rep ("GetChangesMarker", "APIEnv_ChangeLayoutSetsID", err, APINULLGuid);
     }
     delete layoutInfo.customData;
@@ -640,7 +648,7 @@ void CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
             if (change.code == 0 && change.arr[i].code > 0) change.code = change.arr[i].code;
         }
         change.note = StringUnic (note, ";@");
-    }
+}
 }
 
 void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid)
@@ -844,7 +852,7 @@ void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
                 }
                 ChangeMarkerText (change.arr[i].markerguid, change.arr[i].nuch, change.arr[i].nizm);
             }
-        }
+}
         return NoError;
     });
 }
@@ -906,23 +914,27 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
                 find_izm = true;
             }
             if (find_nuch && find_izm && flag_write) {
+#if defined(TESTING)
                 DBprnt ("ACAPI_Element_Change", "start");
+#endif
                 err = ACAPI_Element_Change (&markerElement, &markerMask, &memo, APIMemoMask_AddPars, true);
                 if (err != NoError) {
                     msg_rep ("ChangeMarkerText", "ACAPI_Element_Change", err, markerguid);
                 }
+#if defined(TESTING)
                 DBprnt ("ACAPI_Element_Change", "end");
+#endif
                 break;
-            }
+                }
             if (find_nuch && find_izm && !flag_write) {
                 //Ничего не изменилось, можно не записывать
                 break;
             }
-        }
-    } else {
+            }
+        } else {
         msg_rep ("ChangeMarkerText", "ACAPI_Element_GetMemo", err, markerguid);
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
-}
-}
+    }
+    }

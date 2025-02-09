@@ -23,7 +23,9 @@ bool HasDimAutotext ()
 // -----------------------------------------------------------------------------
 bool GetDimAutotext (GS::UniString& autotext)
 {
+#if defined(TESTING)
     DBprnt ("DimReadPref start");
+#endif
     GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
     API_AutotextType	type = APIAutoText_Custom;
     GSErrCode	err = NoError;
@@ -39,11 +41,15 @@ bool GetDimAutotext (GS::UniString& autotext)
     for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
         if (autotexts[i][0].Contains ("Addon_Dimens") && !autotexts[i][2].IsEmpty ()) {
             autotext = autotexts[i][2];
+#if defined(TESTING)
             DBprnt ("DimReadPref found rule");
+#endif
             return true;
         }
     }
+#if defined(TESTING)
     DBprnt ("DimReadPref rules not found");
+#endif
     return false;
 }
 
@@ -240,7 +246,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
                 rules.Push (d);
             }
         }
-}
+    }
     // Нет подходящего привали - выходим
     if (rules.IsEmpty ()) return err;
     API_ElementMemo memo;
@@ -465,7 +471,9 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     (void) syncSettings;
     DoneElemGuid doneelemguid;
     DimRules dimrules;
+#if defined(TESTING)
     DBprnt ("DimRoundAll start");
+#endif
     GS::UniString autotext = "";
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
@@ -481,7 +489,9 @@ void DimRoundAll (const SyncSettings& syncSettings)
 {
     DoneElemGuid doneelemguid;
     DimRules dimrules;
+#if defined(TESTING)
     DBprnt ("DimRoundAll start");
+#endif
     GS::UniString autotext = "";
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
@@ -491,7 +501,9 @@ void DimRoundAll (const SyncSettings& syncSettings)
 
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
+#if defined(TESTING)
     DBprnt ("DimRoundAll end");
+#endif
 }
 
 // -----------------------------------------------------------------------------

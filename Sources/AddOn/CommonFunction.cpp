@@ -481,8 +481,8 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-            }
-            }
+        }
+    }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     msg = "SomeStuff addon: " + msg + "\n";
@@ -491,8 +491,10 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     if (err != NoError) {
         msg = "== SMSTF ERR ==" + msg;
     }
+#if defined(TESTING)
     DBprnt (msg);
-        }
+#endif
+}
 
 
 // --------------------------------------------------------------------
@@ -875,7 +877,7 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
         }
     };
     return false; // Не получилось зарезервировать
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -1086,7 +1088,9 @@ bool EvalExpression (GS::UniString & unistring_expression)
     GS::UniString baddelim = ",";
     GS::UniString delim_test = GS::UniString::Printf ("%.3f", 3.1456);
     if (delim_test.Contains (baddelim)) {
+#if defined(TESTING)
         DBprnt ("EvalExpression", "delimetr change");
+#endif
         baddelim = ".";
         delim = ",";
     }
@@ -1109,9 +1113,11 @@ bool EvalExpression (GS::UniString & unistring_expression)
         const T result = expression.value ();
         rezult_txt = "";
         if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
+#if defined(TESTING)
         if (std::isnan (result)) {
             DBprnt ("err Formula is nan", part_clean);
         }
+#endif
         unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
         if (expression_old.IsEqual (unistring_expression)) flag_change = false;
     }
@@ -1315,7 +1321,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo

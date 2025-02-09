@@ -50,7 +50,9 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
 #endif
     (void) deleted;
     (void) released;
+#ifdef TESTING
     DBprnt ("ReservationChangeHandler");
+#endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
 #ifdef PK_1
@@ -77,7 +79,9 @@ static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param
 #else
 static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
 {
+#ifdef TESTING
     DBprnt ("ProjectEventHandlerProc");
+#endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
 #endif
     LoadSyncSettingsFromPreferences (syncSettings);
@@ -146,10 +150,14 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (elemType->elemHead.hotlinkGuid != APINULLGuid) return false;
 
     // Смотрим - что поменялось
+#if defined(TESTING)
     DBprnt ("ElementEventHandlerProc start");
+#endif
     if (acttype == APIEdit_Drag) {
         if (is_equal (actTranPars.theDisp.x, 0) && is_equal (actTranPars.theDisp.y, 0) && is_equal (actTranPars.theDispZ, 0)) {
+#if defined(TESTING)
             DBprnt ("acttype == APIEdit_Drag 0");
+#endif
             return NoError;
         }
     }
@@ -211,7 +219,9 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 GS::Array<API_Guid> rereadelem;
                 rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
                 if (!rereadelem.IsEmpty ()) {
+#if defined(TESTING)
                     DBprnt ("ElementEventHandlerProc", "reread element");
+#endif
                     for (UInt32 i = 0; i < rereadelem.GetSize (); i++) {
                         propertyParams.Clear ();
                         paramToWrite.Clear ();
@@ -224,7 +234,9 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
         default:
             break;
     }
+#if defined(TESTING)
     DBprnt ("ElementEventHandlerProc end");
+#endif
     return NoError;
 }	// ElementEventHandlerProc
 
@@ -238,7 +250,9 @@ void	Do_ElementMonitor (bool& syncMon)
 #endif
 
     if (syncMon) {
+#if defined(TESTING)
         DBprnt ("Do_ElementMonitor on");
+#endif
 #if defined(AC_27) || defined(AC_28)
         ACAPI_Element_CatchNewElement (nullptr, ElementEventHandlerProc);
         ACAPI_Element_InstallElementObserver (ElementEventHandlerProc);
@@ -250,7 +264,9 @@ void	Do_ElementMonitor (bool& syncMon)
 #endif
     }
     if (!syncMon) {
+#if defined(TESTING)
         DBprnt ("Do_ElementMonitor off");
+#endif
 #if defined(AC_27) || defined(AC_28)
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
         ACAPI_Element_InstallElementObserver (nullptr);
@@ -300,7 +316,9 @@ void SetPaletteMenuText (short paletteItemInd, Int32 & bisEng)
 static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
 {
     GSErrCode err = NoError;
+#if defined(TESTING)
     DBprnt ("MenuCommandHandler start");
+#endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
 #ifdef PK_1
@@ -384,7 +402,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
 #endif
     ACAPI_KeepInMemory (true);
+#ifdef TESTING
     DBprnt ("MenuCommandHandler end");
+#endif
     return NoError;
 }
 
@@ -395,8 +415,8 @@ API_AddonType CheckEnvironment (API_EnvirParams * envir)
 API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams * envir)
 {
 #endif
-    DBprnt ("CheckEnvironment");
 #ifdef TESTING
+    DBprnt ("CheckEnvironment");
     TestFunc::Test ();
 #endif
     RSGetIndString (&envir->addOnInfo.name, ID_ADDON_INFO + isEng (), AddOnNameID, ACAPI_GetOwnResModule ());
@@ -411,7 +431,9 @@ GSErrCode RegisterInterface (void)
 GSErrCode __ACDLL_CALL RegisterInterface (void)
 {
 #endif
+#if defined(TESTING)
     DBprnt ("RegisterInterface");
+#endif
     GSErrCode err = NoError;
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_MenuItem_RegisterMenu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
@@ -427,8 +449,9 @@ GSErrCode Initialize (void)
 GSErrCode __ACENV_CALL Initialize (void)
 {
 #endif
-
+#if defined(TESTING)
     DBprnt ("Initialize");
+#endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
 #ifdef PK_1
@@ -456,6 +479,8 @@ GSErrCode FreeData (void)
 GSErrCode __ACENV_CALL FreeData (void)
 {
 #endif
+#if defined(TESTING)
     DBprnt ("!!!!!FreeData");
+#endif
     return NoError;
 }
