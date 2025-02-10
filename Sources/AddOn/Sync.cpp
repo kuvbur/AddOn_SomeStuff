@@ -1034,7 +1034,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             paramNamePrefix = "{@coord:";
             param.fromCoord = true;
             if (rulestring_one.Contains ("orth")) param.fromGlob = true;
-            if (!rulestring_one.Contains ("symb_pos_")) syncdirection = SYNC_FROM;
+            if (!rulestring_one.Contains ("symb_pos_") && !rulestring_one.Contains ("symb_rotangle")) syncdirection = SYNC_FROM;
         }
     }
     if (synctypefind == false) {

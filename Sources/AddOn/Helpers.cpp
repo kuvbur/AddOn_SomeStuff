@@ -2887,8 +2887,7 @@ void ParamHelpers::WriteCoord (const API_Guid& elemGuid, ParamDictValue& params)
                 } else {
                     dval = pval.doubleValue;
                 }
-
-                element.object.angle = dval;
+                element.object.angle = dval * PI / 180.0;
             }
             break;
         case API_ColumnID:
@@ -2923,7 +2922,7 @@ void ParamHelpers::WriteCoord (const API_Guid& elemGuid, ParamDictValue& params)
                 } else {
                     dval = pval.doubleValue;
                 }
-                element.column.slantAngle = dval;
+                element.column.slantAngle = dval * PI / 180.0;
             }
             break;
         case API_WallID:
