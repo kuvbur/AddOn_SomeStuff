@@ -10,6 +10,32 @@
 namespace AutoFunc
 {
 
+void RoomBook ()
+{
+    GS::Array<API_Guid> zones;
+    GSErrCode            err;
+    API_SelectionInfo    selectionInfo;
+    GS::Array<API_Neig>  selNeigs;
+    err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
+    BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
+    if (err == APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) return;
+    for (const API_Neig& neig : selNeigs) {
+        API_NeigID neigID = neig.neigID;
+        API_ElemTypeID elementType;
+        err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &elementType);
+        zones.Push (neig.guid);
+    }
+    for (API_Guid zoneGuid : zones) {
+        ParseRoom (zoneGuid);
+    }
+}
+
+void ParseRoom (API_Guid& zoneGuid)
+{
+
+}
+
+
 // -----------------------------------------------------------------------------
 // Ищет в массиве отрезок, начало или конец которого находятся возле точки start
 // Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
