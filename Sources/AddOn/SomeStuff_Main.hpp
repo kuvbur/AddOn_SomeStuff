@@ -20,7 +20,7 @@
 #define	 Menu_AutoList		15
 #define	 Menu_AutoProfile	16
 #define	 Menu_AutoLay	17
-
+#define	 Menu_RoomBook	18
 
 static const Int32 MonAll_CommandID = 1;
 static const Int32 SyncAll_CommandID = 2;
@@ -39,7 +39,7 @@ static const Int32 SetSub_CommandID = 14;
 static const Int32 AutoList_CommandID = 15;
 static const Int32 Auto3D_CommandID = 16;
 static const Int32 AutoLay_CommandID = 17;
-
+static const Int32 RoomBook_CommandID = 18;
 #if defined(AC_28)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 

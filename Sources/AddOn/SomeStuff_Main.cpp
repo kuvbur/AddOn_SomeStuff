@@ -389,6 +389,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case AutoLay_CommandID:
                     AutoFunc::AlignDrawingsByPoints ();
                     break;
+                case RoomBook_CommandID:
+                    AutoFunc::RoomBook ();
+                    break;
 #endif
             }
             break;
