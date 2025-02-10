@@ -8,7 +8,7 @@ set (API_DEVKIT_DIR $ENV{AC_API_DEVKIT_DIR})
 
 set_property (GLOBAL PROPERTY USE_FOLDERS ON)
 
-set (CMAKE_CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
+set (CMAKE_CONFIGURATION_TYPES Debug;Release;ReleaseEXT;RelWithDebInfo)
 set (AC_API_DEVKIT_DIR ${API_DEVKIT_DIR} CACHE PATH "API DevKit directory.")
 set (AC_ADDON_NAME "SomeStuff" CACHE STRING "Add-On name.")
 set (AC_ADDON_LANGUAGE "INT" CACHE STRING "Add-On language code.")
