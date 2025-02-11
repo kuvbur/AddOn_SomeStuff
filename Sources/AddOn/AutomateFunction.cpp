@@ -18,12 +18,17 @@ void RoomBook ()
     GS::Array<API_Neig>  selNeigs;
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
-    if (err == APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) return;
-    for (const API_Neig& neig : selNeigs) {
-        API_NeigID neigID = neig.neigID;
-        API_ElemTypeID elementType;
-        err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &elementType);
-        zones.Push (neig.guid);
+    if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
+        for (const API_Neig& neig : selNeigs) {
+            API_NeigID neigID = neig.neigID;
+            API_ElemTypeID elementType;
+            err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &elementType);
+            if (elementType == API_ZoneID) zones.Push (neig.guid);
+        }
+    }
+    if (zones.IsEmpty ()) {
+        err = ACAPI_Element_GetElemList (API_ZoneID, &zones, APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight | APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation);
+        if (err != NoError || zones.IsEmpty ()) return;
     }
     for (API_Guid zoneGuid : zones) {
         ParseRoom (zoneGuid);
@@ -32,7 +37,45 @@ void RoomBook ()
 
 void ParseRoom (API_Guid& zoneGuid)
 {
+    GSErrCode err;
+    API_RoomRelation relData;
+    err = ACAPI_Element_GetRelations (zoneGuid, API_ZombieElemID, &relData);
+    if (err != NoError) {
+        ACAPI_DisposeRoomRelationHdls (&relData);
+        return;
+    }
+    API_Element element = {};
+    for (UInt32 i = 0; i < relData.wallPart.GetSize (); i++) {
+        BNZeroMemory (&element, sizeof (API_Element));
+        element.header.guid = relData.wallPart[i].guid;
+        err = ACAPI_Element_Get (&element);
+        if (err != NoError) continue;
+        if (!is_equal (relData.wallPart[i].tEnd, 0) || !is_equal (relData.wallPart[i].tBeg, 0)) {
+            API_Coord begC_ = element.wall.begC;
+            API_Coord endC_ = element.wall.endC;
+            double dr = sqrt ((element.wall.endC.x - element.wall.begC.x) * (element.wall.endC.x - element.wall.begC.x) + (element.wall.endC.y - element.wall.begC.y) * (element.wall.endC.y - element.wall.begC.y));
+            if (!is_equal (relData.wallPart[i].tBeg, 0) && !is_equal (relData.wallPart[i].tBeg, dr)) {
+                double lambda = dr / (relData.wallPart[i].tBeg - dr);
+                begC_.x = (element.wall.endC.x + element.wall.begC.x * lambda) / (1 + lambda);
+                begC_.y = (element.wall.endC.y + element.wall.begC.y * lambda) / (1 + lambda);
+            }
+            if (!is_equal (relData.wallPart[i].tEnd, 0)) {
+                double lambda = dr / (relData.wallPart[i].tEnd - dr);
+                endC_.x = (element.wall.begC.x + element.wall.endC.x * lambda) / (1 + lambda);
+                endC_.y = (element.wall.begC.y + element.wall.begC.y * lambda) / (1 + lambda);
+            }
+        }
+        //double dr = sqrt ((endC_.x - begC_.x) * (endC_.x - begC_.x) + (endC_.y - begC_.y) * (endC_.y - begC_.y));
+        //
+        //    if from_dot = 1 then
+        //        if abs (1 + lambda) > EPS then
+        //            dx = (x2 + x1 * lambda) / (1 + lambda)
+        //            dy = (y2 + y1 * lambda) / (1 + lambda)
 
+        //            dx = (x1 + x2 * lambda) / (1 + lambda)
+        //            dy = (y1 + y2 * lambda) / (1 + lambda)
+    }
+    ACAPI_DisposeRoomRelationHdls (&relData);
 }
 
 
@@ -181,7 +224,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Get3DProjectionSetsID", err, APINULLGuid);
         return err;
-    }
+}
     proj3DInfo.isPersp = false;
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 1;
@@ -224,7 +267,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
         return err;
     }
     return err;
-}
+    }
 // -----------------------------------------------------------------------------
 // Создание 3д документа для одного отрезка
 // -----------------------------------------------------------------------------
@@ -410,7 +453,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
         msg_rep ("DoSect", "Get3DDocument", err, APINULLGuid);
         BMKillHandle ((GSHandle*) &(cutInfo.shapes));
         return err;
-    }
+}
 
     API_DocumentFrom3DType documentFrom3DType;
 #if defined(AC_27) || defined(AC_28)
@@ -433,7 +476,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
         for (short i = 0; i < cutInfo.nShapes; i++) {
             (*documentFrom3DType.cutSetting.shapes)[i] = (*cutInfo.shapes)[i];
         }
-    }
+}
     documentFrom3DType.projectionSetting = proj3DInfo;
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_ChangeDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
@@ -562,7 +605,7 @@ void ProfileByLine ()
         if (err != NoError) {
             msg_rep ("ProfileByLine", "ACAPI_Element_GetDefaults", err, APINULLGuid);
             return err;
-        }
+    }
         elemline.header.layer = layer;
         elemline.hotspot.pen = 143;
         BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
@@ -635,7 +678,7 @@ void ProfileByLine ()
             if (err != NoError) return err;
         }
         return err;
-    });
+});
 
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
         if (PlaceDocSect (lines[i], elemline) != NoError) {
@@ -690,7 +733,7 @@ void ProfileByLine ()
 #endif
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIEnv_Change3DCuttingPlanesID", err, APINULLGuid);
-        }
+    }
     }
     BMKillHandle ((GSHandle*) &(cutInfo.shapes));
     if (store == 1) {
@@ -858,7 +901,7 @@ void AlignDrawingsByPoints ()
     if (err != NoError) {
         store = -1;
         err = NoError;
-    }
+}
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
@@ -1017,7 +1060,7 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     if (err != NoError) {
         ACAPI_LibraryPart_CloseParameters ();
         return err;
-    }
+}
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
     if (err != NoError) {
         ACAPI_LibraryPart_CloseParameters ();
@@ -1066,7 +1109,7 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
             err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr); if (err != NoError) return err;
 #endif
         }
-    }
+        }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams); if (err != NoError) return err;
     err = ACAPI_LibraryPart_CloseParameters (); if (err != NoError) return err;
@@ -1099,6 +1142,6 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     err = ACAPI_Element_Change (&element, &mask, &elemMemo, APIMemoMask_AddPars, true);
     ACAPI_DisposeAddParHdl (&apiParams.params);
     return err;
-}
+    }
 }
 #endif

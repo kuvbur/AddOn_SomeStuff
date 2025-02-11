@@ -253,7 +253,7 @@ void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     GS::Array<API_Guid> subelemGuids;
     GetRelationsElement (elemGuid_, elementType, syncSettings, subelemGuids);
     if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
-    SyncData (elemGuid_, syncSettings, subelemGuids, propertyParams, paramToWrite, dummymode, systemdict);
+    SyncData (elemGuid_, APINULLGuid, syncSettings, subelemGuids, propertyParams, paramToWrite, dummymode, systemdict);
     if (!subelemGuids.IsEmpty () && SyncRelationsElement (elementType, syncSettings)) {
         if (subelemGuids.GetSize () > 3) {
             if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
@@ -264,7 +264,7 @@ void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
             API_Guid subelemGuid = subelemGuids[i];
             if (subelemGuid != elemGuid_) {
                 GS::Array<API_Guid> epm;
-                SyncData (subelemGuid, syncSettings, epm, propertyParams, paramToWrite, dummymode, systemdict);
+                SyncData (subelemGuid, elemGuid_, syncSettings, epm, propertyParams, paramToWrite, dummymode, systemdict);
             }
         }
     }
@@ -479,7 +479,7 @@ bool SyncRelationsElement (const API_ElemTypeID& elementType, const SyncSettings
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict)
+void SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict)
 {
     GSErrCode	err = NoError;
     API_ElemTypeID elementType;
@@ -547,6 +547,7 @@ void SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     subelemGuids.Push (elemGuid); // Это теперь список всех элементов для синхронизации
 
     // Читаем все возможные свойства
+    if (paramToRead.IsEmpty ()) return;
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
 
     SyncCalcRule (syncRules, subelemGuids, paramToRead, paramToWrite);
