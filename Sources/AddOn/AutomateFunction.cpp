@@ -10,6 +10,8 @@
 namespace AutoFunc
 {
 
+
+
 void RoomBook ()
 {
     GS::Array<API_Guid> zones;
@@ -33,6 +35,7 @@ void RoomBook ()
     for (API_Guid zoneGuid : zones) {
         ParseRoom (zoneGuid);
     }
+    int hh = 1;
 }
 
 void ParseRoom (API_Guid& zoneGuid)
@@ -44,38 +47,97 @@ void ParseRoom (API_Guid& zoneGuid)
         ACAPI_DisposeRoomRelationHdls (&relData);
         return;
     }
+    API_Element      zone = {};
+    API_ElementMemo  zonememo;
+    zone.header.guid = zoneGuid;
+    err = ACAPI_Element_Get (&zone);
+    GS::Array<Sector> roomedges;
+    if (err == NoError && zone.header.hasMemo) {
+        err = ACAPI_Element_GetMemo (zone.header.guid, &zonememo, APIMemoMask_Polygon);
+        if (err == NoError) {
+            UInt32 ncoords = BMGetHandleSize ((GSHandle) zonememo.coords) / sizeof (API_Coord) - 1;
+            UInt32 nSubPolys = BMGetHandleSize ((GSHandle) zonememo.pends) / sizeof (Int32) - 1;
+            if (ncoords > 0 && nSubPolys > 0) {
+                for (UInt32 j = 1; j <= nSubPolys; j++) {
+                    UInt32 begInd = (*zonememo.pends)[j - 1] + 1;
+                    UInt32 endInd = (*zonememo.pends)[j];
+                    for (UInt32 i = begInd; i < endInd; i++) {
+                        Point2D begC = { (*zonememo.coords)[i].x, (*zonememo.coords)[i].y };
+                        Point2D endC = { (*zonememo.coords)[i + 1].x, (*zonememo.coords)[i + 1].y };
+                        Sector roomedge = { begC, endC };
+                        if (roomedge.GetLength () > 0.0001) {
+                            roomedges.Push (roomedge);
+                        } else {
+                            int hh = 1;
+                        }
+                    }
+                }
+            }
+        }
+        ACAPI_DisposeElemMemoHdls (&zonememo);
+    } else {
+        ACAPI_DisposeRoomRelationHdls (&relData);
+        return;
+    }
+
     API_Element element = {};
+    GS::Array<OtdWall> walls;
     for (UInt32 i = 0; i < relData.wallPart.GetSize (); i++) {
         BNZeroMemory (&element, sizeof (API_Element));
         element.header.guid = relData.wallPart[i].guid;
         err = ACAPI_Element_Get (&element);
         if (err != NoError) continue;
         if (!is_equal (relData.wallPart[i].tEnd, 0) || !is_equal (relData.wallPart[i].tBeg, 0)) {
-            API_Coord begC_ = element.wall.begC;
-            API_Coord endC_ = element.wall.endC;
-            double dr = sqrt ((element.wall.endC.x - element.wall.begC.x) * (element.wall.endC.x - element.wall.begC.x) + (element.wall.endC.y - element.wall.begC.y) * (element.wall.endC.y - element.wall.begC.y));
+            Point2D begedge = { element.wall.begC.x, element.wall.begC.y };
+            Point2D endedge = { element.wall.endC.x, element.wall.endC.y };
+            double dx = -element.wall.endC.x + element.wall.begC.x;
+            double dy = -element.wall.endC.y + element.wall.begC.y;
+            double dr = sqrt (dx * dx + dy * dy);
             if (!is_equal (relData.wallPart[i].tBeg, 0) && !is_equal (relData.wallPart[i].tBeg, dr)) {
-                double lambda = dr / (relData.wallPart[i].tBeg - dr);
-                begC_.x = (element.wall.endC.x + element.wall.begC.x * lambda) / (1 + lambda);
-                begC_.y = (element.wall.endC.y + element.wall.begC.y * lambda) / (1 + lambda);
+                double lambda = relData.wallPart[i].tBeg / dr;
+                begedge.x = element.wall.begC.x - dx * lambda;
+                begedge.y = element.wall.begC.y - dy * lambda;
             }
-            if (!is_equal (relData.wallPart[i].tEnd, 0)) {
-                double lambda = dr / (relData.wallPart[i].tEnd - dr);
-                endC_.x = (element.wall.begC.x + element.wall.endC.x * lambda) / (1 + lambda);
-                endC_.y = (element.wall.begC.y + element.wall.begC.y * lambda) / (1 + lambda);
+            if (!is_equal (relData.wallPart[i].tEnd, 0) && !is_equal (relData.wallPart[i].tEnd, dr)) {
+                double lambda = relData.wallPart[i].tEnd / dr;
+                endedge.x = element.wall.begC.x - dx * lambda;
+                endedge.y = element.wall.begC.y - dy * lambda;
+            }
+            UInt32 inxedge = relData.wallPart[i].roomEdge;
+            inxedge = inxedge + 1;
+            if (inxedge > roomedges.GetSize ()) inxedge = 0;
+            Sector roomedge = roomedges.Get (inxedge);
+            Point2D begedgeonzone = roomedge.c1;//roomedge.GetNearestPointTo (begedge);
+            Point2D endedgeonzone = roomedge.c2; //roomedge.GetNearestPointTo (endedge);
+            OtdWall wall;
+            wall.line = { begedgeonzone, endedgeonzone };
+            wall.height = fmin (element.wall.height, zone.zone.roomHeight);
+            if (wall.line.GetLength () > 0.0001 && wall.height > 0.0001) {
+                walls.Push (wall);
+            } else {
+                int hh = 1;
             }
         }
-        //double dr = sqrt ((endC_.x - begC_.x) * (endC_.x - begC_.x) + (endC_.y - begC_.y) * (endC_.y - begC_.y));
-        //
-        //    if from_dot = 1 then
-        //        if abs (1 + lambda) > EPS then
-        //            dx = (x2 + x1 * lambda) / (1 + lambda)
-        //            dy = (y2 + y1 * lambda) / (1 + lambda)
-
-        //            dx = (x1 + x2 * lambda) / (1 + lambda)
-        //            dy = (y1 + y2 * lambda) / (1 + lambda)
     }
     ACAPI_DisposeRoomRelationHdls (&relData);
+    API_Element wallelement;
+    wallelement.header.typeID = API_WallID;
+    err = ACAPI_Element_GetDefaults (&wallelement, nullptr);
+    if (err != NoError) {
+        return;
+    }
+    ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
+        for (UInt32 i = 0; i < walls.GetSize (); i++) {
+            wallelement.wall.begC = { walls[i].line.c1.x, walls[i].line.c1.y };
+            wallelement.wall.endC = { walls[i].line.c2.x, walls[i].line.c2.y };
+            wallelement.wall.height = walls[i].height;
+            err = ACAPI_Element_Create (&wallelement, nullptr);
+            if (err != NoError) {
+                return err;
+            }
+        }
+        return NoError;
+    });
 }
 
 
@@ -224,7 +286,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Get3DProjectionSetsID", err, APINULLGuid);
         return err;
-}
+    }
     proj3DInfo.isPersp = false;
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 1;
@@ -267,7 +329,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
         return err;
     }
     return err;
-    }
+}
 // -----------------------------------------------------------------------------
 // Создание 3д документа для одного отрезка
 // -----------------------------------------------------------------------------
@@ -453,7 +515,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
         msg_rep ("DoSect", "Get3DDocument", err, APINULLGuid);
         BMKillHandle ((GSHandle*) &(cutInfo.shapes));
         return err;
-}
+    }
 
     API_DocumentFrom3DType documentFrom3DType;
 #if defined(AC_27) || defined(AC_28)
@@ -476,7 +538,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
         for (short i = 0; i < cutInfo.nShapes; i++) {
             (*documentFrom3DType.cutSetting.shapes)[i] = (*cutInfo.shapes)[i];
         }
-}
+    }
     documentFrom3DType.projectionSetting = proj3DInfo;
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_ChangeDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
@@ -605,7 +667,7 @@ void ProfileByLine ()
         if (err != NoError) {
             msg_rep ("ProfileByLine", "ACAPI_Element_GetDefaults", err, APINULLGuid);
             return err;
-    }
+        }
         elemline.header.layer = layer;
         elemline.hotspot.pen = 143;
         BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
@@ -678,7 +740,7 @@ void ProfileByLine ()
             if (err != NoError) return err;
         }
         return err;
-});
+    });
 
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
         if (PlaceDocSect (lines[i], elemline) != NoError) {
@@ -733,7 +795,7 @@ void ProfileByLine ()
 #endif
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIEnv_Change3DCuttingPlanesID", err, APINULLGuid);
-    }
+        }
     }
     BMKillHandle ((GSHandle*) &(cutInfo.shapes));
     if (store == 1) {
@@ -901,7 +963,7 @@ void AlignDrawingsByPoints ()
     if (err != NoError) {
         store = -1;
         err = NoError;
-}
+    }
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
@@ -1060,7 +1122,7 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     if (err != NoError) {
         ACAPI_LibraryPart_CloseParameters ();
         return err;
-}
+    }
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
     if (err != NoError) {
         ACAPI_LibraryPart_CloseParameters ();
@@ -1109,7 +1171,7 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
             err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr); if (err != NoError) return err;
 #endif
         }
-        }
+    }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams); if (err != NoError) return err;
     err = ACAPI_LibraryPart_CloseParameters (); if (err != NoError) return err;
@@ -1142,6 +1204,6 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     err = ACAPI_Element_Change (&element, &mask, &elemMemo, APIMemoMask_AddPars, true);
     ACAPI_DisposeAddParHdl (&apiParams.params);
     return err;
-    }
+}
 }
 #endif

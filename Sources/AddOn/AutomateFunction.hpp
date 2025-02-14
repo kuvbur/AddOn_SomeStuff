@@ -16,6 +16,13 @@
 namespace AutoFunc
 {
 
+// Структура со стенами для отделки
+typedef struct
+{
+    double height = 0; // Угол подрезки конца отрезка
+    Sector line;
+} OtdWall;
+
 // Структура с отрезками для создания 3д документов
 typedef struct
 {
