@@ -21,7 +21,21 @@ typedef struct
 {
     double height = 0; // Угол подрезки конца отрезка
     Sector line;
+    Int32 roomedge = 0;
 } OtdWall;
+
+typedef struct
+{
+    GS::Array<Sector> walledges;
+    GS::Array<Sector> columnedges;
+    GS::Array<Sector> restedges;
+    GS::Array<Sector> gableedges;
+    GS::Array<UnitVector_2D> gabledirection;
+    bool isEmpty = true;
+} OtdRoom;
+
+
+
 
 // Структура с отрезками для создания 3д документов
 typedef struct
@@ -39,6 +53,11 @@ typedef struct
 // -----------------------------------------------------------------------------
 void RoomBook ();
 void ParseRoom (API_Guid& zoneGuid);
+void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges);
+bool FindWall (Sector& walledge, OtdRoom& roomedges, double& toler);
+bool FindEdge (Sector& edge, GS::Array<Sector> edges);
+void DrawEdges (OtdRoom& roomedges);
+void DrawEdge (GS::Array<Sector>& edges, API_Element& textelement, API_Element& lineelement, GS::UniString type);
 // -----------------------------------------------------------------------------
 // Ищет в массиве отрезок, начало или конец которого находятся возле точки start
 // Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
