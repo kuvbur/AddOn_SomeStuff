@@ -7,10 +7,12 @@
 #include	"Model3D/MeshBody.hpp"
 #include	"Model3D/model.h"
 
+
+
 namespace AutoFunc
 {
 
-
+OtdRoom* reducededges = nullptr;
 
 void RoomBook ()
 {
@@ -38,50 +40,67 @@ void RoomBook ()
     int hh = 1;
 }
 
+
+static void	__ACENV_CALL	RoomRedProc (const API_RoomReductionPolyType* roomRed)
+{
+    if (reducededges == nullptr) {
+        return;
+    }
+    if (roomRed->nCoords < 4 || roomRed->coords == nullptr || roomRed->subPolys == nullptr) {
+        return;
+    }
+    GS::Array<Sector> roomedges;
+    for (Int32 j = 1; j <= roomRed->nSubPolys; j++) {
+        UInt32 begInd = (*roomRed->subPolys)[j - 1] + 1;
+        UInt32 endInd = (*roomRed->subPolys)[j];
+        for (UInt32 k = begInd; k < endInd; k++) {
+            Point2D begC = { (*roomRed->coords)[k].x, (*roomRed->coords)[k].y };
+            Point2D endC = { (*roomRed->coords)[k + 1].x, (*roomRed->coords)[k + 1].y };
+            Sector roomedge = { begC, endC };
+            roomedges.Push (roomedge);
+        }
+    }
+
+    switch (roomRed->type) {
+        case APIRoomReduction_Rest:
+            reducededges->restedges.Append (roomedges);
+            break;
+        case APIRoomReduction_Wall:
+            reducededges->walledges.Append (roomedges);
+            break;
+        case APIRoomReduction_Column:
+            reducededges->columnedges.Append (roomedges);
+            break;
+        case APIRoomReduction_Hatch:
+            break;
+        case APIRoomReduction_Gable:
+            reducededges->gableedges.Append (roomedges);
+            break;
+        default:
+            break;
+    }
+    BMKillHandle ((GSHandle*) &roomRed->coords);
+    BMKillHandle ((GSHandle*) &roomRed->subPolys);
+    BMKillHandle ((GSHandle*) &roomRed->arcs);
+    return;
+}		// RoomRedProc
+
 void ParseRoom (API_Guid& zoneGuid)
 {
     GSErrCode err;
+    OtdRoom roomedges;
+    GetZoneEdges (zoneGuid, roomedges);
+    if (roomedges.isEmpty) return;
+
     API_RoomRelation relData;
     err = ACAPI_Element_GetRelations (zoneGuid, API_ZombieElemID, &relData);
     if (err != NoError) {
         ACAPI_DisposeRoomRelationHdls (&relData);
         return;
     }
-    API_Element      zone = {};
-    API_ElementMemo  zonememo;
-    zone.header.guid = zoneGuid;
-    err = ACAPI_Element_Get (&zone);
-    GS::Array<Sector> roomedges;
-    if (err == NoError && zone.header.hasMemo) {
-        err = ACAPI_Element_GetMemo (zone.header.guid, &zonememo, APIMemoMask_Polygon);
-        if (err == NoError) {
-            UInt32 ncoords = BMGetHandleSize ((GSHandle) zonememo.coords) / sizeof (API_Coord) - 1;
-            UInt32 nSubPolys = BMGetHandleSize ((GSHandle) zonememo.pends) / sizeof (Int32) - 1;
-            if (ncoords > 0 && nSubPolys > 0) {
-                for (UInt32 j = 1; j <= nSubPolys; j++) {
-                    UInt32 begInd = (*zonememo.pends)[j - 1] + 1;
-                    UInt32 endInd = (*zonememo.pends)[j];
-                    for (UInt32 i = begInd; i < endInd; i++) {
-                        Point2D begC = { (*zonememo.coords)[i].x, (*zonememo.coords)[i].y };
-                        Point2D endC = { (*zonememo.coords)[i + 1].x, (*zonememo.coords)[i + 1].y };
-                        Sector roomedge = { begC, endC };
-                        if (roomedge.GetLength () > 0.0001) {
-                            roomedges.Push (roomedge);
-                        } else {
-                            int hh = 1;
-                        }
-                    }
-                }
-            }
-        }
-        ACAPI_DisposeElemMemoHdls (&zonememo);
-    } else {
-        ACAPI_DisposeRoomRelationHdls (&relData);
-        return;
-    }
 
     API_Element element = {};
-    GS::Array<OtdWall> walls;
+    GS::Array<Sector> gableedges;
     for (UInt32 i = 0; i < relData.wallPart.GetSize (); i++) {
         BNZeroMemory (&element, sizeof (API_Element));
         element.header.guid = relData.wallPart[i].guid;
@@ -103,41 +122,195 @@ void ParseRoom (API_Guid& zoneGuid)
                 endedge.x = element.wall.begC.x - dx * lambda;
                 endedge.y = element.wall.begC.y - dy * lambda;
             }
-            UInt32 inxedge = relData.wallPart[i].roomEdge;
-            inxedge = inxedge + 1;
-            if (inxedge > roomedges.GetSize ()) inxedge = 0;
-            Sector roomedge = roomedges.Get (inxedge);
-            Point2D begedgeonzone = roomedge.c1;//roomedge.GetNearestPointTo (begedge);
-            Point2D endedgeonzone = roomedge.c2; //roomedge.GetNearestPointTo (endedge);
-            OtdWall wall;
-            wall.line = { begedgeonzone, endedgeonzone };
-            wall.height = fmin (element.wall.height, zone.zone.roomHeight);
-            if (wall.line.GetLength () > 0.0001 && wall.height > 0.0001) {
-                walls.Push (wall);
+            Sector walledge = { begedge , endedge };
+            double toller = fmin (element.wall.thickness, element.wall.offsetFromOutside, element.wall.thickness - );
+            if (FindWall (walledge, roomedges, toller)) {
+                gableedges.Push (walledge);
             } else {
-                int hh = 1;
+                toller = fmax (element.wall.thickness, element.wall.offsetFromOutside);
+                if (FindWall (walledge, roomedges, toller)) {
+                    gableedges.Push (walledge);
+                }
             }
         }
     }
     ACAPI_DisposeRoomRelationHdls (&relData);
-    API_Element wallelement;
-    wallelement.header.typeID = API_WallID;
-    err = ACAPI_Element_GetDefaults (&wallelement, nullptr);
-    if (err != NoError) {
-        return;
+    roomedges.gableedges = gableedges;
+    DrawEdges (roomedges);
+    //API_Element wallelement;
+    //wallelement.header.typeID = API_WallID;
+    //err = ACAPI_Element_GetDefaults (&wallelement, nullptr);
+    //if (err != NoError) {
+    //    return;
+    //}
+    //ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
+    //    for (UInt32 i = 0; i < walls.GetSize (); i++) {
+    //        wallelement.wall.begC = { walls[i].line.c1.x, walls[i].line.c1.y };
+    //        wallelement.wall.endC = { walls[i].line.c2.x, walls[i].line.c2.y };
+    //        wallelement.wall.height = walls[i].height;
+    //        err = ACAPI_Element_Create (&wallelement, nullptr);
+    //        if (err != NoError) {
+    //            return err;
+    //        }
+    //    }
+    //    return NoError;
+    //});
+}
+
+void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges)
+{
+    reducededges = &roomedges;
+    if (ACAPI_Database (APIDb_RoomReductionsID, &zoneGuid, (void*) (GS::IntPtr) RoomRedProc) != NoError) return;
+    // Уберём из rest участки, которые есть в других частях
+
+    GS::Array<Sector> edges;
+    if (!roomedges.columnedges.IsEmpty ()) {
+        for (UInt32 j = 0; j < roomedges.columnedges.GetSize (); j++) {
+            Sector tedge = roomedges.columnedges[j];
+            if (FindEdge (tedge, roomedges.restedges)) edges.Push (tedge);
+        }
+        roomedges.columnedges = edges;
+        edges.Clear ();
     }
-    ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
-        for (UInt32 i = 0; i < walls.GetSize (); i++) {
-            wallelement.wall.begC = { walls[i].line.c1.x, walls[i].line.c1.y };
-            wallelement.wall.endC = { walls[i].line.c2.x, walls[i].line.c2.y };
-            wallelement.wall.height = walls[i].height;
-            err = ACAPI_Element_Create (&wallelement, nullptr);
-            if (err != NoError) {
-                return err;
+    if (!roomedges.walledges.IsEmpty ()) {
+        for (UInt32 j = 0; j < roomedges.walledges.GetSize (); j++) {
+            Sector tedge = roomedges.walledges[j];
+            if (FindEdge (tedge, roomedges.restedges)) edges.Push (tedge);
+        }
+        roomedges.walledges = edges;
+        edges.Clear ();
+    }
+    if (!roomedges.gableedges.IsEmpty ()) {
+        for (UInt32 j = 0; j < roomedges.gableedges.GetSize (); j++) {
+            Sector tedge = roomedges.gableedges[j];
+            if (FindEdge (tedge, roomedges.restedges)) edges.Push (tedge);
+        }
+        roomedges.gableedges = edges;
+        edges.Clear ();
+    }
+
+    GS::Array<Sector> restedges;
+    for (UInt32 i = 0; i < roomedges.restedges.GetSize (); i++) {
+        Sector restedge = roomedges.restedges[i];
+        bool flag_find = false;
+        if (!flag_find && !roomedges.columnedges.IsEmpty ()) flag_find = FindEdge (restedge, roomedges.columnedges);
+        if (!flag_find && !roomedges.walledges.IsEmpty ()) flag_find = FindEdge (restedge, roomedges.walledges);
+        if (!flag_find && !roomedges.gableedges.IsEmpty ()) flag_find = FindEdge (restedge, roomedges.gableedges);
+        if (!flag_find) {
+            GS::Optional<UnitVector_2D> restdir_ = restedge.GetDirection ();
+            if (restdir_.HasValue ()) {
+                restedges.Push (restedge);
+                roomedges.gabledirection.Push (restdir_.Get ());
             }
         }
+    }
+    roomedges.restedges = restedges;
+    roomedges.isEmpty = (roomedges.restedges.IsEmpty () && roomedges.columnedges.IsEmpty () && roomedges.walledges.IsEmpty () && roomedges.gableedges.IsEmpty ());
+}
+
+bool FindWall (Sector& walledge, OtdRoom& roomedges, double& toler)
+{
+    if (walledge.GetLength () < 0.001) return false;
+    GS::Optional<UnitVector_2D> walldir = walledge.GetDirection ();
+    if (!walldir.HasValue ()) return false;
+    for (UInt32 j = 0; j < roomedges.restedges.GetSize (); j++) {
+        if (roomedges.gabledirection[j].IsParallelWith (walldir.Get ())) {
+            Sector restedge = roomedges.restedges[j];
+            double dr = restedge.GetDistance (walledge.GetMidPoint ());
+            if (fabs (dr - toler) < 0.0001) {
+                walledge.c1 = restedge.GetNearestPointTo (walledge.c1);
+                walledge.c2 = restedge.GetNearestPointTo (walledge.c2);
+                if (walledge.GetLength () > 0.001) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool FindEdge (Sector& edge, GS::Array<Sector> edges)
+{
+    for (UInt32 i = 0; i < edges.GetSize (); i++) {
+        if (edges[i].c1.IsNear (edge.c1, 0.01) && edges[i].c2.IsNear (edge.c2, 0.01)) {
+            return true;
+        } else {
+            if (edges[i].c1.IsNear (edge.c2, 0.01) && edges[i].c2.IsNear (edge.c1, 0.01)) {
+                edge = edge.InvertDirection ();
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void DrawEdges (OtdRoom& roomedges)
+{
+    API_Element textelement;
+    textelement.header.typeID = API_TextID;
+    if (ACAPI_Element_GetDefaults (&textelement, nullptr) != NoError) {
+        return;
+    }
+    textelement.text.anchor = APIAnc_MM;
+    textelement.text.just = APIJust_Left;
+    textelement.text.nonBreaking = true;
+    textelement.text.nLine = 1;
+    API_Element lineelement;
+    lineelement.header.typeID = API_LineID;
+    if (ACAPI_Element_GetDefaults (&lineelement, nullptr) != NoError) {
+        return;
+    }
+    GS::Array<API_Guid> lineList;
+    ACAPI_Element_GetElemList (API_LineID, &lineList);
+    GS::Array<API_Guid> textList;
+    ACAPI_Element_GetElemList (API_TextID, &textList);
+    ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
+        if (!lineList.IsEmpty ()) ACAPI_Element_Delete (lineList);
+        if (!textList.IsEmpty ()) ACAPI_Element_Delete (textList);
+        //textelement.text.pen = 3;
+        //DrawEdge (roomedges.walledges, textelement, lineelement, "Wall");
+        //textelement.text.pen = 4;
+        //DrawEdge (roomedges.columnedges, textelement, lineelement, "Column");
+        //textelement.text.pen = 5;
+        //DrawEdge (roomedges.restedges, textelement, lineelement, "Rest");
+        textelement.text.pen = 6;
+        DrawEdge (roomedges.gableedges, textelement, lineelement, "Gable");
         return NoError;
     });
+}
+
+void DrawEdge (GS::Array<Sector>& edges, API_Element& textelement, API_Element& lineelement, GS::UniString type)
+{
+    if (edges.IsEmpty ()) return;
+    lineelement.line.linePen.penIndex = textelement.text.pen;
+    for (UInt32 i = 0; i < edges.GetSize (); i++) {
+        const GS::UniString text = type + GS::UniString::Printf (" %d", i + 1);
+        const char* content = text.ToCStr ().Get ();
+        API_ElementMemo	memo = {};
+        memo.textContent = BMAllocateHandle (Strlen32 (content) + 1, ALLOCATE_CLEAR, 0);
+        if (memo.textContent == nullptr) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return;
+        }
+        strcpy (*memo.textContent, content);
+        Point2D mid = edges[i].GetMidPoint ();
+        textelement.text.loc.x = mid.x;
+        textelement.text.loc.y = mid.y;
+        if (ACAPI_Element_Create (&textelement, &memo) != NoError) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return;
+        }
+        ACAPI_DisposeElemMemoHdls (&memo);
+        lineelement.line.begC.x = edges[i].c1.x;
+        lineelement.line.begC.y = edges[i].c1.y;
+        lineelement.line.endC.x = edges[i].c2.x;
+        lineelement.line.endC.y = edges[i].c2.y;
+        if (ACAPI_Element_Create (&lineelement, nullptr) != NoError) {
+            return;
+        }
+    }
 }
 
 
@@ -499,7 +672,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
             BMKillHandle ((GSHandle*) &(cutInfo.shapes));
             return err;
         }
-    }
+}
 
     // Установка камеры перпендикулярно отрезку
     API_3DProjectionInfo  proj3DInfo;
@@ -806,7 +979,7 @@ void ProfileByLine ()
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
 #endif
     }
-}
+    }
 // -----------------------------------------------------------------------------
 // Выравнивание одного чертежа
 // Возвращает сдвинутую на ширину чертежа координату
@@ -907,7 +1080,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         return err;
     }
     return err;
-}
+    }
 // -----------------------------------------------------------------------------
 // Возвращает список API_Guid чертежей, отсортированных по именам
 // -----------------------------------------------------------------------------
@@ -1059,7 +1232,7 @@ void AlignDrawingsByPoints ()
         return;
     }
     return;
-}
+    }
 
 void KM_ListUpdate ()
 {
@@ -1077,8 +1250,8 @@ void KM_ListUpdate ()
 #endif
             if (elementType == API_ObjectID) elements.Push (guidArray[i]);
             if (elementType == API_PolyLineID || elementType == API_LineID) lines.Push (guidArray[i]);
-        }
     }
+}
     if (elements.IsEmpty () || lines.IsEmpty ()) return;
     GS::Array<API_Coord> coords;
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
@@ -1093,7 +1266,7 @@ void KM_ListUpdate ()
         GSErrCode err = KM_WriteGDL (elements.Get (0), coords);
         return err;
     });
-}
+    }
 
 GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
 {
@@ -1127,7 +1300,7 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     if (err != NoError) {
         ACAPI_LibraryPart_CloseParameters ();
         return err;
-    }
+}
 #else
     err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
     if (err != NoError) {
@@ -1204,6 +1377,6 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     err = ACAPI_Element_Change (&element, &mask, &elemMemo, APIMemoMask_AddPars, true);
     ACAPI_DisposeAddParHdl (&apiParams.params);
     return err;
-}
+    }
 }
 #endif
