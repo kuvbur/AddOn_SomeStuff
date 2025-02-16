@@ -1397,8 +1397,10 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
 {
     GSErrCode err = NoError;
     if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    ParamDictValue propertyParamselem;
+    ParamHelpers::AllPropertyDefinitionToParamDict (propertyParamselem, parentelementhead.guid);
     ParamDictValue paramDict;
-    for (auto& cItt : propertyParams) {
+    for (auto& cItt : propertyParamselem) {
 #if defined(AC_28)
         ParamValue param = cItt.value;
 #else
@@ -1407,7 +1409,7 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
         if (param.definition.description.Contains ("Sync_GUID")) {
             paramDict.Add (param.rawName, param);
         }
-    }
+}
     if (paramDict.IsEmpty ()) return;
     ParamDictElement paramToRead;
     for (UInt32 i = 0; i < subguidArray.GetSize (); i++) {
@@ -1445,8 +1447,8 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     flag_write = true;
                 }
                 if (flag_write) break;
-            }
         }
+    }
     }
 }
 
@@ -1641,7 +1643,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             if (param.definition.description.Contains ("Sync_GUID")) {
                 paramDict.Add (param.rawName, param);
             }
-        }
+    }
         if (paramDict.IsEmpty ()) return;
         ParamDictElement paramToRead;
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
@@ -1671,7 +1673,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                         }
                     }
                 }
-            }
+}
         }
     }
     if (selNeigs.IsEmpty ()) return;
