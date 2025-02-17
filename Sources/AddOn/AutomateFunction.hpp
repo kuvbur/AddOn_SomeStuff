@@ -19,9 +19,11 @@ namespace AutoFunc
 // Структура со стенами для отделки
 typedef struct
 {
-    double height = 0; // Угол подрезки конца отрезка
-    Sector line;
-    Int32 roomedge = 0;
+    double height = 0;
+    double bottomOffset = 0;
+    API_Coord begC;
+    API_Coord endC;
+    API_Guid basewallguid = APINULLGuid;
 } OtdWall;
 
 typedef struct
@@ -30,7 +32,6 @@ typedef struct
     GS::Array<Sector> columnedges;
     GS::Array<Sector> restedges;
     GS::Array<Sector> gableedges;
-    GS::Array<UnitVector_2D> gabledirection;
     bool isEmpty = true;
 } OtdRoom;
 
@@ -54,7 +55,6 @@ typedef struct
 void RoomBook ();
 void ParseRoom (API_Guid& zoneGuid);
 void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges);
-bool FindWall (Sector& walledge, OtdRoom& roomedges, double& toler);
 bool FindEdge (Sector& edge, GS::Array<Sector> edges);
 void DrawEdges (OtdRoom& roomedges);
 void DrawEdge (GS::Array<Sector>& edges, API_Element& textelement, API_Element& lineelement, GS::UniString type);
