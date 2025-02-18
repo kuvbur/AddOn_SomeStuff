@@ -131,7 +131,7 @@ typedef struct
     API_AttributeIndex inx;		// Индекс материала
     double fillThick = 0.0;		// Толщина слой
     double rfromstart = 0.0;	//Удаление от начальной точки (для определения порядка следования)
-    bool isCore = false;		//Является ядром?
+    short structype = 0;		//Является ядром?
     int num = 0;
 } ParamValueComposite;
 

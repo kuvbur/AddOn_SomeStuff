@@ -3,11 +3,9 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"AutomateFunction.hpp"
-#include	"Helpers.hpp"
 #include	"Model3D/MeshBody.hpp"
 #include	"Model3D/model.h"
-
-
+#include    "VectorImageIterator.hpp"
 
 namespace AutoFunc
 {
@@ -34,10 +32,55 @@ void RoomBook ()
         err = ACAPI_Element_GetElemList (API_ZoneID, &zones, APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight | APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation);
         if (err != NoError || zones.IsEmpty ()) return;
     }
-    for (API_Guid zoneGuid : zones) {
-        ParseRoom (zoneGuid);
+
+    ParamDictElement paramToRead;
+
+    ParamValue param_composite = {};
+    GS::UniString rawName = "{@material:layers,20}";
+    param_composite.rawName = rawName;
+    param_composite.val.uniStringValue = "l[{@property:параметры ведомости отделки/выводить в ведомость отделки}:{@property:параметры ведомости отделки/наименование в ведомости отделки}]";
+    param_composite.fromMaterial = true;
+    ParamDictValue propertyParams;
+    ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    ParamDictValue paramDict;
+    GS::UniString templatestring = param_composite.val.uniStringValue;
+    if (ParamHelpers::ParseParamNameMaterial (templatestring, paramDict)) {
+        param_composite.val.uniStringValue = templatestring;
+        for (UInt32 inx = 0; inx < 20; inx++) {
+            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
+        }
     }
-    int hh = 1;
+    ParamHelpers::CompareParamDictValue (propertyParams, paramDict);
+    GS::HashTable<API_Guid, GS::Array<OtdWall>> zoneelements;
+    for (API_Guid zoneGuid : zones) {
+        GS::Array<OtdWall> otd;
+        ParseRoom (zoneGuid, otd, paramToRead, param_composite, paramDict);
+        zoneelements.Add (zoneGuid, otd);
+    }
+    ClassificationFunc::SystemDict systemdict;
+    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+
+    for (API_Guid zoneGuid : zones) {
+        if (zoneelements.ContainsKey (zoneGuid)) {
+            GS::Array<OtdWall> zoneelement = zoneelements.Get (zoneGuid);
+            for (UInt32 i = 0; i < zoneelement.GetSize (); i++) {
+                if (paramToRead.ContainsKey (zoneelement[i].base_guid)) {
+                    if (paramToRead.Get (zoneelement[i].base_guid).ContainsKey (rawName)) {
+                        OtdWall& otd = zoneelement[i];
+                        bool is_inv = false;
+                        if (otd.base_flipped) is_inv = true;
+                        ParamValue param_composite = paramToRead.Get (otd.base_guid).Get (rawName);
+                        GS::Array<GS::UniString> tparams;
+                        UInt32 nparam = StringSplt (param_composite.val.uniStringValue, "l[", tparams);
+                        UInt32 inx = 0;
+                        if (is_inv) inx = nparam - 1;
+                        zoneelements.Get (zoneGuid)[i].base_composite = tparams[inx];
+                    }
+                }
+            }
+        }
+    }
+    DrawEdges (zoneelements);
 }
 
 
@@ -93,7 +136,7 @@ static void	__ACENV_CALL	RoomRedProc (const API_RoomReductionPolyType* roomRed)
     return;
 }		// RoomRedProc
 
-void ParseRoom (API_Guid& zoneGuid)
+void ParseRoom (API_Guid& zoneGuid, GS::Array<OtdWall>& wallsotd, ParamDictElement& paramToRead, ParamValue& param_composite, ParamDictValue& paramDict)
 {
     GSErrCode err;
 
@@ -118,9 +161,8 @@ void ParseRoom (API_Guid& zoneGuid)
         return;
     }
     API_Element element = {};
-    GS::Array<OtdWall> wallsotd;
-    OtdWall wallotd;
 
+    OtdWall wallotd;
     Sector roomedge; Point2D begedge; Point2D endedge; Sector walledge;
     for (UInt32 i = 0; i < relData.wallPart.GetSize (); i++) {
         BNZeroMemory (&element, sizeof (API_Element));
@@ -136,14 +178,19 @@ void ParseRoom (API_Guid& zoneGuid)
         if (!roomeline.HasValue ()) {
             continue;
         }
+        GS::Optional<UnitVector_2D>	roomedgedir = roomedges.restedges[inxedge].GetDirection ();
+        if (!roomedgedir.HasValue ()) {
+            continue;
+        }
         begedge = { element.wall.begC.x, element.wall.begC.y };
         endedge = { element.wall.endC.x, element.wall.endC.y };
         walledge = { begedge , endedge };
-        GS::Optional<Geometry::Line2D> wallline = walledge.AsLine ();
-        if (!wallline.HasValue ()) {
+        GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
+        if (!walldir.HasValue ()) {
             continue;
         }
-        if (roomeline.Get ().IsColinearWith (wallline.Get ())) {
+        bool is_fliped = false;
+        if (walldir.Get ().IsParallelWith (roomedgedir.Get ())) {
             if (!is_equal (relData.wallPart[i].tEnd, 0) || !is_equal (relData.wallPart[i].tBeg, 0)) {
                 double dx = -element.wall.endC.x + element.wall.begC.x;
                 double dy = -element.wall.endC.y + element.wall.begC.y;
@@ -161,46 +208,33 @@ void ParseRoom (API_Guid& zoneGuid)
             }
             begedge = roomeline.Get ().ProjectPoint (begedge);
             endedge = roomeline.Get ().ProjectPoint (endedge);
-            walledge = { endedge , begedge };
+            is_fliped = !walldir.Get ().IsEqualWith (roomedgedir.Get ());
+            if (is_fliped) {
+                walledge = { endedge , begedge };
+            } else {
+                walledge = { begedge , endedge };
+            }
+            if (element.wall.flipped) is_fliped = !is_fliped;
         } else {
-            walledge = roomedges.restedges[inxedge];
+            walledge = roomedges.restedges[inxedge]; // Торец стены
         }
         if (!walledge.IsZeroLength ()) {
-            wallotd.basewallguid = relData.wallPart[i].guid;
+            wallotd.base_guid = relData.wallPart[i].guid;
             wallotd.bottomOffset = fmax (element.wall.bottomOffset, zoneelement.zone.roomBaseLev);
             wallotd.height = fmin (zoneelement.zone.roomHeight, element.wall.height - element.wall.bottomOffset) - wallotd.bottomOffset;
+            wallotd.base_flipped = is_fliped;
             wallotd.begC = { walledge.c1.x, walledge.c1.y };
             wallotd.endC = { walledge.c2.x, walledge.c2.y };
             wallsotd.Push (wallotd);
-            roomedges.gableedges.Push (walledge);
+            param_composite.fromGuid = wallotd.base_guid;
+            ParamHelpers::AddParamDictValue2ParamDictElement (wallotd.base_guid, paramDict, paramToRead);
+            ParamHelpers::AddParamValue2ParamDictElement (wallotd.base_guid, param_composite, paramToRead);
         }
     }
     ACAPI_DisposeRoomRelationHdls (&relData);
     if (wallsotd.IsEmpty ()) {
         return;
     }
-    DrawEdges (roomedges);
-    //API_Element wallelement;
-    //wallelement.header.typeID = API_WallID;
-    //err = ACAPI_Element_GetDefaults (&wallelement, nullptr);
-    //if (err != NoError) {
-    //    return;
-    //}
-    //wallelement.wall.linkToSettings = zoneelement.zone.linkToSettings;
-    //wallelement.wall.relativeTopStory = zoneelement.zone.relativeTopStory;
-    //ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
-    //    for (UInt32 i = 0; i < wallsotd.GetSize (); i++) {
-    //        wallelement.wall.begC = wallsotd[i].begC;
-    //        wallelement.wall.endC = wallsotd[i].endC;
-    //        wallelement.wall.height = wallsotd[i].height;
-    //        wallelement.wall.bottomOffset = wallsotd[i].bottomOffset;
-    //        err = ACAPI_Element_Create (&wallelement, nullptr);
-    //        if (err != NoError) {
-    //            return err;
-    //        }
-    //    }
-    //    return NoError;
-    //});
 }
 
 void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges)
@@ -253,7 +287,7 @@ bool FindEdge (Sector& edge, GS::Array<Sector> edges)
     return false;
 }
 
-void DrawEdges (OtdRoom& roomedges)
+void DrawEdges (GS::HashTable<API_Guid, GS::Array<OtdWall>>& zoneelements)
 {
     API_Element textelement;
     textelement.header.typeID = API_TextID;
@@ -269,54 +303,64 @@ void DrawEdges (OtdRoom& roomedges)
     if (ACAPI_Element_GetDefaults (&lineelement, nullptr) != NoError) {
         return;
     }
+    API_Element wallelement;
+    wallelement.header.typeID = API_WallID;
+    if (ACAPI_Element_GetDefaults (&wallelement, nullptr) != NoError) {
+        return;
+    }
     GS::Array<API_Guid> lineList;
     ACAPI_Element_GetElemList (API_LineID, &lineList);
     GS::Array<API_Guid> textList;
     ACAPI_Element_GetElemList (API_TextID, &textList);
+
     ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
         if (!lineList.IsEmpty ()) ACAPI_Element_Delete (lineList);
         if (!textList.IsEmpty ()) ACAPI_Element_Delete (textList);
         textelement.text.pen = 3;
-        DrawEdge (roomedges.walledges, textelement, lineelement, "Wall");
-        textelement.text.pen = 4;
-        DrawEdge (roomedges.columnedges, textelement, lineelement, "Column");
-        textelement.text.pen = 5;
-        DrawEdge (roomedges.restedges, textelement, lineelement, "Rest");
-        textelement.text.pen = 6;
-        DrawEdge (roomedges.gableedges, textelement, lineelement, "Gable");
+        for (GS::HashTable<API_Guid, GS::Array<OtdWall>>::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+            GS::Array<OtdWall >& otd = cIt->value;
+#else
+            GS::Array<OtdWall>& otd = *cIt->value;
+#endif
+            for (UInt32 i = 0; i < otd.GetSize (); i++) {
+                DrawEdge (otd[i], textelement, lineelement, wallelement);
+            }
+        }
         return NoError;
     });
 }
 
-void DrawEdge (GS::Array<Sector>& edges, API_Element& textelement, API_Element& lineelement, GS::UniString type)
+void DrawEdge (OtdWall& edges, API_Element& textelement, API_Element& lineelement, API_Element& wallelement)
 {
-    if (edges.IsEmpty ()) return;
     lineelement.line.linePen.penIndex = textelement.text.pen;
-    for (UInt32 i = 0; i < edges.GetSize (); i++) {
-        const GS::UniString text = type + GS::UniString::Printf (" %d", i + 1);
-        const char* content = text.ToCStr ().Get ();
-        API_ElementMemo	memo = {};
-        memo.textContent = BMAllocateHandle (Strlen32 (content) + 1, ALLOCATE_CLEAR, 0);
-        if (memo.textContent == nullptr) {
-            ACAPI_DisposeElemMemoHdls (&memo);
-            return;
-        }
-        strcpy (*memo.textContent, content);
-        Point2D mid = edges[i].GetMidPoint ();
-        textelement.text.loc.x = mid.x;
-        textelement.text.loc.y = mid.y;
-        if (ACAPI_Element_Create (&textelement, &memo) != NoError) {
-            ACAPI_DisposeElemMemoHdls (&memo);
-            return;
-        }
+    const GS::UniString text = edges.base_composite;
+    const char* content = text.ToCStr ().Get ();
+    API_ElementMemo	memo = {};
+    memo.textContent = BMAllocateHandle (Strlen32 (content) + 1, ALLOCATE_CLEAR, 0);
+    if (memo.textContent == nullptr) {
         ACAPI_DisposeElemMemoHdls (&memo);
-        lineelement.line.begC.x = edges[i].c1.x;
-        lineelement.line.begC.y = edges[i].c1.y;
-        lineelement.line.endC.x = edges[i].c2.x;
-        lineelement.line.endC.y = edges[i].c2.y;
-        if (ACAPI_Element_Create (&lineelement, nullptr) != NoError) {
-            return;
-        }
+        return;
+    }
+    strcpy (*memo.textContent, content);
+    textelement.text.loc.x = (edges.begC.x + edges.endC.x) / 2;
+    textelement.text.loc.y = (edges.begC.y + edges.endC.y) / 2;
+    if (ACAPI_Element_Create (&textelement, &memo) != NoError) {
+        ACAPI_DisposeElemMemoHdls (&memo);
+        return;
+    }
+    ACAPI_DisposeElemMemoHdls (&memo);
+    lineelement.line.begC = edges.begC;
+    lineelement.line.endC = edges.endC;
+    if (ACAPI_Element_Create (&lineelement, nullptr) != NoError) {
+        return;
+    }
+    wallelement.wall.begC = edges.begC;
+    wallelement.wall.endC = edges.endC;
+    wallelement.wall.height = edges.height;
+    wallelement.wall.bottomOffset = edges.bottomOffset;
+    if (ACAPI_Element_Create (&wallelement, nullptr) != NoError) {
+        return;
     }
 }
 
@@ -509,7 +553,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
         return err;
     }
     return err;
-}
+    }
 // -----------------------------------------------------------------------------
 // Создание 3д документа для одного отрезка
 // -----------------------------------------------------------------------------
@@ -541,8 +585,8 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
             if (n == name && i == id) {
                 return err;
             }
-        }
-    } else {
+    }
+} else {
         msg_rep ("Get3DDocument", "APIDb_GetDocumentFrom3DDatabasesID", err, APINULLGuid);
         return err;
     }
@@ -734,7 +778,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
     sline.tm = proj3DInfo.u.axono.tranmat;
     sline.databaseUnId = dbInfo.databaseUnId;
     return err;
-}
+        }
 // -----------------------------------------------------------------------------
 // Размещение на созданном отрезке элементов оформления
 // По краям отрезка устанавливаются hotspot
@@ -802,7 +846,7 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
         return err;
     }
     return err;
-}
+    }
 // -----------------------------------------------------------------------------
 // Построение 3д документов вдоль морфа
 // -----------------------------------------------------------------------------
@@ -920,7 +964,7 @@ void ProfileByLine ()
             if (err != NoError) return err;
         }
         return err;
-    });
+        });
 
     for (UInt32 i = 0; i < lines.GetSize (); i++) {
         if (PlaceDocSect (lines[i], elemline) != NoError) {
@@ -986,7 +1030,7 @@ void ProfileByLine ()
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
 #endif
     }
-}
+        }
 // -----------------------------------------------------------------------------
 // Выравнивание одного чертежа
 // Возвращает сдвинутую на ширину чертежа координату
@@ -1087,7 +1131,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         return err;
     }
     return err;
-}
+    }
 // -----------------------------------------------------------------------------
 // Возвращает список API_Guid чертежей, отсортированных по именам
 // -----------------------------------------------------------------------------
@@ -1113,7 +1157,7 @@ GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
                 drawingId[key] = elems[i];
             }
         }
-    }
+}
     for (SortByName::iterator i = drawingId.begin (); i != drawingId.end (); ++i) {
         API_Guid& elemguid = i->second;
         drawings.Push (elemguid);
@@ -1239,7 +1283,7 @@ void AlignDrawingsByPoints ()
         return;
     }
     return;
-}
+        }
 
 void KM_ListUpdate ()
 {
@@ -1307,7 +1351,7 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     if (err != NoError) {
         ACAPI_LibraryPart_CloseParameters ();
         return err;
-    }
+}
 #else
     err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
     if (err != NoError) {
@@ -1384,6 +1428,6 @@ GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
     err = ACAPI_Element_Change (&element, &mask, &elemMemo, APIMemoMask_AddPars, true);
     ACAPI_DisposeAddParHdl (&apiParams.params);
     return err;
-}
-}
+        }
+    }
 #endif

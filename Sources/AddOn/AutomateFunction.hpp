@@ -12,7 +12,7 @@
 #include "APICommon27.h"
 #endif // AC_26
 #include	"Sector2DData.h"
-
+#include	"Helpers.hpp"
 namespace AutoFunc
 {
 
@@ -23,7 +23,9 @@ typedef struct
     double bottomOffset = 0;
     API_Coord begC;
     API_Coord endC;
-    API_Guid basewallguid = APINULLGuid;
+    API_Guid base_guid = APINULLGuid;
+    bool base_flipped = false;
+    GS::UniString base_composite = "";
 } OtdWall;
 
 typedef struct
@@ -34,9 +36,6 @@ typedef struct
     GS::Array<Sector> gableedges;
     bool isEmpty = true;
 } OtdRoom;
-
-
-
 
 // Структура с отрезками для создания 3д документов
 typedef struct
@@ -53,11 +52,11 @@ typedef struct
 // Запись в зону информации об отделке
 // -----------------------------------------------------------------------------
 void RoomBook ();
-void ParseRoom (API_Guid& zoneGuid);
+void ParseRoom (API_Guid& zoneGuid, GS::Array<OtdWall>& wallsotd, ParamDictElement& paramToRead, ParamValue& param_composite, ParamDictValue& paramDict);
 void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges);
 bool FindEdge (Sector& edge, GS::Array<Sector> edges);
-void DrawEdges (OtdRoom& roomedges);
-void DrawEdge (GS::Array<Sector>& edges, API_Element& textelement, API_Element& lineelement, GS::UniString type);
+void DrawEdges (GS::HashTable<API_Guid, GS::Array<OtdWall>>& zoneelements);
+void DrawEdge (OtdWall& edges, API_Element& textelement, API_Element& lineelement, API_Element& wallelement);
 // -----------------------------------------------------------------------------
 // Ищет в массиве отрезок, начало или конец которого находятся возле точки start
 // Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
