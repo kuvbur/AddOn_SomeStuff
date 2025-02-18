@@ -1891,6 +1891,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
     if (!expression.Contains ('{')) return true;
     bool flag_find = false;
     GS::UniString attribsuffix = "";
+    GS::UniString attribsuffix_old = "";
     GS::UniString part = "";
     GS::UniString part_clean = "";
     GS::UniString partc = "";
@@ -1944,6 +1945,22 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
                     }
                 }
             }
+            if (!flag && !attribsuffix_old.IsEmpty ()) {
+                partc = '{' + part_clean + attribsuffix_old; // Строка без формата
+                if (pdictvalue.ContainsKey (partc)) {
+                    ParamValue pvalue = pdictvalue.Get (partc);
+                    if (pvalue.isValid) {
+                        if (!formatstring.isEmpty) pvalue.val.formatstring = formatstring;
+                        val = ParamHelpers::ToString (pvalue);
+                        flag_find = true;
+                        flag = true;
+                    } else {
+#if defined(TESTING)
+                        DBprnt ("ReplaceParamInExpression err pvalue.isValid", partc);
+#endif
+                    }
+                }
+            }
             if (!flag) {
 #if defined(TESTING)
                 DBprnt ("ReplaceParamInExpression err not found parametr", partc);
@@ -1952,6 +1969,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
         }
         expression.ReplaceAll ('{' + part + '}', val);
         if (expression_old.IsEqual (expression)) flag_change = false;
+        if (!attribsuffix.IsEmpty ()) attribsuffix_old = attribsuffix;
     }
     return flag_find;
 }
@@ -5801,12 +5819,16 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         ParamValueComposite layer = {};
         layer.inx = constrinx_ven;
         layer.fillThick = fillThick_ven;
+        layer.num = 2;
+        layer.structype = APICWallComp_Finish;
         param_composite.composite.Push (layer);
         ParamHelpers::GetAttributeValues (constrinx_ven, params, paramsAdd);
     }
     ParamValueComposite layer = {};
     layer.inx = constrinx;
     layer.fillThick = fillThick;
+    layer.num = 1;
+    layer.structype = APICWallComp_Core;
     param_composite.composite.Push (layer);
     ParamHelpers::GetAttributeValues (constrinx, params, paramsAdd);
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -5854,6 +5876,8 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         ParamValueComposite layer = {};
         layer.inx = constrinxL;
         layer.fillThick = fillThickL;
+        layer.num = i + 1;
+        layer.structype = (*defs.cwall_compItems)[i].flagBits;
         param_composite.composite.Push (layer);
         if (!existsmaterial.ContainsKey (constrinxL)) {
             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
@@ -6053,7 +6077,6 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
 #else
                                         param_composite.Get (*cIt->key).composite.Push (layer);
 #endif
-
                                         if (!existsmaterial.ContainsKey (constrinxL)) {
                                             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
                                             existsmaterial.Add (constrinxL, true);
@@ -6092,6 +6115,9 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 GS::Array<ParamValueComposite> paramout;
                 for (std::map<double, ParamValueComposite>::iterator k = comps.begin (); k != comps.end (); ++k) {
                     paramout.Push (k->second);
+                }
+                for (UInt32 i = 0; i < paramout.GetSize (); i++) {
+                    paramout[i].num = i + 1;
                 }
 #if defined(AC_28)
                 paramlayers.Get (cIt->key).composite = paramout;
