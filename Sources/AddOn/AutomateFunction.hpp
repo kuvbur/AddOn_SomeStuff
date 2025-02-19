@@ -2,40 +2,10 @@
 #pragma once
 #if !defined (AUTOMATE_HPP)
 #define	AUTOMATE_HPP
-#ifdef AC_25
-#include "APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include "APICommon26.h"
-#endif // AC_26
-#ifdef AC_27
-#include "APICommon27.h"
-#endif // AC_26
+#include    "Helpers.hpp"
 #include	"Sector2DData.h"
-#include	"Helpers.hpp"
 namespace AutoFunc
 {
-
-// Структура со стенами для отделки
-typedef struct
-{
-    double height = 0;
-    double bottomOffset = 0;
-    API_Coord begC;
-    API_Coord endC;
-    API_Guid base_guid = APINULLGuid;
-    bool base_flipped = false;
-    GS::UniString base_composite = "";
-} OtdWall;
-
-typedef struct
-{
-    GS::Array<Sector> walledges;
-    GS::Array<Sector> columnedges;
-    GS::Array<Sector> restedges;
-    GS::Array<Sector> gableedges;
-    bool isEmpty = true;
-} OtdRoom;
 
 // Структура с отрезками для создания 3д документов
 typedef struct
@@ -47,16 +17,6 @@ typedef struct
     API_DatabaseUnId databaseUnId; // UnId базы данных созданного или найденного 3д документа
     API_Tranmat tm; // Матрица преобразования координат, получена из API_3DProjectionInfo
 } SSectLine;
-
-// -----------------------------------------------------------------------------
-// Запись в зону информации об отделке
-// -----------------------------------------------------------------------------
-void RoomBook ();
-void ParseRoom (API_Guid& zoneGuid, GS::Array<OtdWall>& wallsotd, ParamDictElement& paramToRead, ParamValue& param_composite, ParamDictValue& paramDict);
-void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges);
-bool FindEdge (Sector& edge, GS::Array<Sector> edges);
-void DrawEdges (GS::HashTable<API_Guid, GS::Array<OtdWall>>& zoneelements);
-void DrawEdge (OtdWall& edges, API_Element& textelement, API_Element& lineelement, API_Element& wallelement);
 // -----------------------------------------------------------------------------
 // Ищет в массиве отрезок, начало или конец которого находятся возле точки start
 // Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend

@@ -128,11 +128,12 @@ typedef struct
 // Структура для описания слоя в многослойной конструкции
 typedef struct
 {
-    API_AttributeIndex inx;		// Индекс материала
-    double fillThick = 0.0;		// Толщина слой
-    double rfromstart = 0.0;	//Удаление от начальной точки (для определения порядка следования)
-    short structype = 0;		//Является ядром?
-    int num = 0;
+    API_AttributeIndex inx;					// Индекс материала
+    double fillThick = 0.0;					// Толщина слой
+    double rfromstart = 0.0;				//Удаление от начальной точки (для определения порядка следования)
+    short structype = APICWallComp_Core;	//Является ядром?
+    int num = 0;							//Номер слоя
+    GS::UniString val = "";					//Прочитанные свойства слоя
 } ParamValueComposite;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
