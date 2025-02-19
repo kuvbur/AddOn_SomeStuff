@@ -4,6 +4,7 @@
 #include	<stdio.h>
 #ifdef PK_1
 #include	"AutomateFunction.hpp"
+#include	"Roombook.hpp"
 #endif
 #ifdef TESTING
 #include "TestFunc.hpp"

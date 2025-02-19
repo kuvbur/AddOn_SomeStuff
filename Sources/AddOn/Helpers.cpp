@@ -4,21 +4,9 @@
 #include    <cmath>
 #include    <limits>
 #include    <math.h>
-#ifdef AC_25
-#include	"APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include	"APICommon26.h"
-#endif // AC_26
-#if defined(AC_27)
-#include	"APICommon27.h"
-#endif // AC_27
 #if defined(AC_27)|| defined (AC_28)
 #include	"MEPv1.hpp"
 #endif // AC_27
-#ifdef AC_28
-#include	"APICommon28.h"
-#endif // AC_28
 #ifdef TESTING
 #include "TestFunc.hpp"
 #endif
@@ -3570,11 +3558,20 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                ) {
                 needGetElement = true;
             }
-            if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
+            if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) {
+                if (!param.rawName.Contains ("{@property:sync_name")) {
+                    needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
+#if defined(TESTING)
+                    DBprnt ("Read err - needGetAllDefinitions", param.rawName);
+#endif
+                }
+            }
         }
     }
 
-    if (needGetAllDefinitions) AllPropertyDefinitionToParamDict (params, elemGuid);  // Проверим - для всех ли свойств подобраны определения
+    if (needGetAllDefinitions) {
+        AllPropertyDefinitionToParamDict (params, elemGuid);  // Проверим - для всех ли свойств подобраны определения
+    }
 
     API_Element element = {};
     if (needGetElement) {
@@ -4219,7 +4216,7 @@ bool ParamHelpers::ReadProperty (const API_Guid & elemGuid, ParamDictValue & par
         if (param.fromPropertyDefinition) {
             API_PropertyDefinition definition = param.definition;
 #ifdef TESTING
-            if (!param.rawName.Contains ("nosyncname") && definition.guid == APINULLGuid) DBtest (definition.guid != APINULLGuid, param.rawName, true);
+            if (!param.rawName.Contains ("nosyncname") && definition.guid == APINULLGuid) DBtest (definition.guid != APINULLGuid, param.rawName, false);
 #endif 
             if (definition.guid != APINULLGuid) {
                 propertyDefinitions.Push (definition);
@@ -4984,6 +4981,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     flag = true;
                     flag_add = true;
                     ReplaceSymbSpase (templatestring);
+                    param_composite.composite[indx].val = templatestring;
                     if (param_composite.val.hasFormula) {
                         outstring.ReplaceAll (GS::UniString::Printf ("&%d&", i), templatestring);
                     } else {
@@ -5013,6 +5011,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             params.Get (rawName).val.uniStringValue = outstring;
             params.Get (rawName).isValid = true;
             params.Get (rawName).val.type = API_PropertyStringValueType;
+            params.Get (rawName).composite = param_composite.composite;
         }
     }
     return flag_add;
