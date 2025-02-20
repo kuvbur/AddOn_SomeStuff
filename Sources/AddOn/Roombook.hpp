@@ -69,7 +69,7 @@ void ReadOneWall (API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTabl
 // -----------------------------------------------------------------------------
 void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges);
 
-bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges);
+bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 
 // -----------------------------------------------------------------------------
 // Проверка наличия отрезка в массиве отрезков.

@@ -275,7 +275,9 @@ void ReadOneWall (API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTabl
     Point2D wbegC = { element.wall.begC.x, element.wall.begC.y };
     Point2D wendC = { element.wall.endC.x, element.wall.endC.y };
     Sector walledge = { wbegC , wendC };
-    double dr = walledge.GetLength ();
+    double dx = -element.wall.endC.x + element.wall.begC.x;
+    double dy = -element.wall.endC.y + element.wall.begC.y;
+    double dr = sqrt (dx * dx + dy * dy);
     if (dr < 0.0001) {
 #if defined(TESTING)
         DBprnt ("ReadOneWall err", "walledge.GetLength ()<0.0001");
@@ -289,8 +291,6 @@ void ReadOneWall (API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTabl
 #endif
         return;
     }
-    double dx = -element.wall.endC.x + element.wall.begC.x;
-    double dy = -element.wall.endC.y + element.wall.begC.y;
     for (API_Guid zoneGuid : zoneGuids) {
         if (roomsinfo.ContainsKey (zoneGuid)) {
             OtdRoom& roominfo = roomsinfo.Get (zoneGuid);
@@ -321,7 +321,6 @@ void ReadOneWall (API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTabl
                 bool is_fliped = false;
                 Point2D begedge = wbegC;
                 Point2D endedge = wendC;
-                walledge = { begedge , endedge };
                 OtdWall wallotd;
                 if (walldir.Get ().IsParallelWith (roomedgedir.Get ())) {
                     if (!is_equal (wpart.tEnd, 0) || !is_equal (wpart.tBeg, 0)) {
@@ -435,12 +434,12 @@ void ReadOneColumn (API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTa
         endedge = { orig.x + width,orig.y + height };
         columnedge = { begedge , endedge };
         columnedges.Push (columnedge);
-        for (Sector coledge : columnedges) {
+        for (Sector& coledge : columnedges) {
             for (API_Guid zoneGuid : zoneGuids) {
                 if (roomsinfo.ContainsKey (zoneGuid)) {
                     OtdRoom& roominfo = roomsinfo.Get (zoneGuid);
-                    Sector cdge = coledge;
-                    if (FindOnEdge (cdge, roominfo.restedges)) {
+                    Sector cdge;
+                    if (FindOnEdge (coledge, roominfo.restedges, cdge)) {
                         OtdWall wallotd;
                         wallotd.base_guid = elGuid;
                         wallotd.bottomOffset = element.column.bottomOffset;
@@ -485,9 +484,9 @@ void DrawEdges (GS::HashTable < API_Guid, OtdRoom>& zoneelements)
             for (UInt32 i = 0; i < otd.otd.GetSize (); i++) {
                 DrawEdge (otd.otd[i], wallelement);
             }
-    }
+        }
         return NoError;
-});
+    });
 }
 
 void DrawEdge (OtdWall& edges, API_Element& wallelement)
@@ -682,7 +681,7 @@ void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges)
     roomedges.isEmpty = (roomedges.restedges.IsEmpty () && roomedges.columnedges.IsEmpty () && roomedges.walledges.IsEmpty () && roomedges.gableedges.IsEmpty ());
 }
 
-bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges)
+bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
 {
     const double toler = 0.001;
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
@@ -692,7 +691,7 @@ bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges)
                 GS::Optional<UnitVector_2D>	roomedgedir = edges[i].GetDirection ();
                 if (roomedgedir.HasValue ()) {
                     if (edgedir.Get ().IsParallelWith (roomedgedir.Get ())) {
-                        edge = edges[i];
+                        findedge = edges[i];
                         return true;
                     }
 
