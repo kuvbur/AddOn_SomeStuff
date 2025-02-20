@@ -51,6 +51,7 @@ typedef struct
 
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
 typedef GS::HashTable<API_ElemTypeID, UnicElement> UnicElementByType;
+typedef GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> UnicGUIDByType;
 
 // -----------------------------------------------------------------------------
 // Запись в зону информации об отделке
@@ -72,19 +73,19 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен 
 // -----------------------------------------------------------------------------
-void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable<API_Guid, OtdRoom>& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>>& guidselementToRead);
+void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable<API_Guid, OtdRoom>& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны 
 // -----------------------------------------------------------------------------
-void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable<API_Guid, OtdRoom>& roomsinfo, GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>>& guidselementToRead);
+void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable<API_Guid, OtdRoom>& roomsinfo, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из элементов
 // -----------------------------------------------------------------------------
 void GetparamToRead (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
 // -----------------------------------------------------------------------------
-// Полчение очищенного полигона зоны, включая стены, колонны
+// Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
 void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges);
 
@@ -97,9 +98,14 @@ bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 // -----------------------------------------------------------------------------
 bool FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
-void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& zoneelements);
-void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement);
-void Do_CreateWindow (API_Element& wallelement, OtdOpening& op);
+void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& zoneelements, UnicElement& subelementByparent);
+void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent);
+// -----------------------------------------------------------------------------
+// Связывание созданных элементов отделки с базовыми элементами
+// -----------------------------------------------------------------------------
+void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams);
+
+void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& subelementByparent);
 
 }
 

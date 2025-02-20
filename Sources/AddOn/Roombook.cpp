@@ -3,8 +3,8 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Roombook.hpp"
+#include	"Sync.hpp"
 #include    "VectorImageIterator.hpp"
-
 namespace AutoFunc
 {
 
@@ -48,7 +48,7 @@ void RoomBook ()
             roomsinfo.Add (zoneGuid, roominfo);
         }
     }
-    GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> guidselementToRead;
+    UnicGUIDByType guidselementToRead;
     guidselementToRead.Add (API_ZoneID, zones);
 
     GS::Array<API_ElemTypeID> typeinzone;
@@ -60,7 +60,7 @@ void RoomBook ()
     GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall; // Все проёмы в зонах
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (elementToRead.ContainsKey (typeelem)) {
-            for (GS::HashTable<API_Guid, GS::Array<API_Guid>>::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
+            for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
                 API_Guid guid = cIt->key;
                 GS::Array<API_Guid> zoneGuids = cIt->value;
@@ -82,8 +82,8 @@ void RoomBook ()
                     default:
                         break;
                 }
-}
-}
+            }
+        }
     }
 
     // Подготовка параметров
@@ -175,14 +175,52 @@ void RoomBook ()
             }
         }
     }
-    DrawEdges (storyLevels, roomsinfo);
+    UnicElement subelementByparent; // Словарь с созданными родительскими и дочерними элементами
+    DrawEdges (storyLevels, roomsinfo, subelementByparent);
+    SetSyncOtdWall (subelementByparent, propertyParams);
+}
+void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams)
+{
+    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    LoadSyncSettingsFromPreferences (syncSettings);
+    ParamDictElement paramToWrite;
+    API_Elem_Head parentelementhead;
+    GS::Array<API_Guid> syncguids;
+    for (UnicElement::PairIterator cIt = subelementByparent.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        API_Guid guid = cIt->key;
+        GS::Array<API_Guid> subguids = cIt->value;
+#else
+        API_Guid guid = *cIt->key;
+        GS::Array<API_Guid> subguids = *cIt->value;
+#endif
+        parentelementhead.guid = guid;
+        syncguids.Append (subguids);
+        SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite);
+}
+    if (!paramToWrite.IsEmpty ()) {
+        ACAPI_CallUndoableCommand ("SetSubelement",
+                [&]() -> GSErrCode {
+            ParamHelpers::ElementsWrite (paramToWrite);
+            return NoError;
+        });
+        ClassificationFunc::SystemDict systemdict;
+        ClassificationFunc::GetAllClassification (systemdict);
+        GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids, systemdict);
+        if (!rereadelem.IsEmpty ()) {
+#if defined(TESTING)
+            DBprnt ("===== REREAD =======");
+#endif
+            SyncArray (syncSettings, rereadelem, systemdict);
+        }
+    }
 }
 
 void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>& typeinzone)
 {
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (elementToRead.ContainsKey (typeelem)) {
-            for (GS::HashTable<API_Guid, GS::Array<API_Guid>>::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
+            for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
                 API_Guid guid = cIt->key;
                 GS::Array<API_Guid> zoneGuids = cIt->value;
@@ -190,19 +228,19 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                 API_Guid guid = *cIt->key;
                 GS::Array<API_Guid> zoneGuids_ = *cIt->value;
 #endif
-                GS::HashTable<API_Guid, bool> zoneGuidsd;
+                UnicGuid zoneGuidsd;
                 GS::Array<API_Guid> zoneGuids;
                 for (API_Guid zoneGuid : zoneGuids_) {
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
                 }
-                for (GS::HashTable<API_Guid, bool>::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
+                for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
                     API_Guid zoneGuid = *cIt->key;
                     zoneGuids.Push (zoneGuid);
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
-}
-        }
     }
+}
+}
     return;
 }
 // -----------------------------------------------------------------------------
@@ -324,7 +362,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен 
 // -----------------------------------------------------------------------------
-void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable < API_Guid, OtdRoom>& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>>& guidselementToRead)
+void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable < API_Guid, OtdRoom>& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element;
@@ -480,7 +518,7 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны 
 // -----------------------------------------------------------------------------
-void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable < API_Guid, OtdRoom>& roomsinfo, GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>>& guidselementToRead)
+void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable < API_Guid, OtdRoom>& roomsinfo, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -729,7 +767,7 @@ bool FindEdge (Sector& edge, GS::Array<Sector>& edges)
     return false;
 }
 
-void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& zoneelements)
+void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& zoneelements, UnicElement& subelementByparent)
 {
     API_Element wallelement;
     wallelement.header.typeID = API_WallID;
@@ -763,14 +801,14 @@ void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& 
             OtdRoom& otd = *cIt->value;
 #endif
             for (UInt32 i = 0; i < otd.otd.GetSize (); i++) {
-                DrawEdge (storyLevels, otd.otd[i], wallelement);
+                DrawEdge (storyLevels, otd.otd[i], wallelement, subelementByparent);
             }
-        }
+    }
         return NoError;
 });
 }
 
-void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement)
+void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent)
 {
     wallelement.wall.begC = edges.begC;
     wallelement.wall.endC = edges.endC;
@@ -781,16 +819,22 @@ void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelem
     wallelement.wall.refMat.attributeIndex = edges.material;
     wallelement.wall.oppMat.attributeIndex = edges.material;
     wallelement.wall.sidMat.attributeIndex = edges.material;
-    if (ACAPI_Element_Create (&wallelement, nullptr) != NoError) {
-        return;
-    }
-    edges.otd_guid = wallelement.header.guid;
-    for (OtdOpening& op : edges.openings) {
-        Do_CreateWindow (wallelement, op);
+    if (ACAPI_Element_Create (&wallelement, nullptr) == NoError) {
+        edges.otd_guid = wallelement.header.guid;
+        if (subelementByparent.ContainsKey (edges.base_guid)) {
+            subelementByparent.Get (edges.base_guid).Push (edges.otd_guid);
+        } else {
+            GS::Array<API_Guid> z;
+            z.Push (edges.otd_guid);
+            subelementByparent.Add (edges.base_guid, z);
+        }
+        for (OtdOpening& op : edges.openings) {
+            Do_CreateWindow (wallelement, op, subelementByparent);
+        }
     }
 }
 
-void Do_CreateWindow (API_Element& wallelement, OtdOpening& op)
+void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& subelementByparent)
 {
     API_ElementMemo		memo;
     GSErrCode			err = NoError;
@@ -810,6 +854,13 @@ void Do_CreateWindow (API_Element& wallelement, OtdOpening& op)
     windowelement.window.lower = op.lower;
     if (ACAPI_Element_Create (&windowelement, &memo) == NoError) {
         op.otd_guid = windowelement.header.guid;
+        if (subelementByparent.ContainsKey (op.base_guid)) {
+            subelementByparent.Get (op.base_guid).Push (op.otd_guid);
+        } else {
+            GS::Array<API_Guid> z;
+            z.Push (op.otd_guid);
+            subelementByparent.Add (op.base_guid, z);
+        }
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return;

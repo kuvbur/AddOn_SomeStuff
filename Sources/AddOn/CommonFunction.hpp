@@ -80,6 +80,8 @@ typedef struct
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
+// Словарь уникальных API_Guid
+typedef GS::HashTable<API_Guid, bool> UnicGuid;
 // -----------------------------------------------------------------------------
 // Читает информацию об этажах в проекте
 // -----------------------------------------------------------------------------
