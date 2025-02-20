@@ -7,6 +7,58 @@
 #include    <limits>
 #include    <math.h>
 
+
+Stories GetStories ()
+{
+    Stories stories;
+    API_StoryInfo storyInfo = {};
+#if defined AC_26 || defined AC_27 || defined AC_28
+    GSErrCode err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
+#else
+    GSErrCode err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);
+#endif
+    if (err == NoError) {
+        const short numberOfStories = storyInfo.lastStory - storyInfo.firstStory + 1;
+        for (short i = 0; i < numberOfStories; ++i) {
+            stories.PushNew ((*storyInfo.data)[i].index, (*storyInfo.data)[i].level);
+        }
+        BMKillHandle ((GSHandle*) &storyInfo.data);
+    }
+    return stories;
+}
+
+GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories& stories)
+{
+    if (stories.IsEmpty ()) {
+        return { 0, zPos };
+    }
+
+    const Story* storyPtr = &stories[0];
+    for (const auto& story : stories) {
+        if (story.level > zPos) {
+            break;
+        }
+        storyPtr = &story;
+    }
+
+    return { storyPtr->index, zPos - storyPtr->level };
+}
+
+double GetzPos (const double bottomOffset, const short floorInd, const Stories& stories)
+{
+    if (stories.IsEmpty ()) {
+        return 0;
+    }
+    const Story* storyPtr = &stories[0];
+    for (const auto& story : stories) {
+        if (story.index == floorInd) {
+            return story.level + bottomOffset;
+        }
+        storyPtr = &story;
+    }
+    return 0;
+}
+
 GS::UniString TextToQRCode (GS::UniString& text, int error_lvl)
 {
     GS::UniString qr_txt = "";
