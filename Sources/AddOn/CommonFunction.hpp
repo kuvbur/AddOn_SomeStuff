@@ -50,6 +50,17 @@ static const Int32 DMeterStringID = 19;
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
 
+struct Story
+{
+    Story (short _index, double _level)
+        : index (_index)
+        , level (_level)
+    {
+    }
+    short  index;
+    double level;
+};
+using Stories = GS::Array<Story>; // Хранение информации об этажах в формате Индекс - Уровень
 
 // Структура для хранения формата перевода чисел в строку и округления чисел
 typedef struct
@@ -68,6 +79,21 @@ typedef struct
 
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
+
+// -----------------------------------------------------------------------------
+// Читает информацию об этажах в проекте
+// -----------------------------------------------------------------------------
+Stories GetStories ();
+
+// -----------------------------------------------------------------------------
+// Переводит абсолютную координату z в индекс этажа и относительный отступ низа
+// -----------------------------------------------------------------------------
+GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories& stories);
+
+// -----------------------------------------------------------------------------
+// Переводит индекс этажа и относительный отступ низа в абсолютную координату z
+// -----------------------------------------------------------------------------
+double GetzPos (const double bottomOffset, const short floorInd, const Stories& stories);
 
 GS::UniString TextToQRCode (GS::UniString& text, int error_lvl);
 
