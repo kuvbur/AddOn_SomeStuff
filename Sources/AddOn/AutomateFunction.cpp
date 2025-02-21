@@ -501,7 +501,7 @@ void ProfileByLine ()
     if (elems.IsEmpty ()) return;
     Point2D startpos;
 
-    if (!ClickAPoint ("Click point", &startpos))
+    if (!ClickAPoint ("Click morph-line", &startpos))
         return;
 
     API_Element elemline;
@@ -518,7 +518,7 @@ void ProfileByLine ()
         store = -1;
         err = NoError;
     }
-    err = ACAPI_CallCommand ("Create 3d",
+    err = ACAPI_CallCommand ("Create profile by line",
     [&]() -> GSErrCode {
         GSErrCode err = NoError;
         // Получаем настройку хотспотов, которые будем расставлять на краях

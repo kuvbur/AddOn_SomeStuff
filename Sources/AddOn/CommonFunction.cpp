@@ -1025,6 +1025,16 @@ Int32 ceil_mod (Int32 n, Int32 k)
 }
 
 // --------------------------------------------------------------------
+// Округлить целое n до ближайшего целого числа, кратного k
+// --------------------------------------------------------------------
+Int32 ceil_mod_classic (Int32 n, Int32 k)
+{
+    if (!k) return 0;
+    Int32 tmp = abs (n % k);
+    if (tmp) n += (n > -1 ? (abs (k) + tmp) : (tmp));
+    return n;
+}
+// --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
 Int32 DoubleM2IntMM (const double& value)
@@ -1501,7 +1511,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             }
         }
     }
-    const GSSize nWallJunctions = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallJunctions)) / sizeof (API_CWJunctionType);
+    const GSSize nWallJunctions = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallJunctions)) / sizeof (API_CWJunctionType);
     if (nWallJunctions > 0) {
         for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
             if (memo.cWallJunctions[idx].hasSymbol) {
@@ -1509,7 +1519,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             }
         }
     }
-    const GSSize nWallAccessories = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallAccessories)) / sizeof (API_CWAccessoryType);
+    const GSSize nWallAccessories = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallAccessories)) / sizeof (API_CWAccessoryType);
     if (nWallAccessories > 0) {
         for (Int32 idx = 0; idx < nWallAccessories; ++idx) {
             if (memo.cWallAccessories[idx].hasSymbol) {
@@ -1547,73 +1557,73 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
             elementsGuids.Push (std::move (memo.railingRailConnections[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrailConnections)) / sizeof (API_RailingRailConnectionType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingHandrailConnections)) / sizeof (API_RailingRailConnectionType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingHandrailConnections[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprailConnections)) / sizeof (API_RailingRailConnectionType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingToprailConnections)) / sizeof (API_RailingRailConnectionType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingToprailConnections[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRailEnds)) / sizeof (API_RailingRailEndType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingRailEnds)) / sizeof (API_RailingRailEndType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingRailEnds[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrailEnds)) / sizeof (API_RailingRailEndType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingHandrailEnds)) / sizeof (API_RailingRailEndType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingHandrailEnds[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprailEnds)) / sizeof (API_RailingRailEndType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingToprailEnds)) / sizeof (API_RailingRailEndType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingToprailEnds[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingPosts)) / sizeof (API_RailingPostType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingPosts)) / sizeof (API_RailingPostType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingPosts[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRails)) / sizeof (API_RailingRailType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingRails)) / sizeof (API_RailingRailType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             if (memo.railingRails[idx].visible) elementsGuids.Push (std::move (memo.railingRails[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingToprails)) / sizeof (API_RailingToprailType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingToprails)) / sizeof (API_RailingToprailType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             if (memo.railingToprails[idx].visible) elementsGuids.Push (std::move (memo.railingToprails[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingHandrails)) / sizeof (API_RailingHandrailType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingHandrails)) / sizeof (API_RailingHandrailType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             if (memo.railingHandrails[idx].visible) elementsGuids.Push (std::move (memo.railingHandrails[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingInnerPosts)) / sizeof (API_RailingInnerPostType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingInnerPosts)) / sizeof (API_RailingInnerPostType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingInnerPosts[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingBalusters)) / sizeof (API_RailingBalusterType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingBalusters)) / sizeof (API_RailingBalusterType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingBalusters[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingPanels)) / sizeof (API_RailingPanelType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingPanels)) / sizeof (API_RailingPanelType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             if (memo.railingPanels[idx].visible) elementsGuids.Push (std::move (memo.railingPanels[idx].head.guid));
