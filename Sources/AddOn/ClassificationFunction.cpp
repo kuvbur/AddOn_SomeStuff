@@ -75,6 +75,7 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
         classificationitem.parentname = parent.id.ToLowerCase ();
         classifications.Add (itemname, classificationitem);
     }
+
     if (desc.ToLowerCase ().Contains ("some_stuff_class") || desc.ToLowerCase ().Contains ("somestuff_class") || desc.ToLowerCase ().Contains ("somestuffclass")) {
         ClassificationValues classificationitem;
         classificationitem.item = item;
@@ -82,6 +83,15 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
         classificationitem.itemname = "@some_stuff_class@";
         classificationitem.parentname = "";
         classifications.Add ("@some_stuff_class@", classificationitem);
+    }
+
+    if (desc.ToLowerCase ().Contains ("some_stuff_finwalls") || desc.ToLowerCase ().Contains ("somestuff_finwalls") || desc.ToLowerCase ().Contains ("somestufffinwalls")) {
+        ClassificationValues classificationitem;
+        classificationitem.item = item;
+        classificationitem.system = system;
+        classificationitem.itemname = "@some_stuff_finwalls@";
+        classificationitem.parentname = "";
+        classifications.Add ("@some_stuff_finwalls@", classificationitem);
     }
 }
 void GetFullName (const API_ClassificationItem& item, const ClassificationDict& classifications, GS::UniString& fullname)

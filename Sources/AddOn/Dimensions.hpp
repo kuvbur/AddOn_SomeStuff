@@ -24,6 +24,7 @@ typedef struct
     bool	flag_deletewall = false;
     bool	flag_reset = false;
     bool	flag_custom = false;
+    bool	classic_round_mode = false; // Использовать вместо округления вверх обычное округление
     GS::UniString expression = "";
     GS::UniString layer = "";
     ParamDictValue paramDict;

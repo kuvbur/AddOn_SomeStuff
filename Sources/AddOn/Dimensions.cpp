@@ -3,6 +3,7 @@
 #include	"APIEnvir.h"
 #include	"Dimensions.hpp"
 
+
 #define DIM_NOCHANGE 0
 #define DIM_HIGHLIGHT_ON 1
 #define DIM_HIGHLIGHT_OFF 2
@@ -15,7 +16,6 @@ bool HasDimAutotext ()
     GS::UniString autotext = "";
     return GetDimAutotext (autotext);
 }
-
 
 // -----------------------------------------------------------------------------
 // Чтение настроек из информации о проекте
@@ -99,7 +99,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
 {
     GS::Array<GS::UniString> partstring_1;
     if (StringSplt (rawrule, "-", partstring_1) == 2) {
-
+        bool flag_find = false;
         //Проверяем - что указано в правиле: слой или номер пера
         // Слой указываем в кавычках, в regexp формате
         if (partstring_1[0].Contains ('"')) {
@@ -114,19 +114,24 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
             dimrule.flag_change = true;
             dimrule.flag_deletewall = true;
             dimrule.pen_rounded = dimrule.pen_original;
-            return true;
+            flag_find = true;
         }
         if (partstring_1[1].IsEqual ("ResetText")) {
             dimrule.flag_change = true;
             dimrule.flag_reset = true;
             dimrule.pen_rounded = dimrule.pen_original;
-            return true;
+            flag_find = true;
         }
         if (partstring_1[1].IsEqual ("CheckCustom")) {
             dimrule.flag_change = false;
             dimrule.flag_custom = true;
-            return true;
+            flag_find = true;
         }
+        if (partstring_1[1].Contains ("ClassicRound")) {
+            dimrule.classic_round_mode = true;
+            flag_find = true;
+        }
+        if (!partstring_1[1].Contains (",")) return flag_find;
         GS::Array<GS::UniString> partstring_2;
         if (StringSplt (partstring_1[1], ",", partstring_2) > 1) {
             dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
@@ -135,17 +140,17 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
                 if (partstring_2[2].IsEqual ("Delete_Wall")) {
                     dimrule.flag_change = true;
                     dimrule.flag_deletewall = true;
-                    return true;
+                    flag_find = true;
                 }
                 if (partstring_2[2].IsEqual ("ResetText")) {
                     dimrule.flag_change = true;
                     dimrule.flag_reset = true;
-                    return true;
+                    flag_find = true;
                 }
                 if (partstring_2[2].IsEqual ("CheckCustom")) {
                     dimrule.flag_change = false;
                     dimrule.flag_custom = true;
-                    return true;
+                    flag_find = true;
                 }
                 if (partstring_2[2].Contains ("{") && partstring_2[2].Contains ("}")) {
                     ParamDictValue paramDict;
@@ -163,12 +168,12 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
                 if (partstring_2[3].IsEqual ("Delete_Wall")) {
                     dimrule.flag_change = true;
                     dimrule.flag_deletewall = true;
-                    return true;
+                    flag_find = true;
                 }
                 if (partstring_2[3].IsEqual ("ResetText")) {
                     dimrule.flag_change = true;
                     dimrule.flag_reset = true;
-                    return true;
+                    flag_find = true;
                 }
                 if (partstring_2[3].Contains ("{") && partstring_2[3].Contains ("}")) {
                     ParamDictValue paramDict;
@@ -179,9 +184,29 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
                     dimrule.expression = expression;
                     if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
                 }
-
             }
-            return true;
+            if (partstring_2.GetSize () == 5) {
+                if (partstring_2[4].IsEqual ("Delete_Wall")) {
+                    dimrule.flag_change = true;
+                    dimrule.flag_deletewall = true;
+                    flag_find = true;
+                }
+                if (partstring_2[4].IsEqual ("ResetText")) {
+                    dimrule.flag_change = true;
+                    dimrule.flag_reset = true;
+                    flag_find = true;
+                }
+                if (partstring_2[4].Contains ("{") && partstring_2[4].Contains ("}")) {
+                    ParamDictValue paramDict;
+                    GS::UniString expression = partstring_2[4];
+                    expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
+                    ParamHelpers::ParseParamName (expression, paramDict);
+                    dimrule.paramDict = paramDict;
+                    dimrule.expression = expression;
+                    if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
+                }
+            }
+            return flag_find;
         }
     }
     return false;
@@ -394,7 +419,12 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
     Int32 round_value = dimrule.round_value;
     if (round_value < 1) round_value = 1;
     double dimVal_r = round (dimVal * 1000.0);
-    Int32 dimValmm_round = ceil_mod ((GS::Int32) dimVal_r, round_value);
+    Int32 dimValmm_round = 0;
+    if (dimrule.classic_round_mode) {
+        dimValmm_round = ceil_mod_classic ((GS::Int32) dimVal_r, round_value);
+    } else {
+        dimValmm_round = ceil_mod ((GS::Int32) dimVal_r, round_value);
+    }
     double dx = abs (dimVal_r - dimValmm_round * 1.0); // Разница в размерах в мм
     GS::UniString custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
     bool flag_expression = false; //В описании найдена формула
