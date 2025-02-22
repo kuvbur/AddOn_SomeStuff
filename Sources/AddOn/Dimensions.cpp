@@ -261,9 +261,12 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
             if (dimElem.dimVal == 0) continue;
             GS::UniString content = GS::UniString::Printf ("%s", dimElem.note.content);
             API_Guid ref_elemGuid = dimElem.base.base.guid;
-            if (ref_elemGuid != bef_elemGuid) ref_elemGuid = APINULLGuid;
+            bool is_sameGUID = (ref_elemGuid == bef_elemGuid);
+            if (!is_sameGUID) ref_elemGuid = APINULLGuid;
+            bool is_wall = (elementType == API_WallID);
+            bool flag_deletewall = is_wall && is_sameGUID && dimrule.flag_deletewall;
             API_NoteContentType contentType = dimElem.note.contentType;
-            if (DimParse (dimElem.dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
+            if (!flag_deletewall && !dimrule.flag_reset && DimParse (dimElem.dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
                 if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
                 if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
                     flag_write = true;
@@ -286,24 +289,13 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
                     (*memo.dimElems)[k].note.notePen = pen;
                 }
             }
-            // Отключение показа толщин стен
-            if (dimrule.flag_deletewall) {
-                // Текс был пустой, запись не планировалась - но это не стена. Возвращаем текст.
-                if (content.IsEmpty () && !flag_write && (elementType != API_WallID || ref_elemGuid == APINULLGuid)) {
-                    flag_write = true;
-                    (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
-                    if ((*memo.dimElems)[k].note.contentUStr != nullptr)
-                        delete (*memo.dimElems)[k].note.contentUStr;
-                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
-                }
-                // Текст не пустой и это стена
-                if (!content.IsEmpty () && elementType == API_WallID && ref_elemGuid != APINULLGuid) {
-                    flag_write = true;
-                    (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
-                    if ((*memo.dimElems)[k].note.contentUStr != nullptr)
-                        delete (*memo.dimElems)[k].note.contentUStr;
-                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
-                }
+            // Удаление толщин стен
+            if (flag_deletewall && !content.IsEmpty ()) {
+                flag_write = true;
+                (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
+                if ((*memo.dimElems)[k].note.contentUStr != nullptr)
+                    delete (*memo.dimElems)[k].note.contentUStr;
+                (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
             }
             // Сброс пользовательского текста
             if (dimrule.flag_reset && dimElem.note.contentType != API_NoteContent_Measured) {
@@ -514,4 +506,4 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
         msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
     }
     return false;
-}
+    }
