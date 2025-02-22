@@ -197,7 +197,7 @@ void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyPa
         parentelementhead.guid = guid;
         syncguids.Append (subguids);
         SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite);
-}
+    }
     if (!paramToWrite.IsEmpty ()) {
         ACAPI_CallUndoableCommand ("SetSubelement",
                 [&]() -> GSErrCode {
@@ -238,9 +238,9 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                     zoneGuids.Push (zoneGuid);
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
+            }
+        }
     }
-}
-}
     return;
 }
 // -----------------------------------------------------------------------------
@@ -803,9 +803,9 @@ void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& 
             for (UInt32 i = 0; i < otd.otd.GetSize (); i++) {
                 DrawEdge (storyLevels, otd.otd[i], wallelement, subelementByparent);
             }
-    }
+        }
         return NoError;
-});
+    });
 }
 
 void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent)

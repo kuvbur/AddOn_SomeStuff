@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.76 2025-02-03-20 https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов v1.76 2025-02-19-10 https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 32500 "Strings for the Menu" {
@@ -61,6 +61,7 @@
 /* [  15] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  18] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32602"
 }
 
 'STR#' 30502 "Strings for the Menu" {
@@ -82,6 +83,7 @@
 /* [  15] */	"Обновить геометрию фасонки по выбранному"
 /* [  16] */	"Построить профиль по линии"
 /* [  17] */	"Выронять выделенные чертежи"
+/* [  18] */	"Ведомость отделки"
 }
 
 
@@ -126,7 +128,7 @@
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters v1.76 2025-02-03-20 https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters v1.76 2025-02-19-10 https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 33500 "Strings for the Menu" {
@@ -184,6 +186,7 @@
 /* [  15] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  18] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32602"
 }
 
 
@@ -206,6 +209,7 @@
 /* [  15] */	"Обновить геометрию фасонки по выбранному"
 /* [  16] */	"Построить профиль по линии"
 /* [  17] */	"Выронять выделенные чертежи"
+/* [  18] */	"Ведомость отделки"
 }
 
 

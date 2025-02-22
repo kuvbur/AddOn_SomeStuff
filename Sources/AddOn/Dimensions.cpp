@@ -97,9 +97,11 @@ bool DimReadPref (DimRules& dimrules, GS::UniString& autotext)
 // -----------------------------------------------------------------------------
 bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
 {
+    if (rawrule.IsEmpty ()) return false;
+    if (!rawrule.Contains ("-")) return false;
+    bool flag_find = false;
     GS::Array<GS::UniString> partstring_1;
     if (StringSplt (rawrule, "-", partstring_1) == 2) {
-        bool flag_find = false;
         //Проверяем - что указано в правиле: слой или номер пера
         // Слой указываем в кавычках, в regexp формате
         if (partstring_1[0].Contains ('"')) {
@@ -110,106 +112,57 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
         } else {
             dimrule.pen_original = std::atoi (partstring_1[0].ToCStr ());
         }
-        if (partstring_1[1].IsEqual ("DeleteWall")) {
+        if (partstring_1[1].Contains ("DeleteWall")) {
             dimrule.flag_change = true;
             dimrule.flag_deletewall = true;
             dimrule.pen_rounded = dimrule.pen_original;
             flag_find = true;
         }
-        if (partstring_1[1].IsEqual ("ResetText")) {
+        if (partstring_1[1].Contains ("ResetText")) {
             dimrule.flag_change = true;
             dimrule.flag_reset = true;
             dimrule.pen_rounded = dimrule.pen_original;
             flag_find = true;
         }
-        if (partstring_1[1].IsEqual ("CheckCustom")) {
+        if (partstring_1[1].Contains ("CheckCustom")) {
             dimrule.flag_change = false;
             dimrule.flag_custom = true;
             flag_find = true;
         }
         if (partstring_1[1].Contains ("ClassicRound")) {
             dimrule.classic_round_mode = true;
-            flag_find = true;
         }
         if (!partstring_1[1].Contains (",")) return flag_find;
         GS::Array<GS::UniString> partstring_2;
         if (StringSplt (partstring_1[1], ",", partstring_2) > 1) {
-            dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
-            dimrule.pen_rounded = std::atoi (partstring_2[1].ToCStr ());
-            if (partstring_2.GetSize () == 3) {
-                if (partstring_2[2].IsEqual ("Delete_Wall")) {
-                    dimrule.flag_change = true;
-                    dimrule.flag_deletewall = true;
-                    flag_find = true;
-                }
-                if (partstring_2[2].IsEqual ("ResetText")) {
-                    dimrule.flag_change = true;
-                    dimrule.flag_reset = true;
-                    flag_find = true;
-                }
-                if (partstring_2[2].IsEqual ("CheckCustom")) {
-                    dimrule.flag_change = false;
-                    dimrule.flag_custom = true;
-                    flag_find = true;
-                }
-                if (partstring_2[2].Contains ("{") && partstring_2[2].Contains ("}")) {
+            if (!partstring_2[0].IsEmpty ()) {
+                dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
+                flag_find = true;
+            }
+            if (!partstring_2[1].IsEmpty ()) {
+                dimrule.pen_rounded = std::atoi (partstring_2[1].ToCStr ());
+                flag_find = true;
+            }
+            for (UInt32 k = 2; k < partstring_2.GetSize (); k++) {
+                if (partstring_2[k].IsEmpty ()) continue;
+                if (partstring_2[k].Contains ("{") && partstring_2[k].Contains ("}")) {
                     ParamDictValue paramDict;
-                    GS::UniString expression = partstring_2[2];
+                    GS::UniString expression = partstring_2[k];
                     expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
                     ParamHelpers::ParseParamName (expression, paramDict);
                     dimrule.paramDict = paramDict;
                     dimrule.expression = expression;
                     if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
                 } else {
-                    dimrule.flag_change = (std::atoi (partstring_2[2].ToCStr ()) > 0);
+                    if (k == 2) {
+                        dimrule.flag_change = (std::atoi (partstring_2[k].ToCStr ()) > 0);
+                        flag_find = true;
+                    }
                 }
             }
-            if (partstring_2.GetSize () == 4) {
-                if (partstring_2[3].IsEqual ("Delete_Wall")) {
-                    dimrule.flag_change = true;
-                    dimrule.flag_deletewall = true;
-                    flag_find = true;
-                }
-                if (partstring_2[3].IsEqual ("ResetText")) {
-                    dimrule.flag_change = true;
-                    dimrule.flag_reset = true;
-                    flag_find = true;
-                }
-                if (partstring_2[3].Contains ("{") && partstring_2[3].Contains ("}")) {
-                    ParamDictValue paramDict;
-                    GS::UniString expression = partstring_2[3];
-                    expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
-                    ParamHelpers::ParseParamName (expression, paramDict);
-                    dimrule.paramDict = paramDict;
-                    dimrule.expression = expression;
-                    if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
-                }
-            }
-            if (partstring_2.GetSize () == 5) {
-                if (partstring_2[4].IsEqual ("Delete_Wall")) {
-                    dimrule.flag_change = true;
-                    dimrule.flag_deletewall = true;
-                    flag_find = true;
-                }
-                if (partstring_2[4].IsEqual ("ResetText")) {
-                    dimrule.flag_change = true;
-                    dimrule.flag_reset = true;
-                    flag_find = true;
-                }
-                if (partstring_2[4].Contains ("{") && partstring_2[4].Contains ("}")) {
-                    ParamDictValue paramDict;
-                    GS::UniString expression = partstring_2[4];
-                    expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
-                    ParamHelpers::ParseParamName (expression, paramDict);
-                    dimrule.paramDict = paramDict;
-                    dimrule.expression = expression;
-                    if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
-                }
-            }
-            return flag_find;
         }
     }
-    return false;
+    return flag_find;
 }
 
 // -----------------------------------------------------------------------------
