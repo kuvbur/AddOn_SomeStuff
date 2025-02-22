@@ -6,6 +6,12 @@
 
 namespace ClassificationFunc
 {
+
+GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автокласса
+
+// -----------------------------------------------------------------------------
+// Получение словаря со всеми классами во всех системах классифкации
+// -----------------------------------------------------------------------------
 GSErrCode GetAllClassification (SystemDict& systemdict)
 {
     GSErrCode err = NoError;
@@ -36,7 +42,6 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
                 API_ClassificationItem parent, item;
                 AddClassificationItem (item, parent, classifications, systems[i]);
                 systemdict.Add (systemname, classifications);
-                GS::UniString autoclassname = "@some_stuff_class@";
                 if (classifications.ContainsKey (autoclassname)) {
                     ClassificationDict autoclassifications;
                     autoclassifications.Add (autoclassname, classifications.Get (autoclassname));
@@ -80,20 +85,15 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
         ClassificationValues classificationitem;
         classificationitem.item = item;
         classificationitem.system = system;
-        classificationitem.itemname = "@some_stuff_class@";
+        classificationitem.itemname = autoclassname;
         classificationitem.parentname = "";
-        classifications.Add ("@some_stuff_class@", classificationitem);
-    }
-
-    if (desc.ToLowerCase ().Contains ("some_stuff_finwalls") || desc.ToLowerCase ().Contains ("somestuff_finwalls") || desc.ToLowerCase ().Contains ("somestufffinwalls")) {
-        ClassificationValues classificationitem;
-        classificationitem.item = item;
-        classificationitem.system = system;
-        classificationitem.itemname = "@some_stuff_finwalls@";
-        classificationitem.parentname = "";
-        classifications.Add ("@some_stuff_finwalls@", classificationitem);
+        classifications.Add (autoclassname, classificationitem);
     }
 }
+
+// -----------------------------------------------------------------------------
+// Получение полного имени класса с чётом родительских классов
+// -----------------------------------------------------------------------------
 void GetFullName (const API_ClassificationItem& item, const ClassificationDict& classifications, GS::UniString& fullname)
 {
     GS::UniString itemname = item.id.ToLowerCase ();
@@ -110,6 +110,9 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
     }
 }
 
+// -----------------------------------------------------------------------------
+// Поиск класса по ID в заданной классификации, возвращает Guid класса
+// -----------------------------------------------------------------------------
 API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS::UniString& classname)
 {
     if (systemdict.IsEmpty ()) return APINULLGuid;
@@ -122,10 +125,12 @@ API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS:
     return classgiud;
 }
 
+// -----------------------------------------------------------------------------
+// Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
+// -----------------------------------------------------------------------------
 void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid)
 {
     if (systemdict.IsEmpty ()) GetAllClassification (systemdict);
-    GS::UniString autoclassname = "@some_stuff_class@";
     if (!systemdict.ContainsKey (autoclassname)) return;
     if (!systemdict.Get (autoclassname).ContainsKey (autoclassname)) return;
     API_ClassificationItem item = systemdict.Get (autoclassname).Get (autoclassname).item;
