@@ -39,11 +39,9 @@ void RoomBook ()
         }
     }
 
-
-
     Stories storyLevels = GetStories (); // Уровни этажей в проекте
     // Чтение данных о зоне, создание словаря с элементами для чтения
-    GS::HashTable < API_Guid, OtdRoom> roomsinfo; // Информация о всех зонах
+    OtdRooms roomsinfo; // Информация о всех зонах
     UnicElementByType elementToRead; // Список всех элементов в зоне
     for (API_Guid zoneGuid : zones) {
         OtdRoom roominfo;
@@ -51,7 +49,7 @@ void RoomBook ()
             roomsinfo.Add (zoneGuid, roominfo);
         }
     }
-    UnicGUIDByType guidselementToRead;
+    UnicGUIDByType guidselementToRead; // Словарь элементов по типам для чтения свойств
     guidselementToRead.Add (API_ZoneID, zones);
 
     GS::Array<API_ElemTypeID> typeinzone;
@@ -90,14 +88,14 @@ void RoomBook ()
     }
 
     // Подготовка параметров
-    ParamDictValue propertyParams;
+    ParamDictValue propertyParams; // Словарь общих параметров
     ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-    ClassificationFunc::SystemDict systemdict;
-    ClassificationFunc::ClassificationDict findict;
+    ClassificationFunc::SystemDict systemdict; // Словарь все классов и систем
+    ClassificationFunc::ClassificationDict findict; // Словарь классов для отделочных стен
     ClassificationFunc::GetAllClassification (systemdict);
     FindFinClass (systemdict, findict);
-    ParamDictElement paramToRead;
-    ParamValue param_composite;
+    ParamDictElement paramToRead; // Прочитанные из элементов свойства
+    ParamValue param_composite; // Состав базовых конструкций
     typeinzone.Push (API_ZoneID);
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (guidselementToRead.ContainsKey (typeelem)) {
@@ -121,46 +119,191 @@ void RoomBook ()
     SetParamToRooms (roomsinfo, paramToRead);
     // Заполняем данные для отделочных стен (состав)
     SetParamToBase (roomsinfo, paramToRead, guidselementToRead, param_composite);
-
+    CreateOpeningReveals (roomsinfo);
+    DelimOtdWalls (roomsinfo);
     UnicElement subelementByparent; // Словарь с созданными родительскими и дочерними элементами
     DrawEdges (storyLevels, roomsinfo, subelementByparent);
     // Привязка отделочных элементов к базовым
     SetSyncOtdWall (subelementByparent, propertyParams);
 }
-void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams)
+
+// -----------------------------------------------------------------------------
+// Разбивка созданных стен по высотам на основании информации из зоны
+// -----------------------------------------------------------------------------
+void DelimOtdWalls (OtdRooms& roomsinfo)
 {
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
-    LoadSyncSettingsFromPreferences (syncSettings);
-    ParamDictElement paramToWrite;
-    API_Elem_Head parentelementhead;
-    GS::Array<API_Guid> syncguids;
-    for (UnicElement::PairIterator cIt = subelementByparent.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28)
-        API_Guid guid = cIt->key;
-        GS::Array<API_Guid> subguids = cIt->value;
-#else
-        API_Guid guid = *cIt->key;
-        GS::Array<API_Guid> subguids = *cIt->value;
-#endif
-        parentelementhead.guid = guid;
-        syncguids.Append (subguids);
-        SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite);
-    }
-    if (!paramToWrite.IsEmpty ()) {
-        ACAPI_CallUndoableCommand ("SetSubelement",
-                [&]() -> GSErrCode {
-            ParamHelpers::ElementsWrite (paramToWrite);
-            return NoError;
-        });
-        ClassificationFunc::SystemDict systemdict;
-        ClassificationFunc::GetAllClassification (systemdict);
-        GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids, systemdict);
-        if (!rereadelem.IsEmpty ()) {
 #if defined(TESTING)
-            DBprnt ("===== REREAD =======");
+    DBprnt ("DelimOtdWalls", "start");
 #endif
-            SyncArray (syncSettings, rereadelem, systemdict);
+    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        GS::Array<OtdWall >& otd = cIt->value;
+        API_Guid& zoneGuid = cIt->key;
+#else
+        OtdRoom& otd = *cIt->value;
+        API_Guid zoneGuid = *cIt->key;
+#endif
+        if (!otd.otd.IsEmpty ()) {
+            GS::Array<OtdWall> opw; // Массив созданных стен
+            for (OtdWall otdw : otd.otd) {
+                bool has_delim = false;
+                // Если задана высота панелей
+                if (otd.height_down > 0) {
+                    OtdWall otdn = otdw;
+                    otdn.height = otd.height_down;
+                    otdn.material = otd.material_down;
+                    opw.PushNew (otdn);
+                }
+                if (otd.height_main > 0) {
+                    OtdWall otdn = otdw;
+                    otdn.height = otd.height_main;
+                    otdn.zBottom = otd.zBottom + otd.height_down;
+                    otdn.material = otd.material_main;
+                    opw.PushNew (otdn);
+                }
+                if (otd.height_up > 0) {
+                    OtdWall otdn = otdw;
+                    otdn.height = otd.height_up;
+                    otdn.zBottom = otd.zBottom + otd.height_down + otd.height_main;
+                    otdn.material = otd.material_up;
+                    opw.PushNew (otdn);
+                }
+                //double height = 0; // Высота стены-отделки
+                //double zBottom = 0; // Аболютная координата z низа
+                //double height_down = 0; // Высота панелей
+                //double height_main = 0; // Высота основной отделки
+                //double height_up = 0; // Высота верхней части отделки
+                //if (!has_delim) opw.PushNew (otdw);
+            }
+            otd.otd = opw;
         }
+    }
+#if defined(TESTING)
+    DBprnt ("DelimOtdWalls", "end");
+#endif
+}
+
+
+// -----------------------------------------------------------------------------
+// Получение площади отделочной стены с учётом отверстий
+// -----------------------------------------------------------------------------
+double GetAreaOtdWall (const OtdWall& otdw)
+{
+    double dx = -otdw.endC.x + otdw.begC.x;
+    double dy = -otdw.endC.y + otdw.begC.y;
+    double dr = sqrt (dx * dx + dy * dy);
+    double area = dr * otdw.height;
+    if (is_equal (dr, 0)) return 0;
+    if (!otdw.openings.IsEmpty ()) {
+        double area_op = 0;
+        for (const OtdOpening& op : otdw.openings) {
+            area_op += op.height * op.width;
+        }
+        area -= area_op;
+        if (area < 0) area = 0;
+    }
+    return area;
+}
+
+// -----------------------------------------------------------------------------
+// Создание стенок для откосов проёмов
+// -----------------------------------------------------------------------------
+void CreateOpeningReveals (OtdRooms& roomsinfo)
+{
+#if defined(TESTING)
+    DBprnt ("CreateOpeningReveals", "start");
+#endif
+    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        GS::Array<OtdWall >& otd = cIt->value;
+        API_Guid& zoneGuid = cIt->key;
+#else
+        OtdRoom& otd = *cIt->value;
+        API_Guid zoneGuid = *cIt->key;
+#endif
+        if (!otd.otd.IsEmpty ()) {
+            GS::Array<OtdWall> opw; // Массив созданных откосов
+            for (OtdWall& otdw : otd.otd) {
+                if (!otdw.openings.IsEmpty ()) {
+                    Point2D wbegC = { otdw.begC.x, otdw.begC.y };
+                    Point2D wendC = { otdw.endC.x, otdw.endC.y };
+                    Sector walledge = { wbegC , wendC };
+                    GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
+                    if (walldir.HasValue ()) {
+                        double angz = -DEGRAD * 90;
+                        double co = cos (angz);
+                        double si = sin (angz);
+                        Geometry::Vector2<double> walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
+                        for (OtdOpening& op : otdw.openings) {
+                            CreateOpeningReveals (otdw, op, walldir_perp, opw);
+                        }
+                    } else {
+#if defined(TESTING)
+                        DBprnt ("ReadOneWall err", "!walldir.HasValue");
+#endif
+                    }
+
+                }
+            }
+            if (!opw.IsEmpty ()) otd.otd.Append (opw);
+        }
+    }
+#if defined(TESTING)
+    DBprnt ("CreateOpeningReveals", "end");
+#endif
+}
+
+// -----------------------------------------------------------------------------
+// Создание стенок для откосов одного проёма
+// -----------------------------------------------------------------------------
+void CreateOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw)
+{
+    if (is_equal (op.base_reveal_width, 0)) return;
+    Point2D begedge;
+    Point2D endedge;
+    Sector walledge = { begedge , endedge };
+    // Строим перпендикулярные стенки к окну
+    double dx = -otdw.endC.x + otdw.begC.x;
+    double dy = -otdw.endC.y + otdw.begC.y;
+    double dr = sqrt (dx * dx + dy * dy);
+    if (is_equal (dr, 0)) return;
+    double lambda = 0;
+    lambda = (op.objLoc - op.width / 2) / dr;
+    begedge.x = otdw.begC.x - dx * lambda;
+    begedge.y = otdw.begC.y - dy * lambda;
+    endedge.x = begedge.x + walldir_perp.x * op.base_reveal_width;
+    endedge.y = begedge.y + walldir_perp.y * op.base_reveal_width;
+    walledge = { begedge , endedge };
+    if (!walledge.IsZeroLength ()) {
+        OtdWall wallotd;
+        wallotd.base_guid = op.base_guid;
+        wallotd.height = op.height;
+        wallotd.zBottom = op.zBottom;
+        wallotd.begC = { walledge.c1.x, walledge.c1.y };
+        wallotd.endC = { walledge.c2.x, walledge.c2.y };
+        wallotd.material = otdw.material;
+        wallotd.base_type = API_WindowID;
+        op.has_reveal = true;
+        opw.Push (wallotd);
+    }
+
+    lambda = (op.objLoc + op.width / 2) / dr;
+    begedge.x = otdw.begC.x - dx * lambda;
+    begedge.y = otdw.begC.y - dy * lambda;
+    endedge.x = begedge.x + walldir_perp.x * op.base_reveal_width;
+    endedge.y = begedge.y + walldir_perp.y * op.base_reveal_width;
+    walledge = { begedge , endedge };
+    if (!walledge.IsZeroLength ()) {
+        OtdWall wallotd;
+        wallotd.base_guid = op.base_guid;
+        wallotd.height = op.height;
+        wallotd.zBottom = op.zBottom;
+        wallotd.begC = { walledge.c2.x, walledge.c2.y };
+        wallotd.endC = { walledge.c1.x, walledge.c1.y };
+        wallotd.material = otdw.material;
+        wallotd.base_type = API_WindowID;
+        op.has_reveal = true;
+        opw.Push (wallotd);
     }
 }
 
@@ -291,6 +434,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
             op.width = element.window.openingBase.width;
             op.lower = element.window.lower;
             op.objLoc = element.window.objLoc;
+            op.base_reveal_width = element.window.jambDepthSill;
             break;
         case API_DoorID:
             wallguid = element.door.owner;
@@ -298,6 +442,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
             op.width = element.door.openingBase.width;
             op.lower = element.door.lower;
             op.objLoc = element.door.objLoc;
+            op.base_reveal_width = element.door.jambDepthSill;
             break;
         default:
             break;
@@ -314,7 +459,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен 
 // -----------------------------------------------------------------------------
-void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable < API_Guid, OtdRoom>& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
+void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element;
@@ -417,8 +562,11 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
                         if (op.objLoc <= wpart.tEnd + op.width / 2 && op.objLoc >= wpart.tBeg - op.width / 2) {
                             OtdOpening opinwall;
                             opinwall.base_guid = op.base_guid;
-                            double dw = 0; // Уменьшение ширины в случае, если стена попадает на часть проёма
                             opinwall.width = op.width;
+                            opinwall.base_reveal_width = op.base_reveal_width;
+                            opinwall.lower = op.lower;
+                            opinwall.zBottom = zBottom + op.lower;
+                            double dw = 0; // Уменьшение ширины в случае, если стена попадает на часть проёма
                             if (op.objLoc > wpart.tEnd - op.width / 2) {
                                 dw = wpart.tEnd - op.objLoc - op.width / 2;
                                 opinwall.width = opinwall.width + dw;
@@ -433,8 +581,6 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
                             } else {
                                 opinwall.objLoc = dr - op.objLoc - (dr - wpart.tEnd) + dw / 2;
                             }
-                            opinwall.lower = op.lower;
-                            opinwall.zBottom = zBottom + op.lower;
                             wallotd.openings.Push (opinwall);
                         }
                     }
@@ -471,7 +617,7 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны 
 // -----------------------------------------------------------------------------
-void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, GS::HashTable < API_Guid, OtdRoom>& roomsinfo, UnicGUIDByType& guidselementToRead)
+void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -606,9 +752,9 @@ void GetParamForRooms (API_Guid& elGuid, ParamDictValue& propertyParams, ParamDi
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в зону
 // -----------------------------------------------------------------------------
-void SetParamToRooms (GS::HashTable < API_Guid, OtdRoom>& roomsinfo, ParamDictElement& paramToRead)
+void SetParamToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
 {
-    for (GS::HashTable < API_Guid, OtdRoom>::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
         GS::Array<OtdWall >& otd = cIt->value;
         API_Guid& zoneGuid = cIt->key;
@@ -674,7 +820,7 @@ void SetParamToRooms (GS::HashTable < API_Guid, OtdRoom>& roomsinfo, ParamDictEl
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void SetParamToBase (GS::HashTable < API_Guid, OtdRoom>& roomsinfo, ParamDictElement& paramToRead, UnicGUIDByType& guidselementToRead, ParamValue& param_composite)
+void SetParamToBase (OtdRooms& roomsinfo, ParamDictElement& paramToRead, UnicGUIDByType& guidselementToRead, ParamValue& param_composite)
 {
     if (!guidselementToRead.ContainsKey (API_ZoneID)) {
 #if defined(TESTING)
@@ -869,8 +1015,11 @@ bool FindEdge (Sector& edge, GS::Array<Sector>& edges)
     return false;
 }
 
-void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& zoneelements, UnicElement& subelementByparent)
+void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement& subelementByparent)
 {
+#if defined(TESTING)
+    DBprnt ("DrawEdges", "start");
+#endif
     API_Element wallelement;
     wallelement.header.typeID = API_WallID;
     if (ACAPI_Element_GetDefaults (&wallelement, nullptr) != NoError) {
@@ -884,6 +1033,7 @@ void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& 
     wallelement.wall.refMat.overridden = true;
     wallelement.wall.oppMat.overridden = true;
     wallelement.wall.sidMat.overridden = true;
+    wallelement.wall.thickness = 0.001;
     GS::Array<API_Guid> walllist;
     GS::Array<API_Guid> walllist_;
     ACAPI_Element_GetElemList (API_WallID, &walllist);
@@ -896,7 +1046,7 @@ void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& 
     }
     ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
         if (!walllist_.IsEmpty ()) ACAPI_Element_Delete (walllist_);
-        for (GS::HashTable < API_Guid, OtdRoom>::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
             GS::Array<OtdWall >& otd = cIt->value;
 #else
@@ -908,6 +1058,9 @@ void DrawEdges (const Stories& storyLevels, GS::HashTable < API_Guid, OtdRoom>& 
         }
         return NoError;
     });
+#if defined(TESTING)
+    DBprnt ("DrawEdges", "end");
+#endif
 }
 
 void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent)
@@ -951,6 +1104,10 @@ void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& sub
     }
     windowelement.window.objLoc = op.objLoc;
     windowelement.window.owner = wallelement.header.guid;
+    if (op.has_reveal) {
+        op.width -= wallelement.wall.thickness * 2;
+        op.height -= wallelement.wall.thickness;
+    }
     windowelement.window.openingBase.width = op.width;
     windowelement.window.openingBase.height = op.height;
     windowelement.window.lower = op.lower;
@@ -1006,6 +1163,45 @@ void FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFun
     }
 }
 
+// -----------------------------------------------------------------------------
+// Связывание созданных элементов отделки с базовыми элементами
+// -----------------------------------------------------------------------------
+void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams)
+{
+    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    LoadSyncSettingsFromPreferences (syncSettings);
+    ParamDictElement paramToWrite;
+    API_Elem_Head parentelementhead;
+    GS::Array<API_Guid> syncguids;
+    for (UnicElement::PairIterator cIt = subelementByparent.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        API_Guid guid = cIt->key;
+        GS::Array<API_Guid> subguids = cIt->value;
+#else
+        API_Guid guid = *cIt->key;
+        GS::Array<API_Guid> subguids = *cIt->value;
+#endif
+        parentelementhead.guid = guid;
+        syncguids.Append (subguids);
+        SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite);
+    }
+    if (!paramToWrite.IsEmpty ()) {
+        ACAPI_CallUndoableCommand ("SetSubelement",
+                [&]() -> GSErrCode {
+            ParamHelpers::ElementsWrite (paramToWrite);
+            return NoError;
+        });
+        ClassificationFunc::SystemDict systemdict;
+        ClassificationFunc::GetAllClassification (systemdict);
+        GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids, systemdict);
+        if (!rereadelem.IsEmpty ()) {
+#if defined(TESTING)
+            DBprnt ("===== REREAD =======");
+#endif
+            SyncArray (syncSettings, rereadelem, systemdict);
+        }
+    }
+}
 
 }
 #endif
