@@ -143,6 +143,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
                 dimrule.pen_rounded = std::atoi (partstring_2[1].ToCStr ());
                 flag_find = true;
             }
+            if (partstring_2.GetSize () < 3) return flag_find;
             for (UInt32 k = 2; k < partstring_2.GetSize (); k++) {
                 if (partstring_2[k].IsEmpty ()) continue;
                 if (partstring_2[k].Contains ("{") && partstring_2[k].Contains ("}")) {
@@ -506,4 +507,4 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
         msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
     }
     return false;
-    }
+}
