@@ -145,35 +145,48 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
 #endif
         if (!otd.otd.IsEmpty ()) {
             GS::Array<OtdWall> opw; // Массив созданных стен
-            for (OtdWall otdw : otd.otd) {
-                bool has_delim = false;
-                // Если задана высота панелей
+            for (OtdWall& otdw : otd.otd) {
+                bool has_delim = false; // Найдена разбивка
+                double height = 0; // Высота элемента
+                double zBottom = 0; // Отметка низа
+                API_AttributeIndex material = 0;
+                // Панели
                 if (otd.height_down > 0) {
-                    OtdWall otdn = otdw;
-                    otdn.height = otd.height_down;
-                    otdn.material = otd.material_down;
-                    opw.PushNew (otdn);
+                    height = otd.height_down;
+                    zBottom = otd.zBottom;
+                    material = otd.material_down;
+                    if (otdw.base_type == API_WindowID && otd.material_reveal > 0) material = otd.material_reveal;
+                    if (material == 0) material = otd.material;
+                    if (DelimOneWall (otdw, opw, height, zBottom, material)) has_delim = true;
                 }
+                // Основная часть
                 if (otd.height_main > 0) {
-                    OtdWall otdn = otdw;
-                    otdn.height = otd.height_main;
-                    otdn.zBottom = otd.zBottom + otd.height_down;
-                    otdn.material = otd.material_main;
-                    opw.PushNew (otdn);
+                    if (otdw.base_type == API_ColumnID) material = otd.material_column;
+                    if (otdw.base_type == API_WallID) material = otd.material_main;
+                    if (otdw.base_type == API_WindowID && otd.material_reveal > 0) material = otd.material_reveal;
+                    if (material == 0) material = otd.material;
+                    height = otd.height_main;
+                    zBottom = otd.zBottom + otd.height_down;
+                    if (DelimOneWall (otdw, opw, height, zBottom, material)) has_delim = true;
                 }
+                // Пространство за потолком
                 if (otd.height_up > 0) {
-                    OtdWall otdn = otdw;
-                    otdn.height = otd.height_up;
-                    otdn.zBottom = otd.zBottom + otd.height_down + otd.height_main;
-                    otdn.material = otd.material_up;
-                    opw.PushNew (otdn);
+                    height = otd.height_up;
+                    zBottom = otd.zBottom + otd.height_down + otd.height_main;
+                    material = otd.material_up;
+                    if (otdw.base_type == API_WindowID && otd.material_reveal > 0) material = otd.material_reveal;
+                    if (material == 0) material = otd.material;
+                    if (DelimOneWall (otdw, opw, height, zBottom, material)) has_delim = true;
                 }
-                //double height = 0; // Высота стены-отделки
-                //double zBottom = 0; // Аболютная координата z низа
-                //double height_down = 0; // Высота панелей
-                //double height_main = 0; // Высота основной отделки
-                //double height_up = 0; // Высота верхней части отделки
-                //if (!has_delim) opw.PushNew (otdw);
+                // Если высоты заданы не были - подгоним стенку под зону
+                //if (!has_delim) {
+                //    height = otd.height;
+                //    zBottom = otd.zBottom;
+                //    material = otd.material_main;
+                //    if (otdw.base_type == API_WindowID) material = otd.material_reveal;
+                //    if (material == 0) material = otd.material;
+                //    DelimOneWall (otdw, opw, height, zBottom, material);
+                //}
             }
             otd.otd = opw;
         }
@@ -181,6 +194,51 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
 #if defined(TESTING)
     DBprnt ("DelimOtdWalls", "end");
 #endif
+}
+
+// -----------------------------------------------------------------------------
+// Добавляет стену с заданной высотой
+// Удаляет отверстия, не попадающие в диапазон
+// Подгоняет размер отверсий
+// -----------------------------------------------------------------------------
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, API_AttributeIndex& material)
+{
+    if (height < min_dim || is_equal (height, 0)) return false;
+    // Проверяем - находится ли изначальная конструкция в этом диапазоне?
+    if (otdn.zBottom >= zBottom + height) return false; // Конструкция начинается выше необходимого
+    if (otdn.zBottom + otdn.height <= zBottom) return false; // Конструкция заканчивается ниже необходимого
+    double zDup = fmin (zBottom + height, otdn.zBottom + otdn.height);
+    double zDown = fmax (zBottom, otdn.zBottom);
+    height = fmin (otdn.height, zDup - zDown);
+    if (height < min_dim || is_equal (height, 0)) return false;
+    zBottom = zDown;
+    // Удаляем лишние окна, подстраиваем высоту
+    if (!otdn.openings.IsEmpty ()) {
+        GS::Array<OtdOpening> newopenings;
+        double dlower = otdn.zBottom - zBottom;
+        for (OtdOpening& op : otdn.openings) {
+            // Проём выше стенки
+            if (op.zBottom >= zBottom + height) {
+                continue;
+            }
+            // Проём ниже стенки, обнуляем
+            if (op.zBottom + op.height <= zBottom) {
+                continue;
+            }
+            zDup = fmin (zBottom + height, op.zBottom + op.height);
+            zDown = fmax (zBottom, op.zBottom);
+            op.lower = op.lower + dlower;
+            if (op.lower < 0) op.lower = 0;
+            op.height = fmin (op.height, zDup - zDown);
+            if (op.height > min_dim && op.width > min_dim) newopenings.PushNew (op);
+        }
+        otdn.openings = newopenings;
+    }
+    otdn.zBottom = zBottom;
+    otdn.height = height;
+    otdn.material = material;
+    opw.PushNew (otdn);
+    return true;
 }
 
 
@@ -258,7 +316,11 @@ void CreateOpeningReveals (OtdRooms& roomsinfo)
 // -----------------------------------------------------------------------------
 void CreateOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw)
 {
-    if (is_equal (op.base_reveal_width, 0)) return;
+    if (op.base_reveal_width < min_dim) return;
+    double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
+    double zDown = fmax (op.zBottom, otdw.zBottom);
+    double height = fmin (op.height, zDup - zDown);
+    if (height < min_dim) return;
     Point2D begedge;
     Point2D endedge;
     Sector walledge = { begedge , endedge };
@@ -277,8 +339,8 @@ void CreateOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::
     if (!walledge.IsZeroLength ()) {
         OtdWall wallotd;
         wallotd.base_guid = op.base_guid;
-        wallotd.height = op.height;
-        wallotd.zBottom = op.zBottom;
+        wallotd.height = height;
+        wallotd.zBottom = zDown;
         wallotd.begC = { walledge.c1.x, walledge.c1.y };
         wallotd.endC = { walledge.c2.x, walledge.c2.y };
         wallotd.material = otdw.material;
@@ -296,8 +358,8 @@ void CreateOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::
     if (!walledge.IsZeroLength ()) {
         OtdWall wallotd;
         wallotd.base_guid = op.base_guid;
-        wallotd.height = op.height;
-        wallotd.zBottom = op.zBottom;
+        wallotd.height = height;
+        wallotd.zBottom = zDown;
         wallotd.begC = { walledge.c2.x, walledge.c2.y };
         wallotd.endC = { walledge.c1.x, walledge.c1.y };
         wallotd.material = otdw.material;
@@ -332,9 +394,9 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                     zoneGuids.Push (zoneGuid);
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
-            }
         }
     }
+}
     return;
 }
 
@@ -447,6 +509,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
         default:
             break;
     }
+    if (op.width < min_dim || op.height < min_dim) return;
     if (openinginwall.ContainsKey (wallguid)) {
         openinginwall.Get (wallguid).Push (op);
     } else {
@@ -484,9 +547,9 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
     double dy = -element.wall.endC.y + element.wall.begC.y;
     double dr = sqrt (dx * dx + dy * dy);
     double zBottom = GetzPos (element.wall.bottomOffset, element.header.floorInd, storyLevels);
-    if (dr < 0.0001) {
+    if (dr < min_dim) {
 #if defined(TESTING)
-        DBprnt ("ReadOneWall err", "walledge.GetLength ()<0.0001");
+        DBprnt ("ReadOneWall err", "walledge.GetLength ()<min_dim");
 #endif
         return;
     }
@@ -589,7 +652,10 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
             } else {
                 walledge = roomedge; // Торец стены
             }
-            if (!walledge.IsZeroLength ()) {
+            double walledgedx = -walledge.c1.x + walledge.c2.x;
+            double walledgedy = -walledge.c1.y + walledge.c2.y;
+            double walledgedr = sqrt (walledgedx * walledgedx + walledgedy * walledgedy);
+            if (walledgedr > min_dim) {
                 wallotd.base_guid = elGuid;
                 wallotd.height = element.wall.height;
                 wallotd.zBottom = zBottom;
@@ -746,7 +812,7 @@ void GetParamForRooms (API_Guid& elGuid, ParamDictValue& propertyParams, ParamDi
                 }
             }
         }
-    }
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -800,8 +866,8 @@ void SetParamToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
                         otd.rawname_column = param.rawName;
                     }
                 }
-            }
-        } else {
+        }
+} else {
 #if defined(TESTING)
             DBprnt ("SetParamToRooms err", "!paramToRead.ContainsKey (zoneGuid)");
 #endif
@@ -976,7 +1042,7 @@ void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges)
 
 bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
 {
-    const double toler = 0.001;
+    double dx; double dy; double dr;
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
         if (edge.ContainsPoint (edges[i].c1) || edge.ContainsPoint (edges[i].c2) || edges[i].ContainsPoint (edge.c1) || edges[i].ContainsPoint (edge.c2)) {
             GS::Optional<UnitVector_2D>	edgedir = edge.GetDirection ();
@@ -985,7 +1051,10 @@ bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
                 if (roomedgedir.HasValue ()) {
                     if (edgedir.Get ().IsParallelWith (roomedgedir.Get ())) {
                         findedge = edges[i];
-                        return true;
+                        dx = -findedge.c1.x + findedge.c2.x;
+                        dy = -findedge.c1.y + findedge.c2.y;
+                        dr = sqrt (dx * dx + dy * dy);
+                        if (dr > min_dim) return true;
                     }
 
                 }
@@ -1001,12 +1070,11 @@ bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
 // -----------------------------------------------------------------------------
 bool FindEdge (Sector& edge, GS::Array<Sector>& edges)
 {
-    const double toler = 0.001;
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
-        if (edges[i].c1.IsNear (edge.c1, toler) && edges[i].c2.IsNear (edge.c2, toler)) {
+        if (edges[i].c1.IsNear (edge.c1, min_dim) && edges[i].c2.IsNear (edge.c2, min_dim)) {
             return true;
         } else {
-            if (edges[i].c1.IsNear (edge.c2, toler) && edges[i].c2.IsNear (edge.c1, toler)) {
+            if (edges[i].c1.IsNear (edge.c2, min_dim) && edges[i].c2.IsNear (edge.c1, min_dim)) {
                 edge = edge.InvertDirection ();
                 return true;
             }
@@ -1055,9 +1123,9 @@ void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement&
             for (UInt32 i = 0; i < otd.otd.GetSize (); i++) {
                 DrawEdge (storyLevels, otd.otd[i], wallelement, subelementByparent);
             }
-        }
+    }
         return NoError;
-    });
+});
 #if defined(TESTING)
     DBprnt ("DrawEdges", "end");
 #endif
@@ -1065,6 +1133,10 @@ void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement&
 
 void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent)
 {
+    double dx = -edges.endC.x + edges.begC.x;
+    double dy = -edges.endC.y + edges.begC.y;
+    double dr = sqrt (dx * dx + dy * dy);
+    if (dr < min_dim || edges.height < min_dim) return;
     wallelement.wall.begC = edges.begC;
     wallelement.wall.endC = edges.endC;
     wallelement.wall.height = edges.height;
@@ -1108,6 +1180,7 @@ void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& sub
         op.width -= wallelement.wall.thickness * 2;
         op.height -= wallelement.wall.thickness;
     }
+    if (op.width < min_dim || op.height < min_dim) return;
     windowelement.window.openingBase.width = op.width;
     windowelement.window.openingBase.height = op.height;
     windowelement.window.lower = op.lower;
@@ -1159,7 +1232,7 @@ void FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFun
                     findict.Add ("@some_stuff_fin_columns@", clas);
                 }
             }
-        }
+}
     }
 }
 
@@ -1184,7 +1257,7 @@ void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyPa
         parentelementhead.guid = guid;
         syncguids.Append (subguids);
         SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite);
-    }
+}
     if (!paramToWrite.IsEmpty ()) {
         ACAPI_CallUndoableCommand ("SetSubelement",
                 [&]() -> GSErrCode {
