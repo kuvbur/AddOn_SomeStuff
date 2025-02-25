@@ -6,7 +6,17 @@
 #include	"Sector2DData.h"
 namespace AutoFunc
 {
-const double min_dim = 0.001; // Минимальный размер элемента
+const double min_dim = 0.0001; // Минимальный размер элемента
+
+typedef struct
+{
+    const GS::UniString material_main = "{@gdl:votw}";
+    const GS::UniString material_up = "{@gdl:votw2}";
+    const GS::UniString material_down = "{@gdl:votp}";
+    const GS::UniString material_column = "{@gdl:votc}";
+    const GS::UniString height_down = "{@gdl:hpan}";
+    const GS::UniString height_main = "{@gdl:hroom_pot}";
+} GDLParamRoom;
 
 typedef struct
 {
@@ -15,7 +25,8 @@ typedef struct
     double width = 0; // Ширина проёма
     double objLoc = 0; // Расстояние от начала стены для середины проёма
     double lower = 0; // Привязка к низу стену
-    bool has_reveal = false;
+    bool has_reveal = false; // Наличие откосов у родительского проёма
+    bool has_side = false; // Проём лежит на верхней или нижней грани стены
     double base_reveal_width = 0; // Глубина откоса базового проёма
     API_Guid base_guid = APINULLGuid; // GUID базового проёма
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки, в которую вставляется проём
@@ -39,12 +50,19 @@ typedef struct
 
 typedef struct
 {
-    double height = 0; // Высота зоны
-    double zBottom = 0; // Аболютная координата z низа
     GS::Array<Sector> walledges; // Границы стен, не явяющихся границей зоны
     GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
     GS::Array<Sector> restedges; // Границы зоны
     GS::Array<Sector> gableedges;
+} RoomEdges;
+
+typedef struct
+{
+    double height = 0; // Высота зоны
+    double zBottom = 0; // Аболютная координата z низа
+    GS::HashTable <API_Guid, GS::Array<Sector>> walledges; // Границы стен, не явяющихся границей зоны
+    GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
+    GS::Array<Sector> edges; // Границы зоны
     GS::Array<API_WallPart> wallPart; // Участки стен в зоне
     GS::Array<API_BeamPart> beamPart; // Участки балок в зоне
     GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
@@ -56,15 +74,19 @@ typedef struct
     API_AttributeIndex material_down = 0;
     API_AttributeIndex material_column = 0;
     API_AttributeIndex material_reveal = 0;
+    GS::UniString smaterial = ""; // Материал в параметрах зоны
+    GS::UniString smaterial_main = ""; // Основной материал отделки
+    GS::UniString smaterial_up = "";
+    GS::UniString smaterial_down = "";
+    GS::UniString smaterial_column = "";
+    GS::UniString smaterial_reveal = "";
     double height_down = 0; // Высота панелей
     double height_main = 0; // Высота основной отделки
     double height_up = 0; // Высота верхней части отделки
-
     GS::UniString rawname_up = "";
     GS::UniString rawname_main = "";
     GS::UniString rawname_down = "";
     GS::UniString rawname_column = "";
-    bool isEmpty = true;
 } OtdRoom; // Структура для хранения информации о зоне
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
@@ -141,12 +163,12 @@ void DelimOtdWalls (OtdRooms& roomsinfo);
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, API_AttributeIndex& material);
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, API_AttributeIndex& material, GS::UniString& smaterial);
 
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
-void GetZoneEdges (API_Guid& zoneGuid, OtdRoom& roomedges);
+void GetZoneEdges (API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
 
 
 bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
