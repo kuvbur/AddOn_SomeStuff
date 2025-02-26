@@ -3,7 +3,8 @@
 #if !defined (ROOMBOOK_HPP)
 #define	ROOMBOOK_HPP
 #include    "Helpers.hpp"
-#include	"Sector2DData.h"
+#include    "Polygon2DData.h"
+#include    "Sector2DData.h"
 namespace AutoFunc
 {
 const double min_dim = 0.0001; // Минимальный размер элемента
@@ -20,6 +21,16 @@ typedef struct
 
 typedef struct
 {
+    const GS::UniString otdwall_class = "some_stuff_fin_walls";
+    const GS::UniString reveal_class = "some_stuff_fin_reveals";
+    const GS::UniString column_class = "some_stuff_fin_columns";
+    const GS::UniString floor_class = "some_stuff_fin_floors";
+    const GS::UniString ceil_class = "some_stuff_fin_ceils";
+    const GS::UniString all_class = "some_stuff_fin_class";
+} ClassOtd;
+
+typedef struct
+{
     double zBottom = 0; // Аболютная координата z низа
     double height = 0; // Высота проёма
     double width = 0; // Ширина проёма
@@ -31,6 +42,16 @@ typedef struct
     API_Guid base_guid = APINULLGuid; // GUID базового проёма
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки, в которую вставляется проём
 } OtdOpening; // Проём в стене
+
+typedef struct
+{
+    GS::Array<API_Coord> coords;
+    GS::Array<Int32> pends;
+    Int32 nCoords = 0;
+    Int32 nSubPolys = 0;
+    double zBottom = 0;
+    double height = 0;
+} OtdSlab;
 
 typedef struct
 {
@@ -87,6 +108,8 @@ typedef struct
     GS::UniString rawname_main = "";
     GS::UniString rawname_down = "";
     GS::UniString rawname_column = "";
+    OtdSlab floor;
+    OtdSlab ceil;
 } OtdRoom; // Структура для хранения информации о зоне
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
@@ -108,6 +131,8 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // -----------------------------------------------------------------------------
 bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& roominfo, UnicElementByType& elementToRead);
 
+void RoomFloor (const API_ElementMemo& zonememo, GS::Array<API_Guid>& slabGuids, OtdSlab& otdslab);
+
 // -----------------------------------------------------------------------------
 // Чтение данных об одном проёме
 // -----------------------------------------------------------------------------
@@ -124,9 +149,14 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
 void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
+// Обработка полов и потолков
+// -----------------------------------------------------------------------------
+void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
+
+// -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void GetParamForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
+void GetParamForBase (API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
 
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из зон
@@ -168,7 +198,7 @@ bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double 
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
-void GetZoneEdges (API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
+void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
 
 
 bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
@@ -179,7 +209,7 @@ bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 // -----------------------------------------------------------------------------
 bool FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
-void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement& subelementByparent);
+void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement& subelementByparent, ClassificationFunc::ClassificationDict& finclass);
 void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent);
 
 // -----------------------------------------------------------------------------
@@ -187,7 +217,17 @@ void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelem
 // -----------------------------------------------------------------------------
 void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams);
 
+GSErrCode ConstructPoly2DDataFromElementMemo (const API_ElementMemo& memo, Geometry::Polygon2DData& polygon2DData);
+
+GSErrCode ConstructOtdSlabFromPoly2DData (const Geometry::Polygon2DData& polygon2DData, OtdSlab& otdslab);
+
+GSErrCode ConstructOtdSlabFromElementMemo (const API_ElementMemo& memo, OtdSlab& otdslab);
+
+GSErrCode ConstructPoly2DDataFromOtdSlab (const OtdSlab& otdslab, Geometry::Polygon2DData& polygon2DData);
+
 void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& subelementByparent);
+
+void Do_CreateSlab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab);
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
