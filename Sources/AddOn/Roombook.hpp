@@ -4,6 +4,7 @@
 #define	ROOMBOOK_HPP
 #include    "Helpers.hpp"
 #include    "Polygon2DData.h"
+#include	"Polygon2DDataConv.h"
 #include    "Sector2DData.h"
 namespace AutoFunc
 {
@@ -15,8 +16,12 @@ typedef struct
     const GS::UniString material_up = "{@gdl:votw2}";
     const GS::UniString material_down = "{@gdl:votp}";
     const GS::UniString material_column = "{@gdl:votc}";
+    const GS::UniString material_pot = "{@gdl:vots}";
     const GS::UniString height_down = "{@gdl:hpan}";
     const GS::UniString height_main = "{@gdl:hroom_pot}";
+    const GS::UniString has_ceil = "{@gdl:offPot}";
+    const GS::UniString tip_pot = "{@gdl:tip_pot}";
+    const GS::UniString tip_pol = "{@gdl:tip_pol}";
 } GDLParamRoom;
 
 typedef struct
@@ -45,12 +50,14 @@ typedef struct
 
 typedef struct
 {
-    GS::Array<API_Coord> coords;
-    GS::Array<Int32> pends;
-    Int32 nCoords = 0;
-    Int32 nSubPolys = 0;
+    Geometry::Polygon2D poly;
     double zBottom = 0;
     double height = 0;
+    API_AttributeIndex material = 0;
+    API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
+    API_ElemTypeID otd_type = API_SlabID; // Каким элементом строить (стеной/балкой)
+    API_Guid base_guid = APINULLGuid; // GUID базового элемента
+    API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
 } OtdSlab;
 
 typedef struct
@@ -88,19 +95,20 @@ typedef struct
     GS::Array<API_BeamPart> beamPart; // Участки балок в зоне
     GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
     GS::Array<API_Niche> niches; // Ниши в зоне
-    GS::Array<OtdWall> otd; // Стены-отделки, созданные для расчётов и отрисовки
     API_AttributeIndex material = 0; // Материал в параметрах зоны
     API_AttributeIndex material_main = 0; // Основной материал отделки
     API_AttributeIndex material_up = 0;
     API_AttributeIndex material_down = 0;
     API_AttributeIndex material_column = 0;
     API_AttributeIndex material_reveal = 0;
+    API_AttributeIndex material_pot = 0;
     GS::UniString smaterial = ""; // Материал в параметрах зоны
     GS::UniString smaterial_main = ""; // Основной материал отделки
     GS::UniString smaterial_up = "";
     GS::UniString smaterial_down = "";
     GS::UniString smaterial_column = "";
     GS::UniString smaterial_reveal = "";
+    GS::UniString smaterial_pot = "";
     double height_down = 0; // Высота панелей
     double height_main = 0; // Высота основной отделки
     double height_up = 0; // Высота верхней части отделки
@@ -108,8 +116,15 @@ typedef struct
     GS::UniString rawname_main = "";
     GS::UniString rawname_down = "";
     GS::UniString rawname_column = "";
-    OtdSlab floor;
-    OtdSlab ceil;
+    OtdSlab poly; // Полгон зоны для полов/потолков
+    GS::Array<API_Guid> floorslab; // Перекрытия в уровне пола
+    GS::Array<API_Guid> ceilslab; // Перекрытия в уровне потолка
+    GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
+    GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
+    bool has_ceil = true;
+    bool has_floor = true;
+    GS::UniString tip_pot = "";
+    GS::UniString tip_pol = "";
 } OtdRoom; // Структура для хранения информации о зоне
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
@@ -121,6 +136,8 @@ typedef GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> UnicGUIDByType;
 // -----------------------------------------------------------------------------
 void RoomBook ();
 
+bool IsOtdClass (const API_Guid& elGuid, const UnicGuid& finclassguids);
+
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
 // -----------------------------------------------------------------------------
@@ -130,8 +147,6 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // Получение информации из зоны о полгионах и находящейся в ней элементах
 // -----------------------------------------------------------------------------
 bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& roominfo, UnicElementByType& elementToRead);
-
-void RoomFloor (const API_ElementMemo& zonememo, GS::Array<API_Guid>& slabGuids, OtdSlab& otdslab);
 
 // -----------------------------------------------------------------------------
 // Чтение данных об одном проёме
@@ -200,6 +215,9 @@ bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double 
 // -----------------------------------------------------------------------------
 void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
 
+void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
+
+void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall> otdwall, bool on_top);
 
 bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 
@@ -217,22 +235,18 @@ void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelem
 // -----------------------------------------------------------------------------
 void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams);
 
-GSErrCode ConstructPoly2DDataFromElementMemo (const API_ElementMemo& memo, Geometry::Polygon2DData& polygon2DData);
+GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo& memo, Geometry::Polygon2D& poly);
 
-GSErrCode ConstructOtdSlabFromPoly2DData (const Geometry::Polygon2DData& polygon2DData, OtdSlab& otdslab);
-
-GSErrCode ConstructOtdSlabFromElementMemo (const API_ElementMemo& memo, OtdSlab& otdslab);
-
-GSErrCode ConstructPoly2DDataFromOtdSlab (const OtdSlab& otdslab, Geometry::Polygon2DData& polygon2DData);
+GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D& polygon, API_Polygon& poly, API_ElementMemo& memo);
 
 void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& subelementByparent);
 
-void Do_CreateSlab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab);
+void Do_CreateSlab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElement& subelementByparent);
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
 // -----------------------------------------------------------------------------
-void FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFunc::ClassificationDict& findict);
+void FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFunc::ClassificationDict& findict, UnicGuid& finclassguids);
 
 }
 
