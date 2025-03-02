@@ -1385,7 +1385,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo
@@ -1447,7 +1447,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-}
+    }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
 #else
@@ -1512,8 +1512,8 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
                 elementsSymbolGuids.Push (std::move (memo.cWallFrames[idx].head.guid));
             }
-            }
         }
+    }
     const GSSize nWallJunctions = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallJunctions)) / sizeof (API_CWJunctionType);
     if (nWallJunctions > 0) {
         for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
@@ -1532,7 +1532,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение списка GUID элементов ограждения
@@ -1683,7 +1683,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
-API_ElemType	Neig_To_ElemID (API_NeigID neigID)
+API_ElemType Neig_To_ElemID (API_NeigID neigID)
 {
     API_ElemType	type;
     GSErrCode		err;
@@ -1701,7 +1701,7 @@ API_ElemType	Neig_To_ElemID (API_NeigID neigID)
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
-API_ElemTypeID	Neig_To_ElemID (API_NeigID neigID)
+API_ElemTypeID Neig_To_ElemID (API_NeigID neigID)
 {
     API_ElemTypeID	typeID;
     GSErrCode		err;
@@ -1796,7 +1796,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         case API_HotlinkID:
         default:
             return false;
-}
+    }
 
     return true;
 }		// ElemHead_To_Neig
