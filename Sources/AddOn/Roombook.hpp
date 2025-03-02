@@ -53,7 +53,7 @@ typedef struct
     Geometry::Polygon2D poly;
     double zBottom = 0;
     double height = 0;
-    API_AttributeIndex material = 0;
+    short material = 0;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
     API_ElemTypeID otd_type = API_SlabID; // Каким элементом строить (стеной/балкой)
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
@@ -71,7 +71,7 @@ typedef struct
     bool base_flipped = false; // Базовая конструкция отзеркалена (для чтения состава)
     GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
     GS::Array<OtdOpening> openings; // Проёмы в стене-отделке
-    API_AttributeIndex material = 0;
+    short material = 0;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
     API_ElemTypeID otd_type = API_WallID; // Каким элементом строить (стеной/балкой)
 } OtdWall; // Структура со стенами для отделки
@@ -95,13 +95,13 @@ typedef struct
     GS::Array<API_BeamPart> beamPart; // Участки балок в зоне
     GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
     GS::Array<API_Niche> niches; // Ниши в зоне
-    API_AttributeIndex material = 0; // Материал в параметрах зоны
-    API_AttributeIndex material_main = 0; // Основной материал отделки
-    API_AttributeIndex material_up = 0;
-    API_AttributeIndex material_down = 0;
-    API_AttributeIndex material_column = 0;
-    API_AttributeIndex material_reveal = 0;
-    API_AttributeIndex material_pot = 0;
+    short material = 0; // Материал в параметрах зоны
+    short material_main = 0; // Основной материал отделки
+    short material_up = 0;
+    short material_down = 0;
+    short material_column = 0;
+    short material_reveal = 0;
+    short material_pot = 0;
     GS::UniString smaterial = ""; // Материал в параметрах зоны
     GS::UniString smaterial_main = ""; // Основной материал отделки
     GS::UniString smaterial_up = "";
@@ -208,7 +208,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo);
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, API_AttributeIndex& material, GS::UniString& smaterial);
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, short& material, GS::UniString& smaterial);
 
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны

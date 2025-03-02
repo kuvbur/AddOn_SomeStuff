@@ -23,9 +23,13 @@ void RoomBook ()
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
     if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
         for (const API_Neig& neig : selNeigs) {
-            API_NeigID neigID = neig.neigID;
             API_ElemTypeID elementType;
-            err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &elementType);
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+            API_ElemType elementType_ = Neig_To_ElemID (neig.neigID);
+            elementType = elementType_.typeID;
+#else
+            elementType = Neig_To_ElemID (neig.neigID);
+#endif
             if (elementType == API_ZoneID) zones.Push (neig.guid);
         }
     }
@@ -214,7 +218,11 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     }
     OtdSlab otdslab;
     ConstructPolygon2DFromElementMemo (zonememo, otdslab.poly);
+#if defined(AC_27) || defined(AC_28)
+    otdslab.material = zoneelement.zone.material.ToInt32_Deprecated ();
+#else
     otdslab.material = zoneelement.zone.material;
+#endif
     otdslab.base_type = API_ZoneID;
     otdslab.base_guid = zoneGuid;
     roominfo.poly = otdslab;
@@ -225,12 +233,20 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
         for (UInt32 j = 0; j < walledges.GetSize (); j++) {
             Sector tedge = walledges[j];
             BNZeroMemory (&searchPars, sizeof (API_ElemSearchPars));
-            searchPars.typeID = typeelem;
             searchPars.filterBits = APIFilt_OnVisLayer | APIFilt_In3D | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay;
             searchPars.loc.x = tedge.GetMidPoint ().x;
             searchPars.loc.y = tedge.GetMidPoint ().y;
             searchPars.z = BiggestDouble;
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+            searchPars.type.typeID = typeelem;
+#else
+            searchPars.typeID = typeelem;
+#endif
+#if defined(AC_27) || defined(AC_28)
+            err = ACAPI_Element_SearchElementByCoord (&searchPars, &elGuid);
+#else
             err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &searchPars, &elGuid);
+#endif
             if (err == NoError) {
                 flag = true;
                 if (!roominfo.walledges.ContainsKey (elGuid)) {
@@ -264,7 +280,11 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     roominfo.beamPart = relData.beamPart;
     roominfo.cwSegmentPart = relData.cwSegmentPart;
     roominfo.niches = relData.niches;
+#if defined(AC_27) || defined(AC_28)
+    roominfo.material = zoneelement.zone.material.ToInt32_Deprecated ();
+#else
     roominfo.material = zoneelement.zone.material;
+#endif
     ACAPI_DisposeRoomRelationHdls (&relData);
     ACAPI_DisposeElemMemoHdls (&zonememo);
     return flag;
@@ -287,7 +307,11 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
     }
     API_Guid wallguid = APINULLGuid;
     OtdOpening op;
+#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+    switch (element.header.type.typeID) {
+#else
     switch (element.header.typeID) {
+#endif
         case API_WindowID:
             wallguid = element.window.owner;
             op.height = element.window.openingBase.height;
@@ -320,7 +344,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен 
 // -----------------------------------------------------------------------------
-void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
+void ReadOneWall (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>&openinginwall, UnicGUIDByType & guidselementToRead)
 {
     GSErrCode err;
     API_Element element;
@@ -514,7 +538,7 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны 
 // -----------------------------------------------------------------------------
-void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
+void ReadOneColumn (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -607,7 +631,7 @@ void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_
 // -----------------------------------------------------------------------------
 // Обработка полов и потолков
 // -----------------------------------------------------------------------------
-void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
+void ReadOneSlab (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -650,7 +674,7 @@ void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void GetParamForBase (API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite)
+void GetParamForBase (API_Guid & elGuid, ParamDictValue & propertyParams, ParamDictValue & paramDict, ParamValue & param_composite)
 {
     // Подготавливаем свойство для чтения из слоёв многослойки
     GS::UniString rawName = "{@material:layers,20}";
@@ -687,7 +711,7 @@ void GetParamForBase (API_Guid& elGuid, ParamDictValue& propertyParams, ParamDic
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из зон
 // -----------------------------------------------------------------------------
-void GetParamForRooms (API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict)
+void GetParamForRooms (API_Guid & elGuid, ParamDictValue & propertyParams, ParamDictValue & paramDict)
 {
     for (auto& cItt : propertyParams) {
 #if defined(AC_28)
@@ -723,13 +747,13 @@ void GetParamForRooms (API_Guid& elGuid, ParamDictValue& propertyParams, ParamDi
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в зону
 // -----------------------------------------------------------------------------
-void SetParamToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
+void SetParamToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
 {
     GDLParamRoom g;
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
-        GS::Array<OtdWall >& otd = cIt->value;
-        API_Guid& zoneGuid = cIt->key;
+        OtdRoom& otd = cIt->value;
+        API_Guid zoneGuid = cIt->key;
 #else
         OtdRoom& otd = *cIt->value;
         API_Guid zoneGuid = *cIt->key;
@@ -745,29 +769,29 @@ void SetParamToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
 #endif
                 if (!param.isValid) continue;
                 if (param.rawName.IsEqual (g.material_column) || param.definition.description.Contains ("some_stuff_fin_column_material")) {
-                    otd.material_column = (API_AttributeIndex) param.val.intValue;
+                    otd.material_column = param.val.intValue;
                     otd.smaterial_column = param.val.uniStringValue;
                 }
                 if (param.rawName.IsEqual (g.height_down) || param.definition.description.Contains ("some_stuff_fin_down_height")) {
                     otd.height_down = param.val.doubleValue;
                 }
                 if (param.rawName.IsEqual (g.material_down) || param.definition.description.Contains ("some_stuff_fin_down_material")) {
-                    otd.material_down = (API_AttributeIndex) param.val.intValue;
+                    otd.material_down = param.val.intValue;
                     otd.smaterial_down = param.val.uniStringValue;
                 }
                 if (param.rawName.IsEqual (g.height_main) || param.definition.description.Contains ("some_stuff_fin_main_height")) {
                     otd.height_main = param.val.doubleValue;
                 }
                 if (param.rawName.IsEqual (g.material_main) || param.definition.description.Contains ("some_stuff_fin_main_material")) {
-                    otd.material_main = (API_AttributeIndex) param.val.intValue;
+                    otd.material_main = param.val.intValue;
                     otd.smaterial_main = param.val.uniStringValue;
                 }
                 if (param.rawName.IsEqual (g.material_pot) || param.definition.description.Contains ("some_stuff_fin_ceil_material")) {
-                    otd.material_pot = (API_AttributeIndex) param.val.intValue;
+                    otd.material_pot = param.val.intValue;
                     otd.smaterial_pot = param.val.uniStringValue;
                 }
                 if (param.rawName.IsEqual (g.material_up) || param.definition.description.Contains ("some_stuff_fin_up_material")) {
-                    otd.material_up = (API_AttributeIndex) param.val.intValue;
+                    otd.material_up = param.val.intValue;
                     otd.smaterial_up = param.val.uniStringValue;
                 }
                 if (param.rawName.IsEqual (g.has_ceil) || param.definition.description.Contains ("some_stuff_fin_has_ceil")) {
@@ -812,7 +836,7 @@ void SetParamToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void SetParamToBase (OtdRooms& roomsinfo, ParamDictElement& paramToRead, UnicGUIDByType& guidselementToRead, ParamValue& param_composite)
+void SetParamToBase (OtdRooms & roomsinfo, ParamDictElement & paramToRead, UnicGUIDByType & guidselementToRead, ParamValue & param_composite)
 {
     if (!guidselementToRead.ContainsKey (API_ZoneID)) {
 #if defined(TESTING)
@@ -868,7 +892,11 @@ void SetParamToBase (OtdRooms& roomsinfo, ParamDictElement& paramToRead, UnicGUI
 // -----------------------------------------------------------------------------
 // Полчение полигона зоны (в том числе стен, колонн)
 // -----------------------------------------------------------------------------
-static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
+#if defined(AC_28)
+void RoomReductionPolyProc (const API_RoomReductionPolyType * roomRed)
+#else
+static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType * roomRed)
+#endif
 {
     if (reducededges == nullptr) {
 #if defined(TESTING)
@@ -922,11 +950,17 @@ static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
-void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges)
+void GetZoneEdges (const API_ElementMemo & zonememo, API_Element & zoneelement, GS::Array<Sector>&walledges, GS::Array<Sector>&columnedges, GS::Array<Sector>&restedges, GS::Array<Sector>&gableedges)
 {
     RoomEdges rdges;
     reducededges = &rdges;
-    if (ACAPI_Database (APIDb_RoomReductionsID, &zoneelement.header.guid, (void*) (GS::IntPtr) RoomRedProc) != NoError) {
+    GSErrCode err = NoError;
+#if defined(AC_28)
+    err = ACAPI_Element_RoomReductions (&zoneelement.header.guid, RoomReductionPolyProc);
+#else
+    err = ACAPI_Database (APIDb_RoomReductionsID, &zoneelement.header.guid, (void*) (GS::IntPtr) RoomRedProc);
+#endif
+    if (err != NoError) {
 #if defined(TESTING)
         DBprnt ("GetZoneEdges err", "APIDb_RoomReductionsID");
 #endif
@@ -981,7 +1015,7 @@ void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS
 // -----------------------------------------------------------------------------
 // Обработка потолков и полов в зоне
 // -----------------------------------------------------------------------------
-void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
+void FloorRooms (const Stories & storyLevels, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead)
 {
     if (!guidselementToRead.ContainsKey (API_ZoneID)) {
 #if defined(TESTING)
@@ -1018,7 +1052,7 @@ void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType
     }
 }
 
-void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall> otdwall, bool on_top)
+void FloorOneRoom (const Stories & storyLevels, OtdSlab & poly, GS::Array<API_Guid>&slabGuids, GS::Array<OtdSlab>&otdslabs, GS::Array<OtdWall> otdwall, bool on_top)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
     for (API_Guid& slabGuid : slabGuids) {
@@ -1087,14 +1121,14 @@ void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
 // -----------------------------------------------------------------------------
-void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>& typeinzone)
+void ClearZoneGUID (UnicElementByType & elementToRead, GS::Array<API_ElemTypeID>&typeinzone)
 {
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (elementToRead.ContainsKey (typeelem)) {
             for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
                 API_Guid guid = cIt->key;
-                GS::Array<API_Guid> zoneGuids = cIt->value;
+                GS::Array<API_Guid> zoneGuids_ = cIt->value;
 #else
                 API_Guid guid = *cIt->key;
                 GS::Array<API_Guid> zoneGuids_ = *cIt->value;
@@ -1105,7 +1139,11 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
                 }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+                    API_Guid zoneGuid = cIt->key;
+#else
                     API_Guid zoneGuid = *cIt->key;
+#endif
                     zoneGuids.Push (zoneGuid);
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
@@ -1118,7 +1156,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // -----------------------------------------------------------------------------
 // Получение площади отделочной стены с учётом отверстий
 // -----------------------------------------------------------------------------
-double GetAreaOtdWall (const OtdWall& otdw)
+double GetAreaOtdWall (const OtdWall & otdw)
 {
     double dx = -otdw.endC.x + otdw.begC.x;
     double dy = -otdw.endC.y + otdw.begC.y;
@@ -1139,15 +1177,15 @@ double GetAreaOtdWall (const OtdWall& otdw)
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов проёмов
 // -----------------------------------------------------------------------------
-void CreateOpeningReveals (OtdRooms& roomsinfo)
+void CreateOpeningReveals (OtdRooms & roomsinfo)
 {
 #if defined(TESTING)
     DBprnt ("CreateOpeningReveals", "start");
 #endif
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
-        GS::Array<OtdWall >& otd = cIt->value;
-        API_Guid& zoneGuid = cIt->key;
+        OtdRoom& otd = cIt->value;
+        API_Guid zoneGuid = cIt->key;
 #else
         OtdRoom& otd = *cIt->value;
         API_Guid zoneGuid = *cIt->key;
@@ -1187,7 +1225,7 @@ void CreateOpeningReveals (OtdRooms& roomsinfo)
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void CreateOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw)
+void CreateOpeningReveals (const OtdWall & otdw, OtdOpening & op, const Geometry::Vector2<double>&walldir_perp, GS::Array<OtdWall>&opw)
 {
     if (op.base_reveal_width < min_dim) return;
     double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
@@ -1245,15 +1283,15 @@ void CreateOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void DelimOtdWalls (OtdRooms& roomsinfo)
+void DelimOtdWalls (OtdRooms & roomsinfo)
 {
 #if defined(TESTING)
     DBprnt ("DelimOtdWalls", "start");
 #endif
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
-        GS::Array<OtdWall >& otd = cIt->value;
-        API_Guid& zoneGuid = cIt->key;
+        OtdRoom& otd = cIt->value;
+        API_Guid zoneGuid = cIt->key;
 #else
         OtdRoom& otd = *cIt->value;
         API_Guid zoneGuid = *cIt->key;
@@ -1264,7 +1302,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
                 bool has_delim = false; // Найдена разбивка
                 double height = 0; // Высота элемента
                 double zBottom = 0; // Отметка низа
-                API_AttributeIndex material = 0;
+                short material = 0;
                 GS::UniString smaterial = "";
                 // Панели
                 if (otd.height_down > 0) {
@@ -1347,7 +1385,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, API_AttributeIndex& material, GS::UniString& smaterial)
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>&opw, double height, double zBottom, short& material, GS::UniString & smaterial)
 {
     const double dh = 0.002; // Дополнительное увеличение высоты проёма для исключения линии на стыке
     if (height < min_dim || is_equal (height, 0)) return false;
@@ -1393,7 +1431,11 @@ bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double 
     otdn.height = height;
     otdn.material = material;
     ParamValueComposite p;
+#if defined(AC_27) || defined(AC_28)
+    p.inx = ACAPI_CreateAttributeIndex (material);
+#else
     p.inx = material;
+#endif
     p.val = smaterial;
     p.num = -1;
     p.structype = APICWallComp_Finish;
@@ -1402,7 +1444,7 @@ bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double 
     return true;
 }
 
-bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
+bool FindOnEdge (Sector & edge, GS::Array<Sector>&edges, Sector & findedge)
 {
     double dx; double dy; double dr;
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
@@ -1430,7 +1472,7 @@ bool FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
 // Проверка наличия отрезка в массиве отрезков.
 // В случае нахождение проверяется направление, при необходимости разворачивается
 // -----------------------------------------------------------------------------
-bool FindEdge (Sector& edge, GS::Array<Sector>& edges)
+bool FindEdge (Sector & edge, GS::Array<Sector>&edges)
 {
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
         if (edges[i].c1.IsNear (edge.c1, min_dim) && edges[i].c2.IsNear (edge.c2, min_dim)) {
@@ -1445,13 +1487,17 @@ bool FindEdge (Sector& edge, GS::Array<Sector>& edges)
     return false;
 }
 
-void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement& subelementByparent, ClassificationFunc::ClassificationDict& finclass)
+void DrawEdges (const Stories & storyLevels, OtdRooms & zoneelements, UnicElement & subelementByparent, ClassificationFunc::ClassificationDict & finclass)
 {
 #if defined(TESTING)
     DBprnt ("DrawEdges", "start");
 #endif
     API_Element wallelement;
+#if defined AC_26 || defined AC_27 || defined AC_28
+    wallelement.header.type.typeID = API_WallID;
+#else
     wallelement.header.typeID = API_WallID;
+#endif
     if (ACAPI_Element_GetDefaults (&wallelement, nullptr) != NoError) {
         return;
     }
@@ -1476,13 +1522,16 @@ void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement&
             if (elem_head.layer == wallelement.header.layer) deletelist.Push (elem_head.guid);
         }
     }
-
     API_Element slabelement;
     BNZeroMemory (&slabelement, sizeof (API_Element));
+#if defined AC_26 || defined AC_27 || defined AC_28
+    slabelement.header.type.typeID = API_SlabID;
+#else
     slabelement.header.typeID = API_SlabID;
+#endif
     if (ACAPI_Element_GetDefaults (&slabelement, nullptr) != NoError) {
         return;
-    }
+}
     slabelement.header.layer = wallelement.header.layer;
     slabelement.slab.offsetFromTop = 0;
     slabelement.slab.materialsChained = true;
@@ -1504,7 +1553,7 @@ void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement&
         if (!deletelist.IsEmpty ()) ACAPI_Element_Delete (deletelist);
         for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
-            GS::Array<OtdWall >& otd = cIt->value;
+            OtdRoom& otd = cIt->value;
 #else
             OtdRoom& otd = *cIt->value;
 #endif
@@ -1537,15 +1586,15 @@ void DrawEdges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement&
 #endif
             }
 
-        }
+            }
         return NoError;
-    });
+        });
 #if defined(TESTING)
     DBprnt ("DrawEdges", "end");
 #endif
-}
+    }
 
-void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent)
+void DrawEdge (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, UnicElement & subelementByparent)
 {
     double dx = -edges.endC.x + edges.begC.x;
     double dy = -edges.endC.y + edges.begC.y;
@@ -1557,9 +1606,16 @@ void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelem
     const auto floorIndexAndOffset = GetFloorIndexAndOffset (edges.zBottom, storyLevels);
     wallelement.header.floorInd = floorIndexAndOffset.first;
     wallelement.wall.bottomOffset = floorIndexAndOffset.second;
+#if defined(AC_27) || defined(AC_28)
+    API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material);
+    wallelement.wall.refMat.value = ematerial;
+    wallelement.wall.oppMat.value = ematerial;
+    wallelement.wall.sidMat.value = ematerial;
+#else
     wallelement.wall.refMat.attributeIndex = edges.material;
     wallelement.wall.oppMat.attributeIndex = edges.material;
     wallelement.wall.sidMat.attributeIndex = edges.material;
+#endif
     if (ACAPI_Element_Create (&wallelement, nullptr) == NoError) {
         edges.otd_guid = wallelement.header.guid;
         if (subelementByparent.ContainsKey (edges.base_guid)) {
@@ -1572,17 +1628,21 @@ void DrawEdge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelem
         for (OtdOpening& op : edges.openings) {
             Do_CreateWindow (wallelement, op, subelementByparent);
         }
-    }
+}
 }
 
-void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& subelementByparent)
+void Do_CreateWindow (API_Element & wallelement, OtdOpening & op, UnicElement & subelementByparent)
 {
     API_ElementMemo memo;
     GSErrCode err = NoError;
     API_Element windowelement;
     if (wallelement.wall.type == APIWtyp_Poly) return;
     BNClear (memo);
+#if defined AC_26 || defined AC_27 || defined AC_28
+    windowelement.header.type.typeID = API_WindowID;
+#else
     windowelement.header.typeID = API_WindowID;
+#endif
     err = ACAPI_Element_GetDefaults (&windowelement, &memo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -1615,15 +1675,22 @@ void Do_CreateWindow (API_Element& wallelement, OtdOpening& op, UnicElement& sub
 // -----------------------------------------------------------------------------
 // Create a special shaped slab with custom edge trims
 // -----------------------------------------------------------------------------
-void Do_CreateSlab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElement& subelementByparent)
+void Do_CreateSlab (const Stories & storyLevels, API_Element & slabelement, OtdSlab & otdslab, UnicElement & subelementByparent)
 {
     slabelement.slab.thickness = fmin (0.001, otdslab.height);
     const auto floorIndexAndOffset = GetFloorIndexAndOffset (otdslab.zBottom, storyLevels);
     slabelement.header.floorInd = floorIndexAndOffset.first;
     slabelement.slab.level = floorIndexAndOffset.second;
+#if defined(AC_27) || defined(AC_28)
+    API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (otdslab.material);
+    slabelement.slab.topMat.value = ematerial;
+    slabelement.slab.sideMat.value = ematerial;
+    slabelement.slab.botMat.value = ematerial;
+#else
     slabelement.slab.topMat.attributeIndex = otdslab.material;
     slabelement.slab.sideMat.attributeIndex = otdslab.material;
     slabelement.slab.botMat.attributeIndex = otdslab.material;
+#endif
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     if (ConvertPolygon2DToAPIPolygon (otdslab.poly, slabelement.slab.poly, memo) == NoError) {
@@ -1645,13 +1712,13 @@ void Do_CreateSlab (const Stories& storyLevels, API_Element& slabelement, OtdSla
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
 // -----------------------------------------------------------------------------
-void FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFunc::ClassificationDict& findict, UnicGuid& finclassguids)
+void FindFinClass (ClassificationFunc::SystemDict & systemdict, ClassificationFunc::ClassificationDict & findict, UnicGuid & finclassguids)
 {
     if (systemdict.IsEmpty ()) return;
     for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict>::PairIterator cIt = systemdict.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
-        GS::UniString& system = cIt->key;
-        ClassificationDict& classes = cIt->value;
+        GS::UniString system = cIt->key;
+        ClassificationFunc::ClassificationDict& classes = cIt->value;
 #else
         GS::UniString system = *cIt->key;
         ClassificationFunc::ClassificationDict& classes = *cIt->value;
@@ -1691,14 +1758,14 @@ void FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFun
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
                 }
             }
-        }
     }
+}
 }
 
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
-void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams)
+void SetSyncOtdWall (UnicElement & subelementByparent, ParamDictValue & propertyParams)
 {
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
@@ -1735,7 +1802,7 @@ void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyPa
     }
 }
 
-GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo& memo, Geometry::Polygon2D& poly)
+GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geometry::Polygon2D & poly)
 {
     GSErrCode err = NoError;
     Geometry::Polygon2DData polygon2DData;
@@ -1778,7 +1845,7 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo& memo, Geomet
     return err;
 }
 
-GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D& polygon, API_Polygon& poly, API_ElementMemo& memo)
+GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D & polygon, API_Polygon & poly, API_ElementMemo & memo)
 {
     GSErrCode err = NoError;
     Geometry::Polygon2DData polygon2DData;
@@ -1812,7 +1879,7 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D& polygon, API_
     return err;
 }		// ConvertPoly2DDataToAPIPolygon
 
-bool IsOtdClass (const API_Guid& elGuid, const UnicGuid& finclassguids)
+bool IsOtdClass (const API_Guid & elGuid, const UnicGuid & finclassguids)
 {
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
     if (ACAPI_Element_GetClassificationItems (elGuid, systemItemPairs) == NoError) {
