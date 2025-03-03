@@ -532,8 +532,8 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-        }
-    }
+            }
+            }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     msg = "SomeStuff addon: " + msg + "\n";
@@ -545,7 +545,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
 #if defined(TESTING)
     DBprnt (msg);
 #endif
-}
+        }
 
 
 // --------------------------------------------------------------------
@@ -928,7 +928,7 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
         }
     };
     return false; // Не получилось зарезервировать
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1385,7 +1385,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo
