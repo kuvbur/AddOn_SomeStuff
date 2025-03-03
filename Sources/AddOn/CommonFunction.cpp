@@ -2211,3 +2211,80 @@ GS::UniString NumToString (const double& var, const FormatString& stringformat)
     return out;
 }
 }
+
+
+GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geometry::Polygon2D & poly)
+{
+    GSErrCode err = NoError;
+    Geometry::Polygon2DData polygon2DData;
+    Geometry::InitPolygon2DData (&polygon2DData);
+    static_assert (sizeof (API_Coord) == sizeof (Coord), "sizeof (API_Coord) != sizeof (Coord)");
+    static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
+
+    polygon2DData.nVertices = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (Coord) - 1;
+    polygon2DData.vertices = reinterpret_cast<Coord**> (BMAllocateHandle ((polygon2DData.nVertices + 1) * sizeof (Coord), ALLOCATE_CLEAR, 0));
+    if (polygon2DData.vertices != nullptr)
+        BNCopyMemory (*polygon2DData.vertices, *memo.coords, (polygon2DData.nVertices + 1) * sizeof (Coord));
+    else
+        err = APIERR_MEMFULL;
+    if (err == NoError && memo.parcs != nullptr) {
+        polygon2DData.nArcs = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.parcs)) / sizeof (PolyArcRec);
+        if (polygon2DData.nArcs > 0) {
+            polygon2DData.arcs = reinterpret_cast<PolyArcRec**> (BMAllocateHandle ((polygon2DData.nArcs + 1) * sizeof (PolyArcRec), ALLOCATE_CLEAR, 0));
+            if (polygon2DData.arcs != nullptr)
+                BNCopyMemory (*polygon2DData.arcs + 1, *memo.parcs, polygon2DData.nArcs * sizeof (PolyArcRec));
+            else
+                err = APIERR_MEMFULL;
+        }
+    }
+    if (err == NoError) {
+        polygon2DData.nContours = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.pends)) / sizeof (Int32) - 1;
+        polygon2DData.contourEnds = reinterpret_cast<UIndex**> (BMAllocateHandle ((polygon2DData.nContours + 1) * sizeof (UIndex), ALLOCATE_CLEAR, 0));
+        if (polygon2DData.contourEnds != nullptr)
+            BNCopyMemory (*polygon2DData.contourEnds, *memo.pends, (polygon2DData.nContours + 1) * sizeof (UIndex));
+        else
+            err = APIERR_MEMFULL;
+    }
+    if (err == NoError) {
+        Geometry::GetPolygon2DDataBoundBox (polygon2DData, &polygon2DData.boundBox);
+        polygon2DData.status.isBoundBoxValid = true;
+        Geometry::MultiPolygon2D multi;
+        Geometry::ConvertPolygon2DDataToPolygon2D (multi, polygon2DData);
+        poly = multi.PopLargest ();
+    }
+    Geometry::FreePolygon2DData (&polygon2DData);
+    return err;
+}
+
+GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D & polygon, API_Polygon & poly, API_ElementMemo & memo)
+{
+    GSErrCode err = NoError;
+    Geometry::Polygon2DData polygon2DData;
+    Geometry::InitPolygon2DData (&polygon2DData);
+    Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, polygon);
+
+    poly.nCoords = polygon2DData.nVertices;
+    poly.nSubPolys = polygon2DData.nContours;
+    poly.nArcs = polygon2DData.nArcs;
+
+    memo.coords = reinterpret_cast<API_Coord**>	(BMAllocateHandle ((poly.nCoords + 1) * sizeof (API_Coord), ALLOCATE_CLEAR, 0));
+    memo.pends = reinterpret_cast<Int32**>		(BMAllocateHandle ((poly.nSubPolys + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
+    if (memo.coords != nullptr && memo.pends != nullptr && polygon2DData.vertices != nullptr) {
+        static_assert (sizeof (API_Coord) == sizeof (Coord), "sizeof (API_Coord) != sizeof (Coord)");
+        BNCopyMemory (*memo.coords, *polygon2DData.vertices, (poly.nCoords + 1) * sizeof (API_Coord));
+        BNCopyMemory (*memo.pends, *polygon2DData.contourEnds, (poly.nSubPolys + 1) * sizeof (Int32));
+    } else {
+        err = APIERR_MEMFULL;
+    }
+    if (err == NoError && polygon2DData.arcs != nullptr) {
+        memo.parcs = reinterpret_cast<API_PolyArc**> (BMAllocateHandle (poly.nArcs * sizeof (API_PolyArc), ALLOCATE_CLEAR, 0));
+        if (memo.parcs != nullptr) {
+            static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
+            BNCopyMemory (*memo.parcs, *polygon2DData.arcs, poly.nArcs * sizeof (API_PolyArc));
+        } else {
+            err = APIERR_MEMFULL;
+        }
+    }
+    Geometry::FreePolygon2DData (&polygon2DData);
+    return err;
+}		// ConvertPoly2DDataToAPIPolygon
