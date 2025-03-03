@@ -236,15 +236,11 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
 // -----------------------------------------------------------------------------
 // Синхронизация элемента и его подэлементов
 // -----------------------------------------------------------------------------
-void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict)
+bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict)
 {
     API_ElemTypeID elementType;
     GSErrCode err = GetTypeByGUID (elemGuid, elementType);
-    if (err != NoError) return;
-    if (elementType == API_LabelID) {
-        SyncLabelScope (elemGuid, propertyParams, paramToWrite);
-        return;
-    }
+    if (err != NoError) return false;
     API_Guid elemGuid_ = elemGuid;
     if (elementType == API_SectElemID) {
         GetParentGUIDSectElem (elemGuid, elemGuid_, elementType);
@@ -253,7 +249,7 @@ void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     GS::Array<API_Guid> subelemGuids;
     GetRelationsElement (elemGuid_, elementType, syncSettings, subelemGuids);
     if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
-    SyncData (elemGuid_, APINULLGuid, syncSettings, subelemGuids, propertyParams, paramToWrite, dummymode, systemdict);
+    bool needResync = SyncData (elemGuid_, APINULLGuid, syncSettings, subelemGuids, propertyParams, paramToWrite, dummymode, systemdict);
     if (!subelemGuids.IsEmpty () && SyncRelationsElement (elementType, syncSettings)) {
         if (subelemGuids.GetSize () > 3) {
             if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
@@ -264,10 +260,11 @@ void SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
             API_Guid subelemGuid = subelemGuids[i];
             if (subelemGuid != elemGuid_) {
                 GS::Array<API_Guid> epm;
-                SyncData (subelemGuid, elemGuid_, syncSettings, epm, propertyParams, paramToWrite, dummymode, systemdict);
+                if (SyncData (subelemGuid, elemGuid_, syncSettings, epm, propertyParams, paramToWrite, dummymode, systemdict)) needResync = true;
             }
         }
     }
+    return needResync;
 }
 
 // -----------------------------------------------------------------------------
@@ -314,8 +311,9 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
 #endif
     long time_start = clock ();
+    bool needResync = false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        SyncElement (guidArray[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+        if (SyncElement (guidArray[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict)) rereadelem.Push (guidArray[i]);
 #if defined(AC_27) || defined(AC_28)
         if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
@@ -341,7 +339,8 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
 #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-            rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
+            GS::Array<API_Guid> rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
+            if (!rereadelem_.IsEmpty ()) rereadelem.Append (rereadelem_);
             long time_end = clock ();
             GS::UniString time = title + GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
             msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
@@ -365,7 +364,6 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
 void RunParamSelected (const SyncSettings& syncSettings)
 {
     GS::UniString fmane = "Run parameter script";
-
     // Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
     API_AttributeIndex layerCombIndex;
     API_DatabaseInfo databaseInfo;
@@ -479,11 +477,11 @@ bool SyncRelationsElement (const API_ElemTypeID& elementType, const SyncSettings
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-void SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict)
+bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, int dummymode, ClassificationFunc::SystemDict& systemdict)
 {
     GSErrCode	err = NoError;
     API_ElemTypeID elementType;
-    if (!IsElementEditable (elemGuid, syncSettings, true, elementType)) return;
+    if (!IsElementEditable (elemGuid, syncSettings, true, elementType)) return false;
     // Если включён мониторинг - привязываем элемент к отслеживанию
     if (syncSettings.syncMon) {
         err = AttachObserver (elemGuid, syncSettings);
@@ -491,18 +489,17 @@ void SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
             err = NoError;
         if (err != NoError) {
             msg_rep ("SyncData", "AttachObserver", err, elemGuid);
-            return;
+            return false;
         }
     }
-    if (elementType == API_DimensionID) return;
+    if (elementType == API_DimensionID) return false;
     ClassificationFunc::SetAutoclass (systemdict, elemGuid);
     GS::Array<API_PropertyDefinition> definitions;
     err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
     if (err != NoError) {
         msg_rep ("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
-        return;
+        return false;
     }
-
     // Синхронизация данных
     // Проверяем - не отключена ли синхронизация у данного объекта
     if (dummymode == DUMMY_MODE_UNDEF) dummymode = IsDummyModeOn ();
@@ -518,7 +515,7 @@ void SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
         synccoord = GetElemState (elemGuid, definitions, "Sync_correct_flag", flagfindcoord);
         syncclass = GetElemState (elemGuid, definitions, "Sync_class_flag", flagfindclass);
     }
-    if (!syncall && !synccoord && !syncclass) return; //Если оба свойства-флага ложь - выходим
+    if (!syncall && !synccoord && !syncclass) return false; //Если оба свойства-флага ложь - выходим
     if (syncall && !flagfindcoord) synccoord = true; //Если флаг координат не найден - проверку всё равно делаем
     if (syncall && !flagfindclass) syncclass = true;
     GS::Array <WriteData> mainsyncRules;
@@ -530,7 +527,7 @@ void SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
         // Получаем список правил синхронизации из всех свойств
         ParseSyncString (elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, propertyParams, syncall, synccoord, syncclass); // Парсим описание свойства
     }
-    if (mainsyncRules.IsEmpty ()) return;
+    if (mainsyncRules.IsEmpty ()) return false;
     if (propertyParams.IsEmpty () || hasSub) {
         if (hasSub) {
             if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
@@ -538,7 +535,7 @@ void SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
             ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, definitions);
         }
     }
-    if (propertyParams.IsEmpty ()) return;
+    if (propertyParams.IsEmpty ()) return false;
 
     // Заполняем правила синхронизации с учётом субэлементов, попутно заполняем словарь параметров для чтения/записи
     WriteDict syncRules; // Словарь с правилами для каждого элемента
@@ -547,15 +544,14 @@ void SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     subelemGuids.Push (elemGuid); // Это теперь список всех элементов для синхронизации
 
     // Читаем все возможные свойства
-    if (paramToRead.IsEmpty ()) return;
+    if (paramToRead.IsEmpty ()) return false;
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
-
     SyncCalcRule (syncRules, subelemGuids, paramToRead, paramToWrite);
-
+    if (paramToWrite.IsEmpty ()) return false;
     // Некоторые свойства, возможно, ссылались на изменённые. Чтоб не запускать полную синхронизацию ещё раз
     ParamHelpers::CompareParamDictElement (paramToWrite, paramToRead);
     SyncCalcRule (syncRules, subelemGuids, paramToRead, paramToWrite);
-    return;
+    return false;
 }
 
 void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite)
@@ -1455,9 +1451,9 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     flag_write = true;
                 }
                 if (flag_write) break;
+            }
         }
     }
-}
 }
 
 // -----------------------------------------------------------------------------
@@ -1651,7 +1647,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             if (param.definition.description.Contains ("Sync_GUID")) {
                 paramDict.Add (param.rawName, param);
             }
-    }
+        }
         if (paramDict.IsEmpty ()) return;
         ParamDictElement paramToRead;
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
@@ -1681,8 +1677,8 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                         }
                     }
                 }
-}
-                }
+            }
+        }
     }
     if (selNeigs.IsEmpty ()) return;
 #if defined(AC_27) || defined(AC_28)
@@ -1693,5 +1689,5 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
 #endif
 #endif
     return;
-        }
+}
 

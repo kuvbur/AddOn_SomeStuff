@@ -106,6 +106,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             ACAPI_Notify_InstallElementObserver (nullptr);
 #endif
             break;
+        case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
             DimRoundAll (syncSettings);
@@ -172,22 +173,11 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (elementType == API_DimensionID) return NoError;
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
-    GS::Array<API_Guid> exsistguid_linkTo;
-    if (elementType == API_LabelID) {
-        switch (elemType->notifID) {
-            case APINotifyElement_Change:
-            case APINotifyElement_Edit:
-                SyncLabelScope (elemType->elemHead.guid, propertyParams, paramToWrite);
-                if (!paramToWrite.IsEmpty ()) ParamHelpers::ElementsWrite (paramToWrite);
-                return NoError;
-            default:
-                break;
-        }
-    }
     if (!CheckElementType (elementType, syncSettings)) return NoError;
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, false)) return NoError;
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:no_attrib"); // Во время отслеживания не будем получать весь список слоёв
     ClassificationFunc::SystemDict systemdict;
+    bool needresync = false;
     switch (elemType->notifID) {
         case APINotifyElement_New:
         case APINotifyElement_Change:
@@ -215,10 +205,17 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 syncSettings.logMon = true;
                 WriteSyncSettingsToPreferences (syncSettings);
             }
-            SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+            needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
             if (!paramToWrite.IsEmpty ()) {
                 GS::Array<API_Guid> rereadelem;
                 rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
+                if (needresync) {
+                    paramToWrite.Clear ();
+                    SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                    GS::Array<API_Guid> rereadelem_;
+                    rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
+                    if (!rereadelem_.IsEmpty ()) rereadelem.Append (rereadelem_);
+                }
                 if (!rereadelem.IsEmpty ()) {
 #if defined(TESTING)
                     DBprnt ("ElementEventHandlerProc", "reread element");
@@ -465,9 +462,9 @@ GSErrCode __ACENV_CALL Initialize (void)
     Do_ElementMonitor (syncSettings.syncMon);
     MonAll (syncSettings);
 #if defined(AC_27) || defined(AC_28)
-    ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
+    ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
 #else
-    ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit, ProjectEventHandlerProc);
+    ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
 #endif
     ACAPI_KeepInMemory (true);
 #if defined(AC_27) || defined(AC_28)
