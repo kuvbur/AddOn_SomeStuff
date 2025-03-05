@@ -211,7 +211,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
                 if (needresync) {
                     paramToWrite.Clear ();
-                    SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                    needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
                     GS::Array<API_Guid> rereadelem_;
                     rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
                     if (!rereadelem_.IsEmpty ()) rereadelem.Append (rereadelem_);
@@ -223,7 +223,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                     for (UInt32 i = 0; i < rereadelem.GetSize (); i++) {
                         propertyParams.Clear ();
                         paramToWrite.Clear ();
-                        SyncElement (rereadelem[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                        needresync = SyncElement (rereadelem[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
                         ParamHelpers::ElementsWrite (paramToWrite);
                     }
                 }

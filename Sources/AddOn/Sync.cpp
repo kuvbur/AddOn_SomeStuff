@@ -551,6 +551,70 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     // Некоторые свойства, возможно, ссылались на изменённые. Чтоб не запускать полную синхронизацию ещё раз
     ParamHelpers::CompareParamDictElement (paramToWrite, paramToRead);
     SyncCalcRule (syncRules, subelemGuids, paramToRead, paramToWrite);
+    return SyncNeedResync (paramToRead, paramToWrite);
+}
+
+bool SyncNeedResync (ParamDictElement& paramToRead, ParamDictElement& paramToWrite)
+{
+    if (paramToWrite.IsEmpty ()) return false;
+    if (paramToRead.IsEmpty ()) return false;
+    UnicGuid property_write;
+    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        ParamDictValue& params = cIt->value;
+        API_Guid elemGuid = cIt->key;
+#else
+        ParamDictValue& params = *cIt->value;
+        API_Guid elemGuid = *cIt->key;
+#endif
+        if (!params.IsEmpty ()) {
+            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+                ParamValue& param = cIt->value;
+#else
+                ParamValue& param = *cIt->value;
+#endif
+                if (param.definition.guid != APINULLGuid) {
+                    if (!property_write.ContainsKey (param.definition.guid)) property_write.Add (param.definition.guid, true);
+                }
+            }
+        }
+    }
+    if (property_write.IsEmpty ()) return false;
+    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        ParamDictValue& params = cIt->value;
+        API_Guid elemGuid = cIt->key;
+#else
+        ParamDictValue& params = *cIt->value;
+        API_Guid elemGuid = *cIt->key;
+#endif
+        if (!params.IsEmpty ()) {
+            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+                ParamValue& param = cIt->value;
+#else
+                ParamValue& param = *cIt->value;
+#endif
+                if (param.definition.defaultValue.hasExpression) {
+                    for (GS::UniString expr : param.definition.defaultValue.propertyExpressions) {
+                        GS::Array<GS::UniString> partstring;
+                        if (expr.Contains ("###Property:")) {
+                            if (StringSplt (expr, "###", partstring, "Property:") > 0) {
+                                for (GS::UniString part : partstring) {
+                                    GS::UniString h = part.GetSuffix (36);
+                                    API_Guid pguid = APIGuidFromString (h.ToCStr (0, MaxUSize, GChCode));
+                                    if (property_write.ContainsKey (pguid)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     return false;
 }
 
@@ -657,7 +721,6 @@ void SyncAddRule (const WriteData& writeSub, WriteDict& syncRules, ParamDictElem
 // -----------------------------------------------------------------------------
 bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams, bool syncall, bool synccoord, bool syncclass)
 {
-
     // TODO Попробовать отключать часть синхронизаций в зависимости от изменённых параметров (API_ActTranPars acttype)
     GS::UniString description_string = definition.description;
     if (description_string.IsEmpty ()) {
