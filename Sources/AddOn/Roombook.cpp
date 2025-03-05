@@ -1,5 +1,5 @@
 //------------ kuvbur 2022 ------------
-#ifdef PK_1
+#ifdef EXTNDVERSION
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Roombook.hpp"
@@ -990,7 +990,7 @@ void Param_SetToWindows (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
 // -----------------------------------------------------------------------------
 // Полчение полигона зоны (в том числе стен, колонн)
 // -----------------------------------------------------------------------------
-#if defined(AC_28)
+#if defined(AC_27) || defined(AC_28) 
 void RoomReductionPolyProc (const API_RoomReductionPolyType * roomRed)
 #else
 static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType * roomRed)
@@ -1053,7 +1053,7 @@ void GetZoneEdges (const API_ElementMemo & zonememo, API_Element & zoneelement, 
     RoomEdges rdges;
     reducededges = &rdges;
     GSErrCode err = NoError;
-#if defined(AC_28)
+#if defined(AC_27) || defined(AC_28) 
     err = ACAPI_Element_RoomReductions (&zoneelement.header.guid, RoomReductionPolyProc);
 #else
     err = ACAPI_Database (APIDb_RoomReductionsID, &zoneelement.header.guid, (void*) (GS::IntPtr) RoomRedProc);
@@ -1262,7 +1262,11 @@ void ClearZoneGUID (UnicElementByType & elementToRead, GS::Array<API_ElemTypeID>
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
                 }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+                    API_Guid zoneGuid = cIt->key;
+#else
                     API_Guid zoneGuid = *cIt->key;
+#endif
                     zoneGuids.Push (zoneGuid);
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
@@ -1640,14 +1644,17 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
     if (ACAPI_Element_GetDefaults (&wallelement, nullptr) != NoError) {
         return;
     }
-    wallelement.header.layer = 1;
     wallelement.wall.zoneRel = APIZRel_None;
     wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
     wallelement.wall.flipped = false;
     wallelement.wall.materialsChained = true;
+#if defined AC_26 || defined AC_27 || defined AC_28
+#else
+    wallelement.header.layer = 1;
     wallelement.wall.refMat.overridden = true;
     wallelement.wall.oppMat.overridden = true;
     wallelement.wall.sidMat.overridden = true;
+#endif
     wallelement.wall.modelElemStructureType = API_BasicStructure;
     wallelement.wall.thickness = otd_thickness;
     GS::Array<API_Guid> walllist;
@@ -1675,9 +1682,12 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
     slabelement.header.layer = wallelement.header.layer;
     slabelement.slab.offsetFromTop = 0;
     slabelement.slab.materialsChained = true;
+#if defined AC_26 || defined AC_27 || defined AC_28
+#else
     slabelement.slab.sideMat.overridden = true;
     slabelement.slab.topMat.overridden = true;
     slabelement.slab.botMat.overridden = true;
+#endif
     slabelement.slab.modelElemStructureType = API_BasicStructure;
     GS::Array<API_Guid> slablist;
     ACAPI_Element_GetElemList (API_SlabID, &slablist);

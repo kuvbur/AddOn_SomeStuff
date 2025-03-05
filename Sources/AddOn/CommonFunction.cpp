@@ -248,7 +248,7 @@ void DBtest (double a, double b, GS::UniString reportString, bool asserton)
 // -----------------------------------------------------------------------------
 Int32 isEng ()
 {
-#ifdef PK_1
+#ifdef EXTNDVERSION
     return 0;
 #endif
     GSErrCode err = NoError;
@@ -1272,7 +1272,7 @@ GSCharCode GetCharCode (const GS::UniString & instring)
 GSCharCode GetCharCode (const GS::UniString & instring, bool& findecode)
 {
     findecode = true;
-#ifdef PK_1
+#ifdef EXTNDVERSION
     return CC_Cyrillic;
 #endif
     if (ProbeCharCode (instring, CC_Cyrillic)) return CC_Cyrillic;

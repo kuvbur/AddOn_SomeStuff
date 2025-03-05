@@ -605,6 +605,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, ParamDictElement& paramToWri
                                     GS::UniString h = part.GetSuffix (36);
                                     API_Guid pguid = APIGuidFromString (h.ToCStr (0, MaxUSize, GChCode));
                                     if (property_write.ContainsKey (pguid)) {
+                                        msg_rep ("Find property for resync", param.definition.name, NoError, APINULLGuid);
                                         return true;
                                     }
                                 }
@@ -744,7 +745,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
 #ifndef AC_27
     if (description_string.Contains ("Sync_reset")) {
         return false;
-    }
+}
 #endif
     bool hasRule = false;
     if (description_string.Contains ("Sync_") && description_string.Contains ("{") && description_string.Contains ("}")) {
@@ -1476,7 +1477,7 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 }
             }
         }
-    }
+}
     if (paramDict.IsEmpty ()) return;
     ParamDictElement paramToRead;
     for (UInt32 i = 0; i < subguidArray.GetSize (); i++) {
@@ -1514,8 +1515,8 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     flag_write = true;
                 }
                 if (flag_write) break;
-            }
         }
+    }
     }
 }
 
@@ -1710,7 +1711,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             if (param.definition.description.Contains ("Sync_GUID")) {
                 paramDict.Add (param.rawName, param);
             }
-        }
+    }
         if (paramDict.IsEmpty ()) return;
         ParamDictElement paramToRead;
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
@@ -1740,7 +1741,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                         }
                     }
                 }
-            }
+}
         }
     }
     if (selNeigs.IsEmpty ()) return;

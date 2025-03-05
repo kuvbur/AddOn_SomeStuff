@@ -66,8 +66,6 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
 // Выравнивание чертежей по расположенным в них hotspot
 // -----------------------------------------------------------------------------
 void AlignDrawingsByPoints ();
-void KM_ListUpdate ();
-GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords);
 }
 
 #endif

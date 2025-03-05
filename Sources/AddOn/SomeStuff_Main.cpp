@@ -2,25 +2,13 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	<stdio.h>
-#ifdef PK_1
+#ifdef EXTNDVERSION
 #include	"AutomateFunction.hpp"
 #include	"Roombook.hpp"
 #endif
 #ifdef TESTING
 #include "TestFunc.hpp"
 #endif
-#ifdef AC_25
-#include	"APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include	"APICommon26.h"
-#endif // AC_26
-#ifdef AC_27
-#include	"APICommon27.h"
-#endif // AC_27
-#ifdef AC_28
-#include	"APICommon28.h"
-#endif // AC_28
 #include	"DGModule.hpp"
 #include	"UniString.hpp"
 #include	"APIdefs_Properties.h"
@@ -56,7 +44,7 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
 #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
-#ifdef PK_1
+#ifdef EXTNDVERSION
     syncSettings.syncMon = true;
 #endif // PK_1
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
@@ -86,7 +74,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
     SyncSettings syncSettings (false, false, true, true, true, true, false);
 #endif
     LoadSyncSettingsFromPreferences (syncSettings);
-#ifdef PK_1
+#ifdef EXTNDVERSION
     syncSettings.syncMon = true;
 #endif // PK_1
     MenuSetState (syncSettings);
@@ -133,7 +121,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     LoadSyncSettingsFromPreferences (syncSettings);
 #endif
     int dummymode = DUMMY_MODE_UNDEF;
-#ifdef PK_1
+#ifdef EXTNDVERSION
     syncSettings.syncMon = true;
 #endif // PK_1
     API_ActTranPars actTranPars;
@@ -191,7 +179,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 syncSettings.widoS = true;
                 syncSettings.objS = true;
             }
-
             // Отключение обработки панелей навесных стен после изменения самой навесной стены
             // Панели навесных стен обрабатываются далее, в функции SyncElement
             if (syncSettings.logMon && elementType != API_CurtainWallPanelID && elementType != API_CurtainWallSegmentID && elementType != API_CurtainWallFrameID && elementType != API_CurtainWallJunctionID && elementType != API_CurtainWallAccessoryID) {
@@ -243,7 +230,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
 // -----------------------------------------------------------------------------
 void	Do_ElementMonitor (bool& syncMon)
 {
-#ifdef PK_1
+#ifdef EXTNDVERSION
     syncMon = true;
 #endif
 
@@ -319,7 +306,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
 #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
-#ifdef PK_1
+#ifdef EXTNDVERSION
     syncSettings.syncMon = true;
 #endif // PK_1
     const Int32 AddOnMenuID = ID_ADDON_MENU;
@@ -377,10 +364,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case SetSub_CommandID:
                     SyncSetSubelement (syncSettings);
                     break;
-#ifdef PK_1
-                case AutoList_CommandID:
-                    AutoFunc::KM_ListUpdate ();
-                    break;
+#ifdef EXTNDVERSION
                 case Auto3D_CommandID:
                     AutoFunc::ProfileByLine ();
                     break;
@@ -455,7 +439,7 @@ GSErrCode __ACENV_CALL Initialize (void)
 #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
-#ifdef PK_1
+#ifdef EXTNDVERSION
     syncSettings.syncMon = true;
 #endif // PK_1
     MenuSetState (syncSettings);
