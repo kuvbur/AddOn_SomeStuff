@@ -1182,7 +1182,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (elementType != API_MorphID) synctypefind = false;
     }
 
-    if (syncdirection = SYNC_FROM_SUB && elementType == API_ObjectID) synctypefind = false;
+    if (syncdirection == SYNC_FROM_SUB && elementType == API_ObjectID) synctypefind = false;
 
     // Проверка включенных флагов
     if (!syncall) {
@@ -1380,7 +1380,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
 #if defined(AC_27) || defined(AC_28) || defined(AC_26)
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.type, &parentelement.header.guid)) {
         return;
-}
+    }
     parentelementtype = parentelement.header.type.typeID;
 #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
@@ -1479,7 +1479,7 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 }
             }
         }
-}
+    }
     if (paramDict.IsEmpty ()) return;
     ParamDictElement paramToRead;
     for (UInt32 i = 0; i < subguidArray.GetSize (); i++) {
@@ -1517,8 +1517,8 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     flag_write = true;
                 }
                 if (flag_write) break;
+            }
         }
-    }
     }
 }
 
@@ -1713,7 +1713,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             if (param.definition.description.Contains ("Sync_GUID")) {
                 paramDict.Add (param.rawName, param);
             }
-    }
+        }
         if (paramDict.IsEmpty ()) return;
         ParamDictElement paramToRead;
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
@@ -1743,7 +1743,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                         }
                     }
                 }
-}
+            }
         }
     }
     if (selNeigs.IsEmpty ()) return;
