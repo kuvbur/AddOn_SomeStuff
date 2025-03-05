@@ -2772,7 +2772,7 @@ void ParamHelpers::WriteAttribute (const API_Guid& elemGuid, ParamDictValue& par
         msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Element_Change", err, elemGuid);
         return;
     }
-    }
+}
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в координаты элемента
@@ -3122,14 +3122,26 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
             if (actualParam.typeID == APIParT_FillPat) type = API_FilltypeID;
             if (actualParam.typeID == APIParT_Mater) type = API_MaterialID;
             if (type != API_ZombieAttrID) {
-                if (API_AttributeIndexFindByName (paramfrom.uniStringValue, type, attribinx)) {
+                if (paramfrom.type == API_PropertyStringValueType) {
+                    if (API_AttributeIndexFindByName (paramfrom.uniStringValue, type, attribinx)) {
 #if defined(AC_27) || defined(AC_28)
-                    attribinxint = attribinx.layer.ToInt32_Deprecated ();
+                        attribinxint = attribinx.ToInt32_Deprecated ();
 #else
-                    attribinxint = attribinx;
+                        attribinxint = attribinx;
 #endif
+                    } else {
+#if defined(AC_27) || defined(AC_28)
+                        attribinxint = paramfrom.intValue.ToInt32_Deprecated ();
+#else
+                        attribinxint = paramfrom.intValue;
+#endif
+                    }
                 } else {
+#if defined(AC_27) || defined(AC_28)
+                    attribinxint = paramfrom.intValue.ToInt32_Deprecated ();
+#else
                     attribinxint = paramfrom.intValue;
+#endif
                 }
             }
             if (actualParam.typeID == APIParT_CString) {
