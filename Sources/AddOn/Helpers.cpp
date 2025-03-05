@@ -3130,18 +3130,10 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
                         attribinxint = attribinx;
 #endif
                     } else {
-#if defined(AC_27) || defined(AC_28)
-                        attribinxint = paramfrom.intValue.ToInt32_Deprecated ();
-#else
                         attribinxint = paramfrom.intValue;
-#endif
                     }
                 } else {
-#if defined(AC_27) || defined(AC_28)
-                    attribinxint = paramfrom.intValue.ToInt32_Deprecated ();
-#else
                     attribinxint = paramfrom.intValue;
-#endif
                 }
             }
             if (actualParam.typeID == APIParT_CString) {

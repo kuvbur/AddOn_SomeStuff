@@ -2,32 +2,11 @@
 #pragma once
 #ifndef HELPERS_HPP
 #define HELPERS_HPP
-#include "CommonFunction.hpp"
-#ifdef AC_22
-#include	"APICommon22.h"
-#endif // AC_25
-#ifdef AC_23
-#include	"APICommon23.h"
-#endif // AC_25
-#ifdef AC_24
-#include	"APICommon24.h"
-#endif // AC_25
-#ifdef AC_25
-#include	"APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include	"APICommon26.h"
-#endif // AC_26
-#ifdef AC_27
-#include	"APICommon27.h"
-#endif // AC_27
-#ifdef AC_28
-#include	"APICommon28.h"
-#endif // AC_27
 #include "basicgeometry.h"
+#include "ClassificationFunction.hpp"
+#include "CommonFunction.hpp"
 #include "StringConversion.hpp"
 #include "SyncSettings.hpp"
-#include "ClassificationFunction.hpp"
 
 #define SYNC_RESET 1
 #define SYNC 2

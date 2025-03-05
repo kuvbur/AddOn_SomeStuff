@@ -1,5 +1,5 @@
 //------------ kuvbur 2022 ------------
-#ifdef PK_1
+#ifdef EXTNDVERSION
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"AutomateFunction.hpp"
@@ -524,11 +524,14 @@ void ProfileByLine ()
         // Получаем настройку хотспотов, которые будем расставлять на краях
         BNZeroMemory (&elemline, sizeof (API_Element));
         API_AttributeIndex layer;
-#if defined AC_26 || defined AC_27 || defined AC_28
+#if defined AC_27 || defined AC_28 || defined AC_26
         elemline.header.type.typeID = API_HotspotID;
-        layer = ACAPI_CreateAttributeIndex (1);
 #else
         elemline.header.typeID = API_HotspotID;
+#endif
+#if defined AC_27 || defined AC_28
+        layer = ACAPI_CreateAttributeIndex (1);
+#else
         layer = 1;
 #endif
         err = ACAPI_Element_GetDefaults (&elemline, nullptr);
@@ -720,7 +723,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
     API_Element hotspotelem;
     bool flag_find = false;
     API_AttributeIndex layer;
-#if defined AC_26 || defined AC_27 || defined AC_28
+#if defined AC_27 || defined AC_28
     layer = ACAPI_CreateAttributeIndex (1);
 #else
     layer = 1;
@@ -927,151 +930,6 @@ void AlignDrawingsByPoints ()
         return;
     }
     return;
-}
-
-void KM_ListUpdate ()
-{
-    GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, false);
-    GS::Array<API_Guid> elements;
-    GS::Array<API_Guid> lines;
-    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        API_Elem_Head elem_head;
-        elem_head.guid = guidArray[i];
-        if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
-#if defined AC_26 || defined AC_27 || defined AC_28
-            API_ElemTypeID elementType = elem_head.type.typeID;
-#else
-            API_ElemTypeID elementType = elem_head.typeID;
-#endif
-            if (elementType == API_ObjectID) elements.Push (guidArray[i]);
-            if (elementType == API_PolyLineID || elementType == API_LineID) lines.Push (guidArray[i]);
-        }
-    }
-    if (elements.IsEmpty () || lines.IsEmpty ()) return;
-    GS::Array<API_Coord> coords;
-    for (UInt32 i = 0; i < lines.GetSize (); i++) {
-        API_Element element = {};
-        BNZeroMemory (&element, sizeof (API_Element));
-        element.header.guid = lines[i];
-        if (ACAPI_Element_Get (&element) == NoError) {
-            coords.Push (element.line.begC);
-        }
-    }
-    ACAPI_CallUndoableCommand ("undoString", [&]() -> GSErrCode {
-        GSErrCode err = KM_WriteGDL (elements.Get (0), coords);
-        return err;
-    });
-}
-
-GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords)
-{
-    if (coords.IsEmpty ()) return APIERR_GENERAL;
-    if (elemGuid == APINULLGuid) return APIERR_GENERAL;
-    GSErrCode err = NoError;
-    API_Elem_Head elem_head = {};
-    API_Element element = {};
-    API_Element mask = {};
-    elem_head.guid = elemGuid;
-    err = ACAPI_Element_GetHeader (&elem_head); if (err != NoError) return err;
-    element.header.guid = elemGuid;
-    err = ACAPI_Element_Get (&element); if (err != NoError) return err;
-    API_ParamOwnerType	apiOwner = {};
-    API_GetParamsType	apiParams = {};
-    BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
-    BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
-    apiOwner.guid = elemGuid;
-#if defined AC_26 || defined AC_27 || defined AC_28
-    apiOwner.type = elem_head.type;
-#else
-    apiOwner.typeID = elem_head.typeID;
-#endif
-#if defined(AC_27) || defined(AC_28)
-    err = ACAPI_LibraryPart_OpenParameters (&apiOwner);
-    if (err != NoError) {
-        ACAPI_LibraryPart_CloseParameters ();
-        return err;
-    }
-    err = ACAPI_LibraryPart_GetActParameters (&apiParams);
-    if (err != NoError) {
-        ACAPI_LibraryPart_CloseParameters ();
-        return err;
-    }
-#else
-    err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
-    if (err != NoError) {
-        ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr);
-        return err;
-    }
-    err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams);
-    if (err != NoError) {
-        ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr);
-        return err;
-    }
-#endif
-    Int32 n_t = coords.GetSize ();
-    Int32 inx_kontur = 0;
-    API_ChangeParamType	chgParam;
-    Int32 addParNum = BMGetHandleSize ((GSHandle) apiParams.params) / sizeof (API_AddParType);
-    for (Int32 i = 0; i < addParNum; ++i) {
-        GS::UniString name = (*apiParams.params)[i].name;
-        if (name.IsEqual ("kontur") && (*apiParams.params)[i].typeMod == API_ParArray) {
-            inx_kontur = i;
-            BNZeroMemory (&chgParam, sizeof (API_ChangeParamType));
-            chgParam.index = (*apiParams.params)[i].index;
-            CHTruncate ((*apiParams.params)[i].name, chgParam.name, API_NameLen);
-            chgParam.realValue = 0;
-            chgParam.ind1 = (*apiParams.params)[i].dim1;
-            chgParam.ind2 = (*apiParams.params)[i].dim2;
-#if defined(AC_27) || defined(AC_28)
-            err = ACAPI_LibraryPart_ChangeAParameter (&chgParam); if (err != NoError) return err;
-#else
-            err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr); if (err != NoError) return err;
-#endif
-        }
-        if (name.IsEqual ("n_t")) {
-            BNZeroMemory (&chgParam, sizeof (API_ChangeParamType));
-            chgParam.index = (*apiParams.params)[i].index;
-            CHTruncate ((*apiParams.params)[i].name, chgParam.name, API_NameLen);
-            chgParam.realValue = n_t;
-#if defined(AC_27) || defined(AC_28)
-            err = ACAPI_LibraryPart_ChangeAParameter (&chgParam); if (err != NoError) return err;
-#else
-            err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr); if (err != NoError) return err;
-#endif
-        }
-    }
-#if defined(AC_27) || defined(AC_28)
-    err = ACAPI_LibraryPart_GetActParameters (&apiParams); if (err != NoError) return err;
-    err = ACAPI_LibraryPart_CloseParameters (); if (err != NoError) return err;
-#else
-    err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams); if (err != NoError) return err;
-    err = ACAPI_Goodies (APIAny_CloseParametersID, nullptr, nullptr); if (err != NoError) return err;
-#endif
-    Int32 inDim1 = (*apiParams.params)[inx_kontur].dim1;
-    Int32 inDim2 = (*apiParams.params)[inx_kontur].dim2;
-    size_t ind = 0;
-    double** newArrHdl = (double**) (*apiParams.params)[inx_kontur].value.array;
-    for (Int32 i = 0; i < inDim1; i++) {
-        if (i < n_t) {
-            (*newArrHdl)[ind] = coords.Get (i).x;
-            ind++;
-            (*newArrHdl)[ind] = coords.Get (i).y;
-            ind++;
-        } else {
-            (*newArrHdl)[ind] = 0;
-            ind++;
-            (*newArrHdl)[ind] = 0;
-            ind++;
-        }
-    }
-    API_ElementMemo	elemMemo = {};
-    BNZeroMemory (&elemMemo, sizeof (elemMemo));
-    (*apiParams.params)[inx_kontur].value.array = (GSHandle) newArrHdl;
-    elemMemo.params = apiParams.params;
-    ACAPI_ELEMENT_MASK_CLEAR (mask);
-    err = ACAPI_Element_Change (&element, &mask, &elemMemo, APIMemoMask_AddPars, true);
-    ACAPI_DisposeAddParHdl (&apiParams.params);
-    return err;
 }
 }
 #endif
