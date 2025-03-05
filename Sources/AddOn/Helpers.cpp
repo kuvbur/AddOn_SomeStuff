@@ -5161,7 +5161,6 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
 #endif
         switch (typeIDr) {
             case APIParT_PenCol:
-            case APIParT_LineTyp:
             case APIParT_Integer:
                 param_string = GS::UniString::Printf ("%d", param_int);
                 pvalue.type = API_PropertyIntegerValueType;
@@ -5208,6 +5207,9 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 break;
 
                 // Для реквезитов в текст выведем имена
+            case APIParT_LineTyp:
+                attrType = API_LinetypeID;
+                break;
             case APIParT_Profile:
                 attrType = API_ProfileID;
                 break;
