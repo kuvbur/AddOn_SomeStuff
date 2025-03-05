@@ -745,7 +745,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
 #ifndef AC_27
     if (description_string.Contains ("Sync_reset")) {
         return false;
-}
+    }
 #endif
     bool hasRule = false;
     if (description_string.Contains ("Sync_") && description_string.Contains ("{") && description_string.Contains ("}")) {
@@ -1182,6 +1182,8 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (elementType != API_MorphID) synctypefind = false;
     }
 
+    if (syncdirection = SYNC_FROM_SUB && elementType == API_ObjectID) synctypefind = false;
+
     // Проверка включенных флагов
     if (!syncall) {
         if (!param.fromCoord && !param.fromClassification) synctypefind = false;
@@ -1378,7 +1380,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
 #if defined(AC_27) || defined(AC_28) || defined(AC_26)
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.type, &parentelement.header.guid)) {
         return;
-    }
+}
     parentelementtype = parentelement.header.type.typeID;
 #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {

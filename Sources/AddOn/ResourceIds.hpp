@@ -2,7 +2,7 @@
 #ifndef RESOURCEIDS_HPP
 #define RESOURCEIDS_HPP
 
-#ifdef PK_1
+#ifdef EXTNDVERSION
 #define ID_ADDON_PROMT			30502
 #define ID_ADDON_MENU			30500
 #define ID_ADDON_PROMT_ENG		31502

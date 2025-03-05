@@ -315,7 +315,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
             switch (menuParams->menuItemRef.itemIndex) {
                 case MonAll_CommandID:
                     syncSettings.syncAll = false;
-#ifndef PK_1
+#ifndef EXTNDVERSION
                     syncSettings.syncMon = !syncSettings.syncMon;
 #endif // PK_1
                     Do_ElementMonitor (syncSettings.syncMon);
