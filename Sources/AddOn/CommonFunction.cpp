@@ -532,8 +532,8 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-            }
-            }
+        }
+    }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     msg = "SomeStuff addon: " + msg + "\n";
@@ -545,7 +545,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
 #if defined(TESTING)
     DBprnt (msg);
 #endif
-        }
+}
 
 
 // --------------------------------------------------------------------
@@ -928,7 +928,7 @@ bool ReserveElement (const API_Guid & objectId, GSErrCode & err)
         }
     };
     return false; // Не получилось зарезервировать
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -1385,7 +1385,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
             break;
     }
     return;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Возвращает список параметров API_AddParType из memo
@@ -2287,4 +2287,34 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D & polygon, API
     }
     Geometry::FreePolygon2DData (&polygon2DData);
     return err;
-}		// ConvertPoly2DDataToAPIPolygon
+}
+
+bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & type, API_AttributeIndex & attribinx)
+{
+    BNZeroMemory (&attribinx, sizeof (API_AttributeIndex));
+    if (type == API_ZombieAttrID) return false;
+    double inx = 0;
+    if (UniStringToDouble (name, inx)) {
+#if defined(AC_27) || defined(AC_28)
+        attribinx = ACAPI_CreateAttributeIndex ((Int32) inx);
+#else
+        attribinx = (Int32) inx;
+#endif
+        return true;
+    } else {
+        GSErrCode err = NoError;
+        API_Attribute attrib;
+        BNZeroMemory (&attrib, sizeof (API_Attribute));
+        attrib.header.uniStringNamePtr = &name;
+        attrib.header.typeID = type;
+        attrib.header.guid = APINULLGuid;
+        err = ACAPI_Attribute_Search (&attrib.header);
+        attrib.header.uniStringNamePtr = nullptr;
+        if (err != NoError) {
+            msg_rep ("API_AttributeIndexFindByName", "ACAPI_Attribute_Search - " + name, err, APINULLGuid);
+            return false;
+        }
+        attribinx = attrib.header.index;
+        return true;
+    }
+}
