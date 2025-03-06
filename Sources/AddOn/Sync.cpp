@@ -1425,11 +1425,11 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
         return;
     }
+    parentelementtype = parentelement.header.typeID;
+#endif
     clock_t start, finish;
     double  duration;
     start = clock ();
-    parentelementtype = parentelement.header.typeID;
-#endif
     // При работе на резрезах возможно попадание по виртуальному элементу, обработаем
     API_Elem_Head parentelementhead;
     if (parentelementtype == API_SectElemID) {
