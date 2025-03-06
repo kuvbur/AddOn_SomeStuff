@@ -103,7 +103,9 @@ GSErrCode SpecAll (const SyncSettings& syncSettings)
 
 GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules)
 {
-    long time_start = clock ();
+    clock_t start, finish;
+    double  duration;
+    start = clock ();
     GS::UniString funcname = "SpecAll";
     GS::Int32 nPhase = 4;
     GS::UniString subtitle = ""; Int32 maxval = 1; short i = 1;
@@ -217,9 +219,10 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         return APIERR_GENERAL;
     }
     Point2D startpos;
-    long time_end = clock ();
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
     if (!ClickAPoint ("Click point", &startpos)) return APIERR_CANCEL;
-    long time_start_1 = clock ();
+    start = clock ();
     ParamDictElement paramOut;
     PlaceElements (elementstocreate, paramToWrite, paramOut, startpos);
     ACAPI_CallUndoableCommand ("Write properties", [&]() -> GSErrCode {
@@ -241,8 +244,9 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #endif
         guidArraysync.Push (elemGuid);
     }
-    long time_end_1 = clock ();
-    GS::UniString time = GS::UniString::Printf (" %d s", ((time_end - time_start) + (time_end_1 - time_start_1)) / 1000);
+    finish = clock ();
+    duration += (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", n_elements) + time;
     SyncArray (syncSettings, guidArraysync, systemdict);
     return err;

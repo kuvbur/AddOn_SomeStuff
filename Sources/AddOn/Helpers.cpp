@@ -279,7 +279,7 @@ void CallOnSelectedElemSettings (void (*function)(const API_Guid&, const SyncSet
 #endif
         }
         long time_end = clock ();
-        GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
+        GS::UniString time = GS::UniString::Printf (" %.3f s", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
         msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
 #if defined(AC_27) || defined(AC_28)
@@ -2627,6 +2627,9 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
 void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
 {
     if (paramToWrite.IsEmpty ()) return;
+    clock_t start, finish;
+    double  duration;
+    start = clock ();
     ParamDictValue paramsinfo;
     for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
@@ -2665,7 +2668,10 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
 #endif
         if (err != NoError) msg_rep ("InfoWrite", "APIAny_SetAnAutoTextID", err, APINULLGuid);
     }
-    msg_rep ("InfoWrite", "write", NoError, APINULLGuid);
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    msg_rep ("InfoWrite", "write " + time, NoError, APINULLGuid);
 }
 
 
@@ -2692,7 +2698,6 @@ bool ParamHelpers::WriteClassification (const API_Guid& elemGuid, ParamDictValue
         }
     }
     return needReread;
-    msg_rep ("WriteClassification", "write", err, elemGuid);
 }
 
 // --------------------------------------------------------------------

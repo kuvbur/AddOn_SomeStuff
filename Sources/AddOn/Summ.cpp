@@ -22,7 +22,9 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 // -----------------------------------------------------------------------------------------------------------------------
 GSErrCode SumSelected (SyncSettings& syncSettings)
 {
-    long time_start = clock ();
+    clock_t start, finish;
+    double  duration;
+    start = clock ();
     GS::UniString funcname = "Summation";
     GS::Int32 nPhase = 1;
 #if defined(AC_27) || defined(AC_28)
@@ -39,6 +41,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     }
     GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSumId, ACAPI_GetOwnResModule ());
     bool flag_write = true;
+    UInt32 qtywrite = 0;
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());; short i = 1;
 #if defined(AC_27) || defined(AC_28)
@@ -65,10 +68,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
-        long time_end = clock ();
-        GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
-        GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", paramToWriteelem.GetSize ()) + time;
-        msg_rep ("SumSelected", intString, NoError, APINULLGuid);
+        qtywrite = paramToWriteelem.GetSize ();
 #if defined(AC_27) || defined(AC_28)
         ACAPI_ProcessWindow_CloseProcessWindow ();
 #else
@@ -80,6 +80,11 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         ClassificationFunc::SystemDict systemdict;
         SyncArray (syncSettings, guidArray, systemdict);
     }
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", qtywrite) + time;
+    msg_rep ("SumSelected", intString, NoError, APINULLGuid);
     return NoError;
 }
 

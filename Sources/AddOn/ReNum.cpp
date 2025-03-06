@@ -33,7 +33,9 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
 #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
 #endif
-    long time_start = clock ();
+    clock_t start, finish;
+    double  duration;
+    start = clock ();
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true);
     if (guidArray.IsEmpty ()) return NoError;
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions;
@@ -42,6 +44,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     }
     GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
     bool flag_write = true;
+    UInt32 qtywrite = 0;
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         ParamDictElement paramToWriteelem;
         if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions)) {
@@ -63,10 +66,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
-        long time_end = clock ();
-        GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
-        GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", paramToWriteelem.GetSize ()) + time;
-        msg_rep ("ReNumSelected", intString, NoError, APINULLGuid);
+        qtywrite = paramToWriteelem.GetSize ();
 #if defined(AC_27) || defined(AC_28)
         ACAPI_ProcessWindow_CloseProcessWindow ();
 #else
@@ -78,6 +78,11 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         ClassificationFunc::SystemDict systemdict;
         SyncArray (syncSettings, guidArray, systemdict);
     }
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", qtywrite) + time;
+    msg_rep ("ReNumSelected", intString, NoError, APINULLGuid);
     return NoError;
 }
 
