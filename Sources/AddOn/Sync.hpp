@@ -153,17 +153,6 @@ void SyncSetSubelement (SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<API_Guid>& subguidArray, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
 
-// -----------------------------------------------------------------------------
-// Обновление данных в выноске c записью в выноску
-// -----------------------------------------------------------------------------
-void SyncLabel (const API_Guid& guid, ParamDictValue& propertyParams);
-
-// -----------------------------------------------------------------------------
-// Обновление данных в выноске
-// Функция для вызова из ACAPI_CallUndoableCommand
-// -----------------------------------------------------------------------------
-void SyncLabelScope (const API_Guid& guid, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
-
 // --------------------------------------------------------------------
 // Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
 // --------------------------------------------------------------------

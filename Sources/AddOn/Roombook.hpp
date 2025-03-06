@@ -75,8 +75,8 @@ typedef struct
     double height = 0; // Высота стены-отделки
     double zBottom = 0; // Аболютная координата z низа
     double base_th = 0; // Толщина базовой стены (для расчёта откосов)
-    API_Coord begC; // Координата начала
-    API_Coord endC; // Координата конца
+    API_Coord begC = { 0, 0 }; // Координата начала
+    API_Coord endC = { 0, 0 }; // Координата конца
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
     bool base_flipped = false; // Базовая конструкция отзеркалена (для чтения состава)

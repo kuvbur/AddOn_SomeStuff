@@ -16,6 +16,9 @@ ClassOtd cls;
 // -----------------------------------------------------------------------------
 void RoomBook ()
 {
+    clock_t start, finish;
+    double  duration;
+    start = clock ();
     GS::Array<API_Guid> zones;
     GSErrCode            err;
     API_SelectionInfo    selectionInfo;
@@ -74,7 +77,7 @@ void RoomBook ()
         colDetSettings.performSurfaceCheck = true;
         colDetSettings.surfaceTolerance = 0.0001;
         if (ACAPI_Element_GetCollisions (zones, allslabs, collisions, colDetSettings) == NoError) {
-            for (auto pair : collisions.AsConst ()) {
+            for (const auto& pair : collisions.AsConst ()) {
                 if (Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids)) {
                     continue;
                 }
@@ -185,6 +188,10 @@ void RoomBook ()
     Draw_Edges (storyLevels, roomsinfo, subelementByparent, finclass);
     // Привязка отделочных элементов к базовым
     SetSyncOtdWall (subelementByparent, propertyParams);
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    msg_rep ("RoomBook", time, NoError, APINULLGuid);
 }
 
 // -----------------------------------------------------------------------------
@@ -1162,58 +1169,71 @@ void FloorOneRoom (const Stories & storyLevels, OtdSlab & poly, GS::Array<API_Gu
 #if defined(TESTING)
             DBprnt ("FloorOneRoom err", "ACAPI_Element_Get slab");
 #endif
-            return;
+            continue;
         }
         err = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
         if (err != NoError || memo.coords == nullptr) {
 #if defined(TESTING)
-            DBprnt ("ReadOneColumn err", "ACAPI_Element_GetMemo column");
+            DBprnt ("FloorOneRoom err", "ACAPI_Element_GetMemo slab");
 #endif
-            return;
+            continue;
         }
         Geometry::Polygon2D slabpolygon;
-        ConstructPolygon2DFromElementMemo (memo, slabpolygon);
+        err = ConstructPolygon2DFromElementMemo (memo, slabpolygon);
+        if (err != NoError) {
+            msg_rep ("FloorOneRoom err", "ConstructPolygon2DFromElementMemo", err, slabGuid);
+            ACAPI_DisposeElemMemoHdls (&memo);
+            continue;
+        }
         double zBottom = GetzPos (element.slab.level + element.slab.offsetFromTop - element.slab.thickness, element.header.floorInd, storyLevels);
         double zUp = zBottom + element.slab.thickness;
         if (poly.zBottom >= zBottom && poly.zBottom <= zUp) {
             Geometry::Polygon2D reducedroom;
             Geometry::Polygon2D wallpolygon;
             Geometry::MultiPolygon2D resultPolys = roompolygon.Substract (slabpolygon);
-            if (!resultPolys.IsEmpty ()) reducedroom = resultPolys.PopLargest ();
-            resultPolys.Clear ();
-            resultPolys = slabpolygon.Intersect (roompolygon);
-            if (!resultPolys.IsEmpty ()) wallpolygon = resultPolys.PopLargest ();
-            // Добавляем отделочные стенки по контуру
-            Geometry::Polygon2DData polygon2DData;
-            Geometry::InitPolygon2DData (&polygon2DData);
-            Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, wallpolygon);
-            UInt32 begInd = (*polygon2DData.contourEnds)[0] + 1;
-            UInt32 endInd = (*polygon2DData.contourEnds)[1];
-            for (UInt32 k = begInd; k < endInd; k++) {
-                OtdWall wallotd;
-                Point2D begC = { (*polygon2DData.vertices)[k].x, (*polygon2DData.vertices)[k].y };
-                Point2D endC = { (*polygon2DData.vertices)[k + 1].x, (*polygon2DData.vertices)[k + 1].y };
-                if (!(roompolygon.IsCoordOnEdge (begC, nullptr) && roompolygon.IsCoordOnEdge (endC, nullptr))) {
-                    wallotd.base_guid = slabGuid;
-                    if (on_top) {
-                        wallotd.height = zUp - poly.zBottom;
-                        wallotd.zBottom = poly.zBottom;
-                    } else {
-                        wallotd.height = poly.zBottom - zBottom;
-                        wallotd.zBottom = zBottom;
+            if (!resultPolys.IsEmpty ()) {
+                reducedroom = resultPolys.PopLargest ();
+                resultPolys.Clear ();
+                resultPolys = slabpolygon.Intersect (roompolygon);
+                if (!resultPolys.IsEmpty ()) {
+                    wallpolygon = resultPolys.PopLargest ();
+                    // Добавляем отделочные стенки по контуру
+                    Geometry::Polygon2DData polygon2DData;
+                    Geometry::InitPolygon2DData (&polygon2DData);
+                    Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, wallpolygon);
+                    if (polygon2DData.contourEnds == nullptr) {
+                        msg_rep ("FloorOneRoom - error", "polygon2DData.contourEnds == nullptr", NoError, slabGuid);
+                        Geometry::FreePolygon2DData (&polygon2DData);
+                        continue;
                     }
-                    wallotd.endC = { begC.x, begC.y };
-                    wallotd.begC = { endC.x, endC.y };
-                    wallotd.material = poly.material;
-                    wallotd.base_type = API_SlabID;
-                    otdwall.Push (wallotd);
+                    UInt32 begInd = (*polygon2DData.contourEnds)[0] + 1;
+                    UInt32 endInd = (*polygon2DData.contourEnds)[1];
+                    for (UInt32 k = begInd; k < endInd; k++) {
+                        OtdWall wallotd;
+                        Point2D begC = { (*polygon2DData.vertices)[k].x, (*polygon2DData.vertices)[k].y };
+                        Point2D endC = { (*polygon2DData.vertices)[k + 1].x, (*polygon2DData.vertices)[k + 1].y };
+                        if (!(roompolygon.IsCoordOnEdge (begC, nullptr) && roompolygon.IsCoordOnEdge (endC, nullptr))) {
+                            wallotd.base_guid = slabGuid;
+                            if (on_top) {
+                                wallotd.height = zUp - poly.zBottom;
+                                wallotd.zBottom = poly.zBottom;
+                            } else {
+                                wallotd.height = poly.zBottom - zBottom;
+                                wallotd.zBottom = zBottom;
+                            }
+                            wallotd.endC = { begC.x, begC.y };
+                            wallotd.begC = { endC.x, endC.y };
+                            wallotd.material = poly.material;
+                            wallotd.base_type = API_SlabID;
+                            otdwall.Push (wallotd);
+                        }
+                    }
+                    Geometry::FreePolygon2DData (&polygon2DData);
+                    slabpolygon = wallpolygon;
                 }
+                roompolygon = reducedroom;
             }
-            Geometry::FreePolygon2DData (&polygon2DData);
-            slabpolygon = wallpolygon;
-            roompolygon = reducedroom;
         }
-        //
         if (zBottom <= poly.zBottom) {
             OtdSlab otdslab;
             otdslab.poly = slabpolygon;
