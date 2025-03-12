@@ -510,7 +510,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         }
     }
     if (elemGuid != APINULLGuid) {
-        error_type = "GUID: " + APIGuid2GSGuid (elemGuid).ToUniString () + " " + error_type;
+        error_type = "GUID element: " + APIGuid2GSGuid (elemGuid).ToUniString () + " " + error_type;
         API_Elem_Head	elem_head = {};
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
