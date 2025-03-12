@@ -118,7 +118,7 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
 
 bool SyncNeedResync (ParamDictElement& paramToRead, ParamDictElement& paramToWrite);
 
-void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite);
+void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite, GS::HashTable<API_Guid, GS::UniString>& property_write_guid);
 
 // --------------------------------------------------------------------
 // Добавление подэлементов и их параметров в правила синхорнизации
