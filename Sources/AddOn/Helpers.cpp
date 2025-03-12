@@ -5239,7 +5239,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
             API_Attribute	attrib = {};
             attrib.header.typeID = attrType;
             attrib.header.index = attrInx;
-            if (ACAPI_Attribute_Get (&attrib) == NoError) {
+            GSErrCode err = ACAPI_Attribute_Get (&attrib);
+            if (err == NoError) {
                 param_string = GS::UniString::Printf ("%s", attrib.header.name);
                 pvalue.type = API_PropertyStringValueType;
 #if defined(AC_27) || defined(AC_28)
@@ -5252,7 +5253,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
             } else {
-                return false;
+                if (err != APIERR_BADNAME) return false;
             }
         }
     }
