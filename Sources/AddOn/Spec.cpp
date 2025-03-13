@@ -248,7 +248,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     duration += (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", n_elements) + time;
-    SyncArray (syncSettings, guidArraysync, systemdict);
+    SyncArray (syncSettings, guidArraysync, systemdict, propertyParams);
     return err;
 }
 

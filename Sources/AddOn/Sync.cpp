@@ -173,7 +173,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
 #if defined(TESTING)
         DBprnt ("===== REREAD =======");
 #endif
-        SyncArray (syncSettings, rereadelem, systemdict);
+        SyncArray (syncSettings, rereadelem, systemdict, propertyParams);
     }
 #if defined(TESTING)
     DBprnt ("SyncAndMonAll end");
@@ -283,27 +283,29 @@ void SyncSelected (const SyncSettings& syncSettings)
     if (guidArray.IsEmpty ()) return;
     ClassificationFunc::SystemDict systemdict;
     ClassificationFunc::GetAllClassification (systemdict);
-    GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, guidArray, systemdict);
+    ParamDictValue propertyParams = {};
+    GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, guidArray, systemdict, propertyParams);
     if (!rereadelem.IsEmpty ()) {
 #if defined(TESTING)
         DBprnt ("===== REREAD =======");
 #endif
-        SyncArray (syncSettings, rereadelem, systemdict);
+        SyncArray (syncSettings, rereadelem, systemdict, propertyParams);
     }
 }
 
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, ClassificationFunc::SystemDict& systemdict)
+GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, ClassificationFunc::SystemDict& systemdict, ParamDictValue& propertyParams)
 {
     GS::Array<API_Guid> rereadelem;
     if (guidArray.IsEmpty ()) return rereadelem;
     GS::UniString funcname = "Sync Selected";
-    ParamDictValue propertyParams = {};
-    ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-    ParamHelpers::GetAllInfoToParamDict (propertyParams);
-    ParamHelpers::GetAllGlobToParamDict (propertyParams);
+    if (propertyParams.IsEmpty ()) {
+        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+        ParamHelpers::GetAllInfoToParamDict (propertyParams);
+        ParamHelpers::GetAllGlobToParamDict (propertyParams);
+    }
     if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
     ParamDictElement paramToWrite;
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
@@ -1390,7 +1392,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
 void SyncSetSubelement (SyncSettings& syncSettings)
 {
     GSErrCode err = NoError;
-    GS::UniString fmane = "SyncSetSubelement";
+    GS::UniString fmane = "Set SubElement";
     GS::Array<API_Guid> subguidArray_ = GetSelectedElements (true, true, syncSettings, false); // Дочерние элементы, в которые будет записана информация об основном элементе
     if (subguidArray_.IsEmpty ()) return;
 
@@ -1438,13 +1440,10 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     }
     // Проверяем доступность для редактирования
     GS::Array<API_Guid> subguidArray; // Массив редактируемых и почищенных от SectElem дочерних элементов
-    GS::Array<API_Guid> labelArray; // Массив выносок
     for (UInt32 i = 0; i < subguidArray_.GetSize (); i++) {
         API_ElemTypeID elementType;
         if (IsElementEditable (subguidArray_[i], syncSettings, false, elementType)) {
-            if (elementType == API_LabelID) {
-                if (subguidArray_[i] != parentelementhead.guid) labelArray.Push (subguidArray_[i]);
-            } else {
+            if (elementType != API_LabelID) {
                 if ((CheckElementType (elementType, syncSettings) && elementType != API_DimensionID)) {
                     if (subguidArray_[i] != parentelementhead.guid) subguidArray.Push (subguidArray_[i]);
                 } else {
@@ -1457,13 +1456,11 @@ void SyncSetSubelement (SyncSettings& syncSettings)
             }
         }
     }
-    if (subguidArray.IsEmpty () && labelArray.IsEmpty ()) {
-        return;
-    }
+    if (subguidArray.IsEmpty ()) return;
     ParamDictValue propertyParams;
     GSFlags flag = 0;
     ParamDictElement paramToWrite;
-    SyncSetSubelementScope (parentelementhead, subguidArray, propertyParams, paramToWrite);
+    SyncSetSubelementScope (parentelementhead, subguidArray, propertyParams, paramToWrite, "", true);
     if (!paramToWrite.IsEmpty ()) {
         err = ACAPI_CallUndoableCommand ("SetSubelement",
                                          [&]() -> GSErrCode {
@@ -1475,48 +1472,23 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    msg_rep (fmane, time, err, APINULLGuid);
 }
 
 // -----------------------------------------------------------------------------
 // Запись Guid связанных элементов
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<API_Guid>& subguidArray, ParamDictValue& propertyParams, ParamDictElement& paramToWrite)
+bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<API_Guid>& subguidArray, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, const  GS::UniString& suffix, const bool& check_guid)
 {
     GSErrCode err = NoError;
-    if (subguidArray.IsEmpty ()) return;
-    if (parentelementhead.guid == APINULLGuid) return;
-    if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-    ParamDictValue paramDict;
-    for (auto& cItt : propertyParams) {
-#if defined(AC_28)
-        ParamValue param = cItt.value;
-#else
-        ParamValue param = *cItt.value;
-#endif
-        if (param.definition.description.Contains ("Sync_GUID")) {
-            if (!paramDict.ContainsKey (param.rawName)) {
-                for (UInt32 i = 0; i < subguidArray.GetSize (); i++) {
-                    if (ACAPI_Element_IsPropertyDefinitionAvailable (subguidArray[i], param.definition.guid)) {
-                        if (!paramDict.ContainsKey (param.rawName)) {
-                            paramDict.Add (param.rawName, param);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if (paramDict.IsEmpty ()) return;
+    if (subguidArray.IsEmpty ()) return false;
+    if (parentelementhead.guid == APINULLGuid) return false;
     ParamDictElement paramToRead;
-    for (UInt32 i = 0; i < subguidArray.GetSize (); i++) {
-        ParamHelpers::AddParamDictValue2ParamDictElement (subguidArray[i], paramDict, paramToRead);
-    }
-    ClassificationFunc::SystemDict systemdict;
-    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+    if (!SyncGetSubelementProperty (subguidArray, paramToRead, propertyParams, suffix)) return false;
     GS::UniString parentguidtxt = APIGuidToString (parentelementhead.guid);
     // Записываем в дочерние элементы GUID родительского
+    bool has_element = false;
     for (UInt32 i = 0; i < subguidArray.GetSize (); i++) {
         if (paramToRead.ContainsKey (subguidArray[i])) {
             ParamDictValue subparams = paramToRead.Get (subguidArray[i]);
@@ -1528,7 +1500,7 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 ParamValue& param = *cIt->value;
 #endif
                 //TODO Дописать фильтр по типу, слою, свойству
-                if (!param.val.uniStringValue.IsEmpty ()) {
+                if (!param.val.uniStringValue.IsEmpty () && check_guid) {
                     API_Elem_Head elementHead;
                     elementHead.guid = APIGuidFromString (param.val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                     err = ACAPI_Element_GetHeader (&elementHead);
@@ -1537,17 +1509,20 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                         paramtow.val.uniStringValue = parentguidtxt;
                         ParamHelpers::AddParamValue2ParamDictElement (subguidArray[i], paramtow, paramToWrite);
                         flag_write = true;
+                        has_element = true;
                     }
                 } else {
                     ParamValue paramtow = subparams.Get (param.rawName);
                     paramtow.val.uniStringValue = parentguidtxt;
                     ParamHelpers::AddParamValue2ParamDictElement (subguidArray[i], paramtow, paramToWrite);
                     flag_write = true;
+                    has_element = true;
                 }
                 if (flag_write) break;
             }
         }
     }
+    return has_element;
 }
 
 // --------------------------------------------------------------------
@@ -1555,6 +1530,10 @@ void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
 // --------------------------------------------------------------------
 void SyncShowSubelement (const SyncSettings& syncSettings)
 {
+    clock_t start, finish;
+    double  duration;
+    start = clock ();
+    GS::UniString fmane = "Show SubElement";
 #ifndef AC_22
     GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false);
     GS::Array<API_Guid> guidArray;
@@ -1574,51 +1553,18 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             }
         }
     }
+    if (guidArray.IsEmpty ()) return;
     GS::Array<API_Neig> selNeigs;
-    if (!guidArray.IsEmpty ()) {
-        ParamDictValue propertyParams;
-        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-        ParamDictValue paramDict;
-        for (auto& cItt : propertyParams) {
+    UnicGuid parentGuid;
+    ParamDictValue propertyParams;
+    if (SyncGetSubelement (guidArray, parentGuid, propertyParams, "")) {
+        for (UnicGuid::PairIterator cIt = parentGuid.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
-            ParamValue param = cItt.value;
+            API_Guid guid = cIt->key;
 #else
-            ParamValue param = *cItt.value;
+            API_Guid guid = *cIt->key;
 #endif
-            if (param.definition.description.Contains ("Sync_GUID")) {
-                paramDict.Add (param.rawName, param);
-            }
-        }
-        if (paramDict.IsEmpty ()) return;
-        ParamDictElement paramToRead;
-        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
-        }
-        ClassificationFunc::SystemDict systemdict;
-        ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
-        for (auto& cIt : paramToRead) {
-#if defined(AC_28)
-            ParamDictValue params = cIt.value;
-#else
-            ParamDictValue params = *cIt.value;
-#endif
-            for (auto& cItt : params) {
-#if defined(AC_28)
-                ParamValue param = cItt.value;
-#else
-                ParamValue param = *cItt.value;
-#endif
-                if (param.isValid && !param.val.uniStringValue.IsEmpty ()) {
-                    GS::Array<GS::UniString> rulestring_param;
-                    UInt32 nrule_param = StringSplt (param.val.uniStringValue, ";", rulestring_param);
-                    if (nrule_param > 0) {
-                        for (UInt32 i = 0; i < nrule_param; i++) {
-                            API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
-                            selNeigs.PushNew (guid);
-                        }
-                    }
-                }
-            }
+            selNeigs.PushNew (guid);
         }
     }
     if (selNeigs.IsEmpty ()) return;
@@ -1629,6 +1575,81 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GSErrCode err = ACAPI_Element_Select (selNeigs, true);
 #endif
 #endif
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    msg_rep (fmane, time, err, APINULLGuid);
     return;
 }
 
+// --------------------------------------------------------------------
+// Получение словаря с GUID родительских объектов для массива объектов
+// --------------------------------------------------------------------
+bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuid& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix)
+{
+    if (guidArray.IsEmpty ()) return false;
+    ParamDictElement paramToRead;
+    if (!SyncGetSubelementProperty (guidArray, paramToRead, propertyParams, suffix)) return false;
+    for (auto& cIt : paramToRead) {
+#if defined(AC_28)
+        ParamDictValue params = cIt.value;
+#else
+        ParamDictValue params = *cIt.value;
+#endif
+        for (auto& cItt : params) {
+#if defined(AC_28)
+            ParamValue param = cItt.value;
+#else
+            ParamValue param = *cItt.value;
+#endif
+            if (param.isValid && !param.val.uniStringValue.IsEmpty ()) {
+                GS::Array<GS::UniString> rulestring_param;
+                UInt32 nrule_param = StringSplt (param.val.uniStringValue, ";", rulestring_param);
+                if (nrule_param > 0) {
+                    for (UInt32 i = 0; i < nrule_param; i++) {
+                        API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
+                        if (!parentGuid.ContainsKey (guid)) parentGuid.Add (guid, true);
+                    }
+                }
+            }
+        }
+    }
+    return !parentGuid.IsEmpty ();
+}
+
+// --------------------------------------------------------------------
+// Получение прочитанных свойств Sync_GUID для массива элементов
+// --------------------------------------------------------------------
+bool SyncGetSubelementProperty (const GS::Array<API_Guid>& guidArray, ParamDictElement& paramToRead, ParamDictValue& propertyParams, const GS::UniString& suffix)
+{
+    if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    if (propertyParams.IsEmpty ()) return false;
+    ParamDictValue paramDict;
+    for (auto& cItt : propertyParams) {
+#if defined(AC_28)
+        ParamValue param = cItt.value;
+#else
+        ParamValue param = *cItt.value;
+#endif
+        if (param.definition.description.Contains ("Sync_GUID") && (suffix.IsEmpty () || param.definition.description.Contains (suffix))) {
+            if (!paramDict.ContainsKey (param.rawName)) {
+                for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+                    if (ACAPI_Element_IsPropertyDefinitionAvailable (guidArray[i], param.definition.guid)) {
+                        if (!paramDict.ContainsKey (param.rawName)) {
+                            paramDict.Add (param.rawName, param);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (paramDict.IsEmpty ()) return false;
+    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+        ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
+    }
+    ClassificationFunc::SystemDict systemdict;
+    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+    return !paramToRead.IsEmpty ();
+}

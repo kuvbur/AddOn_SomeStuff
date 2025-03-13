@@ -136,6 +136,7 @@ typedef struct
     bool has_floor = true;
     GS::UniString tip_pot = "";
     GS::UniString tip_pol = "";
+    API_Guid zone_guid = APINULLGuid; // GUID базового элемента
 } OtdRoom; // Структура для хранения информации о зоне
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
@@ -246,17 +247,17 @@ bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 // -----------------------------------------------------------------------------
 bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
-void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement& subelementByparent, ClassificationFunc::ClassificationDict& finclass);
-void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElement& subelementByparent);
+void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist);
+void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElementByType& subelementByparent);
 
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
-void SetSyncOtdWall (UnicElement& subelementByparent, ParamDictValue& propertyParams);
+void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& propertyParams);
 
-void Draw_Window (API_Element& wallelement, OtdOpening& op, UnicElement& subelementByparent);
+void Draw_Window (API_Element& wallelement, OtdOpening& op, UnicElementByType& subelementByparent);
 
-void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElement& subelementByparent);
+void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
@@ -265,7 +266,9 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
 
 bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids);
 
-void Param_AddElementForRead (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead);
+void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& guid, API_ElemTypeID elemtype, UnicElementByType& elementToRead);
+
+void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead);
 
 void Param_AddProperty (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict);
 

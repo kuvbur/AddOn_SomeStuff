@@ -76,7 +76,8 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     });
     if (flag_write) {
         ClassificationFunc::SystemDict systemdict;
-        SyncArray (syncSettings, guidArray, systemdict);
+        ParamDictValue propertyParams;
+        SyncArray (syncSettings, guidArray, systemdict, propertyParams);
     }
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
