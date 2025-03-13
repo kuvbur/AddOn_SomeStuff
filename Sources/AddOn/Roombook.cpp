@@ -54,10 +54,7 @@ void RoomBook ()
     UnicGuid finclassguids;
     ClassificationFunc::GetAllClassification (systemdict);
     Class_FindFinClass (systemdict, finclass, finclassguids);
-
     Stories storyLevels = GetStories (); // Уровни этажей в проекте
-
-
     GS::Array<API_Guid> allslabs_;
     GS::Array<API_Guid> allslabs;
     err = ACAPI_Element_GetElemList (API_SlabID, &allslabs_, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation);
@@ -183,9 +180,13 @@ void RoomBook ()
     ReadAllOpeningReveals (roomsinfo);
     // Разделение стенок по высотам зон
     DelimOtdWalls (roomsinfo);
-    UnicElement subelementByparent; // Словарь с созданными родительскими и дочерними элементами
+
+    UnicGuid parentGuid;
+    GS::Array<API_Guid> deletelist;
+
+    UnicElementByType subelementByparent; // Словарь с созданными родительскими и дочерними элементами
     // Отросовка элементов отделки
-    Draw_Edges (storyLevels, roomsinfo, subelementByparent, finclass);
+    Draw_Edges (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
     // Привязка отделочных элементов к базовым
     SetSyncOtdWall (subelementByparent, propertyParams);
     finish = clock ();
@@ -248,39 +249,15 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (relData.elementsGroupedByType.ContainsKey (typeelem)) {
             GS::Array<API_Guid> guids = relData.elementsGroupedByType.Get (typeelem);
-            if (!elementToRead.ContainsKey (typeelem)) {
-                UnicElement el;
-                elementToRead.Add (typeelem, el);
-            }
-            if (elementToRead.ContainsKey (typeelem)) {
-                for (const API_Guid& elGuid : guids) {
-                    if (!elementToRead.Get (typeelem).ContainsKey (elGuid)) {
-                        GS::Array<API_Guid> el;
-                        el.Push (zoneGuid);
-                        elementToRead.Get (typeelem).Add (elGuid, el);
-                    } else {
-                        if (typeelem == API_SlabID || typeelem == API_WallID || typeelem == API_ColumnID) elementToRead.Get (typeelem).Get (elGuid).Push (zoneGuid);
-                    }
-                }
+            for (const API_Guid& elGuid : guids) {
+                Param_AddUnicElementByType (elGuid, zoneGuid, typeelem, elementToRead);
             }
             flag = true;
         }
     }
     if (slabsinzone.ContainsKey (zoneGuid)) {
-        if (!elementToRead.ContainsKey (API_SlabID)) {
-            UnicElement el;
-            elementToRead.Add (API_SlabID, el);
-        }
-        if (elementToRead.ContainsKey (API_SlabID)) {
-            for (const API_Guid& elGuid : slabsinzone.Get (zoneGuid)) {
-                if (!elementToRead.Get (API_SlabID).ContainsKey (elGuid)) {
-                    GS::Array<API_Guid> el;
-                    el.Push (zoneGuid);
-                    elementToRead.Get (API_SlabID).Add (elGuid, el);
-                } else {
-                    elementToRead.Get (API_SlabID).Get (elGuid).Push (zoneGuid);
-                }
-            }
+        for (const API_Guid& elGuid : slabsinzone.Get (zoneGuid)) {
+            Param_AddUnicElementByType (elGuid, zoneGuid, API_SlabID, elementToRead);
         }
     }
     OtdSlab otdslab;
@@ -347,6 +324,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     roominfo.beamPart = relData.beamPart;
     roominfo.cwSegmentPart = relData.cwSegmentPart;
     roominfo.niches = relData.niches;
+    roominfo.zone_guid = zoneGuid;
 #if defined(AC_27) || defined(AC_28)
     roominfo.material = zoneelement.zone.material.ToInt32_Deprecated ();
 #else
@@ -405,7 +383,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
         openings.Push (op);
         openinginwall.Add (wallguid, openings);
     }
-    Param_AddElementForRead (elGuid, API_WindowID, guidselementToRead);
+    Param_AddUnicGUIDByType (elGuid, API_WindowID, guidselementToRead);
 }
 
 // -----------------------------------------------------------------------------
@@ -591,7 +569,7 @@ void ReadOneWall (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_
                 }
             }
         }
-        if (flag_find) Param_AddElementForRead (elGuid, API_WallID, guidselementToRead);
+        if (flag_find) Param_AddUnicGUIDByType (elGuid, API_WallID, guidselementToRead);
     }
 }
 
@@ -676,7 +654,7 @@ void ReadOneColumn (const Stories & storyLevels, API_Guid & elGuid, GS::Array<AP
             }
         }
     }
-    if (flag_find) Param_AddElementForRead (elGuid, API_ColumnID, guidselementToRead);
+    if (flag_find) Param_AddUnicGUIDByType (elGuid, API_ColumnID, guidselementToRead);
     ACAPI_DisposeElemMemoHdls (&segmentmemo);
 }
 
@@ -713,7 +691,7 @@ void ReadOneSlab (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_
             flag_find = true;
         }
     }
-    if (flag_find) Param_AddElementForRead (elGuid, API_SlabID, guidselementToRead);
+    if (flag_find) Param_AddUnicGUIDByType (elGuid, API_SlabID, guidselementToRead);
 }
 
 // -----------------------------------------------------------------------------
@@ -1650,7 +1628,7 @@ bool Edge_FindEdge (Sector & edge, GS::Array<Sector>&edges)
     return false;
 }
 
-void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicElement & subelementByparent, ClassificationFunc::ClassificationDict & finclass)
+void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicElementByType & subelementByparent, ClassificationFunc::ClassificationDict & finclass, GS::Array<API_Guid>&deletelist)
 {
 #if defined(TESTING)
     DBprnt ("Draw_Edges", "start");
@@ -1677,18 +1655,6 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
 #endif
     wallelement.wall.modelElemStructureType = API_BasicStructure;
     wallelement.wall.thickness = otd_thickness;
-    GS::Array<API_Guid> walllist;
-    GS::Array<API_Guid> deletelist;
-    ACAPI_Element_GetElemList (API_WallID, &walllist);
-    API_Elem_Head elem_head = {};
-    for (UInt32 i = 0; i < walllist.GetSize (); i++) {
-        BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
-        elem_head.guid = walllist[i];
-        if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
-            if (elem_head.layer == wallelement.header.layer) deletelist.Push (elem_head.guid);
-        }
-    }
-
     API_Element slabelement;
     BNZeroMemory (&slabelement, sizeof (API_Element));
 #if defined AC_26 || defined AC_27 || defined AC_28
@@ -1709,16 +1675,6 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
     slabelement.slab.botMat.overridden = true;
 #endif
     slabelement.slab.modelElemStructureType = API_BasicStructure;
-    GS::Array<API_Guid> slablist;
-    ACAPI_Element_GetElemList (API_SlabID, &slablist);
-    for (UInt32 i = 0; i < slablist.GetSize (); i++) {
-        BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
-        elem_head.guid = slablist[i];
-        if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
-            if (elem_head.layer == wallelement.header.layer) deletelist.Push (elem_head.guid);
-        }
-    }
-
     ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) ACAPI_Element_Delete (deletelist);
         for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -1731,6 +1687,10 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
             GS::Array<API_Guid> group;
             for (UInt32 i = 0; i < otd.otdwall.GetSize (); i++) {
                 Draw_Edge (storyLevels, otd.otdwall[i], wallelement, subelementByparent);
+                Param_AddUnicElementByType (otd.zone_guid, otd.otdwall[i].otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных стен к зоне
+                for (OtdOpening& op : otd.otdwall[i].openings) {
+                    Param_AddUnicElementByType (otd.zone_guid, op.otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных проёмов к зоне
+                }
                 // Классификация созданных стен
                 class_guid = APINULLGuid;
                 if (otd.otdwall[i].base_type == API_ColumnID && finclass.ContainsKey (cls.column_class)) class_guid = finclass.Get (cls.column_class).item.guid;
@@ -1749,11 +1709,12 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
             }
             for (UInt32 i = 0; i < otd.otdslab.GetSize (); i++) {
                 Draw_Slab (storyLevels, slabelement, otd.otdslab[i], subelementByparent);
+                Param_AddUnicElementByType (otd.zone_guid, otd.otdslab[i].otd_guid, API_ZoneID, subelementByparent); // Привязка перекрытий к зоне
                 class_guid = APINULLGuid;
                 if (finclass.ContainsKey (cls.floor_class)) class_guid = finclass.Get (cls.floor_class).item.guid;
                 if (class_guid == APINULLGuid && finclass.ContainsKey (cls.all_class)) class_guid = finclass.Get (cls.all_class).item.guid;
-                if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (slabelement.header.guid, class_guid);
-                group.Push (slabelement.header.guid);
+                if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (otd.otdslab[i].otd_guid, class_guid);
+                group.Push (otd.otdslab[i].otd_guid);
             }
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -1772,7 +1733,7 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
 #endif
 }
 
-void Draw_Edge (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, UnicElement & subelementByparent)
+void Draw_Edge (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, UnicElementByType & subelementByparent)
 {
     if (edges.height < min_dim) {
         return;
@@ -1801,20 +1762,14 @@ void Draw_Edge (const Stories & storyLevels, OtdWall & edges, API_Element & wall
 #endif
     if (ACAPI_Element_Create (&wallelement, nullptr) == NoError) {
         edges.otd_guid = wallelement.header.guid;
-        if (subelementByparent.ContainsKey (edges.base_guid)) {
-            subelementByparent.Get (edges.base_guid).Push (edges.otd_guid);
-        } else {
-            GS::Array<API_Guid> z;
-            z.Push (edges.otd_guid);
-            subelementByparent.Add (edges.base_guid, z);
-        }
+        Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent); // Привязка отделочной стены к базовой
         for (OtdOpening& op : edges.openings) {
             Draw_Window (wallelement, op, subelementByparent);
         }
     }
 }
 
-void Draw_Window (API_Element & wallelement, OtdOpening & op, UnicElement & subelementByparent)
+void Draw_Window (API_Element & wallelement, OtdOpening & op, UnicElementByType & subelementByparent)
 {
     API_ElementMemo memo;
     GSErrCode err = NoError;
@@ -1843,13 +1798,7 @@ void Draw_Window (API_Element & wallelement, OtdOpening & op, UnicElement & sube
     windowelement.window.lower = op.lower;
     if (ACAPI_Element_Create (&windowelement, &memo) == NoError) {
         op.otd_guid = windowelement.header.guid;
-        //if (subelementByparent.ContainsKey (op.base_guid)) {
-        //    subelementByparent.Get (op.base_guid).Push (op.otd_guid);
-        //} else {
-        //    GS::Array<API_Guid> z;
-        //    z.Push (op.otd_guid);
-        //    subelementByparent.Add (op.base_guid, z);
-        //}
+        Param_AddUnicElementByType (op.base_guid, op.otd_guid, API_WindowID, subelementByparent); // Привязка отделочного проёма к базовому
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
@@ -1858,7 +1807,7 @@ void Draw_Window (API_Element & wallelement, OtdOpening & op, UnicElement & sube
 // -----------------------------------------------------------------------------
 // Create a special shaped slab with custom edge trims
 // -----------------------------------------------------------------------------
-void Draw_Slab (const Stories & storyLevels, API_Element & slabelement, OtdSlab & otdslab, UnicElement & subelementByparent)
+void Draw_Slab (const Stories & storyLevels, API_Element & slabelement, OtdSlab & otdslab, UnicElementByType & subelementByparent)
 {
     slabelement.slab.thickness = otd_thickness;
     const auto floorIndexAndOffset = GetFloorIndexAndOffset (otdslab.zBottom, storyLevels);
@@ -1879,13 +1828,7 @@ void Draw_Slab (const Stories & storyLevels, API_Element & slabelement, OtdSlab 
     if (ConvertPolygon2DToAPIPolygon (otdslab.poly, slabelement.slab.poly, memo) == NoError) {
         if (ACAPI_Element_Create (&slabelement, &memo) == NoError) {
             otdslab.otd_guid = slabelement.header.guid;
-            if (subelementByparent.ContainsKey (otdslab.base_guid)) {
-                subelementByparent.Get (otdslab.base_guid).Push (otdslab.otd_guid);
-            } else {
-                GS::Array<API_Guid> z;
-                z.Push (otdslab.otd_guid);
-                subelementByparent.Add (otdslab.base_guid, z);
-            }
+            Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
         }
     }
     ACAPI_DisposeElemMemoHdls (&memo);
@@ -1948,24 +1891,41 @@ void Class_FindFinClass (ClassificationFunc::SystemDict & systemdict, Classifica
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
-void SetSyncOtdWall (UnicElement & subelementByparent, ParamDictValue & propertyParams)
+void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictValue & propertyParams)
 {
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
     ParamDictElement paramToWrite;
     API_Elem_Head parentelementhead;
-    GS::Array<API_Guid> syncguids;
-    for (UnicElement::PairIterator cIt = subelementByparent.EnumeratePairs (); cIt != NULL; ++cIt) {
+    GS::Array<API_ElemTypeID> typeinzone;
+    UnicGuid syncguidsdict;
+    typeinzone.Push (API_ZoneID);
+    typeinzone.Push (API_WindowID);
+    typeinzone.Push (API_WallID);
+    typeinzone.Push (API_SlabID);
+    GS::UniString suffix = "";
+    for (const API_ElemTypeID& typeelem : typeinzone) {
+        if (subelementByparent.ContainsKey (typeelem)) {
+            for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
+
 #if defined(AC_28)
-        API_Guid guid = cIt->key;
-        GS::Array<API_Guid> subguids = cIt->value;
+                API_Guid guid = cIt->key;
+                GS::Array<API_Guid> subguids = cIt->value;
 #else
-        API_Guid guid = *cIt->key;
-        GS::Array<API_Guid> subguids = *cIt->value;
+                API_Guid guid = *cIt->key;
+                GS::Array<API_Guid> subguids = *cIt->value;
 #endif
-        parentelementhead.guid = guid;
-        syncguids.Append (subguids);
-        SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite);
+                parentelementhead.guid = guid;
+                if (typeelem == API_ZoneID) {
+                    suffix = "zone";
+                } else {
+                    suffix = "base element";
+                }
+                if (SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite, suffix, false)) {
+                    if (!syncguidsdict.ContainsKey (guid)) syncguidsdict.Add (guid, true);
+                }
+            }
+        }
     }
     if (!paramToWrite.IsEmpty ()) {
         ACAPI_CallUndoableCommand ("SetSubelement",
@@ -1975,12 +1935,14 @@ void SetSyncOtdWall (UnicElement & subelementByparent, ParamDictValue & property
         });
         ClassificationFunc::SystemDict systemdict;
         ClassificationFunc::GetAllClassification (systemdict);
-        GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids, systemdict);
+        GS::Array<API_Guid> syncguids;
+
+        GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids, systemdict, propertyParams);
         if (!rereadelem.IsEmpty ()) {
 #if defined(TESTING)
             DBprnt ("===== REREAD =======");
 #endif
-            SyncArray (syncSettings, rereadelem, systemdict);
+            SyncArray (syncSettings, rereadelem, systemdict, propertyParams);
         }
     }
 }
@@ -2000,7 +1962,24 @@ bool Class_IsElementFinClass (const API_Guid & elGuid, const UnicGuid & finclass
     return false;
 }
 
-void Param_AddElementForRead (const API_Guid & elGuid, API_ElemTypeID elemtype, UnicGUIDByType & guidselementToRead)
+void Param_AddUnicElementByType (const API_Guid & parentguid, const API_Guid & guid, API_ElemTypeID elemtype, UnicElementByType & elementToRead)
+{
+    if (!elementToRead.ContainsKey (elemtype)) {
+        UnicElement el;
+        elementToRead.Add (elemtype, el);
+    }
+    if (elementToRead.ContainsKey (elemtype)) {
+        if (!elementToRead.Get (elemtype).ContainsKey (parentguid)) {
+            GS::Array<API_Guid> el;
+            el.Push (guid);
+            elementToRead.Get (elemtype).Add (parentguid, el);
+        } else {
+            elementToRead.Get (elemtype).Get (parentguid).Push (guid);
+        }
+    }
+}
+
+void Param_AddUnicGUIDByType (const API_Guid & elGuid, API_ElemTypeID elemtype, UnicGUIDByType & guidselementToRead)
 {
     if (guidselementToRead.ContainsKey (elemtype)) {
         guidselementToRead.Get (elemtype).Push (elGuid);
@@ -2033,5 +2012,6 @@ void Param_AddProperty (const API_Guid & elGuid, ParamDictValue & propertyParams
         }
     }
 }
+
 }
 #endif

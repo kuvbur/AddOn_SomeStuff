@@ -94,7 +94,7 @@ void SyncSelected (const SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, ClassificationFunc::SystemDict& systemdict);
+GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, ClassificationFunc::SystemDict& systemdict, ParamDictValue& propertyParams);
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметров выбранных элементов
@@ -148,14 +148,21 @@ bool SyncString (const API_ElemTypeID& elementType, GS::UniString rulestring_one
 void SyncSetSubelement (SyncSettings& syncSettings);
 
 // -----------------------------------------------------------------------------
-// Запись в выноску Guid связанных элементов
+// Запись Guid связанных элементов
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-void SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<API_Guid>& subguidArray, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
+bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<API_Guid>& subguidArray, ParamDictValue& propertyParams, ParamDictElement& paramToWrite, const GS::UniString& suffix, const bool& check_guid);
 
 // --------------------------------------------------------------------
 // Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
 // --------------------------------------------------------------------
 void SyncShowSubelement (const SyncSettings& syncSettings);
+
+// --------------------------------------------------------------------
+// Получение словаря с GUID родительских объектов для массива объектов
+// --------------------------------------------------------------------
+bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuid& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix);
+
+bool SyncGetSubelementProperty (const GS::Array<API_Guid>& guidArray, ParamDictElement& paramToRead, ParamDictValue& propertyParams, const GS::UniString& suffix);
 
 #endif
