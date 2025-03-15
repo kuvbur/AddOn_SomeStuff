@@ -1534,6 +1534,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     double  duration;
     start = clock ();
     GS::UniString fmane = "Show SubElement";
+    GSErrCode err = NoError;
 #ifndef AC_22
     GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false);
     GS::Array<API_Guid> guidArray;
@@ -1569,11 +1570,13 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     }
     if (selNeigs.IsEmpty ()) return;
 #if defined(AC_27) || defined(AC_28)
-    GSErrCode err = ACAPI_Selection_Select (selNeigs, true);
+    err = ACAPI_Selection_Select (selNeigs, true);
 #else
     //TODO Проверить - почему выделение субэлементов не работает на окнах и дверях
-    GSErrCode err = ACAPI_Element_Select (selNeigs, true);
+    err = ACAPI_Element_Select (selNeigs, true);
 #endif
+#else
+    fmane = fmane + " not work in AC22";
 #endif
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
