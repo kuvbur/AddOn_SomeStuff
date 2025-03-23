@@ -3610,6 +3610,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
     // Для каждого типа - свой способ получения данных. Поэтому разбиваем по типам и обрабатываем по-отдельности
     for (UInt32 i = 0; i < paramTypesList.GetSize (); i++) {
         GS::UniString paramType = paramTypesList.Get (i);
+        if (paramType.IsEqual ("{@info:")) continue;
         ParamDictValue paramByType;
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
@@ -3627,97 +3628,96 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 }
             }
         }
-        if (!paramByType.IsEmpty ()) {
-            bool needCompare = false; // Флаг необходимости записи в словарь. Поднимается только при наличии результата на каждом этапе
+        if (paramByType.IsEmpty ()) continue;
+        bool needCompare = false; // Флаг необходимости записи в словарь. Поднимается только при наличии результата на каждом этапе
 
-            // Проходим поиском, специфичным для каждого типа
-            if (paramType.IsEqual ("{@property:")) {
-                needCompare = ParamHelpers::ReadProperty (elemGuid, paramByType);
-                // Среди прочитанных свойств могут быть свойства с классификацией. Поищем классификацию по имени
-                if (needCompare) {
-                    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cItt = paramByType.EnumeratePairs (); cItt != NULL; ++cItt) {
+        // Проходим поиском, специфичным для каждого типа
+        if (paramType.IsEqual ("{@property:")) {
+            needCompare = ParamHelpers::ReadProperty (elemGuid, paramByType);
+            // Среди прочитанных свойств могут быть свойства с классификацией. Поищем классификацию по имени
+            if (needCompare) {
+                for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cItt = paramByType.EnumeratePairs (); cItt != NULL; ++cItt) {
 #if defined(AC_28)
-                        ParamValue& parambt = cItt->value;
+                    ParamValue& parambt = cItt->value;
 #else
-                        ParamValue& parambt = *cItt->value;
+                    ParamValue& parambt = *cItt->value;
 #endif
-                        if (parambt.fromClassification) {
-                            if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
-                            GS::UniString systemname = parambt.val.uniStringValue.ToLowerCase ();
-                            API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, systemname);
-                            if (classguid != APINULLGuid && parambt.val.guidval == APINULLGuid) {
-                                paramByType.Get (parambt.rawName).val.guidval = classguid;
-                            } else {
+                    if (parambt.fromClassification) {
+                        if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
+                        GS::UniString systemname = parambt.val.uniStringValue.ToLowerCase ();
+                        API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, systemname);
+                        if (classguid != APINULLGuid && parambt.val.guidval == APINULLGuid) {
+                            paramByType.Get (parambt.rawName).val.guidval = classguid;
+                        } else {
 #if defined(TESTING)
-                                if (parambt.val.guidval != APINULLGuid) DBprnt ("Compare classification err - double class");
-                                if (classguid == APINULLGuid) DBprnt ("Compare classification err - empty class");
+                            if (parambt.val.guidval != APINULLGuid) DBprnt ("Compare classification err - double class");
+                            if (classguid == APINULLGuid) DBprnt ("Compare classification err - empty class");
 #endif
-                            }
                         }
                     }
                 }
             }
-            if (paramType.IsEqual ("{@coord:")) {
+        }
+        if (paramType.IsEqual ("{@coord:")) {
 
-                // Для определения угла к северу нам потребуется значение направления на север.
-                // Оно должно быть в Info, проверим и добавим, если оно есть
-                GS::UniString globnorthkey = "{@glob:glob_north_dir}";
-                if (propertyParams.ContainsKey (globnorthkey) && !paramByType.ContainsKey (globnorthkey)) {
-                    paramByType.Add (globnorthkey, propertyParams.Get (globnorthkey));
-                }
-                GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
-                if (params.ContainsKey (sync_coord_correctkey) && !paramByType.ContainsKey (sync_coord_correctkey)) {
-                    paramByType.Add (sync_coord_correctkey, params.Get (sync_coord_correctkey));
-                }
-                GS::UniString locorig = "{@coord:locorigin_x}";
-                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
-                locorig = "{@coord:locorigin_y}";
-                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
-                locorig = "{@coord:locorigin_z}";
-                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
-                locorig = "{@coord:offsetorigin_x}";
-                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
-                locorig = "{@coord:offsetorigin_y}";
-                if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
-                needCompare = ParamHelpers::ReadCoords (element, paramByType);
+            // Для определения угла к северу нам потребуется значение направления на север.
+            // Оно должно быть в Info, проверим и добавим, если оно есть
+            GS::UniString globnorthkey = "{@glob:glob_north_dir}";
+            if (propertyParams.ContainsKey (globnorthkey) && !paramByType.ContainsKey (globnorthkey)) {
+                paramByType.Add (globnorthkey, propertyParams.Get (globnorthkey));
             }
-            if (paramType.IsEqual ("{@gdl:")) {
-                needCompare = ParamHelpers::ReadGDL (element, elem_head, paramByType);
+            GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
+            if (params.ContainsKey (sync_coord_correctkey) && !paramByType.ContainsKey (sync_coord_correctkey)) {
+                paramByType.Add (sync_coord_correctkey, params.Get (sync_coord_correctkey));
             }
-            if (paramType.IsEqual ("{@ifc:")) {
-                needCompare = ParamHelpers::ReadIFC (elemGuid, paramByType);
-            }
-            if (paramType.IsEqual ("{@morph:")) {
-                needCompare = ParamHelpers::ReadMorphParam (element, paramByType);
-            }
-            if (paramType.IsEqual ("{@id:")) {
-                needCompare = ParamHelpers::ReadID (elem_head, paramByType);
-            }
-            if (paramType.IsEqual ("{@class:")) {
-                if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
-                needCompare = ParamHelpers::ReadClassification (elemGuid, systemdict, paramByType);
-            }
-            if (paramType.IsEqual ("{@material:")) {
-                if (ParamHelpers::ReadMaterial (element, params, propertyParams)) DBprnt ("        CompareParamDictValue");
-                needCompare = false;
-            }
-            if (paramType.IsEqual ("{@formula:")) {
-                needCompare = ParamHelpers::ReadFormula (paramByType, params);
-            }
-            if (paramType.IsEqual ("{@attrib:")) {
-                needCompare = ParamHelpers::ReadAttributeValues (elem_head, propertyParams, paramByType);
-            }
-            if (needCompare) {
+            GS::UniString locorig = "{@coord:locorigin_x}";
+            if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+            locorig = "{@coord:locorigin_y}";
+            if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+            locorig = "{@coord:locorigin_z}";
+            if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+            locorig = "{@coord:offsetorigin_x}";
+            if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+            locorig = "{@coord:offsetorigin_y}";
+            if (propertyParams.ContainsKey (locorig) && !paramByType.ContainsKey (locorig)) paramByType.Add (locorig, propertyParams.Get (locorig));
+            needCompare = ParamHelpers::ReadCoords (element, paramByType);
+        }
+        if (paramType.IsEqual ("{@gdl:")) {
+            needCompare = ParamHelpers::ReadGDL (element, elem_head, paramByType);
+        }
+        if (paramType.IsEqual ("{@ifc:")) {
+            needCompare = ParamHelpers::ReadIFC (elemGuid, paramByType);
+        }
+        if (paramType.IsEqual ("{@morph:")) {
+            needCompare = ParamHelpers::ReadMorphParam (element, paramByType);
+        }
+        if (paramType.IsEqual ("{@id:")) {
+            needCompare = ParamHelpers::ReadID (elem_head, paramByType);
+        }
+        if (paramType.IsEqual ("{@class:")) {
+            if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
+            needCompare = ParamHelpers::ReadClassification (elemGuid, systemdict, paramByType);
+        }
+        if (paramType.IsEqual ("{@material:")) {
+            if (ParamHelpers::ReadMaterial (element, params, propertyParams)) DBprnt ("        CompareParamDictValue");
+            needCompare = false;
+        }
+        if (paramType.IsEqual ("{@formula:")) {
+            needCompare = ParamHelpers::ReadFormula (paramByType, params);
+        }
+        if (paramType.IsEqual ("{@attrib:")) {
+            needCompare = ParamHelpers::ReadAttributeValues (elem_head, propertyParams, paramByType);
+        }
+        if (needCompare) {
 #if defined(TESTING)
-                DBprnt ("        CompareParamDictValue");
+            DBprnt ("        CompareParamDictValue");
 #endif
-                ParamHelpers::CompareParamDictValue (paramByType, params);
-            } else {
-                if (!paramType.IsEqual ("{@material:")) {
+            ParamHelpers::CompareParamDictValue (paramByType, params);
+        } else {
+            if (!paramType.IsEqual ("{@material:")) {
 #if defined(TESTING)
-                    DBprnt ("Read err", "not found" + paramType);
+                DBprnt ("Read err", "not found" + paramType);
 #endif
-                }
             }
         }
     }
