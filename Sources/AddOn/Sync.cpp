@@ -1485,7 +1485,7 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
     if (subguidArray.IsEmpty ()) return false;
     if (parentelementhead.guid == APINULLGuid) return false;
     ParamDictElement paramToRead;
-    if (!SyncGetSubelementProperty (subguidArray, paramToRead, propertyParams, suffix)) return false;
+    if (!SyncGetSyncGUIDProperty (subguidArray, paramToRead, propertyParams, suffix)) return false;
     GS::UniString parentguidtxt = APIGuidToString (parentelementhead.guid);
     // Записываем в дочерние элементы GUID родительского
     bool has_element = false;
@@ -1525,6 +1525,7 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
     return has_element;
 }
 
+
 // --------------------------------------------------------------------
 // Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
 // --------------------------------------------------------------------
@@ -1533,7 +1534,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     clock_t start, finish;
     double  duration;
     start = clock ();
-    GS::UniString fmane = "Show SubElement";
+    GS::UniString fmane = "";
     GSErrCode err = NoError;
 #ifndef AC_22
     GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false);
@@ -1555,25 +1556,121 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
         }
     }
     if (guidArray.IsEmpty ()) return;
+    Int32 bisEng = isEng ();
     GS::Array<API_Neig> selNeigs;
-    UnicGuid parentGuid;
+    GS::HashTable<API_Guid, UnicGuid> parentGuid;
     ParamDictValue propertyParams;
-    if (SyncGetSubelement (guidArray, parentGuid, propertyParams, "")) {
-        for (UnicGuid::PairIterator cIt = parentGuid.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28)
-            API_Guid guid = cIt->key;
+    int errcode = 0;
+    if (!SyncGetSubelement (guidArray, parentGuid, propertyParams, "", errcode)) {
+        if (SyncGetPatentelement (guidArray, parentGuid, propertyParams, "", errcode)) {
+            fmane = "Show Sub Element";
+        } else {
+            GS::UniString SubElementHotFoundIdString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
+            if (errcode > 0) {
+                SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
+            }
+            ACAPI_WriteReport (SubElementHotFoundIdString, true);
+            return;
+        }
+    } else {
+        fmane = "Show Parent Element";
+    }
+    API_DatabaseInfo homedatabaseInfo;
+    API_DatabaseInfo elementdatabaseInfo;
+    BNZeroMemory (&homedatabaseInfo, sizeof (API_DatabaseInfo));
+    bool checkdb = false; bool isfloorplan = false;
+
+#if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Database_GetCurrentDatabase (&homedatabaseInfo);
 #else
-            API_Guid guid = *cIt->key;
+    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &homedatabaseInfo, nullptr);
 #endif
+    if (err == NoError) {
+        checkdb = (homedatabaseInfo.typeID != APIWind_3DModelID);
+        isfloorplan = (homedatabaseInfo.typeID == APIWind_FloorPlanID);
+    } else {
+        msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
+    }
+    int count_inv = 0; int count_all = 0; int count_otherplan = 0;
+    for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentGuid.EnumeratePairs (); cIt != NULL; ++cIt) {
+#if defined(AC_28)
+        UnicGuid guids = cIt->value;
+#else
+        UnicGuid guids = *cIt->value;
+#endif
+        for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
+#if defined(AC_28)
+            API_Guid guid = cItt->key;
+            bool isvisible = cItt->value;
+#else
+            API_Guid guid = *cItt->key;
+            bool isvisible = *cItt->value;
+#endif
+            count_all++;
+            if (!isvisible) {
+                count_inv++;
+                continue;
+            }
+            if (isfloorplan) {
+                if (!ACAPI_Element_Filter (guid, APIFilt_OnActFloor)) {
+                    count_otherplan++;
+                    continue;
+                }
+            }
+            if (checkdb) {
+                BNZeroMemory (&elementdatabaseInfo, sizeof (API_DatabaseInfo));
+#if defined(AC_27) || defined(AC_28)
+                err = ACAPI_Database_GetContainingDatabase (&guid, &elementdatabaseInfo);
+#else
+                err = ACAPI_Database (APIDb_GetContainingDatabaseID, &guid, &elementdatabaseInfo);
+#endif
+                if (err == NoError) {
+                    if (elementdatabaseInfo.databaseUnId != homedatabaseInfo.databaseUnId) {
+                        count_otherplan++;
+                        continue;
+                    }
+                } else {
+                    count_otherplan++;
+                    msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
+                    continue;
+                }
+            }
             selNeigs.PushNew (guid);
         }
     }
-    if (selNeigs.IsEmpty ()) return;
+    fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
+    GS::UniString errmsg = "";
+    if (count_otherplan > 0) {
+        GS::UniString SubElementOtherPlanString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementOtherPlanId, ACAPI_GetOwnResModule ());
+        errmsg = errmsg + GS::UniString::Printf (" %d ", count_otherplan) + SubElementOtherPlanString + "\n";
+        fmane = fmane + GS::UniString::Printf (", %d on other floorplan", count_otherplan);
+    }
+    if (count_inv > 0) {
+        GS::UniString SubElementHiddenString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHiddenId, ACAPI_GetOwnResModule ());
+        errmsg = errmsg + GS::UniString::Printf (" %d ", count_inv) + SubElementHiddenString + "\n";
+        fmane = fmane + GS::UniString::Printf (", %d on hidden layers/filters", count_inv);
+    }
+    if (!errmsg.IsEmpty ()) {
+        GS::UniString SubElementTotalString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementTotalId, ACAPI_GetOwnResModule ());
+        errmsg = SubElementTotalString + GS::UniString::Printf (" %d, ", count_inv) + "\n" + errmsg;
+    }
+    if (selNeigs.IsEmpty ()) {
+        GS::UniString SubElementNoSelectString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementNoSelectId, ACAPI_GetOwnResModule ());
+        errmsg = SubElementNoSelectString + "\n" + errmsg;
+        fmane = fmane + " Nothing to select - all hide!";
+        finish = clock ();
+        duration = (double) (finish - start) / CLOCKS_PER_SEC;
+        GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+        msg_rep (fmane, time, err, APINULLGuid);
+        if (!errmsg.IsEmpty ()) ACAPI_WriteReport (errmsg, true);
+        return;
+    }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Selection_Select (selNeigs, true);
+    if (err == NoError) ACAPI_View_ZoomToSelected ();
 #else
-    //TODO Проверить - почему выделение субэлементов не работает на окнах и дверях
     err = ACAPI_Element_Select (selNeigs, true);
+    if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
 #endif
 #else
     fmane = fmane + " not work in AC22";
@@ -1582,21 +1679,121 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
+    if (!errmsg.IsEmpty ()) {
+        GS::UniString SubElementHalfString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHalfId, ACAPI_GetOwnResModule ());
+        errmsg = SubElementHalfString + "\n" + errmsg;
+        ACAPI_WriteReport (errmsg, true);
+    }
     return;
 }
 
 // --------------------------------------------------------------------
+// Получение словаря с GUID дочерних объектов для массива объектов
+// --------------------------------------------------------------------
+bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, UnicGuid>& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode)
+{
+    if (guidArray.IsEmpty ()) return false;
+    if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    if (propertyParams.IsEmpty ()) return false;
+    GS::HashTable<API_Guid, GS::Array<API_Guid>> classificationforread; //классификация найденных элементов
+    for (auto& cItt : propertyParams) {
+#if defined(AC_28)
+        ParamValue param = cItt.value;
+#else
+        ParamValue param = *cItt.value;
+#endif
+        if (!param.definition.description.Contains ("Sync_GUID")) continue;
+        if (!(suffix.IsEmpty () || param.definition.description.Contains (suffix))) continue;
+        if (param.definition.valueType != API_PropertyStringValueType) continue;
+        for (const auto& cls : param.definition.availability) {
+            if (!classificationforread.ContainsKey (cls)) {
+                GS::Array<API_Guid> un;
+                classificationforread.Add (cls, un);
+            }
+            if (classificationforread.ContainsKey (cls)) {
+                classificationforread.Get (cls).Push (param.definition.guid);
+            }
+        }
+    }
+    if (classificationforread.IsEmpty ()) {
+        errcode = 1;
+        return false;
+    }
+    // Переписываем родительские GUID
+    for (const auto& guid : guidArray) {
+        if (!parentGuid.ContainsKey (guid)) {
+            UnicGuid un;
+            parentGuid.Add (guid, un);
+        }
+    }
+    bool find = false;
+    ParamDictElement paramToRead;
+    for (const auto& cls : classificationforread) {
+#if defined(AC_28)
+        const API_Guid& classificationItemGuid = cls.key;
+        const GS::Array<API_Guid>& propertyDefinitions = cls.value;
+#else
+        const API_Guid& classificationItemGuid = *cls.key;
+        const GS::Array<API_Guid>& propertyDefinitions = *cls.value;
+#endif
+        GS::Array<API_Guid> elemGuids;
+        if (ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids) == NoError) {
+            for (UInt32 i = 0; i < elemGuids.GetSize (); i++) {
+                GS::Array<API_Property> properties;
+                if (ACAPI_Element_GetPropertyValuesByGuid (elemGuids[i], propertyDefinitions, properties) == NoError) {
+                    for (const auto& prop : properties) {
+                        if (prop.status != API_Property_HasValue) continue;
+                        if (prop.isDefault) continue;
+                        if (prop.value.singleVariant.variant.uniStringValue.IsEmpty ()) continue;
+                        GS::Array<GS::UniString> rulestring_param;
+                        UInt32 nrule_param = StringSplt (prop.value.singleVariant.variant.uniStringValue, ";", rulestring_param);
+                        if (nrule_param > 0) {
+                            for (UInt32 i = 0; i < nrule_param; i++) {
+                                API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
+                                if (guid != APINULLGuid) {
+                                    if (parentGuid.ContainsKey (guid)) {
+                                        find = true;
+                                        if (!parentGuid.Get (guid).ContainsKey (elemGuids[i])) {
+                                            bool isvisible = true;
+                                            if (!ACAPI_Element_Filter (elemGuids[i], APIFilt_OnVisLayer)) isvisible = false;
+                                            if (!ACAPI_Element_Filter (elemGuids[i], APIFilt_IsVisibleByRenovation)) isvisible = false;
+                                            if (!ACAPI_Element_Filter (elemGuids[i], APIFilt_IsInStructureDisplay)) isvisible = false;
+                                            parentGuid.Get (guid).Add (elemGuids[i], isvisible);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (!find) {
+        parentGuid.Clear ();
+        errcode = 2;
+    }
+    return find;
+}
+
+
+// --------------------------------------------------------------------
 // Получение словаря с GUID родительских объектов для массива объектов
 // --------------------------------------------------------------------
-bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuid& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix)
+bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, UnicGuid>& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode)
 {
     if (guidArray.IsEmpty ()) return false;
     ParamDictElement paramToRead;
-    if (!SyncGetSubelementProperty (guidArray, paramToRead, propertyParams, suffix)) return false;
+    if (!SyncGetSyncGUIDProperty (guidArray, paramToRead, propertyParams, suffix)) {
+        errcode = 1;
+        return false;
+    }
     for (auto& cIt : paramToRead) {
 #if defined(AC_28)
+        API_Guid subguid = cItt.key;
         ParamDictValue params = cIt.value;
 #else
+        API_Guid subguid = *cIt.key;
         ParamDictValue params = *cIt.value;
 #endif
         for (auto& cItt : params) {
@@ -1611,19 +1808,34 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuid& parentGu
                 if (nrule_param > 0) {
                     for (UInt32 i = 0; i < nrule_param; i++) {
                         API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
-                        if (!parentGuid.ContainsKey (guid)) parentGuid.Add (guid, true);
+                        if (guid != APINULLGuid) {
+                            if (!parentGuid.ContainsKey (subguid)) {
+                                UnicGuid un;
+                                parentGuid.Add (subguid, un);
+                            }
+                            if (parentGuid.ContainsKey (subguid)) {
+                                if (!parentGuid.Get (subguid).ContainsKey (guid)) {
+                                    bool isvisible = true;
+                                    if (!ACAPI_Element_Filter (guid, APIFilt_OnVisLayer)) isvisible = false;
+                                    if (!ACAPI_Element_Filter (guid, APIFilt_IsVisibleByRenovation)) isvisible = false;
+                                    if (!ACAPI_Element_Filter (guid, APIFilt_IsInStructureDisplay)) isvisible = false;
+                                    parentGuid.Get (subguid).Add (guid, isvisible);
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
+    if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
 }
 
 // --------------------------------------------------------------------
 // Получение прочитанных свойств Sync_GUID для массива элементов
 // --------------------------------------------------------------------
-bool SyncGetSubelementProperty (const GS::Array<API_Guid>& guidArray, ParamDictElement& paramToRead, ParamDictValue& propertyParams, const GS::UniString& suffix)
+bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictElement& paramToRead, ParamDictValue& propertyParams, const GS::UniString& suffix)
 {
     if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
     if (propertyParams.IsEmpty ()) return false;

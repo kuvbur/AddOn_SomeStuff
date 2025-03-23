@@ -4,7 +4,6 @@
 #include	<stdio.h>
 #ifdef EXTNDVERSION
 #include	"AutomateFunction.hpp"
-#include	"Roombook.hpp"
 #endif
 #ifdef TESTING
 #include "TestFunc.hpp"
@@ -17,6 +16,7 @@
 #ifndef AC_22
 #include	"ReNum.hpp"
 #endif
+#include	"Roombook.hpp"
 #include	"Revision.hpp"
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
@@ -364,15 +364,15 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case SetSub_CommandID:
                     SyncSetSubelement (syncSettings);
                     break;
+                case RoomBook_CommandID:
+                    AutoFunc::RoomBook ();
+                    break;
 #ifdef EXTNDVERSION
                 case Auto3D_CommandID:
                     AutoFunc::ProfileByLine ();
                     break;
                 case AutoLay_CommandID:
                     AutoFunc::AlignDrawingsByPoints ();
-                    break;
-                case RoomBook_CommandID:
-                    AutoFunc::RoomBook ();
                     break;
 #endif
             }

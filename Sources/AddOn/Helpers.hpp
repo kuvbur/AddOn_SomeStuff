@@ -60,6 +60,20 @@ static const Int32 Nov_StringID = 30;
 static const Int32 Annul_StringID = 31;
 static const Int32 RVI_StringID = 33;
 
+static const Int32 SubElementHotFoundId = 34;
+static const Int32 SubElementHotFoundId1 = 35;
+static const Int32 SubElementHotFoundId2 = 36;
+static const Int32 SubElementOtherPlanId = 37;
+static const Int32 SubElementHiddenId = 38;
+static const Int32 SubElementTotalId = 39;
+static const Int32 SubElementNoSelectId = 40;
+static const Int32 SubElementHalfId = 41;
+static const Int32 SpecRuleNotFoundId = 42;
+static const Int32 SpecRuleReadFoundId = 43;
+static const Int32 SpecWriteNotFoundId = 44;
+static const Int32 SpecEmptyListdId = 45;
+static const Int32 SpecNotFoundParametersId = 46;
+
 typedef struct
 {
     GS::Array<API_Guid> guid;

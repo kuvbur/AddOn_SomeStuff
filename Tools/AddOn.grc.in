@@ -21,6 +21,7 @@
 /* [  12] */	"Показать связанные элементы^ES^E3^S^32617"
 /* [  13] */	"Заполнение изменений на макетах^T^D2^EL^32619"
 /* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  15] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
 }
 
 
@@ -40,6 +41,7 @@
 /* [  12] */	"Показать связанные элементы"
 /* [  13] */	"Заполнение изменений на макетах"
 /* [  14] */	"Привязать элементы к выделенному"
+/* [  15] */	"Ведомость отделки"
 }
 
 'STR#' 30500 "Strings for the Menu" {
@@ -58,9 +60,9 @@
 /* [  12] */	"Показать связанные элементы^ES^E3^S^32617"
 /* [  13] */	"Заполнение изменений на макетах^T^D2^EL^32619"
 /* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
-/* [  15] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  16] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
-/* [  17] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
+/* [  15] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
+/* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
+/* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 'STR#' 30502 "Strings for the Menu" {
@@ -79,9 +81,9 @@
 /* [  12] */	"Показать связанные элементы"
 /* [  13] */	"Заполнение изменений на макетах"
 /* [  14] */	"Привязать элементы к выделенному"
-/* [  15] */	"Построить профиль по линии"
-/* [  16] */	"Выронять выделенные чертежи"
-/* [  17] */	"Ведомость отделки"
+/* [  15] */	"Ведомость отделки"
+/* [  16] */	"Построить профиль по линии"
+/* [  17] */	"Выронять выделенные чертежи"
 }
 
 
@@ -115,13 +117,27 @@
 /* [  25] */	"ЮВ"
 /* [  26] */	"В"
 /* [  27] */	"СВ"
-
 /* [  28] */	"Изм"
 /* [  29] */	"Зам"
 /* [  30] */	"Нов"
 /* [  31] */	"Аннул"
 /* [  32] */	"Суммирование выделенных элементов"
 /* [  33] */	"рви"
+
+/* [  34] */	"Связанные элементы не найдены"
+/* [  35] */	"Отсутствуют доступные свойства с описанием Sync_GUID"
+/* [  36] */	"Свойства с описанием Sync_GUID найдены, но их значения пустые"
+/* [  37] */	"находятся на другом этаже"
+/* [  38] */	"находятся на скрытых слоях/фильтрах"
+/* [  39] */	"Найдено связанных элементов: "
+/* [  40] */	"Связанные элементы найдены, но в текущем виде недоступны"
+/* [  41] */	"Часть связанных элементов не видна"
+/* [  42] */	"Правила спецификации не найдены"
+/* [  43] */	"Свойства/параметры для чтения не найдены"
+/* [  44] */	"Свойства/параметры для записи не найдены"
+/* [  45] */	"Создание элементов не требуется"
+/* [  46] */	"Не удалось найти параметры/свойства, указанные в правиле"
+/* [  47] */	"Создание элементов отделки"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -142,9 +158,10 @@
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Create subelements^E3^32618"
-/* [  12] */	"Show subelements^ES^E3^S^32617"
+/* [  12] */	"Select linked elements^ES^E3^S^32617"
 /* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Set subelements^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  14] */	"Set link to an element^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
 }
 
 'STR#' 33502 "Strings for the Menu" {
@@ -160,9 +177,10 @@
 /* [  9] */		"Sum the selections"
 /* [  10] */	"Run the script for the parameters of the selections"
 /* [  11] */	"Create subelements"
-/* [  12] */	"Show subelements"
+/* [  12] */	"Select linked elements"
 /* [  13] */	"Process changes on layouts (RU_GOST)"
-/* [  14] */	"Set subelements"
+/* [  14] */	"Set link to an element"
+/* [  15] */	"Create finishing elements for the zones"
 }
 
 'STR#' 31500 "Strings for the Menu" {
@@ -180,10 +198,10 @@
 /* [  11] */	"Create subelements^E3^32618"
 /* [  12] */	"Show subelements^ES^E3^S^32617"
 /* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Set subelements^E3^ES^EE^ED^EW^EL^S^R^T^32620"
-/* [  15] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  16] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
-/* [  17] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
+/* [  14] */	"Set link to an element^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
+/* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
+/* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 
@@ -201,11 +219,11 @@
 /* [  10] */	"Run the script for the parameters of the selections"
 /* [  11] */	"Create subelements"
 /* [  12] */	"Show element parents"
-/* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Set subelements"
-/* [  15] */	"Построить профиль по линии"
-/* [  16] */	"Выронять выделенные чертежи"
-/* [  17] */	"Ведомость отделки"
+/* [  13] */	"Process changes on layouts (RU_GOST)"
+/* [  14] */	"Set link to an element"
+/* [  15] */	"Create finishing elements for the zones"
+/* [  16] */	"Построить профиль по линии"
+/* [  17] */	"Выронять выделенные чертежи"
 }
 
 
@@ -246,6 +264,20 @@
 /* [  31] */	"Аннул"
 /* [  32] */	"Sum the selections"
 /* [  33] */	"рви"
+/* [  34] */	"Related items were not found"
+/* [  35] */	"There are no available properties with the Sync_GUID description"
+/* [  36] */	"Properties with the Sync_GUID description were found, but their values are empty"
+/* [  37] */	"are on another floor"
+/* [  38] */	"located on hidden layers/filters"
+/* [  39] */	"Related elements found: "
+/* [  40] */	"Related elements have been found, but are not available in their current form"
+/* [  41] */	"Some of the related elements are not visible"
+/* [  42] */	"Specification rules not found"
+/* [  43] */	"Read properties/parameters not found"
+/* [  44] */	"Properties/parameters for writing were not found"
+/* [  45] */	"Creation of elements is not required"
+/* [  46] */	"The parameters/properties specified in the rule could not be found"
+/* [  47] */	"Create finishing elements for the zones"
 }
 
 'GICN' 32500 "Sync" {

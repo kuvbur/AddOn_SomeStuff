@@ -24,7 +24,7 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules)
     error = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (API_ObjectID, APIVarId_Generic, API_PropertyDefinitionFilter_UserDefined, definitions);
 #endif
     if (error != NoError) {
-        msg_rep ("Spec::GetRuleFromDefaultElem", "ACAPI_Element_GetPropertyDefinitionsOfDefaultElem", error, APINULLGuid, false);
+        msg_rep ("Spec::GetRuleFromDefaultElem", "ACAPI_Element_GetPropertyDefinitionsOfDefaultElem", error, APINULLGuid);
         return false;
     }
     for (UInt32 i = 0; i < definitions.GetSize (); i++) {
@@ -132,7 +132,9 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             if (err == NoError) flagfindspec = true;
         }
         if (!flagfindspec) {
-            msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid, true);
+            msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid);
+            GS::UniString SpecRuleNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
+            ACAPI_WriteReport (SpecRuleNotFoundString, true);
             return APIERR_GENERAL;
         }
     }
@@ -145,11 +147,15 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     GetParamToReadFromRule (rules, propertyParams, paramToRead, paramToWrite);
     // TODO Добавить сообщения об ошибке
     if (paramToRead.IsEmpty ()) {
-        msg_rep ("Spec::SpecArray", "Parameters for read not found", APIERR_GENERAL, APINULLGuid, true);
+        msg_rep ("Spec::SpecArray", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
+        GS::UniString SpecRuleReadFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecRuleReadFoundString, true);
         return APIERR_GENERAL;
     }
     if (paramToWrite.IsEmpty ()) {
-        msg_rep ("Spec::SpecArray", "Parameters for write not found", APIERR_GENERAL, APINULLGuid, true);
+        msg_rep ("Spec::SpecArray", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
+        GS::UniString SpecWriteNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecWriteNotFoundString, true);
         return APIERR_GENERAL;
     }
     subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
@@ -216,6 +222,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #endif
     if (elementstocreate.IsEmpty ()) {
         msg_rep ("Spec::SpecArray", "Elements list empty", APIERR_GENERAL, APINULLGuid);
+        GS::UniString SpecEmptyListdString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecEmptyListdId, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecEmptyListdString, true);
         return APIERR_GENERAL;
     }
     Point2D startpos;
@@ -244,11 +252,12 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
 #endif
         guidArraysync.Push (elemGuid);
     }
+    SyncArray (syncSettings, guidArraysync, systemdict, propertyParams);
     finish = clock ();
     duration += (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", n_elements) + time;
-    SyncArray (syncSettings, guidArraysync, systemdict, propertyParams);
+    msg_rep (funcname, intString, err, APINULLGuid);
     return err;
 }
 
@@ -535,9 +544,11 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
             }
         }
         notfound_paramname = "Error - " + notfound_paramname;
-        msg_rep ("Spec::GetElementsForRule", notfound_paramname, APIERR_BADINDEX, APINULLGuid, true);
+        msg_rep ("Spec::GetElementsForRule", notfound_paramname, APIERR_BADINDEX, APINULLGuid);
         n_elements = 0;
         elements.Clear ();
+        GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecNotFoundParametersString, true);
     }
     if (!not_found_unic.IsEmpty ()) {
         GS::UniString not_found_unic_str = "";
