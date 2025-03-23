@@ -1608,11 +1608,13 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
 #endif
             count_all++;
             if (!isvisible) {
+                selNeigs.PushNew (guid);
                 count_inv++;
                 continue;
             }
             if (isfloorplan) {
                 if (!ACAPI_Element_Filter (guid, APIFilt_OnActFloor)) {
+                    selNeigs.PushNew (guid);
                     count_otherplan++;
                     continue;
                 }
@@ -1626,10 +1628,12 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
 #endif
                 if (err == NoError) {
                     if (elementdatabaseInfo.databaseUnId != homedatabaseInfo.databaseUnId) {
+                        selNeigs.PushNew (guid);
                         count_otherplan++;
                         continue;
                     }
                 } else {
+                    selNeigs.PushNew (guid);
                     count_otherplan++;
                     msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
@@ -1667,10 +1671,10 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     }
 #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Selection_Select (selNeigs, true);
-    if (err == NoError) ACAPI_View_ZoomToSelected ();
+    if (err == NoError && errmsg.IsEmpty ()) ACAPI_View_ZoomToSelected ();
 #else
     err = ACAPI_Element_Select (selNeigs, true);
-    if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
+    if (err == NoError && errmsg.IsEmpty ()) ACAPI_Automate (APIDo_ZoomToSelectedID);
 #endif
 #else
     fmane = fmane + " not work in AC22";
@@ -1790,7 +1794,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
     }
     for (auto& cIt : paramToRead) {
 #if defined(AC_28)
-        API_Guid subguid = cItt.key;
+        API_Guid subguid = cIt.key;
         ParamDictValue params = cIt.value;
 #else
         API_Guid subguid = *cIt.key;

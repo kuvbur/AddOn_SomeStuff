@@ -6,7 +6,12 @@
 namespace AutoFunc
 
 {
-
+#if defined(AC_22) || defined(AC_23)
+void RoomBook ()
+{
+    ACAPI_WriteReport ("Function not work in AC22 and AC23", true);
+}
+#else
 RoomEdges* reducededges = nullptr; // Указатель для обработки полигонов зоны
 ClassOtd cls;
 
@@ -383,7 +388,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
         openinginwall.Add (wallguid, openings);
     }
     Param_AddUnicGUIDByType (elGuid, API_WindowID, guidselementToRead);
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен
@@ -875,14 +880,14 @@ void Param_SetToBase (OtdRooms & roomsinfo, ParamDictElement & paramToRead, Unic
             Int32 ncomp = base_composite.composite.GetSize ();
             bool flag_core = false;
             if (otdw.base_flipped) {
-                for (Int32 j = ncomp - 1; j >= 0; j = j--) {
+                for (Int32 j = ncomp - 1; j >= 0; j--) {
                     if (!flag_core) {
                         otdcpmpoosite.Push (base_composite.composite[j]);
                         if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
                     }
                 }
             } else {
-                for (Int32 j = 0; j < ncomp; j = j++) {
+                for (Int32 j = 0; j < ncomp; j++) {
                     if (!flag_core) {
                         otdcpmpoosite.Push (base_composite.composite[j]);
                         if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
@@ -2011,4 +2016,5 @@ void Param_AddProperty (const API_Guid & elGuid, ParamDictValue & propertyParams
         }
     }
 }
+#endif
 }
