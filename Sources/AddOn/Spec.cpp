@@ -566,6 +566,10 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
         }
         not_found_unic_str = "Unic parameters not found - " + not_found_unic_str;
         msg_rep ("Spec::GetElementsForRule", not_found_unic_str, APIERR_BADINDEX, APINULLGuid);
+        if (n_elements > 0) {
+            GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
+            ACAPI_WriteReport (SpecNotFoundParametersString, true);
+        }
     }
     return n_elements;
 }
@@ -776,7 +780,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
         } else {
             ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
         }
-    }
+        }
 #endif
 #if defined AC_26 || defined AC_27 || defined AC_28
     element.header.type.typeID = API_ObjectID;
@@ -792,7 +796,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
         msg_rep ("Spec::PlaceElements", "ACAPI_Element_GetDefaults", err, APINULLGuid);
     }
     return err;
-}
+    }
 // --------------------------------------------------------------------
 // Получение размеров элемента для размещения по сетке
 // Возвращает истину, если был найден параметр somestuff_spec_hrow - в этом случае элементы размещаются сверху вниз
@@ -978,7 +982,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-        }
+            }
 
         return NoError;
     });

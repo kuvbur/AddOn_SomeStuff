@@ -1679,7 +1679,8 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
     slabelement.slab.botMat.overridden = true;
 #endif
     slabelement.slab.modelElemStructureType = API_BasicStructure;
-    ACAPI_CallUndoableCommand ("Create Element", [&]() -> GSErrCode {
+    GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
+    ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) ACAPI_Element_Delete (deletelist);
         for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28)
