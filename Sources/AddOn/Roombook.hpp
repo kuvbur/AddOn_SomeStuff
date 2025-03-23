@@ -132,8 +132,8 @@ typedef struct
     GS::Array<API_Guid> ceilslab; // Перекрытия в уровне потолка
     GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
     GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
-    bool has_ceil = true;
-    bool has_floor = true;
+    bool has_ceil = false;
+    bool has_floor = false;
     GS::UniString tip_pot = "";
     GS::UniString tip_pol = "";
     API_Guid zone_guid = APINULLGuid; // GUID базового элемента

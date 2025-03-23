@@ -159,10 +159,15 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
 void SyncShowSubelement (const SyncSettings& syncSettings);
 
 // --------------------------------------------------------------------
+// Получение словаря с GUID дочерних объектов для массива объектов
+// --------------------------------------------------------------------
+bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, UnicGuid>& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode);
+
+// --------------------------------------------------------------------
 // Получение словаря с GUID родительских объектов для массива объектов
 // --------------------------------------------------------------------
-bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuid& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix);
+bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, UnicGuid>& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode);
 
-bool SyncGetSubelementProperty (const GS::Array<API_Guid>& guidArray, ParamDictElement& paramToRead, ParamDictValue& propertyParams, const GS::UniString& suffix);
+bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictElement& paramToRead, ParamDictValue& propertyParams, const GS::UniString& suffix);
 
 #endif
