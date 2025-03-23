@@ -138,6 +138,7 @@
 /* [  45] */	"Создание элементов не требуется"
 /* [  46] */	"Не удалось найти параметры/свойства, указанные в правиле"
 /* [  47] */	"Создание элементов отделки"
+/* [  48] */	"не существуют (возможно, удалены)"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -278,6 +279,7 @@
 /* [  45] */	"Creation of elements is not required"
 /* [  46] */	"The parameters/properties specified in the rule could not be found"
 /* [  47] */	"Create finishing elements for the zones"
+/* [  48] */	"not exsist"
 }
 
 'GICN' 32500 "Sync" {
