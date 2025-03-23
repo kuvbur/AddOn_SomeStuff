@@ -1,5 +1,4 @@
 //------------ kuvbur 2022 ------------
-#ifdef EXTNDVERSION
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Roombook.hpp"
@@ -384,7 +383,7 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
         openinginwall.Add (wallguid, openings);
     }
     Param_AddUnicGUIDByType (elGuid, API_WindowID, guidselementToRead);
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен
@@ -2012,6 +2011,4 @@ void Param_AddProperty (const API_Guid & elGuid, ParamDictValue & propertyParams
         }
     }
 }
-
 }
-#endif
