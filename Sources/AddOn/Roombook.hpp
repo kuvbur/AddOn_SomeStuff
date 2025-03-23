@@ -140,6 +140,7 @@ typedef struct
     GS::UniString tip_pot = "";
     GS::UniString tip_pol = "";
     API_Guid zone_guid = APINULLGuid; // GUID базового элемента
+    bool isValid = true; // Зона считана нормально
 } OtdRoom; // Структура для хранения информации о зоне
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
@@ -160,6 +161,12 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // Получение информации из зоны о полгионах и находящейся в ней элементах
 // -----------------------------------------------------------------------------
 bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& roominfo, UnicElementByType& elementToRead, GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone);
+
+
+// -----------------------------------------------------------------------------
+// Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
+// -----------------------------------------------------------------------------
+void FindSlabsInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones);
 
 // -----------------------------------------------------------------------------
 // Чтение данных об одном проёме
