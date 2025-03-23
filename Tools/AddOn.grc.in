@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ kuvbur@gmail.com https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 32500 "Strings for the Menu" {
@@ -143,7 +143,7 @@
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ kuvbur@gmail.com https://github.com/kuvbur/AddOn_SomeStuff"
 }
 
 'STR#' 33500 "Strings for the Menu" {
