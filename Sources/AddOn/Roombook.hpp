@@ -5,6 +5,9 @@
 #include    "Helpers.hpp"
 namespace AutoFunc
 {
+#if defined(AC_22) || defined(AC_23)
+void RoomBook ();
+#else
 const double min_dim = 0.0001; // Минимальный размер элемента
 const double otd_thickness = 0.001;
 typedef struct
@@ -271,7 +274,7 @@ void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& gui
 void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead);
 
 void Param_AddProperty (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict);
-
+#endif
 }
 
 #endif
