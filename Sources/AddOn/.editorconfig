@@ -2,6 +2,7 @@
 root = true
 
 [*.{c++,cc,cpp,cppm,cxx,h,h++,hh,hpp,hxx,inl,ipp,ixx,tlh,tli,grc}]
+cpp_generate_documentation_comments = doxygen_triple_slash
 end_of_line = crlf
 charset = utf-8
 trim_trailing_whitespace = true
@@ -16,7 +17,7 @@ cpp_indent_case_labels = true
 cpp_indent_case_contents_when_block = true
 cpp_indent_lambda_braces_when_parameter = false
 cpp_indent_goto_labels = one_left
-cpp_indent_preprocessor = leftmost_column
+cpp_indent_preprocessor = none
 cpp_indent_access_specifiers = false
 cpp_indent_namespace_contents = false
 cpp_indent_preserve_comments = false
@@ -65,3 +66,12 @@ cpp_space_around_assignment_operator = insert
 cpp_space_pointer_reference_alignment = left
 cpp_space_around_ternary_operator = insert
 cpp_wrap_preserve_blocks = one_liners
+cpp_include_cleanup_add_missing_error_tag_type = warning
+cpp_include_cleanup_remove_unused_error_tag_type = dimmed
+cpp_include_cleanup_optimize_unused_error_tag_type = warning
+cpp_include_cleanup_sort_after_edits = true
+cpp_sort_includes_error_tag_type = warning
+cpp_sort_includes_priority_case_sensitive = false
+cpp_sort_includes_priority_style = quoted
+cpp_includes_style = default
+cpp_includes_use_forward_slash = true
