@@ -2040,7 +2040,6 @@ GS::UniString NumToString (const double& var, const FormatString& stringformat)
 }
 }
 
-
 GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geometry::Polygon2D & poly)
 {
     GSErrCode err = NoError;

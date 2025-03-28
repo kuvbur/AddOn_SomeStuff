@@ -35,6 +35,7 @@
 #include "Polygon2DData.h"
 #include "Polygon2DDataConv.h"
 #include "Sector2DData.h"
+#include <APIdefs_LibraryParts.h>
 #ifdef AC_22
 #define API_AttributeIndex short
 #define Vector2D Vector
@@ -57,7 +58,8 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
@@ -77,6 +79,16 @@ typedef struct
     bool forceRaw = false; // Использовать неокруглённое значение для записи
     GS::UniString delimetr = ",";
 } FormatString;
+
+typedef struct
+{
+    GS::Array <double> arr_num;
+    GS::Array <GS::UniString> arr_str;
+    Int32 dim1 = 1;
+    Int32 dim2 = 1;
+    double num = 0;
+    GS::UniString str = "";
+} GDLParam; // Структура для чтения/записи в объекты
 
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;

@@ -73,6 +73,15 @@ typedef struct
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
 } OtdSlab;
 
+//typedef struct
+//{
+//    Geometry::Polygon2D poly;
+//    double a;
+//    double b;
+//    double c;
+//    double d;
+//} OtdGable;
+
 typedef struct
 {
     double height = 0; // Высота стены-отделки
@@ -131,6 +140,7 @@ typedef struct
     GS::UniString rawname_down = "";
     GS::UniString rawname_column = "";
     OtdSlab poly; // Полгон зоны для полов/потолков
+    //GS::Array <OtdGable> gables;
     GS::Array<API_Guid> floorslab; // Перекрытия в уровне пола
     GS::Array<API_Guid> ceilslab; // Перекрытия в уровне потолка
     GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
@@ -166,7 +176,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
 // -----------------------------------------------------------------------------
 // Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
 // -----------------------------------------------------------------------------
-void FindSlabsInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones);
+void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones);
 
 // -----------------------------------------------------------------------------
 // Чтение данных об одном проёме
@@ -257,8 +267,20 @@ bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 // -----------------------------------------------------------------------------
 bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
+bool GetDefultWall (API_Element& wallelement);
+
+bool GetDefultWindow (API_Element& windowelement, API_ElementMemo& memo);
+
+bool GetDefultSlab (API_Element& slabelement);
+
 void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist);
 void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElementByType& subelementByparent);
+
+void Draw_Object (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElementByType& subelementByparent);
+
+bool GetDefultObject (API_Element& obojelement, API_ElementMemo& memo);
+
+void Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElementByType& subelementByparent);
 
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
@@ -268,6 +290,14 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
 void Draw_Window (API_Element& wallelement, OtdOpening& op, UnicElementByType& subelementByparent);
 
 void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+
+void Class_SetClass (const OtdWall& op, const ClassificationFunc::ClassificationDict& finclass);
+
+void Class_SetClass (const OtdOpening& op, const ClassificationFunc::ClassificationDict& finclass);
+
+void Class_SetClass (const OtdSlab& op, const ClassificationFunc::ClassificationDict& finclass);
+
+API_Guid Class_GetClassGuid (const API_ElemTypeID& base_type, const ClassificationFunc::ClassificationDict& finclass);
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
