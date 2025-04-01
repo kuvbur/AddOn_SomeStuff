@@ -11,11 +11,11 @@ Stories GetStories ()
 {
     Stories stories;
     API_StoryInfo storyInfo = {};
-#if defined AC_27 || defined AC_28
+    #if defined AC_27 || defined AC_28
     GSErrCode err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
-#else
+    #else
     GSErrCode err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);
-#endif
+    #endif
     if (err == NoError) {
         const short numberOfStories = storyInfo.lastStory - storyInfo.firstStory + 1;
         for (short i = 0; i < numberOfStories; ++i) {
@@ -146,65 +146,65 @@ GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 
 void DBprnt (GS::UniString msg, GS::UniString reportString)
 {
-#if defined(TESTING)
+    #if defined(TESTING)
     if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") || reportString.Contains ("ERROR")) {
-#if defined(AC_22)
+        #if defined(AC_22)
         DBPrintf ("== ERROR == ");
-#else
+        #else
         DBPrint ("== ERROR == ");
-#endif
+        #endif
     }
-#if defined(AC_22)
+    #if defined(AC_22)
     DBPrintf ("== SMSTF == ");
-#else
+    #else
     DBPrint ("== SMSTF == ");
-#endif
+    #endif
     std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
-#if defined(AC_22)
+    #if defined(AC_22)
     DBPrintf (var_str.c_str ());
-#else
+    #else
     DBPrint (var_str.c_str ());
-#endif
+    #endif
     if (!reportString.IsEmpty ()) {
         std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
-#if defined(AC_22)
+        #if defined(AC_22)
         DBPrintf (" : ");
         DBPrintf (reportString_str.c_str ());
-#else
+        #else
         DBPrint (" : ");
         DBPrint (reportString_str.c_str ());
-#endif
+        #endif
     }
-#if defined(AC_22)
+    #if defined(AC_22)
     DBPrintf ("\n");
-#else
+    #else
     DBPrint ("\n");
-#endif
-#else
+    #endif
+    #else
     UNUSED_VARIABLE (msg);
     UNUSED_VARIABLE (reportString);
-#endif
+    #endif
 }
 
 void DBtest (bool usl, GS::UniString reportString, bool asserton)
 {
-#if defined(TESTING)
+    #if defined(TESTING)
     if (usl) {
         DBprnt (reportString, "ok");
     } else {
         DBprnt ("=== ERROR IN TEST ===", reportString);
     }
     if (asserton) assert (usl);
-#else
+    #else
     UNUSED_VARIABLE (usl);
     UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
-#endif
+    #endif
 }
 
 void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton)
 {
-#if defined(TESTING)
+    #if defined(TESTING)
     GS::UniString out = a + " = " + b;
     if (a.IsEqual (b)) {
         reportString = "test " + reportString + " ok";
@@ -214,17 +214,17 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
         DBprnt (out, reportString);
     }
     if (asserton) assert (a.IsEqual (b));
-#else
+    #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
     UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
-#endif
+    #endif
 }
 
 void DBtest (double a, double b, GS::UniString reportString, bool asserton)
 {
-#if defined(TESTING)
+    #if defined(TESTING)
     GS::UniString out = GS::UniString::Printf ("%d = %d", a, b);
     if (is_equal (a, b)) {
         reportString = "test " + reportString + " ok";
@@ -234,12 +234,12 @@ void DBtest (double a, double b, GS::UniString reportString, bool asserton)
         DBprnt (out, reportString);
     }
     if (asserton) assert (is_equal (a, b));
-#else
+    #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
     UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
-#endif
+    #endif
 }
 
 
@@ -248,16 +248,16 @@ void DBtest (double a, double b, GS::UniString reportString, bool asserton)
 // -----------------------------------------------------------------------------
 Int32 isEng ()
 {
-#ifdef EXTNDVERSION
+    #ifdef EXTNDVERSION
     return 0;
-#endif
+    #endif
     GSErrCode err = NoError;
     API_ServerApplicationInfo AppInfo;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_AddOnIdentification_Application (&AppInfo);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
-#endif // AC_27
+    #endif // AC_27
     if (err != NoError) return 0;
     if (!AppInfo.language.IsEqual ("RUS")) return 1000;
     return 0;
@@ -409,21 +409,21 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             case APIERR_NOACCESSRIGHT:
                 error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
                 break;
-#if defined(AC_22) || defined(AC_23)
+                #if defined(AC_22) || defined(AC_23)
             case APIERR_BADPROPERTYFORELEM:
                 error_type = "The property for the passed element or attribute is not available.";
                 break;
             case APIERR_BADCLASSIFICATIONFORELEM:
                 error_type = "Can’t set the classification for the passed element or attribute.";
                 break;
-#else
+                #else
             case APIERR_BADPROPERTY:
                 error_type = "The property for the passed element or attribute is not available.";
                 break;
             case APIERR_BADCLASSIFICATION:
                 error_type = "Can’t set the classification for the passed element or attribute.";
                 break;
-#endif // AC_22 or AC_23
+                #endif // AC_22 or AC_23
             case APIERR_MODULNOTINSTALLED:
                 error_type = "The referenced add - on is not installed.For more details see the Communication Manager.";
                 break;
@@ -516,15 +516,15 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
             GS::UniString elemName;
 
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
-#else
-#ifdef AC_26
+                #else
+            #ifdef AC_26
             if (ACAPI_Goodies_GetElemTypeName (elem_head.type, elemName) == NoError) {
-#else
+                #else
             if (ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) elem_head.typeID, &elemName) == NoError) {
-#endif
-#endif
+                #endif
+                #endif
                 error_type = error_type + " type:" + elemName;
             }
             API_Attribute layer;
@@ -542,9 +542,9 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     if (err != NoError) {
         msg = "== SMSTF ERR ==" + msg;
     }
-#if defined(TESTING)
+    #if defined(TESTING)
     DBprnt (msg);
-#endif
+    #endif
 }
 
 
@@ -561,20 +561,20 @@ void	MenuItemCheckAC (short itemInd, bool checked)
     itemRef.itemIndex = itemInd;
 
     itemFlags = 0;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
-#else
+    #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
-#endif
+    #endif
     if (checked)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
-#else
+    #else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
-#endif
+    #endif
     return;
 }
 
@@ -587,11 +587,11 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
     GSErrCode            err;
     API_SelectionInfo    selectionInfo;
     GS::UniString errorString = "Empty";
-#ifdef AC_22
+    #ifdef AC_22
     API_Neig** selNeigs;
-#else
+    #else
     GS::Array<API_Neig>  selNeigs;
-#endif
+    #endif
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, onlyEditable);
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
     if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
@@ -600,25 +600,25 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
         }
     }
     if (err != NoError) {
-#ifdef AC_22
+        #ifdef AC_22
         BMKillHandle ((GSHandle*) &selNeigs);
-#endif // AC_22
+        #endif // AC_22
         return GS::Array<API_Guid> ();
     }
     GS::Array<API_Guid> guidArray;
-#ifdef AC_22
+    #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
     for (USize i = 0; i < nSel; i++) {
         guidArray.Push ((*selNeigs)[i].guid);
     }
     BMKillHandle ((GSHandle*) &selNeigs);
-#else
+    #else
     for (const API_Neig& neig : selNeigs) {
 
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
     }
-#endif // AC_22
+    #endif // AC_22
     return guidArray;
 }
 
@@ -634,35 +634,35 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
         long time_start = clock ();
         GS::UniString subtitle ("working...");
         GS::Int32 nPhase = 1;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
         ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-#else
+        #else
         ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
-#endif
+        #endif
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
+            #else
             if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+            #endif
             function (guidArray[i]);
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
-#else
+            #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
-#endif
+            #endif
         }
         long time_end = clock ();
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
         msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         ACAPI_ProcessWindow_CloseProcessWindow ();
-#else
+        #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-#endif
+        #endif
     } else if (!assertIfNoSel) {
         function (APINULLGuid);
     }
@@ -682,11 +682,11 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
         msg_rep ("GetTypeByGUID", "", err, elemGuid);
         return err;
     }
-#if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined AC_26 || defined AC_27 || defined AC_28
     elementType = elem_head.type.typeID;
-#else
+    #else
     elementType = elem_head.typeID;
-#endif
+    #endif
     return err;
 }
 
@@ -698,11 +698,11 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 {
     GS::UniString	ustr;
     GSErrCode	err = NoError;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Element_GetElemTypeName (elemType, ustr);
-#else
+    #else
     err = ACAPI_Goodies_GetElemTypeName (elemType, ustr);
-#endif
+    #endif
     if (err == NoError) {
         CHTruncate (ustr.ToCStr (), elemStr, ELEMSTR_LEN - 1);
         return true;
@@ -735,7 +735,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
     if (definision.name.Contains ("ync_name")) {
         name = definision.name;
     } else {
-#if defined(AC_28)
+        #if defined(AC_28)
         name = GetPropertyNameByGUID (definision.guid);
         if (!name.IsEmpty ()) {
             if (definision.name.Contains (CharENTER)) {
@@ -746,7 +746,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
             }
             return NoError;
         }
-#endif
+        #endif
         API_PropertyGroup group;
         group.guid = definision.groupGuid;
         error = ACAPI_Property_GetPropertyGroup (group);
@@ -948,11 +948,11 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
     userid = 0;
     API_ProjectInfo projectInfo = {};
     GSErrCode err = NoError;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_ProjectOperation_Project (&projectInfo);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
-#endif
+    #endif
     if (err == NoError) {
         isteamwork = projectInfo.teamwork;
         userid = projectInfo.userId;
@@ -980,9 +980,9 @@ bool EvalExpression (GS::UniString & unistring_expression)
     GS::UniString baddelim = ",";
     GS::UniString delim_test = GS::UniString::Printf ("%.3f", 3.1456);
     if (delim_test.Contains (baddelim)) {
-#if defined(TESTING)
+        #if defined(TESTING)
         DBprnt ("EvalExpression", "delimetr change");
-#endif
+        #endif
         baddelim = ".";
         delim = ",";
     }
@@ -1005,11 +1005,11 @@ bool EvalExpression (GS::UniString & unistring_expression)
         const T result = expression.value ();
         rezult_txt = "";
         if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
-#if defined(TESTING)
+        #if defined(TESTING)
         if (std::isnan (result)) {
             DBprnt ("err Formula is nan", part_clean);
         }
-#endif
+        #endif
         unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
         if (expression_old.IsEqual (unistring_expression)) flag_change = false;
     }
@@ -1027,20 +1027,20 @@ bool MenuInvertItemMark (short menuResID, short itemIndex)
     itemRef.menuResID = menuResID;
     itemRef.itemIndex = itemIndex;
     itemFlags = 0;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
-#else
+    #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
-#endif
+    #endif
     if ((itemFlags & API_MenuItemChecked) == 0)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
-#else
+    #else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
-#endif
+    #endif
     return (bool) ((itemFlags & API_MenuItemChecked) != 0);
 }
 
@@ -1100,9 +1100,9 @@ GSCharCode GetCharCode (const GS::UniString & instring)
 GSCharCode GetCharCode (const GS::UniString & instring, bool& findecode)
 {
     findecode = true;
-#ifdef EXTNDVERSION
+    #ifdef EXTNDVERSION
     return CC_Cyrillic;
-#endif
+    #endif
     if (ProbeCharCode (instring, CC_Cyrillic)) return CC_Cyrillic;
     if (ProbeCharCode (instring, CC_Korean)) return CC_Korean;
     if (ProbeCharCode (instring, CC_WestEuropean)) return CC_WestEuropean;
@@ -1185,11 +1185,11 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 // -----------------------------------------------------------------------------
 void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & elem_head, API_ElemTypeID & elemType, API_Guid & elemGuid)
 {
-#if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined AC_26 || defined AC_27 || defined AC_28
     switch (elem_head.type.typeID) {
-#else
+        #else
     switch (elem_head.typeID) {
-#endif // AC_26
+        #endif // AC_26
         case API_CurtainWallPanelID:
             elemGuid = element.cwPanel.symbolID;
             elemType = API_ObjectID;
@@ -1205,11 +1205,11 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
         default:
             UNUSED_VARIABLE (element);
             elemGuid = elem_head.guid;
-#if defined AC_26 || defined AC_27 || defined AC_28
+            #if defined AC_26 || defined AC_27 || defined AC_28
             elemType = elem_head.type.typeID;
-#else
+            #else
             elemType = elem_head.typeID;
-#endif
+            #endif
             break;
     }
     return;
@@ -1256,47 +1256,47 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
         return GetGDLParametersFromMemo (elemGuid, params);
     }
 
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     if (elemType == API_ExternalElemID) {
         return GetGDLParametersFromMemo (elemGuid, params);
     }
-#endif
+    #endif
     apiOwner.guid = elemGuid;
-#if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined AC_26 || defined AC_27 || defined AC_28
     apiOwner.type.typeID = elemType;
-#else
+    #else
     apiOwner.typeID = elemType;
-#endif
-#if defined(AC_27) || defined(AC_28)
+    #endif
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_OpenParameters (&apiOwner);
-#else
+    #else
     err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
     }
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
-#else
+    #else
     err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryPart_CloseParameters ();
-#else
+        #else
         err = ACAPI_Goodies (APIAny_CloseParametersID);
-#endif
+        #endif
         if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
         return err;
     }
     params = apiParams.params;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_CloseParameters ();
-#else
+    #else
     err = ACAPI_Goodies (APIAny_CloseParametersID);
-#endif
+    #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
 }
@@ -1324,11 +1324,11 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
     const GSSize nPanels = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof (API_CWPanelType);
     if (nPanels > 0) {
         for (Int32 idx = 0; idx < nPanels; ++idx) {
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             err = ACAPI_CurtainWall_IsCWPanelDegenerate (&memo.cWallPanels[idx].head.guid, &isDegenerate);
-#else
+            #else
             err = ACAPI_Database (APIDb_IsCWPanelDegenerateID, (void*) (&memo.cWallPanels[idx].head.guid), &isDegenerate);
-#endif
+            #endif
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
@@ -1494,11 +1494,11 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_UserInput_GetPoint (&pointInfo);
-#else
+    #else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         return false;
     }
@@ -1515,11 +1515,11 @@ API_ElemType Neig_To_ElemID (API_NeigID neigID)
 {
     API_ElemType	type;
     GSErrCode		err;
-#if defined (AC_26)
+    #if defined (AC_26)
     err = ACAPI_Goodies_NeigIDToElemType (neigID, type);
-#else
+    #else
     err = ACAPI_Element_NeigIDToElemType (neigID, type);
-#endif
+    #endif
     if (err != NoError)
         type = API_ZombieElemID;
 
@@ -1546,7 +1546,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
                           const API_Elem_Head * elemHead)
 {
     API_ElemTypeID typeID = API_ZombieElemID;
-#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_26)
     *neig = {};
     neig->guid = elemHead->guid;
     API_ElemType type = elemHead->type;
@@ -1556,7 +1556,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         ACAPI_Element_GetHeader (&elemHeadCopy);
         typeID = elemHeadCopy.type.typeID;
     }
-#else
+    #else
     BNZeroMemory (neig, sizeof (API_Neig));
     API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
     neig->guid = elemHead->guid;
@@ -1566,7 +1566,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         ACAPI_Element_GetHeader (elemHeadNonConst);
         typeID = elemHeadNonConst->typeID;
     }
-#endif
+    #endif
     switch (typeID) {
         case API_WallID:					neig->neigID = APINeig_Wall;				neig->inIndex = 1;	break;
         case API_ColumnID:					neig->neigID = APINeig_Colu;				neig->inIndex = 0;	break;
@@ -1654,11 +1654,11 @@ bool	ClickAnElem (const char* prompt,
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_UserInput_GetPoint (&pointInfo);
-#else
+    #else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         return false;
     }
@@ -1671,11 +1671,11 @@ bool	ClickAnElem (const char* prompt,
         pars.loc.y = pointInfo.pos.y;
         pars.z = 1.00E6;
         pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
-#else
+        #else
         err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
-#endif
+        #endif
         if (err == NoError) {
             elemHead.type = pars.type;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
@@ -1815,12 +1815,12 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
             }
         }
         stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
-#ifdef TESTING
+        #ifdef TESTING
         DBtest (!stringformat.Contains ('"'), "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat, false);
         DBtest (!stringformat.Contains ('>'), "GetFormatStringFromFormula : stringformat.Contains('>') " + stringformat, false);
         DBtest (!stringformat.Contains ('%'), "GetFormatStringFromFormula : stringformat.Contains('%') " + stringformat, false);
         DBtest (!stringformat.Contains ('}'), "GetFormatStringFromFormula : stringformat.Contains('}') " + stringformat, false);
-#endif
+        #endif
         stringformat.Trim ('"');
         stringformat.Trim ('>');
         stringformat.Trim ('%');
@@ -1887,17 +1887,17 @@ FormatStringDict GetFotmatStringForMeasureType ()
     FormatStringDict fdict = {};
     // Получаем данные об округлении и типе расчёта
     API_CalcUnitPrefs unitPrefs1;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
-#else
+    #else
     ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
-#endif
+    #endif
     API_WorkingUnitPrefs unitPrefs;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
-#else
+    #else
     ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
-#endif
+    #endif
     FormatString fstring = {};
     fstring.needRound = unitPrefs1.useDisplayedValues;
 
@@ -2122,11 +2122,11 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     if (type == API_ZombieAttrID) return false;
     double inx = 0;
     if (UniStringToDouble (name, inx)) {
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         attribinx = ACAPI_CreateAttributeIndex ((Int32) inx);
-#else
+        #else
         attribinx = (Int32) inx;
-#endif
+        #endif
         return true;
     } else {
         GSErrCode err = NoError;
@@ -2145,3 +2145,81 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
         return true;
     }
 }
+
+namespace GDLHelpers
+{
+bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
+{
+    const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
+    for (GSIndex ii = 0; ii < nParams; ++ii) {
+        API_AddParType& actParam = (*memo.params)[ii];
+        GS::UniString rawname = "{@gdl:" + GS::UniString (actParam.name).ToLowerCase () + "}";
+        if (!param.ContainsKey (rawname)) continue;
+        Param pp = param.Get (rawname);
+        if (actParam.typeMod == API_ParSimple) {
+            switch (actParam.typeID) {
+                case APIParT_LineTyp:
+                case APIParT_Profile:
+                case APIParT_BuildingMaterial:
+                case APIParT_FillPat:
+                case APIParT_Mater:
+                case APIParT_Boolean:
+                case APIParT_Integer:
+                case APIParT_PenCol:
+                case APIParT_Length:
+                case APIParT_RealNum:
+                case APIParT_ColRGB:
+                case APIParT_Intens:
+                case APIParT_Angle:
+                    actParam.value.real = pp.num;
+                    break;
+                case APIParT_CString:
+                    GS::ucscpy (actParam.value.uStr, pp.str.ToUStr (0, GS::Min (pp.str.GetLength (), (USize) API_UAddParStrLen)).Get ());
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            double** newArrHdl = nullptr;
+            double** origArrHdl = nullptr;
+            switch (actParam.typeID) {
+                case APIParT_LineTyp:
+                case APIParT_Profile:
+                case APIParT_BuildingMaterial:
+                case APIParT_FillPat:
+                case APIParT_Mater:
+                case APIParT_Boolean:
+                case APIParT_Integer:
+                case APIParT_PenCol:
+                case APIParT_Length:
+                case APIParT_RealNum:
+                case APIParT_ColRGB:
+                case APIParT_Intens:
+                case APIParT_Angle:
+                    if (actParam.dim1 != pp.dim1 || actParam.dim2 != pp.dim2) {
+                        actParam.dim1 = pp.dim1;
+                        actParam.dim2 = pp.dim2;
+                    }
+                    origArrHdl = (double**) actParam.value.array;
+                    newArrHdl = (double**) BMAllocateHandle (actParam.dim1 * actParam.dim2 * sizeof (double), ALLOCATE_CLEAR, 0);
+                    for (Int32 k = 0; k < actParam.dim1; k++)
+                        for (Int32 j = 0; j < actParam.dim2; j++)
+                            (*newArrHdl)[k * actParam.dim2 + j] = pp.arr_num[k * actParam.dim2 + j];
+                    BMKillHandle ((GSHandle*) &origArrHdl);
+                    actParam.value.array = (GSHandle) newArrHdl;
+                    break;
+                case APIParT_CString:
+                    break;
+                default:
+                    break;
+            }
+        }
+        param.Delete (rawname);
+        if (param.IsEmpty ()) {
+            return true;
+        }
+    }
+    return param.IsEmpty ();
+}
+}
+
