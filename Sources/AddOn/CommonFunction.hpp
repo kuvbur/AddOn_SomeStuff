@@ -80,16 +80,6 @@ typedef struct
     GS::UniString delimetr = ",";
 } FormatString;
 
-typedef struct
-{
-    GS::Array <double> arr_num;
-    GS::Array <GS::UniString> arr_str;
-    Int32 dim1 = 1;
-    Int32 dim2 = 1;
-    double num = 0;
-    GS::UniString str = "";
-} GDLParam; // Структура для чтения/записи в объекты
-
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
@@ -340,5 +330,24 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo& memo, Geomet
 GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D& polygon, API_Polygon& poly, API_ElementMemo& memo);
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID& type, API_AttributeIndex& attribinx);
+
+
+namespace GDLHelpers
+{
+typedef struct
+{
+    GS::Array <double> arr_num;
+    GS::Array <GS::UniString> arr_str;
+    Int32 dim1 = 1;
+    Int32 dim2 = 1;
+    double num = 0;
+    GS::UniString str = "";
+} Param; // Структура для чтения/записи в объекты
+
+typedef GS::HashTable <GS::UniString, Param> ParamDict;
+
+bool ParamToMemo (API_ElementMemo& memo, ParamDict& param);
+
+}
 
 #endif

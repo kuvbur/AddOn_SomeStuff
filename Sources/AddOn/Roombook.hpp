@@ -2,12 +2,28 @@
 #pragma once
 #if !defined (ROOMBOOK_HPP)
 #define	ROOMBOOK_HPP
+
 #include    "Helpers.hpp"
 namespace AutoFunc
 {
 #if defined(AC_22) || defined(AC_23)
 void RoomBook ();
 #else
+typedef enum
+{
+    NoSet = 0,
+    Wall_Main = 1,
+    Wall_Up = 2,
+    Wall_Down = 3,
+    Reveal_Main = 4,
+    Reveal_Up = 5,
+    Reveal_Down = 6,
+    Column = 7,
+    Floor = 8,
+    Ceil = 9,
+} TypeOtd;
+
+
 const double min_dim = 0.0001; // Минимальный размер элемента
 const double otd_thickness = 0.001;
 typedef struct
@@ -59,28 +75,31 @@ typedef struct
     double base_reveal_width = 0; // Глубина откоса базового проёма
     API_Guid base_guid = APINULLGuid; // GUID базового проёма
     API_Guid otd_guid = APINULLGuid; // GUID созданного проёма
+    GS::UniString favorite_name = "";
 } OtdOpening; // Проём в стене
+
+
+typedef struct
+{
+    short material = 0; // Индекс материала
+    GS::UniString smaterial = ""; // Имя материала
+    GS::UniString rawname = ""; // Имя свойства для записи
+    GS::UniString favorite = ""; // Имя избранного для создания элемента
+} OtdMaterial;
 
 typedef struct
 {
     Geometry::Polygon2D poly;
     double zBottom = 0;
     double height = 0;
-    short material = 0;
+    OtdMaterial material;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
     API_ElemTypeID otd_type = API_SlabID; // Каким элементом строить (стеной/балкой)
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
+    GS::UniString favorite_name = "";
+    TypeOtd type = NoSet;
 } OtdSlab;
-
-//typedef struct
-//{
-//    Geometry::Polygon2D poly;
-//    double a;
-//    double b;
-//    double c;
-//    double d;
-//} OtdGable;
 
 typedef struct
 {
@@ -94,9 +113,11 @@ typedef struct
     bool base_flipped = false; // Базовая конструкция отзеркалена (для чтения состава)
     GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
     GS::Array<OtdOpening> openings; // Проёмы в стене-отделке
-    short material = 0;
+    OtdMaterial material;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
     API_ElemTypeID otd_type = API_WallID; // Каким элементом строить (стеной/балкой)
+    GS::UniString favorite_name = "";
+    TypeOtd type = NoSet;
 } OtdWall; // Структура со стенами для отделки
 
 typedef struct
@@ -109,6 +130,14 @@ typedef struct
 
 typedef struct
 {
+    OtdMaterial om_up; // Отделка стен выше потолка
+    OtdMaterial om_main; // Отделка стен основная
+    OtdMaterial om_down; // Отделка низа стен
+    OtdMaterial om_column; // Отделка колонн
+    OtdMaterial om_reveals; // Отделка откосов
+    OtdMaterial om_floor; // Отделка пола
+    OtdMaterial om_ceil; // Отделка потолка
+    OtdMaterial om_zone; // Отделка из параметров зоны
     double height = 0; // Высота зоны
     double zBottom = 0; // Аболютная координата z низа
     GS::HashTable <API_Guid, GS::Array<Sector>> walledges; // Границы стен, не явяющихся границей зоны
@@ -118,44 +147,29 @@ typedef struct
     GS::Array<API_BeamPart> beamPart; // Участки балок в зоне
     GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
     GS::Array<API_Niche> niches; // Ниши в зоне
-    short material = 0; // Материал в параметрах зоны
-    short material_main = 0; // Основной материал отделки
-    short material_up = 0;
-    short material_down = 0;
-    short material_column = 0;
-    short material_reveal = 0;
-    short material_pot = 0;
-    GS::UniString smaterial = ""; // Материал в параметрах зоны
-    GS::UniString smaterial_main = ""; // Основной материал отделки
-    GS::UniString smaterial_up = "";
-    GS::UniString smaterial_down = "";
-    GS::UniString smaterial_column = "";
-    GS::UniString smaterial_reveal = "";
-    GS::UniString smaterial_pot = "";
     double height_down = 0; // Высота панелей
     double height_main = 0; // Высота основной отделки
     double height_up = 0; // Высота верхней части отделки
-    GS::UniString rawname_up = "";
-    GS::UniString rawname_main = "";
-    GS::UniString rawname_down = "";
-    GS::UniString rawname_column = "";
     OtdSlab poly; // Полгон зоны для полов/потолков
-    //GS::Array <OtdGable> gables;
     GS::Array<API_Guid> floorslab; // Перекрытия в уровне пола
     GS::Array<API_Guid> ceilslab; // Перекрытия в уровне потолка
     GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
     GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
-    bool has_ceil = false;
-    bool has_floor = false;
+    bool has_ceil = true;
+    bool has_floor = true;
     GS::UniString tip_pot = "";
     GS::UniString tip_pol = "";
     API_Guid zone_guid = APINULLGuid; // GUID базового элемента
     bool isValid = true; // Зона считана нормально
 } OtdRoom; // Структура для хранения информации о зоне
+
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
 typedef GS::HashTable<API_ElemTypeID, UnicElement> UnicElementByType;
 typedef GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> UnicGUIDByType;
+
+typedef GS::HashTable<GS::UniString, double> OtdMaterialAreaDict;
+typedef GS::HashTable<TypeOtd, OtdMaterialAreaDict> OtdMaterialAreaDictByType;
 
 // -----------------------------------------------------------------------------
 // Запись в зону информации об отделке
@@ -248,7 +262,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo);
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, short& material, GS::UniString& smaterial);
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, OtdMaterial& material);
 
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
@@ -267,29 +281,37 @@ bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 // -----------------------------------------------------------------------------
 bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
-bool GetDefultWall (API_Element& wallelement);
-
-bool GetDefultWindow (API_Element& windowelement, API_ElementMemo& memo);
-
-bool GetDefultSlab (API_Element& slabelement);
-
 void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist);
-void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElementByType& subelementByparent);
 
-void Draw_Object (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElementByType& subelementByparent);
+void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
 
-bool GetDefultObject (API_Element& obojelement, API_ElementMemo& memo);
+void Draw_WallObject (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent);
 
-void Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, UnicElementByType& subelementByparent);
+bool GetDefult_WallObject (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
+
+void Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
+
+bool GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement);
+
+void Draw_Window (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent);
+
+bool GetDefult_Window (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& memo);
+
+void Draw_CeilFloor (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+
+void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+
+void Draw_SlabObject (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+
+bool GetDefult_SlabObject (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
+
+bool GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement);
+
 
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
 void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& propertyParams);
-
-void Draw_Window (API_Element& wallelement, OtdOpening& op, UnicElementByType& subelementByparent);
-
-void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
 void Class_SetClass (const OtdWall& op, const ClassificationFunc::ClassificationDict& finclass);
 
@@ -311,6 +333,9 @@ void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& gui
 void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead);
 
 void Param_AddProperty (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict);
+API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name);
+bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element);
+bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 #endif
 }
 

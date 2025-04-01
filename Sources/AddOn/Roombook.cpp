@@ -50,6 +50,7 @@ void RoomBook ()
             return;
         }
     }
+
     // Подготовка параметров
     ParamDictValue propertyParams; // Словарь общих параметров
     ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
@@ -161,7 +162,9 @@ void RoomBook ()
         #else
         OtdRoom& otd = *cIt->value;
         #endif
-        if (otd.isValid) zones.Push (otd.zone_guid);
+        if (otd.isValid) {
+            zones.Push (otd.zone_guid);
+        }
     }
     GS::HashTable<API_Guid, UnicGuid> exsistotdelements;
     int errcode;
@@ -193,6 +196,29 @@ void RoomBook ()
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep ("RoomBook", time, NoError, APINULLGuid);
+}
+
+void WriteOtdDataToRoom (OtdRoom& otd)
+{
+    //OtdMaterialByType dct;
+    //// Запись площади стен
+    //for (UInt32 i = 0; i < otd.otdwall.GetSize (); i++) {
+    //    OtdWall& otdw = otd.otdwall[i];
+    //    TypeOtd t = otdw.type;
+    //    double area = GetAreaOtdWall (otdw);
+    //    GS::UniString mat = otdw
+    //        if (!dct.ContainsKey (t)) {
+    //            OtdMaterial o;
+    //            dct.Add (t, o);
+    //        }
+    //    if (dct.ContainsKey (t)) {
+    //        if (dct.)
+    //    }
+    //}
+    //otd.rawname_up = param.rawName;
+    //otd.rawname_main = param.rawName;
+    //otd.rawname_down = param.rawName;
+    //otd.rawname_column = param.rawName;
 }
 
 // -----------------------------------------------------------------------------
@@ -263,9 +289,9 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     OtdSlab otdslab;
     ConstructPolygon2DFromElementMemo (zonememo, otdslab.poly);
     #if defined(AC_27) || defined(AC_28)
-    otdslab.material = zoneelement.zone.material.ToInt32_Deprecated ();
+    otdslab.material.material = zoneelement.zone.material.ToInt32_Deprecated ();
     #else
-    otdslab.material = zoneelement.zone.material;
+    otdslab.material.material = zoneelement.zone.material;
     #endif
     otdslab.base_type = API_ZoneID;
     otdslab.base_guid = zoneGuid;
@@ -327,9 +353,9 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     roominfo.zone_guid = zoneGuid;
     roominfo.isValid = flag;
     #if defined(AC_27) || defined(AC_28)
-    roominfo.material = zoneelement.zone.material.ToInt32_Deprecated ();
+    roominfo.om_zone.material = zoneelement.zone.material.ToInt32_Deprecated ();
     #else
-    roominfo.material = zoneelement.zone.material;
+    roominfo.om_zone.material = zoneelement.zone.material;
     #endif
     ACAPI_DisposeRoomRelationHdls (&relData);
     ACAPI_DisposeElemMemoHdls (&zonememo);
@@ -462,8 +488,9 @@ void ReadOneWall (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_
                     wallotd.base_flipped = is_fliped;
                     wallotd.begC = { walledge.c1.x, walledge.c1.y };
                     wallotd.endC = { walledge.c2.x, walledge.c2.y };
-                    wallotd.material = roominfo.material;
+                    wallotd.material = roominfo.om_zone;
                     wallotd.base_type = API_WallID;
+                    wallotd.type = Wall_Main;
                     roominfo.otdwall.Push (wallotd);
                     flag_find = true;
                 }
@@ -564,8 +591,9 @@ void ReadOneWall (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_
                     wallotd.base_flipped = is_fliped;
                     wallotd.begC = { walledge.c1.x, walledge.c1.y };
                     wallotd.endC = { walledge.c2.x, walledge.c2.y };
-                    wallotd.material = roominfo.material;
+                    wallotd.material = roominfo.om_main;
                     wallotd.base_type = API_WallID;
+                    wallotd.type = Wall_Main;
                     roominfo.otdwall.Push (wallotd);
                     flag_find = true;
                 }
@@ -648,8 +676,9 @@ void ReadOneColumn (const Stories & storyLevels, API_Guid & elGuid, GS::Array<AP
                         wallotd.zBottom = zBottom;
                         wallotd.begC = { cdge.c1.x, cdge.c1.y };
                         wallotd.endC = { cdge.c2.x, cdge.c2.y };
-                        wallotd.material = roominfo.material;
+                        wallotd.material = roominfo.om_main;
                         wallotd.base_type = API_ColumnID;
+                        wallotd.type = Column;
                         roominfo.otdwall.Push (wallotd);
                         flag_find = true;
                     }
@@ -704,10 +733,26 @@ void ReadOneSlab (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_
 void Param_GetForBase (const API_Guid & elGuid, ParamDictValue & propertyParams, ParamDictValue & paramDict, ParamValue & param_composite)
 {
     Param_AddProperty (elGuid, propertyParams, paramDict);
+    // Поиск свойст со включением слоя отделки и имени
+    GS::UniString propdesc_onoff = "some_stuff_fin_onoff";
+    GS::UniString propdesc_desc = "some_stuff_fin_description";
+    GS::UniString rawName_onoff = "";
+    GS::UniString rawName_desc = "";
+    for (auto& cItt : propertyParams) {
+        #if defined(AC_28)
+        ParamValue param = cItt.value;
+        #else
+        ParamValue param = *cItt.value;
+        #endif
+        if (param.definition.description.Contains (propdesc_onoff)) rawName_onoff = param.rawName;
+        if (param.definition.description.Contains (propdesc_desc)) rawName_desc = param.rawName;
+        if (!rawName_onoff.IsEmpty () && !rawName_desc.IsEmpty ()) break;
+    }
+    if (rawName_onoff.IsEmpty () || rawName_desc.IsEmpty ()) return;
     // Подготавливаем свойство для чтения из слоёв многослойки
     GS::UniString rawName = "{@material:layers,20}";
     param_composite.rawName = rawName;
-    param_composite.val.uniStringValue = "l[{@property:параметры ведомости отделки/выводить в ведомость отделки}:{@property:параметры ведомости отделки/наименование в ведомости отделки}]";
+    param_composite.val.uniStringValue = "l[" + rawName_onoff + ":" + rawName_desc + "]";
     param_composite.fromMaterial = true;
     if (ParamHelpers::ParseParamNameMaterial (param_composite.val.uniStringValue, paramDict)) {
         for (UInt32 inx = 0; inx < 20; inx++) {
@@ -780,8 +825,8 @@ void Param_SetToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
                 #endif
                 if (!param.isValid) continue;
                 if (param.rawName.IsEqual (g.material_column) || param.definition.description.Contains ("some_stuff_fin_column_material")) {
-                    otd.material_column = param.val.intValue;
-                    otd.smaterial_column = param.val.uniStringValue;
+                    otd.om_column.material = param.val.intValue;
+                    otd.om_column.smaterial = param.val.uniStringValue;
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.height_down) || param.definition.description.Contains ("some_stuff_fin_down_height")) {
@@ -789,8 +834,8 @@ void Param_SetToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.material_down) || param.definition.description.Contains ("some_stuff_fin_down_material")) {
-                    otd.material_down = param.val.intValue;
-                    otd.smaterial_down = param.val.uniStringValue;
+                    otd.om_down.material = param.val.intValue;
+                    otd.om_down.smaterial = param.val.uniStringValue;
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.height_main) || param.definition.description.Contains ("some_stuff_fin_main_height")) {
@@ -798,18 +843,18 @@ void Param_SetToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.material_main) || param.definition.description.Contains ("some_stuff_fin_main_material")) {
-                    otd.material_main = param.val.intValue;
-                    otd.smaterial_main = param.val.uniStringValue;
+                    otd.om_main.material = param.val.intValue;
+                    otd.om_main.smaterial = param.val.uniStringValue;
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.material_pot) || param.definition.description.Contains ("some_stuff_fin_ceil_material")) {
-                    otd.material_pot = param.val.intValue;
-                    otd.smaterial_pot = param.val.uniStringValue;
+                    otd.om_ceil.material = param.val.intValue;
+                    otd.om_ceil.smaterial = param.val.uniStringValue;
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.material_up) || param.definition.description.Contains ("some_stuff_fin_up_material")) {
-                    otd.material_up = param.val.intValue;
-                    otd.smaterial_up = param.val.uniStringValue;
+                    otd.om_up.material = param.val.intValue;
+                    otd.om_up.smaterial = param.val.uniStringValue;
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.has_ceil) || param.definition.description.Contains ("some_stuff_fin_has_ceil")) {
@@ -821,23 +866,23 @@ void Param_SetToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
                     isParamRead = true;
                 }
                 if (param.rawName.IsEqual (g.tip_pol) || param.definition.description.Contains ("some_stuff_fin_floor_type")) {
-                    otd.tip_pot = param.val.uniStringValue;
+                    otd.tip_pol = param.val.uniStringValue;
                     isParamRead = true;
                 }
                 if (param.definition.description.Contains ("some_stuff_fin_up_result")) {
-                    otd.rawname_up = param.rawName;
+                    otd.om_up.rawname = param.rawName;
                     isParamRead = true;
                 }
                 if (param.definition.description.Contains ("some_stuff_fin_main_result")) {
-                    otd.rawname_main = param.rawName;
+                    otd.om_main.rawname = param.rawName;
                     isParamRead = true;
                 }
                 if (param.definition.description.Contains ("some_stuff_fin_down_result")) {
-                    otd.rawname_down = param.rawName;
+                    otd.om_down.rawname = param.rawName;
                     isParamRead = true;
                 }
                 if (param.definition.description.Contains ("some_stuff_fin_column_result")) {
-                    otd.rawname_column = param.rawName;
+                    otd.om_column.rawname = param.rawName;
                     isParamRead = true;
                 }
             }
@@ -859,6 +904,7 @@ void Param_SetToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
         if (otd.height < 0.0001) otd.isValid = false;
     }
 }
+
 
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
@@ -899,17 +945,26 @@ void Param_SetToBase (OtdRooms & roomsinfo, ParamDictElement & paramToRead, Unic
             if (otdw.base_flipped) {
                 for (Int32 j = ncomp - 1; j >= 0; j--) {
                     if (!flag_core) {
-                        otdcpmpoosite.Push (base_composite.composite[j]);
+                        if (base_composite.composite[j].val.Contains ("l[1:")) {
+                            otdcpmpoosite.Push (base_composite.composite[j]);
+                        }
                         if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
                     }
                 }
             } else {
                 for (Int32 j = 0; j < ncomp; j++) {
                     if (!flag_core) {
-                        otdcpmpoosite.Push (base_composite.composite[j]);
+                        if (base_composite.composite[j].val.Contains ("l[1:")) {
+                            otdcpmpoosite.Push (base_composite.composite[j]);
+                        }
                         if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
                     }
                 }
+            }
+            for (UInt32 j = 0; j < otdcpmpoosite.GetSize (); j++) {
+                GS::UniString v = otdcpmpoosite[j].val.GetPrefix (otdcpmpoosite[j].val.GetLength () - 1);
+                v = v.GetSuffix (v.GetLength () - 4);
+                otdcpmpoosite[j].val = v;
             }
             otdw.base_composite = otdcpmpoosite;
         }
@@ -1113,49 +1168,6 @@ void GetZoneEdges (const API_ElementMemo & zonememo, API_Element & zoneelement, 
         edges.Clear ();
     }
     restedges = roomedges;
-    //if (zonememo.gables == nullptr) return;
-    //double x0 = (*zonememo.coords)[1].x;
-    //double y0 = (*zonememo.coords)[1].y;
-    //double vx = (*zonememo.coords)[2].x - x0;
-    //double vy = (*zonememo.coords)[2].y - y0;
-    //double len = vx * vx + vy * vy;
-    //if (len < EPS) {
-    //    vx = 1.0;
-    //    vy = 0.0;
-    //} else {
-    //    len = sqrt (len);
-    //    vx /= len;
-    //    vy /= len;
-    //}
-    //Int32 nGable = BMGetHandleSize ((GSHandle) zonememo.gables) / sizeof (API_Gable);
-    //API_ElementMemo memo;
-    //for (Int32 i = 0; i < nGable; i++) {
-    //    if ((*zonememo.gables)[i].coords != nullptr) {
-    //        OtdGable gabl;
-    //        gabl.a = (*zonememo.gables)[i].a;
-    //        gabl.b = (*zonememo.gables)[i].b;
-    //        gabl.c = (*zonememo.gables)[i].c;
-    //        gabl.d = (*zonememo.gables)[i].d;
-    //        BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    //        Int32 nCoords = BMGetHandleSize ((GSHandle) (*zonememo.gables)[i].coords) / sizeof (API_Coord) - 1;
-    //        Int32 nSubPolys = BMGetHandleSize ((GSHandle) (*zonememo.gables)[i].pends) / sizeof (Int32) - 1;
-    //        memo.coords = reinterpret_cast<API_Coord**>	(BMAllocateHandle ((nCoords + 1) * sizeof (API_Coord), ALLOCATE_CLEAR, 0));
-    //        memo.pends = reinterpret_cast<Int32**>		(BMAllocateHandle ((nSubPolys + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
-    //        for (Int32 j = 1; j <= nCoords; j++) {
-    //            double xCoord = vx * ((*(*zonememo.gables)[i].coords)[j].x) - vy * ((*(*zonememo.gables)[i].coords[j]).y) + x0;
-    //            double yCoord = vx * ((*(*zonememo.gables)[i].coords)[j].y) + vy * ((*(*zonememo.gables)[i].coords[j]).x) + y0;
-    //            (*memo.coords)[j].x = vx * ((*(*zonememo.gables)[i].coords)[j].x) - vy * ((*(*zonememo.gables)[i].coords[j]).y) + x0;
-    //            (*memo.coords)[j].y = vx * ((*(*zonememo.gables)[i].coords)[j].y) + vy * ((*(*zonememo.gables)[i].coords[j]).x) + y0;
-    //        }
-    //        err = ConstructPolygon2DFromElementMemo (memo, gabl.poly);
-    //        if (err != NoError) {
-    //            msg_rep ("GetZoneEdges err", "ConstructPolygon2DFromElementMemo", err, zoneelement.header.guid);
-    //            ACAPI_DisposeElemMemoHdls (&memo);
-    //            continue;
-    //        }
-    //    }
-    //}
-    //ACAPI_DisposeElemMemoHdls (&memo);
 }
 
 // -----------------------------------------------------------------------------
@@ -1188,7 +1200,7 @@ void FloorRooms (const Stories & storyLevels, OtdRooms & roomsinfo, UnicGUIDByTy
         }
         if (roominfo.has_ceil) {
             roominfo.poly.zBottom = roominfo.zBottom + roominfo.height_main + roominfo.height_down;
-            roominfo.poly.material = roominfo.material_pot;
+            roominfo.poly.material = roominfo.om_ceil;
             if (!roominfo.ceilslab.IsEmpty ()) {
                 FloorOneRoom (storyLevels, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, false);
             } else {
@@ -1217,9 +1229,9 @@ void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>&slabsinzone,
     if (allslabs.IsEmpty ()) return;
     GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions;
     API_CollisionDetectionSettings colDetSettings;
-    colDetSettings.volumeTolerance = 0.0001;
+    colDetSettings.volumeTolerance = 0.000000000001;
     colDetSettings.performSurfaceCheck = true;
-    colDetSettings.surfaceTolerance = 0.0001;
+    colDetSettings.surfaceTolerance = 0.000000000001;
     if (ACAPI_Element_GetCollisions (zones, allslabs, collisions, colDetSettings) == NoError) {
         for (const auto& pair : collisions.AsConst ()) {
             if (!Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids)) {
@@ -1304,6 +1316,7 @@ void FloorOneRoom (const Stories & storyLevels, OtdSlab & poly, GS::Array<API_Gu
                             wallotd.begC = { endC.x, endC.y };
                             wallotd.material = poly.material;
                             wallotd.base_type = API_SlabID;
+                            wallotd.type = Wall_Main;
                             otdwall.Push (wallotd);
                         }
                     }
@@ -1325,15 +1338,21 @@ void FloorOneRoom (const Stories & storyLevels, OtdSlab & poly, GS::Array<API_Gu
                 otdslab.zBottom -= otd_thickness;
             }
             otdslab.material = poly.material;
-            if (on_top) otdslab.zBottom = zUp;
+            otdslab.type = Floor;
+            if (on_top) {
+                otdslab.type = Ceil;
+                otdslab.zBottom = zUp;
+            }
             otdslabs.Push (otdslab);
         }
         ACAPI_DisposeElemMemoHdls (&memo);
     }
     OtdSlab otdslab = poly;
     if (on_top) {
+        otdslab.type = Ceil;
         otdslab.zBottom += otd_thickness;
     } else {
+        otdslab.type = Floor;
         otdslab.zBottom -= otd_thickness;
     }
     otdslab.poly = roompolygon;
@@ -1479,10 +1498,10 @@ void ReadOneOpeningReveals (const OtdWall & otdw, OtdOpening & op, const Geometr
         wallotd.endC = { walledge.c2.x, walledge.c2.y };
         wallotd.material = otdw.material;
         wallotd.base_type = API_WindowID;
+        wallotd.type = Reveal_Main;
         op.has_reveal = true;
         opw.Push (wallotd);
     }
-
     lambda = (op.objLoc + op.width / 2) / dr;
     begedge.x = otdw.begC.x - dx * lambda;
     begedge.y = otdw.begC.y - dy * lambda;
@@ -1498,6 +1517,7 @@ void ReadOneOpeningReveals (const OtdWall & otdw, OtdOpening & op, const Geometr
         wallotd.endC = { walledge.c1.x, walledge.c1.y };
         wallotd.material = otdw.material;
         wallotd.base_type = API_WindowID;
+        wallotd.type = Reveal_Main;
         op.has_reveal = true;
         opw.Push (wallotd);
     }
@@ -1526,86 +1546,73 @@ void DelimOtdWalls (OtdRooms & roomsinfo)
                 bool has_delim = false; // Найдена разбивка
                 double height = 0; // Высота элемента
                 double zBottom = 0; // Отметка низа
-                short material = 0;
-                GS::UniString smaterial = "";
+                OtdMaterial material;
                 // Панели
                 if (otd.height_down > 0) {
                     height = otd.height_down;
                     zBottom = otd.zBottom;
-                    material = otd.material_down;
-                    smaterial = otd.smaterial_down;
+                    material = otd.om_down;
                     if (otdw.base_type == API_SlabID) {
-                        material = otd.material_main;
-                        smaterial = otd.smaterial_main;
+                        material = otd.om_main;
                     }
                     if (otdw.base_type == API_WindowID) {
-                        if (otd.material_reveal > 0) {
-                            material = otd.material_reveal;
+                        if (otd.om_reveals.material > 0) {
+                            material = otd.om_reveals;
                         } else {
-                            material = otd.material_down;
-                            smaterial = otd.smaterial_down;
+                            material = otd.om_down;
                         }
                     }
-                    if (material == 0) material = otd.material;
-                    if (DelimOneWall (otdw, opw, height, zBottom, material, smaterial)) has_delim = true;
+                    if (material.material == 0) material = otd.om_zone;
+                    if (DelimOneWall (otdw, opw, height, zBottom, material)) has_delim = true;
                 }
                 // Основная часть
                 if (otd.height_main > 0) {
                     if (otdw.base_type == API_ColumnID) {
-                        material = otd.material_column;
-                        smaterial = otd.smaterial_column;
+                        material = otd.om_column;
                     }
                     if (otdw.base_type == API_WallID) {
-                        material = otd.material_main;
-                        smaterial = otd.smaterial_main;
+                        material = otd.om_main;
                     }
                     if (otdw.base_type == API_SlabID) {
-                        material = otd.material_main;
-                        smaterial = otd.smaterial_main;
+                        material = otd.om_main;
                     }
                     if (otdw.base_type == API_WindowID) {
-                        if (otd.material_reveal > 0) {
-                            material = otd.material_reveal;
+                        if (otd.om_reveals.material > 0) {
+                            material = otd.om_reveals;
                         } else {
-                            material = otd.material_main;
-                            smaterial = otd.smaterial_main;
+                            material = otd.om_main;
                         }
                     }
-                    if (material == 0) material = otd.material;
+                    if (material.material == 0) material = otd.om_zone;
                     height = otd.height_main;
                     zBottom = otd.zBottom + otd.height_down;
-                    if (DelimOneWall (otdw, opw, height, zBottom, material, smaterial)) has_delim = true;
+                    if (DelimOneWall (otdw, opw, height, zBottom, material)) has_delim = true;
                 }
                 // Пространство за потолком
                 if (otd.height_up > 0) {
                     height = otd.height_up;
                     zBottom = otd.zBottom + otd.height_down + otd.height_main;
-                    material = otd.material_up;
-                    smaterial = otd.smaterial_up;
-                    if (otdw.base_type == API_SlabID) {
-                        material = otd.material_main;
-                        smaterial = otd.smaterial_main;
-                    }
+                    material = otd.om_up;
+                    if (otdw.base_type == API_ColumnID) material = otd.om_column;
+                    if (otdw.type == Ceil) material = otd.om_ceil;
                     if (otdw.base_type == API_WindowID) {
-                        if (otd.material_reveal > 0) {
-                            material = otd.material_reveal;
+                        if (otd.om_reveals.material > 0) {
+                            material = otd.om_reveals;
                         } else {
-                            material = otd.material_up;
-                            smaterial = otd.smaterial_up;
+                            material = otd.om_up;
                         }
                     }
-                    if (material == 0) material = otd.material;
-                    if (DelimOneWall (otdw, opw, height, zBottom, material, smaterial)) has_delim = true;
+                    if (material.material == 0) material = otd.om_zone;
+                    if (DelimOneWall (otdw, opw, height, zBottom, material)) has_delim = true;
                 }
                 //Если высоты заданы не были - подгоним стенку под зону
                 if (!has_delim) {
                     height = otd.height;
                     zBottom = otd.zBottom;
-                    material = otd.material_main;
-                    smaterial = otd.smaterial_main;
-                    if (otdw.base_type == API_WindowID) material = otd.material_reveal;
-                    if (material == 0) material = otd.material;
-                    DelimOneWall (otdw, opw, height, zBottom, material, smaterial);
+                    material = otd.om_main;
+                    if (otdw.base_type == API_WindowID) material = otd.om_reveals;
+                    if (material.material == 0) material = otd.om_zone;
+                    DelimOneWall (otdw, opw, height, zBottom, material);
                 }
             }
             otd.otdwall = opw;
@@ -1621,7 +1628,7 @@ void DelimOtdWalls (OtdRooms & roomsinfo)
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>&opw, double height, double zBottom, short& material, GS::UniString & smaterial)
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>&opw, double height, double zBottom, OtdMaterial & material)
 {
     const double dh = 0.002; // Дополнительное увеличение высоты проёма для исключения линии на стыке
     if (height < min_dim || is_equal (height, 0)) {
@@ -1676,11 +1683,11 @@ bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>&opw, double height, double z
     otdn.material = material;
     ParamValueComposite p;
     #if defined(AC_27) || defined(AC_28)
-    p.inx = ACAPI_CreateAttributeIndex (material);
+    p.inx = ACAPI_CreateAttributeIndex (material.material);
     #else
-    p.inx = material;
+    p.inx = material.material;
     #endif
-    p.val = smaterial;
+    p.val = material.smaterial;
     p.num = -1;
     p.structype = APICWallComp_Finish;
     otdn.base_composite.Push (p);
@@ -1738,6 +1745,9 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
     #endif
     API_Element wallelement;
     API_Element slabelement;
+    API_Element wallobjelement; API_ElementMemo wallobjmemo;
+    API_Element slabobjelement; API_ElementMemo slabobjmemo;
+    API_Element windowelement; API_ElementMemo windowmemo;
     GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) ACAPI_Element_Delete (deletelist);
@@ -1751,7 +1761,7 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
             API_Guid class_guid = APINULLGuid;
             GS::Array<API_Guid> group;
             for (UInt32 i = 0; i < otd.otdwall.GetSize (); i++) {
-                Draw_Edge (storyLevels, otd.otdwall[i], wallelement, subelementByparent);
+                Draw_Edge (storyLevels, otd.otdwall[i], wallelement, wallobjelement, wallobjmemo, windowelement, windowmemo, subelementByparent);
                 Param_AddUnicElementByType (otd.zone_guid, otd.otdwall[i].otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных стен к зоне
                 for (OtdOpening& op : otd.otdwall[i].openings) {
                     Param_AddUnicElementByType (otd.zone_guid, op.otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных проёмов к зоне
@@ -1764,7 +1774,7 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
                 group.Push (otd.otdwall[i].otd_guid);
             }
             for (UInt32 i = 0; i < otd.otdslab.GetSize (); i++) {
-                Draw_Slab (storyLevels, slabelement, otd.otdslab[i], subelementByparent);
+                Draw_CeilFloor (storyLevels, slabelement, slabobjelement, slabobjmemo, otd.otdslab[i], subelementByparent);
                 Param_AddUnicElementByType (otd.zone_guid, otd.otdslab[i].otd_guid, API_ZoneID, subelementByparent); // Привязка перекрытий к зоне
                 Class_SetClass (otd.otdslab[i], finclass);
                 group.Push (otd.otdslab[i].otd_guid);
@@ -1781,27 +1791,41 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
         }
         return NoError;
     });
+    #if defined AC_26 || defined AC_27 || defined AC_28
+    if (windowelement.header.type.typeID == API_WindowID) ACAPI_DisposeElemMemoHdls (&windowmemo);
+    if (slabobjelement.header.type.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
+    if (wallobjelement.header.type.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
+    #else
+    if (windowelement.header.typeID == API_WindowID) ACAPI_DisposeElemMemoHdls (&windowmemo);
+    if (slabobjelement.header.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
+    if (wallobjelement.header.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
+    #endif
     #if defined(TESTING)
     DBprnt ("Draw_Edges", "end");
     #endif
 }
 
-void Draw_Edge (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, UnicElementByType & subelementByparent)
+void Draw_Edge (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, API_Element & wallobjelement, API_ElementMemo & wallobjmemo, API_Element & windowelement, API_ElementMemo & windowmemo, UnicElementByType & subelementByparent)
 {
     if (edges.height < min_dim) return;
     double dx = -edges.endC.x + edges.begC.x;
     double dy = -edges.endC.y + edges.begC.y;
     double dr = sqrt (dx * dx + dy * dy);
     if (dr < min_dim) return;
-    //Draw_Wall (storyLevels, edges, wallelement, subelementByparent);
-    Draw_Object (storyLevels, edges, wallelement, subelementByparent);
+    if (Favorite_GetType (edges.favorite_name) == API_ObjectID) {
+        Draw_WallObject (storyLevels, edges, wallobjelement, wallobjmemo, subelementByparent);
+    } else {
+        Draw_Wall (storyLevels, edges, wallelement, windowelement, windowmemo, subelementByparent);
+    }
+    Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent); // Привязка отделочной стены к базовой
 }
 
-void Draw_Object (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, UnicElementByType & subelementByparent)
+void Draw_WallObject (const Stories & storyLevels, OtdWall & edges, API_Element & wallobjelement, API_ElementMemo & wallobjmemo, UnicElementByType & subelementByparent)
 {
     GSErrCode err = NoError;
-    API_ElementMemo memo;
-    GetDefultObject (wallelement, memo);
+    if (!GetDefult_WallObject (edges.favorite_name, wallobjelement, wallobjmemo)) {
+        return;
+    }
     Point2D wbegC = { edges.begC.x, edges.begC.y };
     Point2D wendC = { edges.endC.x, edges.endC.y };
     Sector walledge = { wbegC , wendC };
@@ -1812,149 +1836,120 @@ void Draw_Object (const Stories & storyLevels, OtdWall & edges, API_Element & wa
         #endif
         return;
     }
-
-    GS::HashTable <GS::UniString, GDLParam> param;
-    GDLParam p;
-    p.num = 1; param.Add ("{@gdl:ac_refside}", p);
-    p.num = edges.material; param.Add ("{@gdl:gs_bw_mat}", p);
-    p.num = edges.height; param.Add ("{@gdl:ac_wall_height}", p);
-    p.num = walledge.GetLength (); param.Add ("{@gdl:ac_wall_length}", p);
-    p.num = 0; param.Add ("{@gdl:ac_wall_radius}", p);
+    double ac_wall_length = walledge.GetLength ();
+    GDLHelpers::ParamDict accsessoryparams;
+    GDLHelpers::Param p;
+    p.num = 1; accsessoryparams.Add ("{@gdl:ac_refside}", p);
+    p.num = edges.material.material; accsessoryparams.Add ("{@gdl:gs_bw_mat}", p);
+    p.num = edges.height; accsessoryparams.Add ("{@gdl:ac_wall_height}", p);
+    p.num = ac_wall_length; accsessoryparams.Add ("{@gdl:ac_wall_length}", p);
+    p.num = 0; accsessoryparams.Add ("{@gdl:ac_wall_radius}", p);
 
     p.dim1 = 1; p.dim2 = 2;
-    p.arr_num.Push (1);
-    p.arr_num.Push (2);
-    param.Add ("{@gdl:ac_side_poly}", p); p.arr_num.Clear ();
+    p.arr_num.Push (0);
+    p.arr_num.Push (0);
+    accsessoryparams.Add ("{@gdl:ac_side_poly}", p); p.arr_num.Clear ();
 
+    p.dim1 = 2; p.dim2 = 2;
     p.arr_num.Push (0);
-    p.arr_num.Push (0);
-    param.Add ("{@gdl:ac_top_poly}", p); p.arr_num.Clear ();
+    p.arr_num.Push (edges.height);
+    p.arr_num.Push (ac_wall_length);
+    p.arr_num.Push (edges.height);
+    accsessoryparams.Add ("{@gdl:ac_top_poly}", p); p.arr_num.Clear ();
 
+    p.dim1 = 2; p.dim2 = 2;
     p.arr_num.Push (0);
     p.arr_num.Push (0);
-    param.Add ("{@gdl:ac_bot_poly}", p); p.arr_num.Clear ();
+    p.arr_num.Push (ac_wall_length);
+    p.arr_num.Push (0);
+    accsessoryparams.Add ("{@gdl:ac_bot_poly}", p); p.arr_num.Clear ();
 
-    p.arr_num.Push (0);
-    p.arr_num.Push (0);
-    param.Add ("{@gdl:ac_wd_poly}", p); p.arr_num.Clear ();
+    p.dim1 = 1; p.dim2 = 2;
+    p.arr_num.Push (45 * DEGRAD);
+    p.arr_num.Push (45 * DEGRAD);
+    accsessoryparams.Add ("{@gdl:ac_angles}", p); p.arr_num.Clear ();
 
-    p.arr_num.Push (45);
-    p.arr_num.Push (45);
-    param.Add ("{@gdl:ac_angles}", p); p.arr_num.Clear ();
+    if (edges.openings.IsEmpty ()) {
+        p.dim1 = 1; p.dim2 = 2;
+        p.arr_num.Push (0);
+        p.arr_num.Push (0);
+    } else {
+        Int32 dim2 = 0;
+        for (OtdOpening& op : edges.openings) {
+            if (op.width < min_dim || op.height < min_dim) continue;
+            double objLoc = ac_wall_length - op.objLoc;
+            double halfwidth = op.width / 2;
+            //if (op.has_reveal) {
+            //    op.width -= wallelement.wall.thickness * 2;
+            //    op.height -= wallelement.wall.thickness;
+            //}
+            // Начало отверстия
+            p.arr_num.Push (0.106);
+            p.arr_num.Push (objLoc - halfwidth);
+            p.arr_num.Push (op.lower);
 
-    const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
-    for (GSIndex ii = 0; ii < nParams; ++ii) {
-        API_AddParType& actParam = (*memo.params)[ii];
-        GS::UniString rawname = "{@gdl:" + GS::UniString (actParam.name).ToLowerCase () + "}";
-        if (!param.ContainsKey (rawname)) continue;
-        GDLParam pp = param.Get (rawname);
-        if (actParam.typeMod == API_ParSimple) {
-            switch (actParam.typeID) {
-                case APIParT_LineTyp:
-                case APIParT_Profile:
-                case APIParT_BuildingMaterial:
-                case APIParT_FillPat:
-                case APIParT_Mater:
-                case APIParT_Boolean:
-                case APIParT_Integer:
-                case APIParT_PenCol:
-                case APIParT_Length:
-                case APIParT_RealNum:
-                case APIParT_ColRGB:
-                case APIParT_Intens:
-                case APIParT_Angle:
-                    actParam.value.real = pp.num;
-                    break;
-                case APIParT_CString:
-                    GS::ucscpy (actParam.value.uStr, pp.str.ToUStr (0, GS::Min (pp.str.GetLength (), (USize) API_UAddParStrLen)).Get ());
-                    break;
-                default:
-                    break;
-            }
-        } else {
-            double** newArrHdl = nullptr;
-            double** origArrHdl = nullptr;
-            switch (actParam.typeID) {
-                case APIParT_LineTyp:
-                case APIParT_Profile:
-                case APIParT_BuildingMaterial:
-                case APIParT_FillPat:
-                case APIParT_Mater:
-                case APIParT_Boolean:
-                case APIParT_Integer:
-                case APIParT_PenCol:
-                case APIParT_Length:
-                case APIParT_RealNum:
-                case APIParT_ColRGB:
-                case APIParT_Intens:
-                case APIParT_Angle:
-                    if (actParam.dim1 != pp.dim1 || actParam.dim2 != pp.dim2) {
-                        actParam.dim1 = pp.dim1;
-                        actParam.dim2 = pp.dim2;
-                    }
-                    origArrHdl = (double**) actParam.value.array;
-                    newArrHdl = (double**) BMAllocateHandle (actParam.dim1 * actParam.dim2 * sizeof (double), ALLOCATE_CLEAR, 0);
-                    for (Int32 k = 0; k < actParam.dim1; k++)
-                        for (Int32 j = 0; j < actParam.dim2; j++)
-                            (*newArrHdl)[k * actParam.dim2 + j] = pp.arr_num[k * actParam.dim2 + j];
-                    BMKillHandle ((GSHandle*) &origArrHdl);
-                    actParam.value.array = (GSHandle) newArrHdl;
-                    break;
-                case APIParT_CString:
-                    break;
-                default:
-                    break;
-            }
+            p.arr_num.Push (objLoc - halfwidth);
+            p.arr_num.Push (op.lower + op.height);
+
+            p.arr_num.Push (objLoc + halfwidth);
+            p.arr_num.Push (op.lower + op.height);
+
+            p.arr_num.Push (objLoc + halfwidth);
+            p.arr_num.Push (op.lower);
         }
-        param.Delete (rawname);
-        if (param.IsEmpty ()) {
-            break;
-        }
+        p.dim1 = edges.openings.GetSize (); p.dim2 = 9;
     }
+    accsessoryparams.Add ("{@gdl:ac_wd_poly}", p); p.arr_num.Clear ();
+    GDLHelpers::ParamToMemo (wallobjmemo, accsessoryparams);
     Vector2D ref = { -1, 0 };
     Vector2D wallvect = walldir.Get ().ToVector2D ();
     double ang = wallvect.CalcAngleToReference (ref);
-    wallelement.object.angle = ang;
-    wallelement.object.pos = edges.endC;
+    wallobjelement.object.angle = ang;
+    wallobjelement.object.pos = edges.endC;
     const auto floorIndexAndOffset = GetFloorIndexAndOffset (edges.zBottom, storyLevels);
-    wallelement.header.floorInd = floorIndexAndOffset.first;
-    wallelement.object.level = floorIndexAndOffset.second;
-    err = ACAPI_Element_Create (&wallelement, &memo);
+    wallobjelement.header.floorInd = floorIndexAndOffset.first;
+    wallobjelement.object.level = floorIndexAndOffset.second;
+    err = ACAPI_Element_Create (&wallobjelement, &wallobjmemo);
     if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return;
     }
-    edges.otd_guid = wallelement.header.guid;
-    Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent);
+    edges.otd_guid = wallobjelement.header.guid;
 }
 
-bool GetDefultObject (API_Element & obojelement, API_ElementMemo & memo)
+bool GetDefult_WallObject (const GS::UniString & favorite_name, API_Element & wallobjelement, API_ElementMemo & wallobjmemo)
 {
     GSErrCode err = NoError;
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    BNZeroMemory (&obojelement, sizeof (API_Element));
+    BNZeroMemory (&wallobjmemo, sizeof (API_ElementMemo));
+    BNZeroMemory (&wallobjelement, sizeof (API_Element));
+    if (Favorite_GetByName (favorite_name, wallobjelement, wallobjmemo)) {
+        #if defined AC_26 || defined AC_27 || defined AC_28
+        if (wallobjelement.header.type.typeID == API_ObjectID) return true;
+        #else
+        if (wallobjelement.header.typeID == API_ObjectID) return true;
+        #endif
+    }
     #if defined AC_26 || defined AC_27 || defined AC_28
-    obojelement.header.type.typeID = API_ObjectID;
+    wallobjelement.header.type.typeID = API_ObjectID;
     #else
-    obojelement.header.typeID = API_ObjectID;
+    wallobjelement.header.typeID = API_ObjectID;
     #endif
-    err = ACAPI_Element_GetDefaults (&obojelement, &memo);
+    err = ACAPI_Element_GetDefaults (&wallobjelement, &wallobjmemo);
     if (err != NoError) {
         return false;
     }
-    obojelement.object.angle = 0;
-    obojelement.object.isAutoOnStoryVisibility = false;
-    obojelement.object.useObjPens = true;
-    obojelement.object.useObjLtypes = true;
-    obojelement.object.useObjMaterials = true;
+    wallobjelement.object.angle = 0;
+    wallobjelement.object.isAutoOnStoryVisibility = false;
+    wallobjelement.object.useObjPens = true;
+    wallobjelement.object.useObjLtypes = true;
+    wallobjelement.object.useObjMaterials = true;
     return true;
 }
 
-void Draw_Wall (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, UnicElementByType & subelementByparent)
+void Draw_Wall (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, API_Element & windowelement, API_ElementMemo & windowmemo, UnicElementByType & subelementByparent)
 {
     GSErrCode err = NoError;
-    if (wallelement.header.typeID != API_WallID) {
-        if (!GetDefultWall (wallelement)) return;
+    if (!GetDefult_Wall (edges.favorite_name, wallelement)) {
+        return;
     }
     wallelement.wall.begC = edges.begC;
     wallelement.wall.endC = edges.endC;
@@ -1963,30 +1958,36 @@ void Draw_Wall (const Stories & storyLevels, OtdWall & edges, API_Element & wall
     wallelement.header.floorInd = floorIndexAndOffset.first;
     wallelement.wall.bottomOffset = floorIndexAndOffset.second;
     #if defined(AC_27) || defined(AC_28)
-    API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material);
+    API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
     wallelement.wall.refMat.value = ematerial;
     wallelement.wall.oppMat.value = ematerial;
     wallelement.wall.sidMat.value = ematerial;
     #else
-    wallelement.wall.refMat.attributeIndex = edges.material;
-    wallelement.wall.oppMat.attributeIndex = edges.material;
-    wallelement.wall.sidMat.attributeIndex = edges.material;
+    wallelement.wall.refMat.attributeIndex = edges.material.material;
+    wallelement.wall.oppMat.attributeIndex = edges.material.material;
+    wallelement.wall.sidMat.attributeIndex = edges.material.material;
     #endif
     err = ACAPI_Element_Create (&wallelement, nullptr);
     if (err != NoError) {
         return;
     }
     edges.otd_guid = wallelement.header.guid;
-    Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent); // Привязка отделочной стены к базовой
     for (OtdOpening& op : edges.openings) {
-        Draw_Window (wallelement, op, subelementByparent);
+        Draw_Window (wallelement, windowelement, windowmemo, op, subelementByparent);
     }
 }
 
-bool GetDefultWall (API_Element & wallelement)
+bool GetDefult_Wall (const GS::UniString & favorite_name, API_Element & wallelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&wallelement, sizeof (API_Element));
+    if (Favorite_GetByName (favorite_name, wallelement)) {
+        #if defined AC_26 || defined AC_27 || defined AC_28
+        if (wallelement.header.type.typeID == API_WallID) return true;
+        #else
+        if (wallelement.header.typeID == API_WallID) return true;
+        #endif
+    }
     #if defined AC_26 || defined AC_27 || defined AC_28
     wallelement.header.type.typeID = API_WallID;
     #else
@@ -2011,13 +2012,13 @@ bool GetDefultWall (API_Element & wallelement)
     return true;
 }
 
-void Draw_Window (API_Element & wallelement, OtdOpening & op, UnicElementByType & subelementByparent)
+void Draw_Window (API_Element & wallelement, API_Element & windowelement, API_ElementMemo & windowmemo, OtdOpening & op, UnicElementByType & subelementByparent)
 {
     GSErrCode err = NoError;
-    API_ElementMemo memo;
-    API_Element windowelement;
     if (wallelement.wall.type == APIWtyp_Poly) return;
-    if (!GetDefultWindow (windowelement, memo)) return;
+    if (!GetDefult_Window ("", windowelement, windowmemo)) {
+        return;
+    }
     windowelement.window.objLoc = op.objLoc;
     windowelement.window.owner = wallelement.header.guid;
     if (op.has_reveal) {
@@ -2028,56 +2029,68 @@ void Draw_Window (API_Element & wallelement, OtdOpening & op, UnicElementByType 
     windowelement.window.openingBase.width = op.width;
     windowelement.window.openingBase.height = op.height;
     windowelement.window.lower = op.lower;
-    err = ACAPI_Element_Create (&windowelement, &memo);
+    err = ACAPI_Element_Create (&windowelement, &windowmemo);
     if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
         return;
     }
     op.otd_guid = windowelement.header.guid;
     Param_AddUnicElementByType (op.base_guid, op.otd_guid, API_WindowID, subelementByparent); // Привязка отделочного проёма к базовому
-    ACAPI_DisposeElemMemoHdls (&memo);
     return;
 }
 
-bool GetDefultWindow (API_Element & windowelement, API_ElementMemo & memo)
+bool GetDefult_Window (const GS::UniString & favorite_name, API_Element & windowelement, API_ElementMemo & windowmemo)
 {
     GSErrCode err = NoError;
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    BNZeroMemory (&windowmemo, sizeof (API_ElementMemo));
     BNZeroMemory (&windowelement, sizeof (API_Element));
+    if (Favorite_GetByName (favorite_name, windowelement, windowmemo)) {
+        #if defined AC_26 || defined AC_27 || defined AC_28
+        if (windowelement.header.type.typeID == API_WindowID) return true;
+        #else
+        if (windowelement.header.typeID == API_WindowID) return true;
+        #endif
+    }
     #if defined AC_26 || defined AC_27 || defined AC_28
     windowelement.header.type.typeID = API_WindowID;
     #else
     windowelement.header.typeID = API_WindowID;
     #endif
-    err = ACAPI_Element_GetDefaults (&windowelement, &memo);
+    err = ACAPI_Element_GetDefaults (&windowelement, &windowmemo);
     if (err != NoError) {
         return false;
     }
     return true;
 }
 
-// -----------------------------------------------------------------------------
-// Create a special shaped slab with custom edge trims
-// -----------------------------------------------------------------------------
+void Draw_CeilFloor (const Stories & storyLevels, API_Element & slabelement, API_Element & slabobjelement, API_ElementMemo & slabobjmemo, OtdSlab & otdslab, UnicElementByType & subelementByparent)
+{
+    if (Favorite_GetType (otdslab.favorite_name) == API_ObjectID) {
+        Draw_SlabObject (storyLevels, slabobjelement, slabobjmemo, otdslab, subelementByparent);
+    } else {
+        Draw_Slab (storyLevels, slabelement, otdslab, subelementByparent);
+    }
+    Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
+}
+
 void Draw_Slab (const Stories & storyLevels, API_Element & slabelement, OtdSlab & otdslab, UnicElementByType & subelementByparent)
 {
     GSErrCode err = NoError;
-    if (slabelement.header.typeID != API_SlabID) {
-        if (!GetDefultSlab (slabelement)) return;
+    if (!GetDefult_Slab (otdslab.favorite_name, slabelement)) {
+        return;
     }
     slabelement.slab.thickness = otd_thickness;
     const auto floorIndexAndOffset = GetFloorIndexAndOffset (otdslab.zBottom, storyLevels);
     slabelement.header.floorInd = floorIndexAndOffset.first;
     slabelement.slab.level = floorIndexAndOffset.second;
     #if defined(AC_27) || defined(AC_28)
-    API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (otdslab.material);
+    API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (otdslab.material.material);
     slabelement.slab.topMat.value = ematerial;
     slabelement.slab.sideMat.value = ematerial;
     slabelement.slab.botMat.value = ematerial;
     #else
-    slabelement.slab.topMat.attributeIndex = otdslab.material;
-    slabelement.slab.sideMat.attributeIndex = otdslab.material;
-    slabelement.slab.botMat.attributeIndex = otdslab.material;
+    slabelement.slab.topMat.attributeIndex = otdslab.material.material;
+    slabelement.slab.sideMat.attributeIndex = otdslab.material.material;
+    slabelement.slab.botMat.attributeIndex = otdslab.material.material;
     #endif
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
@@ -2092,15 +2105,88 @@ void Draw_Slab (const Stories & storyLevels, API_Element & slabelement, OtdSlab 
         return;
     }
     otdslab.otd_guid = slabelement.header.guid;
-    Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
 }
 
-bool GetDefultSlab (API_Element & slabelement)
+void Draw_SlabObject (const Stories & storyLevels, API_Element & slabobjelement, API_ElementMemo & slabobjmemo, OtdSlab & otdslab, UnicElementByType & subelementByparent)
+{
+    GSErrCode err = NoError;
+    if (!GetDefult_WallObject (otdslab.favorite_name, slabobjelement, slabobjmemo)) {
+        return;
+    }
+    GDLHelpers::ParamDict accsessoryparams;
+    GDLHelpers::Param p;
+    p.num = 0.02; accsessoryparams.Add ("{@gdl:ac_thickness}", p);
+
+    p.num = otdslab.zBottom; accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
+    p.num = 0; accsessoryparams.Add ("{@gdl:ac_pitch}", p);
+    p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceilling_side}", p);
+    p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceiling_type}", p);
+    p.num = otdslab.material.material; accsessoryparams.Add ("{@gdl:ceil_mat}", p);
+    p.num = 0.02; accsessoryparams.Add ("{@gdl:ceil_thk}", p);
+    p.num = 0; accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
+
+
+    //p.num = edges.material; accsessoryparams.Add ("{@gdl:gs_bw_mat}", p);
+    //p.num = edges.height; accsessoryparams.Add ("{@gdl:ac_wall_height}", p);
+    //p.num = ac_wall_length; accsessoryparams.Add ("{@gdl:ac_wall_length}", p);
+    //p.num = 0; accsessoryparams.Add ("{@gdl:ac_wall_radius}", p);
+
+
+
+
+    GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
+    const auto floorIndexAndOffset = GetFloorIndexAndOffset (otdslab.zBottom, storyLevels);
+    slabobjelement.header.floorInd = floorIndexAndOffset.first;
+    slabobjelement.object.level = floorIndexAndOffset.second;
+    err = ACAPI_Element_Create (&slabobjelement, &slabobjmemo);
+    if (err != NoError) {
+        return;
+    }
+    otdslab.otd_guid = slabobjelement.header.guid;
+}
+
+bool GetDefult_SlabObject (const GS::UniString & favorite_name, API_Element & slabobjelement, API_ElementMemo & slabobjmemo)
+{
+    GSErrCode err = NoError;
+    BNZeroMemory (&slabobjmemo, sizeof (API_ElementMemo));
+    BNZeroMemory (&slabobjelement, sizeof (API_Element));
+    if (Favorite_GetByName (favorite_name, slabobjelement, slabobjmemo)) {
+        #if defined AC_26 || defined AC_27 || defined AC_28
+        if (slabobjelement.header.type.typeID == API_ObjectID) return true;
+        #else
+        if (slabobjelement.header.typeID == API_ObjectID) return true;
+        #endif
+    }
+    #if defined AC_26 || defined AC_27 || defined AC_28
+    slabobjelement.header.type.typeID = API_ObjectID;
+    #else
+    slabobjelement.header.typeID = API_ObjectID;
+    #endif
+    err = ACAPI_Element_GetDefaults (&slabobjelement, &slabobjmemo);
+    if (err != NoError) {
+        return false;
+    }
+    slabobjelement.object.angle = 0;
+    slabobjelement.object.isAutoOnStoryVisibility = false;
+    slabobjelement.object.useObjPens = true;
+    slabobjelement.object.useObjLtypes = true;
+    slabobjelement.object.useObjMaterials = true;
+    return true;
+}
+
+bool GetDefult_Slab (const GS::UniString & favorite_name, API_Element & slabelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&slabelement, sizeof (API_Element));
+    if (Favorite_GetByName (favorite_name, slabelement)) {
+        #if defined AC_26 || defined AC_27 || defined AC_28
+        if (slabelement.header.type.typeID == API_SlabID) return true;
+        #else
+        if (slabelement.header.typeID == API_SlabID) return true;
+        #endif
+    }
     #if defined AC_26 || defined AC_27 || defined AC_28
     slabelement.header.type.typeID = API_SlabID;
     #else
@@ -2204,8 +2290,8 @@ void Class_FindFinClass (ClassificationFunc::SystemDict & systemdict, Classifica
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
                 }
             }
-}
-}
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -2284,6 +2370,8 @@ bool Class_IsElementFinClass (const API_Guid & elGuid, const UnicGuid & finclass
 
 void Param_AddUnicElementByType (const API_Guid & parentguid, const API_Guid & guid, API_ElemTypeID elemtype, UnicElementByType & elementToRead)
 {
+    if (parentguid == APINULLGuid) return;
+    if (guid == APINULLGuid) return;
     if (!elementToRead.ContainsKey (elemtype)) {
         UnicElement el;
         elementToRead.Add (elemtype, el);
@@ -2301,6 +2389,7 @@ void Param_AddUnicElementByType (const API_Guid & parentguid, const API_Guid & g
 
 void Param_AddUnicGUIDByType (const API_Guid & elGuid, API_ElemTypeID elemtype, UnicGUIDByType & guidselementToRead)
 {
+    if (elGuid == APINULLGuid) return;
     if (guidselementToRead.ContainsKey (elemtype)) {
         guidselementToRead.Get (elemtype).Push (elGuid);
     } else {
@@ -2330,7 +2419,64 @@ void Param_AddProperty (const API_Guid & elGuid, ParamDictValue & propertyParams
                 }
             }
         }
+    }
 }
+API_ElemTypeID Favorite_GetType (const GS::UniString & favorite_name)
+{
+    API_ElemTypeID type = API_ZombieElemID;
+    GSErrCode err = NoError;
+    #ifdef AC_22
+    return type;
+    #else
+    if (favorite_name.IsEmpty ()) return type;
+    API_Favorite favorite (favorite_name);
+    err = ACAPI_Favorite_Get (&favorite);
+    if (err == NoError) {
+        #if defined AC_26 || defined AC_27 || defined AC_28
+        type = favorite.element.header.type.typeID;
+        #else
+        type = favorite.element.header.typeID;
+        #endif
+        return type;
+    }
+    return type;
+    #endif
+}
+bool Favorite_GetByName (const GS::UniString & favorite_name, API_Element & element)
+{
+    GSErrCode err = NoError;
+    #ifdef AC_22
+    return false;
+    #else
+    if (favorite_name.IsEmpty ()) return false;
+    API_Favorite favorite (favorite_name);
+    err = ACAPI_Favorite_Get (&favorite);
+    if (err == NoError) {
+        element = favorite.element;
+        return true;
+    }
+    return false;
+    #endif
+}
+bool Favorite_GetByName (const GS::UniString & favorite_name, API_Element & element, API_ElementMemo & memo)
+{
+    GSErrCode err = NoError;
+    #ifdef AC_22
+    return false;
+    #else
+    if (favorite_name.IsEmpty ()) return false;
+    API_Favorite favorite (favorite_name);
+    favorite.memo.New ();
+    BNZeroMemory (&favorite.memo.Get (), sizeof (API_ElementMemo));
+    err = ACAPI_Favorite_Get (&favorite);
+    if (err == NoError) {
+        element = favorite.element;
+        memo = *favorite.memo;
+        return true;
+    }
+    ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
+    return false;
+    #endif
 }
 #endif
 }
