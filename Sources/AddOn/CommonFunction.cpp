@@ -2146,6 +2146,37 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     }
 }
 
+void CreateLabel (API_Guid & parentguid)
+{
+    GSErrCode err;
+    API_Element element;
+    API_ElementMemo memo;
+    BNZeroMemory (&element, sizeof (API_Element));
+    BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    API_ElemTypeID parentType;
+    err = GetTypeByGUID (parentguid, parentType);
+    if (err != NoError) {
+        return;
+    }
+    element.header.typeID = API_LabelID;
+    element.label.parentType = parentType;
+    err = ACAPI_Element_GetDefaults (&element, &memo);
+    if (err != NoError) {
+        ACAPI_DisposeElemMemoHdls (&memo);
+        return;
+    }
+    element.label.begC.x = 0;
+    element.label.begC.y = 0;
+    element.label.createAtDefaultPosition = true;
+    element.label.parent = parentguid;
+    err = ACAPI_Element_Create (&element, &memo);
+    if (err != NoError) {
+        ACAPI_DisposeElemMemoHdls (&memo);
+        return;
+    }
+    ACAPI_DisposeElemMemoHdls (&memo);
+}
+
 namespace GDLHelpers
 {
 bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
