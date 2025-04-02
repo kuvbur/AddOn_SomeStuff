@@ -36,11 +36,11 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
 {
     BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
     GSErrCode err = NoError;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_Get3DCuttingPlanes (&cutInfo);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("GetCuplane", "APIEnv_Get3DCuttingPlanesID", err, APINULLGuid);
         return err;
@@ -146,11 +146,11 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
 {
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
     GSErrCode err = NoError;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Get3DProjectionSetsID", err, APINULLGuid);
         return err;
@@ -158,21 +158,21 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     proj3DInfo.isPersp = false;
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 1;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Change3DProjectionSetsID", err, APINULLGuid);
         return err;
     }
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Get3DProjectionSetsID", err, APINULLGuid);
         return err;
@@ -183,11 +183,11 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     proj3DInfo.u.axono.tranmat.tmx[4] = proj3DInfo.u.axono.tranmat.tmx[4] * koeff;
     proj3DInfo.u.axono.tranmat.tmx[1] = proj3DInfo.u.axono.tranmat.tmx[1] * koeff;
     proj3DInfo.u.axono.tranmat.tmx[5] = proj3DInfo.u.axono.tranmat.tmx[5] * koeff;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("Get3DProjectionInfo", "APIEnv_Change3DProjectionSetsID", err, APINULLGuid);
         return err;
@@ -206,20 +206,20 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
     GSErrCode err = NoError;
     GS::Array<API_DatabaseUnId> dbases;
 
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetDocumentFrom3DDatabases (nullptr, &dbases);
-#else
+    #else
     err = ACAPI_Database (APIDb_GetDocumentFrom3DDatabasesID, nullptr, &dbases);
-#endif
+    #endif
     if (err == NoError) {
         for (const auto& dbUnId : dbases) {
             BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
             dbInfo.databaseUnId = dbUnId;
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             err = ACAPI_Window_GetDatabaseInfo (&dbInfo);
-#else
+            #else
             err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbInfo, nullptr);
-#endif
+            #endif
             if (err != NoError) {
                 msg_rep ("Get3DDocument", "APIDb_GetDatabaseInfoID", err, APINULLGuid);
                 return err;
@@ -238,11 +238,11 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
     dbInfo.typeID = APIWind_DocumentFrom3DID;
     GS::snuprintf (dbInfo.name, sizeof (dbInfo.name), name.ToUStr ().Get ());
     GS::snuprintf (dbInfo.ref, sizeof (dbInfo.ref), id.ToUStr ().Get ());
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_NewDatabase (&dbInfo);
-#else
+    #else
     err = ACAPI_Database (APIDb_NewDatabaseID, &dbInfo);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("Get3DDocument", "APIDb_NewDatabaseID", err, APINULLGuid);
         return err;
@@ -260,92 +260,116 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
     element.header.guid = elemguid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError) return err;
-    if (!element.header.hasMemo) return err;
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
-    if (err != NoError || memo.morphBody == nullptr) {
-        msg_rep ("GetSectLine", "ACAPI_Element_GetMemo", err, APINULLGuid);
+    if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
-
     id = *memo.elemInfoString;
-    if (memo.morphBody->IsWireBody () && !memo.morphBody->IsSolidBody ()) {
-        Int32 nVertices = memo.morphBody->GetVertexCount ();
-        GS::Array<Sector> k;
-        GS::Array<Point2D> p;
-        Int32 edgeCnt = memo.morphBody->GetEdgeCount ();
-        API_Tranmat tm = element.morph.tranmat;
-        for (Int32 iEdge = 0; iEdge < edgeCnt; iEdge++) {
-            const EDGE& edge = memo.morphBody->GetConstEdge (iEdge);
-            const VERT& vtx1 = memo.morphBody->GetConstVertex (edge.vert1);
-            const VERT& vtx2 = memo.morphBody->GetConstVertex (edge.vert2);
-            Point2D c1 = GetWordPoint2DTM ({ vtx1.x, vtx1.y }, tm);
-            Point2D c2 = GetWordPoint2DTM ({ vtx2.x, vtx2.y }, tm);
-            p.Push (c1); p.Push (c2);
-            Sector s = { c1, c2 };
-            k.Push (s);
+    GS::Array<Sector> k;
+    GS::Array<Point2D> p;
+    Point2D c1 = { 0,0 }; Point2D c2 = { 0,0 }; Sector s = { c1, c2 };
+    API_ElemTypeID type = element.header.typeID;
+    if (type == API_RailingID) {
+        if (memo.coords == nullptr || memo.pends == nullptr) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return err;
         }
-
-        Point2D start; Point2D end;
-        bool find_start = false; bool find_end = false;
-        for (UInt32 i = 0; i < p.GetSize (); i++) {
-            if (p.Count (p[i]) == 1) {
-                if (!find_start) {
-                    start = p[i];
-                    find_start = true;
-                } else {
-                    if (!find_end) {
-                        end = p[i];
-                        find_end = true;
-                    } else {
-                        int hh = 1;
-                    }
-                }
+        Int32 nCoords = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (Coord);
+        for (Int32 i = 0; i < nCoords; i++) {
+            if (i == 0) {
+                c2 = { (*memo.coords)[i].x , (*memo.coords)[i].y };
+                continue;
             }
-        }
-        Sector tostart = { startpos , start };
-        Sector toend = { startpos , end };
-        if (tostart.GetLength () > toend.GetLength ()) start = end;
-        bool isend = false;
-        UInt32 n = k.GetSize ();
-        for (UInt32 i = 0; i < n; i++) {
-            UInt32 inx = 0;
-            if (GetNear (k, start, inx, isend)) {
-                SSectLine s;
-
-                if (isend) {
-                    start = k[inx].c1;
-                    s.s = { k[inx].c1, k[inx].c2 };
-                } else {
-                    start = k[inx].c2;
-                    s.s = { k[inx].c2, k[inx].c1 };
-                }
-                double dx = s.s.c1.x - s.s.c2.x;
-                double dy = s.s.c1.y - s.s.c2.y;
-                double angz = 0.0;
-                if (is_equal (dx, 0.0) && is_equal (dy, 0.0)) {
-                    angz = 0.0;
-                } else {
-                    angz = atan2 (dy, dx) + PI;
-                }
-                s.angz = angz;
-                s.angz_1 = angz + 0.5 * PI;
-                s.angz_2 = angz - 0.5 * PI;
-                lines.Push (s);
-                k.Delete (inx);
+            c1 = { (*memo.coords)[i].x , (*memo.coords)[i].y };
+            s = { c1, c2 };
+            if (s.GetLength () > 0.0001) {
+                p.Push (c1); p.Push (c2);
+                k.Push (s);
             }
+            c2 = c1;
         }
-        if (lines.GetSize () != n) {
-            msg_rep ("GetSectLine", "Diff size lines", err, APINULLGuid);
-        }
-        ACAPI_DisposeElemMemoHdls (&memo);
-    } else {
-        msg_rep ("GetSectLine", "memo.morphBody->IsWireBody", err, APINULLGuid);
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return err;
     }
+    if (type == API_MorphID) {
+        if (memo.morphBody == nullptr) {
+            msg_rep ("GetSectLine", "memo.morphBody == nullptr", err, APINULLGuid);
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return err;
+        }
+        if (memo.morphBody->IsWireBody () && !memo.morphBody->IsSolidBody ()) {
+            Int32 nVertices = memo.morphBody->GetVertexCount ();
+            Int32 edgeCnt = memo.morphBody->GetEdgeCount ();
+            API_Tranmat tm = element.morph.tranmat;
+            for (Int32 iEdge = 0; iEdge < edgeCnt; iEdge++) {
+                const EDGE& edge = memo.morphBody->GetConstEdge (iEdge);
+                const VERT& vtx1 = memo.morphBody->GetConstVertex (edge.vert1);
+                const VERT& vtx2 = memo.morphBody->GetConstVertex (edge.vert2);
+                c1 = GetWordPoint2DTM ({ vtx1.x, vtx1.y }, tm);
+                c2 = GetWordPoint2DTM ({ vtx2.x, vtx2.y }, tm);
+                p.Push (c1); p.Push (c2);
+                s = { c1, c2 };
+                k.Push (s);
+            }
+        } else {
+            msg_rep ("GetSectLine", "memo.morphBody->IsWireBody", err, APINULLGuid);
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return err;
+        }
+    }
+
+    Point2D start; Point2D end;
+    bool find_start = false; bool find_end = false;
+    for (UInt32 i = 0; i < p.GetSize (); i++) {
+        if (p.Count (p[i]) == 1) {
+            if (!find_start) {
+                start = p[i];
+                find_start = true;
+            } else {
+                if (!find_end) {
+                    end = p[i];
+                    find_end = true;
+                }
+            }
+        }
+    }
+    Sector tostart = { startpos , start };
+    Sector toend = { startpos , end };
+    if (tostart.GetLength () > toend.GetLength ()) start = end;
+    bool isend = false;
+    UInt32 n = k.GetSize ();
+    for (UInt32 i = 0; i < n; i++) {
+        UInt32 inx = 0;
+        if (GetNear (k, start, inx, isend)) {
+            SSectLine s;
+
+            if (isend) {
+                start = k[inx].c1;
+                s.s = { k[inx].c1, k[inx].c2 };
+            } else {
+                start = k[inx].c2;
+                s.s = { k[inx].c2, k[inx].c1 };
+            }
+            double dx = s.s.c1.x - s.s.c2.x;
+            double dy = s.s.c1.y - s.s.c2.y;
+            double angz = 0.0;
+            if (is_equal (dx, 0.0) && is_equal (dy, 0.0)) {
+                angz = 0.0;
+            } else {
+                angz = atan2 (dy, dx) + PI;
+            }
+            s.angz = angz;
+            s.angz_1 = angz + 0.5 * PI;
+            s.angz_2 = angz - 0.5 * PI;
+            lines.Push (s);
+            k.Delete (inx);
+        }
+    }
+    if (lines.GetSize () != n) {
+        msg_rep ("GetSectLine", "Diff size lines", err, APINULLGuid);
+    }
+    ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
 // -----------------------------------------------------------------------------
@@ -357,11 +381,11 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
     // Назначение секущих плоскостей по краям отрезка
     API_3DCutPlanesInfo cutInfo;
     if (GetCuplane (sline, cutInfo) == NoError) {
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_View_Change3DCuttingPlanes (&cutInfo);
-#else
+        #else
         err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
-#endif
+        #endif
         if (err != NoError) {
             msg_rep ("DoSect", "APIEnv_Change3DCuttingPlanesID", err, APINULLGuid);
             BMKillHandle ((GSHandle*) &(cutInfo.shapes));
@@ -386,11 +410,11 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
     }
 
     API_DocumentFrom3DType documentFrom3DType;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_GetDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_GetDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("DoSect", "APIEnv_GetDocumentFrom3DSettingsID", err, APINULLGuid);
         BMKillHandle (reinterpret_cast<GSHandle*> (&documentFrom3DType.cutSetting.shapes));
@@ -408,11 +432,11 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
         }
     }
     documentFrom3DType.projectionSetting = proj3DInfo;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_ChangeDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_ChangeDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
-#endif
+    #endif
     BMKillHandle (reinterpret_cast<GSHandle*> (&documentFrom3DType.cutSetting.shapes));
     BMKillHandle ((GSHandle*) &(cutInfo.shapes));
     if (err != NoError) {
@@ -434,22 +458,22 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
     API_DatabaseInfo dbInfo = {};
     windowInfo.typeID = APIWind_DocumentFrom3DID;
     windowInfo.databaseUnId = sline.databaseUnId;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Window_ChangeWindow (&windowInfo);
-#else
+    #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("PlaceDocSect", "APIDo_ChangeWindowID", err, APINULLGuid);
         return err;
     }
     dbInfo.typeID = APIWind_DocumentFrom3DID;
     dbInfo.databaseUnId = sline.databaseUnId;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
-#else
+    #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("PlaceDocSect", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return err;
@@ -501,7 +525,7 @@ void ProfileByLine ()
     if (elems.IsEmpty ()) return;
     Point2D startpos;
 
-    if (!ClickAPoint ("Click morph-line", &startpos))
+    if (!ClickAPoint ("Click start position", &startpos))
         return;
 
     API_Element elemline;
@@ -509,11 +533,11 @@ void ProfileByLine ()
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     GS::IntPtr	store = 1;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_StoreViewSettings (store);
-#else
+    #else
     err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
-#endif
+    #endif
     if (err != NoError) {
         store = -1;
         err = NoError;
@@ -524,16 +548,16 @@ void ProfileByLine ()
         // Получаем настройку хотспотов, которые будем расставлять на краях
         BNZeroMemory (&elemline, sizeof (API_Element));
         API_AttributeIndex layer;
-#if defined AC_27 || defined AC_28 || defined AC_26
+        #if defined AC_27 || defined AC_28 || defined AC_26
         elemline.header.type.typeID = API_HotspotID;
-#else
+        #else
         elemline.header.typeID = API_HotspotID;
-#endif
-#if defined AC_27 || defined AC_28
+        #endif
+        #if defined AC_27 || defined AC_28
         layer = ACAPI_CreateAttributeIndex (1);
-#else
+        #else
         layer = 1;
-#endif
+        #endif
         err = ACAPI_Element_GetDefaults (&elemline, nullptr);
         if (err != NoError) {
             msg_rep ("ProfileByLine", "ACAPI_Element_GetDefaults", err, APINULLGuid);
@@ -542,27 +566,27 @@ void ProfileByLine ()
         elemline.header.layer = layer;
         elemline.hotspot.pen = 143;
         BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Database_GetCurrentDatabase (&databasestart);
-#else
+        #else
         err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
-#endif
+        #endif
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
             return err;
         }
         BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Window_GetCurrentWindow (&windowstart);
-#else
+        #else
         err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
-#endif
+        #endif
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIDb_GetCurrentWindowID", err, APINULLGuid);
             return err;
         }
 
-#ifdef AC_25
+        #ifdef AC_25
         API_3DImageInfo imageInfo;
         err = ACAPI_Environment (APIEnv_Get3DImageSetsID, &imageInfo);
         if (err != NoError) {
@@ -577,12 +601,12 @@ void ProfileByLine ()
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIEnv_Change3DImageSetsID", err, APINULLGuid);
         }
-#endif
-#if defined(AC_27) || defined(AC_28)
+        #endif
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_View_ShowAllIn3D ();
-#else
+        #else
         err = ACAPI_Automate (APIDo_ShowAllIn3DID, nullptr, nullptr);
-#endif
+        #endif
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIDo_ShowAllIn3DID", err, APINULLGuid);
         }
@@ -630,40 +654,40 @@ void ProfileByLine ()
         }
     }
     // Возвращение на исходную БД и окно
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
-#else
+    #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("ProfileByLine", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return;
     }
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Window_ChangeWindow (&windowstart);
-#else
+    #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("ProfileByLine", "APIDo_ChangeWindowID", err, APINULLGuid);
         return;
     }
     API_3DCutPlanesInfo cutInfo;
     BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_Get3DCuttingPlanes (&cutInfo);
-#else
+    #else
     err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("ProfileByLine", "APIEnv_Get3DCuttingPlanesID", err, APINULLGuid);
     } else {
         cutInfo.isCutPlanes = false;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_View_Change3DCuttingPlanes (&cutInfo);
-#else
+        #else
         err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
-#endif
+        #endif
         if (err != NoError) {
             msg_rep ("ProfileByLine", "APIEnv_Change3DCuttingPlanesID", err, APINULLGuid);
         }
@@ -671,11 +695,11 @@ void ProfileByLine ()
     BMKillHandle ((GSHandle*) &(cutInfo.shapes));
     if (store == 1) {
         store = 0;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         ACAPI_View_StoreViewSettings (store);
-#else
+        #else
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
-#endif
+        #endif
     }
 }
 // -----------------------------------------------------------------------------
@@ -693,20 +717,20 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Get", err, APINULLGuid);
         return err;
     }
-#if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined AC_26 || defined AC_27 || defined AC_28
     if (element.header.type.typeID != API_DrawingID) return APIERR_GENERAL;
-#else
+    #else
     if (element.header.typeID != API_DrawingID) return APIERR_GENERAL;
-#endif
+    #endif
     API_DatabaseInfo	dbInfo;
     BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     dbInfo.typeID = APIWind_DrawingID;
     dbInfo.linkedElement = element.header.guid;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
-#else
+    #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return err;
@@ -723,11 +747,11 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
     API_Element hotspotelem;
     bool flag_find = false;
     API_AttributeIndex layer;
-#if defined AC_27 || defined AC_28
+    #if defined AC_27 || defined AC_28
     layer = ACAPI_CreateAttributeIndex (1);
-#else
+    #else
     layer = 1;
-#endif
+    #endif
     for (UInt32 i = 0; i < hotspotList.GetSize (); i++) {
         BNZeroMemory (&hotspotelem, sizeof (API_Element));
         hotspotelem.header.guid = hotspotList[i];
@@ -759,20 +783,20 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         startpos.x = startpos.x + l * kscale;
     }
     // Возвращение на исходную БД и окно
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
-#else
+    #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return err;
     }
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Window_ChangeWindow (&windowstart);
-#else
+    #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "APIDo_ChangeWindowID", err, APINULLGuid);
         return err;
@@ -790,11 +814,11 @@ GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
     GS::Array<API_Guid> drawings;
     for (UInt32 i = 0; i < elems.GetSize (); i++) {
         BNZeroMemory (&drawingLinkInfo, sizeof (API_DrawingLinkInfo));
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Drawing_GetDrawingLink (&(elems[i]), &drawingLinkInfo);
-#else
+        #else
         err = ACAPI_Database (APIDb_GetDrawingLinkID, (void*) (&(elems[i])), &drawingLinkInfo);
-#endif
+        #endif
         if (err == NoError) {
             if (drawingLinkInfo.linkPath != nullptr) delete drawingLinkInfo.linkPath;
             if (drawingLinkInfo.viewPath != nullptr) BMKillPtr (&drawingLinkInfo.viewPath);
@@ -826,11 +850,11 @@ void AlignDrawingsByPoints ()
     API_Coord zeropos = startpos;
     // Запоминаем настройки отображения
     GS::IntPtr	store = 1;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_View_StoreViewSettings (store);
-#else
+    #else
     err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
-#endif
+    #endif
     if (err != NoError) {
         store = -1;
         err = NoError;
@@ -838,21 +862,21 @@ void AlignDrawingsByPoints ()
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetCurrentDatabase (&databasestart);
-#else
+    #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignDrawingsByPoints", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
         return;
     }
     BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Window_GetCurrentWindow (&windowstart);
-#else
+    #else
     err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignDrawingsByPoints", "APIDb_GetCurrentWindowID", err, APINULLGuid);
         return;
@@ -873,20 +897,20 @@ void AlignDrawingsByPoints ()
         }
     }
     // Возвращение на исходную БД и окно
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
-#else
+    #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return;
     }
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Window_ChangeWindow (&windowstart);
-#else
+    #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "APIDo_ChangeWindowID", err, APINULLGuid);
         return;
@@ -914,17 +938,17 @@ void AlignDrawingsByPoints ()
     });
     if (store == 1) {
         store = 0;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         ACAPI_View_StoreViewSettings (store);
-#else
+        #else
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
-#endif
+        #endif
     }
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_View_Zoom (nullptr, nullptr);
-#else
+    #else
     ACAPI_Automate (APIDo_ZoomID, nullptr, nullptr);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Change", err, APINULLGuid);
         return;
