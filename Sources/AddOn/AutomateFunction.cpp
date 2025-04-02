@@ -72,7 +72,6 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         Int32 inx = 0;
         (*cutInfo.shapes)[inx].cutStatus = 0;
         (*cutInfo.shapes)[inx].cutPen = 3;
-        //(*cutInfo.shapes)[inx].cutMater = 11;
         (*cutInfo.shapes)[inx].pa = sin (-sline.angz);
         (*cutInfo.shapes)[inx].pb = cos (-sline.angz);
         (*cutInfo.shapes)[inx].pc = 0;
@@ -96,11 +95,10 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         }
         (*cutInfo.shapes)[inx].cutStatus = 0;
         (*cutInfo.shapes)[inx].cutPen = 3;
-        //(*cutInfo.shapes)[inx].cutMater = 11;
         (*cutInfo.shapes)[inx].pa = sin (-sline.angz + 180 * DEGRAD);
         (*cutInfo.shapes)[inx].pb = cos (-sline.angz + 180 * DEGRAD);
         (*cutInfo.shapes)[inx].pc = 0;
-        (*cutInfo.shapes)[inx].pd = x2 + 1;
+        (*cutInfo.shapes)[inx].pd = x2 + 0.01;
 
         co = cos (sline.angz_1);
         si = sin (sline.angz_1);
@@ -112,7 +110,6 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         inx += 1;
         (*cutInfo.shapes)[inx].cutStatus = 0;
         (*cutInfo.shapes)[inx].cutPen = 3;
-        //(*cutInfo.shapes)[inx].cutMater = 11;
         (*cutInfo.shapes)[inx].pa = sin (-sline.angz_1);
         (*cutInfo.shapes)[inx].pb = cos (-sline.angz_1);
         (*cutInfo.shapes)[inx].pc = 0;
@@ -128,7 +125,6 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         inx += 1;
         (*cutInfo.shapes)[inx].cutStatus = 0;
         (*cutInfo.shapes)[inx].cutPen = 3;
-        //(*cutInfo.shapes)[inx].cutMater = 11;
         (*cutInfo.shapes)[inx].pa = sin (-sline.angz_2);
         (*cutInfo.shapes)[inx].pb = cos (-sline.angz_2);
         (*cutInfo.shapes)[inx].pc = 0;
@@ -262,24 +258,23 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
     if (err != NoError) return err;
     API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    GS::Array<Sector> k;
+    GS::Array<Point2D> p;
+    Point2D c1 = { 0,0 }; Point2D c2 = { 0,0 }; Sector s = { c1, c2 };
+    API_ElemTypeID type = element.header.typeID;
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
-    id = *memo.elemInfoString;
-    GS::Array<Sector> k;
-    GS::Array<Point2D> p;
-    Point2D c1 = { 0,0 }; Point2D c2 = { 0,0 }; Sector s = { c1, c2 };
-    API_ElemTypeID type = element.header.typeID;
     if (type == API_RailingID) {
         if (memo.coords == nullptr || memo.pends == nullptr) {
             ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         }
         Int32 nCoords = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (Coord);
-        for (Int32 i = 0; i < nCoords; i++) {
-            if (i == 0) {
+        for (Int32 i = 1; i < nCoords; i++) {
+            if (i == 1) {
                 c2 = { (*memo.coords)[i].x , (*memo.coords)[i].y };
                 continue;
             }
@@ -308,9 +303,11 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
                 const VERT& vtx2 = memo.morphBody->GetConstVertex (edge.vert2);
                 c1 = GetWordPoint2DTM ({ vtx1.x, vtx1.y }, tm);
                 c2 = GetWordPoint2DTM ({ vtx2.x, vtx2.y }, tm);
-                p.Push (c1); p.Push (c2);
                 s = { c1, c2 };
-                k.Push (s);
+                if (s.GetLength () > 0.0001) {
+                    p.Push (c1); p.Push (c2);
+                    k.Push (s);
+                }
             }
         } else {
             msg_rep ("GetSectLine", "memo.morphBody->IsWireBody", err, APINULLGuid);
@@ -318,7 +315,7 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
             return err;
         }
     }
-
+    id = *memo.elemInfoString;
     Point2D start; Point2D end;
     bool find_start = false; bool find_end = false;
     for (UInt32 i = 0; i < p.GetSize (); i++) {
@@ -343,7 +340,6 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
         UInt32 inx = 0;
         if (GetNear (k, start, inx, isend)) {
             SSectLine s;
-
             if (isend) {
                 start = k[inx].c1;
                 s.s = { k[inx].c1, k[inx].c2 };
@@ -508,6 +504,7 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
             msg_rep ("PlaceDocSect", "ACAPI_Element_Create", err, APINULLGuid);
             return err;
         }
+        CreateLabel (sline.elemguid);
         return err;
     });
     if (err != NoError) {
@@ -955,5 +952,7 @@ void AlignDrawingsByPoints ()
     }
     return;
 }
+
+
 }
 #endif
