@@ -2741,7 +2741,7 @@ void ParamHelpers::WriteAttribute (const API_Guid& elemGuid, ParamDictValue& par
         msg_rep ("ParamHelpers::WriteAttribute", "ACAPI_Attribute_Search - " + params.Get ("{@attrib:layer}").val.uniStringValue, err, elemGuid);
         return;
     }
-    API_Element element = {}
+    API_Element element = {};
     API_Element elementMask = {};
     element.header.guid = elemGuid;
     err = ACAPI_Element_Get (&element);
