@@ -782,11 +782,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
         }
     }
     #endif
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    element.header.type.typeID = API_ObjectID;
-    #else
-    element.header.typeID = API_ObjectID;
-    #endif
+    SetElemTypeID (element, API_ObjectID);
     #ifdef AC_22
     element.header.variationID = APIVarId_Object;
     #endif

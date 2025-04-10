@@ -2,28 +2,28 @@
 #pragma once
 #if !defined (COMMON_HPP)
 #define	COMMON_HPP
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
+#include "ACAPinc.h"
+#include "APIEnvir.h"
 #ifdef AC_22
-#include	"APICommon22.h"
+#include "APICommon22.h"
 #endif // AC_25
 #ifdef AC_23
-#include	"APICommon23.h"
+#include "APICommon23.h"
 #endif // AC_25
 #ifdef AC_24
-#include	"APICommon24.h"
+#include "APICommon24.h"
 #endif // AC_25
 #ifdef AC_25
-#include	"APICommon25.h"
+#include "APICommon25.h"
 #endif // AC_25
 #ifdef AC_26
-#include	"APICommon26.h"
+#include "APICommon26.h"
 #endif // AC_26
 #ifdef AC_27
-#include	"APICommon27.h"
+#include "APICommon27.h"
 #endif // AC_27
 #ifdef AC_28
-#include	"APICommon28.h"
+#include "APICommon28.h"
 #endif // AC_27
 #include "ResourceIds.hpp"
 #include "DG.h"
@@ -53,18 +53,20 @@ static const Int32 DMeterStringID = 19;
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
 
-struct Story {
+struct Story
+{
     Story (short _index, double _level)
         : index (_index)
-        , level (_level) {
-    }
+        , level (_level)
+    {}
     short  index;
     double level;
 };
 using Stories = GS::Array<Story>; // Хранение информации об этажах в формате Индекс - Уровень
 
 // Структура для хранения формата перевода чисел в строку и округления чисел
-typedef struct {
+typedef struct
+{
     int n_zero = 3; //Количество нулей после запятой
     GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
     bool needRound = false; //Использовать в расчётах округлённые значения
@@ -291,33 +293,34 @@ API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const  API_Tranmat& tm);
 Point2D GetWordPoint2DTM (const Point2D vtx, const  API_Tranmat& tm);
 bool ClickAPoint (const char* prompt, Point2D* c);
 
-namespace FormatStringFunc {
-    FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
-    // -----------------------------------------------------------------------------
-    // Обработка количества нулей и единиц измерения в имени свойства
-    // Удаляет из имени paramName найденные единицы измерения
-    // Возвращает строку для скармливания функции NumToStig
-    // -----------------------------------------------------------------------------
-    GS::UniString GetFormatString (GS::UniString& paramName);
+namespace FormatStringFunc
+{
+FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
+// -----------------------------------------------------------------------------
+// Обработка количества нулей и единиц измерения в имени свойства
+// Удаляет из имени paramName найденные единицы измерения
+// Возвращает строку для скармливания функции NumToStig
+// -----------------------------------------------------------------------------
+GS::UniString GetFormatString (GS::UniString& paramName);
 
-    // -----------------------------------------------------------------------------
-    // Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
-    // -----------------------------------------------------------------------------
-    FormatStringDict GetFotmatStringForMeasureType ();
+// -----------------------------------------------------------------------------
+// Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
+// -----------------------------------------------------------------------------
+FormatStringDict GetFotmatStringForMeasureType ();
 
-    // -----------------------------------------------------------------------------
-    // Извлекает из строки информацио о единицах измерении и округлении
-    // -----------------------------------------------------------------------------
-    FormatString ParseFormatString (const GS::UniString& stringformat);
+// -----------------------------------------------------------------------------
+// Извлекает из строки информацио о единицах измерении и округлении
+// -----------------------------------------------------------------------------
+FormatString ParseFormatString (const GS::UniString& stringformat);
 
-    // -----------------------------------------------------------------------------
-    // Переводит число в строку согласно настройкам строки-формата
-    // -----------------------------------------------------------------------------
-    GS::UniString NumToString (const double& var, const FormatString& stringformat);
+// -----------------------------------------------------------------------------
+// Переводит число в строку согласно настройкам строки-формата
+// -----------------------------------------------------------------------------
+GS::UniString NumToString (const double& var, const FormatString& stringformat);
 
-    void ReplaceMeters (GS::UniString& formatstring);
+void ReplaceMeters (GS::UniString& formatstring);
 
-    void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
+void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
 
 }
 
@@ -327,22 +330,29 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D& polygon, API_
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID& type, API_AttributeIndex& attribinx);
 
-void CreateLabel (API_Guid& parentguid);
+API_ElemTypeID GetElemTypeID (const API_Elem_Head& elementhead);
 
+API_ElemTypeID GetElemTypeID (const API_Element& element);
 
-namespace GDLHelpers {
-    typedef struct {
-        GS::Array <double> arr_num;
-        GS::Array <GS::UniString> arr_str;
-        Int32 dim1 = 1;
-        Int32 dim2 = 1;
-        double num = 0;
-        GS::UniString str = "";
-    } Param; // Структура для чтения/записи в объекты
+void SetElemTypeID (API_Element& element, const API_ElemTypeID eltype);
 
-    typedef GS::HashTable <GS::UniString, Param> ParamDict;
+void SetElemTypeID (API_Elem_Head& elementhead, const API_ElemTypeID eltype);
 
-    bool ParamToMemo (API_ElementMemo& memo, ParamDict& param);
+namespace GDLHelpers
+{
+typedef struct
+{
+    GS::Array <double> arr_num;
+    GS::Array <GS::UniString> arr_str;
+    Int32 dim1 = 1;
+    Int32 dim2 = 1;
+    double num = 0;
+    GS::UniString str = "";
+} Param; // Структура для чтения/записи в объекты
+
+typedef GS::HashTable <GS::UniString, Param> ParamDict;
+
+bool ParamToMemo (API_ElementMemo& memo, ParamDict& param);
 
 }
 

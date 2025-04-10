@@ -1,7 +1,6 @@
 //------------ kuvbur 2022 ------------
 #ifdef EXTNDVERSION
 #include	"ACAPinc.h"
-#include	"APIEnvir.h"
 #include	"AutomateFunction.hpp"
 #include    "Helpers.hpp"
 #include	"Model3D/MeshBody.hpp"
@@ -261,7 +260,7 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
     GS::Array<Sector> k;
     GS::Array<Point2D> p;
     Point2D c1 = { 0,0 }; Point2D c2 = { 0,0 }; Sector s = { c1, c2 };
-    API_ElemTypeID type = element.header.typeID;
+    API_ElemTypeID type = GetElemTypeID (element);
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -504,7 +503,6 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
             msg_rep ("PlaceDocSect", "ACAPI_Element_Create", err, APINULLGuid);
             return err;
         }
-        CreateLabel (sline.elemguid);
         return err;
     });
     if (err != NoError) {
@@ -545,11 +543,7 @@ void ProfileByLine ()
         // Получаем настройку хотспотов, которые будем расставлять на краях
         BNZeroMemory (&elemline, sizeof (API_Element));
         API_AttributeIndex layer;
-        #if defined AC_27 || defined AC_28 || defined AC_26
-        elemline.header.type.typeID = API_HotspotID;
-        #else
-        elemline.header.typeID = API_HotspotID;
-        #endif
+        SetElemTypeID (elemline, API_HotspotID);
         #if defined AC_27 || defined AC_28
         layer = ACAPI_CreateAttributeIndex (1);
         #else
@@ -714,11 +708,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_Get", err, APINULLGuid);
         return err;
     }
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    if (element.header.type.typeID != API_DrawingID) return APIERR_GENERAL;
-    #else
-    if (element.header.typeID != API_DrawingID) return APIERR_GENERAL;
-    #endif
+    if (GetElemTypeID (element) != API_DrawingID) return APIERR_GENERAL;
     API_DatabaseInfo	dbInfo;
     BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     dbInfo.typeID = APIWind_DrawingID;
@@ -914,7 +904,8 @@ void AlignDrawingsByPoints ()
     }
     if (gooddrawings.IsEmpty ()) return;
     if (coords.IsEmpty ()) return;
-    API_Element element, mask;
+    API_Element element = {};
+    API_Element mask = {};
     err = ACAPI_CallUndoableCommand ("Move drawing",
     [&]() -> GSErrCode {
         GSErrCode err = NoError;
