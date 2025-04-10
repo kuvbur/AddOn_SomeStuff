@@ -1,11 +1,12 @@
 //------------ kuvbur 2022 ------------
-#include    "CommonFunction.hpp"
-#include    "qrcodegen.hpp"
-#include    "StringConversion.hpp"
-#include    <bitset>
-#include    <cmath>
-#include    <limits>
-#include    <math.h>
+#include "APIEnvir.h"
+#include "CommonFunction.hpp"
+#include "qrcodegen.hpp"
+#include <APIdefs_Environment.h>
+#include <bitset>
+#include <cmath>
+#include <limits>
+#include <math.h>
 
 Stories GetStories ()
 {
@@ -682,11 +683,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
         msg_rep ("GetTypeByGUID", "", err, elemGuid);
         return err;
     }
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    elementType = elem_head.type.typeID;
-    #else
-    elementType = elem_head.typeID;
-    #endif
+    elementType = GetElemTypeID (elem_head);
     return err;
 }
 
@@ -1185,11 +1182,8 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 // -----------------------------------------------------------------------------
 void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & elem_head, API_ElemTypeID & elemType, API_Guid & elemGuid)
 {
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    switch (elem_head.type.typeID) {
-        #else
-    switch (elem_head.typeID) {
-        #endif // AC_26
+    API_ElemTypeID elemtype = GetElemTypeID (elem_head);
+    switch (elemtype) {
         case API_CurtainWallPanelID:
             elemGuid = element.cwPanel.symbolID;
             elemType = API_ObjectID;
@@ -1205,11 +1199,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
         default:
             UNUSED_VARIABLE (element);
             elemGuid = elem_head.guid;
-            #if defined AC_26 || defined AC_27 || defined AC_28
-            elemType = elem_head.type.typeID;
-            #else
-            elemType = elem_head.typeID;
-            #endif
+            elemtype = GetElemTypeID (elem_head);
             break;
     }
     return;
@@ -1469,7 +1459,7 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
 // --------------------------------------------------------------------
 API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat & tm)
 {
-    API_Coord3D	trCoord;	// world coordinates 
+    API_Coord3D	trCoord = {};	// world coordinates 
     trCoord.x = tm.tmx[0] * vtx.x + tm.tmx[1] * vtx.y + tm.tmx[2] * vtx.z + tm.tmx[3];
     trCoord.y = tm.tmx[4] * vtx.x + tm.tmx[5] * vtx.y + tm.tmx[6] * vtx.z + tm.tmx[7];
     trCoord.z = tm.tmx[8] * vtx.x + tm.tmx[9] * vtx.y + tm.tmx[10] * vtx.z + tm.tmx[11];
@@ -2146,35 +2136,44 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     }
 }
 
-void CreateLabel (API_Guid & parentguid)
+API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)
 {
-    GSErrCode err;
-    API_Element element;
-    API_ElementMemo memo;
-    BNZeroMemory (&element, sizeof (API_Element));
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    API_ElemTypeID parentType;
-    err = GetTypeByGUID (parentguid, parentType);
-    if (err != NoError) {
-        return;
-    }
-    element.header.typeID = API_LabelID;
-    element.label.parentType = parentType;
-    err = ACAPI_Element_GetDefaults (&element, &memo);
-    if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return;
-    }
-    element.label.begC.x = 0;
-    element.label.begC.y = 0;
-    element.label.createAtDefaultPosition = true;
-    element.label.parent = parentguid;
-    err = ACAPI_Element_Create (&element, &memo);
-    if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return;
-    }
-    ACAPI_DisposeElemMemoHdls (&memo);
+    API_ElemTypeID eltype;
+    #if defined AC_26 || defined AC_27 || defined AC_28
+    eltype = elementhead.type.typeID;
+    #else
+    eltype = elementhead.typeID;
+    #endif
+    return eltype;
+}
+
+API_ElemTypeID GetElemTypeID (const API_Element & element)
+{
+    API_ElemTypeID eltype;
+    #if defined AC_26 || defined AC_27 || defined AC_28
+    eltype = element.header.type.typeID;
+    #else
+    eltype = element.header.typeID;
+    #endif
+    return eltype;
+}
+
+void SetElemTypeID (API_Element & element, const API_ElemTypeID eltype)
+{
+    #if defined AC_26 || defined AC_27 || defined AC_28
+    element.header.type.typeID = eltype;
+    #else
+    element.header.typeID = eltype;
+    #endif
+}
+
+void SetElemTypeID (API_Elem_Head & elementhead, const API_ElemTypeID eltype)
+{
+    #if defined AC_26 || defined AC_27 || defined AC_28
+    elementhead.type.typeID = eltype;
+    #else
+    elementhead.typeID = eltype;
+    #endif
 }
 
 namespace GDLHelpers

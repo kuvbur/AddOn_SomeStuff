@@ -368,7 +368,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
 void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
-    API_Element element;
+    API_Element element = {};
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
@@ -379,11 +379,8 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
     }
     API_Guid wallguid = APINULLGuid;
     OtdOpening op;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_26)
-    switch (element.header.type.typeID) {
-        #else
-    switch (element.header.typeID) {
-        #endif
+    API_ElemTypeID eltype = GetElemTypeID (element);
+    switch (eltype) {
         case API_WindowID:
             wallguid = element.window.owner;
             op.height = element.window.openingBase.height;
@@ -416,10 +413,10 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен
 // -----------------------------------------------------------------------------
-void ReadOneWall (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>&openinginwall, UnicGUIDByType & guidselementToRead)
+void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
-    API_Element element;
+    API_Element element = {};
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
@@ -606,7 +603,7 @@ void ReadOneWall (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны
 // -----------------------------------------------------------------------------
-void ReadOneColumn (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead)
+void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -693,7 +690,7 @@ void ReadOneColumn (const Stories & storyLevels, API_Guid & elGuid, GS::Array<AP
 // -----------------------------------------------------------------------------
 // Обработка полов и потолков
 // -----------------------------------------------------------------------------
-void ReadOneSlab (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead)
+void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -730,7 +727,7 @@ void ReadOneSlab (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (const API_Guid & elGuid, ParamDictValue & propertyParams, ParamDictValue & paramDict, ParamValue & param_composite)
+void Param_GetForBase (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite)
 {
     Param_AddProperty (elGuid, propertyParams, paramDict);
     // Поиск свойст со включением слоя отделки и имени
@@ -766,7 +763,7 @@ void Param_GetForBase (const API_Guid & elGuid, ParamDictValue & propertyParams,
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из зон
 // -----------------------------------------------------------------------------
-void Param_GetForRooms (const API_Guid & elGuid, ParamDictValue & propertyParams, ParamDictValue & paramDict)
+void Param_GetForRooms (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict)
 {
     Param_AddProperty (elGuid, propertyParams, paramDict);
     GDLParamRoom g;
@@ -785,7 +782,7 @@ void Param_GetForRooms (const API_Guid & elGuid, ParamDictValue & propertyParams
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из окон
 // -----------------------------------------------------------------------------
-void Param_GetForWindows (const API_Guid & elGuid, ParamDictValue & propertyParams, ParamDictValue & paramDict)
+void Param_GetForWindows (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict)
 {
     GDLParamWindow g;
     Param_AddProperty (elGuid, propertyParams, paramDict);
@@ -802,7 +799,7 @@ void Param_GetForWindows (const API_Guid & elGuid, ParamDictValue & propertyPara
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в зону
 // -----------------------------------------------------------------------------
-void Param_SetToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
+void Param_SetToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
 {
     GDLParamRoom g;
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -909,7 +906,7 @@ void Param_SetToRooms (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void Param_SetToBase (OtdRooms & roomsinfo, ParamDictElement & paramToRead, UnicGUIDByType & guidselementToRead, ParamValue & param_composite)
+void Param_SetToBase (OtdRooms& roomsinfo, ParamDictElement& paramToRead, UnicGUIDByType& guidselementToRead, ParamValue& param_composite)
 {
     if (!guidselementToRead.ContainsKey (API_ZoneID)) {
         #if defined(TESTING)
@@ -974,7 +971,7 @@ void Param_SetToBase (OtdRooms & roomsinfo, ParamDictElement & paramToRead, Unic
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
-void Param_SetToWindows (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
+void Param_SetToWindows (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
 {
     #if defined(TESTING)
     DBprnt ("Param_SetToWindows", "start");
@@ -1052,9 +1049,9 @@ void Param_SetToWindows (OtdRooms & roomsinfo, ParamDictElement & paramToRead)
 // Полчение полигона зоны (в том числе стен, колонн)
 // -----------------------------------------------------------------------------
 #if defined(AC_27) || defined(AC_28) 
-void RoomReductionPolyProc (const API_RoomReductionPolyType * roomRed)
+void RoomReductionPolyProc (const API_RoomReductionPolyType* roomRed)
 #else
-static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType * roomRed)
+static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
 #endif
 {
     if (reducededges == nullptr) {
@@ -1109,7 +1106,7 @@ static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType * roomRed)
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
-void GetZoneEdges (const API_ElementMemo & zonememo, API_Element & zoneelement, GS::Array<Sector>&walledges, GS::Array<Sector>&columnedges, GS::Array<Sector>&restedges, GS::Array<Sector>&gableedges)
+void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges)
 {
     RoomEdges rdges;
     reducededges = &rdges;
@@ -1173,7 +1170,7 @@ void GetZoneEdges (const API_ElementMemo & zonememo, API_Element & zoneelement, 
 // -----------------------------------------------------------------------------
 // Обработка потолков и полов в зоне
 // -----------------------------------------------------------------------------
-void FloorRooms (const Stories & storyLevels, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead, ParamDictElement & paramToRead)
+void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead)
 {
     if (!guidselementToRead.ContainsKey (API_ZoneID)) {
         #if defined(TESTING)
@@ -1213,7 +1210,7 @@ void FloorRooms (const Stories & storyLevels, OtdRooms & roomsinfo, UnicGUIDByTy
 // -----------------------------------------------------------------------------
 // Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
 // -----------------------------------------------------------------------------
-void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>&slabsinzone, const UnicGuid & finclassguids, const GS::Array<API_Guid>&zones)
+void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones)
 {
     GS::Array<API_Guid> allslabs_;
     GS::Array<API_Guid> allslabs;
@@ -1228,7 +1225,7 @@ void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>&slabsinzone,
     }
     if (allslabs.IsEmpty ()) return;
     GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions;
-    API_CollisionDetectionSettings colDetSettings;
+    API_CollisionDetectionSettings colDetSettings = {};
     colDetSettings.volumeTolerance = 0.000000000001;
     colDetSettings.performSurfaceCheck = true;
     colDetSettings.surfaceTolerance = 0.000000000001;
@@ -1247,7 +1244,7 @@ void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>&slabsinzone,
     }
 }
 
-void FloorOneRoom (const Stories & storyLevels, OtdSlab & poly, GS::Array<API_Guid>&slabGuids, GS::Array<OtdSlab>&otdslabs, GS::Array<OtdWall>&otdwall, ParamDictElement & paramToRead, bool on_top)
+void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, bool on_top)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
     for (API_Guid& slabGuid : slabGuids) {
@@ -1362,7 +1359,7 @@ void FloorOneRoom (const Stories & storyLevels, OtdSlab & poly, GS::Array<API_Gu
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
 // -----------------------------------------------------------------------------
-void ClearZoneGUID (UnicElementByType & elementToRead, GS::Array<API_ElemTypeID>&typeinzone)
+void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>& typeinzone)
 {
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (elementToRead.ContainsKey (typeelem)) {
@@ -1397,7 +1394,7 @@ void ClearZoneGUID (UnicElementByType & elementToRead, GS::Array<API_ElemTypeID>
 // -----------------------------------------------------------------------------
 // Получение площади отделочной стены с учётом отверстий
 // -----------------------------------------------------------------------------
-double GetAreaOtdWall (const OtdWall & otdw)
+double GetAreaOtdWall (const OtdWall& otdw)
 {
     double dx = -otdw.endC.x + otdw.begC.x;
     double dy = -otdw.endC.y + otdw.begC.y;
@@ -1418,7 +1415,7 @@ double GetAreaOtdWall (const OtdWall & otdw)
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов проёмов
 // -----------------------------------------------------------------------------
-void ReadAllOpeningReveals (OtdRooms & roomsinfo)
+void ReadAllOpeningReveals (OtdRooms& roomsinfo)
 {
     #if defined(TESTING)
     DBprnt ("ReadAllOpeningReveals", "start");
@@ -1467,7 +1464,7 @@ void ReadAllOpeningReveals (OtdRooms & roomsinfo)
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void ReadOneOpeningReveals (const OtdWall & otdw, OtdOpening & op, const Geometry::Vector2<double>&walldir_perp, GS::Array<OtdWall>&opw)
+void ReadOneOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw)
 {
     if (op.base_reveal_width < min_dim) return;
     double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
@@ -1526,7 +1523,7 @@ void ReadOneOpeningReveals (const OtdWall & otdw, OtdOpening & op, const Geometr
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void DelimOtdWalls (OtdRooms & roomsinfo)
+void DelimOtdWalls (OtdRooms& roomsinfo)
 {
     #if defined(TESTING)
     DBprnt ("DelimOtdWalls", "start");
@@ -1628,7 +1625,7 @@ void DelimOtdWalls (OtdRooms & roomsinfo)
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>&opw, double height, double zBottom, OtdMaterial & material)
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, OtdMaterial& material)
 {
     const double dh = 0.002; // Дополнительное увеличение высоты проёма для исключения линии на стыке
     if (height < min_dim || is_equal (height, 0)) {
@@ -1695,7 +1692,7 @@ bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>&opw, double height, double z
     return true;
 }
 
-bool Edge_FindOnEdge (Sector & edge, GS::Array<Sector>&edges, Sector & findedge)
+bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
 {
     double dx; double dy; double dr;
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
@@ -1723,7 +1720,7 @@ bool Edge_FindOnEdge (Sector & edge, GS::Array<Sector>&edges, Sector & findedge)
 // Проверка наличия отрезка в массиве отрезков.
 // В случае нахождение проверяется направление, при необходимости разворачивается
 // -----------------------------------------------------------------------------
-bool Edge_FindEdge (Sector & edge, GS::Array<Sector>&edges)
+bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges)
 {
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
         if (edges[i].c1.IsNear (edge.c1, min_dim) && edges[i].c2.IsNear (edge.c2, min_dim)) {
@@ -1738,16 +1735,16 @@ bool Edge_FindEdge (Sector & edge, GS::Array<Sector>&edges)
     return false;
 }
 
-void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicElementByType & subelementByparent, ClassificationFunc::ClassificationDict & finclass, GS::Array<API_Guid>&deletelist)
+void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist)
 {
     #if defined(TESTING)
     DBprnt ("Draw_Edges", "start");
     #endif
-    API_Element wallelement;
-    API_Element slabelement;
-    API_Element wallobjelement; API_ElementMemo wallobjmemo;
-    API_Element slabobjelement; API_ElementMemo slabobjmemo;
-    API_Element windowelement; API_ElementMemo windowmemo;
+    API_Element wallelement = {};
+    API_Element slabelement = {};
+    API_Element wallobjelement = {}; API_ElementMemo wallobjmemo;
+    API_Element slabobjelement = {}; API_ElementMemo slabobjmemo;
+    API_Element windowelement = {}; API_ElementMemo windowmemo;
     GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) ACAPI_Element_Delete (deletelist);
@@ -1791,21 +1788,15 @@ void Draw_Edges (const Stories & storyLevels, OtdRooms & zoneelements, UnicEleme
         }
         return NoError;
     });
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    if (windowelement.header.type.typeID == API_WindowID) ACAPI_DisposeElemMemoHdls (&windowmemo);
-    if (slabobjelement.header.type.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
-    if (wallobjelement.header.type.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
-    #else
-    if (windowelement.header.typeID == API_WindowID) ACAPI_DisposeElemMemoHdls (&windowmemo);
-    if (slabobjelement.header.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
-    if (wallobjelement.header.typeID == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
-    #endif
+    if (GetElemTypeID (windowelement) == API_WindowID) ACAPI_DisposeElemMemoHdls (&windowmemo);
+    if (GetElemTypeID (slabobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
+    if (GetElemTypeID (wallobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
     #if defined(TESTING)
     DBprnt ("Draw_Edges", "end");
     #endif
 }
 
-void Draw_Edge (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, API_Element & wallobjelement, API_ElementMemo & wallobjmemo, API_Element & windowelement, API_ElementMemo & windowmemo, UnicElementByType & subelementByparent)
+void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
 {
     if (edges.height < min_dim) return;
     double dx = -edges.endC.x + edges.begC.x;
@@ -1820,7 +1811,7 @@ void Draw_Edge (const Stories & storyLevels, OtdWall & edges, API_Element & wall
     Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent); // Привязка отделочной стены к базовой
 }
 
-void Draw_WallObject (const Stories & storyLevels, OtdWall & edges, API_Element & wallobjelement, API_ElementMemo & wallobjmemo, UnicElementByType & subelementByparent)
+void Draw_WallObject (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
     if (!GetDefult_WallObject (edges.favorite_name, wallobjelement, wallobjmemo)) {
@@ -1916,23 +1907,15 @@ void Draw_WallObject (const Stories & storyLevels, OtdWall & edges, API_Element 
     edges.otd_guid = wallobjelement.header.guid;
 }
 
-bool GetDefult_WallObject (const GS::UniString & favorite_name, API_Element & wallobjelement, API_ElementMemo & wallobjmemo)
+bool GetDefult_WallObject (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&wallobjmemo, sizeof (API_ElementMemo));
     BNZeroMemory (&wallobjelement, sizeof (API_Element));
     if (Favorite_GetByName (favorite_name, wallobjelement, wallobjmemo)) {
-        #if defined AC_26 || defined AC_27 || defined AC_28
-        if (wallobjelement.header.type.typeID == API_ObjectID) return true;
-        #else
-        if (wallobjelement.header.typeID == API_ObjectID) return true;
-        #endif
+        if (GetElemTypeID (wallobjelement) == API_ObjectID) return true;
     }
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    wallobjelement.header.type.typeID = API_ObjectID;
-    #else
-    wallobjelement.header.typeID = API_ObjectID;
-    #endif
+    SetElemTypeID (wallobjelement, API_ObjectID);
     err = ACAPI_Element_GetDefaults (&wallobjelement, &wallobjmemo);
     if (err != NoError) {
         return false;
@@ -1945,7 +1928,7 @@ bool GetDefult_WallObject (const GS::UniString & favorite_name, API_Element & wa
     return true;
 }
 
-void Draw_Wall (const Stories & storyLevels, OtdWall & edges, API_Element & wallelement, API_Element & windowelement, API_ElementMemo & windowmemo, UnicElementByType & subelementByparent)
+void Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
     if (!GetDefult_Wall (edges.favorite_name, wallelement)) {
@@ -1977,22 +1960,14 @@ void Draw_Wall (const Stories & storyLevels, OtdWall & edges, API_Element & wall
     }
 }
 
-bool GetDefult_Wall (const GS::UniString & favorite_name, API_Element & wallelement)
+bool GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&wallelement, sizeof (API_Element));
     if (Favorite_GetByName (favorite_name, wallelement)) {
-        #if defined AC_26 || defined AC_27 || defined AC_28
-        if (wallelement.header.type.typeID == API_WallID) return true;
-        #else
-        if (wallelement.header.typeID == API_WallID) return true;
-        #endif
+        if (GetElemTypeID (wallelement) == API_WallID) return true;
     }
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    wallelement.header.type.typeID = API_WallID;
-    #else
-    wallelement.header.typeID = API_WallID;
-    #endif
+    SetElemTypeID (wallelement, API_WallID);
     err = ACAPI_Element_GetDefaults (&wallelement, nullptr);
     if (err != NoError) {
         return false;
@@ -2012,7 +1987,7 @@ bool GetDefult_Wall (const GS::UniString & favorite_name, API_Element & wallelem
     return true;
 }
 
-void Draw_Window (API_Element & wallelement, API_Element & windowelement, API_ElementMemo & windowmemo, OtdOpening & op, UnicElementByType & subelementByparent)
+void Draw_Window (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
     if (wallelement.wall.type == APIWtyp_Poly) return;
@@ -2038,23 +2013,15 @@ void Draw_Window (API_Element & wallelement, API_Element & windowelement, API_El
     return;
 }
 
-bool GetDefult_Window (const GS::UniString & favorite_name, API_Element & windowelement, API_ElementMemo & windowmemo)
+bool GetDefult_Window (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& windowmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&windowmemo, sizeof (API_ElementMemo));
     BNZeroMemory (&windowelement, sizeof (API_Element));
     if (Favorite_GetByName (favorite_name, windowelement, windowmemo)) {
-        #if defined AC_26 || defined AC_27 || defined AC_28
-        if (windowelement.header.type.typeID == API_WindowID) return true;
-        #else
-        if (windowelement.header.typeID == API_WindowID) return true;
-        #endif
+        if (GetElemTypeID (windowelement) == API_WindowID) return true;
     }
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    windowelement.header.type.typeID = API_WindowID;
-    #else
-    windowelement.header.typeID = API_WindowID;
-    #endif
+    SetElemTypeID (windowelement, API_WindowID);
     err = ACAPI_Element_GetDefaults (&windowelement, &windowmemo);
     if (err != NoError) {
         return false;
@@ -2062,7 +2029,7 @@ bool GetDefult_Window (const GS::UniString & favorite_name, API_Element & window
     return true;
 }
 
-void Draw_CeilFloor (const Stories & storyLevels, API_Element & slabelement, API_Element & slabobjelement, API_ElementMemo & slabobjmemo, OtdSlab & otdslab, UnicElementByType & subelementByparent)
+void Draw_CeilFloor (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     if (Favorite_GetType (otdslab.favorite_name) == API_ObjectID) {
         Draw_SlabObject (storyLevels, slabobjelement, slabobjmemo, otdslab, subelementByparent);
@@ -2072,7 +2039,7 @@ void Draw_CeilFloor (const Stories & storyLevels, API_Element & slabelement, API
     Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
 }
 
-void Draw_Slab (const Stories & storyLevels, API_Element & slabelement, OtdSlab & otdslab, UnicElementByType & subelementByparent)
+void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
     if (!GetDefult_Slab (otdslab.favorite_name, slabelement)) {
@@ -2109,7 +2076,7 @@ void Draw_Slab (const Stories & storyLevels, API_Element & slabelement, OtdSlab 
     return;
 }
 
-void Draw_SlabObject (const Stories & storyLevels, API_Element & slabobjelement, API_ElementMemo & slabobjmemo, OtdSlab & otdslab, UnicElementByType & subelementByparent)
+void Draw_SlabObject (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
     if (!GetDefult_WallObject (otdslab.favorite_name, slabobjelement, slabobjmemo)) {
@@ -2147,23 +2114,15 @@ void Draw_SlabObject (const Stories & storyLevels, API_Element & slabobjelement,
     otdslab.otd_guid = slabobjelement.header.guid;
 }
 
-bool GetDefult_SlabObject (const GS::UniString & favorite_name, API_Element & slabobjelement, API_ElementMemo & slabobjmemo)
+bool GetDefult_SlabObject (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&slabobjmemo, sizeof (API_ElementMemo));
     BNZeroMemory (&slabobjelement, sizeof (API_Element));
     if (Favorite_GetByName (favorite_name, slabobjelement, slabobjmemo)) {
-        #if defined AC_26 || defined AC_27 || defined AC_28
-        if (slabobjelement.header.type.typeID == API_ObjectID) return true;
-        #else
-        if (slabobjelement.header.typeID == API_ObjectID) return true;
-        #endif
+        if (GetElemTypeID (slabobjelement) == API_ObjectID) return true;
     }
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    slabobjelement.header.type.typeID = API_ObjectID;
-    #else
-    slabobjelement.header.typeID = API_ObjectID;
-    #endif
+    SetElemTypeID (slabobjelement, API_ObjectID);
     err = ACAPI_Element_GetDefaults (&slabobjelement, &slabobjmemo);
     if (err != NoError) {
         return false;
@@ -2176,22 +2135,14 @@ bool GetDefult_SlabObject (const GS::UniString & favorite_name, API_Element & sl
     return true;
 }
 
-bool GetDefult_Slab (const GS::UniString & favorite_name, API_Element & slabelement)
+bool GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&slabelement, sizeof (API_Element));
     if (Favorite_GetByName (favorite_name, slabelement)) {
-        #if defined AC_26 || defined AC_27 || defined AC_28
-        if (slabelement.header.type.typeID == API_SlabID) return true;
-        #else
-        if (slabelement.header.typeID == API_SlabID) return true;
-        #endif
+        if (GetElemTypeID (slabelement) == API_SlabID) return true;
     }
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    slabelement.header.type.typeID = API_SlabID;
-    #else
-    slabelement.header.typeID = API_SlabID;
-    #endif
+    SetElemTypeID (slabelement, API_SlabID);
     err = ACAPI_Element_GetDefaults (&slabelement, nullptr);
     if (err != NoError) {
         return false;
@@ -2210,28 +2161,28 @@ bool GetDefult_Slab (const GS::UniString & favorite_name, API_Element & slabelem
 }
 
 
-void Class_SetClass (const OtdWall & op, const ClassificationFunc::ClassificationDict & finclass)
+void Class_SetClass (const OtdWall& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (op.base_type, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
-void Class_SetClass (const OtdOpening & op, const ClassificationFunc::ClassificationDict & finclass)
+void Class_SetClass (const OtdOpening& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (API_WindowID, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
-void Class_SetClass (const OtdSlab & op, const ClassificationFunc::ClassificationDict & finclass)
+void Class_SetClass (const OtdSlab& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (op.base_type, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
-API_Guid Class_GetClassGuid (const API_ElemTypeID & base_type, const ClassificationFunc::ClassificationDict & finclass)
+API_Guid Class_GetClassGuid (const API_ElemTypeID& base_type, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (base_type == API_ColumnID && finclass.ContainsKey (cls.column_class)) return finclass.Get (cls.column_class).item.guid;
     if (base_type == API_WallID && finclass.ContainsKey (cls.otdwall_class)) return finclass.Get (cls.otdwall_class).item.guid;
@@ -2244,7 +2195,7 @@ API_Guid Class_GetClassGuid (const API_ElemTypeID & base_type, const Classificat
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
 // -----------------------------------------------------------------------------
-void Class_FindFinClass (ClassificationFunc::SystemDict & systemdict, ClassificationFunc::ClassificationDict & findict, UnicGuid & finclassguids)
+void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFunc::ClassificationDict& findict, UnicGuid& finclassguids)
 {
     if (systemdict.IsEmpty ()) return;
     for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict>::PairIterator cIt = systemdict.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -2297,12 +2248,12 @@ void Class_FindFinClass (ClassificationFunc::SystemDict & systemdict, Classifica
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
-void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictValue & propertyParams)
+void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& propertyParams)
 {
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
     ParamDictElement paramToWrite;
-    API_Elem_Head parentelementhead;
+    API_Elem_Head parentelementhead = {};
     GS::Array<API_ElemTypeID> typeinzone;
     UnicGuid syncguidsdict;
     typeinzone.Push (API_ZoneID);
@@ -2353,7 +2304,7 @@ void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictValue & pr
     }
 }
 
-bool Class_IsElementFinClass (const API_Guid & elGuid, const UnicGuid & finclassguids)
+bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids)
 {
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
     if (ACAPI_Element_GetClassificationItems (elGuid, systemItemPairs) == NoError) {
@@ -2368,7 +2319,7 @@ bool Class_IsElementFinClass (const API_Guid & elGuid, const UnicGuid & finclass
     return false;
 }
 
-void Param_AddUnicElementByType (const API_Guid & parentguid, const API_Guid & guid, API_ElemTypeID elemtype, UnicElementByType & elementToRead)
+void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& guid, API_ElemTypeID elemtype, UnicElementByType& elementToRead)
 {
     if (parentguid == APINULLGuid) return;
     if (guid == APINULLGuid) return;
@@ -2387,7 +2338,7 @@ void Param_AddUnicElementByType (const API_Guid & parentguid, const API_Guid & g
     }
 }
 
-void Param_AddUnicGUIDByType (const API_Guid & elGuid, API_ElemTypeID elemtype, UnicGUIDByType & guidselementToRead)
+void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead)
 {
     if (elGuid == APINULLGuid) return;
     if (guidselementToRead.ContainsKey (elemtype)) {
@@ -2399,7 +2350,7 @@ void Param_AddUnicGUIDByType (const API_Guid & elGuid, API_ElemTypeID elemtype, 
     }
 }
 
-void Param_AddProperty (const API_Guid & elGuid, ParamDictValue & propertyParams, ParamDictValue & paramDict)
+void Param_AddProperty (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict)
 {
     GS::UniString propdesc = "some_stuff_fin_";
     for (auto& cItt : propertyParams) {
@@ -2421,28 +2372,20 @@ void Param_AddProperty (const API_Guid & elGuid, ParamDictValue & propertyParams
         }
     }
 }
-API_ElemTypeID Favorite_GetType (const GS::UniString & favorite_name)
+API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name)
 {
-    API_ElemTypeID type = API_ZombieElemID;
     GSErrCode err = NoError;
     #ifdef AC_22
-    return type;
+    return API_ZombieElemID;
     #else
-    if (favorite_name.IsEmpty ()) return type;
+    if (favorite_name.IsEmpty ()) return API_ZombieElemID;
     API_Favorite favorite (favorite_name);
     err = ACAPI_Favorite_Get (&favorite);
-    if (err == NoError) {
-        #if defined AC_26 || defined AC_27 || defined AC_28
-        type = favorite.element.header.type.typeID;
-        #else
-        type = favorite.element.header.typeID;
-        #endif
-        return type;
-    }
-    return type;
+    if (err == NoError) return GetElemTypeID (favorite.element.header);
+    return API_ZombieElemID;
     #endif
 }
-bool Favorite_GetByName (const GS::UniString & favorite_name, API_Element & element)
+bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element)
 {
     GSErrCode err = NoError;
     #ifdef AC_22
@@ -2458,7 +2401,7 @@ bool Favorite_GetByName (const GS::UniString & favorite_name, API_Element & elem
     return false;
     #endif
 }
-bool Favorite_GetByName (const GS::UniString & favorite_name, API_Element & element, API_ElementMemo & memo)
+bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
     GSErrCode err = NoError;
     #ifdef AC_22
