@@ -139,6 +139,7 @@
 /* [  46] */	"Не удалось найти параметры/свойства, указанные в правиле"
 /* [  47] */	"Создание элементов отделки"
 /* [  48] */	"не существуют (возможно, удалены)"
+/* [  49] */	"SomeStuff addon @ADDON_VERSION@: "
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -280,6 +281,7 @@
 /* [  46] */	"The parameters/properties specified in the rule could not be found"
 /* [  47] */	"Create finishing elements for the zones"
 /* [  48] */	"not exsist"
+/* [  49] */	"SomeStuff addon @ADDON_VERSION@: "
 }
 
 'GICN' 32500 "Sync" {

@@ -7,7 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <math.h>
-
+static const Int32 VersionId = 49;
 Stories GetStories ()
 {
     Stories stories;
@@ -537,11 +537,12 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     }
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
-    msg = "SomeStuff addon: " + msg + "\n";
+    GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
+    msg = version + msg + "\n";
     ACAPI_WriteReport (msg, false);
     if (show) ACAPI_WriteReport (msg, show);
     if (err != NoError) {
-        msg = "== SMSTF ERR ==" + msg;
+        msg = "== SMSTF ERROR ==" + msg;
     }
     #if defined(TESTING)
     DBprnt (msg);
