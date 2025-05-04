@@ -5517,6 +5517,12 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyD
     if (definition.description.ToLowerCase ().Contains ("{@property:buildingmaterialproperties}")) {
         pvalue.fromAttribDefinition = true;
     }
+    if (definition.description.ToLowerCase ().Contains ("some_stuff_fin_onoff")) {
+        pvalue.fromAttribDefinition = true;
+    }
+    if (definition.description.ToLowerCase ().Contains ("some_stuff_fin_description")) {
+        pvalue.fromAttribDefinition = true;
+    }
     // Костыль для обработки классификации. Переписать
     if (definition.description.Contains ("to{Class:")) {
         GS::Array<GS::UniString> params;

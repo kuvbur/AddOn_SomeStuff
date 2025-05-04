@@ -58,7 +58,8 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
@@ -221,6 +222,12 @@ void GetNumSymbSpase (GS::UniString& outstring, GS::UniChar symb, char charrepl)
 // Замена символов \\TAB и др. на юникод
 // -----------------------------------------------------------------------------
 void ReplaceSymbSpase (GS::UniString& outstring);
+
+short GetFontIndex ();
+
+double GetTextWidth (short& font, double& fontsize, GS::UniString& var);
+
+GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString& var);
 
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork

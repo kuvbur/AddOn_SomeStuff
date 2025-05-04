@@ -937,6 +937,95 @@ void ReplaceSymbSpase (GS::UniString & outstring)
 }
 
 
+short GetFontIndex ()
+{
+    GSErrCode err = NoError;
+    API_Attribute attrib; BNZeroMemory (&attrib, sizeof (API_Attribute));
+    attrib.header.typeID = API_FontID;
+    strcpy (attrib.header.name, "GOST 2.304 type A");
+    err = ACAPI_Attribute_Search (&attrib.header);
+    short inx = attrib.header.index;
+    return inx;
+}
+
+double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
+{
+    if (fontsize < 0.1) fontsize = 2.5;
+    if (font == 0) font = GetFontIndex ();
+    GSErrCode err = NoError;
+    double width = 0.0;
+    API_TextLinePars tlp; BNZeroMemory (&tlp, sizeof (API_TextLinePars));
+    tlp.drvScaleCorr = false;
+    tlp.index = 0;
+    tlp.wantsLongestIndex = false;
+    tlp.lineUniStr = &var;
+    tlp.wFace = APIFace_Plain;
+    tlp.wFont = font;
+    tlp.wSize = fontsize;
+    tlp.wSlant = PI / 2.0;
+    err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
+    if (width < 0.00001) width = 0.1;
+    return width;
+}
+
+
+
+GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString & var)
+{
+    GS::Array<GS::UniString> str;
+    GS::UniString space = " ";
+    if (var.IsEmpty ()) return str;
+    double width_space = 0;
+    double width_in = GetTextWidth (font, fontsize, var);
+    if (fabs (width_in - width) < 0.01) {
+        str.PushNew (var);
+        return str;
+    }
+    width_space = GetTextWidth (font, fontsize, space);
+    if (width_in < width) {
+        Int32 addspace = (Int32) ((width - width_in) / width_space);
+        GS::UniString addspace_txt = var + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+        str.Push (addspace_txt);
+        return str;
+    }
+    GS::Array<GS::UniString> parts;
+    UInt32 npart = StringSplt (var, " ", parts);
+    if (npart == 1) npart = StringSplt (var, ",", parts);
+    if (npart == 1) npart = StringSplt (var, ".", parts);
+    if (npart == 1) npart = StringSplt (var, ")", parts);
+    if (npart == 1) npart = StringSplt (var, ":", parts);
+    if (npart == 1) {
+        str.PushNew (var);
+        return str;
+    };
+    GS::UniString out = "";
+    GS::UniString old = "";
+    double width_old = 0; Int32 addspace = 0;
+    for (UInt32 i = 0; i < npart; i++) {
+        if (out.IsEmpty ()) {
+            out = parts[i];
+        } else {
+            out = out + space + parts[i];
+        }
+        width_in = GetTextWidth (font, fontsize, out);
+        if (width_in > width && !old.IsEmpty ()) {
+            addspace = (Int32) ((width - width_old) / width_space);
+            if (addspace > 0) old = old + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+            str.Push (old);
+            out = parts[i];
+        } else {
+            if (i == npart - 1) {
+                addspace = (Int32) ((width - width_in) / width_space);
+                if (addspace > 0) out = out + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+                str.Push (out);
+            }
+        }
+        old = out;
+        width_old = width_in;
+    }
+    return str;
+}
+
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
 // -----------------------------------------------------------------------------
@@ -1266,7 +1355,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-    }
+}
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
     #else
@@ -1331,7 +1420,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
                 elementsSymbolGuids.Push (std::move (memo.cWallFrames[idx].head.guid));
             }
-        }
+}
     }
     const GSSize nWallJunctions = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallJunctions)) / sizeof (API_CWJunctionType);
     if (nWallJunctions > 0) {
@@ -2249,7 +2338,7 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
         if (param.IsEmpty ()) {
             return true;
         }
-    }
+}
     return param.IsEmpty ();
 }
 }

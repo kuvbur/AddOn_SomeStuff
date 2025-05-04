@@ -119,11 +119,11 @@ void TestFormula ()
     DBtest (ParamHelpers::ReadFormula (paramByType, params), "ReadFormula", true);
 
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28)
+        #if defined(AC_28)
         ParamValue& param = cIt->value;
-#else
+        #else
         ParamValue& param = *cIt->value;
-#endif
+        #endif
         if (param.isValid && param.val.canCalculate) {
             ParamHelpers::ConvertByFormatString (param);
         }
@@ -270,9 +270,9 @@ void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray)
     for (UInt32 j = 0; j < guidArray.GetSize (); j++) {
         ResetSyncPropertyOne (guidArray[j]);
     }
-#if defined(TESTING)
+    #if defined(TESTING)
     DBprnt ("TEST", "ResetSyncPropertyArray");
-#endif
+    #endif
 }
 
 void ResetSyncPropertyOne (const API_Guid& elemGuid)
