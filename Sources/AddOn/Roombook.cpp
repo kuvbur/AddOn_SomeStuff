@@ -38,17 +38,25 @@ void RoomBook ()
             #else
             elementType = Neig_To_ElemID (neig.neigID);
             #endif
-            if (elementType == API_ZoneID) zones.Push (neig.guid);
+            if (elementType == API_ZoneID) {
+                if (!ACAPI_Element_Filter (neig.guid, APIFilt_InMyWorkspace)) continue;
+                if (!ACAPI_Element_Filter (neig.guid, APIFilt_HasAccessRight)) continue;
+                if (!ACAPI_Element_Filter (neig.guid, APIFilt_IsEditable)) continue;
+                zones.Push (neig.guid);
+            }
         }
     }
     if (zones.IsEmpty ()) {
         err = ACAPI_Element_GetElemList (API_ZoneID, &zones, APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight | APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation);
-        if (err != NoError || zones.IsEmpty ()) {
-            msg_rep ("RoomBook err", "Zones IsEmpty", NoError, APINULLGuid);
+        if (err != NoError) {
+            msg_rep ("RoomBook err", "ACAPI_Element_GetElemList", err, APINULLGuid);
             return;
         }
     }
-
+    if (zones.IsEmpty ()) {
+        msg_rep ("RoomBook err", "Zones not found or all not editable", NoError, APINULLGuid);
+        return;
+    }
     // Подготовка параметров
     ParamDictValue propertyParams; // Словарь общих параметров
     ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
@@ -146,7 +154,6 @@ void RoomBook ()
     Param_SetToWindows (roomsinfo, paramToRead);
     // Расчёт пола и потолка
     FloorRooms (storyLevels, roomsinfo, guidselementToRead, paramToRead);
-    paramToRead.Clear ();
     // Создание стенок для откосов
     ReadAllOpeningReveals (roomsinfo);
     // Разделение стенок по высотам зон
@@ -154,6 +161,7 @@ void RoomBook ()
     GS::Array<API_Guid> deletelist;
     // Получаем список существующих элементов отделки для обрабатываемых зон
     zones.Clear ();
+    ParamDictElement paramToWrite; // Параметры для записи в зоны и элементы отделки
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         OtdRoom& otd = cIt->value;
@@ -163,7 +171,7 @@ void RoomBook ()
         if (otd.isValid && otd.create_all_elements) {
             zones.Push (otd.zone_guid);
         }
-        if (otd.isValid) WriteOtdDataToRoom (otd);
+        if (otd.isValid) WriteOtdDataToRoom (otd, paramToWrite, paramToRead);
     }
     GS::HashTable<API_Guid, UnicGuid> exsistotdelements;
     int errcode;
@@ -190,34 +198,124 @@ void RoomBook ()
     // Отросовка элементов отделки
     Draw_Edges (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
     // Привязка отделочных элементов к базовым
-    SetSyncOtdWall (subelementByparent, propertyParams);
+
+
+    SetSyncOtdWall (subelementByparent, propertyParams, paramToWrite);
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep ("RoomBook", time, NoError, APINULLGuid);
 }
 
-void WriteOtdDataToRoom (OtdRoom& otd)
+void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDictElement& paramToRead)
 {
-    OtdMaterialByType dct;
+    if (!paramToRead.ContainsKey (otd.zone_guid)) {
+        return;
+    }
+    OtdMaterialAreaDictByType dct; // Основной словарь
     // Запись площади стен
     for (UInt32 i = 0; i < otd.otdwall.GetSize (); i++) {
         OtdWall& otdw = otd.otdwall[i];
         TypeOtd t = otdw.type;
         double area = GetAreaOtdWall (otdw);
-        GS::UniString mat = otdw
-            if (!dct.ContainsKey (t)) {
-                OtdMaterial o;
-                dct.Add (t, o);
-            }
-        if (dct.ContainsKey (t)) {
-            if (dct.)
+        for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
+            GS::UniString mat = otdw.base_composite[j].val;
+            WriteOtdDataToRoom_AddValue (dct, t, mat, area);
         }
     }
-    //otd.rawname_up = param.rawName;
-    //otd.rawname_main = param.rawName;
-    //otd.rawname_down = param.rawName;
-    //otd.rawname_column = param.rawName;
+    GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
+    paramnamebytype.Add (Wall_Up, otd.om_up.rawname); // Отделка стен выше потолка
+    paramnamebytype.Add (Reveal_Up, otd.om_up.rawname); // Отделка стен выше потолка
+    paramnamebytype.Add (Wall_Main, otd.om_main.rawname); // Отделка стен основная
+    paramnamebytype.Add (Wall_Down, otd.om_down.rawname); // Отделка низа стен
+    paramnamebytype.Add (Reveal_Down, otd.om_down.rawname); // Отделка низа стен
+    paramnamebytype.Add (Column, otd.om_column.rawname); // Отделка колонн
+    paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname); // Отделка откосов
+    paramnamebytype.Add (Floor, otd.om_floor.rawname); // Отделка пола
+    paramnamebytype.Add (Ceil, otd.om_ceil.rawname); // Отделка потолка
+
+    short font = GetFontIndex ();
+    double fontsize = 2.5;
+    double width_mat = 40;
+    double width_area = 20;
+    double width = width_mat + width_area;
+    Int32 addspace = 0;
+    GS::UniString space = " ";
+    double width_space = GetTextWidth (font, fontsize, space);
+    addspace = (Int32) (width_area / width_space);
+    GS::UniString space_line = GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+
+    GS::UniString delim = "-";
+    double width_delim = GetTextWidth (font, fontsize, delim);
+    addspace = (Int32) ((width - width_space) / width_delim);
+    GS::UniString delim_line = GS::UniString::Printf ("%s ", std::string (addspace, '-').c_str ());
+
+    for (auto& cItt : paramnamebytype) {
+        #if defined(AC_28)
+        TypeOtd t = cItt.key;
+        GS::UniString rawname = cItt.value;
+        #else
+        TypeOtd t = *cItt.key;
+        GS::UniString rawname = *cItt.value;
+        #endif
+        if (!dct.ContainsKey (t)) continue;
+        if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
+        ParamValue paramtow = paramToRead.Get (otd.zone_guid).Get (rawname);
+        GS::UniString old_val = paramtow.val.uniStringValue;
+        GS::UniString new_val = "";
+        OtdMaterialAreaDict& dcta = dct.Get (t);
+        for (auto& cIt : dcta) {
+            #if defined(AC_28)
+            double area = cIt.value;
+            GS::UniString mat = cIt.key;
+            #else
+            double area = *cIt.value;
+            GS::UniString mat = *cIt.key;
+            #endif
+            GS::UniString area_sring = GS::UniString::Printf ("%.2f", area);
+            double w_area = GetTextWidth (font, fontsize, area_sring);
+            if (w_area < width_area) {
+                Int32 addspace = (Int32) ((width_area - w_area) / width_space);
+                if (addspace > 1) {
+                    area_sring = GS::UniString::Printf ("%s", std::string (addspace - 1, ' ').c_str ()) + area_sring;
+                }
+                area_sring = area_sring + " ";
+            }
+            if (!new_val.IsEmpty ()) new_val = new_val + delim_line;
+            GS::Array<GS::UniString> lines_mat = DelimTextLine (font, fontsize, width_mat, mat);
+            for (UInt32 j = 0; j < lines_mat.GetSize (); j++) {
+                new_val = new_val + lines_mat[j];
+                if (j == lines_mat.GetSize () - 1) {
+                    new_val = new_val + area_sring;
+                } else {
+                    new_val = new_val + space_line;
+                }
+            }
+        }
+        if (!old_val.IsEqual (new_val)) {
+            paramtow.val.uniStringValue = new_val;
+            paramtow.isValid = true;
+            ParamHelpers::AddParamValue2ParamDictElement (otd.zone_guid, paramtow, paramToWrite);
+        }
+    }
+}
+
+void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const TypeOtd& t, GS::UniString& mat, const double& area)
+{
+    if (area < 0.000001) return;
+    if (!dct.ContainsKey (t)) {
+        OtdMaterialAreaDict dcta;
+        dcta.Add (mat, area);
+        dct.Add (t, dcta);
+        return;
+    } else {
+        if (!dct.Get (t).ContainsKey (mat)) {
+            dct.Get (t).Add (mat, area);
+        } else {
+            double area_sum = dct.Get (t).Get (mat) + area;
+            dct.Get (t).Set (mat, area_sum);
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -801,7 +899,7 @@ void Param_SetToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
                 msg_rep ("Param_SetToRooms err", "!isParamRead", NoError, zoneGuid);
                 continue;
             }
-            int n_param = 4;
+            int n_param = 7;
             for (auto& cItt : params) {
                 #if defined(AC_28)
                 ParamValue& param = cItt.value;
@@ -809,6 +907,14 @@ void Param_SetToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
                 ParamValue& param = *cItt.value;
                 #endif
                 if (!param.isValid) continue;
+                if (param.definition.description.Contains ("some_stuff_fin_ceil_result")) {
+                    otd.om_ceil.rawname = param.rawName;
+                    n_param -= 1;
+                }
+                if (param.definition.description.Contains ("some_stuff_fin_reveals_result")) {
+                    otd.om_reveals.rawname = param.rawName;
+                    n_param -= 1;
+                }
                 if (param.definition.description.Contains ("some_stuff_fin_up_result")) {
                     otd.om_up.rawname = param.rawName;
                     n_param -= 1;
@@ -1827,6 +1933,7 @@ void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement
     GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) ACAPI_Element_Delete (deletelist);
+
         for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28)
             OtdRoom& otd = cIt->value;
@@ -2337,11 +2444,8 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
-void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& propertyParams)
+void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& propertyParams, ParamDictElement& paramToWrite)
 {
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
-    LoadSyncSettingsFromPreferences (syncSettings);
-    ParamDictElement paramToWrite;
     API_Elem_Head parentelementhead = {};
     GS::Array<API_ElemTypeID> typeinzone;
     UnicGuid syncguidsdict;
@@ -2353,7 +2457,6 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (subelementByparent.ContainsKey (typeelem)) {
             for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
-
                 #if defined(AC_28)
                 API_Guid guid = cIt->key;
                 GS::Array<API_Guid> subguids = cIt->value;
@@ -2374,15 +2477,18 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
         }
     }
     if (!paramToWrite.IsEmpty ()) {
-        ACAPI_CallUndoableCommand ("SetSubelement",
+        ACAPI_CallUndoableCommand ("Write property",
                 [&]() -> GSErrCode {
             ParamHelpers::ElementsWrite (paramToWrite);
             return NoError;
         });
+    }
+    if (!syncguidsdict.IsEmpty ()) {
         ClassificationFunc::SystemDict systemdict;
         ClassificationFunc::GetAllClassification (systemdict);
         GS::Array<API_Guid> syncguids;
-
+        SyncSettings syncSettings (false, false, true, true, true, true, false);
+        LoadSyncSettingsFromPreferences (syncSettings);
         GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids, systemdict, propertyParams);
         if (!rereadelem.IsEmpty ()) {
             #if defined(TESTING)
