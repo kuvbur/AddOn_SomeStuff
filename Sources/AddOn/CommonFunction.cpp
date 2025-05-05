@@ -940,11 +940,23 @@ void ReplaceSymbSpase (GS::UniString & outstring)
 short GetFontIndex ()
 {
     GSErrCode err = NoError;
+    short inx = 0;
+    #if defined(AC_27) || defined(AC_28)
+    API_FontType font;
+    BNZeroMemory (&font, sizeof (API_FontType));
+    font.head.index = 0;
+    font.head.uniStringNamePtr = nullptr;
+    strcpy (font.head.name, "GOST 2.304 type A");
+    err = ACAPI_Font_SearchFont (font);
+    inx = font.head.index;
+    #else
     API_Attribute attrib; BNZeroMemory (&attrib, sizeof (API_Attribute));
     attrib.header.typeID = API_FontID;
+    attrib.header.index = 0;
     strcpy (attrib.header.name, "GOST 2.304 type A");
     err = ACAPI_Attribute_Search (&attrib.header);
-    short inx = attrib.header.index;
+    inx = attrib.header.index;
+    #endif
     return inx;
 }
 
@@ -963,7 +975,11 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
     tlp.wFont = font;
     tlp.wSize = fontsize;
     tlp.wSlant = PI / 2.0;
+    #if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Element_GetTextLineLength (&tlp, &width);
+    #else
     err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
+    #endif
     if (width < 0.00001) width = 0.1;
     return width;
 }
@@ -1420,7 +1436,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
                 elementsSymbolGuids.Push (std::move (memo.cWallFrames[idx].head.guid));
             }
-}
+        }
     }
     const GSSize nWallJunctions = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallJunctions)) / sizeof (API_CWJunctionType);
     if (nWallJunctions > 0) {
@@ -1440,7 +1456,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение списка GUID элементов ограждения
@@ -2338,7 +2354,7 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
         if (param.IsEmpty ()) {
             return true;
         }
-}
+    }
     return param.IsEmpty ();
 }
 }
