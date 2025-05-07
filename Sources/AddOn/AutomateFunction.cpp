@@ -1,5 +1,4 @@
 //------------ kuvbur 2022 ------------
-#ifdef EXTNDVERSION
 #include	"ACAPinc.h"
 #include	"AutomateFunction.hpp"
 #include    "Helpers.hpp"
@@ -31,7 +30,7 @@ bool GetNear (const GS::Array<Sector>& k, const Point2D& start, UInt32& inx, boo
 // -----------------------------------------------------------------------------
 // Устанавливает подрезку по отрезку, возвращает  API_3DCutPlanesInfo cutInfo
 // -----------------------------------------------------------------------------
-GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
+GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo, const double& depth)
 {
     BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
     GSErrCode err = NoError;
@@ -97,7 +96,7 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo)
         (*cutInfo.shapes)[inx].pa = sin (-sline.angz + 180 * DEGRAD);
         (*cutInfo.shapes)[inx].pb = cos (-sline.angz + 180 * DEGRAD);
         (*cutInfo.shapes)[inx].pc = 0;
-        (*cutInfo.shapes)[inx].pd = x2 + 0.01;
+        (*cutInfo.shapes)[inx].pd = x2 + depth;
 
         co = cos (sline.angz_1);
         si = sin (sline.angz_1);
@@ -370,12 +369,12 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
 // -----------------------------------------------------------------------------
 // Построение 3д документов вдоль морфа
 // -----------------------------------------------------------------------------
-GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id, const double& koeff)
+GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id, const double& koeff, const double& depth)
 {
     GSErrCode err = NoError;
     // Назначение секущих плоскостей по краям отрезка
     API_3DCutPlanesInfo cutInfo;
-    if (GetCuplane (sline, cutInfo) == NoError) {
+    if (GetCuplane (sline, cutInfo, depth) == NoError) {
         #if defined(AC_27) || defined(AC_28)
         err = ACAPI_View_Change3DCuttingPlanes (&cutInfo);
         #else
@@ -609,6 +608,7 @@ void ProfileByLine ()
             return err;
         }
         double koeff = 0.2;
+        double depth = 0.01;
         if (id.Contains ("@")) {
             GS::Array<GS::UniString> sr;
             UInt32 nsr = StringSplt (id, "@", sr);
@@ -618,11 +618,17 @@ void ProfileByLine ()
                     if (x > 0) koeff = (1 / x) * 100.0;
                 }
             }
+            if (nsr > 2) {
+                double x;
+                if (UniStringToDouble (sr[2], x)) {
+                    if (x > 0) depth = (1 / x) * 100.0;
+                }
+            }
             id = sr[0];
         }
         for (UInt32 i = 0; i < lines.GetSize (); i++) {
             GS::UniString id_ = id + GS::UniString::Printf (".%d", i + 1);
-            err = DoSect (lines[i], name + GS::UniString::Printf (" %d", i + 1), id_, koeff);
+            err = DoSect (lines[i], name + GS::UniString::Printf (" %d", i + 1), id_, koeff, depth);
             if (err != NoError) return err;
         }
         return err;
@@ -943,7 +949,4 @@ void AlignDrawingsByPoints ()
     }
     return;
 }
-
-
 }
-#endif
