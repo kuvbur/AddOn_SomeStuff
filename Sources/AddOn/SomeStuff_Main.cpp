@@ -1,7 +1,6 @@
 //------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
-#include	"AutomateFunction.hpp"
 #include	<stdio.h>
 #ifdef TESTING
 #include "TestFunc.hpp"
@@ -12,6 +11,7 @@
 #include	"SomeStuff_Main.hpp"
 #include	"Sync.hpp"
 #ifndef AC_22
+#include	"AutomateFunction.hpp"
 #include	"ReNum.hpp"
 #endif
 #include	"Roombook.hpp"
@@ -360,12 +360,14 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                 case RoomBook_CommandID:
                     AutoFunc::RoomBook ();
                     break;
+                    #ifndef AC_22
                 case Auto3D_CommandID:
                     AutoFunc::ProfileByLine ();
                     break;
                 case AutoLay_CommandID:
                     AutoFunc::AlignDrawingsByPoints ();
                     break;
+                    #endif
             }
             break;
     }

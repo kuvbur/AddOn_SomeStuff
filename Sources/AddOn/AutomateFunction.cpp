@@ -1,4 +1,5 @@
 //------------ kuvbur 2022 ------------
+#ifndef AC_22
 #include	"ACAPinc.h"
 #include	"AutomateFunction.hpp"
 #include    "Helpers.hpp"
@@ -950,3 +951,4 @@ void AlignDrawingsByPoints ()
     return;
 }
 }
+#endif // !AC_22
