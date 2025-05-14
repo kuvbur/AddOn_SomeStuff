@@ -160,12 +160,12 @@ typedef struct
     GS::UniString tip_pol = "";
     API_Guid zone_guid = APINULLGuid; // GUID базового элемента
     bool isValid = true; // Зона считана нормально
-    bool create_all_elements = true; // Создавать элементы отделки
-    bool create_ceil_elements = true; // Создавать элементы отделки потолка
-    bool create_floor_elements = true; // Создавать элементы отделки пола
-    bool create_wall_elements = true; // Создавать элементы отделки стен
-    bool create_column_elements = true; // Создавать элементы отделки колонн
-    bool create_reveal_elements = true; // Создавать элементы отделки откосов
+    bool create_all_elements = false; // Создавать элементы отделки
+    bool create_ceil_elements = false; // Создавать элементы отделки потолка
+    bool create_floor_elements = false; // Создавать элементы отделки пола
+    bool create_wall_elements = false; // Создавать элементы отделки стен
+    bool create_column_elements = false; // Создавать элементы отделки колонн
+    bool create_reveal_elements = false; // Создавать элементы отделки откосов
 } OtdRoom; // Структура для хранения информации о зоне
 
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
@@ -270,6 +270,8 @@ void ReadAllOpeningReveals (OtdRooms& roomsinfo);
 // -----------------------------------------------------------------------------
 void ReadOneOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw);
 
+void SetMaterialByType (OtdRooms& roomsinfo);
+
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
@@ -280,7 +282,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo);
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, OtdMaterial& material);
+bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type);
 
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
