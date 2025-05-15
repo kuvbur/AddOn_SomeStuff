@@ -68,7 +68,7 @@ void RoomBook ()
     Stories storyLevels = GetStories (); // Уровни этажей в проекте
     // Поиск перекрытий в зонах
     GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
-    FloorFindInZones (slabsinzone, finclassguids, zones);
+    Floor_FindAll (slabsinzone, finclassguids, zones);
     // Чтение данных о зоне, создание словаря с элементами для чтения
     OtdRooms roomsinfo; // Информация о всех зонах
     UnicElementByType elementToRead; // Список всех элементов в зоне
@@ -105,16 +105,16 @@ void RoomBook ()
                 switch (typeelem) {
                     case API_WindowID:
                     case API_DoorID:
-                        ReadOneWinDoor (storyLevels, guid, openinginwall, guidselementToRead);
+                        Opening_Create_One (storyLevels, guid, openinginwall, guidselementToRead);
                         break;
                     case API_WallID:
-                        ReadOneWall (storyLevels, guid, zoneGuids, roomsinfo, openinginwall, guidselementToRead);
+                        OtdWall_Create_One (storyLevels, guid, zoneGuids, roomsinfo, openinginwall, guidselementToRead);
                         break;
                     case API_ColumnID:
-                        ReadOneColumn (storyLevels, guid, zoneGuids, roomsinfo, guidselementToRead);
+                        Column_Create_One (storyLevels, guid, zoneGuids, roomsinfo, guidselementToRead);
                         break;
                     case API_SlabID:
-                        ReadOneSlab (storyLevels, guid, zoneGuids, roomsinfo, guidselementToRead);
+                        Floor_FindInOneRoom (storyLevels, guid, zoneGuids, roomsinfo, guidselementToRead);
                         break;
                     default:
                         break;
@@ -122,6 +122,10 @@ void RoomBook ()
             }
         }
     }
+    // Необходимые для чтения параметры и свойства
+    ReadParams windowParams = Param_GetForWindowParams (propertyParams);
+    ReadParams roomParams = Param_GetForZoneParams (propertyParams);
+
     ParamDictElement paramToRead; // Прочитанные из элементов свойства
     ParamValue param_composite; // Состав базовых конструкций
     typeinzone.Push (API_ZoneID);
@@ -129,13 +133,13 @@ void RoomBook ()
         if (guidselementToRead.ContainsKey (typeelem)) {
             ParamDictValue paramDict;
             if (typeelem == API_ZoneID) {
-                Param_GetForRooms (guidselementToRead[typeelem][0], propertyParams, paramDict);
+                Param_ToParamDict (paramDict, windowParams);
             }
             if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
-                Param_GetForBase (guidselementToRead[typeelem][0], propertyParams, paramDict, param_composite);
+                Param_GetForBase (propertyParams, paramDict, param_composite);
             }
             if (typeelem == API_WindowID) {
-                Param_GetForWindows (guidselementToRead[typeelem][0], propertyParams, paramDict);
+                Param_ToParamDict (paramDict, roomParams);
             }
             if (!paramDict.IsEmpty ()) {
                 for (const API_Guid& guid : guidselementToRead[typeelem]) {
@@ -146,18 +150,29 @@ void RoomBook ()
     }
     // Читаем свойства всех элементов
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
-    // Заполняем данные для зон
-    Param_SetToRooms (roomsinfo, paramToRead);
-    // Заполняем данные для отделочных стен (состав)
-    Param_SetToBase (roomsinfo, paramToRead, guidselementToRead, param_composite);
-    // Заполняем данные для окон
-    Param_SetToWindows (roomsinfo, paramToRead);
+
+    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28)
+        OtdRoom& otd = cIt->value;
+        API_Guid zoneGuid = cIt->key;
+        #else
+        OtdRoom& otd = *cIt->value;
+        API_Guid zoneGuid = *cIt->key;
+        #endif
+        if (!paramToRead.ContainsKey (zoneGuid)) continue;
+        // Заполняем данные для зон
+        Param_SetToRooms (otd, paramToRead, roomParams);
+        // Заполняем данные для отделочных стен (состав)
+        Param_SetToBase (otd, paramToRead, param_composite);
+        // Заполняем данные для окон
+        Param_SetToWindows (otd, paramToRead, windowParams);
+    }
     // Расчёт пола и потолка
-    FloorRooms (storyLevels, roomsinfo, guidselementToRead, paramToRead);
+    Floor_Create_All (storyLevels, roomsinfo, guidselementToRead, paramToRead);
     // Создание стенок для откосов
-    ReadAllOpeningReveals (roomsinfo);
+    OpeningReveals_Create_All (roomsinfo);
     // Разделение стенок по высотам зон
-    DelimOtdWalls (roomsinfo);
+    OtdWall_Delim_All (roomsinfo);
     // Назначение материала
     SetMaterialByType (roomsinfo);
     GS::Array<API_Guid> deletelist; // Список элементов для удаления
@@ -198,7 +213,7 @@ void RoomBook ()
     }
     UnicElementByType subelementByparent; // Словарь с созданными родительскими и дочерними элементами
     // Отросовка элементов отделки
-    Draw_Edges (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
+    Draw_Elements (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
     // Привязка отделочных элементов к базовым
     SetSyncOtdWall (subelementByparent, propertyParams, paramToWrite);
     finish = clock ();
@@ -217,7 +232,7 @@ void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDict
     for (UInt32 i = 0; i < otd.otdwall.GetSize (); i++) {
         OtdWall& otdw = otd.otdwall[i];
         TypeOtd t = otdw.type;
-        double area = GetAreaOtdWall (otdw);
+        double area = OtdWall_GetArea (otdw);
         for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
             GS::UniString mat = otdw.base_composite[j].val;
             WriteOtdDataToRoom_AddValue (dct, t, mat, area);
@@ -354,7 +369,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
     GS::Array<Sector> restedges; // Границы зоны
     GS::Array<Sector> gableedges;
-    GetZoneEdges (zonememo, zoneelement, walledges, columnedges, restedges, gableedges);
+    Edges_GetFromRoom (zonememo, zoneelement, walledges, columnedges, restedges, gableedges);
     roominfo.edges = restedges;
     roominfo.columnedges = columnedges;
     API_RoomRelation relData;
@@ -464,14 +479,14 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
 // -----------------------------------------------------------------------------
 // Чтение данных о проёме
 // -----------------------------------------------------------------------------
-void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
+void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
-        msg_rep ("ReadOneWinDoor err", "ACAPI_Element_Get", err, elGuid);
+        msg_rep ("Opening_Create_One err", "ACAPI_Element_Get", err, elGuid);
         return;
     }
     API_Guid wallguid = APINULLGuid;
@@ -510,14 +525,14 @@ void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::Has
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен
 // -----------------------------------------------------------------------------
-void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
+void OtdWall_Create_One (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
-        msg_rep ("ReadOneWall err", "ACAPI_Element_Get", err, elGuid);
+        msg_rep ("OtdWall_Create_One err", "ACAPI_Element_Get", err, elGuid);
         return;
     }
     Point2D wbegC = { element.wall.begC.x, element.wall.begC.y };
@@ -529,21 +544,21 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
     double zBottom = GetzPos (element.wall.bottomOffset, element.header.floorInd, storyLevels);
     if (dr < min_dim) {
         #if defined(TESTING)
-        DBprnt ("ReadOneWall err", "walledge.GetLength ()<min_dim");
+        DBprnt ("OtdWall_Create_One err", "walledge.GetLength ()<min_dim");
         #endif
         return;
     }
     GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
     if (!walldir.HasValue ()) {
         #if defined(TESTING)
-        DBprnt ("ReadOneWall err", "!walldir.HasValue");
+        DBprnt ("OtdWall_Create_One err", "!walldir.HasValue");
         #endif
         return;
     }
     for (API_Guid zoneGuid : zoneGuids) {
         if (!roomsinfo.ContainsKey (zoneGuid)) {
             #if defined(TESTING)
-            DBprnt ("ReadOneWall err", "!roomsinfo.ContainsKey (zoneGuid)");
+            DBprnt ("OtdWall_Create_One err", "!roomsinfo.ContainsKey (zoneGuid)");
             #endif
             continue;
         }
@@ -558,14 +573,14 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
                 GS::Optional<Geometry::Line2D> roomeline = roomedge.AsLine ();
                 if (!roomeline.HasValue ()) {
                     #if defined(TESTING)
-                    DBprnt ("ReadOneWall err", "!roomeline.HasValue ()");
+                    DBprnt ("OtdWall_Create_One err", "!roomeline.HasValue ()");
                     #endif
                     continue;
                 }
                 GS::Optional<UnitVector_2D>	roomedgedir = roomedge.GetDirection ();
                 if (!roomedgedir.HasValue ()) {
                     #if defined(TESTING)
-                    DBprnt ("ReadOneWall err", "!roomedgedir.HasValue");
+                    DBprnt ("OtdWall_Create_One err", "!roomedgedir.HasValue");
                     #endif
                     continue;
                 }
@@ -594,7 +609,7 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
                 UInt32 inxedge = wpart.roomEdge - 1;
                 if (inxedge > roominfo.edges.GetSize ()) {
                     #if defined(TESTING)
-                    DBprnt ("ReadOneWall err", "inxedge > roomedges.restedges.GetSize ()");
+                    DBprnt ("OtdWall_Create_One err", "inxedge > roomedges.restedges.GetSize ()");
                     #endif
                     continue;
                 }
@@ -602,14 +617,14 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
                 GS::Optional<Geometry::Line2D> roomeline = roomedge.AsLine ();
                 if (!roomeline.HasValue ()) {
                     #if defined(TESTING)
-                    DBprnt ("ReadOneWall err", "!roomeline.HasValue ()");
+                    DBprnt ("OtdWall_Create_One err", "!roomeline.HasValue ()");
                     #endif
                     continue;
                 }
                 GS::Optional<UnitVector_2D>	roomedgedir = roomedge.GetDirection ();
                 if (!roomedgedir.HasValue ()) {
                     #if defined(TESTING)
-                    DBprnt ("ReadOneWall err", "!roomedgedir.HasValue");
+                    DBprnt ("OtdWall_Create_One err", "!roomedgedir.HasValue");
                     #endif
                     continue;
                 }
@@ -698,7 +713,7 @@ void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны
 // -----------------------------------------------------------------------------
-void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
+void Column_Create_One (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -706,19 +721,19 @@ void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError || !element.header.hasMemo) {
-        msg_rep ("ReadOneColumn err", "ACAPI_Element_Get", err, elGuid);
+        msg_rep ("Column_Create_One err", "ACAPI_Element_Get", err, elGuid);
         return;
     }
     if (element.column.zoneRel == APIZRel_None) {
         #if defined(TESTING)
-        DBprnt ("ReadOneColumn err", "element.column.zoneRel == APIZRel_None");
+        DBprnt ("Column_Create_One err", "element.column.zoneRel == APIZRel_None");
         #endif
         return;
     }
     err = ACAPI_Element_GetMemo (elGuid, &segmentmemo, APIMemoMask_ColumnSegment | APIMemoMask_AssemblySegmentScheme | APIMemoMask_AssemblySegmentProfile);
     if (err != NoError || segmentmemo.columnSegments == nullptr) {
         #if defined(TESTING)
-        DBprnt ("ReadOneColumn err", "ACAPI_Element_GetMemo column");
+        DBprnt ("Column_Create_One err", "ACAPI_Element_GetMemo column");
         #endif
         return;
     }
@@ -783,7 +798,7 @@ void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_
 // -----------------------------------------------------------------------------
 // Обработка полов и потолков
 // -----------------------------------------------------------------------------
-void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
+void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -791,7 +806,7 @@ void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError || !element.header.hasMemo) {
-        msg_rep ("ReadOneSlab err", "ACAPI_Element_Get", err, elGuid);
+        msg_rep ("Floor_FindInOneRoom err", "ACAPI_Element_Get", err, elGuid);
         return;
     }
     bool flag_find = false;
@@ -815,12 +830,78 @@ void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Gu
     if (flag_find) Param_AddUnicGUIDByType (elGuid, API_SlabID, guidselementToRead);
 }
 
+void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams)
+{
+    if (zoneparams.IsEmpty ()) {
+        return;
+    }
+    for (auto& p : zoneparams) {
+        #if defined(AC_28)
+        ReadParam param = p.value;
+        #else
+        ReadParam param = *p.value;
+        #endif
+        for (UInt32 i = 0; i < param.rawnames.GetSize (); ++i) {
+            ParamHelpers::AddValueToParamDictValue (paramDict, param.rawnames[i]);
+        }
+    }
+}
+
+ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams)
+{
+    ReadParams zoneparams = {};
+    ReadParam zoneparam = {};
+    GS::UniString zoneparam_name = "";
+
+    zoneparam_name = "frame";
+    zoneparam.rawnames.Push ("{@gdl:gs_frame_thk}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    zoneparam_name = "sill";
+    zoneparam.rawnames.Push ("{@gdl:gs_wido_sill}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    zoneparam_name = "useWallFinishSkin";
+    zoneparam.rawnames.Push ("{@gdl:gs_usewallfinishskin}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    zoneparam_name = "maxPlasterThk";
+    zoneparam.rawnames.Push ("{@gdl:gs_maxplasterthk}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    zoneparam_name = "AutoTurnIn";
+    zoneparam.rawnames.Push ("{@gdl:gs_bautoturnin}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    zoneparam_name = "bOverIn";
+    zoneparam.rawnames.Push ("{@gdl:gs_boverin}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    zoneparam_name = "plaster_show_3D";
+    zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_show_3d}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    zoneparam_name = "plaster_show_2D";
+    zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_dim_2d}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    Param_FindPropertyInParams (propertyParams, zoneparams);
+    return zoneparams;
+}
+
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite)
+void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite)
 {
-    Param_AddProperty (elGuid, propertyParams, paramDict);
     // Поиск свойств со включением слоя отделки и имени
     GS::UniString propdesc_onoff = "some_stuff_fin_onoff";
     GS::UniString propdesc_desc = "some_stuff_fin_description";
@@ -851,46 +932,206 @@ void Param_GetForBase (const API_Guid& elGuid, ParamDictValue& propertyParams, P
     ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param_composite, paramDict);
 }
 
-// -----------------------------------------------------------------------------
-// Подготовка словаря с параметрами для чтения из зон
-// -----------------------------------------------------------------------------
-void Param_GetForRooms (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict)
+ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
 {
-    Param_AddProperty (elGuid, propertyParams, paramDict);
-    GDLParamRoom g;
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.material_main);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.material_up);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.material_down);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.material_column);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.height_down);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.height_main);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.material_pot);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.has_ceil);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.tip_pot);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.tip_pol);
+    ReadParams zoneparams = {};
+    ReadParam zoneparam = {};
+    GS::UniString zoneparam_name = "";
+
+    // Основная отделка стен
+    zoneparam_name = "material_main";
+    zoneparam.rawnames.Push ("{@gdl:votw}");
+    zoneparam.rawnames.Push ("some_stuff_fin_main_material");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Высота до подвесного потолка
+    zoneparam_name = "height_main";
+    zoneparam.rawnames.Push ("{@gdl:hroom_pot}");
+    zoneparam.rawnames.Push ("some_stuff_fin_main_height");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка стен выше потолка
+    zoneparam_name = "material_up";
+    zoneparam.rawnames.Push ("{@gdl:votw2}");
+    zoneparam.rawnames.Push ("some_stuff_fin_up_material");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка низа стен/колонн
+    zoneparam_name = "material_down";
+    zoneparam.rawnames.Push ("{@gdl:votp}");
+    zoneparam.rawnames.Push ("some_stuff_fin_down_material");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Высота нижних панелей
+    zoneparam_name = "height_down";
+    zoneparam.rawnames.Push ("{@gdl:hpan}");
+    zoneparam.rawnames.Push ("{@gdl:z17}");
+    zoneparam.rawnames.Push ("some_stuff_fin_down_height");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка колонн
+    zoneparam_name = "material_column";
+    zoneparam.rawnames.Push ("{@gdl:votc}");
+    zoneparam.rawnames.Push ("some_stuff_fin_column_material");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка потолка
+    zoneparam_name = "om_ceil";
+    zoneparam.rawnames.Push ("{@gdl:vots}");
+    zoneparam.rawnames.Push ("some_stuff_fin_ceil_material");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка потолка - запись результатов
+    zoneparam_name = "om_ceil.rawname";
+    zoneparam.rawnames.Push ("some_stuff_fin_ceil_result");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка откосов - запись результатов
+    zoneparam_name = "om_reveals.rawname";
+    zoneparam.rawnames.Push ("some_stuff_fin_reveals_result");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка выше потолка - запись результатов
+    zoneparam_name = "om_up.rawname";
+    zoneparam.rawnames.Push ("some_stuff_fin_up_result");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка стен - запись результатов
+    zoneparam_name = "om_main.rawname";
+    zoneparam.rawnames.Push ("some_stuff_fin_main_result");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка низа стен/колонн - запись результатов
+    zoneparam_name = "om_down.rawname";
+    zoneparam.rawnames.Push ("some_stuff_fin_down_result");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Отделка низа колонн - запись результатов
+    zoneparam_name = "om_column.rawname";
+    zoneparam.rawnames.Push ("some_stuff_fin_column_result");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Создание всех элементов
+    zoneparam_name = "create_all_elements";
+    zoneparam.rawnames.Push ("some_stuff_fin_create_elements");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Создание отделки колонн
+    zoneparam_name = "create_column_elements";
+    zoneparam.rawnames.Push ("some_stuff_fin_create_column");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Создание отделки стен
+    zoneparam_name = "create_wall_elements";
+    zoneparam.rawnames.Push ("some_stuff_fin_create_wall");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Создание пола
+    zoneparam_name = "create_ceil_elements";
+    zoneparam.rawnames.Push ("some_stuff_fin_create_ceil");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Создание пола
+    zoneparam_name = "create_floor_elements";
+    zoneparam.rawnames.Push ("some_stuff_fin_create_floor");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Создание откосов
+    zoneparam_name = "create_reveal_elements";
+    zoneparam.rawnames.Push ("some_stuff_fin_create_reveal");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    Param_FindPropertyInParams (propertyParams, zoneparams);
+    return zoneparams;
 }
 
-// -----------------------------------------------------------------------------
-// Подготовка словаря с параметрами для чтения из окон
-// -----------------------------------------------------------------------------
-void Param_GetForWindows (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict)
+void Param_FindPropertyInParams (ParamDictValue& propertyParams, ReadParams& zoneparams)
 {
-    GDLParamWindow g;
-    Param_AddProperty (elGuid, propertyParams, paramDict);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.frame);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.sill);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.useWallFinishSkin);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.maxPlasterThk);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.AutoTurnIn);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.bOverIn);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.plaster_show_3D);
-    ParamHelpers::AddValueToParamDictValue (paramDict, g.plaster_show_2D);
+    if (zoneparams.IsEmpty ()) {
+        return;
+    }
+    GS::UniString param_name = "";
+    for (auto& p : zoneparams) {
+        #if defined(AC_28)
+        ReadParam param = p.value;
+        #else
+        ReadParam param = *p.value;
+        #endif
+        UInt32 n = param.rawnames.GetSize ();
+        for (UInt32 i = 0; i < n; ++i) {
+            param_name = param.rawnames[i];
+            if (!param_name.Contains ("{@")) {
+                bool flag_find = false;
+                for (auto& cItt : propertyParams) {
+                    #if defined(AC_28)
+                    ParamValue parameters = cItt.value;
+                    #else
+                    ParamValue parameters = *cItt.value;
+                    #endif
+                    if (parameters.definition.description.Contains (param_name)) {
+                        param.rawnames[i] = parameters.rawName;
+                        flag_find = true;
+                        break;
+                    }
+                }
+                if (!flag_find) {
+                    param.rawnames.Delete (i);
+                }
+            }
+        }
+    }
+}
+
+void Param_ReadParams (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams)
+{
+    if (!paramToRead.ContainsKey (elGuid)) {
+        return;
+    }
+    if (zoneparams.IsEmpty ()) {
+        return;
+    }
+    GS::UniString param_name = "";
+    for (auto& p : zoneparams) {
+        #if defined(AC_28)
+        ReadParam param = p.value;
+        #else
+        ReadParam param = *p.value;
+        #endif
+        param.isValid = false;
+        for (UInt32 i = 0; i < param.rawnames.GetSize (); ++i) {
+            param_name = param.rawnames[i];
+            if (!paramToRead.Get (elGuid).ContainsKey (param_name)) continue;
+            if (paramToRead.Get (elGuid).Get (param_name).isValid) {
+                param.val = paramToRead.Get (elGuid).Get (param_name).val;
+                break;
+            }
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в зону
 // -----------------------------------------------------------------------------
-void Param_SetToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
+void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams)
 {
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
@@ -995,270 +1236,121 @@ void Param_SetToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
     }
 }
 
-bool Param_SetToRoomsFromProperty (ParamDictValue& params, OtdRoom& otd)
-{
-    bool isParamRead = false;
-    for (auto& cItt : params) {
-        #if defined(AC_28)
-        ParamValue& param = cItt.value;
-        #else
-        ParamValue& param = *cItt.value;
-        #endif
-        if (!param.isValid) continue;
-        if (param.definition.description.Contains ("some_stuff_fin_column_material")) {
-            otd.om_column.material = param.val.intValue;
-            otd.om_column.smaterial = param.val.uniStringValue;
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_down_height")) {
-            otd.height_down = param.val.doubleValue;
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_down_material")) {
-            otd.om_down.material = param.val.intValue;
-            otd.om_down.smaterial = param.val.uniStringValue;
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_main_height")) {
-            otd.height_main = param.val.doubleValue;
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_main_material")) {
-            otd.om_main.material = param.val.intValue;
-            otd.om_main.smaterial = param.val.uniStringValue;
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_ceil_material")) {
-            otd.om_ceil.material = param.val.intValue;
-            otd.om_ceil.smaterial = param.val.uniStringValue;
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_up_material")) {
-            otd.om_up.material = param.val.intValue;
-            otd.om_up.smaterial = param.val.uniStringValue;
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_ceil_type")) {
-            otd.tip_pot = param.val.uniStringValue;
-            otd.has_ceil = param.val.boolValue; // TODO Добавить обработку типа Нет
-            isParamRead = true;
-        }
-        if (param.definition.description.Contains ("some_stuff_fin_floor_type")) {
-            otd.tip_pol = param.val.uniStringValue;
-            isParamRead = true;
-        }
-    }
-    #if defined(TESTING)
-    if (isParamRead) DBprnt ("Param_SetToRoomsFromProperty", "params read from property");
-    #endif
-    return isParamRead;
-}
-
-bool Param_SetToRoomsMyZone (ParamDictValue& params, OtdRoom& otd)
-{
-    GDLParamRoom g;
-    if (params.ContainsKey (g.material_column)) {
-        if (!params.Get (g.material_column).isValid) return false;
-        otd.om_column.material = params.Get (g.material_column).val.intValue;
-        otd.om_column.smaterial = params.Get (g.material_column).val.uniStringValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.height_down)) {
-        if (!params.Get (g.height_down).isValid) return false;
-        otd.height_down = params.Get (g.height_down).val.doubleValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.material_down)) {
-        if (!params.Get (g.material_down).isValid) return false;
-        otd.om_down.material = params.Get (g.material_down).val.intValue;
-        otd.om_down.smaterial = params.Get (g.material_down).val.uniStringValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.height_main)) {
-        if (!params.Get (g.height_main).isValid) return false;
-        otd.height_main = params.Get (g.height_main).val.doubleValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.material_main)) {
-        if (!params.Get (g.material_main).isValid) return false;
-        otd.om_main.material = params.Get (g.material_main).val.intValue;
-        otd.om_main.smaterial = params.Get (g.material_main).val.uniStringValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.material_pot)) {
-        if (!params.Get (g.material_pot).isValid) return false;
-        otd.om_ceil.material = params.Get (g.material_pot).val.intValue;
-        otd.om_ceil.smaterial = params.Get (g.material_pot).val.uniStringValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.material_up)) {
-        if (!params.Get (g.material_up).isValid) return false;
-        otd.om_up.material = params.Get (g.material_up).val.intValue;
-        otd.om_up.smaterial = params.Get (g.material_up).val.uniStringValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.has_ceil)) {
-        if (!params.Get (g.has_ceil).isValid) return false;
-        otd.has_ceil = params.Get (g.has_ceil).val.boolValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.tip_pot)) {
-        if (!params.Get (g.tip_pot).isValid) return false;
-        otd.tip_pot = params.Get (g.tip_pot).val.uniStringValue;
-    } else {
-        return false;
-    }
-    if (params.ContainsKey (g.tip_pol)) {
-        if (!params.Get (g.tip_pol).isValid) return false;
-        otd.tip_pol = params.Get (g.tip_pol).val.uniStringValue;
-    } else {
-        return false;
-    }
-    DBprnt ("Param_SetToRoomsMyZone", "params read from gdl");
-    return true;
-}
-
-
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void Param_SetToBase (OtdRooms& roomsinfo, ParamDictElement& paramToRead, UnicGUIDByType& guidselementToRead, ParamValue& param_composite)
+void Param_SetToBase (OtdRoom& roominfo, ParamDictElement& paramToRead, ParamValue& param_composite)
 {
-    if (!guidselementToRead.ContainsKey (API_ZoneID)) {
-        #if defined(TESTING)
-        DBprnt ("Param_SetToBase err", "!guidselementToRead.ContainsKey (API_ZoneID)");
-        #endif
-        return;
-    }
-    for (const API_Guid& guid : guidselementToRead[API_ZoneID]) {
-        if (!roomsinfo.ContainsKey (guid)) {
+    GS::Array<OtdWall>& otd = roominfo.otdwall; // Массив отделочных поверхностей в зоне
+    for (UInt32 i = 0; i < otd.GetSize (); i++) {
+        OtdWall& otdw = otd[i]; // Стена-отделка
+        API_Guid base_guid = otdw.base_guid;
+        if (!paramToRead.ContainsKey (base_guid)) {
             #if defined(TESTING)
-            DBprnt ("Param_SetToBase err", "!roomsinfo.ContainsKey (guid)");
+            DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey(base_guid)");
             #endif
             continue;
         }
-        GS::Array<OtdWall>& otd = roomsinfo.Get (guid).otdwall; // Массив отделочных поверхностей в зоне
-        for (UInt32 i = 0; i < otd.GetSize (); i++) {
-            OtdWall& otdw = otd[i]; // Стена-отделка
-            if (!paramToRead.ContainsKey (otdw.base_guid)) {
-                #if defined(TESTING)
-                DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey (otdw.base_guid)");
-                #endif
-                continue;
-            }
-            // Прочитанные параметры базового компонента
-            ParamDictValue& baseparam = paramToRead.Get (otdw.base_guid);
-            // Состав базового компонента
-            ParamValue& base_composite = baseparam.Get (param_composite.rawName);
-            // Отфильтрованные слои отделки
-            GS::Array<ParamValueComposite> otdcpmpoosite;
-            //TODO Дописать определение вывода слоя в ведомость отделки исходя из свойств
-            Int32 ncomp = base_composite.composite.GetSize ();
-            bool flag_core = false;
-            if (otdw.base_flipped) {
-                for (Int32 j = ncomp - 1; j >= 0; j--) {
-                    if (!flag_core) {
-                        if (base_composite.composite[j].val.Contains ("l[1:")) {
-                            otdcpmpoosite.Push (base_composite.composite[j]);
-                        }
-                        if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
+        // Прочитанные параметры базового компонента
+        ParamDictValue& baseparam = paramToRead.Get (otdw.base_guid);
+        // Состав базового компонента
+        ParamValue& base_composite = baseparam.Get (param_composite.rawName);
+        // Отфильтрованные слои отделки
+        GS::Array<ParamValueComposite> otdcpmpoosite;
+        //TODO Дописать определение вывода слоя в ведомость отделки исходя из свойств
+        Int32 ncomp = base_composite.composite.GetSize ();
+        bool flag_core = false;
+        if (otdw.base_flipped) {
+            for (Int32 j = ncomp - 1; j >= 0; j--) {
+                if (!flag_core) {
+                    if (base_composite.composite[j].val.Contains ("l[1:")) {
+                        otdcpmpoosite.Push (base_composite.composite[j]);
                     }
-                }
-            } else {
-                for (Int32 j = 0; j < ncomp; j++) {
-                    if (!flag_core) {
-                        if (base_composite.composite[j].val.Contains ("l[1:")) {
-                            otdcpmpoosite.Push (base_composite.composite[j]);
-                        }
-                        if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
-                    }
+                    if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
                 }
             }
-            for (UInt32 j = 0; j < otdcpmpoosite.GetSize (); j++) {
-                GS::UniString v = otdcpmpoosite[j].val.GetPrefix (otdcpmpoosite[j].val.GetLength () - 1);
-                v = v.GetSuffix (v.GetLength () - 4);
-                otdcpmpoosite[j].val = v;
+        } else {
+            for (Int32 j = 0; j < ncomp; j++) {
+                if (!flag_core) {
+                    if (base_composite.composite[j].val.Contains ("l[1:")) {
+                        otdcpmpoosite.Push (base_composite.composite[j]);
+                    }
+                    if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
+                }
             }
-            otdw.base_composite = otdcpmpoosite;
         }
+        for (UInt32 j = 0; j < otdcpmpoosite.GetSize (); j++) {
+            GS::UniString v = otdcpmpoosite[j].val.GetPrefix (otdcpmpoosite[j].val.GetLength () - 1);
+            v = v.GetSuffix (v.GetLength () - 4);
+            otdcpmpoosite[j].val = v;
+        }
+        otdw.base_composite = otdcpmpoosite;
     }
 }
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
-void Param_SetToWindows (OtdRooms& roomsinfo, ParamDictElement& paramToRead)
+void Param_SetToWindows (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams)
 {
+    if (!roominfo.otdwall.IsEmpty ()) {
+        return;
+    }
     #if defined(TESTING)
     DBprnt ("Param_SetToWindows", "start");
     #endif
-    GDLParamWindow g;
     double sill = 0;
     double frame = 0;
     double max_plaster_th = 0;
-    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
-        OtdRoom& otd = cIt->value;
-        API_Guid zoneGuid = cIt->key;
-        #else
-        OtdRoom& otd = *cIt->value;
-        API_Guid zoneGuid = *cIt->key;
-        #endif
-        if (!otd.otdwall.IsEmpty ()) {
-            for (OtdWall& otdw : otd.otdwall) {
-                if (!otdw.openings.IsEmpty ()) {
-                    for (OtdOpening& op : otdw.openings) {
-                        if (!paramToRead.ContainsKey (op.base_guid)) break;
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.frame)) break;
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.sill)) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.frame).isValid) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.sill).isValid) break;
-                        sill = paramToRead.Get (op.base_guid).Get (g.sill).val.doubleValue;
-                        frame = paramToRead.Get (op.base_guid).Get (g.frame).val.doubleValue;
-                        // Расчёт ширины откосы
-                        op.base_reveal_width = otdw.base_th - sill - frame;
+    for (OtdWall& otdw : roominfo.otdwall) {
+        if (otdw.openings.IsEmpty ()) continue;
+        for (OtdOpening& op : otdw.openings) {
+            API_Guid base_guid = op.base_guid;
+            if (!paramToRead.ContainsKey (base_guid)) {
+                #if defined(TESTING)
+                DBprnt ("Param_SetToWindows err", "!paramToRead.ContainsKey(base_guid)");
+                #endif
+                continue;
+            }
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.frame)) break;
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.sill)) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.frame).isValid) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.sill).isValid) break;
+            sill = paramToRead.Get (op.base_guid).Get (g.sill).val.doubleValue;
+            frame = paramToRead.Get (op.base_guid).Get (g.frame).val.doubleValue;
+            // Расчёт ширины откосы
+            op.base_reveal_width = otdw.base_th - sill - frame;
 
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.useWallFinishSkin)) break;
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.maxPlasterThk)) break;
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.AutoTurnIn)) break;
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.bOverIn)) break;
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.plaster_show_3D)) break;
-                        if (!paramToRead.Get (op.base_guid).ContainsKey (g.plaster_show_2D)) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.useWallFinishSkin).isValid) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.maxPlasterThk).isValid) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.AutoTurnIn).isValid) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.bOverIn).isValid) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.plaster_show_3D).isValid) break;
-                        if (!paramToRead.Get (op.base_guid).Get (g.plaster_show_2D).isValid) break;
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.useWallFinishSkin)) break;
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.maxPlasterThk)) break;
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.AutoTurnIn)) break;
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.bOverIn)) break;
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.plaster_show_3D)) break;
+            if (!paramToRead.Get (op.base_guid).ContainsKey (g.plaster_show_2D)) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.useWallFinishSkin).isValid) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.maxPlasterThk).isValid) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.AutoTurnIn).isValid) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.bOverIn).isValid) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.plaster_show_3D).isValid) break;
+            if (!paramToRead.Get (op.base_guid).Get (g.plaster_show_2D).isValid) break;
 
-                        // Поправка на поворот отделки
-                        if (paramToRead.Get (op.base_guid).Get (g.plaster_show_3D).val.boolValue && paramToRead.Get (op.base_guid).Get (g.plaster_show_2D).val.boolValue) {
-                            max_plaster_th = 0;
-                            UInt32 nsl = 0;
-                            if (!paramToRead.Get (op.base_guid).Get (g.AutoTurnIn).val.boolValue) {
-                                nsl = paramToRead.Get (op.base_guid).Get (g.bOverIn).val.intValue;
-                            } else {
-                                nsl = otdw.base_composite.GetSize () - 1;
-                            }
-                            if (nsl > 0) {
-                                nsl = nsl - 1;
-                                if (nsl >= 0) {
-                                    for (UInt32 j = 0; j <= nsl; j++) {
-                                        max_plaster_th += otdw.base_composite[j].fillThick;
-                                    }
-                                    op.width -= max_plaster_th * 2;
-                                    op.height -= max_plaster_th;
-                                }
-                            }
+            // Поправка на поворот отделки
+            if (paramToRead.Get (op.base_guid).Get (g.plaster_show_3D).val.boolValue && paramToRead.Get (op.base_guid).Get (g.plaster_show_2D).val.boolValue) {
+                max_plaster_th = 0;
+                UInt32 nsl = 0;
+                if (!paramToRead.Get (op.base_guid).Get (g.AutoTurnIn).val.boolValue) {
+                    nsl = paramToRead.Get (op.base_guid).Get (g.bOverIn).val.intValue;
+                } else {
+                    nsl = otdw.base_composite.GetSize () - 1;
+                }
+                if (nsl > 0) {
+                    nsl = nsl - 1;
+                    if (nsl >= 0) {
+                        for (UInt32 j = 0; j <= nsl; j++) {
+                            max_plaster_th += otdw.base_composite[j].fillThick;
                         }
+                        op.width -= max_plaster_th * 2;
+                        op.height -= max_plaster_th;
                     }
                 }
             }
@@ -1330,7 +1422,7 @@ static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
-void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges)
+void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges)
 {
     RoomEdges rdges;
     reducededges = &rdges;
@@ -1342,7 +1434,7 @@ void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS
     #endif
     if (err != NoError) {
         #if defined(TESTING)
-        DBprnt ("GetZoneEdges err", "APIDb_RoomReductionsID");
+        DBprnt ("Edges_GetFromRoom err", "APIDb_RoomReductionsID");
         #endif
         return;
     }
@@ -1394,18 +1486,18 @@ void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS
 // -----------------------------------------------------------------------------
 // Обработка потолков и полов в зоне
 // -----------------------------------------------------------------------------
-void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead)
+void Floor_Create_All (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead)
 {
     if (!guidselementToRead.ContainsKey (API_ZoneID)) {
         #if defined(TESTING)
-        DBprnt ("FloorRooms err", "!guidselementToRead.ContainsKey (API_ZoneID)");
+        DBprnt ("Floor_Create_All err", "!guidselementToRead.ContainsKey (API_ZoneID)");
         #endif
         return;
     }
     for (const API_Guid& guid : guidselementToRead[API_ZoneID]) {
         if (!roomsinfo.ContainsKey (guid)) {
             #if defined(TESTING)
-            DBprnt ("FloorRooms err", "!roomsinfo.ContainsKey (guid)");
+            DBprnt ("Floor_Create_All err", "!roomsinfo.ContainsKey (guid)");
             #endif
             continue;
         }
@@ -1414,7 +1506,7 @@ void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType
         if (roominfo.has_floor) {
             roominfo.poly.zBottom = roominfo.zBottom;
             if (!roominfo.floorslab.IsEmpty ()) {
-                FloorOneRoom (storyLevels, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, paramToRead, true);
+                Floor_Create_One (storyLevels, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, paramToRead, true);
             } else {
                 roominfo.otdslab.Push (roominfo.poly);
             }
@@ -1423,7 +1515,7 @@ void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType
             roominfo.poly.zBottom = roominfo.zBottom + roominfo.height_main + roominfo.height_down;
             roominfo.poly.material = roominfo.om_ceil;
             if (!roominfo.ceilslab.IsEmpty ()) {
-                FloorOneRoom (storyLevels, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, false);
+                Floor_Create_One (storyLevels, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, false);
             } else {
                 roominfo.otdslab.Push (roominfo.poly);
             }
@@ -1434,7 +1526,7 @@ void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType
 // -----------------------------------------------------------------------------
 // Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
 // -----------------------------------------------------------------------------
-void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones)
+void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones)
 {
     GS::Array<API_Guid> allslabs_;
     GS::Array<API_Guid> allslabs;
@@ -1468,7 +1560,7 @@ void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone
     }
 }
 
-void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, bool on_top)
+void Floor_Create_One (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, bool on_top)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
     for (API_Guid& slabGuid : slabGuids) {
@@ -1479,21 +1571,21 @@ void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid
         err = ACAPI_Element_Get (&element);
         if (err != NoError || !element.header.hasMemo) {
             #if defined(TESTING)
-            DBprnt ("FloorOneRoom err", "ACAPI_Element_Get slab");
+            DBprnt ("Floor_Create_One err", "ACAPI_Element_Get slab");
             #endif
             continue;
         }
         err = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
         if (err != NoError || memo.coords == nullptr) {
             #if defined(TESTING)
-            DBprnt ("FloorOneRoom err", "ACAPI_Element_GetMemo slab");
+            DBprnt ("Floor_Create_One err", "ACAPI_Element_GetMemo slab");
             #endif
             continue;
         }
         Geometry::Polygon2D slabpolygon;
         err = ConstructPolygon2DFromElementMemo (memo, slabpolygon);
         if (err != NoError) {
-            msg_rep ("FloorOneRoom err", "ConstructPolygon2DFromElementMemo", err, slabGuid);
+            msg_rep ("Floor_Create_One err", "ConstructPolygon2DFromElementMemo", err, slabGuid);
             ACAPI_DisposeElemMemoHdls (&memo);
             continue;
         }
@@ -1514,7 +1606,7 @@ void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid
                     Geometry::InitPolygon2DData (&polygon2DData);
                     Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, wallpolygon);
                     if (polygon2DData.contourEnds == nullptr) {
-                        msg_rep ("FloorOneRoom - error", "polygon2DData.contourEnds == nullptr", NoError, slabGuid);
+                        msg_rep ("Floor_Create_One - error", "polygon2DData.contourEnds == nullptr", NoError, slabGuid);
                         Geometry::FreePolygon2DData (&polygon2DData);
                         continue;
                     }
@@ -1618,7 +1710,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // -----------------------------------------------------------------------------
 // Получение площади отделочной стены с учётом отверстий
 // -----------------------------------------------------------------------------
-double GetAreaOtdWall (const OtdWall& otdw)
+double OtdWall_GetArea (const OtdWall& otdw)
 {
     double dx = -otdw.endC.x + otdw.begC.x;
     double dy = -otdw.endC.y + otdw.begC.y;
@@ -1639,10 +1731,10 @@ double GetAreaOtdWall (const OtdWall& otdw)
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов проёмов
 // -----------------------------------------------------------------------------
-void ReadAllOpeningReveals (OtdRooms& roomsinfo)
+void OpeningReveals_Create_All (OtdRooms& roomsinfo)
 {
     #if defined(TESTING)
-    DBprnt ("ReadAllOpeningReveals", "start");
+    DBprnt ("OpeningReveals_Create_All", "start");
     #endif
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
@@ -1667,11 +1759,11 @@ void ReadAllOpeningReveals (OtdRooms& roomsinfo)
                         double si = sin (angz);
                         Geometry::Vector2<double> walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
                         for (OtdOpening& op : otdw.openings) {
-                            ReadOneOpeningReveals (otdw, op, walldir_perp, opw);
+                            OpeningReveals_Create_One (otdw, op, walldir_perp, opw);
                         }
                     } else {
                         #if defined(TESTING)
-                        DBprnt ("ReadOneWall err", "!walldir.HasValue");
+                        DBprnt ("OtdWall_Create_One err", "!walldir.HasValue");
                         #endif
                     }
 
@@ -1681,14 +1773,14 @@ void ReadAllOpeningReveals (OtdRooms& roomsinfo)
         }
     }
     #if defined(TESTING)
-    DBprnt ("ReadAllOpeningReveals", "end");
+    DBprnt ("OpeningReveals_Create_All", "end");
     #endif
 }
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void ReadOneOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw)
+void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw)
 {
     if (op.base_reveal_width < min_dim) return;
     double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
@@ -1856,10 +1948,10 @@ void SetMaterialByType (OtdRooms& roomsinfo)
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void DelimOtdWalls (OtdRooms& roomsinfo)
+void OtdWall_Delim_All (OtdRooms& roomsinfo)
 {
     #if defined(TESTING)
-    DBprnt ("DelimOtdWalls", "start");
+    DBprnt ("OtdWall_Delim_All", "start");
     #endif
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
@@ -1884,7 +1976,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
                     type = Wall_Down;
                     if (otdw.base_type == API_SlabID) type = Floor;
                     if (otdw.base_type == API_WindowID) type = Reveal_Down;
-                    if (DelimOneWall (otdw, opw, height, zBottom, type)) has_delim = true;
+                    if (OtdWall_Delim_One (otdw, opw, height, zBottom, type)) has_delim = true;
                 }
                 // Основная часть
                 if (otd.height_main > 0) {
@@ -1893,7 +1985,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
                     if (otdw.base_type == API_WindowID) type = Reveal_Main;
                     height = otd.height_main;
                     zBottom = otd.zBottom + otd.height_down;
-                    if (DelimOneWall (otdw, opw, height, zBottom, type)) has_delim = true;
+                    if (OtdWall_Delim_One (otdw, opw, height, zBottom, type)) has_delim = true;
                 }
                 // Пространство за потолком
                 if (otd.height_up > 0) {
@@ -1905,7 +1997,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
                     if (otdw.base_type == API_WindowID) {
                         type = Reveal_Up;
                     }
-                    if (DelimOneWall (otdw, opw, height, zBottom, type)) has_delim = true;
+                    if (OtdWall_Delim_One (otdw, opw, height, zBottom, type)) has_delim = true;
                 }
                 //Если высоты заданы не были - подгоним стенку под зону
                 if (!has_delim) {
@@ -1913,14 +2005,14 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
                     zBottom = otd.zBottom;
                     if (otdw.base_type == API_ColumnID) type = Column;
                     if (otdw.base_type == API_WindowID) type = Reveal_Main;
-                    DelimOneWall (otdw, opw, height, zBottom, type);
+                    OtdWall_Delim_One (otdw, opw, height, zBottom, type);
                 }
             }
             otd.otdwall = opw;
         }
     }
     #if defined(TESTING)
-    DBprnt ("DelimOtdWalls", "end");
+    DBprnt ("OtdWall_Delim_All", "end");
     #endif
 }
 
@@ -1929,7 +2021,7 @@ void DelimOtdWalls (OtdRooms& roomsinfo)
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type)
+bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type)
 {
     const double dh = 0.002; // Дополнительное увеличение высоты проёма для исключения линии на стыке
     if (height < min_dim || is_equal (height, 0)) {
@@ -2029,10 +2121,10 @@ bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges)
     return false;
 }
 
-void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist)
+void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist)
 {
     #if defined(TESTING)
-    DBprnt ("Draw_Edges", "start");
+    DBprnt ("Draw_Elements", "start");
     #endif
     API_Element wallelement = {};
     API_Element slabelement = {};
@@ -2058,7 +2150,7 @@ void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement
                     if ((otd.otdwall[i].type == Wall_Main || otd.otdwall[i].type == Wall_Up || otd.otdwall[i].type == Wall_Down) && !otd.create_wall_elements) continue;
                     if ((otd.otdwall[i].type == Column) && !otd.create_column_elements) continue;
                     if ((otd.otdwall[i].type == Reveal_Main || otd.otdwall[i].type == Reveal_Down || otd.otdwall[i].type == Reveal_Up) && !otd.create_reveal_elements) continue;
-                    Draw_Edge (storyLevels, otd.otdwall[i], wallelement, wallobjelement, wallobjmemo, windowelement, windowmemo, subelementByparent);
+                    OtdWall_Draw (storyLevels, otd.otdwall[i], wallelement, wallobjelement, wallobjmemo, windowelement, windowmemo, subelementByparent);
                     Param_AddUnicElementByType (otd.zone_guid, otd.otdwall[i].otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных стен к зоне
                     for (OtdOpening& op : otd.otdwall[i].openings) {
                         Param_AddUnicElementByType (otd.zone_guid, op.otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных проёмов к зоне
@@ -2075,7 +2167,7 @@ void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement
                 for (UInt32 i = 0; i < otd.otdslab.GetSize (); i++) {
                     if (otd.otdslab[i].type == Ceil && !otd.create_ceil_elements) continue;
                     if (otd.otdslab[i].type == Floor && !otd.create_floor_elements) continue;
-                    Draw_CeilFloor (storyLevels, slabelement, slabobjelement, slabobjmemo, otd.otdslab[i], subelementByparent);
+                    Floor_Draw (storyLevels, slabelement, slabobjelement, slabobjmemo, otd.otdslab[i], subelementByparent);
                     Param_AddUnicElementByType (otd.zone_guid, otd.otdslab[i].otd_guid, API_ZoneID, subelementByparent); // Привязка перекрытий к зоне
                     Class_SetClass (otd.otdslab[i], finclass);
                     group.Push (otd.otdslab[i].otd_guid);
@@ -2097,11 +2189,11 @@ void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElement
     if (GetElemTypeID (slabobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
     if (GetElemTypeID (wallobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
     #if defined(TESTING)
-    DBprnt ("Draw_Edges", "end");
+    DBprnt ("Draw_Elements", "end");
     #endif
 }
 
-void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
+void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
 {
     if (edges.height < min_dim) return;
     double dx = -edges.endC.x + edges.begC.x;
@@ -2109,17 +2201,17 @@ void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallele
     double dr = sqrt (dx * dx + dy * dy);
     if (dr < min_dim) return;
     if (Favorite_GetType (edges.favorite_name) == API_ObjectID) {
-        Draw_WallObject (storyLevels, edges, wallobjelement, wallobjmemo, subelementByparent);
+        OtdWall_Draw_Object (storyLevels, edges, wallobjelement, wallobjmemo, subelementByparent);
     } else {
-        Draw_Wall (storyLevels, edges, wallelement, windowelement, windowmemo, subelementByparent);
+        OtdWall_Draw_Wall (storyLevels, edges, wallelement, windowelement, windowmemo, subelementByparent);
     }
     Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent); // Привязка отделочной стены к базовой
 }
 
-void Draw_WallObject (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent)
+void OtdWall_Draw_Object (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!GetDefult_WallObject (edges.favorite_name, wallobjelement, wallobjmemo)) {
+    if (!OtdWall_GetDefult_Object (edges.favorite_name, wallobjelement, wallobjmemo)) {
         return;
     }
     Point2D wbegC = { edges.begC.x, edges.begC.y };
@@ -2128,7 +2220,7 @@ void Draw_WallObject (const Stories& storyLevels, OtdWall& edges, API_Element& w
     GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
     if (!walldir.HasValue ()) {
         #if defined(TESTING)
-        DBprnt ("ReadOneWall err", "!walldir.HasValue");
+        DBprnt ("OtdWall_Create_One err", "!walldir.HasValue");
         #endif
         return;
     }
@@ -2212,7 +2304,7 @@ void Draw_WallObject (const Stories& storyLevels, OtdWall& edges, API_Element& w
     edges.otd_guid = wallobjelement.header.guid;
 }
 
-bool GetDefult_WallObject (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo)
+bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&wallobjmemo, sizeof (API_ElementMemo));
@@ -2233,10 +2325,10 @@ bool GetDefult_WallObject (const GS::UniString& favorite_name, API_Element& wall
     return true;
 }
 
-void Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
+void OtdWall_Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!GetDefult_Wall (edges.favorite_name, wallelement)) {
+    if (!OtdWall_GetDefult_Wall (edges.favorite_name, wallelement)) {
         return;
     }
     wallelement.wall.begC = edges.begC;
@@ -2261,11 +2353,11 @@ void Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallele
     }
     edges.otd_guid = wallelement.header.guid;
     for (OtdOpening& op : edges.openings) {
-        Draw_Window (wallelement, windowelement, windowmemo, op, subelementByparent);
+        Opening_Draw (wallelement, windowelement, windowmemo, op, subelementByparent);
     }
 }
 
-bool GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement)
+bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&wallelement, sizeof (API_Element));
@@ -2292,11 +2384,11 @@ bool GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelemen
     return true;
 }
 
-void Draw_Window (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent)
+void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
     if (wallelement.wall.type == APIWtyp_Poly) return;
-    if (!GetDefult_Window ("", windowelement, windowmemo)) {
+    if (!Opening_GetDefult ("", windowelement, windowmemo)) {
         return;
     }
     windowelement.window.objLoc = op.objLoc;
@@ -2318,7 +2410,7 @@ void Draw_Window (API_Element& wallelement, API_Element& windowelement, API_Elem
     return;
 }
 
-bool GetDefult_Window (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& windowmemo)
+bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& windowmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&windowmemo, sizeof (API_ElementMemo));
@@ -2334,20 +2426,20 @@ bool GetDefult_Window (const GS::UniString& favorite_name, API_Element& windowel
     return true;
 }
 
-void Draw_CeilFloor (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
+void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     if (Favorite_GetType (otdslab.favorite_name) == API_ObjectID) {
-        Draw_SlabObject (storyLevels, slabobjelement, slabobjmemo, otdslab, subelementByparent);
+        Floor_Draw_Object (storyLevels, slabobjelement, slabobjmemo, otdslab, subelementByparent);
     } else {
-        Draw_Slab (storyLevels, slabelement, otdslab, subelementByparent);
+        Floor_Draw_Slab (storyLevels, slabelement, otdslab, subelementByparent);
     }
     Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
 }
 
-void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent)
+void Floor_Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!GetDefult_Slab (otdslab.favorite_name, slabelement)) {
+    if (!Floor_GetDefult_Slab (otdslab.favorite_name, slabelement)) {
         return;
     }
     slabelement.slab.thickness = otd_thickness;
@@ -2381,10 +2473,10 @@ void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& o
     return;
 }
 
-void Draw_SlabObject (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
+void Floor_Draw_Object (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!GetDefult_WallObject (otdslab.favorite_name, slabobjelement, slabobjmemo)) {
+    if (!OtdWall_GetDefult_Object (otdslab.favorite_name, slabobjelement, slabobjmemo)) {
         return;
     }
     GDLHelpers::ParamDict accsessoryparams;
@@ -2419,7 +2511,7 @@ void Draw_SlabObject (const Stories& storyLevels, API_Element& slabobjelement, A
     otdslab.otd_guid = slabobjelement.header.guid;
 }
 
-bool GetDefult_SlabObject (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo)
+bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&slabobjmemo, sizeof (API_ElementMemo));
@@ -2440,7 +2532,7 @@ bool GetDefult_SlabObject (const GS::UniString& favorite_name, API_Element& slab
     return true;
 }
 
-bool GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement)
+bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&slabelement, sizeof (API_Element));
@@ -2654,29 +2746,6 @@ void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, U
     }
 }
 
-void Param_AddProperty (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict)
-{
-    GS::UniString propdesc = "some_stuff_fin_";
-    for (auto& cItt : propertyParams) {
-        #if defined(AC_28)
-        ParamValue param = cItt.value;
-        #else
-        ParamValue param = *cItt.value;
-        #endif
-        if (param.definition.description.Contains (propdesc)) {
-            if (!paramDict.ContainsKey (param.rawName)) {
-                if (ACAPI_Element_IsPropertyDefinitionAvailable (elGuid, param.definition.guid)) {
-                    if (!paramDict.ContainsKey (param.rawName)) {
-                        paramDict.Add (param.rawName, param);
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-}
-
 API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name)
 {
     GSErrCode err = NoError;
@@ -2707,6 +2776,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     return false;
     #endif
 }
+
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
     GSErrCode err = NoError;

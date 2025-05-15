@@ -26,31 +26,6 @@ typedef enum
 
 const double min_dim = 0.0001; // Минимальный размер элемента
 const double otd_thickness = 0.001;
-typedef struct
-{
-    const GS::UniString material_main = "{@gdl:votw}";
-    const GS::UniString material_up = "{@gdl:votw2}";
-    const GS::UniString material_down = "{@gdl:votp}";
-    const GS::UniString material_column = "{@gdl:votc}";
-    const GS::UniString material_pot = "{@gdl:vots}";
-    const GS::UniString height_down = "{@gdl:hpan}";
-    const GS::UniString height_main = "{@gdl:hroom_pot}";
-    const GS::UniString has_ceil = "{@gdl:offpot}";
-    const GS::UniString tip_pot = "{@gdl:tip_pot}";
-    const GS::UniString tip_pol = "{@gdl:tip_pol}";
-} GDLParamRoom;
-
-typedef struct
-{
-    const GS::UniString sill = "{@gdl:gs_wido_sill}";
-    const GS::UniString frame = "{@gdl:gs_frame_thk}";
-    const GS::UniString useWallFinishSkin = "{@gdl:gs_usewallfinishskin}";
-    const GS::UniString maxPlasterThk = "{@gdl:gs_maxplasterthk}";
-    const GS::UniString AutoTurnIn = "{@gdl:gs_bautoturnin}";
-    const GS::UniString bOverIn = "{@gdl:gs_boverin}";
-    const GS::UniString plaster_show_3D = "{@gdl:gs_turn_plaster_show_3d}";
-    const GS::UniString plaster_show_2D = "{@gdl:gs_turn_plaster_dim_2d}";
-} GDLParamWindow;
 
 typedef struct
 {
@@ -176,6 +151,14 @@ typedef GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> UnicGUIDByType;
 typedef GS::HashTable<GS::UniString, double> OtdMaterialAreaDict;
 typedef GS::HashTable<TypeOtd, OtdMaterialAreaDict> OtdMaterialAreaDictByType;
 
+typedef struct
+{
+    bool isValid = false; // Параметр считан успешно
+    GS::Array<GS::UniString> rawnames; // Варианты имён параметров для считывания
+    ParamValueData val = {}; // Прочитанное значение
+} ReadParam;
+typedef GS::HashTable<GS::UniString, ReadParam> ReadParams;
+
 // -----------------------------------------------------------------------------
 // Запись в зону информации об отделке
 // -----------------------------------------------------------------------------
@@ -193,7 +176,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // -----------------------------------------------------------------------------
 // Получение площади отделочной стены с учётом отверстий
 // -----------------------------------------------------------------------------
-double GetAreaOtdWall (const OtdWall& otdw);
+double OtdWall_GetArea (const OtdWall& otdw);
 
 // -----------------------------------------------------------------------------
 // Получение информации из зоны о полгионах и находящейся в ней элементах
@@ -204,94 +187,76 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
 // -----------------------------------------------------------------------------
 // Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
 // -----------------------------------------------------------------------------
-void FloorFindInZones (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones);
+void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones);
 
 // -----------------------------------------------------------------------------
 // Чтение данных об одном проёме
 // -----------------------------------------------------------------------------
-void ReadOneWinDoor (const Stories& storyLevels, const API_Guid& elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
+void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен 
 // -----------------------------------------------------------------------------
-void ReadOneWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
+void OtdWall_Create_One (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны 
 // -----------------------------------------------------------------------------
-void ReadOneColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
+void Column_Create_One (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Обработка полов и потолков
 // -----------------------------------------------------------------------------
-void ReadOneSlab (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
+void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
+void Param_GetForBase (ParamDictValue& propertyParams, ParamDictElement& paramDict, ParamValue& param_composite);
 
-// -----------------------------------------------------------------------------
-// Подготовка словаря с параметрами для чтения из зон
-// -----------------------------------------------------------------------------
-void Param_GetForRooms (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict);
+void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams);
 
-// -----------------------------------------------------------------------------
-// Подготовка словаря с параметрами для чтения из окон
-// -----------------------------------------------------------------------------
-void Param_GetForWindows (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict);
-
-// -----------------------------------------------------------------------------
-// Проверка свойств зон и замена имен
-// -----------------------------------------------------------------------------
-void Param_SetToRooms (OtdRooms& roomsinfo, ParamDictElement& paramToRead);
+void Param_SetToBase (OtdRoom& roominfo, ParamDictElement& paramToRead, ParamValue& param_composite);
 
 bool Param_SetToRoomsFromProperty (ParamDictValue& params, OtdRoom& otd);
-
-bool Param_SetToRoomsMyZone (ParamDictValue& params, OtdRoom& otd);
-
-// -----------------------------------------------------------------------------
-// Запись прочитанных свойств в отделочные стены
-// -----------------------------------------------------------------------------
-void Param_SetToBase (OtdRooms& roomsinfo, ParamDictElement& paramToRead, UnicGUIDByType& guidselementToRead, ParamValue& param_composite);
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
-void Param_SetToWindows (OtdRooms& roomsinfo, ParamDictElement& paramToRead);
+void Param_SetToWindows (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams);
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов проёмов
 // -----------------------------------------------------------------------------
-void ReadAllOpeningReveals (OtdRooms& roomsinfo);
+void OpeningReveals_Create_All (OtdRooms& roomsinfo);
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void ReadOneOpeningReveals (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw);
+void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw);
 
 void SetMaterialByType (OtdRooms& roomsinfo);
 
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void DelimOtdWalls (OtdRooms& roomsinfo);
+void OtdWall_Delim_All (OtdRooms& roomsinfo);
 
 // -----------------------------------------------------------------------------
 // Добавляет стену с заданной высотой
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool DelimOneWall (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type);
+bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type);
 
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
-void GetZoneEdges (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
+void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
 
-void FloorRooms (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
+void Floor_Create_All (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
 
-void FloorOneRoom (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, bool on_top);
+void Floor_Create_One (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, bool on_top);
 
 bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 
@@ -301,31 +266,31 @@ bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 // -----------------------------------------------------------------------------
 bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
-void Draw_Edges (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist);
+void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist);
 
-void Draw_Edge (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
 
-void Draw_WallObject (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw_Object (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent);
 
-bool GetDefult_WallObject (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
+bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
 
-void Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
 
-bool GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement);
+bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement);
 
-void Draw_Window (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent);
+void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent);
 
-bool GetDefult_Window (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& memo);
+bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& memo);
 
-void Draw_CeilFloor (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
-void Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
-void Draw_SlabObject (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw_Object (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
-bool GetDefult_SlabObject (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
+bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
 
-bool GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement);
+bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement);
 
 
 // -----------------------------------------------------------------------------
@@ -352,10 +317,14 @@ void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& gui
 
 void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead);
 
-void Param_AddProperty (const API_Guid& elGuid, ParamDictValue& propertyParams, ParamDictValue& paramDict);
 API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
+
+void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams);
+void Param_FindPropertyInParams (ParamDictValue& propertyParams, ReadParams& zoneparams);
+ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams);
+ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams);
 #endif
 }
 
