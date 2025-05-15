@@ -135,7 +135,7 @@ typedef struct
     GS::UniString tip_pol = "";
     API_Guid zone_guid = APINULLGuid; // GUID базового элемента
     bool isValid = true; // Зона считана нормально
-    bool create_all_elements = false; // Создавать элементы отделки
+    bool create_all_elements = true; // Создавать элементы отделки
     bool create_ceil_elements = false; // Создавать элементы отделки потолка
     bool create_floor_elements = false; // Создавать элементы отделки пола
     bool create_wall_elements = false; // Создавать элементы отделки стен
@@ -212,49 +212,46 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (ParamDictValue& propertyParams, ParamDictElement& paramDict, ParamValue& param_composite);
+void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
 
 void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams);
 
-void Param_SetToBase (OtdRoom& roominfo, ParamDictElement& paramToRead, ParamValue& param_composite);
-
-bool Param_SetToRoomsFromProperty (ParamDictValue& params, OtdRoom& otd);
+void Param_SetToBase (OtdWall& otdw, ParamDictElement& paramToRead, ParamValue& param_composite);
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
-void Param_SetToWindows (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams);
-
-// -----------------------------------------------------------------------------
-// Создание стенок для откосов проёмов
-// -----------------------------------------------------------------------------
-void OpeningReveals_Create_All (OtdRooms& roomsinfo);
+void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadParams& readparams, const OtdWall& otdw);
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw);
+void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
-void SetMaterialByType (OtdRooms& roomsinfo);
+void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void OtdWall_Delim_All (OtdRooms& roomsinfo);
+void OtdWall_Delim_All (GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
 // -----------------------------------------------------------------------------
 // Добавляет стену с заданной высотой
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type);
+bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
 void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
 
-void Floor_Create_All (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
+void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
 
 void Floor_Create_One (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, bool on_top);
 
@@ -322,7 +319,8 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 
 void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams);
-void Param_FindPropertyInParams (ParamDictValue& propertyParams, ReadParams& zoneparams);
+void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zoneparams);
+bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams);
 ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams);
 ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams);
 #endif
