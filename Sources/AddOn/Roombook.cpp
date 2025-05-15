@@ -133,13 +133,13 @@ void RoomBook ()
         if (guidselementToRead.ContainsKey (typeelem)) {
             ParamDictValue paramDict;
             if (typeelem == API_ZoneID) {
-                Param_ToParamDict (paramDict, windowParams);
+                Param_ToParamDict (paramDict, roomParams);
             }
             if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
                 Param_GetForBase (propertyParams, paramDict, param_composite);
             }
             if (typeelem == API_WindowID) {
-                Param_ToParamDict (paramDict, roomParams);
+                Param_ToParamDict (paramDict, windowParams);
             }
             if (!paramDict.IsEmpty ()) {
                 for (const API_Guid& guid : guidselementToRead[typeelem]) {
@@ -150,7 +150,7 @@ void RoomBook ()
     }
     // Читаем свойства всех элементов
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
-
+    // Заполняем данные для элементов
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         OtdRoom& otd = cIt->value;
@@ -159,22 +159,44 @@ void RoomBook ()
         OtdRoom& otd = *cIt->value;
         API_Guid zoneGuid = *cIt->key;
         #endif
-        if (!paramToRead.ContainsKey (zoneGuid)) continue;
+        if (!paramToRead.ContainsKey (zoneGuid)) continue; // Если у зоны нет прочитанных параметров - дальше делать нечего
         // Заполняем данные для зон
         Param_SetToRooms (otd, paramToRead, roomParams);
-        // Заполняем данные для отделочных стен (состав)
-        Param_SetToBase (otd, paramToRead, param_composite);
-        // Заполняем данные для окон
-        Param_SetToWindows (otd, paramToRead, windowParams);
+        if (!otd.isValid) continue;
+        // Расчёт пола и потолка
+        Floor_Create_All (storyLevels, otd, guidselementToRead, paramToRead);
+        if (otd.otdwall.IsEmpty ()) continue;
+        GS::Array<OtdWall> opw; // Массив созданных стен
+        UInt32 nwall = otd.otdwall.GetSize ();
+        for (UInt32 i = 0; i < nwall; i++) {
+            OtdWall& otdw = otd.otdwall[i];
+            // Заполняем данные для отделочных стен (состав)
+            Param_SetToBase (otdw, paramToRead, param_composite);
+            if (!otdw.openings.IsEmpty ()) {
+                Point2D wbegC = { otdw.begC.x, otdw.begC.y };
+                Point2D wendC = { otdw.endC.x, otdw.endC.y };
+                Sector walledge = { wbegC , wendC };
+                GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
+                Geometry::Vector2<double> walldir_perp;
+                if (walldir.HasValue ()) {
+                    double angz = -DEGRAD * 90;
+                    double co = cos (angz);
+                    double si = sin (angz);
+                    walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
+                }
+                for (OtdOpening& op : otdw.openings) {
+                    // Заполняем данные для окон
+                    Param_SetToWindows (op, paramToRead, windowParams, otdw);
+                    if (walldir.HasValue ()) {
+                        OpeningReveals_Create_One (otdw, op, walldir_perp, opw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
+                    }
+                }
+            }
+            // Разделяем стенки
+            OtdWall_Delim_All (opw, otdw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
+        }
+        otd.otdwall = opw; // Заменяем на разбитые стены
     }
-    // Расчёт пола и потолка
-    Floor_Create_All (storyLevels, roomsinfo, guidselementToRead, paramToRead);
-    // Создание стенок для откосов
-    OpeningReveals_Create_All (roomsinfo);
-    // Разделение стенок по высотам зон
-    OtdWall_Delim_All (roomsinfo);
-    // Назначение материала
-    SetMaterialByType (roomsinfo);
     GS::Array<API_Guid> deletelist; // Список элементов для удаления
     // Получаем список существующих элементов отделки для обрабатываемых зон
     zones.Clear ();
@@ -893,7 +915,7 @@ ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams)
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
-    Param_FindPropertyInParams (propertyParams, zoneparams);
+    Param_Property_FindInParams (propertyParams, zoneparams);
     return zoneparams;
 }
 
@@ -917,12 +939,15 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
         if (param.definition.description.Contains (propdesc_desc)) rawName_desc = param.rawName;
         if (!rawName_onoff.IsEmpty () && !rawName_desc.IsEmpty ()) break;
     }
-    if (rawName_onoff.IsEmpty () || rawName_desc.IsEmpty ()) return;
     // Подготавливаем свойство для чтения из слоёв многослойки
     GS::UniString rawName = "{@material:layers,20}";
     param_composite.rawName = rawName;
-    param_composite.val.uniStringValue = "l[" + rawName_onoff + ":" + rawName_desc + "]";
     param_composite.fromMaterial = true;
+    if (!rawName_onoff.IsEmpty () && rawName_desc.IsEmpty ()) {
+        param_composite.val.uniStringValue = "l[" + rawName_onoff + ":" + rawName_desc + "]";
+    } else {
+        param_composite.val.uniStringValue = "l[1:%BuildingMaterialProperties/Building Material Name%]";
+    }
     if (ParamHelpers::ParseParamNameMaterial (param_composite.val.uniStringValue, paramDict)) {
         for (UInt32 inx = 0; inx < 20; inx++) {
             ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
@@ -939,7 +964,7 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     GS::UniString zoneparam_name = "";
 
     // Основная отделка стен
-    zoneparam_name = "material_main";
+    zoneparam_name = "om_main";
     zoneparam.rawnames.Push ("{@gdl:votw}");
     zoneparam.rawnames.Push ("some_stuff_fin_main_material");
     zoneparams.Add (zoneparam_name, zoneparam);
@@ -953,14 +978,14 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     zoneparam.rawnames.Clear ();
 
     // Отделка стен выше потолка
-    zoneparam_name = "material_up";
+    zoneparam_name = "om_up";
     zoneparam.rawnames.Push ("{@gdl:votw2}");
     zoneparam.rawnames.Push ("some_stuff_fin_up_material");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка низа стен/колонн
-    zoneparam_name = "material_down";
+    zoneparam_name = "om_down";
     zoneparam.rawnames.Push ("{@gdl:votp}");
     zoneparam.rawnames.Push ("some_stuff_fin_down_material");
     zoneparams.Add (zoneparam_name, zoneparam);
@@ -975,7 +1000,7 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     zoneparam.rawnames.Clear ();
 
     // Отделка колонн
-    zoneparam_name = "material_column";
+    zoneparam_name = "om_column";
     zoneparam.rawnames.Push ("{@gdl:votc}");
     zoneparam.rawnames.Push ("some_stuff_fin_column_material");
     zoneparams.Add (zoneparam_name, zoneparam);
@@ -1060,11 +1085,11 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
-    Param_FindPropertyInParams (propertyParams, zoneparams);
+    Param_Property_FindInParams (propertyParams, zoneparams);
     return zoneparams;
 }
 
-void Param_FindPropertyInParams (ParamDictValue& propertyParams, ReadParams& zoneparams)
+void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zoneparams)
 {
     if (zoneparams.IsEmpty ()) {
         return;
@@ -1072,9 +1097,11 @@ void Param_FindPropertyInParams (ParamDictValue& propertyParams, ReadParams& zon
     GS::UniString param_name = "";
     for (auto& p : zoneparams) {
         #if defined(AC_28)
-        ReadParam param = p.value;
+        ReadParam& param = p.value;
+        GS::UniString name = p.key;
         #else
-        ReadParam param = *p.value;
+        ReadParam& param = *p.value;
+        GS::UniString name = *p.key;
         #endif
         UInt32 n = param.rawnames.GetSize ();
         for (UInt32 i = 0; i < n; ++i) {
@@ -1088,6 +1115,12 @@ void Param_FindPropertyInParams (ParamDictValue& propertyParams, ReadParams& zon
                     ParamValue parameters = *cItt.value;
                     #endif
                     if (parameters.definition.description.Contains (param_name)) {
+                        if (name.Contains ("rawname")) {
+                            param.val.uniStringValue = parameters.rawName;
+                            param.isValid = true;
+                        } else {
+                            param.isValid = false;
+                        }
                         param.rawnames[i] = parameters.rawName;
                         flag_find = true;
                         break;
@@ -1101,31 +1134,34 @@ void Param_FindPropertyInParams (ParamDictValue& propertyParams, ReadParams& zon
     }
 }
 
-void Param_ReadParams (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams)
+bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams)
 {
-    if (!paramToRead.ContainsKey (elGuid)) {
-        return;
-    }
     if (zoneparams.IsEmpty ()) {
-        return;
+        return false;
     }
     GS::UniString param_name = "";
+    bool flag = false;
+    // Прочитанные параметры базового компонента
+    ParamDictValue& baseparam = paramToRead.Get (elGuid);
     for (auto& p : zoneparams) {
         #if defined(AC_28)
-        ReadParam param = p.value;
+        ReadParam& param = p.value;
         #else
-        ReadParam param = *p.value;
+        ReadParam& param = *p.value;
         #endif
-        param.isValid = false;
+        if (param.isValid) continue; // Пропуск уже прочитанных исвойств с именами свойств для записи
         for (UInt32 i = 0; i < param.rawnames.GetSize (); ++i) {
             param_name = param.rawnames[i];
-            if (!paramToRead.Get (elGuid).ContainsKey (param_name)) continue;
-            if (paramToRead.Get (elGuid).Get (param_name).isValid) {
-                param.val = paramToRead.Get (elGuid).Get (param_name).val;
+            if (!baseparam.ContainsKey (param_name)) continue;
+            if (baseparam.Get (param_name).isValid) {
+                flag = true;
+                param.isValid = true;
+                param.val = baseparam.Get (param_name).val;
                 break;
             }
         }
     }
+    return flag;
 }
 
 // -----------------------------------------------------------------------------
@@ -1133,232 +1169,289 @@ void Param_ReadParams (const API_Guid& elGuid, ParamDictElement& paramToRead, Re
 // -----------------------------------------------------------------------------
 void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams)
 {
-    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
-        OtdRoom& otd = cIt->value;
-        API_Guid zoneGuid = cIt->key;
-        #else
-        OtdRoom& otd = *cIt->value;
-        API_Guid zoneGuid = *cIt->key;
+    API_Guid base_guid = roominfo.zone_guid;
+    if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
+        #if defined(TESTING)
+        DBprnt ("Param_SetToRooms err", "!Param_Property_Read");
         #endif
-        bool isParamRead = false;
-        // Чтение прочитанных свойств
-        if (paramToRead.ContainsKey (zoneGuid)) {
-            ParamDictValue& params = paramToRead.Get (zoneGuid);
-            isParamRead = Param_SetToRoomsMyZone (params, otd);
-            if (!isParamRead) isParamRead = Param_SetToRoomsFromProperty (params, otd);
-            if (!isParamRead) {
-                msg_rep ("Param_SetToRooms err", "!isParamRead", NoError, zoneGuid);
-                continue;
-            }
-            int n_param = 12;
-            for (auto& cItt : params) {
-                #if defined(AC_28)
-                ParamValue& param = cItt.value;
-                #else
-                ParamValue& param = *cItt.value;
-                #endif
-                if (!param.isValid) continue;
-                if (param.definition.description.Contains ("some_stuff_fin_ceil_result")) {
-                    otd.om_ceil.rawname = param.rawName;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_reveals_result")) {
-                    otd.om_reveals.rawname = param.rawName;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_up_result")) {
-                    otd.om_up.rawname = param.rawName;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_main_result")) {
-                    otd.om_main.rawname = param.rawName;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_down_result")) {
-                    otd.om_down.rawname = param.rawName;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_column_result")) {
-                    otd.om_column.rawname = param.rawName;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_create_elements")) {
-                    otd.create_all_elements = param.val.boolValue;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_create_column")) {
-                    otd.create_column_elements = param.val.boolValue;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_create_wall")) {
-                    otd.create_wall_elements = param.val.boolValue;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_create_floor")) {
-                    otd.create_floor_elements = param.val.boolValue;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_create_ceil")) {
-                    otd.create_ceil_elements = param.val.boolValue;
-                    n_param -= 1;
-                }
-                if (param.definition.description.Contains ("some_stuff_fin_create_reveal")) {
-                    otd.create_reveal_elements = param.val.boolValue;
-                    n_param -= 1;
-                }
-                if (n_param < 1) {
-                    break;
-                }
-            }
-        } else {
-            msg_rep ("Param_SetToRooms err", "!paramToRead.ContainsKey (zoneGuid)", NoError, zoneGuid);
-        }
-        if (otd.create_all_elements) {
-            otd.create_ceil_elements = true; // Создавать элементы отделки потолка
-            otd.create_floor_elements = true; // Создавать элементы отделки пола
-            otd.create_wall_elements = true; // Создавать элементы отделки стен
-            otd.create_column_elements = true; // Создавать элементы отделки колонн
-            otd.create_reveal_elements = true; // Создавать элементы отделки откосов
-        }
-        // Заполнение непрочитанных
-        // Высоты
-        if (otd.height_main > otd.height) otd.height_main = otd.height;
-        if (otd.height_main < 0.1) {
-            otd.height_main = otd.height - otd.height_down;
-            otd.height_up = 0;
-        } else {
-            otd.height_up = otd.height - otd.height_main;
-            otd.height_main = otd.height_main - otd.height_down;
-        }
-        if (!isParamRead) otd.isValid = false;
-        if (otd.height < 0.0001) otd.isValid = false;
+        return;
     }
+    GS::UniString param_name = "";
+    ParamValueData val = {};
+
+    param_name = "om_column";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_column.material = val.intValue;
+            roominfo.om_column.smaterial = val.uniStringValue;
+        }
+    }
+    param_name = "om_down";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_down.material = val.intValue;
+            roominfo.om_down.smaterial = val.uniStringValue;
+        }
+    }
+    param_name = "om_main";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_main.material = val.intValue;
+            roominfo.om_main.smaterial = val.uniStringValue;
+        }
+    }
+    param_name = "om_ceil";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_ceil.material = val.intValue;
+            roominfo.om_ceil.smaterial = val.uniStringValue;
+        }
+    }
+    param_name = "om_up";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_up.material = val.intValue;
+            roominfo.om_up.smaterial = val.uniStringValue;
+        }
+    }
+    param_name = "height_down";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.height_down = val.doubleValue;
+        }
+    }
+    param_name = "height_main";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.height_main = val.doubleValue;
+        }
+    }
+    param_name = "om_ceil.rawname";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_ceil.rawname = val.uniStringValue;
+        }
+    }
+    param_name = "om_reveals.rawname";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_reveals.rawname = val.uniStringValue;
+        }
+    }
+    param_name = "om_up.rawname";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_up.rawname = val.uniStringValue;
+        }
+    }
+    param_name = "om_main.rawname";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_main.rawname = val.uniStringValue;
+        }
+    }
+    param_name = "om_down.rawname";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_down.rawname = val.uniStringValue;
+        }
+    }
+    param_name = "om_column.rawname";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.om_column.rawname = val.uniStringValue;
+        }
+    }
+    param_name = "create_all_elements";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.create_all_elements = val.boolValue;
+        }
+    }
+    param_name = "create_column_elements";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.create_column_elements = val.boolValue;
+        }
+    }
+    param_name = "create_wall_elements";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.create_wall_elements = val.boolValue;
+        }
+    }
+    param_name = "create_floor_elements";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.create_floor_elements = val.boolValue;
+        }
+    }
+    param_name = "create_ceil_elements";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.create_ceil_elements = val.boolValue;
+        }
+    }
+    param_name = "create_reveal_elements";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.create_reveal_elements = val.boolValue;
+        }
+    }
+    if (roominfo.create_all_elements) {
+        roominfo.create_ceil_elements = true; // Создавать элементы отделки потолка
+        roominfo.create_floor_elements = true; // Создавать элементы отделки пола
+        roominfo.create_wall_elements = true; // Создавать элементы отделки стен
+        roominfo.create_column_elements = true; // Создавать элементы отделки колонн
+        roominfo.create_reveal_elements = true; // Создавать элементы отделки откосов
+    }
+    // Заполнение непрочитанных
+    // Высоты
+    if (roominfo.height_main > roominfo.height) roominfo.height_main = roominfo.height;
+    if (roominfo.height_main < 0.1) {
+        roominfo.height_main = roominfo.height - roominfo.height_down;
+        roominfo.height_up = 0;
+    } else {
+        roominfo.height_up = roominfo.height - roominfo.height_main;
+        roominfo.height_main = roominfo.height_main - roominfo.height_down;
+    }
+    if (roominfo.height < 0.0001) roominfo.isValid = false;
 }
 
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void Param_SetToBase (OtdRoom& roominfo, ParamDictElement& paramToRead, ParamValue& param_composite)
+void Param_SetToBase (OtdWall& otdw, ParamDictElement& paramToRead, ParamValue& param_composite)
 {
-    GS::Array<OtdWall>& otd = roominfo.otdwall; // Массив отделочных поверхностей в зоне
-    for (UInt32 i = 0; i < otd.GetSize (); i++) {
-        OtdWall& otdw = otd[i]; // Стена-отделка
-        API_Guid base_guid = otdw.base_guid;
-        if (!paramToRead.ContainsKey (base_guid)) {
-            #if defined(TESTING)
-            DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey(base_guid)");
-            #endif
-            continue;
-        }
-        // Прочитанные параметры базового компонента
-        ParamDictValue& baseparam = paramToRead.Get (otdw.base_guid);
-        // Состав базового компонента
-        ParamValue& base_composite = baseparam.Get (param_composite.rawName);
-        // Отфильтрованные слои отделки
-        GS::Array<ParamValueComposite> otdcpmpoosite;
-        //TODO Дописать определение вывода слоя в ведомость отделки исходя из свойств
-        Int32 ncomp = base_composite.composite.GetSize ();
-        bool flag_core = false;
-        if (otdw.base_flipped) {
-            for (Int32 j = ncomp - 1; j >= 0; j--) {
-                if (!flag_core) {
-                    if (base_composite.composite[j].val.Contains ("l[1:")) {
-                        otdcpmpoosite.Push (base_composite.composite[j]);
-                    }
-                    if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
-                }
-            }
-        } else {
-            for (Int32 j = 0; j < ncomp; j++) {
-                if (!flag_core) {
-                    if (base_composite.composite[j].val.Contains ("l[1:")) {
-                        otdcpmpoosite.Push (base_composite.composite[j]);
-                    }
-                    if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
-                }
-            }
-        }
-        for (UInt32 j = 0; j < otdcpmpoosite.GetSize (); j++) {
-            GS::UniString v = otdcpmpoosite[j].val.GetPrefix (otdcpmpoosite[j].val.GetLength () - 1);
-            v = v.GetSuffix (v.GetLength () - 4);
-            otdcpmpoosite[j].val = v;
-        }
-        otdw.base_composite = otdcpmpoosite;
+    API_Guid base_guid = otdw.base_guid;
+    if (!paramToRead.ContainsKey (base_guid)) {
+        #if defined(TESTING)
+        DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey(base_guid)");
+        #endif
+        return;
     }
+    // Прочитанные параметры базового компонента
+    ParamDictValue& baseparam = paramToRead.Get (otdw.base_guid);
+    // Состав базового компонента
+    ParamValue& base_composite = baseparam.Get (param_composite.rawName);
+    // Отфильтрованные слои отделки
+    GS::Array<ParamValueComposite> otdcpmpoosite;
+    //TODO Дописать определение вывода слоя в ведомость отделки исходя из свойств
+    Int32 ncomp = base_composite.composite.GetSize ();
+    bool flag_core = false;
+    if (otdw.base_flipped) {
+        for (Int32 j = ncomp - 1; j >= 0; j--) {
+            if (!flag_core) {
+                if (base_composite.composite[j].val.Contains ("l[1:")) {
+                    otdcpmpoosite.Push (base_composite.composite[j]);
+                }
+                if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
+            }
+        }
+    } else {
+        for (Int32 j = 0; j < ncomp; j++) {
+            if (!flag_core) {
+                if (base_composite.composite[j].val.Contains ("l[1:")) {
+                    otdcpmpoosite.Push (base_composite.composite[j]);
+                }
+                if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
+            }
+        }
+    }
+    for (UInt32 j = 0; j < otdcpmpoosite.GetSize (); j++) {
+        GS::UniString v = otdcpmpoosite[j].val.GetPrefix (otdcpmpoosite[j].val.GetLength () - 1);
+        v = v.GetSuffix (v.GetLength () - 4);
+        otdcpmpoosite[j].val = v;
+    }
+    otdw.base_composite = otdcpmpoosite;
 }
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
-void Param_SetToWindows (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams)
+void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadParams& readparams, const OtdWall& otdw)
 {
-    if (!roominfo.otdwall.IsEmpty ()) {
+    API_Guid base_guid = op.base_guid;
+    if (!paramToRead.ContainsKey (base_guid)) {
+        #if defined(TESTING)
+        DBprnt ("Param_SetToWindows err", "!paramToRead.ContainsKey(base_guid)");
+        #endif
         return;
     }
-    #if defined(TESTING)
-    DBprnt ("Param_SetToWindows", "start");
-    #endif
-    double sill = 0;
-    double frame = 0;
-    double max_plaster_th = 0;
-    for (OtdWall& otdw : roominfo.otdwall) {
-        if (otdw.openings.IsEmpty ()) continue;
-        for (OtdOpening& op : otdw.openings) {
-            API_Guid base_guid = op.base_guid;
-            if (!paramToRead.ContainsKey (base_guid)) {
-                #if defined(TESTING)
-                DBprnt ("Param_SetToWindows err", "!paramToRead.ContainsKey(base_guid)");
-                #endif
-                continue;
-            }
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.frame)) break;
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.sill)) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.frame).isValid) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.sill).isValid) break;
-            sill = paramToRead.Get (op.base_guid).Get (g.sill).val.doubleValue;
-            frame = paramToRead.Get (op.base_guid).Get (g.frame).val.doubleValue;
-            // Расчёт ширины откосы
-            op.base_reveal_width = otdw.base_th - sill - frame;
+    op.base_reveal_width = otdw.base_th;
+    if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
+        #if defined(TESTING)
+        DBprnt ("Param_SetToWindows err", "!Param_Property_Read");
+        #endif
+        return;
+    }
+    GS::UniString param_name = "";
 
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.useWallFinishSkin)) break;
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.maxPlasterThk)) break;
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.AutoTurnIn)) break;
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.bOverIn)) break;
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.plaster_show_3D)) break;
-            if (!paramToRead.Get (op.base_guid).ContainsKey (g.plaster_show_2D)) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.useWallFinishSkin).isValid) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.maxPlasterThk).isValid) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.AutoTurnIn).isValid) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.bOverIn).isValid) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.plaster_show_3D).isValid) break;
-            if (!paramToRead.Get (op.base_guid).Get (g.plaster_show_2D).isValid) break;
+    param_name = "frame";
+    if (!readparams.ContainsKey (param_name)) return; if (!readparams.Get (param_name).isValid) return;
+    double frame = readparams.Get (param_name).val.doubleValue;
 
-            // Поправка на поворот отделки
-            if (paramToRead.Get (op.base_guid).Get (g.plaster_show_3D).val.boolValue && paramToRead.Get (op.base_guid).Get (g.plaster_show_2D).val.boolValue) {
-                max_plaster_th = 0;
-                UInt32 nsl = 0;
-                if (!paramToRead.Get (op.base_guid).Get (g.AutoTurnIn).val.boolValue) {
-                    nsl = paramToRead.Get (op.base_guid).Get (g.bOverIn).val.intValue;
-                } else {
-                    nsl = otdw.base_composite.GetSize () - 1;
+    param_name = "sill";
+    if (!readparams.ContainsKey (param_name)) return; if (!readparams.Get (param_name).isValid) return;
+    double sill = readparams.Get (param_name).val.doubleValue;
+
+    param_name = "plaster_show_3D";
+    if (!readparams.ContainsKey (param_name)) return; if (!readparams.Get (param_name).isValid) return;
+    bool plaster_show_3D = readparams.Get (param_name).val.boolValue;
+
+    param_name = "plaster_show_2D";
+    if (!readparams.ContainsKey (param_name)) return; if (!readparams.Get (param_name).isValid) return;
+    bool plaster_show_2D = readparams.Get (param_name).val.boolValue;
+
+    param_name = "AutoTurnIn";
+    if (!readparams.ContainsKey (param_name)) return; if (!readparams.Get (param_name).isValid) return;
+    bool AutoTurnIn = readparams.Get (param_name).val.boolValue;
+
+    param_name = "bOverIn";
+    if (!readparams.ContainsKey (param_name)) return; if (!readparams.Get (param_name).isValid) return;
+    int bOverIn = readparams.Get (param_name).val.boolValue;
+
+    // Расчёт ширины откосы
+    op.base_reveal_width = op.base_reveal_width - sill - frame;
+    // Поправка на поворот отделки
+    if (plaster_show_3D && plaster_show_2D) {
+        double max_plaster_th = 0;
+        UInt32 nsl = 0;
+        if (!AutoTurnIn) {
+            nsl = bOverIn;
+        } else {
+            nsl = otdw.base_composite.GetSize () - 1;
+        }
+        if (nsl > 0) {
+            nsl = nsl - 1;
+            if (nsl >= 0) {
+                for (UInt32 j = 0; j <= nsl; j++) {
+                    max_plaster_th += otdw.base_composite[j].fillThick;
                 }
-                if (nsl > 0) {
-                    nsl = nsl - 1;
-                    if (nsl >= 0) {
-                        for (UInt32 j = 0; j <= nsl; j++) {
-                            max_plaster_th += otdw.base_composite[j].fillThick;
-                        }
-                        op.width -= max_plaster_th * 2;
-                        op.height -= max_plaster_th;
-                    }
-                }
+                op.width -= max_plaster_th * 2;
+                op.height -= max_plaster_th;
             }
         }
     }
-    #if defined(TESTING)
-    DBprnt ("Param_SetToWindows", "end");
-    #endif
 }
 
 // -----------------------------------------------------------------------------
@@ -1486,39 +1579,24 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
 // -----------------------------------------------------------------------------
 // Обработка потолков и полов в зоне
 // -----------------------------------------------------------------------------
-void Floor_Create_All (const Stories& storyLevels, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead)
+void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead)
 {
-    if (!guidselementToRead.ContainsKey (API_ZoneID)) {
-        #if defined(TESTING)
-        DBprnt ("Floor_Create_All err", "!guidselementToRead.ContainsKey (API_ZoneID)");
-        #endif
-        return;
+    if (!roominfo.has_floor || !roominfo.has_ceil) return;
+    if (roominfo.has_floor) {
+        roominfo.poly.zBottom = roominfo.zBottom;
+        if (!roominfo.floorslab.IsEmpty ()) {
+            Floor_Create_One (storyLevels, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, paramToRead, true);
+        } else {
+            roominfo.otdslab.Push (roominfo.poly);
+        }
     }
-    for (const API_Guid& guid : guidselementToRead[API_ZoneID]) {
-        if (!roomsinfo.ContainsKey (guid)) {
-            #if defined(TESTING)
-            DBprnt ("Floor_Create_All err", "!roomsinfo.ContainsKey (guid)");
-            #endif
-            continue;
-        }
-        OtdRoom& roominfo = roomsinfo.Get (guid);
-        if (!roominfo.has_floor || !roominfo.has_ceil) continue;
-        if (roominfo.has_floor) {
-            roominfo.poly.zBottom = roominfo.zBottom;
-            if (!roominfo.floorslab.IsEmpty ()) {
-                Floor_Create_One (storyLevels, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, paramToRead, true);
-            } else {
-                roominfo.otdslab.Push (roominfo.poly);
-            }
-        }
-        if (roominfo.has_ceil) {
-            roominfo.poly.zBottom = roominfo.zBottom + roominfo.height_main + roominfo.height_down;
-            roominfo.poly.material = roominfo.om_ceil;
-            if (!roominfo.ceilslab.IsEmpty ()) {
-                Floor_Create_One (storyLevels, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, false);
-            } else {
-                roominfo.otdslab.Push (roominfo.poly);
-            }
+    if (roominfo.has_ceil) {
+        roominfo.poly.zBottom = roominfo.zBottom + roominfo.height_main + roominfo.height_down;
+        roominfo.poly.material = roominfo.om_ceil;
+        if (!roominfo.ceilslab.IsEmpty ()) {
+            Floor_Create_One (storyLevels, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, false);
+        } else {
+            roominfo.otdslab.Push (roominfo.poly);
         }
     }
 }
@@ -1729,58 +1807,10 @@ double OtdWall_GetArea (const OtdWall& otdw)
 }
 
 // -----------------------------------------------------------------------------
-// Создание стенок для откосов проёмов
-// -----------------------------------------------------------------------------
-void OpeningReveals_Create_All (OtdRooms& roomsinfo)
-{
-    #if defined(TESTING)
-    DBprnt ("OpeningReveals_Create_All", "start");
-    #endif
-    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
-        OtdRoom& otd = cIt->value;
-        API_Guid zoneGuid = cIt->key;
-        #else
-        OtdRoom& otd = *cIt->value;
-        API_Guid zoneGuid = *cIt->key;
-        #endif
-        if (!otd.isValid) continue;
-        if (!otd.otdwall.IsEmpty ()) {
-            GS::Array<OtdWall> opw; // Массив созданных откосов
-            for (OtdWall& otdw : otd.otdwall) {
-                if (!otdw.openings.IsEmpty ()) {
-                    Point2D wbegC = { otdw.begC.x, otdw.begC.y };
-                    Point2D wendC = { otdw.endC.x, otdw.endC.y };
-                    Sector walledge = { wbegC , wendC };
-                    GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
-                    if (walldir.HasValue ()) {
-                        double angz = -DEGRAD * 90;
-                        double co = cos (angz);
-                        double si = sin (angz);
-                        Geometry::Vector2<double> walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
-                        for (OtdOpening& op : otdw.openings) {
-                            OpeningReveals_Create_One (otdw, op, walldir_perp, opw);
-                        }
-                    } else {
-                        #if defined(TESTING)
-                        DBprnt ("OtdWall_Create_One err", "!walldir.HasValue");
-                        #endif
-                    }
-
-                }
-            }
-            if (!opw.IsEmpty ()) otd.otdwall.Append (opw);
-        }
-    }
-    #if defined(TESTING)
-    DBprnt ("OpeningReveals_Create_All", "end");
-    #endif
-}
-
-// -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw)
+void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
     if (op.base_reveal_width < min_dim) return;
     double zDup = fmin (op.zBottom + op.height, otdw.zBottom + otdw.height);
@@ -1813,7 +1843,7 @@ void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geome
         wallotd.base_type = API_WindowID;
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
-        opw.Push (wallotd);
+        OtdWall_Delim_All (opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     }
     lambda = (op.objLoc + op.width / 2) / dr;
     begedge.x = otdw.begC.x - dx * lambda;
@@ -1832,188 +1862,148 @@ void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geome
         wallotd.base_type = API_WindowID;
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
-        opw.Push (wallotd);
+        OtdWall_Delim_All (opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     }
 }
 
-void SetMaterialByType (OtdRooms& roomsinfo)
+void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
-    #if defined(TESTING)
-    DBprnt ("SetMeterialByType", "start");
-    #endif
-    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
-        OtdRoom& otd = cIt->value;
-        API_Guid zoneGuid = cIt->key;
-        #else
-        OtdRoom& otd = *cIt->value;
-        API_Guid zoneGuid = *cIt->key;
-        #endif
-        if (!otd.isValid) continue;
-        if (!otd.otdwall.IsEmpty ()) {
-            for (OtdWall& otdw : otd.otdwall) {
-                OtdMaterial material;
-                // Проверим существование свойств для записи, при необходимости - поменяем тип отделки
-                switch (otdw.type) {
-                    case NoSet:
-                        material.material = 0;
-                        break;
-                    case Wall_Main:
-                        material = otd.om_main;
-                        break;
-                    case Wall_Up:
-                        if (otd.om_up.material > 0) {
-                            material = otd.om_up;
-                        } else {
-                            material = otd.om_main;
-                        }
-                        if (otd.om_up.rawname.IsEqual (otd.om_main.rawname)) otdw.type = Wall_Main;
-                        break;
-                    case Wall_Down:
-                        if (otd.om_down.material > 0) {
-                            material = otd.om_down;
-                        } else {
-                            material = otd.om_main;
-                        }
-                        if (otd.om_down.rawname.IsEqual (otd.om_main.rawname)) otdw.type = Wall_Main;
-                        break;
-                    case Reveal_Main:
-                        if (otd.om_reveals.material > 0) {
-                            material = otd.om_reveals;
-                        } else {
-                            material = otd.om_main;
-                        }
-                        if (material.material == 0) material = otd.om_main;
-                        otdw.type = Reveal_Main;
-                        if (otd.om_reveals.rawname.IsEqual (otd.om_main.rawname)) otdw.type = Wall_Main;
-                        break;
-                    case Reveal_Up:
-                        if (otd.om_reveals.material > 0) {
-                            material = otd.om_reveals;
-                        } else {
-                            material = otd.om_up;
-                        }
-                        if (material.material == 0) material = otd.om_main;
-                        otdw.type = Reveal_Main;
-                        if (otd.om_reveals.rawname.IsEqual (otd.om_main.rawname)) otdw.type = Wall_Main;
-                        break;
-                    case Reveal_Down:
-                        if (otd.om_reveals.material > 0) {
-                            material = otd.om_reveals;
-                        } else {
-                            material = otd.om_down;
-                        }
-                        if (material.material == 0) material = otd.om_main;
-                        otdw.type = Reveal_Main;
-                        if (otd.om_reveals.rawname.IsEqual (otd.om_main.rawname)) otdw.type = Wall_Main;
-                        break;
-                    case Column:
-                        if (otd.om_column.material > 0) {
-                            material = otd.om_column;
-                        } else {
-                            material = otd.om_main;
-                        }
-                        if (otd.om_column.rawname.IsEqual (otd.om_main.rawname)) otdw.type = Wall_Main;
-                        break;
-                    case Floor:
-                        material = otd.om_floor;
-                        break;
-                    case Ceil:
-                        material = otd.om_ceil;
-                        break;
-                    default:
-                        material.material = 0;
-                        break;
-                }
-                if (material.material == 0) material = otd.om_zone;
-                otdw.material = material;
-                ParamValueComposite p;
-                #if defined(AC_27) || defined(AC_28)
-                p.inx = ACAPI_CreateAttributeIndex (material.material);
-                #else
-                p.inx = material.material;
-                #endif
-                p.val = material.smaterial;
-                p.num = -1;
-                p.structype = APICWallComp_Finish;
-                otdw.base_composite.Push (p);
+    OtdMaterial material;
+    // Проверим существование свойств для записи, при необходимости - поменяем тип отделки
+    switch (otdw.type) {
+        case NoSet:
+            material.material = 0;
+            break;
+        case Wall_Main:
+            material = om_main;
+            break;
+        case Wall_Up:
+            if (om_up.material > 0) {
+                material = om_up;
+            } else {
+                material = om_main;
             }
-        }
+            if (om_up.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
+            break;
+        case Wall_Down:
+            if (om_down.material > 0) {
+                material = om_down;
+            } else {
+                material = om_main;
+            }
+            if (om_down.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
+            break;
+        case Reveal_Main:
+            if (om_reveals.material > 0) {
+                material = om_reveals;
+            } else {
+                material = om_main;
+            }
+            if (material.material == 0) material = om_main;
+            otdw.type = Reveal_Main;
+            if (om_reveals.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
+            break;
+        case Reveal_Up:
+            if (om_reveals.material > 0) {
+                material = om_reveals;
+            } else {
+                material = om_up;
+            }
+            if (material.material == 0) material = om_main;
+            otdw.type = Reveal_Main;
+            if (om_reveals.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
+            break;
+        case Reveal_Down:
+            if (om_reveals.material > 0) {
+                material = om_reveals;
+            } else {
+                material = om_down;
+            }
+            if (material.material == 0) material = om_main;
+            otdw.type = Reveal_Main;
+            if (om_reveals.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
+            break;
+        case Column:
+            if (om_column.material > 0) {
+                material = om_column;
+            } else {
+                material = om_main;
+            }
+            if (om_column.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
+            break;
+        case Floor:
+            material = om_floor;
+            break;
+        case Ceil:
+            material = om_ceil;
+            break;
+        default:
+            material.material = 0;
+            break;
     }
-    #if defined(TESTING)
-    DBprnt ("SetMeterialByType", "end");
+    if (material.material == 0) material = om_zone;
+    otdw.material = material;
+    ParamValueComposite p;
+    #if defined(AC_27) || defined(AC_28)
+    p.inx = ACAPI_CreateAttributeIndex (material.material);
+    #else
+    p.inx = material.material;
     #endif
+    p.val = material.smaterial;
+    p.num = -1;
+    p.structype = APICWallComp_Finish;
+    otdw.base_composite.Push (p);
 }
 
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void OtdWall_Delim_All (OtdRooms& roomsinfo)
+void OtdWall_Delim_All (GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
-    #if defined(TESTING)
-    DBprnt ("OtdWall_Delim_All", "start");
-    #endif
-    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
-        OtdRoom& otd = cIt->value;
-        API_Guid zoneGuid = cIt->key;
-        #else
-        OtdRoom& otd = *cIt->value;
-        API_Guid zoneGuid = *cIt->key;
-        #endif
-        if (!otd.isValid) continue;
-        if (!otd.otdwall.IsEmpty ()) {
-            GS::Array<OtdWall> opw; // Массив созданных стен
-            for (OtdWall& otdw : otd.otdwall) {
-                TypeOtd type = otdw.type;
-                bool has_delim = false; // Найдена разбивка
-                double height = 0; // Высота элемента
-                double zBottom = 0; // Отметка низа
-                // Панели
-                if (otd.height_down > 0) {
-                    height = otd.height_down;
-                    zBottom = otd.zBottom;
-                    type = Wall_Down;
-                    if (otdw.base_type == API_SlabID) type = Floor;
-                    if (otdw.base_type == API_WindowID) type = Reveal_Down;
-                    if (OtdWall_Delim_One (otdw, opw, height, zBottom, type)) has_delim = true;
-                }
-                // Основная часть
-                if (otd.height_main > 0) {
-                    type = Wall_Main;
-                    if (otdw.base_type == API_ColumnID) type = Column;
-                    if (otdw.base_type == API_WindowID) type = Reveal_Main;
-                    height = otd.height_main;
-                    zBottom = otd.zBottom + otd.height_down;
-                    if (OtdWall_Delim_One (otdw, opw, height, zBottom, type)) has_delim = true;
-                }
-                // Пространство за потолком
-                if (otd.height_up > 0) {
-                    height = otd.height_up;
-                    zBottom = otd.zBottom + otd.height_down + otd.height_main;
-                    type = Wall_Up;
-                    if (otdw.base_type == API_ColumnID) type = Column;
-                    if (otdw.type == Ceil) type = Ceil;
-                    if (otdw.base_type == API_WindowID) {
-                        type = Reveal_Up;
-                    }
-                    if (OtdWall_Delim_One (otdw, opw, height, zBottom, type)) has_delim = true;
-                }
-                //Если высоты заданы не были - подгоним стенку под зону
-                if (!has_delim) {
-                    height = otd.height;
-                    zBottom = otd.zBottom;
-                    if (otdw.base_type == API_ColumnID) type = Column;
-                    if (otdw.base_type == API_WindowID) type = Reveal_Main;
-                    OtdWall_Delim_One (otdw, opw, height, zBottom, type);
-                }
-            }
-            otd.otdwall = opw;
-        }
+    TypeOtd type = otdw.type;
+    bool has_delim = false; // Найдена разбивка
+    double height = 0; // Высота элемента
+    double zBottom = 0; // Отметка низа
+    // Панели
+    if (otd_height_down > 0) {
+        height = otd_height_down;
+        zBottom = otd_zBottom;
+        type = Wall_Down;
+        if (otdw.base_type == API_SlabID) type = Floor;
+        if (otdw.base_type == API_WindowID) type = Reveal_Down;
+        if (OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
     }
-    #if defined(TESTING)
-    DBprnt ("OtdWall_Delim_All", "end");
-    #endif
+    // Основная часть
+    if (otd_height_main > 0) {
+        type = Wall_Main;
+        if (otdw.base_type == API_ColumnID) type = Column;
+        if (otdw.base_type == API_WindowID) type = Reveal_Main;
+        height = otd_height_main;
+        zBottom = otd_zBottom + otd_height_down;
+        if (OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
+    }
+    // Пространство за потолком
+    if (otd_height_up > 0) {
+        height = otd_height_up;
+        zBottom = otd_zBottom + otd_height_down + otd_height_main;
+        type = Wall_Up;
+        if (otdw.base_type == API_ColumnID) type = Column;
+        if (otdw.type == Ceil) type = Ceil;
+        if (otdw.base_type == API_WindowID) {
+            type = Reveal_Up;
+        }
+        if (OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
+    }
+    //Если высоты заданы не были - подгоним стенку под зону
+    if (!has_delim) {
+        height = otd_height;
+        zBottom = otd_zBottom;
+        if (otdw.base_type == API_ColumnID) type = Column;
+        if (otdw.base_type == API_WindowID) type = Reveal_Main;
+        OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -2021,7 +2011,8 @@ void OtdWall_Delim_All (OtdRooms& roomsinfo)
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type)
+bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
     const double dh = 0.002; // Дополнительное увеличение высоты проёма для исключения линии на стыке
     if (height < min_dim || is_equal (height, 0)) {
@@ -2074,6 +2065,7 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
     otdn.zBottom = zBottom;
     otdn.height = height;
     otdn.type = type;
+    SetMaterialByType (otdn, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     opw.PushNew (otdn);
     return true;
 }
