@@ -70,6 +70,7 @@ typedef struct
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
     API_ElemTypeID otd_type = API_SlabID; // Каким элементом строить (стеной/балкой)
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
+    GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
     GS::UniString favorite_name = ""; // Имя избранного для создания элемента
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
@@ -214,14 +215,14 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
 
-void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams& readparams);
+void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
 
 void Param_SetToBase (OtdWall& otdw, ParamDictElement& paramToRead, ParamValue& param_composite);
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
-void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadParams& readparams, const OtdWall& otdw);
+void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadParams readparams, const OtdWall& otdw);
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
@@ -253,7 +254,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
 
 void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
 
-void Floor_Create_One (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, bool on_top);
+void Floor_Create_One (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material);
 
 bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 
