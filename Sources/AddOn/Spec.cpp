@@ -545,14 +545,14 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
             } else {
                 notfound_paramname = notfound_paramname + " ; " + name;
             }
-}
+        }
         notfound_paramname = "Error - " + notfound_paramname;
         msg_rep ("Spec::GetElementsForRule", notfound_paramname, APIERR_BADINDEX, APINULLGuid);
         n_elements = 0;
         elements.Clear ();
         GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecNotFoundParametersString, true);
-}
+    }
     if (!not_found_unic.IsEmpty ()) {
         GS::UniString not_found_unic_str = "";
         for (auto& cIt : not_found_unic) {
@@ -795,7 +795,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
         msg_rep ("Spec::PlaceElements", "ACAPI_Element_GetDefaults", err, APINULLGuid);
     }
     return err;
-    }
+}
 // --------------------------------------------------------------------
 // Получение размеров элемента для размещения по сетке
 // Возвращает истину, если был найден параметр somestuff_spec_hrow - в этом случае элементы размещаются сверху вниз
@@ -970,19 +970,20 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-    }
+            }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
                 #if defined(AC_27) || defined(AC_28)
                 err = ACAPI_Grouping_CreateGroup (group, &groupGuid);
+                if (err != NoError) err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
                 #else
                 err = ACAPI_ElementGroup_Create (group, &groupGuid);
+                if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
                 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
-}
-}
-
+            }
+        }
         return NoError;
     });
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {

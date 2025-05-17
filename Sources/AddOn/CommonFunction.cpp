@@ -2245,7 +2245,7 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
 GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array< API_FavoriteFolderHierarchy >*folders, GS::Array< GS::UniString >*names)
 {
     #if defined AC_22
-    return ACAPI_Favorite_GetNum (type, APIVarId_Generic, count, null, folders, names);
+    return APIERR_GENERAL;
     #endif
     #if defined AC_26 || defined AC_27 || defined AC_28
     API_ElemType type_;
@@ -2368,7 +2368,7 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
         if (param.IsEmpty ()) {
             return true;
         }
-}
+    }
     return param.IsEmpty ();
 }
 }

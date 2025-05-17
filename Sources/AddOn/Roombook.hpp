@@ -44,6 +44,7 @@ typedef struct
     double width = 0; // Ширина проёма
     double objLoc = 0; // Расстояние от начала стены для середины проёма
     double lower = 0; // Привязка к низу стену
+    bool reflected = false;
     bool has_reveal = false; // Наличие откосов у родительского проёма
     bool has_side = false; // Проём лежит на верхней или нижней грани стены
     double base_reveal_width = 0; // Глубина откоса базового проёма

@@ -410,7 +410,6 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     }
     roominfo.height = zoneelement.zone.roomHeight;
     roominfo.zBottom = GetzPos (zoneelement.zone.roomBaseLev, zoneelement.header.floorInd, storyLevels);
-
     GS::Array<API_ElemTypeID> typeinzone;
     typeinzone.Push (API_WindowID);
     typeinzone.Push (API_DoorID);
@@ -452,7 +451,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
             searchPars.filterBits = APIFilt_OnVisLayer | APIFilt_In3D | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay;
             searchPars.loc.x = tedge.GetMidPoint ().x;
             searchPars.loc.y = tedge.GetMidPoint ().y;
-            searchPars.z = BiggestDouble;
+            searchPars.z = roominfo.zBottom + roominfo.height;
             #if defined(AC_27) || defined(AC_28) || defined(AC_26)
             searchPars.type.typeID = typeelem;
             #else
@@ -485,11 +484,11 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
                         if (typeelem == API_WallID || typeelem == API_ColumnID) elementToRead.Get (typeelem).Get (elGuid).Push (zoneGuid);
                     }
                 }
-            } else {
+        } else {
                 msg_rep ("CollectRoomInfo err", "ACAPI_Element_SearchElementByCoord element not found", err, zoneGuid);
             }
-        }
     }
+}
     roominfo.wallPart = relData.wallPart;
     roominfo.beamPart = relData.beamPart;
     roominfo.cwSegmentPart = relData.cwSegmentPart;
@@ -529,6 +528,7 @@ void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS:
             op.width = element.window.openingBase.width;
             op.lower = element.window.lower;
             op.objLoc = element.window.objLoc;
+            op.reflected = element.window.openingBase.reflected;
             break;
         case API_DoorID:
             wallguid = element.door.owner;
@@ -536,6 +536,7 @@ void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS:
             op.width = element.door.openingBase.width;
             op.lower = element.door.lower;
             op.objLoc = element.door.objLoc;
+            op.reflected = element.door.openingBase.reflected;
             break;
         default:
             break;
@@ -2159,6 +2160,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     #if defined(TESTING)
     DBprnt ("Draw_Elements", "start");
     #endif
+    GSErrCode err = NoError;
     MatarialToFavoriteDict favdict = Favorite_GetDict ();
     API_Element wallelement = {};
     API_Element slabelement = {};
@@ -2208,12 +2210,14 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 }
             }
             if (group.GetSize () > 1) {
-                API_Guid groupGuid = APINULLGuid;
                 #if defined(AC_27) || defined(AC_28)
-                ACAPI_Grouping_CreateGroup (group, &groupGuid);
+                err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
                 #else
-                ACAPI_ElementGroup_Create (group, &groupGuid);
+                API_Guid groupGuid = APINULLGuid;
+                err = ACAPI_ElementGroup_Create (group, &groupGuid);
+                if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
                 #endif
+                if (err != NoError) msg_rep ("ResetSyncProperty", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
             }
 
         }
@@ -2374,11 +2378,14 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
     wallelement.wall.bottomOffset = floorIndexAndOffset.second;
     #if defined(AC_27) || defined(AC_28)
     API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
+    wallelement.wall.refMat.hasValue = true;
+    wallelement.wall.sidMat.hasValue = true;
     wallelement.wall.refMat.value = ematerial;
     wallelement.wall.oppMat.value = ematerial;
     wallelement.wall.sidMat.value = ematerial;
     #else
     wallelement.wall.refMat.overridden = true;
+    wallelement.wall.sidMat.overridden = true;
     wallelement.wall.refMat.attributeIndex = edges.material.material;
     wallelement.wall.oppMat.attributeIndex = edges.material.material;
     wallelement.wall.sidMat.attributeIndex = edges.material.material;
@@ -2408,7 +2415,6 @@ bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wa
     wallelement.wall.zoneRel = APIZRel_None;
     wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
     wallelement.wall.flipped = false;
-    wallelement.wall.materialsChained = true;
     #if defined AC_26 || defined AC_27 || defined AC_28
     #else
     wallelement.wall.refMat.overridden = true;
@@ -2800,38 +2806,24 @@ MatarialToFavoriteDict Favorite_GetDict ()
 {
     // Словарь с избранным
     MatarialToFavoriteDict favdict;
-    // Поиск элементов по-умолчанию
-    API_ElemTypeID type = API_ZombieElemID;
-    GS::UniString favorite_name = "";
     MatarialToFavorite fav = {};
-    short count = 0;
-    GS::Array<GS::UniString> names;
-    type = API_WallID;
-    fav.type = type;
-    if (Favorite_GetNum (type, &count, nullptr, &names) == NoError) {
-        for (GS::UniString& name : names) {
-            fav.name = name;
-            if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
-        }
-    }; names.Clear ();
+    // Поиск элементов по-умолчанию
+    GS::Array<API_ElemTypeID> types;
+    types.Push (API_WallID);
+    types.Push (API_SlabID);
+    types.Push (API_ObjectID);
 
-    type = API_SlabID;
-    fav.type = type;
-    if (Favorite_GetNum (type, &count, nullptr, &names) == NoError) {
+    GS::UniString name_ = ""; short count = 0; GS::Array<GS::UniString> names;
+    for (API_ElemTypeID type : types) {
+        if (Favorite_GetNum (type, &count, nullptr, &names) != NoError) continue;
+        fav.type = type;
         for (GS::UniString& name : names) {
+            name_ = name.ToLowerCase ();
+            name_.Trim ();
             fav.name = name;
-            if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
+            if (!favdict.ContainsKey (name_)) favdict.Add (name_, fav);
         }
-    }; names.Clear ();
-
-    type = API_ObjectID;
-    fav.type = type;
-    if (Favorite_GetNum (type, &count, nullptr, &names) == NoError) {
-        for (GS::UniString& name : names) {
-            fav.name = name;
-            if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
-        }
-    };
+    }
     return favdict;
 }
 
@@ -2852,6 +2844,24 @@ MatarialToFavorite Favorite_FindName (const OtdMaterial material, API_ElemTypeID
         }
         return favorite_name;
     }
+    GS::UniString part = material.smaterial.ToLowerCase () + '@';
+    part = part.GetSubstring ('@', '@', 0);
+    part.Trim ();
+    if (favdict.ContainsKey (part)) {
+        if (favdict.Get (part).type == type || favdict.Get (part).type == API_ObjectID) favorite_name = favdict.Get (part);
+    }
+    if (favorite_name.type == API_ZombieElemID) {
+        if (type == API_WallID) {
+            if (favdict.ContainsKey ("some_stuff_fin_wall")) {
+                if (favdict.Get ("some_stuff_fin_wall").type == API_WallID || favdict.Get ("some_stuff_fin_wall").type == API_ObjectID) favorite_name = favdict.Get ("some_stuff_fin_wall");
+            }
+        }
+        if (type == API_SlabID) {
+            if (favdict.ContainsKey ("some_stuff_fin_ceil")) {
+                if (favdict.Get ("some_stuff_fin_ceil").type == API_WallID || favdict.Get ("some_stuff_fin_ceil").type == API_ObjectID) favorite_name = favdict.Get ("some_stuff_fin_ceil");
+        }
+    }
+}
     return favorite_name;
 }
 
@@ -2867,7 +2877,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     if (err == NoError) {
         element = favorite.element;
         return true;
-    }
+}
     return false;
     #endif
 }
