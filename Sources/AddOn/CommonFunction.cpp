@@ -1288,8 +1288,8 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 // -----------------------------------------------------------------------------
 void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & elem_head, API_ElemTypeID & elemType, API_Guid & elemGuid)
 {
-    API_ElemTypeID elemtype = GetElemTypeID (elem_head);
-    switch (elemtype) {
+    API_ElemTypeID elemtype_ = GetElemTypeID (elem_head);
+    switch (elemtype_) {
         case API_CurtainWallPanelID:
             elemGuid = element.cwPanel.symbolID;
             elemType = API_ObjectID;
@@ -1305,7 +1305,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
         default:
             UNUSED_VARIABLE (element);
             elemGuid = elem_head.guid;
-            elemtype = GetElemTypeID (elem_head);
+            elemType = elemtype_;
             break;
     }
     return;
