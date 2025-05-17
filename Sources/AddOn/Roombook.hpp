@@ -58,7 +58,6 @@ typedef struct
     short material = 0; // Индекс материала
     GS::UniString smaterial = ""; // Имя материала
     GS::UniString rawname = ""; // Имя свойства для записи
-    GS::UniString favorite = ""; // Имя избранного для создания элемента
 } OtdMaterial;
 
 typedef struct
@@ -68,11 +67,9 @@ typedef struct
     double height = 0;
     OtdMaterial material;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
-    API_ElemTypeID otd_type = API_SlabID; // Каким элементом строить (стеной/балкой)
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
     GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
-    GS::UniString favorite_name = ""; // Имя избранного для создания элемента
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
 } OtdSlab;
 
@@ -90,8 +87,6 @@ typedef struct
     GS::Array<OtdOpening> openings; // Проёмы в стене-отделке
     OtdMaterial material;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
-    API_ElemTypeID otd_type = API_WallID; // Каким элементом строить (стеной/балкой)
-    GS::UniString favorite_name = ""; // Имя избранного для создания элемента
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
 } OtdWall; // Структура со стенами для отделки
 
@@ -159,6 +154,13 @@ typedef struct
     ParamValueData val = {}; // Прочитанное значение
 } ReadParam;
 typedef GS::HashTable<GS::UniString, ReadParam> ReadParams;
+
+typedef struct
+{
+    GS::UniString name = ""; // Имя избранного 
+    API_ElemTypeID type = API_ZombieElemID; // Тип элемента в избранном
+} MatarialToFavorite;
+typedef GS::HashTable<GS::UniString, MatarialToFavorite> MatarialToFavoriteDict;
 
 // -----------------------------------------------------------------------------
 // Запись в зону информации об отделке
@@ -266,13 +268,13 @@ bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
 void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist);
 
-void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent, MatarialToFavoriteDict& favdict);
 
-void OtdWall_Draw_Object (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent);
 
 bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
 
-void OtdWall_Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
 
 bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement);
 
@@ -280,11 +282,11 @@ void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_Ele
 
 bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& memo);
 
-void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent, MatarialToFavoriteDict& favdict);
 
-void Floor_Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
-void Floor_Draw_Object (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
 bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
 
@@ -316,6 +318,8 @@ void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& gui
 void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead);
 
 API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name);
+MatarialToFavoriteDict Favorite_GetDict ();
+MatarialToFavorite Favorite_FindName (const OtdMaterial material, API_ElemTypeID type, const MatarialToFavoriteDict& favdict);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 

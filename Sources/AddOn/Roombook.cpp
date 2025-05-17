@@ -1977,7 +1977,17 @@ void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up,
     #else
     p.inx = material.material;
     #endif
-    p.val = material.smaterial;
+    GS::UniString part = material.smaterial;
+    part.Trim ();
+    part.ReplaceAll ("  ", " ");
+    if (part.Contains ('@')) {
+        part = '@' + part;
+        part = part.GetSubstring ('@', '@', 0);
+        part.Trim ();
+        p.val = part;
+    } else {
+        p.val = material.smaterial;
+    }
     p.num = -1;
     p.structype = APICWallComp_Finish;
     otdw.base_composite.Push (p);
@@ -2149,6 +2159,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     #if defined(TESTING)
     DBprnt ("Draw_Elements", "start");
     #endif
+    MatarialToFavoriteDict favdict = Favorite_GetDict ();
     API_Element wallelement = {};
     API_Element slabelement = {};
     API_Element wallobjelement = {}; API_ElementMemo wallobjmemo;
@@ -2173,7 +2184,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                     if ((otdwall.type == Wall_Main || otdwall.type == Wall_Up || otdwall.type == Wall_Down) && !otd.create_wall_elements) continue;
                     if ((otdwall.type == Column) && !otd.create_column_elements) continue;
                     if ((otdwall.type == Reveal_Main || otdwall.type == Reveal_Down || otdwall.type == Reveal_Up) && !otd.create_reveal_elements) continue;
-                    OtdWall_Draw (storyLevels, otdwall, wallelement, wallobjelement, wallobjmemo, windowelement, windowmemo, subelementByparent);
+                    OtdWall_Draw (storyLevels, otdwall, wallelement, wallobjelement, wallobjmemo, windowelement, windowmemo, subelementByparent, favdict);
                     Param_AddUnicElementByType (otd.zone_guid, otdwall.otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных стен к зоне
                     for (OtdOpening& op : otdwall.openings) {
                         Param_AddUnicElementByType (otd.zone_guid, op.otd_guid, API_ZoneID, subelementByparent);// Привязка отделочных проёмов к зоне
@@ -2190,7 +2201,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 for (OtdSlab& otdslab : otd.otdslab) {
                     if (otdslab.type == Ceil && !otd.create_ceil_elements) continue;
                     if (otdslab.type == Floor && !otd.create_floor_elements) continue;
-                    Floor_Draw (storyLevels, slabelement, slabobjelement, slabobjmemo, otdslab, subelementByparent);
+                    Floor_Draw (storyLevels, slabelement, slabobjelement, slabobjmemo, otdslab, subelementByparent, favdict);
                     Param_AddUnicElementByType (otd.zone_guid, otdslab.otd_guid, API_ZoneID, subelementByparent); // Привязка перекрытий к зоне
                     Class_SetClass (otdslab, finclass);
                     group.Push (otdslab.otd_guid);
@@ -2203,11 +2214,11 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 #else
                 ACAPI_ElementGroup_Create (group, &groupGuid);
                 #endif
-            }
+    }
 
-        }
+}
         return NoError;
-    });
+});
     if (GetElemTypeID (windowelement) == API_WindowID) ACAPI_DisposeElemMemoHdls (&windowmemo);
     if (GetElemTypeID (slabobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
     if (GetElemTypeID (wallobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
@@ -2216,25 +2227,26 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     #endif
 }
 
-void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
+void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent, MatarialToFavoriteDict& favdict)
 {
     if (edges.height < min_dim) return;
     double dx = -edges.endC.x + edges.begC.x;
     double dy = -edges.endC.y + edges.begC.y;
     double dr = sqrt (dx * dx + dy * dy);
     if (dr < min_dim) return;
-    if (Favorite_GetType (edges.favorite_name) == API_ObjectID) {
-        OtdWall_Draw_Object (storyLevels, edges, wallobjelement, wallobjmemo, subelementByparent);
+    MatarialToFavorite favorite = Favorite_FindName (edges.material, API_WallID, favdict);
+    if (favorite.type == API_ObjectID) {
+        OtdWall_Draw_Object (favorite.name, storyLevels, edges, wallobjelement, wallobjmemo, subelementByparent);
     } else {
-        OtdWall_Draw_Wall (storyLevels, edges, wallelement, windowelement, windowmemo, subelementByparent);
+        OtdWall_Draw_Wall (favorite.name, storyLevels, edges, wallelement, windowelement, windowmemo, subelementByparent);
     }
     Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent); // Привязка отделочной стены к базовой
 }
 
-void OtdWall_Draw_Object (const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent)
+void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!OtdWall_GetDefult_Object (edges.favorite_name, wallobjelement, wallobjmemo)) {
+    if (!OtdWall_GetDefult_Object (favorite_name, wallobjelement, wallobjmemo)) {
         return;
     }
     Point2D wbegC = { edges.begC.x, edges.begC.y };
@@ -2348,10 +2360,10 @@ bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& 
     return true;
 }
 
-void OtdWall_Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
+void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!OtdWall_GetDefult_Wall (edges.favorite_name, wallelement)) {
+    if (!OtdWall_GetDefult_Wall (favorite_name, wallelement)) {
         return;
     }
     wallelement.wall.begC = edges.begC;
@@ -2366,6 +2378,7 @@ void OtdWall_Draw_Wall (const Stories& storyLevels, OtdWall& edges, API_Element&
     wallelement.wall.oppMat.value = ematerial;
     wallelement.wall.sidMat.value = ematerial;
     #else
+    wallelement.wall.refMat.overridden = true;
     wallelement.wall.refMat.attributeIndex = edges.material.material;
     wallelement.wall.oppMat.attributeIndex = edges.material.material;
     wallelement.wall.sidMat.attributeIndex = edges.material.material;
@@ -2449,20 +2462,21 @@ bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowe
     return true;
 }
 
-void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
+void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent, MatarialToFavoriteDict& favdict)
 {
-    if (Favorite_GetType (otdslab.favorite_name) == API_ObjectID) {
-        Floor_Draw_Object (storyLevels, slabobjelement, slabobjmemo, otdslab, subelementByparent);
+    MatarialToFavorite favorite = Favorite_FindName (otdslab.material, API_SlabID, favdict);
+    if (favorite.type == API_ObjectID) {
+        Floor_Draw_Object (favorite.name, storyLevels, slabobjelement, slabobjmemo, otdslab, subelementByparent);
     } else {
-        Floor_Draw_Slab (storyLevels, slabelement, otdslab, subelementByparent);
+        Floor_Draw_Slab (favorite.name, storyLevels, slabelement, otdslab, subelementByparent);
     }
     Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
 }
 
-void Floor_Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent)
+void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!Floor_GetDefult_Slab (otdslab.favorite_name, slabelement)) {
+    if (!Floor_GetDefult_Slab (favorite_name, slabelement)) {
         return;
     }
     slabelement.slab.thickness = otd_thickness;
@@ -2496,10 +2510,10 @@ void Floor_Draw_Slab (const Stories& storyLevels, API_Element& slabelement, OtdS
     return;
 }
 
-void Floor_Draw_Object (const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
+void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
     GSErrCode err = NoError;
-    if (!OtdWall_GetDefult_Object (otdslab.favorite_name, slabobjelement, slabobjmemo)) {
+    if (!Floor_GetDefult_Object (favorite_name, slabobjelement, slabobjmemo)) {
         return;
     }
     GDLHelpers::ParamDict accsessoryparams;
@@ -2579,7 +2593,6 @@ bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slab
     slabelement.slab.modelElemStructureType = API_BasicStructure;
     return true;
 }
-
 
 void Class_SetClass (const OtdWall& op, const ClassificationFunc::ClassificationDict& finclass)
 {
@@ -2661,7 +2674,7 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
                 }
             }
-        }
+}
     }
 }
 
@@ -2697,8 +2710,8 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                 if (SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite, suffix, false)) {
                     if (!syncguidsdict.ContainsKey (guid)) syncguidsdict.Add (guid, true);
                 }
-            }
-        }
+    }
+}
     }
     if (!paramToWrite.IsEmpty ()) {
         ACAPI_CallUndoableCommand ("Write property",
@@ -2781,6 +2794,66 @@ API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name)
     if (err == NoError) return GetElemTypeID (favorite.element.header);
     return API_ZombieElemID;
     #endif
+}
+
+MatarialToFavoriteDict Favorite_GetDict ()
+{
+    // Словарь с избранным
+    MatarialToFavoriteDict favdict;
+    // Поиск элементов по-умолчанию
+    API_ElemTypeID type = API_ZombieElemID;
+    GS::UniString favorite_name = "";
+    MatarialToFavorite fav = {};
+
+    short count = 0;
+    GS::Array<GS::UniString> names;
+    type = API_WallID;
+    fav.type = type;
+    if (ACAPI_Favorite_GetNum (type, APIVarId_Generic, &count, nullptr, &names) == NoError) {
+        for (GS::UniString& name : names) {
+            fav.name = name;
+            if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
+        }
+    }; names.Clear ();
+
+    type = API_SlabID;
+    fav.type = type;
+    if (ACAPI_Favorite_GetNum (type, APIVarId_Generic, &count, nullptr, &names) == NoError) {
+        for (GS::UniString& name : names) {
+            fav.name = name;
+            if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
+        }
+    }; names.Clear ();
+
+    type = API_ObjectID;
+    fav.type = type;
+    if (ACAPI_Favorite_GetNum (type, APIVarId_Generic, &count, nullptr, &names) == NoError) {
+        for (GS::UniString& name : names) {
+            fav.name = name;
+            if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
+        }
+    };
+    return favdict;
+}
+
+MatarialToFavorite Favorite_FindName (const OtdMaterial material, API_ElemTypeID type, const MatarialToFavoriteDict& favdict)
+{
+    MatarialToFavorite favorite_name;
+    if (favdict.IsEmpty ()) return favorite_name;
+    if (!material.smaterial.Contains ("@")) {
+        if (type == API_WallID) {
+            if (favdict.ContainsKey ("some_stuff_fin_wall")) {
+                if (favdict.Get ("some_stuff_fin_wall").type == API_WallID || favdict.Get ("some_stuff_fin_wall").type == API_ObjectID) favorite_name = favdict.Get ("some_stuff_fin_wall");
+            }
+        }
+        if (type == API_SlabID) {
+            if (favdict.ContainsKey ("some_stuff_fin_ceil")) {
+                if (favdict.Get ("some_stuff_fin_ceil").type == API_WallID || favdict.Get ("some_stuff_fin_ceil").type == API_ObjectID) favorite_name = favdict.Get ("some_stuff_fin_ceil");
+            }
+        }
+        return favorite_name;
+    }
+    return favorite_name;
 }
 
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element)

@@ -1029,12 +1029,12 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
             if (addspace > 0) old = old + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
             str.Push (old);
             out = parts[i];
-        } else {
-            if (i == npart - 1) {
-                addspace = (Int32) ((width - width_in) / width_space);
-                if (addspace > 0) out = out + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
-                str.Push (out);
-            }
+        }
+        if (i == npart - 1) {
+            width_in = GetTextWidth (font, fontsize, out);
+            addspace = (Int32) ((width - width_in) / width_space);
+            if (addspace > 0) out = out + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+            str.Push (out);
         }
         old = out;
         width_old = width_in;
@@ -1371,7 +1371,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-}
+    }
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
     #else
@@ -1456,7 +1456,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение списка GUID элементов ограждения
