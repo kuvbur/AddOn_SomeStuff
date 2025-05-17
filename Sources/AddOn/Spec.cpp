@@ -456,7 +456,10 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
                             GS::UniString errstr = rawname + " , element GUID " + APIGuid2GSGuid (elemguid).ToUniString ();
                             if (!not_found_unic.ContainsKey (errstr)) not_found_unic.Add (errstr, true);
                         }
-                        key = key + "@" + pvalue.val.uniStringValue;
+                        GS::UniString val = pvalue.val.uniStringValue;
+                        val.ReplaceAll ("  ", " ");
+                        val.Trim ();
+                        key = key + "@" + val;
                     }
                 }
                 if (hasunic) {
@@ -542,14 +545,14 @@ Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToR
             } else {
                 notfound_paramname = notfound_paramname + " ; " + name;
             }
-        }
+}
         notfound_paramname = "Error - " + notfound_paramname;
         msg_rep ("Spec::GetElementsForRule", notfound_paramname, APIERR_BADINDEX, APINULLGuid);
         n_elements = 0;
         elements.Clear ();
         GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecNotFoundParametersString, true);
-    }
+}
     if (!not_found_unic.IsEmpty ()) {
         GS::UniString not_found_unic_str = "";
         for (auto& cIt : not_found_unic) {
@@ -792,7 +795,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
         msg_rep ("Spec::PlaceElements", "ACAPI_Element_GetDefaults", err, APINULLGuid);
     }
     return err;
-}
+    }
 // --------------------------------------------------------------------
 // Получение размеров элемента для размещения по сетке
 // Возвращает истину, если был найден параметр somestuff_spec_hrow - в этом случае элементы размещаются сверху вниз
@@ -967,7 +970,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec::PlaceElements", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-            }
+    }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -977,8 +980,8 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 err = ACAPI_ElementGroup_Create (group, &groupGuid);
                 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
-            }
-        }
+}
+}
 
         return NoError;
     });
