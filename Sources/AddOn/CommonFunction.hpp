@@ -53,12 +53,10 @@ static const Int32 DMeterStringID = 19;
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
 
-struct Story
-{
+struct Story {
     Story (short _index, double _level)
         : index (_index)
-        , level (_level)
-    {
+        , level (_level) {
     }
     short  index;
     double level;
@@ -66,8 +64,7 @@ struct Story
 using Stories = GS::Array<Story>; // Хранение информации об этажах в формате Индекс - Уровень
 
 // Структура для хранения формата перевода чисел в строку и округления чисел
-typedef struct
-{
+typedef struct {
     int n_zero = 3; //Количество нулей после запятой
     GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
     bool needRound = false; //Использовать в расчётах округлённые значения
@@ -300,34 +297,33 @@ API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const  API_Tranmat& tm);
 Point2D GetWordPoint2DTM (const Point2D vtx, const  API_Tranmat& tm);
 bool ClickAPoint (const char* prompt, Point2D* c);
 
-namespace FormatStringFunc
-{
-FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
-// -----------------------------------------------------------------------------
-// Обработка количества нулей и единиц измерения в имени свойства
-// Удаляет из имени paramName найденные единицы измерения
-// Возвращает строку для скармливания функции NumToStig
-// -----------------------------------------------------------------------------
-GS::UniString GetFormatString (GS::UniString& paramName);
+namespace FormatStringFunc {
+    FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
+    // -----------------------------------------------------------------------------
+    // Обработка количества нулей и единиц измерения в имени свойства
+    // Удаляет из имени paramName найденные единицы измерения
+    // Возвращает строку для скармливания функции NumToStig
+    // -----------------------------------------------------------------------------
+    GS::UniString GetFormatString (GS::UniString& paramName);
 
-// -----------------------------------------------------------------------------
-// Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
-// -----------------------------------------------------------------------------
-FormatStringDict GetFotmatStringForMeasureType ();
+    // -----------------------------------------------------------------------------
+    // Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
+    // -----------------------------------------------------------------------------
+    FormatStringDict GetFotmatStringForMeasureType ();
 
-// -----------------------------------------------------------------------------
-// Извлекает из строки информацио о единицах измерении и округлении
-// -----------------------------------------------------------------------------
-FormatString ParseFormatString (const GS::UniString& stringformat);
+    // -----------------------------------------------------------------------------
+    // Извлекает из строки информацио о единицах измерении и округлении
+    // -----------------------------------------------------------------------------
+    FormatString ParseFormatString (const GS::UniString& stringformat);
 
-// -----------------------------------------------------------------------------
-// Переводит число в строку согласно настройкам строки-формата
-// -----------------------------------------------------------------------------
-GS::UniString NumToString (const double& var, const FormatString& stringformat);
+    // -----------------------------------------------------------------------------
+    // Переводит число в строку согласно настройкам строки-формата
+    // -----------------------------------------------------------------------------
+    GS::UniString NumToString (const double& var, const FormatString& stringformat);
 
-void ReplaceMeters (GS::UniString& formatstring);
+    void ReplaceMeters (GS::UniString& formatstring);
 
-void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
+    void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
 
 }
 
@@ -337,6 +333,8 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D& polygon, API_
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID& type, API_AttributeIndex& attribinx);
 
+GSErrCode Favorite_GetNum (const API_ElemTypeID& type, short* count, GS::Array<API_FavoriteFolderHierarchy>* folders, GS::Array<GS::UniString>* names);
+
 API_ElemTypeID GetElemTypeID (const API_Elem_Head& elementhead);
 
 API_ElemTypeID GetElemTypeID (const API_Element& element);
@@ -345,21 +343,19 @@ void SetElemTypeID (API_Element& element, const API_ElemTypeID eltype);
 
 void SetElemTypeID (API_Elem_Head& elementhead, const API_ElemTypeID eltype);
 
-namespace GDLHelpers
-{
-typedef struct
-{
-    GS::Array <double> arr_num;
-    GS::Array <GS::UniString> arr_str;
-    Int32 dim1 = 1;
-    Int32 dim2 = 1;
-    double num = 0;
-    GS::UniString str = "";
-} Param; // Структура для чтения/записи в объекты
+namespace GDLHelpers {
+    typedef struct {
+        GS::Array <double> arr_num;
+        GS::Array <GS::UniString> arr_str;
+        Int32 dim1 = 1;
+        Int32 dim2 = 1;
+        double num = 0;
+        GS::UniString str = "";
+    } Param; // Структура для чтения/записи в объекты
 
-typedef GS::HashTable <GS::UniString, Param> ParamDict;
+    typedef GS::HashTable <GS::UniString, Param> ParamDict;
 
-bool ParamToMemo (API_ElementMemo& memo, ParamDict& param);
+    bool ParamToMemo (API_ElementMemo& memo, ParamDict& param);
 
 }
 

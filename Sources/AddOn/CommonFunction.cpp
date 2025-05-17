@@ -2242,6 +2242,17 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     }
 }
 
+GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array< API_FavoriteFolderHierarchy >*folders, GS::Array< GS::UniString >*names)
+{
+    #if defined AC_26 || defined AC_27 || defined AC_28
+    API_ElemType type_;
+    type_.typeID = type;
+    return ACAPI_Favorite_GetNum (type, count, folders, names);
+    #else
+    return ACAPI_Favorite_GetNum (type, APIVarId_Generic, count, folders, names);
+    #endif
+}
+
 API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)
 {
     API_ElemTypeID eltype;
