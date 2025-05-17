@@ -3276,7 +3276,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
             }
         } else {
             #if defined(TESTING)
-            DBprnt ("err WriteProperty", "param.isValid && param.property.definition.guid != APINULLGuid");
+            DBprnt ("err WriteProperty", "param.isValid && guid != APINULLGuid " + param.rawName);
             #endif
         }
     }
