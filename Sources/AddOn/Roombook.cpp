@@ -2214,11 +2214,11 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 #else
                 ACAPI_ElementGroup_Create (group, &groupGuid);
                 #endif
-    }
+            }
 
-}
+        }
         return NoError;
-});
+    });
     if (GetElemTypeID (windowelement) == API_WindowID) ACAPI_DisposeElemMemoHdls (&windowmemo);
     if (GetElemTypeID (slabobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&slabobjmemo);
     if (GetElemTypeID (wallobjelement) == API_ObjectID) ACAPI_DisposeElemMemoHdls (&wallobjmemo);
@@ -2674,7 +2674,7 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
                 }
             }
-}
+        }
     }
 }
 
@@ -2710,8 +2710,8 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                 if (SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite, suffix, false)) {
                     if (!syncguidsdict.ContainsKey (guid)) syncguidsdict.Add (guid, true);
                 }
-    }
-}
+            }
+        }
     }
     if (!paramToWrite.IsEmpty ()) {
         ACAPI_CallUndoableCommand ("Write property",
@@ -2804,12 +2804,11 @@ MatarialToFavoriteDict Favorite_GetDict ()
     API_ElemTypeID type = API_ZombieElemID;
     GS::UniString favorite_name = "";
     MatarialToFavorite fav = {};
-
     short count = 0;
     GS::Array<GS::UniString> names;
     type = API_WallID;
     fav.type = type;
-    if (ACAPI_Favorite_GetNum (type, APIVarId_Generic, &count, nullptr, &names) == NoError) {
+    if (Favorite_GetNum (type, &count, nullptr, &names) == NoError) {
         for (GS::UniString& name : names) {
             fav.name = name;
             if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
@@ -2818,7 +2817,7 @@ MatarialToFavoriteDict Favorite_GetDict ()
 
     type = API_SlabID;
     fav.type = type;
-    if (ACAPI_Favorite_GetNum (type, APIVarId_Generic, &count, nullptr, &names) == NoError) {
+    if (Favorite_GetNum (type, &count, nullptr, &names) == NoError) {
         for (GS::UniString& name : names) {
             fav.name = name;
             if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
@@ -2827,7 +2826,7 @@ MatarialToFavoriteDict Favorite_GetDict ()
 
     type = API_ObjectID;
     fav.type = type;
-    if (ACAPI_Favorite_GetNum (type, APIVarId_Generic, &count, nullptr, &names) == NoError) {
+    if (Favorite_GetNum (type, &count, nullptr, &names) == NoError) {
         for (GS::UniString& name : names) {
             fav.name = name;
             if (!favdict.ContainsKey (name)) favdict.Add (name, fav);
