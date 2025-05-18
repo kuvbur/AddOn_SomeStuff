@@ -40,8 +40,22 @@ GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories
         }
         storyPtr = &story;
     }
-
     return { storyPtr->index, zPos - storyPtr->level };
+}
+
+double GetOffsetFromStory (const double zPos, const short floorInd, const Stories& stories)
+{
+    if (stories.IsEmpty ()) {
+        return zPos;
+    }
+    const Story* storyPtr = &stories[0];
+    for (const auto& story : stories) {
+        if (story.index == floorInd) {
+            return zPos - story.level;
+        }
+        storyPtr = &story;
+    }
+    return zPos;
 }
 
 double GetzPos (const double bottomOffset, const short floorInd, const Stories& stories)
@@ -527,14 +541,14 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 #endif
                 #endif
                 error_type = error_type + " type:" + elemName;
-            }
+        }
             API_Attribute layer;
             BNZeroMemory (&layer, sizeof (API_Attribute));
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
-        }
     }
+}
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
@@ -619,7 +633,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
-    }
+}
     #endif // AC_22
     return guidArray;
 }

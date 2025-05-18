@@ -93,6 +93,11 @@ Stories GetStories ();
 GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories& stories);
 
 // -----------------------------------------------------------------------------
+// Возвращает относительный отступ от заданного этажа при заданной абсолютной координате z
+// -----------------------------------------------------------------------------
+double GetOffsetFromStory (const double zPos, const short floorInd, const Stories& stories);
+
+// -----------------------------------------------------------------------------
 // Переводит индекс этажа и относительный отступ низа в абсолютную координату z
 // -----------------------------------------------------------------------------
 double GetzPos (const double bottomOffset, const short floorInd, const Stories& stories);

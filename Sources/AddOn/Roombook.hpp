@@ -64,7 +64,8 @@ typedef struct
 typedef struct
 {
     Geometry::Polygon2D poly;
-    double zBottom = 0;
+    double zBottom = 0; // Аболютная координата z низа
+    short floorInd = 0; // Этаж
     double height = 0;
     OtdMaterial material;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
@@ -76,8 +77,11 @@ typedef struct
 
 typedef struct
 {
+    double ang_begC = 90 * DEGRAD; // Угол подрезки начала
+    double ang_endC = 90 * DEGRAD; // Угол подрезки конца
     double height = 0; // Высота стены-отделки
     double zBottom = 0; // Аболютная координата z низа
+    short floorInd = 0; // Этаж
     double base_th = 0; // Толщина базовой стены (для расчёта откосов)
     API_Coord begC = { 0, 0 }; // Координата начала
     API_Coord endC = { 0, 0 }; // Координата конца
@@ -111,6 +115,7 @@ typedef struct
     OtdMaterial om_zone; // Отделка из параметров зоны
     double height = 0; // Высота зоны
     double zBottom = 0; // Аболютная координата z низа
+    short floorInd = 0; // Этаж
     GS::HashTable <API_Guid, GS::Array<Sector>> walledges; // Границы стен, не явяющихся границей зоны
     GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
     GS::Array<Sector> edges; // Границы зоны
@@ -198,10 +203,14 @@ void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, c
 // -----------------------------------------------------------------------------
 void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
 
+void Opening_Add_One (const OtdOpening& op, const bool& is_fliped, const double& zBottom, const double& tBeg, const double& tEnd, const double& wallLength, OtdWall& wallotd);
+
+bool OtdWall_Add_One (const API_Guid& wallguid, const Sector& walledge, const bool& is_fliped, const double& height, const double& zBottom, const short& floorInd, const double& thickness, OtdWall& wallotd);
+
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен 
 // -----------------------------------------------------------------------------
-void OtdWall_Create_One (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
+void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны 
@@ -257,7 +266,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
 
 void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
 
-void Floor_Create_One (const Stories& storyLevels, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material);
+void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material);
 
 bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 
@@ -293,7 +302,6 @@ bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& sl
 
 bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement);
 
-
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
@@ -320,7 +328,7 @@ void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, U
 
 API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name);
 MatarialToFavoriteDict Favorite_GetDict ();
-MatarialToFavorite Favorite_FindName (const OtdMaterial material, API_ElemTypeID type, const MatarialToFavoriteDict& favdict);
+MatarialToFavorite Favorite_FindName (const OtdMaterial material, TypeOtd type, const MatarialToFavoriteDict& favdict);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 
