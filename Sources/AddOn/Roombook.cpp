@@ -2287,7 +2287,9 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 #else
                 API_Guid groupGuid = APINULLGuid;
                 err = ACAPI_ElementGroup_Create (group, &groupGuid);
+                #ifndef AC_22
                 if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
+                #endif
                 #endif
                 if (err != NoError) msg_rep ("ResetSyncProperty", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
             }
@@ -2419,7 +2421,7 @@ void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& sto
     err = ACAPI_Element_Create (&wallobjelement, &wallobjmemo);
     if (err != NoError) {
         return;
-}
+    }
     edges.otd_guid = wallobjelement.header.guid;
 }
 
@@ -2476,7 +2478,7 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
     edges.otd_guid = wallelement.header.guid;
     for (OtdOpening& op : edges.openings) {
         Opening_Draw (wallelement, windowelement, windowmemo, op, subelementByparent);
-}
+    }
 }
 
 bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement)
@@ -2598,7 +2600,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return;
-}
+    }
     err = ACAPI_Element_Create (&slabelement, &memo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -2772,9 +2774,9 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
                     findict.Add (cls.reveal_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
                 }
+            }
         }
     }
-}
 }
 
 // -----------------------------------------------------------------------------
@@ -2810,8 +2812,8 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                     if (!syncguidsdict.ContainsKey (guid)) syncguidsdict.Add (guid, true);
                 }
             }
-            }
         }
+    }
     if (!paramToWrite.IsEmpty ()) {
         ACAPI_CallUndoableCommand ("Write property",
                 [&]() -> GSErrCode {
@@ -2833,7 +2835,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
             SyncArray (syncSettings, rereadelem, systemdict, propertyParams);
         }
     }
-    }
+}
 
 bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids)
 {

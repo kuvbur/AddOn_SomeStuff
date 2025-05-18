@@ -979,7 +979,9 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 if (err != NoError) err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
                 #else
                 err = ACAPI_ElementGroup_Create (group, &groupGuid);
+                #ifndef AC_22
                 if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
+                #endif
                 #endif
                 if (err != NoError) msg_rep ("Spec::PlaceElements", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
