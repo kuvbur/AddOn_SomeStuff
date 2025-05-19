@@ -46,7 +46,6 @@ typedef struct
     double lower = 0; // Привязка к низу стену
     bool reflected = false;
     bool has_reveal = false; // Наличие откосов у родительского проёма
-    bool has_side = false; // Проём лежит на верхней или нижней грани стены
     double base_reveal_width = 0; // Глубина откоса базового проёма
     API_Guid base_guid = APINULLGuid; // GUID базового проёма
     API_Guid otd_guid = APINULLGuid; // GUID созданного проёма
@@ -313,7 +312,7 @@ void Class_SetClass (const OtdOpening& op, const ClassificationFunc::Classificat
 
 void Class_SetClass (const OtdSlab& op, const ClassificationFunc::ClassificationDict& finclass);
 
-API_Guid Class_GetClassGuid (const API_ElemTypeID& base_type, const ClassificationFunc::ClassificationDict& finclass);
+API_Guid Class_GetClassGuid (const TypeOtd type, const ClassificationFunc::ClassificationDict& finclass);
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)

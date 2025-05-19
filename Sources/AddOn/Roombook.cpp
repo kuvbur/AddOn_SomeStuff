@@ -495,9 +495,10 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
             #if defined(AC_27) || defined(AC_28)
             err = ACAPI_Element_SearchElementByCoord (&searchPars, &elGuid);
             #else
+            elGuid = APINULLGuid;
             err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &searchPars, &elGuid);
             #endif
-            if (err == NoError) {
+            if (err == NoError && elGuid != APINULLGuid) {
                 flag = true;
                 GS::Array<API_Guid> subelemGuid;
                 GetRelationsElement (elGuid, syncSettings, subelemGuid);
@@ -1225,7 +1226,7 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
     GS::UniString rawName = "{@material:layers,20}";
     param_composite.rawName = rawName;
     param_composite.fromMaterial = true;
-    if (!rawName_onoff.IsEmpty () && rawName_desc.IsEmpty ()) {
+    if (!rawName_onoff.IsEmpty () && !rawName_desc.IsEmpty ()) {
         param_composite.val.uniStringValue = "l[" + rawName_onoff + ":" + rawName_desc + "]";
     } else {
         param_composite.val.uniStringValue = "l[1:%BuildingMaterialProperties/Building Material Name%]";
@@ -2061,15 +2062,15 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
             zDup = fmin (zBottom + height, op.zBottom + op.height);
             zDown = fmax (zBottom, op.zBottom);
             op.lower = op.lower + dlower;
+            bool on_side = false;
             if (op.lower < dh) {
-                op.has_side = true;
+                on_side = true;
                 op.lower = -dh;
                 op.height += dh;
             }
             if (op.height >= zDup - zDown || is_equal (op.height, zDup - zDown)) {
                 op.height = fmin (op.height, zDup - zDown) + dh;
-                if (op.has_side) op.height += dh;
-                op.has_side = true;
+                if (on_side) op.height += dh;
             }
             if (op.height > min_dim && op.width > min_dim) newopenings.PushNew (op);
         }
@@ -2082,7 +2083,6 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
     opw.PushNew (otdn);
     return true;
 }
-
 
 void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
@@ -2698,30 +2698,31 @@ bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slab
 void Class_SetClass (const OtdWall& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
-    API_Guid class_guid = Class_GetClassGuid (op.base_type, finclass);
+    API_Guid class_guid = Class_GetClassGuid (op.type, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
 void Class_SetClass (const OtdOpening& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
-    API_Guid class_guid = Class_GetClassGuid (API_WindowID, finclass);
+    API_Guid class_guid = Class_GetClassGuid (NoSet, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
 void Class_SetClass (const OtdSlab& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
-    API_Guid class_guid = Class_GetClassGuid (op.base_type, finclass);
+    API_Guid class_guid = Class_GetClassGuid (op.type, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
-API_Guid Class_GetClassGuid (const API_ElemTypeID& base_type, const ClassificationFunc::ClassificationDict& finclass)
+API_Guid Class_GetClassGuid (const TypeOtd type, const ClassificationFunc::ClassificationDict& finclass)
 {
-    if (base_type == API_ColumnID && finclass.ContainsKey (cls.column_class)) return finclass.Get (cls.column_class).item.guid;
-    if (base_type == API_WallID && finclass.ContainsKey (cls.otdwall_class)) return finclass.Get (cls.otdwall_class).item.guid;
-    if (base_type == API_WindowID && finclass.ContainsKey (cls.all_class)) return finclass.Get (cls.all_class).item.guid;
-    if (base_type == API_SlabID && finclass.ContainsKey (cls.floor_class)) return finclass.Get (cls.floor_class).item.guid;
+    if (type == Column && finclass.ContainsKey (cls.column_class)) return finclass.Get (cls.column_class).item.guid;
+    if ((type == Reveal_Main || type == Reveal_Up || type == Reveal_Down) && finclass.ContainsKey (cls.reveal_class)) return finclass.Get (cls.reveal_class).item.guid;
+    if ((type == Wall_Main || type == Wall_Up || type == Wall_Down) && finclass.ContainsKey (cls.otdwall_class)) return finclass.Get (cls.otdwall_class).item.guid;
+    if (type == Floor && finclass.ContainsKey (cls.floor_class)) return finclass.Get (cls.floor_class).item.guid;
+    if (type == Ceil && finclass.ContainsKey (cls.ceil_class)) return finclass.Get (cls.ceil_class).item.guid;
     if (finclass.ContainsKey (cls.all_class)) return finclass.Get (cls.all_class).item.guid;
     return APINULLGuid;
 }
@@ -2968,6 +2969,7 @@ MatarialToFavorite Favorite_FindName (const OtdMaterial material, TypeOtd type, 
             case Reveal_Up:
             case Reveal_Down:
                 favorite_name_defult = "some_stuff_fin_reveal";
+                if (!favdict.ContainsKey (favorite_name_defult)) favorite_name_defult = "some_stuff_fin_wall";
                 break;
             case Floor:
                 favorite_name_defult = "some_stuff_fin_floor";
