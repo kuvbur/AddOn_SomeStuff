@@ -3,6 +3,7 @@
 #include	"APIEnvir.h"
 #include	"Roombook.hpp"
 #include	"Sync.hpp"
+#include <Box2DData.h>
 namespace AutoFunc
 
 {
@@ -991,7 +992,17 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
             #else
             p.inx = material.material;
             #endif
-            p.val = material.smaterial;
+            GS::UniString part = material.smaterial;
+            part.Trim ();
+            part.ReplaceAll ("  ", " ");
+            if (part.Contains ('@')) {
+                part = '@' + part;
+                part = part.GetSubstring ('@', '@', 0);
+                part.Trim ();
+                p.val = part;
+            } else {
+                p.val = material.smaterial;
+            }
             p.num = -1;
             p.structype = APICWallComp_Finish;
             poly.base_composite.Push (p);
@@ -1014,7 +1025,17 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
             #else
             p.inx = material.material;
             #endif
-            p.val = material.smaterial;
+            GS::UniString part = material.smaterial;
+            part.Trim ();
+            part.ReplaceAll ("  ", " ");
+            if (part.Contains ('@')) {
+                part = '@' + part;
+                part = part.GetSubstring ('@', '@', 0);
+                part.Trim ();
+                p.val = part;
+            } else {
+                p.val = material.smaterial;
+            }
             p.num = -1;
             p.structype = APICWallComp_Finish;
             poly.base_composite.Push (p);
@@ -1118,8 +1139,28 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
                 otdslab.zBottom = zUp + otd_thickness;
             }
             otdslab.floorInd = floorInd;
-            otdslab.material = poly.material;
             otdslab.type = type;
+            otdslab.material = poly.material;
+            ParamValueComposite p;
+            #if defined(AC_27) || defined(AC_28)
+            p.inx = ACAPI_CreateAttributeIndex (otdslab.material.material);
+            #else
+            p.inx = otdslab.material.material;
+            #endif
+            GS::UniString part = otdslab.material.smaterial;
+            part.Trim ();
+            part.ReplaceAll ("  ", " ");
+            if (part.Contains ('@')) {
+                part = '@' + part;
+                part = part.GetSubstring ('@', '@', 0);
+                part.Trim ();
+                p.val = part;
+            } else {
+                p.val = otdslab.material.smaterial;
+            }
+            p.num = -1;
+            p.structype = APICWallComp_Finish;
+            otdslab.base_composite.Push (p);
             otdslabs.Push (otdslab);
         }
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -1131,6 +1172,26 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
     } else {
         otdslab.zBottom += otd_thickness;
     }
+    ParamValueComposite p;
+    #if defined(AC_27) || defined(AC_28)
+    p.inx = ACAPI_CreateAttributeIndex (otdslab.material.material);
+    #else
+    p.inx = otdslab.material.material;
+    #endif
+    GS::UniString part = otdslab.material.smaterial;
+    part.Trim ();
+    part.ReplaceAll ("  ", " ");
+    if (part.Contains ('@')) {
+        part = '@' + part;
+        part = part.GetSubstring ('@', '@', 0);
+        part.Trim ();
+        p.val = part;
+    } else {
+        p.val = otdslab.material.smaterial;
+    }
+    p.num = -1;
+    p.structype = APICWallComp_Finish;
+    otdslab.base_composite.Push (p);
     otdslab.floorInd = floorInd;
     otdslab.poly = roompolygon;
     roompolygon.Clear ();
@@ -1250,51 +1311,51 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
 
     // Основная отделка стен
     zoneparam_name = "om_main";
-    zoneparam.rawnames.Push ("{@gdl:votw}");
     zoneparam.rawnames.Push ("some_stuff_fin_main_material");
+    zoneparam.rawnames.Push ("{@gdl:votw}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Высота до подвесного потолка
     zoneparam_name = "height_main";
-    zoneparam.rawnames.Push ("{@gdl:hroom_pot}");
     zoneparam.rawnames.Push ("some_stuff_fin_main_height");
+    zoneparam.rawnames.Push ("{@gdl:hroom_pot}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка стен выше потолка
     zoneparam_name = "om_up";
-    zoneparam.rawnames.Push ("{@gdl:votw2}");
     zoneparam.rawnames.Push ("some_stuff_fin_up_material");
+    zoneparam.rawnames.Push ("{@gdl:votw2}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка низа стен/колонн
     zoneparam_name = "om_down";
-    zoneparam.rawnames.Push ("{@gdl:votp}");
     zoneparam.rawnames.Push ("some_stuff_fin_down_material");
+    zoneparam.rawnames.Push ("{@gdl:votp}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Высота нижних панелей
     zoneparam_name = "height_down";
+    zoneparam.rawnames.Push ("some_stuff_fin_down_height");
     zoneparam.rawnames.Push ("{@gdl:hpan}");
     zoneparam.rawnames.Push ("{@gdl:z17}");
-    zoneparam.rawnames.Push ("some_stuff_fin_down_height");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка колонн
     zoneparam_name = "om_column";
-    zoneparam.rawnames.Push ("{@gdl:votc}");
     zoneparam.rawnames.Push ("some_stuff_fin_column_material");
+    zoneparam.rawnames.Push ("{@gdl:votc}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка потолка
     zoneparam_name = "om_ceil";
-    zoneparam.rawnames.Push ("{@gdl:vots}");
     zoneparam.rawnames.Push ("some_stuff_fin_ceil_material");
+    zoneparam.rawnames.Push ("{@gdl:vots}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
@@ -1389,6 +1450,8 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
         GS::UniString name = *p.key;
         #endif
         UInt32 n = param.rawnames.GetSize ();
+
+        GS::Array<GS::UniString> valid_rawnames;
         for (UInt32 i = 0; i < n; ++i) {
             param_name = param.rawnames[i];
             if (!param_name.Contains ("{@")) {
@@ -1401,18 +1464,13 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
                     #endif
                     if (parameters.definition.description.Contains (param_name)) {
                         if (name.Contains ("rawname")) {
+                            param.rawnames[i] = ;
                             param.val.uniStringValue = parameters.rawName;
                             param.isValid = true;
-                        } else {
-                            param.isValid = false;
+                            valid_rawnames.Push (parameters.rawName);
                         }
-                        param.rawnames[i] = parameters.rawName;
-                        flag_find = true;
                         break;
                     }
-                }
-                if (!flag_find) {
-                    param.rawnames.Delete (i);
                 }
             }
         }
@@ -2654,13 +2712,39 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     p.num = 0.02; accsessoryparams.Add ("{@gdl:ceil_thk}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
 
-    //p.num = edges.material; accsessoryparams.Add ("{@gdl:gs_bw_mat}", p);
-    //p.num = edges.height; accsessoryparams.Add ("{@gdl:ac_wall_height}", p);
-    //p.num = ac_wall_length; accsessoryparams.Add ("{@gdl:ac_wall_length}", p);
-    //p.num = 0; accsessoryparams.Add ("{@gdl:ac_wall_radius}", p);
 
+    Geometry::Polygon2DData polygon2DData;
+    Geometry::InitPolygon2DData (&polygon2DData);
+    Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, otdslab.poly);
+    Int32 nCoords = polygon2DData.nVertices;
+    Int32 nSubPolys = polygon2DData.nContours;
+    Box2DData bbox = otdslab.poly.GetBoundBox ();
+    GDLHelpers::Param ac_coords; GDLHelpers::Param ac_whole_poly;
+    for (Int32 j = 1; j <= nSubPolys; j++) {
+        UInt32 begInd = (*polygon2DData.contourEnds)[j - 1] + 1;
+        UInt32 endInd = (*polygon2DData.contourEnds)[j];
+        double x_f = (*polygon2DData.vertices)[begInd].x - bbox.xMin;
+        double y_f = (*polygon2DData.vertices)[begInd].y - bbox.yMin;
+        for (UInt32 k = begInd; k < endInd; k++) {
+            double x = (*polygon2DData.vertices)[k].x - bbox.xMin;
+            double y = (*polygon2DData.vertices)[k].y - bbox.yMin;
+            ac_coords.arr_num.Push (0.025); ac_coords.arr_num.Push (x); ac_coords.arr_num.Push (y);
+            if (j == 1) {
+                ac_whole_poly.arr_num.Push (x); ac_whole_poly.arr_num.Push (y);
+            }
+        }
+        ac_coords.arr_num.Push (0.051); ac_coords.arr_num.Push (x_f); ac_coords.arr_num.Push (y_f);
+    }
+    ac_coords.dim1 = ac_coords.arr_num.GetSize () / 3; ac_coords.dim2 = 3;
+    ac_whole_poly.dim1 = 1; ac_whole_poly.dim2 = ac_whole_poly.arr_num.GetSize ();
+    accsessoryparams.Add ("{@gdl:ac_whole_poly}", ac_whole_poly);
+    accsessoryparams.Add ("{@gdl:ac_coords}", ac_coords);
+    Geometry::FreePolygon2DData (&polygon2DData);
     GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
     slabobjelement.header.floorInd = otdslab.floorInd;
+    slabobjelement.object.pos.x = bbox.xMin;
+    slabobjelement.object.pos.y = bbox.yMin;
+    double y_start = 0;
     err = ACAPI_Element_Create (&slabobjelement, &slabobjmemo);
     if (err != NoError) {
         return;
