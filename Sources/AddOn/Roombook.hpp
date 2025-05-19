@@ -43,7 +43,7 @@ typedef struct
     double height = 0; // Высота проёма
     double width = 0; // Ширина проёма
     double objLoc = 0; // Расстояние от начала стены для середины проёма
-    double lower = 0; // Привязка к низу стену
+    double lower = 0; // Привязка к низу стены
     bool reflected = false;
     bool has_reveal = false; // Наличие откосов у родительского проёма
     double base_reveal_width = 0; // Глубина откоса базового проёма
@@ -238,7 +238,7 @@ void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadPara
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
 void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
@@ -287,7 +287,7 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
 
 bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement);
 
-void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent);
+void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent, const double& zBottom);
 
 bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& memo);
 

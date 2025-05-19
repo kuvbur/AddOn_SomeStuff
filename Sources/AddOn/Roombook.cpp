@@ -186,7 +186,7 @@ void RoomBook ()
                     // Заполняем данные для окон
                     Param_SetToWindows (op, paramToRead, windowParams, otdw);
                     if (walldir.HasValue ()) {
-                        OpeningReveals_Create_One (otdw, op, walldir_perp, opw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
+                        OpeningReveals_Create_One (otd.otdslab, otdw, op, walldir_perp, opw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
                     }
                 }
             }
@@ -1022,14 +1022,15 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
             roominfo.otdslab.Push (poly);
         }
     }
+    roominfo.poly.poly.Clear ();
 }
 
 void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
+    GSErrCode err;
+    API_Element element = {};
     for (API_Guid& slabGuid : slabGuids) {
-        GSErrCode err;
-        API_Element element = {};
         API_ElementMemo memo = {};
         BNZeroMemory (&memo, sizeof (API_ElementMemo));
         BNZeroMemory (&element, sizeof (API_Element));
@@ -1132,6 +1133,7 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
     }
     otdslab.floorInd = floorInd;
     otdslab.poly = roompolygon;
+    roompolygon.Clear ();
     otdslabs.Push (otdslab);
 }
 
@@ -1907,7 +1909,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
     if (op.base_reveal_width < min_dim) return;
@@ -1943,6 +1945,8 @@ void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geome
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
         OtdWall_Delim_All (opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+    } else {
+        return;
     }
     lambda = (op.objLoc + op.width / 2) / dr;
     begedge.x = otdw.begC.x - dx * lambda;
@@ -1963,6 +1967,8 @@ void OpeningReveals_Create_One (const OtdWall& otdw, OtdOpening& op, const Geome
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
         OtdWall_Delim_All (opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+    } else {
+        return;
     }
 }
 
@@ -2028,7 +2034,6 @@ void OtdWall_Delim_All (GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBot
 bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
-    const double dh = 0.002; // Дополнительное увеличение высоты проёма для исключения линии на стыке
     if (height < min_dim || is_equal (height, 0)) {
         return false;
     }
@@ -2039,39 +2044,33 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
     if (otdn.zBottom + otdn.height <= zBottom) {
         return false; // Конструкция заканчивается ниже необходимого
     }
-    double zDup = fmin (zBottom + height, otdn.zBottom + otdn.height);
-    double zDown = fmax (zBottom, otdn.zBottom);
-    height = fmin (otdn.height, zDup - zDown);
+    double zDup = fmin (zBottom + height, otdn.zBottom + otdn.height); // Новая отметка верха стены
+    double zDown = fmax (zBottom, otdn.zBottom); // Новая отметка низа стены
+    height = fmin (otdn.height, zDup - zDown); // Новая высота стены
     if (height < min_dim || is_equal (height, 0)) {
         return false;
     }
-    zBottom = zDown;
+    zBottom = zDown; // Переназначаем для расчётов окон
+    zDup = zBottom + height; // Переназначаем для расчётов окон
+    double dlower = otdn.zBottom - zBottom; // Разница отметок стены до и после подрезки
     // Удаляем лишние окна, подстраиваем высоту
     if (!otdn.openings.IsEmpty ()) {
         GS::Array<OtdOpening> newopenings;
-        double dlower = otdn.zBottom - zBottom;
         for (OtdOpening& op : otdn.openings) {
-            // Проём выше стенки
-            if (op.zBottom >= zBottom + height) {
+            // Проём начинается выше стенки
+            if (op.zBottom > zDup || is_equal (op.zBottom, zDup)) {
                 continue;
             }
-            // Проём ниже стенки, обнуляем
-            if (op.zBottom + op.height <= zBottom) {
+            double zOpup = op.zBottom + op.height; // Отметка верха проёма
+            // Проём заканчивается ниже стенки
+            if (zOpup < zBottom || is_equal (zBottom, zOpup)) {
                 continue;
             }
             zDup = fmin (zBottom + height, op.zBottom + op.height);
             zDown = fmax (zBottom, op.zBottom);
-            op.lower = op.lower + dlower;
-            bool on_side = false;
-            if (op.lower < dh) {
-                on_side = true;
-                op.lower = -dh;
-                op.height += dh;
-            }
-            if (op.height >= zDup - zDown || is_equal (op.height, zDup - zDown)) {
-                op.height = fmin (op.height, zDup - zDown) + dh;
-                if (on_side) op.height += dh;
-            }
+            op.zBottom = zDown;
+            op.height = fmin (op.height, zDup - zDown);
+            op.lower = op.zBottom - zBottom;
             if (op.height > min_dim && op.width > min_dim) newopenings.PushNew (op);
         }
         otdn.openings = newopenings;
@@ -2270,6 +2269,8 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                     }
                     group.Push (otdwall.otd_guid);
                 }
+            } else {
+                otd.otdwall.Clear ();
             }
             if (otd.create_ceil_elements || otd.create_floor_elements) {
                 for (OtdSlab& otdslab : otd.otdslab) {
@@ -2280,6 +2281,8 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                     Class_SetClass (otdslab, finclass);
                     group.Push (otdslab.otd_guid);
                 }
+            } else {
+                otd.otdslab.Clear ();
             }
             if (group.GetSize () > 1) {
                 #if defined(AC_27) || defined(AC_28)
@@ -2477,7 +2480,7 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
     }
     edges.otd_guid = wallelement.header.guid;
     for (OtdOpening& op : edges.openings) {
-        Opening_Draw (wallelement, windowelement, windowmemo, op, subelementByparent);
+        Opening_Draw (wallelement, windowelement, windowmemo, op, subelementByparent, edges.zBottom);
     }
 }
 
@@ -2507,18 +2510,33 @@ bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wa
     return true;
 }
 
-void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent)
+void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent, const double& zBottom)
 {
     GSErrCode err = NoError;
     if (wallelement.wall.type == APIWtyp_Poly) return;
-    if (!Opening_GetDefult ("some_stuff_fin_window", windowelement, windowmemo)) {
+    if (!Opening_GetDefult ("smstf window", windowelement, windowmemo)) {
         return;
     }
     windowelement.window.objLoc = op.objLoc;
     windowelement.window.owner = wallelement.header.guid;
     if (op.has_reveal) {
-        op.width -= wallelement.wall.thickness * 2;
-        op.height -= wallelement.wall.thickness;
+        // TODO Дописать определение толщины из откоса
+        double th = wallelement.wall.thickness;
+        double zUp_op = op.zBottom + op.height;
+        double zUp_wall = zBottom + wallelement.wall.height;
+        // Уменьшаем проём на толщину откоса по высоте
+        if (!is_equal (zUp_op, zUp_wall)) {
+            op.height -= th;
+        }
+        double lwall = sqrt ((wallelement.wall.begC.x - wallelement.wall.endC.x) * (wallelement.wall.begC.x - wallelement.wall.endC.x) + (wallelement.wall.begC.y - wallelement.wall.endC.y) * (wallelement.wall.begC.y - wallelement.wall.endC.y));
+        if (!is_equal (op.objLoc + op.width / 2, lwall)) {
+            op.width -= th;
+            op.objLoc -= th;
+        }
+        if (!is_equal (op.objLoc - op.width / 2, 0)) {
+            op.width -= th;
+            op.objLoc += th;
+        }
     }
     if (op.width < min_dim || op.height < min_dim) return;
     windowelement.window.openingBase.width = op.width;
@@ -2557,6 +2575,7 @@ void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Eleme
     } else {
         Floor_Draw_Slab (favorite.name, storyLevels, slabelement, otdslab, subelementByparent);
     }
+    otdslab.poly.Clear ();
     Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
 }
 
@@ -2932,15 +2951,17 @@ MatarialToFavorite Favorite_FindName (const OtdMaterial material, TypeOtd type, 
         case Wall_Main:
         case Wall_Up:
         case Wall_Down:
+        case Column:
         case Reveal_Main:
+            possibly_type = API_WallID;
+            break;
         case Reveal_Up:
         case Reveal_Down:
-        case Column:
-            possibly_type = API_WallID;
+            possibly_type = API_SlabID;
             break;
         case Floor:
         case Ceil:
-            possibly_type = API_WallID;
+            possibly_type = API_SlabID;
             break;
         default:
             break;
@@ -2963,19 +2984,22 @@ MatarialToFavorite Favorite_FindName (const OtdMaterial material, TypeOtd type, 
             case Wall_Up:
             case Wall_Down:
             case Column:
-                favorite_name_defult = "some_stuff_fin_wall";
+                favorite_name_defult = "smstf wall";
                 break;
             case Reveal_Main:
+                favorite_name_defult = "smstf reveal side";
+                if (!favdict.ContainsKey (favorite_name_defult)) favorite_name_defult = "smstf wall";
+                break;
             case Reveal_Up:
             case Reveal_Down:
-                favorite_name_defult = "some_stuff_fin_reveal";
-                if (!favdict.ContainsKey (favorite_name_defult)) favorite_name_defult = "some_stuff_fin_wall";
+                favorite_name_defult = "smstf reveal up";
+                if (!favdict.ContainsKey (favorite_name_defult)) favorite_name_defult = "smstf wall";
                 break;
             case Floor:
-                favorite_name_defult = "some_stuff_fin_floor";
+                favorite_name_defult = "smstf floor";
                 break;
             case Ceil:
-                favorite_name_defult = "some_stuff_fin_ceil";
+                favorite_name_defult = "smstf ceil";
                 break;
             default:
                 return favorite_name;
