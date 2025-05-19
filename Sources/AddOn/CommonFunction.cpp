@@ -541,14 +541,14 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 #endif
                 #endif
                 error_type = error_type + " type:" + elemName;
-        }
+            }
             API_Attribute layer;
             BNZeroMemory (&layer, sizeof (API_Attribute));
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
+        }
     }
-}
     GS::UniString msg = modulename + ": " + reportString;
     if (!show) msg = msg + " " + error_type;
     GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
@@ -633,7 +633,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
-}
+    }
     #endif // AC_22
     return guidArray;
 }
@@ -998,8 +998,6 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
     return width;
 }
 
-
-
 GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString & var)
 {
     GS::Array<GS::UniString> str;
@@ -1033,16 +1031,16 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
     double width_old = 0; Int32 addspace = 0;
     for (UInt32 i = 0; i < npart; i++) {
         if (out.IsEmpty ()) {
-            out = parts[i];
+            out = parts.Get (i);
         } else {
-            out = out + space + parts[i];
+            out = out + space + parts.Get (i);
         }
         width_in = GetTextWidth (font, fontsize, out);
         if (width_in > width && !old.IsEmpty ()) {
             addspace = (Int32) ((width - width_old) / width_space);
             if (addspace > 0) old = old + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
             str.Push (old);
-            out = parts[i];
+            out = parts.Get (i);
         }
         if (i == npart - 1) {
             width_in = GetTextWidth (font, fontsize, out);
@@ -2260,13 +2258,14 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array<
 {
     #if defined AC_22
     return APIERR_GENERAL;
-    #endif
+    #else
     #if defined AC_26 || defined AC_27 || defined AC_28
     API_ElemType type_;
     type_.typeID = type;
     return ACAPI_Favorite_GetNum (type, count, folders, names);
     #else
     return ACAPI_Favorite_GetNum (type, APIVarId_Generic, count, folders, names);
+    #endif
     #endif
 }
 
