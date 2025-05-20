@@ -4645,7 +4645,7 @@ bool ParamHelpers::GDLParamByDescription (const API_Element & element, ParamDict
     err = ACAPI_LibPart_Get (&libpart);
     #endif
     if (err != NoError) {
-        msg_rep ("FindGDLParametersByDescription", "ACAPI_LibPart_Get", err, element.header.guid);
+        msg_rep ("ParamHelpers::GDLParamByDescription", "ACAPI_LibPart_Get", err, element.header.guid);
         return false;
     }
     double aParam = 0.0;
@@ -4659,12 +4659,18 @@ bool ParamHelpers::GDLParamByDescription (const API_Element & element, ParamDict
     #endif
     if (err != NoError) {
         ACAPI_DisposeAddParHdl (&addPars);
+        msg_rep ("ParamHelpers::GDLParamByDescription", "ACAPI_LibPart_GetParams", err, element.header.guid);
+        return false;
+    }
+
+    if (addPars == nullptr || *addPars == nullptr) {
+        ACAPI_DisposeAddParHdl (&addPars);
         msg_rep ("FindGDLParametersByDescription", "ACAPI_LibPart_GetParams", err, element.header.guid);
         return false;
     }
+
     bool flagFind = false;
     Int32 nfind = params.GetSize ();
-
     // Ищем описание параметров
     for (Int32 i = 0; i < addParNum; ++i) {
         API_AddParType& actualParam = (*addPars)[i];
@@ -4711,6 +4717,12 @@ bool ParamHelpers::GDLParamByName (const API_Element & element, const API_Elem_H
     API_AddParType** addPars = NULL;
     GSErrCode err = GetGDLParameters (elemType, elemGuid, addPars);
     if (err != NoError) {
+        msg_rep ("ParamHelpers::GDLParamByName", "GetGDLParameters", err, elemGuid);
+        ACAPI_DisposeAddParHdl (&addPars);
+        return false;
+    }
+    if (addPars == nullptr || *addPars == nullptr) {
+        msg_rep ("ParamHelpers::GDLParamByName", "GetGDLParameters", err, elemGuid);
         ACAPI_DisposeAddParHdl (&addPars);
         return false;
     }
@@ -6211,12 +6223,12 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                     }
                     if (structtype == API_ProfileStructure) constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
                 } else {
-                    msg_rep ("materialString::Components", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
+                    msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
                     ACAPI_DisposeElemMemoHdls (&memo);
                     return false;
                 }
             } else {
-                msg_rep ("materialString::Components", "Multisegment column not supported", NoError, element.header.guid);
+                msg_rep ("ParamHelpers::Components", "Multisegment column not supported", NoError, element.header.guid);
                 return false;
             }
             #endif
@@ -6238,12 +6250,12 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                     }
                     if (structtype == API_ProfileStructure) constrinx = memo.beamSegments[0].assemblySegmentData.profileAttr;
                 } else {
-                    msg_rep ("materialString::Components", "ACAPI_Element_GetMemo - BeamSegment", err, element.header.guid);
+                    msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - BeamSegment", err, element.header.guid);
                     ACAPI_DisposeElemMemoHdls (&memo);
                     return false;
                 }
             } else {
-                msg_rep ("materialString::Components", "Multisegment beam not supported", NoError, element.header.guid);
+                msg_rep ("ParamHelpers::Components", "Multisegment beam not supported", NoError, element.header.guid);
                 return false;
             }
             #endif
@@ -6321,6 +6333,12 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         GSErrCode err = ACAPI_Element_GetMemo (elemhead.guid, &memo, mask);
         if (err != NoError) {
             ACAPI_DisposeElemMemoHdls (&memo);
+            msg_rep ("ParamHelpers::Components", "err", err, element.header.guid);
+            return false;
+        }
+        if (memo.stretchedProfile == nullptr) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            msg_rep ("ParamHelpers::Components", "Profile not found, missing attribute", NoError, element.header.guid);
             return false;
         }
         ProfileVectorImage profileDescription = *memo.stretchedProfile;

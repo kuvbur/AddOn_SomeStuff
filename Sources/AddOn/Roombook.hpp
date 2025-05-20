@@ -226,7 +226,7 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
 
-void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
+void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
 
 void Param_SetToBase (OtdWall& otdw, ParamDictElement& paramToRead, ParamValue& param_composite);
 
@@ -334,6 +334,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
 void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams);
 void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zoneparams);
 bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams);
+void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict, ParamValueData& val);
 ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams);
 ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams);
 #endif
