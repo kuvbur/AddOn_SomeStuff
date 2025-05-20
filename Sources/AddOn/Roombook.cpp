@@ -2570,6 +2570,8 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
     wallelement.wall.oppMat.attributeIndex = edges.material.material;
     wallelement.wall.sidMat.attributeIndex = edges.material.material;
     #endif
+    wallelement.wall.zoneRel = APIZRel_None;
+    wallelement.wall.flipped = false;
     err = ACAPI_Element_Create (&wallelement, nullptr);
     if (err != NoError) {
         return;
