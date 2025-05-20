@@ -1,9 +1,15 @@
 //------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
+#include "CommonFunction.hpp"
+#include "Helpers.hpp"
 #include	"Roombook.hpp"
 #include	"Sync.hpp"
+#include <API_Guid.hpp>
+#include <APIdefs_Elements.h>
 #include <Box2DData.h>
+#include <ctime>
+#include <Definitions.hpp>
 namespace AutoFunc
 
 {
@@ -152,6 +158,7 @@ void RoomBook ()
     // Читаем свойства всех элементов
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
     // Заполняем данные для элементов
+    GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         OtdRoom& otd = cIt->value;
@@ -162,7 +169,7 @@ void RoomBook ()
         #endif
         if (!paramToRead.ContainsKey (zoneGuid)) continue; // Если у зоны нет прочитанных параметров - дальше делать нечего
         // Заполняем данные для зон
-        Param_SetToRooms (otd, paramToRead, roomParams);
+        Param_SetToRooms (material_dict, otd, paramToRead, roomParams);
         if (!otd.isValid) continue;
         // Расчёт пола и потолка
         Floor_Create_All (storyLevels, otd, guidselementToRead, paramToRead);
@@ -1440,7 +1447,6 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
     if (zoneparams.IsEmpty ()) {
         return;
     }
-    GS::UniString param_name = "";
     for (auto& p : zoneparams) {
         #if defined(AC_28)
         ReadParam& param = p.value;
@@ -1449,12 +1455,12 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
         ReadParam& param = *p.value;
         GS::UniString name = *p.key;
         #endif
-        UInt32 n = param.rawnames.GetSize ();
-
-        GS::Array<GS::UniString> valid_rawnames;
-        for (UInt32 i = 0; i < n; ++i) {
-            param_name = param.rawnames[i];
-            if (!param_name.Contains ("{@")) {
+        GS::Array<GS::UniString> valid_rawnames; // список проверенных имён параметров
+        for (const GS::UniString& param_name : param.rawnames) {
+            if (param_name.Contains ("{@")) {
+                // Если это gdl парметр - добавляем
+                valid_rawnames.Push (param_name);
+            } else {
                 bool flag_find = false;
                 for (auto& cItt : propertyParams) {
                     #if defined(AC_28)
@@ -1463,17 +1469,18 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
                     ParamValue parameters = *cItt.value;
                     #endif
                     if (parameters.definition.description.Contains (param_name)) {
+                        // В дланном случае нам нужно только имя свойства, считывать его не нужно
                         if (name.Contains ("rawname")) {
-                            param.rawnames[i] = ;
                             param.val.uniStringValue = parameters.rawName;
                             param.isValid = true;
-                            valid_rawnames.Push (parameters.rawName);
                         }
+                        valid_rawnames.Push (parameters.rawName);
                         break;
                     }
                 }
             }
         }
+        param.rawnames = valid_rawnames;
     }
 }
 
@@ -1500,6 +1507,9 @@ bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead,
                 flag = true;
                 param.isValid = true;
                 param.val = baseparam.Get (param_name).val;
+                if (baseparam.Get (param_name).fromProperty) {
+                    param.val.type = API_PropertyStringValueType;
+                }
                 break;
             }
         }
@@ -1507,10 +1517,34 @@ bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead,
     return flag;
 }
 
+void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict, ParamValueData& val)
+{
+    API_AttrTypeID type = API_MaterialID;
+    if (val.type == API_PropertyStringValueType) {
+        if (material_dict.ContainsKey (val.uniStringValue)) {
+            val.intValue = material_dict.Get (val.uniStringValue);
+        } else {
+            API_AttributeIndex attribinx;
+            #if defined(AC_27) || defined(AC_28)
+            attribinx = ACAPI_CreateAttributeIndex (val.intValue);
+            #else
+            attribinx = val.intValue;
+            #endif
+            API_AttributeIndexFindByName (val.uniStringValue, type, attribinx);
+            #if defined(AC_27) || defined(AC_28)
+            val.intValue = attribinx.ToInt32_Deprecated ();
+            #else
+            val.intValue = attribinx;
+            #endif
+            material_dict.Add (val.uniStringValue, val.intValue);
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в зону
 // -----------------------------------------------------------------------------
-void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams)
+void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams)
 {
     API_Guid base_guid = roominfo.zone_guid;
     if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
@@ -1521,19 +1555,20 @@ void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadPar
     }
     GS::UniString param_name = "";
     ParamValueData val = {};
-
     param_name = "om_column";
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
-            roominfo.om_column.material = val.intValue;
+            Param_Material_Get (material_dict, val);
             roominfo.om_column.smaterial = val.uniStringValue;
+            roominfo.om_column.material = val.intValue;
         }
     }
     param_name = "om_down";
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
+            Param_Material_Get (material_dict, val);
             roominfo.om_down.material = val.intValue;
             roominfo.om_down.smaterial = val.uniStringValue;
         }
@@ -1542,6 +1577,7 @@ void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadPar
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
+            Param_Material_Get (material_dict, val);
             roominfo.om_main.material = val.intValue;
             roominfo.om_main.smaterial = val.uniStringValue;
         }
@@ -1550,6 +1586,7 @@ void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadPar
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
+            Param_Material_Get (material_dict, val);
             roominfo.om_ceil.material = val.intValue;
             roominfo.om_ceil.smaterial = val.uniStringValue;
         }
@@ -1558,6 +1595,7 @@ void Param_SetToRooms (OtdRoom& roominfo, ParamDictElement& paramToRead, ReadPar
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
+            Param_Material_Get (material_dict, val);
             roominfo.om_up.material = val.intValue;
             roominfo.om_up.smaterial = val.uniStringValue;
         }

@@ -1331,7 +1331,13 @@ GSErrCode GetGDLParametersFromMemo (const API_Guid & elemGuid, API_AddParType * 
     API_ElementMemo	memo = {};
     GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
     params = memo.params;
-    if (err != NoError) msg_rep ("GetGDLParametersFromMemo", "ACAPI_Element_GetMemo", err, elemGuid);
+    if (err != NoError) {
+        msg_rep ("GetGDLParametersFromMemo", "ACAPI_Element_GetMemo", err, elemGuid);
+        return err;
+    }
+    if (memo.params == nullptr) {
+        msg_rep ("GetGDLParametersFromMemo", "ACAPI_Element_GetMemo", err, elemGuid);
+    }
     return err;
 }
 
