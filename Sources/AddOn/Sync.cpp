@@ -1533,6 +1533,7 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 if (flag_write) break;
         }
     }
+    }
 }
     return has_element;
 }
@@ -1907,7 +1908,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                         }
                     }
                 }
-            }
+}
         }
 }
     if (paramDict.IsEmpty ()) return false;
