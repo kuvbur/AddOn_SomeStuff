@@ -1,15 +1,12 @@
 //------------ kuvbur 2022 ------------
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
+#include "ACAPinc.h"
+#include "alphanum.h"
+#include "APIEnvir.h"
 #include "CommonFunction.hpp"
 #include "Helpers.hpp"
-#include	"Roombook.hpp"
-#include	"Sync.hpp"
-#include <API_Guid.hpp>
-#include <APIdefs_Elements.h>
-#include <Box2DData.h>
-#include <ctime>
-#include <Definitions.hpp>
+#include "Roombook.hpp"
+#include "Sync.hpp"
+
 namespace AutoFunc
 
 {
@@ -317,14 +314,24 @@ void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDict
         // Если такой тип отделки есть в словаре - записываем послойно материалы и площади
         if (dct.ContainsKey (t)) {
             OtdMaterialAreaDict& dcta = dct.Get (t);
+            std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_material = {};
             for (auto& cIt : dcta) {
                 #if defined(AC_28)
-                double area = cIt.value;
                 GS::UniString mat = cIt.key;
                 #else
-                double area = *cIt.value;
                 GS::UniString mat = *cIt.key;
                 #endif
+                GSCharCode chcode = GetCharCode (mat);
+                std::string s = mat.ToCStr (0, MaxUSize, chcode).Get ();
+                abc_material[s] = mat;
+            }
+            for (std::map<std::string, GS::UniString, doj::alphanum_less<std::string> >::iterator k = abc_material.begin (); k != abc_material.end (); ++k) {
+                GS::UniString mat = k->second;
+                if (!dcta.ContainsKey (mat)) continue;
+                double area = dcta.Get (mat);
+                mat.Trim ();
+                mat.ReplaceAll ("  ", " ");
+                mat.ReplaceAll ("0&#& ", "");
                 GS::UniString area_sring = GS::UniString::Printf ("%.2f", area);
                 double w_area = GetTextWidth (font, fontsize, area_sring);
                 if (w_area < width_area) {
@@ -1560,6 +1567,8 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
             Param_Material_Get (material_dict, val);
+            val.uniStringValue.Trim ();
+            val.uniStringValue = "0&#& " + val.uniStringValue;
             roominfo.om_column.smaterial = val.uniStringValue;
             roominfo.om_column.material = val.intValue;
         }
@@ -1569,6 +1578,8 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
             Param_Material_Get (material_dict, val);
+            val.uniStringValue.Trim ();
+            val.uniStringValue = "0&#& " + val.uniStringValue;
             roominfo.om_down.material = val.intValue;
             roominfo.om_down.smaterial = val.uniStringValue;
         }
@@ -1578,6 +1589,8 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
             Param_Material_Get (material_dict, val);
+            val.uniStringValue.Trim ();
+            val.uniStringValue = "0&#& " + val.uniStringValue;
             roominfo.om_main.material = val.intValue;
             roominfo.om_main.smaterial = val.uniStringValue;
         }
@@ -1587,6 +1600,8 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
             Param_Material_Get (material_dict, val);
+            val.uniStringValue.Trim ();
+            val.uniStringValue = "0&#& " + val.uniStringValue;
             roominfo.om_ceil.material = val.intValue;
             roominfo.om_ceil.smaterial = val.uniStringValue;
         }
@@ -1596,6 +1611,8 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
             Param_Material_Get (material_dict, val);
+            val.uniStringValue.Trim ();
+            val.uniStringValue = "0&#& " + val.uniStringValue;
             roominfo.om_up.material = val.intValue;
             roominfo.om_up.smaterial = val.uniStringValue;
         }
