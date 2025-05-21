@@ -154,6 +154,7 @@ void RoomBook ()
     }
     // Читаем свойства всех элементов
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+
     // Заполняем данные для элементов
     GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -202,10 +203,11 @@ void RoomBook ()
         }
         otd.otdwall = opw; // Заменяем на разбитые стены
     }
-    GS::Array<API_Guid> deletelist; // Список элементов для удаления
+
     // Получаем список существующих элементов отделки для обрабатываемых зон
     zones.Clear ();
     ParamDictElement paramToWrite; // Параметры для записи в зоны и элементы отделки
+    ColumnFormatDict columnFormat; // Словарь с форматом текста для столбцов
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         OtdRoom& otd = cIt->value;
@@ -215,54 +217,26 @@ void RoomBook ()
         if (otd.isValid && (otd.create_all_elements || otd.create_ceil_elements || otd.create_floor_elements || otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
             zones.Push (otd.zone_guid);
         }
-        if (otd.isValid) WriteOtdDataToRoom (otd, paramToWrite, paramToRead);
+        if (otd.isValid && paramToRead.ContainsKey (otd.zone_guid)) {
+            GS::Array<GS::UniString> rawnames = { otd.om_up.rawname, otd.om_main.rawname, otd.om_down.rawname , otd.om_column.rawname , otd.om_reveals.rawname, otd.om_floor.rawname, otd.om_ceil.rawname };
+            for (const GS::UniString& rawname : rawnames) {
+                if (rawname.IsEmpty ()) continue;
+                if (columnFormat.ContainsKey (rawname)) continue;
+                if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
+                WriteOtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description, rawname, columnFormat);
+            }
+            WriteOtdDataToRoom (columnFormat, otd, paramToWrite, paramToRead);
+        }
     }
+
+    // Проверка существования классов и свойств
     if (!zones.IsEmpty ()) {
-        // Проверка наличия классов
-        if (finclass.IsEmpty ()) {
-            GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 50, ACAPI_GetOwnResModule ());
-            msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
-            ACAPI_WriteReport (msgString, true);
-            return;
-        }
-        if (!finclass.ContainsKey (cls.all_class)) {
-            bool msg = false;
-            if (!finclass.ContainsKey (cls.floor_class)) msg = true;
-            if (!finclass.ContainsKey (cls.ceil_class)) msg = true;
-            if (!finclass.ContainsKey (cls.otdwall_class)) msg = true;
-            if (msg) {
-                GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 51, ACAPI_GetOwnResModule ());
-                msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
-            }
-        }
-        // Проверка наличия свойств `Sync_GUID zone`
-        for (auto& cItt : propertyParams) {
-            #if defined(AC_28)
-            ParamValue param = cItt.value;
-            #else
-            ParamValue param = *cItt.value;
-            #endif
-            if (param.definition.description.Contains ("Sync_GUID") && param.definition.description.Contains ("zone")) {
-                for (const API_Guid& classguid : param.definition.availability) {
-                    if (finclassguids.ContainsKey (classguid)) finclassguids.Set (classguid, true);
-                }
-                for (GS::HashTable<API_Guid, bool>::PairIterator cIt = finclassguids.EnumeratePairs (); cIt != NULL; ++cIt) {
-                    #if defined(AC_28)
-                    bool msg = cIt->value;
-                    #else
-                    bool msg = *cIt->value;
-                    #endif
-                    if (!msg) {
-                        GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 52, ACAPI_GetOwnResModule ());
-                        msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
-                        ACAPI_WriteReport (msgString, true);
-                        return;
-                    }
-                }
-            }
-        }
+        if (!Check (finclass, propertyParams, finclassguids)) return;
     }
-    GS::HashTable<API_Guid, UnicGuid> exsistotdelements;
+
+    // Поиск существующих элементов отделки
+    GS::HashTable<API_Guid, UnicGuid> exsistotdelements; // Словарь существующих отделочных элементов с разбивкой по зонам
+    GS::Array<API_Guid> deletelist; // Список элементов для удаления
     int errcode;
     if (SyncGetPatentelement (zones, exsistotdelements, propertyParams, "zone", errcode)) {
         for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = exsistotdelements.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -294,62 +268,117 @@ void RoomBook ()
     msg_rep ("RoomBook", time, NoError, APINULLGuid);
 }
 
-void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDictElement& paramToRead)
+// Настройки для форматирования текста в таблицу
+void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat)
 {
-    if (!paramToRead.ContainsKey (otd.zone_guid)) {
-        return;
-    }
-    OtdMaterialAreaDictByType dct; // Основной словарь
-    // Разбивка по отделочным слоям, вычисление площадей и добавление их в словарь по типам отделки
-    for (OtdWall& otdw : otd.otdwall) {
-        TypeOtd t = otdw.type;
-        double area = OtdWall_GetArea (otdw);
-        for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
-            GS::UniString mat = otdw.base_composite[j].val;
-            WriteOtdDataToRoom_AddValue (dct, t, mat, area);
+    GS::UniString fontname = "GOST 2.304 type A";
+    ColumnFormat c;
+    if (descripton.Contains ("{") && descripton.Contains ("}") && descripton.Contains (";")) {
+        descripton = descripton.GetSubstring ('{', '}', 0);
+        GS::Array<GS::UniString> partstring;
+        if (StringSplt (descripton, ";", partstring) != 4) {
+            c.fontsize = 3;
+            c.width_mat = 40;
+            c.width_area = 20;
+        } else {
+            if (!UniStringToDouble (partstring[0], c.width_mat)) c.width_mat = 50;
+            if (!UniStringToDouble (partstring[1], c.width_area)) c.width_area = 20;
+            if (!UniStringToDouble (partstring[2], c.fontsize)) c.fontsize = 3;
+            fontname = partstring[3];
         }
+    } else {
+        c.fontsize = 3;
+        c.width_mat = 50;
+        c.width_area = 20;
     }
-    for (OtdSlab& otdslab : otd.otdslab) {
-        TypeOtd t = otdslab.type;
-        double area = otdslab.poly.CalcArea ();
-        for (UInt32 j = 0; j < otdslab.base_composite.GetSize (); j++) {
-            GS::UniString mat = otdslab.base_composite[j].val;
-            WriteOtdDataToRoom_AddValue (dct, t, mat, area);
-        }
+    c.font = GetFontIndex (fontname);
+    if (c.font == 0) {
+        fontname = "GOST 2.304 type A";
+        c.font = GetFontIndex (fontname);
     }
-
-    GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
-    if (!otd.om_up.rawname.IsEmpty ()) paramnamebytype.Add (Wall_Up, otd.om_up.rawname); // Отделка стен выше потолка
-    if (!otd.om_main.rawname.IsEmpty ()) paramnamebytype.Add (Wall_Main, otd.om_main.rawname); // Отделка стен основная
-    if (!otd.om_down.rawname.IsEmpty ()) paramnamebytype.Add (Wall_Down, otd.om_down.rawname); // Отделка низа стен
-    if (!otd.om_column.rawname.IsEmpty ()) paramnamebytype.Add (Column, otd.om_column.rawname); // Отделка колонн
-    if (!otd.om_reveals.rawname.IsEmpty ()) paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname); // Отделка откосов
-    if (!otd.om_floor.rawname.IsEmpty ()) paramnamebytype.Add (Floor, otd.om_floor.rawname); // Отделка пола
-    if (!otd.om_ceil.rawname.IsEmpty ()) paramnamebytype.Add (Ceil, otd.om_ceil.rawname); // Отделка потолка
-
-    // Настройки для форматирования текста в таблицу
-    short font = GetFontIndex ();
-    double fontsize = 2.5;
-    double width_mat = 40;
-    double width_area = 20;
-    double width = width_mat + width_area;
+    if (c.font == 0) {
+        fontname = "ISOCPEUR";
+        c.font = GetFontIndex (fontname);
+    }
+    if (c.font == 0) {
+        fontname = "Arial";
+        c.font = GetFontIndex (fontname);
+    }
     Int32 addspace = 0;
     GS::UniString space = " ";
-    double width_space = GetTextWidth (font, fontsize, space);
-    addspace = (Int32) (width_area / width_space);
-    GS::UniString space_line = GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
     GS::UniString delim = "-";
-    double width_delim = GetTextWidth (font, fontsize, delim);
-    addspace = (Int32) ((width - width_space) / width_delim);
-    GS::UniString delim_line = GS::UniString::Printf ("%s ", std::string (addspace, '-').c_str ());
+    c.width_space = GetTextWidth (c.font, c.fontsize, c.space);
+    double width_s = GetTextWidth (c.font, c.fontsize, space);
+    double width_delim = GetTextWidth (c.font, c.fontsize, delim);
 
+    addspace = (Int32) ((c.width_area - width_s) / c.width_space);
+    c.space_line = "";
+    for (Int32 j = 0; j <= addspace; j++) {
+        c.space_line = c.space_line + c.space;
+    }
+    c.space_line = c.space_line + space;
+    addspace = (Int32) ((c.width_mat + c.width_area - width_s) / width_delim);
+    c.delim_line = "";
+    for (Int32 j = 0; j <= addspace; j++) {
+        c.delim_line = c.delim_line + delim;
+    }
+    c.delim_line = c.delim_line + space;
+    columnFormat.Add (rawname, c);
+}
+
+void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead)
+{
+
+    GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
+    paramnamebytype.Add (Wall_Up, otd.om_up.rawname); // Отделка стен выше потолка
+    paramnamebytype.Add (Wall_Main, otd.om_main.rawname); // Отделка стен основная
+    paramnamebytype.Add (Wall_Down, otd.om_down.rawname); // Отделка низа стен
+    paramnamebytype.Add (Column, otd.om_column.rawname); // Отделка колонн
+    paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname); // Отделка откосов
+    paramnamebytype.Add (Floor, otd.om_floor.rawname); // Отделка пола
+    paramnamebytype.Add (Ceil, otd.om_ceil.rawname); // Отделка потолка
+
+    GS::HashTable<GS::UniString, bool> exsists_rawname;
     for (auto& cItt : paramnamebytype) {
         #if defined(AC_28)
-        TypeOtd t = cItt.key;
         GS::UniString rawname = cItt.value;
         #else
-        TypeOtd t = *cItt.key;
         GS::UniString rawname = *cItt.value;
+        #endif
+        if (!exsists_rawname.ContainsKey (rawname)) exsists_rawname.Add (rawname, false);
+    }
+
+    OtdMaterialAreaDictByType dct; // Основной словарь
+    // Разбивка по отделочным слоям, вычисление площадей и добавление их в словарь по типам отделки
+    for (const OtdWall& otdw : otd.otdwall) {
+        const TypeOtd& t = otdw.type;
+        if (paramnamebytype.ContainsKey (t)) {
+            double area = OtdWall_GetArea (otdw);
+            GS::UniString rawname = paramnamebytype.Get (t);
+            for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
+                GS::UniString mat = otdw.base_composite[j].val;
+                WriteOtdDataToRoom_AddValue (dct, rawname, mat, area);
+            }
+        }
+    }
+
+    for (const OtdSlab& otdslab : otd.otdslab) {
+        const TypeOtd& t = otdslab.type;
+        if (paramnamebytype.ContainsKey (t)) {
+            double area = otdslab.poly.CalcArea ();
+            GS::UniString rawname = paramnamebytype.Get (t);
+            for (UInt32 j = 0; j < otdslab.base_composite.GetSize (); j++) {
+                GS::UniString mat = otdslab.base_composite[j].val;
+                WriteOtdDataToRoom_AddValue (dct, rawname, mat, area);
+            }
+        }
+    }
+
+    for (auto& cItt : exsists_rawname) {
+        #if defined(AC_28)
+        GS::UniString rawname = cItt.key;
+        #else
+        GS::UniString rawname = *cItt.key;
         #endif
         // Проверяем - есть ли считанное свойство в зоне для записи
         if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
@@ -357,8 +386,10 @@ void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDict
         GS::UniString old_val = paramtow.val.uniStringValue;
         GS::UniString new_val = "";
         // Если такой тип отделки есть в словаре - записываем послойно материалы и площади
-        if (dct.ContainsKey (t)) {
-            OtdMaterialAreaDict& dcta = dct.Get (t);
+        if (dct.ContainsKey (rawname)) {
+            ColumnFormat c;
+            if (columnFormat.ContainsKey (rawname)) c = columnFormat.Get (rawname);
+            OtdMaterialAreaDict& dcta = dct.Get (rawname);
             std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_material = {};
             for (auto& cIt : dcta) {
                 #if defined(AC_28)
@@ -378,33 +409,25 @@ void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDict
                 mat.ReplaceAll ("  ", " ");
                 mat.ReplaceAll ("0&#& ", "");
                 GS::UniString area_sring = GS::UniString::Printf ("%.2f", area);
-                double w_area = GetTextWidth (font, fontsize, area_sring);
-                if (w_area < width_area) {
-                    Int32 addspace = (Int32) ((width_area - w_area) / width_space);
+                double w_area = GetTextWidth (c.font, c.fontsize, area_sring);
+                if (w_area < c.width_area) {
+                    Int32 addspace = (Int32) ((c.width_area - w_area) / c.width_space);
                     if (addspace > 1) {
-                        area_sring = GS::UniString::Printf ("%s", std::string (addspace - 1, ' ').c_str ()) + area_sring;
+                        for (Int32 j = 0; j <= addspace; j++) {
+                            area_sring = c.space + area_sring;
+                        }
                     }
                     area_sring = area_sring + " ";
                 }
-                if (!new_val.IsEmpty ()) new_val = new_val + delim_line;
-                GS::Array<GS::UniString> lines_mat = DelimTextLine (font, fontsize, width_mat, mat);
+                if (!new_val.IsEmpty ()) new_val = new_val + c.delim_line;
+                GS::Array<GS::UniString> lines_mat = DelimTextLine (c.font, c.fontsize, c.width_mat, mat);
                 for (UInt32 j = 0; j < lines_mat.GetSize (); j++) {
                     new_val = new_val + lines_mat[j];
                     if (j == lines_mat.GetSize () - 1) {
                         new_val = new_val + area_sring;
                     } else {
-                        new_val = new_val + space_line;
+                        new_val = new_val + c.space_line;
                     }
-                }
-            }
-        }
-        // Если уже есть такая запись - проверим, не затрётся ли она
-        if (paramToWrite.ContainsKey (otd.zone_guid)) {
-            if (paramToWrite.Get (otd.zone_guid).ContainsKey (rawname)) {
-                if (!new_val.IsEmpty ()) {
-                    new_val = new_val + delim_line + paramToWrite.Get (otd.zone_guid).Get (rawname).val.uniStringValue;
-                } else {
-                    new_val = paramToWrite.Get (otd.zone_guid).Get (rawname).val.uniStringValue;
                 }
             }
         }
@@ -416,20 +439,20 @@ void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDict
     }
 }
 
-void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const TypeOtd& t, GS::UniString& mat, const double& area)
+void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const GS::UniString& rawname, const GS::UniString& mat, const double& area)
 {
     if (area < 0.000001) return;
-    if (!dct.ContainsKey (t)) {
+    if (!dct.ContainsKey (rawname)) {
         OtdMaterialAreaDict dcta;
         dcta.Add (mat, area);
-        dct.Add (t, dcta);
+        dct.Add (rawname, dcta);
         return;
     } else {
-        if (!dct.Get (t).ContainsKey (mat)) {
-            dct.Get (t).Add (mat, area);
+        if (!dct.Get (rawname).ContainsKey (mat)) {
+            dct.Get (rawname).Add (mat, area);
         } else {
-            double area_sum = dct.Get (t).Get (mat) + area;
-            dct.Get (t).Set (mat, area_sum);
+            double area_sum = dct.Get (rawname).Get (mat) + area;
+            dct.Get (rawname).Set (mat, area_sum);
         }
     }
 }
@@ -3271,6 +3294,54 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
     return false;
     #endif
+}
+
+bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamDictValue& propertyParams, UnicGuid& finclassguids)
+{
+    // Проверка наличия классов
+    if (finclass.IsEmpty ()) {
+        GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 50, ACAPI_GetOwnResModule ());
+        msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
+        ACAPI_WriteReport (msgString, true);
+        return false;
+    }
+    if (!finclass.ContainsKey (cls.all_class)) {
+        bool msg = false;
+        if (!finclass.ContainsKey (cls.floor_class)) msg = true;
+        if (!finclass.ContainsKey (cls.ceil_class)) msg = true;
+        if (!finclass.ContainsKey (cls.otdwall_class)) msg = true;
+        if (msg) {
+            GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 51, ACAPI_GetOwnResModule ());
+            msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
+        }
+    }
+    // Проверка наличия свойств `Sync_GUID zone`
+    for (auto& cItt : propertyParams) {
+        #if defined(AC_28)
+        ParamValue param = cItt.value;
+        #else
+        ParamValue param = *cItt.value;
+        #endif
+        if (param.definition.description.Contains ("Sync_GUID") && param.definition.description.Contains ("zone")) {
+            for (const API_Guid& classguid : param.definition.availability) {
+                if (finclassguids.ContainsKey (classguid)) finclassguids.Set (classguid, true);
+            }
+            for (GS::HashTable<API_Guid, bool>::PairIterator cIt = finclassguids.EnumeratePairs (); cIt != NULL; ++cIt) {
+                #if defined(AC_28)
+                bool msg = cIt->value;
+                #else
+                bool msg = *cIt->value;
+                #endif
+                if (!msg) {
+                    GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 52, ACAPI_GetOwnResModule ());
+                    msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
+                    ACAPI_WriteReport (msgString, true);
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
 #endif
 }

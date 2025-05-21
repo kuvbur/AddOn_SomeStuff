@@ -151,7 +151,7 @@ typedef GS::HashTable<API_ElemTypeID, UnicElement> UnicElementByType;
 typedef GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> UnicGUIDByType;
 
 typedef GS::HashTable<GS::UniString, double> OtdMaterialAreaDict;
-typedef GS::HashTable<TypeOtd, OtdMaterialAreaDict> OtdMaterialAreaDictByType;
+typedef GS::HashTable<GS::UniString, OtdMaterialAreaDict> OtdMaterialAreaDictByType;
 
 typedef struct
 {
@@ -168,14 +168,30 @@ typedef struct
 } MatarialToFavorite;
 typedef GS::HashTable<GS::UniString, MatarialToFavorite> MatarialToFavoriteDict;
 
+typedef struct
+{
+    short font = 1; // Индекс шрифта
+    double fontsize = 2.5; // Размер шрифта
+    double width_mat = 40; // Ширина для названия материала
+    double width_area = 20; // Ширина для площади
+    double width_space = 1; // Ширина пробела
+    GS::UniString space_line = "";
+    GS::UniString delim_line = "";
+    GS::UniString space = u8"\u2007";
+} ColumnFormat;
+
+typedef GS::HashTable<GS::UniString, ColumnFormat> ColumnFormatDict;
+
 // -----------------------------------------------------------------------------
 // Запись в зону информации об отделке
 // -----------------------------------------------------------------------------
 void RoomBook ();
 
-void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDictElement& paramToRead);
+void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat);
 
-void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const TypeOtd& t, GS::UniString& mat, const double& area);
+void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead);
+
+void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const GS::UniString& rawname, const GS::UniString& mat, const double& area);
 
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
@@ -338,6 +354,8 @@ bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead,
 void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict, ParamValueData& val);
 ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams);
 ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams);
+
+bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamDictValue& propertyParams, UnicGuid& finclassguids);
 #endif
 }
 

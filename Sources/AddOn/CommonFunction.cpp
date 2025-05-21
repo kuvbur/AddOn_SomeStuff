@@ -951,23 +951,21 @@ void ReplaceSymbSpase (GS::UniString & outstring)
 }
 
 
-short GetFontIndex ()
+short GetFontIndex (GS::UniString & font)
 {
     GSErrCode err = NoError;
     short inx = 0;
     #if defined(AC_27) || defined(AC_28)
-    API_FontType font;
-    BNZeroMemory (&font, sizeof (API_FontType));
+    API_FontType font; BNZeroMemory (&font, sizeof (API_FontType));
     font.head.index = 0;
-    font.head.uniStringNamePtr = nullptr;
-    strcpy (font.head.name, "GOST 2.304 type A");
+    font.head.uniStringNamePtr = font;
     err = ACAPI_Font_SearchFont (font);
     inx = font.head.index;
     #else
     API_Attribute attrib; BNZeroMemory (&attrib, sizeof (API_Attribute));
     attrib.header.typeID = API_FontID;
     attrib.header.index = 0;
-    strcpy (attrib.header.name, "GOST 2.304 type A");
+    attrib.header.uniStringNamePtr = &font;
     err = ACAPI_Attribute_Search (&attrib.header);
     inx = attrib.header.index;
     #endif
@@ -976,8 +974,6 @@ short GetFontIndex ()
 
 double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
 {
-    if (fontsize < 0.1) fontsize = 2.5;
-    if (font == 0) font = GetFontIndex ();
     GSErrCode err = NoError;
     double width = 0.0;
     API_TextLinePars tlp; BNZeroMemory (&tlp, sizeof (API_TextLinePars));
@@ -1001,7 +997,7 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
 GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString & var)
 {
     GS::Array<GS::UniString> str;
-    GS::UniString space = " ";
+    GS::UniString space = u8"\u2007";
     if (var.IsEmpty ()) return str;
     double width_space = 0;
     double width_in = GetTextWidth (font, fontsize, var);
@@ -1009,19 +1005,27 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         str.PushNew (var);
         return str;
     }
+    var.ReplaceAll (" ", space);
     width_space = GetTextWidth (font, fontsize, space);
     if (width_in < width) {
         Int32 addspace = (Int32) ((width - width_in) / width_space);
-        GS::UniString addspace_txt = var + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+        GS::UniString addspace_txt = var;
+        if (addspace > 0) {
+            for (Int32 j = 0; j < addspace; j++) {
+                addspace_txt = addspace_txt + space;
+            }
+        }
         str.Push (addspace_txt);
         return str;
     }
     GS::Array<GS::UniString> parts;
-    UInt32 npart = StringSplt (var, " ", parts);
+    UInt32 npart = StringSplt (var, space, parts);
+    if (npart == 1) npart = StringSplt (var, " ", parts);
     if (npart == 1) npart = StringSplt (var, ",", parts);
     if (npart == 1) npart = StringSplt (var, ".", parts);
     if (npart == 1) npart = StringSplt (var, ")", parts);
     if (npart == 1) npart = StringSplt (var, ":", parts);
+    if (npart == 1) npart = StringSplt (var, "-", parts);
     if (npart == 1) {
         str.PushNew (var);
         return str;
@@ -1038,14 +1042,22 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         width_in = GetTextWidth (font, fontsize, out);
         if (width_in > width && !old.IsEmpty ()) {
             addspace = (Int32) ((width - width_old) / width_space);
-            if (addspace > 0) old = old + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+            if (addspace > 0) {
+                for (Int32 j = 0; j < addspace; j++) {
+                    old = old + space;
+                }
+            }
             str.Push (old);
             out = parts.Get (i);
         }
         if (i == npart - 1) {
             width_in = GetTextWidth (font, fontsize, out);
             addspace = (Int32) ((width - width_in) / width_space);
-            if (addspace > 0) out = out + GS::UniString::Printf ("%s", std::string (addspace, ' ').c_str ());
+            if (addspace > 0) {
+                for (Int32 j = 0; j < addspace; j++) {
+                    out = out + space;
+                }
+            }
             str.Push (out);
         }
         old = out;
@@ -1413,7 +1425,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -1446,7 +1458,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
-        }
+}
     }
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
@@ -1669,7 +1681,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         elemHeadCopy.guid = elemHead->guid;
         ACAPI_Element_GetHeader (&elemHeadCopy);
         typeID = elemHeadCopy.type.typeID;
-    }
+}
     #else
     BNZeroMemory (neig, sizeof (API_Neig));
     API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
@@ -2242,7 +2254,7 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
         attribinx = (Int32) inx;
         #endif
         return true;
-    } else {
+} else {
         GSErrCode err = NoError;
         API_Attribute attrib;
         BNZeroMemory (&attrib, sizeof (API_Attribute));
