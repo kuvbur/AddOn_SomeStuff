@@ -1518,6 +1518,7 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     if (err != NoError) {
                         ParamValue paramtow = subparams.Get (param.rawName);
                         paramtow.val.uniStringValue = parentguidtxt;
+                        paramtow.isValid = true;
                         ParamHelpers::AddParamValue2ParamDictElement (subguidArray[i], paramtow, paramToWrite);
                         flag_write = true;
                         has_element = true;
@@ -1525,6 +1526,7 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 } else {
                     ParamValue paramtow = subparams.Get (param.rawName);
                     paramtow.val.uniStringValue = parentguidtxt;
+                    paramtow.isValid = true;
                     ParamHelpers::AddParamValue2ParamDictElement (subguidArray[i], paramtow, paramToWrite);
                     flag_write = true;
                     has_element = true;

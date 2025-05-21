@@ -3271,12 +3271,13 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
             if (ParamHelpers::ConvertToProperty (param, property)) {
                 error = ACAPI_Element_SetProperty (elemGuid, property);
                 if (error != NoError) {
-                    msg_rep ("WriteProperty", "ACAPI_Element_SetProperty " + property.definition.name, error, elemGuid);
+                    msg_rep ("WriteProperty err", "ACAPI_Element_SetProperty: " + property.definition.name, error, elemGuid);
                 }
             }
         } else {
             #if defined(TESTING)
-            DBprnt ("err WriteProperty", "param.isValid && guid != APINULLGuid " + param.rawName);
+            if (!param.isValid) DBprnt ("WriteProperty err", "!param.isValid" + param.rawName);
+            if (param.property.definition.guid == APINULLGuid) DBprnt ("WriteProperty err", "definition.guid == APINULLGuid" + param.rawName);
             #endif
         }
     }

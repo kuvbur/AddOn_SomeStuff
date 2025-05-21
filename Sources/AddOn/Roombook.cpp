@@ -217,6 +217,51 @@ void RoomBook ()
         }
         if (otd.isValid) WriteOtdDataToRoom (otd, paramToWrite, paramToRead);
     }
+    if (!zones.IsEmpty ()) {
+        // Проверка наличия классов
+        if (finclass.IsEmpty ()) {
+            GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 50, ACAPI_GetOwnResModule ());
+            msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
+            ACAPI_WriteReport (msgString, true);
+            return;
+        }
+        if (!finclass.ContainsKey (cls.all_class)) {
+            bool msg = false;
+            if (!finclass.ContainsKey (cls.floor_class)) msg = true;
+            if (!finclass.ContainsKey (cls.ceil_class)) msg = true;
+            if (!finclass.ContainsKey (cls.otdwall_class)) msg = true;
+            if (msg) {
+                GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 51, ACAPI_GetOwnResModule ());
+                msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
+            }
+        }
+        // Проверка наличия свойств `Sync_GUID zone`
+        for (auto& cItt : propertyParams) {
+            #if defined(AC_28)
+            ParamValue param = cItt.value;
+            #else
+            ParamValue param = *cItt.value;
+            #endif
+            if (param.definition.description.Contains ("Sync_GUID") && param.definition.description.Contains ("zone")) {
+                for (const API_Guid& classguid : param.definition.availability) {
+                    if (finclassguids.ContainsKey (classguid)) finclassguids.Set (classguid, true);
+                }
+                for (GS::HashTable<API_Guid, bool>::PairIterator cIt = finclassguids.EnumeratePairs (); cIt != NULL; ++cIt) {
+                    #if defined(AC_28)
+                    bool msg = cIt->value;
+                    #else
+                    bool msg = *cIt->value;
+                    #endif
+                    if (!msg) {
+                        GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 52, ACAPI_GetOwnResModule ());
+                        msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
+                        ACAPI_WriteReport (msgString, true);
+                        return;
+                    }
+                }
+            }
+        }
+    }
     GS::HashTable<API_Guid, UnicGuid> exsistotdelements;
     int errcode;
     if (SyncGetPatentelement (zones, exsistotdelements, propertyParams, "zone", errcode)) {
@@ -274,13 +319,13 @@ void WriteOtdDataToRoom (OtdRoom& otd, ParamDictElement& paramToWrite, ParamDict
     }
 
     GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
-    if (dct.ContainsKey (Wall_Up)) paramnamebytype.Add (Wall_Up, otd.om_up.rawname); // Отделка стен выше потолка
-    paramnamebytype.Add (Wall_Main, otd.om_main.rawname); // Отделка стен основная
-    paramnamebytype.Add (Wall_Down, otd.om_down.rawname); // Отделка низа стен
-    paramnamebytype.Add (Column, otd.om_column.rawname); // Отделка колонн
-    if (dct.ContainsKey (Reveal_Main)) paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname); // Отделка откосов
-    if (dct.ContainsKey (Floor)) paramnamebytype.Add (Floor, otd.om_floor.rawname); // Отделка пола
-    paramnamebytype.Add (Ceil, otd.om_ceil.rawname); // Отделка потолка
+    if (!otd.om_up.rawname.IsEmpty ()) paramnamebytype.Add (Wall_Up, otd.om_up.rawname); // Отделка стен выше потолка
+    if (!otd.om_main.rawname.IsEmpty ()) paramnamebytype.Add (Wall_Main, otd.om_main.rawname); // Отделка стен основная
+    if (!otd.om_down.rawname.IsEmpty ()) paramnamebytype.Add (Wall_Down, otd.om_down.rawname); // Отделка низа стен
+    if (!otd.om_column.rawname.IsEmpty ()) paramnamebytype.Add (Column, otd.om_column.rawname); // Отделка колонн
+    if (!otd.om_reveals.rawname.IsEmpty ()) paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname); // Отделка откосов
+    if (!otd.om_floor.rawname.IsEmpty ()) paramnamebytype.Add (Floor, otd.om_floor.rawname); // Отделка пола
+    if (!otd.om_ceil.rawname.IsEmpty ()) paramnamebytype.Add (Ceil, otd.om_ceil.rawname); // Отделка потолка
 
     // Настройки для форматирования текста в таблицу
     short font = GetFontIndex ();
@@ -1306,7 +1351,7 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
     if (!rawName_onoff.IsEmpty () && !rawName_desc.IsEmpty ()) {
         param_composite.val.uniStringValue = "l[" + rawName_onoff + ":" + rawName_desc + "]";
     } else {
-        param_composite.val.uniStringValue = "l[1:%BuildingMaterialProperties/Building Material Name%]";
+        param_composite.val.uniStringValue = "l[1:%BuildingMaterialProperties/Building Material Name%] %nosyncname%";
     }
     if (ParamHelpers::ParseParamNameMaterial (param_composite.val.uniStringValue, paramDict)) {
         for (UInt32 inx = 0; inx < 20; inx++) {
@@ -1326,6 +1371,7 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     // Основная отделка стен
     zoneparam_name = "om_main";
     zoneparam.rawnames.Push ("some_stuff_fin_main_material");
+    zoneparam.rawnames.Push ("{@gdl:stwallmat}");
     zoneparam.rawnames.Push ("{@gdl:votw}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
@@ -1347,6 +1393,7 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     // Отделка низа стен/колонн
     zoneparam_name = "om_down";
     zoneparam.rawnames.Push ("some_stuff_fin_down_material");
+    zoneparam.rawnames.Push ("{@gdl:stwalldownmat}");
     zoneparam.rawnames.Push ("{@gdl:votp}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
@@ -1354,14 +1401,22 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     // Высота нижних панелей
     zoneparam_name = "height_down";
     zoneparam.rawnames.Push ("some_stuff_fin_down_height");
+    zoneparam.rawnames.Push ("{@gdl:walldownhigh}");
     zoneparam.rawnames.Push ("{@gdl:hpan}");
     zoneparam.rawnames.Push ("{@gdl:z17}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Высота нижних панелей
+    zoneparam_name = "has_height_down";
+    zoneparam.rawnames.Push ("{@gdl:busewalldown}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка колонн
     zoneparam_name = "om_column";
     zoneparam.rawnames.Push ("some_stuff_fin_column_material");
+    zoneparam.rawnames.Push ("{@gdl:stcolumnmat}");
     zoneparam.rawnames.Push ("{@gdl:votc}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
@@ -1369,6 +1424,7 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     // Отделка потолка
     zoneparam_name = "om_ceil";
     zoneparam.rawnames.Push ("some_stuff_fin_ceil_material");
+    zoneparam.rawnames.Push ("{@gdl:stupmat}");
     zoneparam.rawnames.Push ("{@gdl:vots}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
@@ -1381,6 +1437,7 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
 
     // Отделка откосов - запись результатов
     zoneparam_name = "om_reveals.rawname";
+    zoneparam.rawnames.Push ("some_stuff_fin_reveal_result");
     zoneparam.rawnames.Push ("some_stuff_fin_reveals_result");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
@@ -1622,6 +1679,13 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
             roominfo.height_down = val.doubleValue;
+            param_name = "has_height_down";
+            if (readparams.ContainsKey (param_name)) {
+                if (readparams.Get (param_name).isValid) {
+                    val = readparams.Get (param_name).val;
+                    roominfo.height_down = roominfo.height_down * val.boolValue;
+                }
+            }
         }
     }
     param_name = "height_main";
@@ -2047,13 +2111,14 @@ void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otd
     walledge = { begedge , endedge };
     if (!walledge.IsZeroLength ()) {
         OtdWall wallotd;
-        wallotd.base_guid = op.base_guid;
+        wallotd.base_guid = otdw.base_guid;
         wallotd.height = height;
         wallotd.zBottom = zDown;
         wallotd.floorInd = otdw.floorInd;
         wallotd.begC = { walledge.c1.x, walledge.c1.y };
         wallotd.endC = { walledge.c2.x, walledge.c2.y };
         wallotd.material = otdw.material;
+        wallotd.base_composite = otdw.base_composite;
         wallotd.base_type = API_WindowID;
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
@@ -2069,13 +2134,14 @@ void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otd
     walledge = { begedge , endedge };
     if (!walledge.IsZeroLength ()) {
         OtdWall wallotd;
-        wallotd.base_guid = op.base_guid;
+        wallotd.base_guid = otdw.base_guid;
         wallotd.height = height;
         wallotd.zBottom = zDown;
         wallotd.floorInd = otdw.floorInd;
         wallotd.begC = { walledge.c2.x, walledge.c2.y };
         wallotd.endC = { walledge.c1.x, walledge.c1.y };
         wallotd.material = otdw.material;
+        wallotd.base_composite = otdw.base_composite;
         wallotd.base_type = API_WindowID;
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
@@ -2204,12 +2270,16 @@ void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up,
     switch (otdw.type) {
         case NoSet:
             material.material = 0;
+            material.smaterial = "";
+            #if defined(TESTING)
+            DBprnt ("SetMaterialByType err", "NoSet material.smaterial = "";");
+            #endif
             break;
         case Wall_Main:
             material = om_main;
             break;
         case Wall_Up:
-            if (om_up.material > 0) {
+            if (!om_up.smaterial.IsEmpty ()) {
                 material = om_up;
             } else {
                 material = om_main;
@@ -2217,7 +2287,7 @@ void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up,
             if (om_up.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
             break;
         case Wall_Down:
-            if (om_down.material > 0) {
+            if (!om_down.smaterial.IsEmpty ()) {
                 material = om_down;
             } else {
                 material = om_main;
@@ -2225,37 +2295,37 @@ void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up,
             if (om_down.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
             break;
         case Reveal_Main:
-            if (om_reveals.material > 0) {
+            if (!om_reveals.smaterial.IsEmpty ()) {
                 material = om_reveals;
             } else {
                 material = om_main;
             }
-            if (material.material == 0) material = om_main;
+            if (material.smaterial.IsEmpty ()) material = om_main;
             otdw.type = Reveal_Main;
             if (om_reveals.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
             break;
         case Reveal_Up:
-            if (om_reveals.material > 0) {
+            if (!om_reveals.smaterial.IsEmpty ()) {
                 material = om_reveals;
             } else {
                 material = om_up;
             }
-            if (material.material == 0) material = om_main;
+            if (material.smaterial.IsEmpty ()) material = om_main;
             otdw.type = Reveal_Main;
             if (om_reveals.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
             break;
         case Reveal_Down:
-            if (om_reveals.material > 0) {
+            if (!om_reveals.smaterial.IsEmpty ()) {
                 material = om_reveals;
             } else {
                 material = om_down;
             }
-            if (material.material == 0) material = om_main;
+            if (material.smaterial.IsEmpty ()) material = om_main;
             otdw.type = Reveal_Main;
             if (om_reveals.rawname.IsEqual (om_main.rawname)) otdw.type = Wall_Main;
             break;
         case Column:
-            if (om_column.material > 0) {
+            if (!om_column.smaterial.IsEmpty ()) {
                 material = om_column;
             } else {
                 material = om_main;
@@ -2270,9 +2340,13 @@ void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up,
             break;
         default:
             material.material = 0;
+            material.smaterial = "";
+            #if defined(TESTING)
+            DBprnt ("SetMaterialByType err", "default material.smaterial = "";");
+            #endif
             break;
     }
-    if (material.material == 0) material = om_zone;
+    if (material.smaterial.IsEmpty ()) material = om_zone;
     otdw.material = material;
     ParamValueComposite p;
     #if defined(AC_27) || defined(AC_28)
@@ -2851,7 +2925,6 @@ bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slab
     slabelement.slab.botMat.overridden = true;
     #endif
     slabelement.slab.modelElemStructureType = API_BasicStructure;
-    slabelement.slab.modelElemStructureType = API_BasicStructure;
     return true;
 }
 
@@ -2866,6 +2939,7 @@ void Class_SetClass (const OtdOpening& op, const ClassificationFunc::Classificat
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (NoSet, finclass);
+    if (class_guid != APINULLGuid) class_guid = Class_GetClassGuid (Wall_Main, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
@@ -2880,7 +2954,8 @@ API_Guid Class_GetClassGuid (const TypeOtd type, const ClassificationFunc::Class
 {
     if (type == Column && finclass.ContainsKey (cls.column_class)) return finclass.Get (cls.column_class).item.guid;
     if ((type == Reveal_Main || type == Reveal_Up || type == Reveal_Down) && finclass.ContainsKey (cls.reveal_class)) return finclass.Get (cls.reveal_class).item.guid;
-    if ((type == Wall_Main || type == Wall_Up || type == Wall_Down) && finclass.ContainsKey (cls.otdwall_class)) return finclass.Get (cls.otdwall_class).item.guid;
+    if ((type == Wall_Down) && finclass.ContainsKey (cls.otdwall_down_class)) return finclass.Get (cls.otdwall_down_class).item.guid;
+    if ((type == Wall_Main || type == Wall_Up || type == Wall_Down || type == Reveal_Main || type == Reveal_Up || type == Reveal_Down) && finclass.ContainsKey (cls.otdwall_class)) return finclass.Get (cls.otdwall_class).item.guid;
     if (type == Floor && finclass.ContainsKey (cls.floor_class)) return finclass.Get (cls.floor_class).item.guid;
     if (type == Ceil && finclass.ContainsKey (cls.ceil_class)) return finclass.Get (cls.ceil_class).item.guid;
     if (finclass.ContainsKey (cls.all_class)) return finclass.Get (cls.all_class).item.guid;
@@ -2913,27 +2988,31 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
             if (desc.Contains ("some_stuff_fin_")) {
                 if (desc.Contains (cls.all_class)) {
                     findict.Add (cls.all_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.ceil_class)) {
                     findict.Add (cls.ceil_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.column_class)) {
                     findict.Add (cls.column_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.floor_class)) {
                     findict.Add (cls.floor_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.otdwall_class)) {
                     findict.Add (cls.otdwall_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.reveal_class)) {
                     findict.Add (cls.reveal_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, true);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                }
+                if (desc.Contains (cls.otdwall_down_class)) {
+                    findict.Add (cls.otdwall_down_class, clas);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
             }
         }
