@@ -30,6 +30,7 @@ const double otd_thickness = 0.001;
 typedef struct
 {
     const GS::UniString otdwall_class = "some_stuff_fin_walls";
+    const GS::UniString otdwall_down_class = "some_stuff_fin_down_walls";
     const GS::UniString reveal_class = "some_stuff_fin_reveals";
     const GS::UniString column_class = "some_stuff_fin_columns";
     const GS::UniString floor_class = "some_stuff_fin_floors";

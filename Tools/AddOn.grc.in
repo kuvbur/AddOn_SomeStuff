@@ -125,10 +125,10 @@
 /* [  33] */	"рви"
 
 /* [  34] */	"Связанные элементы не найдены"
-/* [  35] */	"Отсутствуют доступные свойства с описанием Sync_GUID"
-/* [  36] */	"Свойства с описанием Sync_GUID найдены, но их значения пустые"
-/* [  37] */	"находятся на другом этаже"
-/* [  38] */	"находятся на скрытых слоях/фильтрах"
+/* [  35] */	"Свойства Sync_GUID не найдены"
+/* [  36] */	"Значения Sync_GUID пусты"
+/* [  37] */	"расположены на другом этаже"
+/* [  38] */	"скрыты слоями/фильтрами"
 /* [  39] */	"Найдено связанных элементов: "
 /* [  40] */	"Связанные элементы найдены, но в текущем виде недоступны"
 /* [  41] */	"Часть связанных элементов не видна"
@@ -140,6 +140,9 @@
 /* [  47] */	"Создание элементов отделки"
 /* [  48] */	"не существуют (возможно, удалены)"
 /* [  49] */	"SomeStuff addon @ADDON_VERSION@: "
+/* [  50] */	"Не найден обязательный класс для элементов отделки `some_stuff_fin_class`. Настройте классы согласно документации аддона."
+/* [  51] */	"Не все классы имеют описания. Классификация элементов может быть некорректной. Работа продолжится. Настройте классы согласно документации аддона."
+/* [  52] */	"Не найдено свойство Sync_GUID zone для элементов отделки. Настройте свойства согласно документации аддона."
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -282,6 +285,9 @@
 /* [  47] */	"Create finishing elements for the zones"
 /* [  48] */	"not exsist"
 /* [  49] */	"SomeStuff addon @ADDON_VERSION@: "
+/* [  50] */	"Required finishing element class `some_stuff_fin_class` not found. Configure classes according to the add-on documentation."
+/* [  51] */	"Descriptions are missing for some classes. Element classification may be inaccurate. The process will continue. Configure classes according to the add-on documentation."
+/* [  52] */	"`Sync_GUID zone` property is missing for finishing elements. Configure properties as per the add-on documentation."
 }
 
 'GICN' 32500 "Sync" {
