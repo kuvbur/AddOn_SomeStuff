@@ -58,8 +58,7 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {
-    }
+    {}
     short  index;
     double level;
 };
@@ -228,7 +227,7 @@ void GetNumSymbSpase (GS::UniString& outstring, GS::UniChar symb, char charrepl)
 // -----------------------------------------------------------------------------
 void ReplaceSymbSpase (GS::UniString& outstring);
 
-short GetFontIndex (GS::UniString& font);
+short GetFontIndex (GS::UniString& fontname);
 
 double GetTextWidth (short& font, double& fontsize, GS::UniString& var);
 
