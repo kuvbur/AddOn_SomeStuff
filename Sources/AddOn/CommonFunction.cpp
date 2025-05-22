@@ -951,21 +951,21 @@ void ReplaceSymbSpase (GS::UniString & outstring)
 }
 
 
-short GetFontIndex (GS::UniString & font)
+short GetFontIndex (GS::UniString & fontname)
 {
     GSErrCode err = NoError;
     short inx = 0;
     #if defined(AC_27) || defined(AC_28)
     API_FontType font; BNZeroMemory (&font, sizeof (API_FontType));
     font.head.index = 0;
-    font.head.uniStringNamePtr = font;
+    font.head.uniStringNamePtr = &fontname;
     err = ACAPI_Font_SearchFont (font);
     inx = font.head.index;
     #else
     API_Attribute attrib; BNZeroMemory (&attrib, sizeof (API_Attribute));
     attrib.header.typeID = API_FontID;
     attrib.header.index = 0;
-    attrib.header.uniStringNamePtr = &font;
+    attrib.header.uniStringNamePtr = &fontname;
     err = ACAPI_Attribute_Search (&attrib.header);
     inx = attrib.header.index;
     #endif
@@ -1425,7 +1425,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     #endif
     if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
     return err;
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -1458,7 +1458,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
-}
+        }
     }
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
@@ -1681,7 +1681,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         elemHeadCopy.guid = elemHead->guid;
         ACAPI_Element_GetHeader (&elemHeadCopy);
         typeID = elemHeadCopy.type.typeID;
-}
+    }
     #else
     BNZeroMemory (neig, sizeof (API_Neig));
     API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
@@ -2254,7 +2254,7 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
         attribinx = (Int32) inx;
         #endif
         return true;
-} else {
+    } else {
         GSErrCode err = NoError;
         API_Attribute attrib;
         BNZeroMemory (&attrib, sizeof (API_Attribute));
