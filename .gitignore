@@ -370,3 +370,4 @@ FodyWeavers.xsd
 Build/
 Build_[0-9][0-9]/
 Sources/AddOnResources/RINT/AddOn.grc
+/Sources/AddOnResources/RINT/AddOn.grc
