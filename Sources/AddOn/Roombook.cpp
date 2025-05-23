@@ -305,7 +305,7 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
         c.font = GetFontIndex (fontname);
     }
     Int32 addspace = 0;
-    GS::UniString space = " ";
+    GS::UniString space = u8"\u2007";
     GS::UniString delim = "-";
     c.width_space = GetTextWidth (c.font, c.fontsize, c.space);
     double width_s = GetTextWidth (c.font, c.fontsize, space);
@@ -316,13 +316,13 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
     for (Int32 j = 0; j <= addspace; j++) {
         c.space_line = c.space_line + c.space;
     }
-    c.space_line = c.space_line + space;
-    addspace = (Int32) ((c.width_mat + c.width_area - width_s) / width_delim);
+    c.space_line = c.space_line + " ";
+    addspace = (Int32) ((c.width_mat + c.width_area) / width_delim);
     c.delim_line = "";
     for (Int32 j = 0; j <= addspace; j++) {
         c.delim_line = c.delim_line + delim;
     }
-    c.delim_line = c.delim_line + space;
+    c.delim_line = c.delim_line + " ";
     columnFormat.Add (rawname, c);
 }
 
@@ -408,6 +408,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
                 mat.Trim ();
                 mat.ReplaceAll ("  ", " ");
                 mat.ReplaceAll ("0&#& ", "");
+                mat.ReplaceAll (" ", u8"\u2007");
                 GS::UniString area_sring = GS::UniString::Printf ("%.2f", area);
                 double w_area = GetTextWidth (c.font, c.fontsize, area_sring);
                 if (w_area < c.width_area) {
@@ -1424,15 +1425,20 @@ ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
     // Высота нижних панелей
     zoneparam_name = "height_down";
     zoneparam.rawnames.Push ("some_stuff_fin_down_height");
-    zoneparam.rawnames.Push ("{@gdl:walldownhigh}");
     zoneparam.rawnames.Push ("{@gdl:hpan}");
     zoneparam.rawnames.Push ("{@gdl:z17}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
-    // Высота нижних панелей
-    zoneparam_name = "has_height_down";
+    // Наличие нижней отделки (химера)
+    zoneparam_name = "him_has_height_down";
     zoneparam.rawnames.Push ("{@gdl:busewalldown}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Высота нижних панелей (химера)
+    zoneparam_name = "him_height_down";
+    zoneparam.rawnames.Push ("{@gdl:walldownhigh}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
@@ -1697,17 +1703,30 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
             roominfo.om_up.smaterial = val.uniStringValue;
         }
     }
-    param_name = "height_down";
+
+    bool has_height_down = false;
+    param_name = "him_has_height_down";
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
-            roominfo.height_down = val.doubleValue;
-            param_name = "has_height_down";
+            bool him_has_height_down = val.boolValue;
+            param_name = "height_down";
             if (readparams.ContainsKey (param_name)) {
                 if (readparams.Get (param_name).isValid) {
                     val = readparams.Get (param_name).val;
-                    roominfo.height_down = roominfo.height_down * val.boolValue;
+                    roominfo.height_down = val.doubleValue * him_has_height_down;
+                    has_height_down = true;
                 }
+            }
+        }
+    }
+
+    if (!has_height_down) {
+        param_name = "height_down";
+        if (readparams.ContainsKey (param_name)) {
+            if (readparams.Get (param_name).isValid) {
+                val = readparams.Get (param_name).val;
+                roominfo.height_down = val.doubleValue;
             }
         }
     }
