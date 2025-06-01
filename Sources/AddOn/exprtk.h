@@ -1159,7 +1159,7 @@ exprtk_define_erf (long double, ::erfl)
 template <typename T>
 inline T erf_impl (const T v, real_type_tag)
 {
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
+    #if defined(_MSC_VER) && (_MSC_VER < 1900)
     // Credits: Abramowitz & Stegun Equations 7.1.25-28
     static const T c[] = {
                            T (1.26551223), T (1.00002368),
@@ -1179,9 +1179,9 @@ inline T erf_impl (const T v, real_type_tag)
                                                  (c[8] + t * (c[9]))))))))));
 
     return (v >= T (0)) ? result : -result;
-#else
+    #else
     return erf_impl (v);
-#endif
+    #endif
 }
 
 template <typename T>
@@ -1203,11 +1203,11 @@ exprtk_define_erfc (long double, ::erfcl)
 template <typename T>
 inline T erfc_impl (const T v, real_type_tag)
 {
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
+    #if defined(_MSC_VER) && (_MSC_VER < 1900)
     return T (1) - erf_impl (v, real_type_tag ());
-#else
+    #else
     return erfc_impl (v);
-#endif
+    #endif
 }
 
 template <typename T>
@@ -1660,9 +1660,9 @@ inline bool string_to_type_converter_impl_ref (Iterator& itr, const Iterator end
     if (length <= 4) {
         exprtk_disable_fallthrough_begin
             switch (length) {
-#ifdef exprtk_use_lut
+                #ifdef exprtk_use_lut
 
-#define exprtk_process_digit                          \
+                #define exprtk_process_digit                          \
                if ((digit = details::digit_table[(int)*itr++]) < 10) \
                   result = result * 10 + (digit);                    \
                else                                                  \
@@ -1671,9 +1671,9 @@ inline bool string_to_type_converter_impl_ref (Iterator& itr, const Iterator end
                   break;                                             \
                }                                                     \
 
-#else
+                #else
 
-#define exprtk_process_digit         \
+                #define exprtk_process_digit         \
                if ((digit = (*itr++ - zero)) < 10)  \
                   result = result * T(10) + digit;  \
                else                                 \
@@ -1682,7 +1682,7 @@ inline bool string_to_type_converter_impl_ref (Iterator& itr, const Iterator end
                   break;                            \
                }                                    \
 
-#endif
+                #endif
 
                 case 4: exprtk_process_digit
                 case 3: exprtk_process_digit
@@ -1692,7 +1692,7 @@ inline bool string_to_type_converter_impl_ref (Iterator& itr, const Iterator end
                     return_result = false;
                 }
 
-#undef exprtk_process_digit
+                      #undef exprtk_process_digit
             }
         exprtk_disable_fallthrough_end
     } else
@@ -1794,14 +1794,14 @@ inline bool string_to_real (Iterator& itr_external, const Iterator end, T& t, nu
 
     static const char_t zero = static_cast<uchar_t>('0');
 
-#define parse_digit_1(d)          \
+    #define parse_digit_1(d)          \
          if ((digit = (*itr - zero)) < 10) \
             { d = d * T(10) + digit; }     \
          else                              \
             { break; }                     \
          if (end == ++itr) break;          \
 
-#define parse_digit_2(d)          \
+    #define parse_digit_2(d)          \
          if ((digit = (*itr - zero)) < 10) \
             { d = d * T(10) + digit; }     \
          else                              \
@@ -1848,8 +1848,8 @@ inline bool string_to_real (Iterator& itr_external, const Iterator end, T& t, nu
                 d += compute_pow10 (tmp_d, frac_exponent);
             }
 
-#undef parse_digit_1
-#undef parse_digit_2
+            #undef parse_digit_1
+            #undef parse_digit_2
         }
 
         if (end != itr) {
@@ -2302,7 +2302,7 @@ private:
         return (s_end_ == itr);
     }
 
-#ifndef exprtk_disable_comments
+    #ifndef exprtk_disable_comments
     inline bool is_comment_start (details::char_cptr itr) const
     {
         const char_t c0 = *(itr + 0);
@@ -2316,12 +2316,12 @@ private:
         }
         return false;
     }
-#else
+    #else
     inline bool is_comment_start (details::char_cptr) const
     {
         return false;
     }
-#endif
+    #endif
 
     inline void skip_whitespace ()
     {
@@ -2332,7 +2332,7 @@ private:
 
     inline void skip_comments ()
     {
-#ifndef exprtk_disable_comments
+        #ifndef exprtk_disable_comments
         // The following comment styles are supported:
         // 1. // .... \n
         // 2. #  .... \n
@@ -2394,7 +2394,7 @@ private:
             t.set_error (token::e_error, cmt_start, cmt_start + mode, base_itr_);
             token_list_.push_back (t);
         }
-#endif
+        #endif
     }
 
     inline void scan_token ()
@@ -2418,12 +2418,12 @@ private:
             scan_special_function ();
             return;
         }
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         else if ('\'' == (*s_itr_)) {
             scan_string ();
             return;
         }
-#endif
+        #endif
         else if ('~' == (*s_itr_)) {
             token_t t;
             t.set_symbol (s_itr_, s_itr_ + 1, base_itr_);
@@ -2661,7 +2661,7 @@ private:
         return;
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline void scan_string ()
     {
         details::char_cptr initial_itr = s_itr_ + 1;
@@ -2748,7 +2748,7 @@ private:
 
         return;
     }
-#endif
+    #endif
 
 private:
 
@@ -2968,7 +2968,7 @@ public:
         return changes;
     }
 
-#define token_inserter_empty_body \
+    #define token_inserter_empty_body \
          {                                 \
             return -1;                     \
          }                                 \
@@ -2988,7 +2988,7 @@ public:
         inline virtual int insert (const token&, const token&, const token&, const token&, const token&, token&)
         token_inserter_empty_body
 
-#undef token_inserter_empty_body
+        #undef token_inserter_empty_body
 
 private:
 
@@ -4362,10 +4362,10 @@ private:
     bool results_available_;
     ts_list_t parameter_list_;
 
-#ifndef exprtk_disable_return_statement
+    #ifndef exprtk_disable_return_statement
     friend class details::return_node<T>;
     friend class details::return_envelope_node<T>;
-#endif
+    #endif
 };
 
 namespace details
@@ -4686,7 +4686,7 @@ public:
 
     inline void dump () const
     {
-#ifdef exprtk_enable_debugging
+        #ifdef exprtk_enable_debugging
         exprtk_debug (("size: %d\taddress:%p\tdestruct:%c\n",
             size (),
             data (),
@@ -4699,7 +4699,7 @@ public:
             exprtk_debug (("%15.10f ", data ()[i]));
         }
         exprtk_debug (("\n"));
-#endif
+        #endif
     }
 
     static inline void match_sizes (type& vds0, type& vds1)
@@ -6390,9 +6390,9 @@ public:
 
         throw break_exception<T> (result);
 
-#ifndef _MSC_VER
+        #ifndef _MSC_VER
         return std::numeric_limits<T>::quiet_NaN ();
-#endif
+        #endif
     }
 
     inline typename expression_node<T>::node_type type () const exprtk_override
@@ -6423,9 +6423,9 @@ public:
     inline T value () const exprtk_override
     {
         throw continue_exception ();
-#ifndef _MSC_VER
+        #ifndef _MSC_VER
         return std::numeric_limits<T>::quiet_NaN ();
-#endif
+        #endif
     }
 
     inline typename expression_node<T>::node_type type () const exprtk_override
@@ -7331,11 +7331,11 @@ struct range_pack
         cache.first = r0;
         cache.second = r1;
 
-#ifndef exprtk_enable_range_runtime_checks
+        #ifndef exprtk_enable_range_runtime_checks
         return (r0 <= r1);
-#else
+        #else
         return range_runtime_check (r0, r1, size);
-#endif
+        #endif
     }
 
     inline std::size_t const_size () const
@@ -7354,7 +7354,7 @@ struct range_pack
     std::pair<bool, std::size_t        > n1_c;
     mutable cached_range_t             cache;
 
-#ifdef exprtk_enable_range_runtime_checks
+    #ifdef exprtk_enable_range_runtime_checks
     bool range_runtime_check (const std::size_t r0,
                              const std::size_t r1,
                              const std::size_t size) const
@@ -7371,7 +7371,7 @@ struct range_pack
 
         return (r0 <= r1);
     }
-#endif
+    #endif
 };
 
 template <typename T>
@@ -8615,19 +8615,19 @@ public:
                 char_cptr upper_bound = s0 + lud.upper_bound;
 
                 while (s0 < upper_bound) {
-#define exprtk_loop(N)   \
+                    #define exprtk_loop(N)   \
                      std::swap(s0[N], s1[N]); \
 
                     exprtk_loop (0) exprtk_loop (1)
                         exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                        #ifndef exprtk_disable_superscalar_unroll
                         exprtk_loop (4) exprtk_loop (5)
                         exprtk_loop (6) exprtk_loop (7)
                         exprtk_loop (8) exprtk_loop (9)
                         exprtk_loop (10) exprtk_loop (11)
                         exprtk_loop (12) exprtk_loop (13)
                         exprtk_loop (14) exprtk_loop (15)
-#endif
+                        #endif
 
                         s0 += lud.batch_size;
                     s1 += lud.batch_size;
@@ -8637,24 +8637,24 @@ public:
 
                 exprtk_disable_fallthrough_begin
                     switch (lud.remainder) {
-#define case_stmt(N)                       \
+                        #define case_stmt(N)                       \
                      case N : { std::swap(s0[i], s1[i]); ++i; } \
 
-#ifndef exprtk_disable_superscalar_unroll
+                        #ifndef exprtk_disable_superscalar_unroll
                         case_stmt (15) case_stmt (14)
                             case_stmt (13) case_stmt (12)
                             case_stmt (11) case_stmt (10)
                             case_stmt (9) case_stmt (8)
                             case_stmt (7) case_stmt (6)
                             case_stmt (5) case_stmt (4)
-#endif
+                            #endif
                             case_stmt (3) case_stmt (2)
                             case_stmt (1)
                     }
                 exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                    #undef exprtk_loop
+                    #undef case_stmt
             }
         }
 
@@ -9658,8 +9658,8 @@ define_sfop4 (94, ((x < y) ? z : w), "")
     define_sfop4 (ext60, ((x / y) + (z * w)), "(t/t)+(t*t)")
     define_sfop4 (ext61, (((x* y)* z) / w), "((t*t)*t)/t")
 
-#undef define_sfop3
-#undef define_sfop4
+    #undef define_sfop3
+    #undef define_sfop4
 
     template <typename T, typename SpecialFunction>
 class sf3_node exprtk_final : public trinary_node<T>
@@ -10119,43 +10119,43 @@ public:
             const T* upper_bound = vec + lud.upper_bound;
 
             while (vec < upper_bound) {
-#define exprtk_loop(N) \
+                #define exprtk_loop(N) \
                   vec[N] = v;            \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec += lud.batch_size;
             }
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N) \
+                    #define case_stmt(N) \
                   case N : *vec++ = v; \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return vec_node_ptr_->value ();
         } else
@@ -10262,19 +10262,19 @@ public:
             const T* upper_bound = vec0 + lud.upper_bound;
 
             while (vec0 < upper_bound) {
-#define exprtk_loop(N) \
+                #define exprtk_loop(N) \
                   vec0[N] = vec1[N];     \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec0 += lud.batch_size;
                 vec1 += lud.batch_size;
@@ -10282,24 +10282,24 @@ public:
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N)        \
+                    #define case_stmt(N)        \
                   case N : *vec0++ = *vec1++; \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return vec0_node_ptr_->value ();
         } else
@@ -10525,43 +10525,43 @@ public:
             const T* upper_bound = vec + lud.upper_bound;
 
             while (vec < upper_bound) {
-#define exprtk_loop(N)       \
+                #define exprtk_loop(N)       \
                   Operation::assign(vec[N],v); \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec += lud.batch_size;
             }
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N)                  \
+                    #define case_stmt(N)                  \
                   case N : Operation::assign(*vec++,v); \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return vec_node_ptr_->value ();
         } else
@@ -10667,19 +10667,19 @@ public:
             const T* upper_bound = vec0 + lud.upper_bound;
 
             while (vec0 < upper_bound) {
-#define exprtk_loop(N)                          \
+                #define exprtk_loop(N)                          \
                   vec0[N] = Operation::process(vec0[N], vec1[N]); \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec0 += lud.batch_size;
                 vec1 += lud.batch_size;
@@ -10689,24 +10689,24 @@ public:
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N)                                              \
+                    #define case_stmt(N)                                              \
                   case N : { vec0[i] = Operation::process(vec0[i], vec1[i]); ++i; } \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return vec0_node_ptr_->value ();
         } else
@@ -10846,19 +10846,19 @@ public:
             const T* upper_bound = vec2 + lud.upper_bound;
 
             while (vec2 < upper_bound) {
-#define exprtk_loop(N)                          \
+                #define exprtk_loop(N)                          \
                   vec2[N] = Operation::process(vec0[N], vec1[N]); \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec0 += lud.batch_size;
                 vec1 += lud.batch_size;
@@ -10869,24 +10869,24 @@ public:
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N)                                              \
+                    #define case_stmt(N)                                              \
                   case N : { vec2[i] = Operation::process(vec0[i], vec1[i]); ++i; } \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return (vds ().data ())[0];
         } else
@@ -10999,19 +10999,19 @@ public:
             const T* upper_bound = vec0 + lud.upper_bound;
 
             while (vec0 < upper_bound) {
-#define exprtk_loop(N)                    \
+                #define exprtk_loop(N)                    \
                   vec1[N] = Operation::process(vec0[N], v); \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec0 += lud.batch_size;
                 vec1 += lud.batch_size;
@@ -11021,24 +11021,24 @@ public:
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N)                                        \
+                    #define case_stmt(N)                                        \
                   case N : { vec1[i] = Operation::process(vec0[i], v); ++i; } \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return (vds ().data ())[0];
         } else
@@ -11149,19 +11149,19 @@ public:
             const T* upper_bound = vec0 + lud.upper_bound;
 
             while (vec0 < upper_bound) {
-#define exprtk_loop(N)                    \
+                #define exprtk_loop(N)                    \
                   vec0[N] = Operation::process(v, vec1[N]); \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec0 += lud.batch_size;
                 vec1 += lud.batch_size;
@@ -11171,24 +11171,24 @@ public:
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N)                                        \
+                    #define case_stmt(N)                                        \
                   case N : { vec0[i] = Operation::process(v, vec1[i]); ++i; } \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return (vds ().data ())[0];
         } else
@@ -11295,19 +11295,19 @@ public:
             const T* upper_bound = vec0 + lud.upper_bound;
 
             while (vec0 < upper_bound) {
-#define exprtk_loop(N)                 \
+                #define exprtk_loop(N)                 \
                   vec1[N] = Operation::process(vec0[N]); \
 
                 exprtk_loop (0) exprtk_loop (1)
                     exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     exprtk_loop (4) exprtk_loop (5)
                     exprtk_loop (6) exprtk_loop (7)
                     exprtk_loop (8) exprtk_loop (9)
                     exprtk_loop (10) exprtk_loop (11)
                     exprtk_loop (12) exprtk_loop (13)
                     exprtk_loop (14) exprtk_loop (15)
-#endif
+                    #endif
 
                     vec0 += lud.batch_size;
                 vec1 += lud.batch_size;
@@ -11317,24 +11317,24 @@ public:
 
             exprtk_disable_fallthrough_begin
                 switch (lud.remainder) {
-#define case_stmt(N)                                     \
+                    #define case_stmt(N)                                     \
                   case N : { vec1[i] = Operation::process(vec0[i]); ++i; } \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (15) case_stmt (14)
                         case_stmt (13) case_stmt (12)
                         case_stmt (11) case_stmt (10)
                         case_stmt (9) case_stmt (8)
                         case_stmt (7) case_stmt (6)
                         case_stmt (5) case_stmt (4)
-#endif
+                        #endif
                         case_stmt (3) case_stmt (2)
                         case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+                #undef exprtk_loop
+                #undef case_stmt
 
                 return (vds ().data ())[0];
         } else
@@ -11605,10 +11605,10 @@ public:
     bool init_branches (expression_ptr (&b)[NumBranches])
     {
         // Needed for incompetent and broken msvc compiler versions
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4127)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(push)
+        #pragma warning(disable: 4127)
+        #endif
         if (N != NumBranches)
             return false;
         else {
@@ -11620,9 +11620,9 @@ public:
             }
             return true;
         }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(pop)
+        #endif
     }
 
     inline bool operator <(const function_N_node<T, IFunction, N>& fn) const
@@ -11633,10 +11633,10 @@ public:
     inline T value () const exprtk_override
     {
         // Needed for incompetent and broken msvc compiler versions
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4127)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(push)
+        #pragma warning(disable: 4127)
+        #endif
         if ((0 == function_) || (0 == N))
             return std::numeric_limits<T>::quiet_NaN ();
         else {
@@ -11644,9 +11644,9 @@ public:
             evaluate_branches<T, N>::execute (v, branch_);
             return invoke<T, N>::execute (*function_, v);
         }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(pop)
+        #endif
     }
 
     inline typename expression_node<T>::node_type type () const exprtk_override
@@ -12082,7 +12082,7 @@ public:
                 ts.type = type_store_t::e_vector;
                 vi->vec ()->vec_holder ().set_ref (&ts.vec_data);
             }
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             else if (is_generally_string_node (arg_list_[i])) {
                 string_base_node<T>* sbn = reinterpret_cast<string_base_node<T>*>(0);
 
@@ -12115,7 +12115,7 @@ public:
                 } else
                     range_list_[i].range = &(ri->range_ref ());
             }
-#endif
+            #endif
             else if (is_variable_node (arg_list_[i])) {
                 variable_node_ptr_t var = variable_node_ptr_t (0);
 
@@ -12180,11 +12180,11 @@ protected:
                     type_store_t& ts = typestore_list_[i];
 
                     ts.size = rp.cache_size ();
-#ifndef exprtk_disable_string_capabilities
+                    #ifndef exprtk_disable_string_capabilities
                     if (ts.type == type_store_t::e_string)
                         ts.data = const_cast<char_ptr>(rdt.str_node->base ()) + rp.cache.first;
                     else
-#endif
+                        #endif
                         ts.data = static_cast<char_ptr>(rdt.data) + (rp.cache.first * rdt.type_size);
                 } else
                     return false;
@@ -13472,23 +13472,23 @@ struct vec_add_op
 
             exprtk_disable_fallthrough_begin
                 switch (vec_size) {
-#define case_stmt(N)         \
+                    #define case_stmt(N)         \
                   case N : result += vec[i++]; \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (16) case_stmt (15)
                         case_stmt (14) case_stmt (13)
                         case_stmt (12) case_stmt (11)
                         case_stmt (10) case_stmt (9)
                         case_stmt (8) case_stmt (7)
                         case_stmt (6) case_stmt (5)
-#endif
+                        #endif
                         case_stmt (4) case_stmt (3)
                         case_stmt (2) case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef case_stmt
+                #undef case_stmt
 
                 return result;
         }
@@ -13501,19 +13501,19 @@ struct vec_add_op
         const T* upper_bound = vec + lud.upper_bound;
 
         while (vec < upper_bound) {
-#define exprtk_loop(N) \
+            #define exprtk_loop(N) \
                r[N] += vec[N];        \
 
             exprtk_loop (0) exprtk_loop (1)
                 exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                #ifndef exprtk_disable_superscalar_unroll
                 exprtk_loop (4) exprtk_loop (5)
                 exprtk_loop (6) exprtk_loop (7)
                 exprtk_loop (8) exprtk_loop (9)
                 exprtk_loop (10) exprtk_loop (11)
                 exprtk_loop (12) exprtk_loop (13)
                 exprtk_loop (14) exprtk_loop (15)
-#endif
+                #endif
 
                 vec += lud.batch_size;
         }
@@ -13522,31 +13522,31 @@ struct vec_add_op
 
         exprtk_disable_fallthrough_begin
             switch (lud.remainder) {
-#define case_stmt(N)       \
+                #define case_stmt(N)       \
                case N : r[0] += vec[i++]; \
 
-#ifndef exprtk_disable_superscalar_unroll
+                #ifndef exprtk_disable_superscalar_unroll
                 case_stmt (15) case_stmt (14)
                     case_stmt (13) case_stmt (12)
                     case_stmt (11) case_stmt (10)
                     case_stmt (9) case_stmt (8)
                     case_stmt (7) case_stmt (6)
                     case_stmt (5) case_stmt (4)
-#endif
+                    #endif
                     case_stmt (3) case_stmt (2)
                     case_stmt (1)
             }
         exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+            #undef exprtk_loop
+            #undef case_stmt
 
             return (r[0] + r[1] + r[2] + r[3])
-#ifndef exprtk_disable_superscalar_unroll
+            #ifndef exprtk_disable_superscalar_unroll
             + (r[4] + r[5] + r[6] + r[7])
             + (r[8] + r[9] + r[10] + r[11])
             + (r[12] + r[13] + r[14] + r[15])
-#endif
+            #endif
             ;
     }
 };
@@ -13569,23 +13569,23 @@ struct vec_mul_op
 
             exprtk_disable_fallthrough_begin
                 switch (vec_size) {
-#define case_stmt(N)         \
+                    #define case_stmt(N)         \
                   case N : result *= vec[i++]; \
 
-#ifndef exprtk_disable_superscalar_unroll
+                    #ifndef exprtk_disable_superscalar_unroll
                     case_stmt (16) case_stmt (15)
                         case_stmt (14) case_stmt (13)
                         case_stmt (12) case_stmt (11)
                         case_stmt (10) case_stmt (9)
                         case_stmt (8) case_stmt (7)
                         case_stmt (6) case_stmt (5)
-#endif
+                        #endif
                         case_stmt (4) case_stmt (3)
                         case_stmt (2) case_stmt (1)
                 }
             exprtk_disable_fallthrough_end
 
-#undef case_stmt
+                #undef case_stmt
 
                 return result;
         }
@@ -13598,19 +13598,19 @@ struct vec_mul_op
         const T* upper_bound = vec + lud.upper_bound;
 
         while (vec < upper_bound) {
-#define exprtk_loop(N) \
+            #define exprtk_loop(N) \
                r[N] *= vec[N];        \
 
             exprtk_loop (0) exprtk_loop (1)
                 exprtk_loop (2) exprtk_loop (3)
-#ifndef exprtk_disable_superscalar_unroll
+                #ifndef exprtk_disable_superscalar_unroll
                 exprtk_loop (4) exprtk_loop (5)
                 exprtk_loop (6) exprtk_loop (7)
                 exprtk_loop (8) exprtk_loop (9)
                 exprtk_loop (10) exprtk_loop (11)
                 exprtk_loop (12) exprtk_loop (13)
                 exprtk_loop (14) exprtk_loop (15)
-#endif
+                #endif
 
                 vec += lud.batch_size;
         }
@@ -13619,31 +13619,31 @@ struct vec_mul_op
 
         exprtk_disable_fallthrough_begin
             switch (lud.remainder) {
-#define case_stmt(N)       \
+                #define case_stmt(N)       \
                case N : r[0] *= vec[i++]; \
 
-#ifndef exprtk_disable_superscalar_unroll
+                #ifndef exprtk_disable_superscalar_unroll
                 case_stmt (15) case_stmt (14)
                     case_stmt (13) case_stmt (12)
                     case_stmt (11) case_stmt (10)
                     case_stmt (9) case_stmt (8)
                     case_stmt (7) case_stmt (6)
                     case_stmt (5) case_stmt (4)
-#endif
+                    #endif
                     case_stmt (3) case_stmt (2)
                     case_stmt (1)
             }
         exprtk_disable_fallthrough_end
 
-#undef exprtk_loop
-#undef case_stmt
+            #undef exprtk_loop
+            #undef case_stmt
 
             return (r[0] * r[1] * r[2] * r[3])
-#ifndef exprtk_disable_superscalar_unroll
+            #ifndef exprtk_disable_superscalar_unroll
             + (r[4] * r[5] * r[6] * r[7])
             + (r[8] * r[9] * r[10] * r[11])
             + (r[12] * r[13] * r[14] * r[15])
-#endif
+            #endif
             ;
     }
 };
@@ -16416,7 +16416,7 @@ public:
 
 inline void load_operations_map (std::multimap<std::string, details::base_operation_t, details::ilesscompare>& m)
 {
-#define register_op(Symbol, Type, Args)                                             \
+    #define register_op(Symbol, Type, Args)                                             \
          m.insert(std::make_pair(std::string(Symbol),details::base_operation_t(Type,Args))); \
 
     register_op ("abs", e_abs, 1)
@@ -16471,7 +16471,7 @@ inline void load_operations_map (std::multimap<std::string, details::base_operat
         register_op ("clamp", e_clamp, 3)
         register_op ("iclamp", e_iclamp, 3)
         register_op ("inrange", e_inrange, 3)
-#undef register_op
+        #undef register_op
 }
 
 } // namespace details
@@ -16571,7 +16571,7 @@ public:
 
     virtual ~ifunction () {}
 
-#define empty_method_body(N)                   \
+    #define empty_method_body(N)                   \
       {                                              \
          exprtk_debug(("ifunction::operator() - Operator(" #N ") has not been overridden\n")); \
          return std::numeric_limits<T>::quiet_NaN(); \
@@ -16650,7 +16650,7 @@ public:
                                      const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&, const T&)
         empty_method_body (20)
 
-#undef empty_method_body
+        #undef empty_method_body
 
         std::size_t param_count;
 };
@@ -16693,7 +16693,7 @@ public:
 
     virtual ~igeneric_function () {}
 
-#define igeneric_function_empty_body(N)        \
+    #define igeneric_function_empty_body(N)        \
       {                                              \
          exprtk_debug(("igeneric_function::operator() - Operator(" #N ") has not been overridden\n")); \
          return std::numeric_limits<T>::quiet_NaN(); \
@@ -16998,9 +16998,9 @@ protected:
         typedef ivararg_function<T>                 ivararg_function_t;
         typedef igeneric_function<T>                igeneric_function_t;
         typedef details::vector_holder<T>           vector_t;
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         typedef typename details::stringvar_node<T> stringvar_node_t;
-#endif
+        #endif
 
         typedef Type type_t;
         typedef type_t* type_ptr;
@@ -17021,7 +17021,7 @@ protected:
 
         struct deleter
         {
-#define exprtk_define_process(Type)                  \
+            #define exprtk_define_process(Type)                  \
             static inline void process(std::pair<bool,Type*>& n) \
             {                                                    \
                delete n.second;                                  \
@@ -17029,11 +17029,11 @@ protected:
 
             exprtk_define_process (variable_node_t)
                 exprtk_define_process (vector_t)
-#ifndef exprtk_disable_string_capabilities
+                #ifndef exprtk_disable_string_capabilities
                 exprtk_define_process (stringvar_node_t)
-#endif
+                #endif
 
-#undef exprtk_define_process
+                #undef exprtk_define_process
 
                 template <typename DeleteType>
             static inline void process (std::pair<bool, DeleteType*>&)
@@ -17180,12 +17180,12 @@ protected:
                     return std::make_pair (is_constant, new variable_node_t (t));
                 }
 
-#ifndef exprtk_disable_string_capabilities
+                #ifndef exprtk_disable_string_capabilities
                 static inline std::pair<bool, stringvar_node_t*> make (std::string& t, const bool is_constant = false)
                 {
                     return std::make_pair (is_constant, new stringvar_node_t (t));
                 }
-#endif
+                #endif
 
                 static inline std::pair<bool, function_t*> make (function_t& t, const bool is_constant = false)
                 {
@@ -17360,10 +17360,10 @@ protected:
     typedef typename details::variable_node<T>  variable_t;
     typedef typename details::vector_holder<T>  vector_holder_t;
     typedef variable_t* variable_ptr;
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     typedef typename details::stringvar_node<T> stringvar_t;
     typedef stringvar_t* stringvar_ptr;
-#endif
+    #endif
     typedef ifunction        <T>                function_t;
     typedef ivararg_function <T>                vararg_function_t;
     typedef igeneric_function<T>                generic_function_t;
@@ -17385,9 +17385,9 @@ protected:
             type_store<generic_function_t, generic_function_t> string_function_store;
             type_store<generic_function_t, generic_function_t> overload_function_store;
             type_store<vector_holder_t, vector_holder_t   > vector_store;
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             type_store<stringvar_t, std::string       > stringvar_store;
-#endif
+            #endif
 
             st_data ()
             {
@@ -17523,9 +17523,9 @@ public:
 
     inline void clear_strings ()
     {
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         local_data ().stringvar_store.clear ();
-#endif
+        #endif
     }
 
     inline void clear_vectors ()
@@ -17556,7 +17556,7 @@ public:
             return 0;
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline std::size_t stringvar_count () const
     {
         if (valid ())
@@ -17564,7 +17564,7 @@ public:
         else
             return 0;
     }
-#endif
+    #endif
 
     inline std::size_t function_count () const
     {
@@ -17601,7 +17601,7 @@ public:
                                                   reinterpret_cast<const void*>(&var_ref));
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline stringvar_ptr get_stringvar (const std::string& string_name) const
     {
         if (!valid ())
@@ -17628,7 +17628,7 @@ public:
 
         return stringvar_base<T> (string_name, stringvar);
     }
-#endif
+    #endif
 
     inline function_ptr get_function (const std::string& function_name) const
     {
@@ -17703,7 +17703,7 @@ public:
             return local_data ().variable_store.type_ref (symbol_name);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline std::string& stringvar_ref (const std::string& symbol_name)
     {
         static std::string null_stringvar;
@@ -17714,7 +17714,7 @@ public:
         else
             return local_data ().stringvar_store.type_ref (symbol_name);
     }
-#endif
+    #endif
 
     inline bool is_constant_node (const std::string& symbol_name) const
     {
@@ -17726,7 +17726,7 @@ public:
             return local_data ().variable_store.is_constant (symbol_name);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline bool is_constant_string (const std::string& symbol_name) const
     {
         if (!valid ())
@@ -17738,7 +17738,7 @@ public:
         else
             return local_data ().stringvar_store.is_constant (symbol_name);
     }
-#endif
+    #endif
 
     inline bool create_variable (const std::string& variable_name, const T& value = T (0))
     {
@@ -17755,7 +17755,7 @@ public:
         return add_variable (variable_name, t);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline bool create_stringvar (const std::string& stringvar_name, const std::string& value = std::string (""))
     {
         if (!valid ())
@@ -17770,7 +17770,7 @@ public:
 
         return add_stringvar (stringvar_name, s);
     }
-#endif
+    #endif
 
     inline bool add_variable (const std::string& variable_name, T& t, const bool is_constant = false)
     {
@@ -17799,7 +17799,7 @@ public:
         return add_variable (constant_name, t, true);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline bool add_stringvar (const std::string& stringvar_name, std::string& s, const bool is_constant = false)
     {
         if (!valid ())
@@ -17811,7 +17811,7 @@ public:
         else
             return local_data ().stringvar_store.add (stringvar_name, s, is_constant);
     }
-#endif
+    #endif
 
     inline bool add_function (const std::string& function_name, function_t& function)
     {
@@ -17864,7 +17864,7 @@ public:
         return false;
     }
 
-#define exprtk_define_freefunction(NN)                                                \
+    #define exprtk_define_freefunction(NN)                                                \
       inline bool add_function(const std::string& function_name, ff##NN##_functor function) \
       {                                                                                     \
          if (!valid())                                                                      \
@@ -17890,7 +17890,7 @@ public:
         exprtk_define_freefunction (12) exprtk_define_freefunction (13)
         exprtk_define_freefunction (14) exprtk_define_freefunction (15)
 
-#undef exprtk_define_freefunction
+        #undef exprtk_define_freefunction
 
         inline bool add_reserved_function (const std::string& function_name, function_t& function)
     {
@@ -18007,7 +18007,7 @@ public:
             return local_data ().variable_store.remove (variable_name, delete_node);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline bool remove_stringvar (const std::string& string_name)
     {
         if (!valid ())
@@ -18015,7 +18015,7 @@ public:
         else
             return local_data ().stringvar_store.remove (string_name);
     }
-#endif
+    #endif
 
     inline bool remove_function (const std::string& function_name)
     {
@@ -18093,7 +18093,7 @@ public:
             return local_data ().variable_store.get_list (vlist);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     template <typename Allocator,
         template <typename, typename> class Sequence>
     inline std::size_t get_stringvar_list (Sequence<std::pair<std::string, std::string>, Allocator>& svlist) const
@@ -18113,7 +18113,7 @@ public:
         else
             return local_data ().stringvar_store.get_list (svlist);
     }
-#endif
+    #endif
 
     template <typename Allocator,
         template <typename, typename> class Sequence>
@@ -18136,10 +18136,10 @@ public:
             return false;
         else if (local_data ().variable_store.symbol_exists (symbol_name))
             return true;
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         else if (local_data ().stringvar_store.symbol_exists (symbol_name))
             return true;
-#endif
+        #endif
         else if (local_data ().vector_store.symbol_exists (symbol_name))
             return true;
         else if (local_data ().function_store.symbol_exists (symbol_name))
@@ -18158,7 +18158,7 @@ public:
             return local_data ().variable_store.symbol_exists (variable_name);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline bool is_stringvar (const std::string& stringvar_name) const
     {
         if (!valid ())
@@ -18181,7 +18181,7 @@ public:
                  local_data ().stringvar_store.is_constant (symbol_name)
                );
     }
-#endif
+    #endif
 
     inline bool is_function (const std::string& function_name) const
     {
@@ -18217,7 +18217,7 @@ public:
         return local_data ().vector_store.entity_name (ptr);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline std::string get_stringvar_name (const expression_ptr& ptr) const
     {
         return local_data ().stringvar_store.entity_name (ptr);
@@ -18227,7 +18227,7 @@ public:
     {
         return local_data ().stringvar_store.entity_name (ptr);
     }
-#endif
+    #endif
 
     inline bool valid () const
     {
@@ -18926,14 +18926,14 @@ private:
     typedef details::while_loop_rtc_node<T>             while_loop_rtc_node_t;
     typedef details::repeat_until_loop_rtc_node<T>      repeat_until_loop_rtc_node_t;
     typedef details::for_loop_rtc_node<T>               for_loop_rtc_node_t;
-#ifndef exprtk_disable_break_continue
+    #ifndef exprtk_disable_break_continue
     typedef details::while_loop_bc_node<T>              while_loop_bc_node_t;
     typedef details::repeat_until_loop_bc_node<T>       repeat_until_loop_bc_node_t;
     typedef details::for_loop_bc_node<T>                for_loop_bc_node_t;
     typedef details::while_loop_bc_rtc_node<T>          while_loop_bc_rtc_node_t;
     typedef details::repeat_until_loop_bc_rtc_node<T>   repeat_until_loop_bc_rtc_node_t;
     typedef details::for_loop_bc_rtc_node<T>            for_loop_bc_rtc_node_t;
-#endif
+    #endif
     typedef details::switch_node<T>                     switch_node_t;
     typedef details::variable_node<T>                   variable_node_t;
     typedef details::vector_elem_node<T>                vector_elem_node_t;
@@ -18941,7 +18941,7 @@ private:
     typedef details::rebasevector_celem_node<T>         rebasevector_celem_node_t;
     typedef details::vector_node<T>                     vector_node_t;
     typedef details::range_pack<T>                      range_t;
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     typedef details::stringvar_node<T>                  stringvar_node_t;
     typedef details::string_literal_node<T>             string_literal_node_t;
     typedef details::string_range_node<T>               string_range_node_t;
@@ -18952,7 +18952,7 @@ private:
     typedef details::assignment_string_range_node<T>    assignment_string_range_node_t;
     typedef details::conditional_string_node<T>         conditional_string_node_t;
     typedef details::cons_conditional_str_node<T>       cons_conditional_str_node_t;
-#endif
+    #endif
     typedef details::assignment_node<T>                 assignment_node_t;
     typedef details::assignment_vec_elem_node<T>        assignment_vec_elem_node_t;
     typedef details::assignment_rebasevec_elem_node<T>  assignment_rebasevec_elem_node_t;
@@ -19030,9 +19030,9 @@ private:
         typedef variable_node_t* variable_node_ptr;
         typedef vector_holder_t* vector_holder_ptr;
         typedef expression_node_t* expression_node_ptr;
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         typedef stringvar_node_t* stringvar_node_ptr;
-#endif
+        #endif
 
         scope_element ()
             : name ("???")
@@ -19046,9 +19046,9 @@ private:
             , data (0)
             , var_node (0)
             , vec_node (0)
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             , str_node (0)
-#endif
+            #endif
         {
         }
 
@@ -19083,9 +19083,9 @@ private:
             data = 0;
             var_node = 0;
             vec_node = 0;
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             str_node = 0;
-#endif
+            #endif
         }
 
         std::string  name;
@@ -19099,9 +19099,9 @@ private:
         void* data;
         expression_node_ptr var_node;
         vector_holder_ptr   vec_node;
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         stringvar_node_ptr str_node;
-#endif
+        #endif
     };
 
     class scope_element_manager
@@ -19233,11 +19233,11 @@ private:
                 case scope_element::e_vecelem: delete se.var_node;
                     break;
 
-#ifndef exprtk_disable_string_capabilities
+                    #ifndef exprtk_disable_string_capabilities
                 case scope_element::e_string: delete reinterpret_cast<std::string*>(se.data);
                     delete se.str_node;
                     break;
-#endif
+                    #endif
 
                 default: return;
             }
@@ -19303,24 +19303,24 @@ private:
             : parser_ (p)
         {
             parser_.state_.scope_depth++;
-#ifdef exprtk_enable_debugging
+            #ifdef exprtk_enable_debugging
             const std::string depth (2 * parser_.state_.scope_depth, '-');
             exprtk_debug (("%s> Scope Depth: %02d\n",
                 depth.c_str (),
                 static_cast<int>(parser_.state_.scope_depth)));
-#endif
+            #endif
         }
 
         ~scope_handler ()
         {
             parser_.sem_.deactivate (parser_.state_.scope_depth);
             parser_.state_.scope_depth--;
-#ifdef exprtk_enable_debugging
+            #ifdef exprtk_enable_debugging
             const std::string depth (2 * parser_.state_.scope_depth, '-');
             exprtk_debug (("<%s Scope Depth: %02d\n",
                 depth.c_str (),
                 static_cast<int>(parser_.state_.scope_depth)));
-#endif
+            #endif
         }
 
     private:
@@ -19377,9 +19377,9 @@ private:
         typedef typename symbol_table_t::local_data_t local_data_t;
         typedef typename symbol_table_t::variable_ptr variable_ptr;
         typedef typename symbol_table_t::function_ptr function_ptr;
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         typedef typename symbol_table_t::stringvar_ptr stringvar_ptr;
-#endif
+        #endif
         typedef typename symbol_table_t::vector_holder_ptr    vector_holder_ptr;
         typedef typename symbol_table_t::vararg_function_ptr  vararg_function_ptr;
         typedef typename symbol_table_t::generic_function_ptr generic_function_ptr;
@@ -19459,7 +19459,7 @@ private:
             return result;
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline stringvar_ptr get_stringvar (const std::string& string_name) const
         {
             if (!valid_symbol (string_name))
@@ -19479,7 +19479,7 @@ private:
 
             return result;
         }
-#endif
+        #endif
 
         inline function_ptr get_function (const std::string& function_name) const
         {
@@ -19616,7 +19616,7 @@ private:
             return false;
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline bool is_constant_string (const std::string& symbol_name) const
         {
             if (!valid_symbol (symbol_name))
@@ -19633,7 +19633,7 @@ private:
 
             return false;
         }
-#endif
+        #endif
 
         inline bool symbol_exists (const std::string& symbol) const
         {
@@ -19662,7 +19662,7 @@ private:
             return false;
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline bool is_stringvar (const std::string& stringvar_name) const
         {
             for (std::size_t i = 0; i < symtab_list_.size (); ++i) {
@@ -19697,7 +19697,7 @@ private:
 
             return false;
         }
-#endif
+        #endif
 
         inline bool is_function (const std::string& function_name) const
         {
@@ -19754,7 +19754,7 @@ private:
             return local_data ().vector_store.entity_name (ptr);
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline std::string get_stringvar_name (const expression_node_ptr& ptr) const
         {
             return local_data ().stringvar_store.entity_name (ptr);
@@ -19764,7 +19764,7 @@ private:
         {
             return local_data ().stringvar_store.entity_name (ptr);
         }
-#endif
+        #endif
 
         inline local_data_t& local_data (const std::size_t& index = 0)
         {
@@ -19801,11 +19801,11 @@ private:
             parsing_loop_stmt_count = 0;
         }
 
-#ifndef exprtk_enable_debugging
+        #ifndef exprtk_enable_debugging
         void activate_side_effect (const std::string&)
-#else
+            #else
         void activate_side_effect (const std::string& source)
-#endif
+            #endif
         {
             if (!side_effect_present) {
                 side_effect_present = true;
@@ -20664,14 +20664,14 @@ public:
         , resolve_unknown_symbol_ (false)
         , results_context_ (0)
         , unknown_symbol_resolver_ (reinterpret_cast<unknown_symbol_resolver*>(0))
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning (disable:4355)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(push)
+        #pragma warning (disable:4355)
+        #endif
         , sem_ (*this)
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(pop)
+        #endif
         , operator_joiner_2_ (2)
         , operator_joiner_3_ (3)
         , loop_runtime_check_ (0)
@@ -21114,7 +21114,7 @@ private:
         return settings_.inequality_disabled (operation);
     }
 
-#ifdef exprtk_enable_debugging
+    #ifdef exprtk_enable_debugging
     inline void next_token ()
     {
         const std::string ct_str = current_token ().value;
@@ -21130,7 +21130,7 @@ private:
             static_cast<unsigned int>(current_token ().position),
             static_cast<unsigned int>(state_.stack_depth)));
     }
-#endif
+    #endif
 
     inline expression_node_ptr parse_corpus ()
     {
@@ -21298,11 +21298,11 @@ private:
                         current_state.set (e_level03, e_level04, details::e_and);
                         break;
                     } else if (details::imatch (current_token ().value, s_and1)) {
-#ifndef exprtk_disable_sc_andor
+                        #ifndef exprtk_disable_sc_andor
                         current_state.set (e_level03, e_level04, details::e_scand);
-#else
+                        #else
                         current_state.set (e_level03, e_level04, details::e_and);
-#endif
+                        #endif
                         break;
                     } else if (details::imatch (current_token ().value, s_nand)) {
                         current_state.set (e_level03, e_level04, details::e_nand);
@@ -21311,11 +21311,11 @@ private:
                         current_state.set (e_level01, e_level02, details::e_or);
                         break;
                     } else if (details::imatch (current_token ().value, s_or1)) {
-#ifndef exprtk_disable_sc_andor
+                        #ifndef exprtk_disable_sc_andor
                         current_state.set (e_level01, e_level02, details::e_scor);
-#else
+                        #else
                         current_state.set (e_level01, e_level02, details::e_or);
-#endif
+                        #endif
                         break;
                     } else if (details::imatch (current_token ().value, s_nor)) {
                         current_state.set (e_level01, e_level02, details::e_nor);
@@ -21756,10 +21756,10 @@ private:
     template <std::size_t NumberofParameters>
     inline expression_node_ptr parse_function_call (ifunction<T>* function, const std::string& function_name)
     {
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4127)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(push)
+        #pragma warning(disable: 4127)
+        #endif
         if (0 == NumberofParameters) {
             set_error (
                make_error (parser_error::e_syntax,
@@ -21769,9 +21769,9 @@ private:
 
             return error_node ();
         }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+        #ifdef _MSC_VER
+        #pragma warning(pop)
+        #endif
 
         expression_node_ptr branch[NumberofParameters];
         expression_node_ptr result = error_node ();
@@ -21953,7 +21953,7 @@ private:
 
                 if (operation.num_params == parameter_count) {
                     switch (parameter_count) {
-#define base_opr_case(N)                                         \
+                        #define base_opr_case(N)                                         \
                      case N : {                                                       \
                                  expression_node_ptr pl##N[N] = {0};                  \
                                  std::copy(param_list, param_list + N, pl##N);        \
@@ -21965,7 +21965,7 @@ private:
                             base_opr_case (2)
                             base_opr_case (3)
                             base_opr_case (4)
-#undef base_opr_case
+                            #undef base_opr_case
                     }
                 }
             }
@@ -22030,7 +22030,7 @@ private:
             result = false;
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         if (result) {
             const bool consq_is_str = is_generally_string_node (consequent);
             const bool alter_is_str = is_generally_string_node (alternative);
@@ -22050,7 +22050,7 @@ private:
                 result = false;
             }
         }
-#endif
+        #endif
 
         if (result) {
             const bool consq_is_vec = is_ivector_node (consequent);
@@ -22175,7 +22175,7 @@ private:
             }
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         if (result) {
             const bool consq_is_str = is_generally_string_node (consequent);
             const bool alter_is_str = is_generally_string_node (alternative);
@@ -22195,7 +22195,7 @@ private:
                 result = false;
             }
         }
-#endif
+        #endif
 
         if (result) {
             const bool consq_is_vec = is_ivector_node (consequent);
@@ -22334,7 +22334,7 @@ private:
             result = false;
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         if (result) {
             const bool consq_is_str = is_generally_string_node (consequent);
             const bool alter_is_str = is_generally_string_node (alternative);
@@ -22354,7 +22354,7 @@ private:
                 result = false;
             }
         }
-#endif
+        #endif
 
         if (result) {
             const bool consq_is_vec = is_ivector_node (consequent);
@@ -23138,7 +23138,7 @@ private:
         return result;
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline expression_node_ptr parse_string_range_statement (expression_node_ptr& expression)
     {
         if (!token_is (token_t::e_lsqrbracket)) {
@@ -23180,12 +23180,12 @@ private:
 
         return result;
     }
-#else
+    #else
     inline expression_node_ptr parse_string_range_statement (expression_node_ptr&)
     {
         return error_node ();
     }
-#endif
+    #endif
 
     inline void parse_pending_string_rangesize (expression_node_ptr& expression)
     {
@@ -23514,7 +23514,7 @@ private:
         dec_.add_symbol (symbol, st);
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline expression_node_ptr parse_string ()
     {
         const std::string symbol = current_token ().value;
@@ -23587,14 +23587,14 @@ private:
 
         return result;
     }
-#else
+    #else
     inline expression_node_ptr parse_string ()
     {
         return error_node ();
     }
-#endif
+    #endif
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline expression_node_ptr parse_const_string ()
     {
         const std::string   const_str = current_token ().value;
@@ -23654,12 +23654,12 @@ private:
 
         return result;
     }
-#else
+    #else
     inline expression_node_ptr parse_const_string ()
     {
         return error_node ();
     }
-#endif
+    #endif
 
     inline expression_node_ptr parse_vector ()
     {
@@ -24229,7 +24229,7 @@ private:
             return false;
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline expression_node_ptr parse_string_function_call (igeneric_function<T>* function, const std::string& function_name)
     {
         // Move pass the function name
@@ -24341,7 +24341,7 @@ private:
         sdd.delete_ptr = (0 == result);
         return result;
     }
-#endif
+    #endif
 
     template <typename Type, std::size_t NumberOfParameters>
     struct parse_special_function_impl
@@ -24450,7 +24450,7 @@ private:
         return node_allocator_.allocate<details::null_node<T> > ();
     }
 
-#ifndef exprtk_disable_break_continue
+    #ifndef exprtk_disable_break_continue
     inline expression_node_ptr parse_break_statement ()
     {
         if (state_.parsing_break_stmt) {
@@ -24535,7 +24535,7 @@ private:
             return node_allocator_.allocate<details::continue_node<T> > ();
         }
     }
-#endif
+    #endif
 
     inline expression_node_ptr parse_define_vector_statement (const std::string& vec_name)
     {
@@ -24828,7 +24828,7 @@ private:
         return result;
     }
 
-#ifndef exprtk_disable_string_capabilities
+    #ifndef exprtk_disable_string_capabilities
     inline expression_node_ptr parse_define_string_statement (const std::string& str_name, expression_node_ptr initialisation_expression)
     {
         stringvar_node_t* str_node = reinterpret_cast<stringvar_node_t*>(0);
@@ -24894,12 +24894,12 @@ private:
 
         return expression_generator_ (details::e_assign, branch);
     }
-#else
+    #else
     inline expression_node_ptr parse_define_string_statement (const std::string&, expression_node_ptr)
     {
         return error_node ();
     }
-#endif
+    #endif
 
     inline bool local_variable_is_shadowed (const std::string& symbol)
     {
@@ -25338,7 +25338,7 @@ private:
         return result;
     }
 
-#ifndef exprtk_disable_return_statement
+    #ifndef exprtk_disable_return_statement
     inline expression_node_ptr parse_return_statement ()
     {
         if (state_.parsing_return_stmt) {
@@ -25440,12 +25440,12 @@ private:
 
         return result;
     }
-#else
+    #else
     inline expression_node_ptr parse_return_statement ()
     {
         return error_node ();
     }
-#endif
+    #endif
 
     inline bool post_variable_process (const std::string& symbol)
     {
@@ -25556,20 +25556,20 @@ private:
                 } else if (scope_element::e_vector == se.type) {
                     return parse_vector ();
                 }
-#ifndef exprtk_disable_string_capabilities
+                #ifndef exprtk_disable_string_capabilities
                 else if (scope_element::e_string == se.type) {
                     return parse_string ();
                 }
-#endif
+                #endif
             }
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         // Are we dealing with a string variable?
         if (symtab_store_.is_stringvar (symbol)) {
             return parse_string ();
         }
-#endif
+        #endif
 
         {
             // Are we dealing with a function?
@@ -25643,7 +25643,7 @@ private:
             }
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         {
             // Are we dealing with a vararg string returning function?
             igeneric_function<T>* string_function = symtab_store_.get_string_function (symbol);
@@ -25691,7 +25691,7 @@ private:
                 }
             }
         }
-#endif
+        #endif
 
         // Are we dealing with a vector?
         if (symtab_store_.is_vector (symbol)) {
@@ -25849,26 +25849,26 @@ private:
         } else if (details::imatch (symbol, symbol_null)) {
             return parse_null_statement ();
         }
-#ifndef exprtk_disable_break_continue
+        #ifndef exprtk_disable_break_continue
         else if (details::imatch (symbol, symbol_break)) {
             return parse_break_statement ();
         } else if (details::imatch (symbol, symbol_continue)) {
             return parse_continue_statement ();
         }
-#endif
+        #endif
         else if (details::imatch (symbol, symbol_var)) {
             return parse_define_var_statement ();
         } else if (details::imatch (symbol, symbol_swap)) {
             return parse_swap_statement ();
         }
-#ifndef exprtk_disable_return_statement
+        #ifndef exprtk_disable_return_statement
         else if (
                   details::imatch (symbol, symbol_return) &&
                   settings_.control_struct_enabled (symbol)
                 ) {
             return parse_return_statement ();
         }
-#endif
+        #endif
         else if (symtab_store_.valid () || !sem_.empty ()) {
             return parse_symtab_symbol ();
         } else {
@@ -25922,11 +25922,11 @@ private:
         } else if (token_t::e_symbol == current_token ().type) {
             branch = parse_symbol ();
         }
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         else if (token_t::e_string == current_token ().type) {
             branch = parse_const_string ();
         }
-#endif
+        #endif
         else if (token_t::e_lbracket == current_token ().type) {
             next_token ();
 
@@ -26055,12 +26055,12 @@ private:
 
         inline void init_synthesize_map ()
         {
-#ifndef exprtk_disable_enhanced_features
+            #ifndef exprtk_disable_enhanced_features
             synthesize_map_["(v)o(v)"] = synthesize_vov_expression::process;
             synthesize_map_["(c)o(v)"] = synthesize_cov_expression::process;
             synthesize_map_["(v)o(c)"] = synthesize_voc_expression::process;
 
-#define register_synthezier(S)                      \
+            #define register_synthezier(S)                      \
             synthesize_map_[S ::node_type::id()] = S ::process; \
 
             register_synthezier (synthesize_vovov_expression0)
@@ -26123,7 +26123,7 @@ private:
                 register_synthezier (synthesize_covocov_expression4)
                 register_synthezier (synthesize_vocovoc_expression4)
                 register_synthezier (synthesize_covovoc_expression4)
-#endif
+                #endif
         }
 
         inline void set_parser (parser_t& p)
@@ -26205,7 +26205,7 @@ private:
             return node_allocator_->allocate<literal_node_t> (v);
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline expression_node_ptr operator() (const std::string& s) const
         {
             return node_allocator_->allocate<string_literal_node_t> (s);
@@ -26228,7 +26228,7 @@ private:
             else
                 return error_node ();
         }
-#endif
+        #endif
 
         inline bool unary_optimisable (const details::operator_type& operation) const
         {
@@ -26334,7 +26334,7 @@ private:
                 parser_->settings_.assignment_enabled (operation);
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline bool valid_string_operation (const details::operator_type& operation) const
         {
             return (details::e_add == operation) ||
@@ -26351,12 +26351,12 @@ private:
                 (details::e_addass == operation) ||
                 (details::e_swap == operation);
         }
-#else
+        #else
         inline bool valid_string_operation (const details::operator_type&) const
         {
             return false;
         }
-#endif
+        #endif
 
         inline std::string to_str (const details::operator_type& operation) const
         {
@@ -26662,7 +26662,7 @@ private:
             return (b0_string && b1_string && b2_string && (details::e_inrange == operation));
         }
 
-#ifndef exprtk_disable_sc_andor
+        #ifndef exprtk_disable_sc_andor
         inline bool is_shortcircuit_expression (const details::operator_type& operation) const
         {
             return (
@@ -26670,12 +26670,12 @@ private:
                      (details::e_scor == operation)
                    );
         }
-#else
+        #else
         inline bool is_shortcircuit_expression (const details::operator_type&) const
         {
             return false;
         }
-#endif
+        #endif
 
         inline bool is_null_present (expression_node_ptr (&branch)[2]) const
         {
@@ -26748,19 +26748,19 @@ private:
             } else if (is_null_present (branch)) {
                 return synthesize_null_expression (operation, branch);
             }
-#ifndef exprtk_disable_cardinal_pow_optimisation
+            #ifndef exprtk_disable_cardinal_pow_optimisation
             else if (is_constpow_operation (operation, branch)) {
                 return cardinal_pow_optimisation (branch);
             }
-#endif
+            #endif
 
             expression_node_ptr result = error_node ();
 
-#ifndef exprtk_disable_enhanced_features
+            #ifndef exprtk_disable_enhanced_features
             if (synthesize_expression (operation, branch, result)) {
                 return result;
             } else
-#endif
+                #endif
 
             {
                 /*
@@ -26793,11 +26793,11 @@ private:
             } else if (boc_optimisable (operation, branch)) {
                 return synthesize_boc_expression::process ((*this), operation, branch);
             }
-#ifndef exprtk_disable_enhanced_features
+            #ifndef exprtk_disable_enhanced_features
             else if (cov_optimisable (operation, branch)) {
                 return synthesize_cov_expression::process ((*this), operation, branch);
             }
-#endif
+            #endif
             else if (binext_optimisable (operation, branch)) {
                 return synthesize_binary_ext_expression::process ((*this), operation, branch);
             } else
@@ -26885,7 +26885,7 @@ private:
                 allocate<cons_conditional_node_t> (condition, consequent);
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline expression_node_ptr conditional_string (expression_node_ptr condition,
                                                       expression_node_ptr consequent,
                                                       expression_node_ptr alternative) const
@@ -26923,14 +26923,14 @@ private:
             else
                 return error_node ();
         }
-#else
+        #else
         inline expression_node_ptr conditional_string (expression_node_ptr,
                                                       expression_node_ptr,
                                                       expression_node_ptr) const
         {
             return error_node ();
         }
-#endif
+        #endif
 
         inline expression_node_ptr conditional_vector (expression_node_ptr condition,
                                                       expression_node_ptr consequent,
@@ -27014,7 +27014,7 @@ private:
                     return node_allocator_->allocate<while_loop_node_t>
                     (condition, branch);
             }
-#ifndef exprtk_disable_break_continue
+            #ifndef exprtk_disable_break_continue
             else {
                 if (rtc)
                     return node_allocator_->allocate<while_loop_bc_rtc_node_t>
@@ -27023,9 +27023,9 @@ private:
                     return node_allocator_->allocate<while_loop_bc_node_t>
                     (condition, branch);
             }
-#else
+            #else
             return error_node ();
-#endif
+            #endif
         }
 
         inline expression_node_ptr repeat_until_loop (expression_node_ptr& condition,
@@ -27062,7 +27062,7 @@ private:
                     return node_allocator_->allocate<repeat_until_loop_node_t>
                     (condition, branch);
             }
-#ifndef exprtk_disable_break_continue
+            #ifndef exprtk_disable_break_continue
             else {
                 if (rtc)
                     return node_allocator_->allocate<repeat_until_loop_bc_rtc_node_t>
@@ -27071,9 +27071,9 @@ private:
                     return node_allocator_->allocate<repeat_until_loop_bc_node_t>
                     (condition, branch);
             }
-#else
+            #else
             return error_node ();
-#endif
+            #endif
         }
 
         inline expression_node_ptr for_loop (expression_node_ptr& initialiser,
@@ -27126,7 +27126,7 @@ private:
                       loop_body
                     );
             }
-#ifndef exprtk_disable_break_continue
+            #ifndef exprtk_disable_break_continue
             else {
                 if (rtc)
                     return node_allocator_->allocate<for_loop_bc_rtc_node_t>
@@ -27146,9 +27146,9 @@ private:
                       loop_body
                     );
             }
-#else
+            #else
             return error_node ();
-#endif
+            #endif
         }
 
         template <typename Allocator,
@@ -27217,7 +27217,7 @@ private:
         {
             typedef std::vector<std::pair<expression_node_ptr, bool> > arg_list_t;
 
-#define case_stmt(N)                                                         \
+            #define case_stmt(N)                                                         \
             if (is_true(arg[(2 * N)].first)) { return arg[(2 * N) + 1].first->value(); } \
 
             struct switch_impl_1
@@ -27313,7 +27313,7 @@ private:
                 }
             };
 
-#undef case_stmt
+            #undef case_stmt
         };
 
         template <typename Allocator,
@@ -27333,7 +27333,7 @@ private:
                 return const_optimise_switch (arg_list);
 
             switch ((arg_list.size () - 1) / 2) {
-#define case_stmt(N)                                                       \
+                #define case_stmt(N)                                                       \
                case N :                                                                   \
                   return node_allocator_->                                                \
                             allocate<details::switch_n_node                               \
@@ -27346,7 +27346,7 @@ private:
                     case_stmt (5)
                     case_stmt (6)
                     case_stmt (7)
-#undef case_stmt
+                    #undef case_stmt
 
                 default: return node_allocator_->allocate<details::switch_node<Type> > (arg_list);
             }
@@ -27366,7 +27366,7 @@ private:
                 return node_allocator_->allocate<details::multi_switch_node<Type> > (arg_list);
         }
 
-#define unary_opr_switch_statements             \
+        #define unary_opr_switch_statements             \
          case_stmt(details::e_abs   , details::abs_op  ) \
          case_stmt(details::e_acos  , details::acos_op ) \
          case_stmt(details::e_acosh , details::acosh_op) \
@@ -27414,12 +27414,12 @@ private:
             T& v = static_cast<details::variable_node<T>*>(branch[0])->ref ();
 
             switch (operation) {
-#define case_stmt(op0, op1)                                                         \
+                #define case_stmt(op0, op1)                                                         \
                case op0 : return node_allocator_->                                                 \
                              allocate<typename details::unary_variable_node<Type,op1<Type> > >(v); \
 
                 unary_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -27428,13 +27428,13 @@ private:
                                                               expression_node_ptr (&branch)[1])
         {
             switch (operation) {
-#define case_stmt(op0, op1)                                                   \
+                #define case_stmt(op0, op1)                                                   \
                case op0 : return node_allocator_->                                           \
                              allocate<typename details::unary_vector_node<Type,op1<Type> > > \
                                 (operation, branch[0]);                                      \
 
                 unary_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -27443,12 +27443,12 @@ private:
                                                                expression_node_ptr (&branch)[1])
         {
             switch (operation) {
-#define case_stmt(op0, op1)                                                               \
+                #define case_stmt(op0, op1)                                                               \
                case op0 : return node_allocator_->                                                       \
                              allocate<typename details::unary_branch_node<Type,op1<Type> > >(branch[0]); \
 
                 unary_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -27459,7 +27459,7 @@ private:
             expression_node_ptr temp_node = error_node ();
 
             switch (operation) {
-#define case_stmt(op)                                                        \
+                #define case_stmt(op)                                                        \
                case details::e_sf##op : temp_node = node_allocator_->                       \
                              allocate<details::sf3_node<Type,details::sf##op##_op<Type> > > \
                                 (operation, branch);                                        \
@@ -27477,7 +27477,7 @@ private:
                     case_stmt (36) case_stmt (37) case_stmt (38) case_stmt (39)
                     case_stmt (40) case_stmt (41) case_stmt (42) case_stmt (43)
                     case_stmt (44) case_stmt (45) case_stmt (46) case_stmt (47)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
 
@@ -27497,7 +27497,7 @@ private:
             const Type& v2 = static_cast<variable_ptr>(branch[2])->ref ();
 
             switch (operation) {
-#define case_stmt(op)                                                                \
+                #define case_stmt(op)                                                                \
                case details::e_sf##op : return node_allocator_->                                    \
                              allocate_rrr<details::sf3_var_node<Type,details::sf##op##_op<Type> > > \
                                 (v0, v1, v2);                                                       \
@@ -27514,7 +27514,7 @@ private:
                     case_stmt (36) case_stmt (37) case_stmt (38) case_stmt (39)
                     case_stmt (40) case_stmt (41) case_stmt (42) case_stmt (43)
                     case_stmt (44) case_stmt (45) case_stmt (46) case_stmt (47)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -27529,7 +27529,7 @@ private:
                 return varnode_optimise_sf3 (operation, branch);
             else {
                 switch (operation) {
-#define case_stmt(op)                                                        \
+                    #define case_stmt(op)                                                        \
                   case details::e_sf##op : return node_allocator_->                            \
                                 allocate<details::sf3_node<Type,details::sf##op##_op<Type> > > \
                                    (operation, branch);                                        \
@@ -27546,7 +27546,7 @@ private:
                         case_stmt (36) case_stmt (37) case_stmt (38) case_stmt (39)
                         case_stmt (40) case_stmt (41) case_stmt (42) case_stmt (43)
                         case_stmt (44) case_stmt (45) case_stmt (46) case_stmt (47)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -27557,7 +27557,7 @@ private:
             expression_node_ptr temp_node = error_node ();
 
             switch (operation) {
-#define case_stmt(op)                                                                    \
+                #define case_stmt(op)                                                                    \
                case details::e_sf##op : temp_node = node_allocator_->                                   \
                                          allocate<details::sf4_node<Type,details::sf##op##_op<Type> > > \
                                             (operation, branch);                                        \
@@ -27576,7 +27576,7 @@ private:
                     case_stmt (88) case_stmt (89) case_stmt (90) case_stmt (91)
                     case_stmt (92) case_stmt (93) case_stmt (94) case_stmt (95)
                     case_stmt (96) case_stmt (97) case_stmt (98) case_stmt (99)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
 
@@ -27597,7 +27597,7 @@ private:
             const Type& v3 = static_cast<variable_ptr>(branch[3])->ref ();
 
             switch (operation) {
-#define case_stmt(op)                                                                 \
+                #define case_stmt(op)                                                                 \
                case details::e_sf##op : return node_allocator_->                                     \
                              allocate_rrrr<details::sf4_var_node<Type,details::sf##op##_op<Type> > > \
                                 (v0, v1, v2, v3);                                                    \
@@ -27615,7 +27615,7 @@ private:
                     case_stmt (88) case_stmt (89) case_stmt (90) case_stmt (91)
                     case_stmt (92) case_stmt (93) case_stmt (94) case_stmt (95)
                     case_stmt (96) case_stmt (97) case_stmt (98) case_stmt (99)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -27629,7 +27629,7 @@ private:
             else if (all_nodes_variables (branch))
                 return varnode_optimise_sf4 (operation, branch);
             switch (operation) {
-#define case_stmt(op)                                                        \
+                #define case_stmt(op)                                                        \
                case details::e_sf##op : return node_allocator_->                            \
                              allocate<details::sf4_node<Type,details::sf##op##_op<Type> > > \
                                 (operation, branch);                                        \
@@ -27647,7 +27647,7 @@ private:
                     case_stmt (88) case_stmt (89) case_stmt (90) case_stmt (91)
                     case_stmt (92) case_stmt (93) case_stmt (94) case_stmt (95)
                     case_stmt (96) case_stmt (97) case_stmt (98) case_stmt (99)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -27659,7 +27659,7 @@ private:
             expression_node_ptr temp_node = error_node ();
 
             switch (operation) {
-#define case_stmt(op0, op1)                                                \
+                #define case_stmt(op0, op1)                                                \
                case op0 : temp_node = node_allocator_->                                   \
                                          allocate<details::vararg_node<Type,op1<Type> > > \
                                             (arg_list);                                   \
@@ -27673,7 +27673,7 @@ private:
                     case_stmt (details::e_mand, details::vararg_mand_op)
                     case_stmt (details::e_mor, details::vararg_mor_op)
                     case_stmt (details::e_multi, details::vararg_multi_op)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
 
@@ -27700,7 +27700,7 @@ private:
         inline expression_node_ptr varnode_optimise_varargfunc (const details::operator_type& operation, Sequence<expression_node_ptr, Allocator>& arg_list)
         {
             switch (operation) {
-#define case_stmt(op0, op1)                                                  \
+                #define case_stmt(op0, op1)                                                  \
                case op0 : return node_allocator_->                                          \
                              allocate<details::vararg_varnode<Type,op1<Type> > >(arg_list); \
 
@@ -27712,7 +27712,7 @@ private:
                     case_stmt (details::e_mand, details::vararg_mand_op)
                     case_stmt (details::e_mor, details::vararg_mor_op)
                     case_stmt (details::e_multi, details::vararg_multi_op)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -27723,7 +27723,7 @@ private:
         {
             if (1 == arg_list.size ()) {
                 switch (operation) {
-#define case_stmt(op0, op1)                                                     \
+                    #define case_stmt(op0, op1)                                                     \
                   case op0 : return node_allocator_->                                             \
                                 allocate<details::vectorize_node<Type,op1<Type> > >(arg_list[0]); \
 
@@ -27732,7 +27732,7 @@ private:
                         case_stmt (details::e_avg, details::vec_avg_op)
                         case_stmt (details::e_min, details::vec_min_op)
                         case_stmt (details::e_max, details::vec_max_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else
@@ -27756,15 +27756,15 @@ private:
             else if (all_nodes_variables (arg_list))
                 return varnode_optimise_varargfunc (operation, arg_list);
 
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             if (details::e_smulti == operation) {
                 return node_allocator_->
                     allocate<details::str_vararg_node<Type, details::vararg_multi_op<Type> > > (arg_list);
             } else
-#endif
+                #endif
             {
                 switch (operation) {
-#define case_stmt(op0, op1)                                               \
+                    #define case_stmt(op0, op1)                                               \
                   case op0 : return node_allocator_->                                       \
                                 allocate<details::vararg_node<Type,op1<Type> > >(arg_list); \
 
@@ -27776,7 +27776,7 @@ private:
                         case_stmt (details::e_mand, details::vararg_mand_op)
                         case_stmt (details::e_mor, details::vararg_mor_op)
                         case_stmt (details::e_multi, details::vararg_multi_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -27901,7 +27901,7 @@ private:
             }
         }
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline expression_node_ptr string_function_call (igeneric_function_t* gf,
                                                         std::vector<expression_node_ptr>& arg_list,
                                                         const std::size_t& param_seq_index = std::numeric_limits<std::size_t>::max ())
@@ -27948,9 +27948,9 @@ private:
                 return error_node ();
             }
         }
-#endif
+        #endif
 
-#ifndef exprtk_disable_return_statement
+        #ifndef exprtk_disable_return_statement
         inline expression_node_ptr return_call (std::vector<expression_node_ptr>& arg_list)
         {
             if (!all_nodes_valid (arg_list)) {
@@ -27990,7 +27990,7 @@ private:
 
             return result;
         }
-#else
+        #else
         inline expression_node_ptr return_call (std::vector<expression_node_ptr>&)
         {
             return error_node ();
@@ -28002,7 +28002,7 @@ private:
         {
             return error_node ();
         }
-#endif
+        #endif
 
         inline expression_node_ptr vector_element (const std::string& symbol,
                                                   vector_holder_ptr vector_base,
@@ -28100,11 +28100,11 @@ private:
                     .get_variable_name (node);
                     break;
 
-#ifndef exprtk_disable_string_capabilities
+                    #ifndef exprtk_disable_string_capabilities
                 case e_st_string: symbol_name = parser_->symtab_store_
                     .get_stringvar_name (node);
                     break;
-#endif
+                    #endif
 
                 case e_st_vector:
                     {
@@ -28155,7 +28155,7 @@ private:
 
                 return synthesize_expression<assignment_rebasevec_celem_node_t, 2> (operation, branch);
             }
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             else if (details::is_string_node (branch[0])) {
                 lodge_assignment (e_st_string, branch[0]);
 
@@ -28165,7 +28165,7 @@ private:
 
                 return synthesize_expression<assignment_string_range_node_t, 2> (operation, branch);
             }
-#endif
+            #endif
             else if (details::is_vector_node (branch[0])) {
                 lodge_assignment (e_st_vector, branch[0]);
 
@@ -28187,7 +28187,7 @@ private:
                 lodge_assignment (e_st_variable, branch[0]);
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                 \
+                    #define case_stmt(op0, op1)                                                                 \
                   case op0 : return node_allocator_->                                                         \
                                 template allocate_rrr<typename details::assignment_op_node<Type,op1<Type> > > \
                                    (operation, branch[0], branch[1]);                                         \
@@ -28197,14 +28197,14 @@ private:
                         case_stmt (details::e_mulass, details::mul_op)
                         case_stmt (details::e_divass, details::div_op)
                         case_stmt (details::e_modass, details::mod_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (details::is_vector_elem_node (branch[0])) {
                 lodge_assignment (e_st_vecelem, branch[0]);
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                           \
+                    #define case_stmt(op0, op1)                                                                           \
                   case op0 : return node_allocator_->                                                                   \
                                  template allocate_rrr<typename details::assignment_vec_elem_op_node<Type,op1<Type> > > \
                                     (operation, branch[0], branch[1]);                                                  \
@@ -28214,14 +28214,14 @@ private:
                         case_stmt (details::e_mulass, details::mul_op)
                         case_stmt (details::e_divass, details::div_op)
                         case_stmt (details::e_modass, details::mod_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (details::is_rebasevector_elem_node (branch[0])) {
                 lodge_assignment (e_st_vecelem, branch[0]);
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                                 \
+                    #define case_stmt(op0, op1)                                                                                 \
                   case op0 : return node_allocator_->                                                                         \
                                  template allocate_rrr<typename details::assignment_rebasevec_elem_op_node<Type,op1<Type> > > \
                                     (operation, branch[0], branch[1]);                                                        \
@@ -28231,14 +28231,14 @@ private:
                         case_stmt (details::e_mulass, details::mul_op)
                         case_stmt (details::e_divass, details::div_op)
                         case_stmt (details::e_modass, details::mod_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (details::is_rebasevector_celem_node (branch[0])) {
                 lodge_assignment (e_st_vecelem, branch[0]);
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                                  \
+                    #define case_stmt(op0, op1)                                                                                  \
                   case op0 : return node_allocator_->                                                                          \
                                  template allocate_rrr<typename details::assignment_rebasevec_celem_op_node<Type,op1<Type> > > \
                                     (operation, branch[0], branch[1]);                                                         \
@@ -28248,7 +28248,7 @@ private:
                         case_stmt (details::e_mulass, details::mul_op)
                         case_stmt (details::e_divass, details::div_op)
                         case_stmt (details::e_modass, details::mod_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (details::is_vector_node (branch[0])) {
@@ -28256,7 +28256,7 @@ private:
 
                 if (details::is_ivector_node (branch[1])) {
                     switch (operation) {
-#define case_stmt(op0, op1)                                                                        \
+                        #define case_stmt(op0, op1)                                                                        \
                      case op0 : return node_allocator_->                                                                \
                                    template allocate_rrr<typename details::assignment_vecvec_op_node<Type,op1<Type> > > \
                                       (operation, branch[0], branch[1]);                                                \
@@ -28266,12 +28266,12 @@ private:
                             case_stmt (details::e_mulass, details::mul_op)
                             case_stmt (details::e_divass, details::div_op)
                             case_stmt (details::e_modass, details::mod_op)
-#undef case_stmt
+                            #undef case_stmt
                         default: return error_node ();
                     }
                 } else {
                     switch (operation) {
-#define case_stmt(op0, op1)                                                                     \
+                        #define case_stmt(op0, op1)                                                                     \
                      case op0 : return node_allocator_->                                                             \
                                    template allocate_rrr<typename details::assignment_vec_op_node<Type,op1<Type> > > \
                                       (operation, branch[0], branch[1]);                                             \
@@ -28281,12 +28281,12 @@ private:
                             case_stmt (details::e_mulass, details::mul_op)
                             case_stmt (details::e_divass, details::div_op)
                             case_stmt (details::e_modass, details::mod_op)
-#undef case_stmt
+                            #undef case_stmt
                         default: return error_node ();
                     }
                 }
             }
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             else if (
                       (details::e_addass == operation) &&
                       details::is_string_node (branch[0])
@@ -28297,7 +28297,7 @@ private:
 
                 return synthesize_expression<addass_t, 2> (operation, branch);
             }
-#endif
+            #endif
             else {
                 parser_->set_synthesis_error ("Invalid assignment operation[2]");
 
@@ -28311,7 +28311,7 @@ private:
             const bool is_b0_ivec = details::is_ivector_node (branch[0]);
             const bool is_b1_ivec = details::is_ivector_node (branch[1]);
 
-#define batch_eqineq_logic_case                 \
+            #define batch_eqineq_logic_case                 \
             case_stmt(details::e_lt    , details::lt_op   ) \
             case_stmt(details::e_lte   , details::lte_op  ) \
             case_stmt(details::e_gt    , details::gt_op   ) \
@@ -28328,41 +28328,41 @@ private:
 
             if (is_b0_ivec && is_b1_ivec) {
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                    \
+                    #define case_stmt(op0, op1)                                                                    \
                   case op0 : return node_allocator_->                                                            \
                                 template allocate_rrr<typename details::vec_binop_vecvec_node<Type,op1<Type> > > \
                                    (operation, branch[0], branch[1]);                                            \
 
                     batch_eqineq_logic_case
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (is_b0_ivec && !is_b1_ivec) {
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                    \
+                    #define case_stmt(op0, op1)                                                                    \
                   case op0 : return node_allocator_->                                                            \
                                 template allocate_rrr<typename details::vec_binop_vecval_node<Type,op1<Type> > > \
                                    (operation, branch[0], branch[1]);                                            \
 
                     batch_eqineq_logic_case
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (!is_b0_ivec && is_b1_ivec) {
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                    \
+                    #define case_stmt(op0, op1)                                                                    \
                   case op0 : return node_allocator_->                                                            \
                                 template allocate_rrr<typename details::vec_binop_valvec_node<Type,op1<Type> > > \
                                    (operation, branch[0], branch[1]);                                            \
 
                     batch_eqineq_logic_case
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else
                 return error_node ();
 
-#undef batch_eqineq_logic_case
+            #undef batch_eqineq_logic_case
         }
 
         inline expression_node_ptr synthesize_vecarithmetic_operation_expression (const details::operator_type& operation,
@@ -28371,7 +28371,7 @@ private:
             const bool is_b0_ivec = details::is_ivector_node (branch[0]);
             const bool is_b1_ivec = details::is_ivector_node (branch[1]);
 
-#define vector_ops                          \
+            #define vector_ops                          \
             case_stmt(details::e_add , details::add_op) \
             case_stmt(details::e_sub , details::sub_op) \
             case_stmt(details::e_mul , details::mul_op) \
@@ -28380,43 +28380,43 @@ private:
 
             if (is_b0_ivec && is_b1_ivec) {
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                    \
+                    #define case_stmt(op0, op1)                                                                    \
                   case op0 : return node_allocator_->                                                            \
                                 template allocate_rrr<typename details::vec_binop_vecvec_node<Type,op1<Type> > > \
                                    (operation, branch[0], branch[1]);                                            \
 
                     vector_ops
                         case_stmt (details::e_pow, details::pow_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (is_b0_ivec && !is_b1_ivec) {
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                    \
+                    #define case_stmt(op0, op1)                                                                    \
                   case op0 : return node_allocator_->                                                            \
                                 template allocate_rrr<typename details::vec_binop_vecval_node<Type,op1<Type> > > \
                                    (operation, branch[0], branch[1]);                                            \
 
                     vector_ops
                         case_stmt (details::e_pow, details::pow_op)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else if (!is_b0_ivec && is_b1_ivec) {
                 switch (operation) {
-#define case_stmt(op0, op1)                                                                    \
+                    #define case_stmt(op0, op1)                                                                    \
                   case op0 : return node_allocator_->                                                            \
                                 template allocate_rrr<typename details::vec_binop_valvec_node<Type,op1<Type> > > \
                                    (operation, branch[0], branch[1]);                                            \
 
                     vector_ops
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             } else
                 return error_node ();
 
-#undef vector_ops
+            #undef vector_ops
         }
 
         inline expression_node_ptr synthesize_swap_expression (expression_node_ptr (&branch)[2])
@@ -28427,10 +28427,10 @@ private:
             const bool v0_is_ivec = details::is_ivector_node (branch[0]);
             const bool v1_is_ivec = details::is_ivector_node (branch[1]);
 
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             const bool v0_is_str = details::is_generally_string_node (branch[0]);
             const bool v1_is_str = details::is_generally_string_node (branch[1]);
-#endif
+            #endif
 
             expression_node_ptr result = error_node ();
 
@@ -28450,7 +28450,7 @@ private:
             } else if (v0_is_ivec && v1_is_ivec) {
                 result = node_allocator_->allocate<details::swap_vecvec_node<T> > (branch[0], branch[1]);
             }
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             else if (v0_is_str && v1_is_str) {
                 if (is_string_node (branch[0]) && is_string_node (branch[1]))
                     result = node_allocator_->allocate<details::swap_string_node<T> >
@@ -28459,7 +28459,7 @@ private:
                     result = node_allocator_->allocate<details::swap_genstrings_node<T> >
                     (branch[0], branch[1]);
             }
-#endif
+            #endif
             else {
                 parser_->set_synthesis_error ("Only variables, strings, vectors or vector elements can be swapped");
 
@@ -28471,7 +28471,7 @@ private:
             return result;
         }
 
-#ifndef exprtk_disable_sc_andor
+        #ifndef exprtk_disable_sc_andor
         inline expression_node_ptr synthesize_shortcircuit_expression (const details::operator_type& operation, expression_node_ptr (&branch)[2])
         {
             expression_node_ptr result = error_node ();
@@ -28514,14 +28514,14 @@ private:
             } else
                 return error_node ();
         }
-#else
+        #else
         inline expression_node_ptr synthesize_shortcircuit_expression (const details::operator_type&, expression_node_ptr (&)[2])
         {
             return error_node ();
         }
-#endif
+        #endif
 
-#define basic_opr_switch_statements         \
+        #define basic_opr_switch_statements         \
          case_stmt(details::e_add , details::add_op) \
          case_stmt(details::e_sub , details::sub_op) \
          case_stmt(details::e_mul , details::mul_op) \
@@ -28529,7 +28529,7 @@ private:
          case_stmt(details::e_mod , details::mod_op) \
          case_stmt(details::e_pow , details::pow_op) \
 
-#define extended_opr_switch_statements        \
+        #define extended_opr_switch_statements        \
          case_stmt(details::e_lt   , details::lt_op  ) \
          case_stmt(details::e_lte  , details::lte_op ) \
          case_stmt(details::e_gt   , details::gt_op  ) \
@@ -28543,12 +28543,12 @@ private:
          case_stmt(details::e_xor  , details::xor_op ) \
          case_stmt(details::e_xnor , details::xnor_op) \
 
-#ifndef exprtk_disable_cardinal_pow_optimisation
+        #ifndef exprtk_disable_cardinal_pow_optimisation
         template <typename TType, template <typename, typename> class IPowNode>
         inline expression_node_ptr cardinal_pow_optimisation_impl (const TType& v, const unsigned int& p)
         {
             switch (p) {
-#define case_stmt(cp)                                                     \
+                #define case_stmt(cp)                                                     \
                case cp : return node_allocator_->                                        \
                             allocate<IPowNode<T,details::numeric::fast_exp<T,cp> > >(v); \
 
@@ -28567,7 +28567,7 @@ private:
                     case_stmt (49) case_stmt (50) case_stmt (51) case_stmt (52)
                     case_stmt (53) case_stmt (54) case_stmt (55) case_stmt (56)
                     case_stmt (57) case_stmt (58) case_stmt (59) case_stmt (60)
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -28612,7 +28612,7 @@ private:
             else
                 return cardinal_pow_optimisation_impl<expression_node_ptr, details::bipowninv_node> (branch[0], p);
         }
-#else
+        #else
         inline expression_node_ptr cardinal_pow_optimisation (T&, const T&)
         {
             return error_node ();
@@ -28627,7 +28627,7 @@ private:
         {
             return error_node ();
         }
-#endif
+        #endif
 
         struct synthesize_binary_ext_expression
         {
@@ -28751,14 +28751,14 @@ private:
                 }
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                          \
+                    #define case_stmt(op0, op1)                                                          \
                   case op0 : return expr_gen.node_allocator_->                                         \
                                 template allocate<typename details::binary_ext_node<Type,op1<Type> > > \
                                    (branch[0], branch[1]);                                             \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -28772,7 +28772,7 @@ private:
             {
                 const Type& v = static_cast<details::variable_node<Type>*>(branch[0])->ref ();
 
-#ifndef exprtk_disable_enhanced_features
+                #ifndef exprtk_disable_enhanced_features
                 if (details::is_sf3ext_node (branch[1])) {
                     expression_node_ptr result = error_node ();
 
@@ -28785,7 +28785,7 @@ private:
                         return result;
                     }
                 }
-#endif
+                #endif
 
                 if (
                      (details::e_mul == operation) ||
@@ -28819,14 +28819,14 @@ private:
                 }
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                      \
+                    #define case_stmt(op0, op1)                                                      \
                   case op0 : return expr_gen.node_allocator_->                                     \
                                 template allocate_rc<typename details::vob_node<Type,op1<Type> > > \
                                    (v, branch[1]);                                                 \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -28840,7 +28840,7 @@ private:
             {
                 const Type& v = static_cast<details::variable_node<Type>*>(branch[1])->ref ();
 
-#ifndef exprtk_disable_enhanced_features
+                #ifndef exprtk_disable_enhanced_features
                 if (details::is_sf3ext_node (branch[0])) {
                     expression_node_ptr result = error_node ();
 
@@ -28854,7 +28854,7 @@ private:
                         return result;
                     }
                 }
-#endif
+                #endif
 
                 if (
                      (details::e_add == operation) ||
@@ -28898,14 +28898,14 @@ private:
                 }
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                      \
+                    #define case_stmt(op0, op1)                                                      \
                   case op0 : return expr_gen.node_allocator_->                                     \
                                 template allocate_cr<typename details::bov_node<Type,op1<Type> > > \
                                    (branch[0], v);                                                 \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -29001,7 +29001,7 @@ private:
                         }
                     }
                 }
-#ifndef exprtk_disable_enhanced_features
+                #ifndef exprtk_disable_enhanced_features
                 else if (details::is_sf3ext_node (branch[1])) {
                     expression_node_ptr result = error_node ();
 
@@ -29015,17 +29015,17 @@ private:
                         return result;
                     }
                 }
-#endif
+                #endif
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                      \
+                    #define case_stmt(op0, op1)                                                      \
                   case op0 : return expr_gen.node_allocator_->                                     \
                                 template allocate_tt<typename details::cob_node<Type,op1<Type> > > \
                                    (c,  branch[1]);                                                \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -29102,7 +29102,7 @@ private:
                     }
                 }
 
-#ifndef exprtk_disable_enhanced_features
+                #ifndef exprtk_disable_enhanced_features
                 if (details::is_sf3ext_node (branch[0])) {
                     expression_node_ptr result = error_node ();
 
@@ -29116,17 +29116,17 @@ private:
                         return result;
                     }
                 }
-#endif
+                #endif
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                      \
+                    #define case_stmt(op0, op1)                                                      \
                   case op0 : return expr_gen.node_allocator_->                                     \
                                 template allocate_cr<typename details::boc_node<Type,op1<Type> > > \
                                    (branch[0], c);                                                 \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -29408,7 +29408,7 @@ private:
             }
         };
 
-#ifndef exprtk_disable_enhanced_features
+        #ifndef exprtk_disable_enhanced_features
         inline bool synthesize_expression (const details::operator_type& operation,
                                           expression_node_ptr (&branch)[2],
                                           expression_node_ptr& result)
@@ -29440,14 +29440,14 @@ private:
                 const Type& v2 = static_cast<details::variable_node<Type>*>(branch[1])->ref ();
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                      \
+                    #define case_stmt(op0, op1)                                                      \
                   case op0 : return expr_gen.node_allocator_->                                     \
                                 template allocate_rr<typename details::vov_node<Type,op1<Type> > > \
                                    (v1, v2);                                                       \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -29474,14 +29474,14 @@ private:
                     return static_cast<details::variable_node<Type>*>(branch[1]);
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                      \
+                    #define case_stmt(op0, op1)                                                      \
                   case op0 : return expr_gen.node_allocator_->                                     \
                                 template allocate_cr<typename details::cov_node<Type,op1<Type> > > \
                                    (c, v);                                                         \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -29515,14 +29515,14 @@ private:
                     return static_cast<details::variable_node<Type>*>(branch[0]);
 
                 switch (operation) {
-#define case_stmt(op0, op1)                                                      \
+                    #define case_stmt(op0, op1)                                                      \
                   case op0 : return expr_gen.node_allocator_->                                     \
                                 template allocate_rc<typename details::voc_node<Type,op1<Type> > > \
                                    (v, c);                                                         \
 
                     basic_opr_switch_statements
                         extended_opr_switch_statements
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -29536,7 +29536,7 @@ private:
                                                       T0 t0, T1 t1, T2 t2)
             {
                 switch (sf3opr) {
-#define case_stmt(op)                                                                              \
+                    #define case_stmt(op)                                                                              \
                   case details::e_sf##op : return details::T0oT1oT2_sf3ext<T,T0,T1,T2,details::sf##op##_op<Type> >:: \
                                 allocate(*(expr_gen.node_allocator_), t0, t1, t2);                                   \
 
@@ -29548,7 +29548,7 @@ private:
                         case_stmt (20) case_stmt (21) case_stmt (22) case_stmt (23)
                         case_stmt (24) case_stmt (25) case_stmt (26) case_stmt (27)
                         case_stmt (28) case_stmt (29) case_stmt (30)
-#undef case_stmt
+                        #undef case_stmt
                     default: return error_node ();
                 }
             }
@@ -29578,11 +29578,11 @@ private:
                                                       T0 t0, T1 t1, T2 t2, T3 t3)
             {
                 switch (sf4opr) {
-#define case_stmt0(op)                                                                                      \
+                    #define case_stmt0(op)                                                                                      \
                   case details::e_sf##op : return details::T0oT1oT2oT3_sf4ext<Type,T0,T1,T2,T3,details::sf##op##_op<Type> >:: \
                                 allocate(*(expr_gen.node_allocator_), t0, t1, t2, t3);                                        \
 
-#define case_stmt1(op)                                                                                             \
+                    #define case_stmt1(op)                                                                                             \
                   case details::e_sf4ext##op : return details::T0oT1oT2oT3_sf4ext<Type,T0,T1,T2,T3,details::sfext##op##_op<Type> >:: \
                                 allocate(*(expr_gen.node_allocator_), t0, t1, t2, t3);                                               \
 
@@ -29613,8 +29613,8 @@ private:
                         case_stmt1 (56) case_stmt1 (57) case_stmt1 (58) case_stmt1 (59)
                         case_stmt1 (60) case_stmt1 (61)
 
-#undef case_stmt0
-#undef case_stmt1
+                        #undef case_stmt0
+                        #undef case_stmt1
                     default: return error_node ();
                 }
             }
@@ -34062,7 +34062,7 @@ private:
                 return "INVALID";
             }
         };
-#endif
+        #endif
 
         inline expression_node_ptr synthesize_uvouv_expression (const details::operator_type& operation, expression_node_ptr (&branch)[2])
         {
@@ -34131,13 +34131,13 @@ private:
             return result;
         }
 
-#undef basic_opr_switch_statements
-#undef extended_opr_switch_statements
-#undef unary_opr_switch_statements
+        #undef basic_opr_switch_statements
+        #undef extended_opr_switch_statements
+        #undef unary_opr_switch_statements
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
 
-#define string_opr_switch_statements            \
+        #define string_opr_switch_statements            \
          case_stmt(details::e_lt    , details::lt_op   ) \
          case_stmt(details::e_lte   , details::lte_op  ) \
          case_stmt(details::e_gt    , details::gt_op   ) \
@@ -34154,13 +34154,13 @@ private:
                                                                        range_t rp0)
         {
             switch (opr) {
-#define case_stmt(op0, op1)                                                                      \
+                #define case_stmt(op0, op1)                                                                      \
                case op0 : return node_allocator_->                                                              \
                              allocate_ttt<typename details::str_xrox_node<Type,T0,T1,range_t,op1<Type> >,T0,T1> \
                                 (s0, s1, rp0);                                                                  \
 
                 string_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -34171,13 +34171,13 @@ private:
                                                                        range_t rp1)
         {
             switch (opr) {
-#define case_stmt(op0, op1)                                                                      \
+                #define case_stmt(op0, op1)                                                                      \
                case op0 : return node_allocator_->                                                              \
                              allocate_ttt<typename details::str_xoxr_node<Type,T0,T1,range_t,op1<Type> >,T0,T1> \
                                 (s0, s1, rp1);                                                                  \
 
                 string_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -34188,13 +34188,13 @@ private:
                                                                         range_t rp0, range_t rp1)
         {
             switch (opr) {
-#define case_stmt(op0, op1)                                                                        \
+                #define case_stmt(op0, op1)                                                                        \
                case op0 : return node_allocator_->                                                                \
                              allocate_tttt<typename details::str_xroxr_node<Type,T0,T1,range_t,op1<Type> >,T0,T1> \
                                 (s0, s1, rp0, rp1);                                                               \
 
                 string_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -34203,12 +34203,12 @@ private:
         inline expression_node_ptr synthesize_sos_expression_impl (const details::operator_type& opr, T0 s0, T1 s1)
         {
             switch (opr) {
-#define case_stmt(op0, op1)                                                                 \
+                #define case_stmt(op0, op1)                                                                 \
                case op0 : return node_allocator_->                                                         \
                              allocate_tt<typename details::sos_node<Type,T0,T1,op1<Type> >,T0,T1>(s0, s1); \
 
                 string_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
@@ -34444,19 +34444,19 @@ private:
         inline expression_node_ptr synthesize_strogen_expression (const details::operator_type& opr, expression_node_ptr (&branch)[2])
         {
             switch (opr) {
-#define case_stmt(op0, op1)                                                      \
+                #define case_stmt(op0, op1)                                                      \
                case op0 : return node_allocator_->                                              \
                              allocate_ttt<typename details::str_sogens_node<Type,op1<Type> > >  \
                                 (opr, branch[0], branch[1]);                                    \
 
                 string_opr_switch_statements
-#undef case_stmt
+                    #undef case_stmt
                 default: return error_node ();
             }
         }
-#endif
+        #endif
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline expression_node_ptr synthesize_string_expression (const details::operator_type& opr, expression_node_ptr (&branch)[2])
         {
             if ((0 == branch[0]) || (0 == branch[1])) {
@@ -34523,15 +34523,15 @@ private:
 
             return error_node ();
         }
-#else
+        #else
         inline expression_node_ptr synthesize_string_expression (const details::operator_type&, expression_node_ptr (&branch)[2])
         {
             details::free_all_nodes (*node_allocator_, branch);
             return error_node ();
         }
-#endif
+        #endif
 
-#ifndef exprtk_disable_string_capabilities
+        #ifndef exprtk_disable_string_capabilities
         inline expression_node_ptr synthesize_string_expression (const details::operator_type& opr, expression_node_ptr (&branch)[3])
         {
             if (details::e_inrange != opr)
@@ -34626,13 +34626,13 @@ private:
             } else
                 return error_node ();
         }
-#else
+        #else
         inline expression_node_ptr synthesize_string_expression (const details::operator_type&, expression_node_ptr (&branch)[3])
         {
             details::free_all_nodes (*node_allocator_, branch);
             return error_node ();
         }
-#endif
+        #endif
 
         inline expression_node_ptr synthesize_null_expression (const details::operator_type& operation, expression_node_ptr (&branch)[2])
         {
@@ -34838,7 +34838,7 @@ private:
                     e.register_local_data (se.data, se.size, 1);
                 }
             }
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             else if (scope_element::e_string == se.type) {
                 if (se.str_node) {
                     e.register_local_var (se.str_node);
@@ -34848,13 +34848,13 @@ private:
                     e.register_local_data (se.data, se.size, 2);
                 }
             }
-#endif
+            #endif
 
             se.var_node = 0;
             se.vec_node = 0;
-#ifndef exprtk_disable_string_capabilities
+            #ifndef exprtk_disable_string_capabilities
             se.str_node = 0;
-#endif
+            #endif
             se.data = 0;
             se.ref_count = 0;
             se.active = false;
@@ -34869,7 +34869,7 @@ private:
 
     inline void load_unary_operations_map (unary_op_map_t& m)
     {
-#define register_unary_op(Op, UnaryFunctor)            \
+        #define register_unary_op(Op, UnaryFunctor)            \
          m.insert(std::make_pair(Op,UnaryFunctor<T>::process)); \
 
         register_unary_op (details::e_abs, details::abs_op)
@@ -34911,14 +34911,14 @@ private:
             register_unary_op (details::e_ncdf, details::ncdf_op)
             register_unary_op (details::e_frac, details::frac_op)
             register_unary_op (details::e_trunc, details::trunc_op)
-#undef register_unary_op
+            #undef register_unary_op
     }
 
     inline void load_binary_operations_map (binary_op_map_t& m)
     {
         typedef typename binary_op_map_t::value_type value_type;
 
-#define register_binary_op(Op, BinaryFunctor)       \
+        #define register_binary_op(Op, BinaryFunctor)       \
          m.insert(value_type(Op,BinaryFunctor<T>::process)); \
 
         register_binary_op (details::e_add, details::add_op)
@@ -34939,14 +34939,14 @@ private:
             register_binary_op (details::e_nor, details::nor_op)
             register_binary_op (details::e_xor, details::xor_op)
             register_binary_op (details::e_xnor, details::xnor_op)
-#undef register_binary_op
+            #undef register_binary_op
     }
 
     inline void load_inv_binary_operations_map (inv_binary_op_map_t& m)
     {
         typedef typename inv_binary_op_map_t::value_type value_type;
 
-#define register_binary_op(Op, BinaryFunctor)       \
+        #define register_binary_op(Op, BinaryFunctor)       \
          m.insert(value_type(BinaryFunctor<T>::process,Op)); \
 
         register_binary_op (details::e_add, details::add_op)
@@ -34967,14 +34967,14 @@ private:
             register_binary_op (details::e_nor, details::nor_op)
             register_binary_op (details::e_xor, details::xor_op)
             register_binary_op (details::e_xnor, details::xnor_op)
-#undef register_binary_op
+            #undef register_binary_op
     }
 
     inline void load_sf3_map (sf3_map_t& sf3_map)
     {
         typedef std::pair<trinary_functor_t, details::operator_type> pair_t;
 
-#define register_sf3(Op)                                                                             \
+        #define register_sf3(Op)                                                                             \
          sf3_map[details::sf##Op##_op<T>::id()] = pair_t(details::sf##Op##_op<T>::process,details::e_sf##Op); \
 
         register_sf3 (00) register_sf3 (01) register_sf3 (02) register_sf3 (03)
@@ -34985,20 +34985,20 @@ private:
             register_sf3 (20) register_sf3 (21) register_sf3 (22) register_sf3 (23)
             register_sf3 (24) register_sf3 (25) register_sf3 (26) register_sf3 (27)
             register_sf3 (28) register_sf3 (29) register_sf3 (30)
-#undef register_sf3
+            #undef register_sf3
 
-#define register_sf3_extid(Id, Op)                                        \
+            #define register_sf3_extid(Id, Op)                                        \
          sf3_map[Id] = pair_t(details::sf##Op##_op<T>::process,details::e_sf##Op); \
 
             register_sf3_extid ("(t-t)-t", 23)  // (t-t)-t --> t-(t+t)
-#undef register_sf3_extid
+            #undef register_sf3_extid
     }
 
     inline void load_sf4_map (sf4_map_t& sf4_map)
     {
         typedef std::pair<quaternary_functor_t, details::operator_type> pair_t;
 
-#define register_sf4(Op)                                                                             \
+        #define register_sf4(Op)                                                                             \
          sf4_map[details::sf##Op##_op<T>::id()] = pair_t(details::sf##Op##_op<T>::process,details::e_sf##Op); \
 
         register_sf4 (48) register_sf4 (49) register_sf4 (50) register_sf4 (51)
@@ -35010,9 +35010,9 @@ private:
             register_sf4 (72) register_sf4 (73) register_sf4 (74) register_sf4 (75)
             register_sf4 (76) register_sf4 (77) register_sf4 (78) register_sf4 (79)
             register_sf4 (80) register_sf4 (81) register_sf4 (82) register_sf4 (83)
-#undef register_sf4
+            #undef register_sf4
 
-#define register_sf4ext(Op)                                                                                    \
+            #define register_sf4ext(Op)                                                                                    \
          sf4_map[details::sfext##Op##_op<T>::id()] = pair_t(details::sfext##Op##_op<T>::process,details::e_sf4ext##Op); \
 
             register_sf4ext (00) register_sf4ext (01) register_sf4ext (02) register_sf4ext (03)
@@ -35031,7 +35031,7 @@ private:
             register_sf4ext (52) register_sf4ext (53) register_sf4ext (54) register_sf4ext (55)
             register_sf4ext (56) register_sf4ext (57) register_sf4ext (58) register_sf4ext (59)
             register_sf4ext (60) register_sf4ext (61)
-#undef register_sf4ext
+            #undef register_sf4ext
     }
 
     inline results_context_t& results_ctx ()
@@ -35045,14 +35045,14 @@ private:
 
     inline void return_cleanup ()
     {
-#ifndef exprtk_disable_return_statement
+        #ifndef exprtk_disable_return_statement
         if (results_context_) {
             delete results_context_;
             results_context_ = 0;
         }
 
         state_.return_stmt_present = false;
-#endif
+        #endif
     }
 
 private:
@@ -35746,7 +35746,7 @@ public:
 
     virtual ~polynomial () {}
 
-#define poly_rtrn(NN) \
+    #define poly_rtrn(NN) \
       return (NN != N) ? std::numeric_limits<T>::quiet_NaN() :
 
     inline virtual T operator() (const T& x, const T& c1, const T& c0)
@@ -35822,7 +35822,7 @@ public:
         poly_rtrn (12) (poly_impl<T, 12>::evaluate (x, c12, c11, c10, c9, c8, c7, c6, c5, c4, c3, c2, c1, c0));
     }
 
-#undef poly_rtrn
+    #undef poly_rtrn
 
     inline virtual T operator() ()
     {
@@ -35967,7 +35967,7 @@ private:
 
         virtual ~base_func () {}
 
-#define exprtk_assign(Index)   \
+        #define exprtk_assign(Index)   \
          (*v[Index]) = v##Index; \
 
         inline void update (const T& v0)
@@ -36006,9 +36006,9 @@ private:
                 exprtk_assign (4) exprtk_assign (5)
         }
 
-#ifdef exprtk_assign
-#undef exprtk_assign
-#endif
+        #ifdef exprtk_assign
+        #undef exprtk_assign
+        #endif
 
         inline function_t& setup (expression_t& expr)
         {
@@ -36288,7 +36288,7 @@ private:
         return result;
     }
 
-#define def_fp_retval(N)                               \
+    #define def_fp_retval(N)                               \
       struct func_##N##param_retval : public func_##N##param \
       {                                                      \
          inline T value(expression_t& e)                     \
@@ -36521,7 +36521,7 @@ private:
                         const bool ret_present = false)
     {
         switch (arg_count) {
-#define case_stmt(N)                                     \
+            #define case_stmt(N)                                     \
             case N : (fp_map_[arg_count])[name] =                    \
                      (!ret_present) ? static_cast<base_func*>        \
                                       (new func_##N##param) :        \
@@ -36532,7 +36532,7 @@ private:
             case_stmt (0) case_stmt (1) case_stmt (2)
                 case_stmt (3) case_stmt (4) case_stmt (5)
                 case_stmt (6)
-#undef case_stmt
+                #undef case_stmt
         }
 
         exprtk::ifunction<T>& ifunc = (*(fp_map_[arg_count])[name]);
@@ -36734,7 +36734,7 @@ inline bool pgo_primer ()
             if (details::is_true (details::numeric::nequal (details::numeric::fast_exp<T, 1>::result (v), details::numeric::pow (v, T (1)))))
                 return false;
 
-#define else_stmt(N)                                                                                                           \
+            #define else_stmt(N)                                                                                                           \
             else if (details::is_true(details::numeric::nequal(details::numeric::fast_exp<T,N>::result(v),details::numeric::pow(v,T(N))))) \
                return false;                                                                                                               \
 
@@ -36781,7 +36781,7 @@ class timer
 {
 public:
 
-#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     timer ()
         : in_use_ (false)
     {
@@ -36805,7 +36805,7 @@ public:
         return (1.0 * (stop_time_.QuadPart - start_time_.QuadPart)) / (1.0 * clock_frequency_.QuadPart);
     }
 
-#else
+    #else
 
     timer ()
         : in_use_ (false)
@@ -36846,7 +36846,7 @@ public:
         return usec_time () * 0.000001;
     }
 
-#endif
+    #endif
 
     inline bool in_use () const
     {
@@ -36857,14 +36857,14 @@ private:
 
     bool in_use_;
 
-#if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+    #if defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     LARGE_INTEGER start_time_;
     LARGE_INTEGER stop_time_;
     LARGE_INTEGER clock_frequency_;
-#else
+    #else
     struct timeval start_time_;
     struct timeval stop_time_;
-#endif
+    #endif
 };
 
 template <typename T>
@@ -37003,7 +37003,7 @@ struct package
 
     bool register_package (exprtk::symbol_table<T>& symtab)
     {
-#define exprtk_register_function(FunctionName, FunctionType)             \
+        #define exprtk_register_function(FunctionName, FunctionType)             \
          if (!symtab.add_function(FunctionName,FunctionType))                     \
          {                                                                        \
             exprtk_debug((                                                        \
@@ -37014,7 +37014,7 @@ struct package
 
         exprtk_register_function ("print", p)
             exprtk_register_function ("println", pl)
-#undef exprtk_register_function
+            #undef exprtk_register_function
 
             return true;
     }
@@ -37227,16 +37227,16 @@ file_descriptor* make_handle (T v)
 template <typename T>
 void perform_check ()
 {
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4127)
-#endif
+    #ifdef _MSC_VER
+    #pragma warning(push)
+    #pragma warning(disable: 4127)
+    #endif
     if (sizeof (T) < sizeof (void*)) {
         throw std::runtime_error ("exprtk::rtl::io::file - Error - pointer size larger than holder.");
     }
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+    #ifdef _MSC_VER
+    #pragma warning(pop)
+    #endif
 }
 
 } // namespace exprtk::rtl::io::file::details
@@ -37498,7 +37498,7 @@ struct package
 
     bool register_package (exprtk::symbol_table<T>& symtab)
     {
-#define exprtk_register_function(FunctionName, FunctionType)                   \
+        #define exprtk_register_function(FunctionName, FunctionType)                   \
          if (!symtab.add_function(FunctionName,FunctionType))                           \
          {                                                                              \
             exprtk_debug((                                                              \
@@ -37513,7 +37513,7 @@ struct package
             exprtk_register_function ("read", r)
             exprtk_register_function ("getline", g)
             exprtk_register_function ("eof", e)
-#undef exprtk_register_function
+            #undef exprtk_register_function
 
             return true;
     }
@@ -38660,7 +38660,7 @@ struct package
 
     bool register_package (exprtk::symbol_table<T>& symtab)
     {
-#define exprtk_register_function(FunctionName, FunctionType)                 \
+        #define exprtk_register_function(FunctionName, FunctionType)                 \
          if (!symtab.add_function(FunctionName,FunctionType))                         \
          {                                                                            \
             exprtk_debug((                                                            \
@@ -38692,7 +38692,7 @@ struct package
             exprtk_register_function ("axpbz", b1_axpbz)
             exprtk_register_function ("dot", dt)
             exprtk_register_function ("dotk", dtk)
-#undef exprtk_register_function
+            #undef exprtk_register_function
 
             return true;
     }

@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ kuvbur@gmail.com https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
 }
 
 'STR#' 32500 "Strings for the Menu" {
@@ -62,7 +62,7 @@
 /* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
 /* [  15] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  17] */	"Выровнять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 'STR#' 30502 "Strings for the Menu" {
@@ -83,7 +83,7 @@
 /* [  14] */	"Привязать элементы к выделенному"
 /* [  15] */	"Ведомость отделки"
 /* [  16] */	"Построить профиль по линии"
-/* [  17] */	"Выронять выделенные чертежи"
+/* [  17] */	"Выровнять выделенные чертежи"
 }
 
 
@@ -147,7 +147,7 @@
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ kuvbur@gmail.com https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
 }
 
 'STR#' 33500 "Strings for the Menu" {
@@ -206,7 +206,7 @@
 /* [  14] */	"Set link to an element^E3^ES^EE^ED^EW^EL^S^R^T^32620"
 /* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  17] */	"Выровнять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 
@@ -228,7 +228,7 @@
 /* [  14] */	"Set link to an element"
 /* [  15] */	"Create finishing elements for the zones"
 /* [  16] */	"Построить профиль по линии"
-/* [  17] */	"Выронять выделенные чертежи"
+/* [  17] */	"Выровнять выделенные чертежи"
 }
 
 

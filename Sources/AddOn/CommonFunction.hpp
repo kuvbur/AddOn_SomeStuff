@@ -49,6 +49,10 @@ static const Int32 MeterStringID = 17;
 static const Int32 CMeterStringID = 18;
 static const Int32 DMeterStringID = 19;
 
+static const GS::UniChar char_formula_start = '<';
+static const GS::UniChar char_formula_end = '>';
+static const GS::UniString str_formula_start = "<";
+static const GS::UniString str_formula_end = ">";
 #define ELEMSTR_LEN 256
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
@@ -58,7 +62,8 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
@@ -231,7 +236,7 @@ short GetFontIndex (GS::UniString& fontname);
 
 double GetTextWidth (short& font, double& fontsize, GS::UniString& var);
 
-GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString& var);
+GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString& var, GS::UniString& no_breake_space, GS::UniString& narow_space);
 
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork

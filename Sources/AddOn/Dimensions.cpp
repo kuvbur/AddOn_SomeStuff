@@ -23,17 +23,17 @@ bool HasDimAutotext ()
 // -----------------------------------------------------------------------------
 bool GetDimAutotext (GS::UniString& autotext)
 {
-#if defined(TESTING)
+    #if defined(TESTING)
     DBprnt ("DimReadPref start");
-#endif
+    #endif
     GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
     API_AutotextType	type = APIAutoText_Custom;
     GSErrCode	err = NoError;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     err = ACAPI_AutoText_GetAutoTexts (&autotexts, type);
-#else
+    #else
     err = ACAPI_Goodies (APIAny_GetAutoTextsID, &autotexts, (void*) (GS::IntPtr) type);
-#endif
+    #endif
     if (err != NoError) {
         msg_rep ("GetDimAutotext", "ACAPI_Goodies", err, APINULLGuid);
         return false;
@@ -41,15 +41,15 @@ bool GetDimAutotext (GS::UniString& autotext)
     for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
         if (autotexts[i][0].Contains ("Addon_Dimens") && !autotexts[i][2].IsEmpty ()) {
             autotext = autotexts[i][2];
-#if defined(TESTING)
+            #if defined(TESTING)
             DBprnt ("DimReadPref found rule");
-#endif
+            #endif
             return true;
         }
     }
-#if defined(TESTING)
+    #if defined(TESTING)
     DBprnt ("DimReadPref rules not found");
-#endif
+    #endif
     return false;
 }
 
@@ -215,11 +215,11 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         if (ACAPI_Attribute_Get (&layer) != NoError) return err;
         GS::UniString layert = GS::UniString::Printf ("%s", layer.header.name);
         for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28)
+            #if defined(AC_28)
             const GS::UniString& regexpstring = cIt->key;
-#else
+            #else
             const GS::UniString& regexpstring = *cIt->key;
-#endif
+            #endif
             if (layert.Contains (regexpstring)) {
                 DimRule d = dimrules.Get (regexpstring);
                 rules.Push (d);
@@ -228,7 +228,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
     }
     // Нет подходящего привали - выходим
     if (rules.IsEmpty ()) return err;
-    API_ElementMemo memo;
+    API_ElementMemo memo = {};
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
     if (err != NoError) {
@@ -248,11 +248,11 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
             UInt32 flag_highlight = DIM_NOCHANGE;
             auto& dimElem = (*memo.dimElems)[k];
             API_ElemTypeID elementType;
-#if defined AC_26 || defined AC_27 || defined AC_28
+            #if defined AC_26 || defined AC_27 || defined AC_28
             elementType = dimElem.base.base.type.typeID;
-#else
+            #else
             elementType = dimElem.base.base.typeID;
-#endif // AC_26
+            #endif // AC_26
 
             // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
             if (dimElem.dimVal == 0 && elementType == API_ColumnID) {
@@ -371,7 +371,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
     } else {
         dimValmm_round = ceil_mod ((GS::Int32) dimVal_r, round_value);
     }
-    double dx = abs (dimVal_r - dimValmm_round * 1.0); // Разница в размерах в мм
+    double dx = fabs (dimVal_r - dimValmm_round * 1.0); // Разница в размерах в мм
     GS::UniString custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
     bool flag_expression = false; //В описании найдена формула
     if (!dimrule.expression.IsEmpty ()) {
@@ -396,7 +396,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
 
             // Вычисляем значения
             flag_expression = true;
-            if (expression.Contains ("<") && expression.Contains (">")) {
+            if (expression.Contains (str_formula_start) && expression.Contains (str_formula_end)) {
                 flag_expression = EvalExpression (expression);
             }
             ReplaceCR (expression);
@@ -447,9 +447,9 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     (void) syncSettings;
     DoneElemGuid doneelemguid;
     DimRules dimrules;
-#if defined(TESTING)
+    #if defined(TESTING)
     DBprnt ("DimRoundAll start");
-#endif
+    #endif
     GS::UniString autotext = "";
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
@@ -465,9 +465,9 @@ void DimRoundAll (const SyncSettings& syncSettings)
 {
     DoneElemGuid doneelemguid;
     DimRules dimrules;
-#if defined(TESTING)
+    #if defined(TESTING)
     DBprnt ("DimRoundAll start");
-#endif
+    #endif
     GS::UniString autotext = "";
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
@@ -477,9 +477,9 @@ void DimRoundAll (const SyncSettings& syncSettings)
 
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
-#if defined(TESTING)
+    #if defined(TESTING)
     DBprnt ("DimRoundAll end");
-#endif
+    #endif
 }
 
 // -----------------------------------------------------------------------------
@@ -497,11 +497,11 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
                 err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams, syncSettings);
                 if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
             }
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) return true;
-#else
+            #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
-#endif
+            #endif
         }
     } else {
         msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
