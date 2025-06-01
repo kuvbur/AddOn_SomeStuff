@@ -1017,7 +1017,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     if (rulestring_one.Contains ("symb_pos_x") || rulestring_one.Contains ("symb_pos_y") || rulestring_one.Contains ("symb_pos_z")) {
         rulestring_one.ReplaceAll ("{symb_pos_", "{Coord:symb_pos_");
     }
-    bool hasformula = rulestring_one.Contains ('<') && rulestring_one.Contains ('>');
+    bool hasformula = rulestring_one.Contains (char_formula_start) && rulestring_one.Contains (char_formula_end);
     if (rulestring_one.Contains ("QRCode:")) {
         rulestring_one.ReplaceAll ("QRCode:", "");
         param.toQRCode = true;
@@ -1072,10 +1072,12 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                     stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                     param.val.uniStringValue = templatestring;
                 } else {
-                    templatestring = rulestring_one.GetSubstring ('<', '>', 0);
+                    templatestring = rulestring_one.GetSubstring (char_formula_start, char_formula_end, 0);
                     FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
                     stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
-                    param.val.uniStringValue = '<' + templatestring + '>';
+                    param.val.uniStringValue = str_formula_start;
+                    param.val.uniStringValue.Append (templatestring);
+                    param.val.uniStringValue.Append (str_formula_end);
                 }
                 rulestring_one.ReplaceAll (templatestring, "");
                 rulestring_one.ReplaceAll (stringformat_raw, "");
@@ -1107,10 +1109,12 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                 stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                 param.val.uniStringValue = templatestring;
             } else {
-                templatestring = rulestring_one.GetSubstring ('<', '>', 0);
+                templatestring = rulestring_one.GetSubstring (char_formula_start, char_formula_end, 0);
                 FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
                 stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
-                param.val.uniStringValue = '<' + templatestring + '>';
+                param.val.uniStringValue = str_formula_start;
+                param.val.uniStringValue.Append (templatestring);
+                param.val.uniStringValue.Append (str_formula_end);
             }
             rulestring_one.ReplaceAll (templatestring, "");
             rulestring_one.ReplaceAll (stringformat_raw, "");
@@ -1250,7 +1254,13 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     GS::UniString paramName = params.Get (0);
     paramName.ReplaceAll ("\\/", "/");
     if (param.fromMaterial || param.val.hasFormula) {
-        param.rawName = paramNamePrefix + paramName.ToLowerCase () + ";" + param.val.uniStringValue + "." + stringformat.stringformat + "}";
+        param.rawName = paramNamePrefix;
+        param.rawName.Append (paramName.ToLowerCase ());
+        param.rawName.Append (";");
+        param.rawName.Append (param.val.uniStringValue);
+        param.rawName.Append (".");
+        param.rawName.Append (stringformat.stringformat);
+        param.rawName.Append ("}");
     } else {
         stringformat_raw = FormatStringFunc::GetFormatString (paramName);
         stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
@@ -1258,15 +1268,21 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     UInt32 start_ignore = 0;
     if (param.fromClassification) {
         param.name = params.Get (0).ToLowerCase ();
-        param.rawName = paramNamePrefix + param.name;
+        param.rawName = paramNamePrefix;
+        param.rawName.Append (param.name);
         if (nparam > 1) {
             param.val.uniStringValue = params.Get (1);
-            param.rawName = param.rawName + ";" + param.val.uniStringValue.ToLowerCase ();
+            param.rawName.Append (";");
+            param.rawName.Append (param.val.uniStringValue.ToLowerCase ());
         }
-        param.rawName = param.rawName + "}";
+        param.rawName.Append ("}");
         start_ignore = 1 + nparam;
     }
-    if (param.rawName.IsEmpty ()) param.rawName = paramNamePrefix + paramName.ToLowerCase () + "}";
+    if (param.rawName.IsEmpty ()) {
+        param.rawName = paramNamePrefix;
+        param.rawName.Append (paramName.ToLowerCase ());
+        param.rawName.Append ("}");
+    }
     if (param.name.IsEmpty ()) param.name = paramName;
     if (nparam > 1) {
         // Обработка данных о размерах массива и типе чтения
@@ -1318,7 +1334,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim0, p)) {
                                 array_row_start = (int) p;
                             } else {
-                                rawName_row_start = "{@gdl:" + dim0 + "}";
+                                rawName_row_start = "{@gdl:";
+                                rawName_row_start.Append (dim0);
+                                rawName_row_start.Append ("}");
                             }
                         }
                         if (ndim > 1) {
@@ -1326,7 +1344,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim1, p)) {
                                 array_row_end = (int) p;
                             } else {
-                                rawName_row_end = "{@gdl:" + dim1 + "}";
+                                rawName_row_end = "{@gdl:";
+                                rawName_row_end.Append (dim1);
+                                rawName_row_end.Append ("}");
                             }
                         }
                     } else {
@@ -1334,7 +1354,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             array_row_start = (int) p;
                             array_row_end = (int) p;
                         } else {
-                            rawName_row_start = "{@gdl:" + sr1 + "}";
+                            rawName_row_start = "{@gdl:";
+                            rawName_row_start.Append (sr1);
+                            rawName_row_start.Append ("}");
                             rawName_row_end = rawName_col_start;
                         }
                     }
@@ -1350,7 +1372,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim0, p)) {
                                 array_column_start = (int) p;
                             } else {
-                                rawName_col_start = "{@gdl:" + dim0 + "}";
+                                rawName_col_start = "{@gdl:";
+                                rawName_col_start.Append (dim0);
+                                rawName_col_start.Append ("}");
                             }
                         }
                         if (ndim > 1) {
@@ -1358,7 +1382,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim1, p)) {
                                 array_column_end = (int) p;
                             } else {
-                                rawName_col_end = "{@gdl:" + dim1 + "}";
+                                rawName_col_end = "{@gdl:";
+                                rawName_col_end.Append (dim1);
+                                rawName_col_end.Append ("}");
                             }
                         }
                     } else {
@@ -1366,7 +1392,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             array_column_start = (int) p;
                             array_column_end = (int) p;
                         } else {
-                            rawName_col_start = "{@gdl:" + sr1 + "}";
+                            rawName_col_start = "{@gdl:";
+                            rawName_col_start.Append (sr1);
+                            rawName_col_start.Append ("}");
                             rawName_col_end = rawName_col_start;
                         }
                     }
@@ -1387,7 +1415,17 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.rawName_col_start = rawName_col_start;
             param.rawName_col_end = rawName_col_end;
             if (!rawName_row_start.IsEmpty () || !rawName_row_end.IsEmpty () || !rawName_col_start.IsEmpty () || !rawName_col_end.IsEmpty ()) param.needPreRead = true;
-            param.rawName = paramNamePrefix + paramName.ToLowerCase () + GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out) + rawName_row_start + "_" + rawName_row_end + "_" + rawName_col_start + "_" + rawName_col_end + "}";
+            param.rawName = paramNamePrefix;
+            param.rawName.Append (paramName.ToLowerCase ());
+            param.rawName.Append (GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", array_row_start, array_row_end, array_column_start, array_column_end, param.val.array_format_out));
+            param.rawName.Append (rawName_row_start);
+            param.rawName.Append ("_");
+            param.rawName.Append (rawName_row_end);
+            param.rawName.Append ("_");
+            param.rawName.Append (rawName_col_start);
+            param.rawName.Append ("_");
+            param.rawName.Append (rawName_col_end);
+            param.rawName.Append ("}");
             start_ignore = 2;
         }
 
@@ -1565,9 +1603,9 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 } else {
                     guidArray.Push (guidArray_all[i]);
                 }
-            }
         }
     }
+}
     if (guidArray.IsEmpty ()) return;
     Int32 bisEng = isEng ();
     GS::Array<API_Neig> selNeigs;
@@ -1584,7 +1622,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             }
             ACAPI_WriteReport (SubElementHotFoundIdString, true);
             return;
-        }
+    }
     } else {
         fmane = "Show Parent Element";
     }
@@ -1675,7 +1713,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
         GS::UniString SubElementNotExsistString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementNotExsistId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_del) + SubElementNotExsistString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d not exsist", count_del);
-    }
+            }
     if (count_inv > 0) {
         GS::UniString SubElementHiddenString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHiddenId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_inv) + SubElementHiddenString + "\n";
@@ -1717,7 +1755,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1811,7 +1849,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                                 }
                                 parentGuid.Get (guid).Add (subguid, isvisible);
                             }
-                        }
+                                }
                     }
                 }
             }
@@ -1874,14 +1912,14 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
                                 }
                             }
                         }
-                    }
-                }
             }
         }
     }
+}
+        }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение прочитанных свойств Sync_GUID для массива элементов

@@ -105,15 +105,15 @@ GS::UniString TextToQRCode (GS::UniString& text, int error_lvl)
             if (d < 10) {
                 qr_txt = qr_txt + GS::UniString::Printf ("%d", d);
             } else {
-                if (d == 10) qr_txt = qr_txt + "A";
-                if (d == 11) qr_txt = qr_txt + "B";
-                if (d == 12) qr_txt = qr_txt + "C";
-                if (d == 13) qr_txt = qr_txt + "D";
-                if (d == 14) qr_txt = qr_txt + "E";
-                if (d == 15) qr_txt = qr_txt + "F";
+                if (d == 10) qr_txt.Append ("A");
+                if (d == 11) qr_txt.Append ("B");
+                if (d == 12) qr_txt.Append ("C");
+                if (d == 13) qr_txt.Append ("D");
+                if (d == 14) qr_txt.Append ("E");
+                if (d == 15) qr_txt.Append ("F");
             }
         }
-        qr_txt = qr_txt + "=";
+        qr_txt.Append ("=");
     }
     return qr_txt;
 }
@@ -526,7 +526,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     }
     if (elemGuid != APINULLGuid) {
         error_type = "GUID element: " + APIGuid2GSGuid (elemGuid).ToUniString () + " " + error_type;
-        API_Elem_Head	elem_head = {};
+        API_Elem_Head elem_head = {};
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
             GS::UniString elemName;
@@ -550,6 +550,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         }
     }
     GS::UniString msg = modulename + ": " + reportString;
+    if (err != NoError) msg = "!! ERROR !!" + msg;
     if (!show) msg = msg + " " + error_type;
     GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
     msg = version + msg + "\n";
@@ -763,7 +764,9 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
         group.guid = definision.groupGuid;
         error = ACAPI_Property_GetPropertyGroup (group);
         if (error == NoError) {
-            name = group.name + "/" + definision.name;
+            name = group.name;
+            name.Append ("/");
+            name.Append (definision.name);
         } else {
             msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
         }
@@ -990,14 +993,19 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
     #else
     err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
     #endif
+    if (err != NoError) {
+        msg_rep ("GetTextWidth err : zero width", "text = ~" + var + "~", err, APINULLGuid);
+}
+    #ifdef TESTING
+    DBtest (width < 0.00001, "GetTextWidth zero width", false);
+    #endif
     if (width < 0.00001) width = 0.1;
     return width;
 }
 
-GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString & var)
+GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString & var, GS::UniString & no_breake_space, GS::UniString & narow_space)
 {
     GS::Array<GS::UniString> str;
-    GS::UniString space = u8"\u2007";
     if (var.IsEmpty ()) return str;
     double width_space = 0;
     double width_in = GetTextWidth (font, fontsize, var);
@@ -1005,22 +1013,22 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         str.PushNew (var);
         return str;
     }
-    var.ReplaceAll (" ", space);
-    width_space = GetTextWidth (font, fontsize, space);
+    var.ReplaceAll (" ", no_breake_space);
+    width_space = GetTextWidth (font, fontsize, narow_space);
     if (width_in < width) {
         Int32 addspace = (Int32) ((width - width_in) / width_space);
+        if (fabs (addspace * width_space - width + width_in) > 0.01) addspace -= 1;
         GS::UniString addspace_txt = var;
         if (addspace > 0) {
             for (Int32 j = 0; j < addspace; j++) {
-                addspace_txt = addspace_txt + space;
+                addspace_txt.Append (narow_space);
             }
         }
         str.Push (addspace_txt);
         return str;
     }
     GS::Array<GS::UniString> parts;
-    UInt32 npart = StringSplt (var, space, parts);
-    if (npart == 1) npart = StringSplt (var, " ", parts);
+    UInt32 npart = StringSplt (var, no_breake_space, parts);
     if (npart == 1) npart = StringSplt (var, ",", parts);
     if (npart == 1) npart = StringSplt (var, ".", parts);
     if (npart == 1) npart = StringSplt (var, ")", parts);
@@ -1037,14 +1045,16 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         if (out.IsEmpty ()) {
             out = parts.Get (i);
         } else {
-            out = out + space + parts.Get (i);
+            out.Append (no_breake_space);
+            out.Append (parts.Get (i));
         }
         width_in = GetTextWidth (font, fontsize, out);
         if (width_in > width && !old.IsEmpty ()) {
             addspace = (Int32) ((width - width_old) / width_space);
+            if (fabs (addspace * width_space - width + width_old) > 0.01) addspace -= 1;
             if (addspace > 0) {
                 for (Int32 j = 0; j < addspace; j++) {
-                    old = old + space;
+                    old.Append (narow_space);
                 }
             }
             str.Push (old);
@@ -1053,9 +1063,10 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         if (i == npart - 1) {
             width_in = GetTextWidth (font, fontsize, out);
             addspace = (Int32) ((width - width_in) / width_space);
+            if (fabs (addspace * width_space - width + width_in) > 0.01) addspace -= 1;
             if (addspace > 0) {
                 for (Int32 j = 0; j < addspace; j++) {
-                    out = out + space;
+                    out.Append (narow_space);
                 }
             }
             str.Push (out);
@@ -1083,7 +1094,7 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
     if (err == NoError) {
         isteamwork = projectInfo.teamwork;
         userid = projectInfo.userId;
-    }
+}
     return err;
 }
 
@@ -1094,14 +1105,13 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
 bool EvalExpression (GS::UniString & unistring_expression)
 {
     if (unistring_expression.IsEmpty ()) return false;
-    if (!unistring_expression.Contains ('<')) return false;
+    if (!unistring_expression.Contains (char_formula_start) && !unistring_expression.Contains (char_formula_end)) return false;
     GS::UniString part = "";
     GS::UniString part_clean = "";
     GS::UniString stringformat = "";
     GS::UniString rezult_txt = "";
     FormatString fstring;
     bool flag_change = true;
-
     // Определение правильного разделителя для расчётов
     GS::UniString delim = ".";
     GS::UniString baddelim = ",";
@@ -1113,16 +1123,17 @@ bool EvalExpression (GS::UniString & unistring_expression)
         baddelim = ".";
         delim = ",";
     }
+    GS::UniString string_to_find = "";
     GSCharCode chcode = GetCharCode (unistring_expression);
-    while (unistring_expression.Contains ('<') && unistring_expression.Contains ('>') && flag_change) {
+    while (unistring_expression.Contains (char_formula_start) && unistring_expression.Contains (char_formula_end) && flag_change) {
         GS::UniString expression_old = unistring_expression;
-        part = unistring_expression.GetSubstring ('<', '>', 0);
+        part = unistring_expression.GetSubstring (char_formula_start, char_formula_end, 0);
         // Ищем строку-формат
-        stringformat = "";
+        stringformat.Clear ();
         fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
         typedef double T;
-        typedef exprtk::expression<T>   expression_t;
-        typedef exprtk::parser<T>       parser_t;
+        typedef exprtk::expression<T> expression_t;
+        typedef exprtk::parser<T> parser_t;
         part_clean = part;
         if (part_clean.Contains (baddelim)) part_clean.ReplaceAll (baddelim, delim);
         std::string expression_string (part_clean.ToCStr (0, MaxUSize, chcode).Get ());
@@ -1130,14 +1141,19 @@ bool EvalExpression (GS::UniString & unistring_expression)
         parser_t parser;
         parser.compile (expression_string, expression);
         const T result = expression.value ();
-        rezult_txt = "";
+        rezult_txt.Clear ();
         if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
         #if defined(TESTING)
         if (std::isnan (result)) {
             DBprnt ("err Formula is nan", part_clean);
         }
         #endif
-        unistring_expression.ReplaceAll ("<" + part + ">" + stringformat, rezult_txt);
+        string_to_find.Clear ();
+        string_to_find.Append (char_formula_start);
+        string_to_find.Append (part);
+        string_to_find.Append (char_formula_end);
+        string_to_find.Append (stringformat);
+        unistring_expression.ReplaceAll (string_to_find, rezult_txt);
         if (expression_old.IsEqual (unistring_expression)) flag_change = false;
     }
     return (!unistring_expression.IsEmpty ());
@@ -1181,8 +1197,8 @@ GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & 
     GS::UniString outsting = "";
     UInt32 n = StringSpltUnic (instring, delim, partstring);
     for (UInt32 i = 0; i < n; i++) {
-        outsting = outsting + partstring[i];
-        if (i < n - 1) outsting = outsting + delim;
+        outsting.Append (partstring[i]);
+        if (i < n - 1) outsting.Append (delim);
     }
     return outsting;
 }
@@ -1401,7 +1417,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-    }
+}
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
     #else
@@ -1750,7 +1766,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         case API_HotlinkID:
         default:
             return false;
-    }
+}
 
     return true;
 }		// ElemHead_To_Neig
@@ -1805,8 +1821,8 @@ bool	ClickAnElem (const char* prompt,
         if (err == NoError) {
             elemHead.type = pars.type;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
-        }
     }
+}
 
     if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
         pointInfo.neig.elemPartType = APINeigElemPart_None;
@@ -1928,7 +1944,7 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
     tpart.ReplaceAll ("{", "");
     tpart.ReplaceAll ("}", "");
     UInt32 n_start = texpression.FindFirst (tpart) + tpart.GetLength (); // Индекс начала поиска строки-формата
-    GS::UniString stringformat_ = texpression.GetSubstring ('>', 'm', n_start) + 'm'; // Предположительно, строка-формат
+    GS::UniString stringformat_ = texpression.GetSubstring (char_formula_end, 'm', n_start) + 'm'; // Предположительно, строка-формат
     if (stringformat_.IsEmpty ()) stringformat_ = texpression.GetSubstring ('"', 'm', n_start) + 'm';
     if (stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
         // Проверим, не обрезали ли лишнюю m
@@ -1943,12 +1959,12 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
         stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
         #ifdef TESTING
         DBtest (!stringformat.Contains ('"'), "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat, false);
-        DBtest (!stringformat.Contains ('>'), "GetFormatStringFromFormula : stringformat.Contains('>') " + stringformat, false);
+        DBtest (!stringformat.Contains (char_formula_end), "GetFormatStringFromFormula : stringformat.Contains(char_formula_end) " + stringformat, false);
         DBtest (!stringformat.Contains ('%'), "GetFormatStringFromFormula : stringformat.Contains('%') " + stringformat, false);
         DBtest (!stringformat.Contains ('}'), "GetFormatStringFromFormula : stringformat.Contains('}') " + stringformat, false);
         #endif
         stringformat.Trim ('"');
-        stringformat.Trim ('>');
+        stringformat.Trim (char_formula_end);
         stringformat.Trim ('%');
         stringformat.Trim ('}');
         stringformat.Trim ();
@@ -2158,7 +2174,7 @@ GS::UniString NumToString (const double& var, const FormatString& stringformat)
         Int32 addzero = n_zero - (out.GetLength () - out.FindFirst (delimetr.GetChar (0)) - 1);
         if (addzero > 0) {
             for (Int32 i = 0; i < addzero; i++) {
-                out = out + "0";
+                out.Append ("0");
             }
         }
     }

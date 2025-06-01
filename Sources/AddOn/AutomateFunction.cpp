@@ -255,7 +255,7 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
     element.header.guid = elemguid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError) return err;
-    API_ElementMemo memo;
+    API_ElementMemo memo = {};
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     GS::Array<Sector> k;
     GS::Array<Point2D> p;

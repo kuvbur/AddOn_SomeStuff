@@ -75,7 +75,8 @@ typedef struct
     short floorInd = 0; // Этаж
     double height = 0;
     OtdMaterial material;
-    API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
+    API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
+    API_ElemTypeID draw_type = API_SlabID; // Тип отрисовываемого элемента
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
     GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
@@ -88,6 +89,8 @@ typedef struct
     double ang_begC = 90 * DEGRAD; // Угол подрезки начала
     double ang_endC = 90 * DEGRAD; // Угол подрезки конца
     double height = 0; // Высота стены-отделки
+    double width = 0; // Ширина (для откоса)
+    double length = 0; // Длина (для откоса)
     double zBottom = 0; // Аболютная координата z низа
     short floorInd = 0; // Этаж
     double base_th = 0; // Толщина базовой стены (для расчёта откосов)
@@ -99,7 +102,8 @@ typedef struct
     GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
     GS::Array<OtdOpening> openings; // Проёмы в стене-отделке
     OtdMaterial material;
-    API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента 
+    API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
+    API_ElemTypeID draw_type = API_WallID; // Тип отрисовываемого элемента
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
     MatarialToFavorite favorite = {}; // Избранное
 } OtdWall; // Структура со стенами для отделки
@@ -176,10 +180,12 @@ typedef struct
     double fontsize = 2.5; // Размер шрифта
     double width_mat = 40; // Ширина для названия материала
     double width_area = 20; // Ширина для площади
-    double width_space = 1; // Ширина пробела
+    double width_no_breake_space = 1; // Ширина пробела
+    double width_narow_space = 1; // Ширина пробела
+    GS::UniString no_breake_space = u8"\u2007";
+    GS::UniString narow_space = u8"\u202F";
     GS::UniString space_line = "";
     GS::UniString delim_line = "";
-    GS::UniString space = u8"\u2007";
 } ColumnFormat;
 
 typedef GS::HashTable<GS::UniString, ColumnFormat> ColumnFormatDict;
@@ -247,7 +253,7 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
 
 void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
 
-void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite);
+void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name);
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
@@ -263,7 +269,7 @@ void OpeningReveals_Create_One (const MatarialToFavoriteDict& favdict, GS::Array
 void SetMaterialByType (const MatarialToFavoriteDict& favdict, OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
-void SetMaterialFinish (const OtdMaterial& material, const TypeOtd& type, const MatarialToFavoriteDict& favdict, GS::Array<ParamValueComposite>& base_composite, MatarialToFavorite& favorite);
+void SetMaterialFinish (const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, const MatarialToFavoriteDict& favdict, GS::Array<ParamValueComposite>& base_composite, MatarialToFavorite& favorite);
 
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
@@ -296,27 +302,56 @@ bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 // -----------------------------------------------------------------------------
 bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges);
 
+// -----------------------------------------------------------------------------
+// Создание элементов отделки
+// -----------------------------------------------------------------------------
 void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist);
 
+// -----------------------------------------------------------------------------
+// Построение отделочных стен (общая)
+// -----------------------------------------------------------------------------
 void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
 
-void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, UnicElementByType& subelementByparent);
+// -----------------------------------------------------------------------------
+// Построение отделочных стен аксессуаром
+// -----------------------------------------------------------------------------
+void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
 
+// -----------------------------------------------------------------------------
+// Получение из избранного аксессуара стены для простроения 
+// -----------------------------------------------------------------------------
 bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
 
+void Reveal_Up_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
+
+// -----------------------------------------------------------------------------
+// Построение отделочных стен стандартной стеной
+// -----------------------------------------------------------------------------
 void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
 
+// -----------------------------------------------------------------------------
+// Получение из избранного стены для простроения 
+// -----------------------------------------------------------------------------
 bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement);
 
+// -----------------------------------------------------------------------------
+// Построение проёмов в отделочных стенах 
+// -----------------------------------------------------------------------------
 void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent, const double& zBottom);
 
+// -----------------------------------------------------------------------------
+// Получение настроек проёмов в отделочных стенах 
+// -----------------------------------------------------------------------------
 bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& memo);
 
+// -----------------------------------------------------------------------------
+// Построение потолка/пола (общая)
+// -----------------------------------------------------------------------------
 void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
-void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab);
 
-void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab);
 
 bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
 
@@ -348,7 +383,7 @@ void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, U
 
 API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name);
 MatarialToFavoriteDict Favorite_GetDict ();
-MatarialToFavorite Favorite_FindName (const OtdMaterial material, TypeOtd type, const MatarialToFavoriteDict& favdict);
+void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, const MatarialToFavoriteDict& favdict);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 

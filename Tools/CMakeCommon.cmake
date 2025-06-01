@@ -22,8 +22,6 @@ function (SetCompilerOptions target acVersion)
     endif ()
     target_compile_options (${target} PUBLIC "$<$<CONFIG:Debug>:-DDEBUG>")
     target_compile_options (${target} PUBLIC "$<$<CONFIG:Debug>:-DTESTING>")
-    target_compile_options (${target} PUBLIC "$<$<CONFIG:Debug>:-DEXTNDVERSION>")
-    target_compile_options (${target} PUBLIC "$<$<CONFIG:ReleaseEXT>:-DEXTNDVERSION>")
     if (WIN32)
         target_compile_options (${target} PUBLIC /W3 /WX
             /Zc:wchar_t-
