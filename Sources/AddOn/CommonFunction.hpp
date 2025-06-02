@@ -54,6 +54,12 @@ static const GS::UniChar char_formula_end = '>';
 static const GS::UniString str_formula_start = "<";
 static const GS::UniString str_formula_end = ">";
 #define ELEMSTR_LEN 256
+// Типы операций по переводу значений массива гдл параметра в совйство
+#define ARRAY_UNDEF 0
+#define ARRAY_UNIC 1	// Вывод уникальных значений
+#define ARRAY_SUM 2		// Вывод суммы (для текста - конкатенация)
+#define ARRAY_MAX 3
+#define ARRAY_MIN 4
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
 
@@ -89,6 +95,94 @@ typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 
 // Словарь уникальных API_Guid
 typedef GS::HashTable<API_Guid, bool> UnicGuid;
+// Хранение данных параметра
+// type - API_VariantType (как у свойств)
+// name - имя для поиска
+// uniStringValue, intValue, boolValue, doubleValue - значения
+// canCalculate - можно ли использовать в математических вычислениях
+typedef struct
+{
+    // Собственно значения
+    API_VariantType type = API_PropertyUndefinedValueType; // Прочитанный тип данных
+    GS::UniString uniStringValue = "";
+    GS::Int32 intValue = 0;
+    bool boolValue = false;
+    double doubleValue = 0.0; //дробное значение, округлённое
+    double rawDoubleValue = 0.0; //прочитанное значение
+    API_Guid guidval = APINULLGuid;
+    bool canCalculate = false;			// Может ли быть использован в формулах?
+    bool hasrawDouble = false;			// Было ли записано неокругленное значение при чтении?
+    bool hasFormula = false; // В поле uniStringValue содержится выражение, которое надо вычислить
+    FormatString formatstring; 	// Формат строки (задаётся с помощью .mm или .0)
+    int array_row_start = 0;				// Начальная строка массива
+    int array_row_end = 0;				// Последняя строка массива
+    int array_column_start = 0;			// Начальный столбец массива
+    int array_column_end = 0;				// Последний столбец массива
+    int array_format_out = ARRAY_UNDEF;	// В каком виде выводить в свойство
+} ParamValueData;
+
+// Структура для описания слоя в многослойной конструкции
+typedef struct
+{
+    API_AttributeIndex inx;					// Индекс материала
+    double fillThick = 0.0;					// Толщина слой
+    double rfromstart = 0.0;				//Удаление от начальной точки (для определения порядка следования)
+    short structype = APICWallComp_Core;	//Является ядром?
+    int num = 0;							//Номер слоя
+    GS::UniString val = "";					//Прочитанные свойства слоя
+} ParamValueComposite;
+
+// Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
+// Это позволяет свободно конвертировать и записывать данные в любое место
+typedef struct
+{
+    API_VariantType type = API_PropertyUndefinedValueType; // Тип данных для записи
+    GS::UniString rawName = "";							   // Имя для сопоставления в словаре - с указанием откуда взято
+    GS::UniString name = "";							   // Очищенное имя для поиска
+    ParamValueData val = {};
+    bool isValid = false;					// Валидность (был считан без ошибок)
+    API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
+    API_Property property = {};				// Само свойство, для упрощения чтения/записи
+    GS::Array<ParamValueComposite> composite = {};
+    API_ModelElemStructureType composite_type = API_BasicStructure;
+    API_ElemTypeID eltype = API_ZombieElemID;
+    short composite_pen = 0;
+    bool fromClassification = false;	 // Данные о классификаторе
+    bool fromGDLparam = false;			 // Найден в гдл параметрах
+    bool fromGDLdescription = false;	 // Найден по описанию в гдл параметрах
+    bool fromProperty = false;			 // Найден в свойствах
+    bool fromMorph = false;				 // Найден свойствах морфа
+    bool fromInfo = false;				 // Найден в инфо о проекте
+    bool fromGlob = false;				 // Найден в глобальных переменных
+    bool fromIFCProperty = false;		 // Найден в IFC свойствах
+    bool fromID = false;				 // Найден в ID
+    bool fromCoord = false;				 // Координаты
+    bool fromPropertyDefinition = false; // Задан определением свойства, искать не нужно
+    bool fromMaterial = false;			 // Взять инфо из состава конструкции
+    bool fromAttribDefinition = false;	 // Взять инфо из свойств аттрибута
+    bool fromAttribElement = false;	     // Взять инфо из аттрибута элемента (слой и т.д.)
+    bool fromElement = false;	         // Взять из информации об элементе (замета материала и т.д.)
+    bool fromMEP = false;	             // Взять из информации МЕР
+    bool fromGDLArray = false;			 // Взять из массива
+    bool toQRCode = false;			     // Результат вывести QR
+    bool needPreRead = false;			 // Необходимо прочитать значения диапазонов из параметров элемента
+    GS::UniString rawName_row_start = "";// Имя параметра со значением начала диапазона чтения строк
+    GS::UniString rawName_row_end = "";	 // Имя параметра со значением конца диапазона чтения строк
+    GS::UniString rawName_col_start = "";// Имя параметра со значением начала диапазона чтения столбцов
+    GS::UniString rawName_col_end = "";	 // Имя параметра со значением конца диапазона чтения столбцов
+    API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
+} ParamValue;
+
+// Словарь с заранее вычисленными данными в пределах обного элемента
+typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
+
+// Словарь с параметрами для вычисления
+// Служит для формирования уникального списка свойств и параметров
+typedef GS::HashTable<GS::UniString, bool> ParamDict;
+
+// Словарь с параметрами для элементов
+typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
+
 // -----------------------------------------------------------------------------
 // Читает информацию об этажах в проекте
 // -----------------------------------------------------------------------------

@@ -10,6 +10,9 @@
 #ifdef TESTING
 #include "TestFunc.hpp"
 #endif
+#if defined (AC_28)
+#include <ACAPI/MEPAdapter.hpp>
+#endif
 Int32 nLib = 0;
 // -----------------------------------------------------------------------------
 // Подключение мониторинга
@@ -36,6 +39,9 @@ void MonAll (SyncSettings& syncSettings)
     MonByType (API_MorphID, syncSettings);
     MonByType (API_CurtainWallID, syncSettings);
     MonByType (API_RailingID, syncSettings);
+    #if defined (AC_28)
+    MonByType (API_ExternalElemID, syncSettings);
+    #endif
     if (HasDimAutotext ()) MonByType (API_DimensionID, syncSettings);
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -141,6 +147,9 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_CurtainWallID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_RailingID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
+    #if defined (AC_28)
+    if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType (API_ExternalElemID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
+    #endif
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
@@ -197,6 +206,11 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     double  duration;
     start = clock ();
     ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
+    #if defined (AC_28)
+    if (elementType == API_ExternalElemID) {
+        guidArray = ACAPI::MEP::CollectAllMEPElements ();
+    }
+    #endif
     if (guidArray.IsEmpty ()) return false;
     #ifdef TESTING
     TestFunc::ResetSyncPropertyArray (guidArray);
@@ -979,7 +993,13 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
             paramNamePrefix = "{@element:";
         }
     }
-
+    if (synctypefind == false) {
+        if (name.Contains ("MEP:")) {
+            synctypefind = true;
+            name.ReplaceAll ("MEP:", "");
+            paramNamePrefix = "{@mep:";
+        }
+    }
     if (synctypefind == false) return false;
     GS::Array<GS::UniString> params;
     GS::UniString tparamName = name.GetSubstring ('{', '}', 0);
@@ -1196,7 +1216,15 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             syncdirection = SYNC_FROM;
         }
     }
-
+    if (synctypefind == false) {
+        if (rulestring_one.Contains ("MEP:")) {
+            synctypefind = true;
+            rulestring_one.ReplaceAll ("MEP:", "");
+            paramNamePrefix = "{@mep:";
+            param.fromMEP = true;
+            syncdirection = SYNC_FROM;
+        }
+    }
     if (synctypefind == false) return false;
     param.eltype = elementType;
 
@@ -1603,9 +1631,9 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 } else {
                     guidArray.Push (guidArray_all[i]);
                 }
+            }
         }
     }
-}
     if (guidArray.IsEmpty ()) return;
     Int32 bisEng = isEng ();
     GS::Array<API_Neig> selNeigs;
@@ -1622,7 +1650,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             }
             ACAPI_WriteReport (SubElementHotFoundIdString, true);
             return;
-    }
+        }
     } else {
         fmane = "Show Parent Element";
     }
@@ -1713,7 +1741,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
         GS::UniString SubElementNotExsistString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementNotExsistId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_del) + SubElementNotExsistString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d not exsist", count_del);
-            }
+    }
     if (count_inv > 0) {
         GS::UniString SubElementHiddenString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHiddenId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_inv) + SubElementHiddenString + "\n";
@@ -1755,7 +1783,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1849,7 +1877,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                                 }
                                 parentGuid.Get (guid).Add (subguid, isvisible);
                             }
-                                }
+                        }
                     }
                 }
             }
@@ -1912,14 +1940,14 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
                                 }
                             }
                         }
+                    }
+                }
             }
         }
     }
-}
-        }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение прочитанных свойств Sync_GUID для массива элементов

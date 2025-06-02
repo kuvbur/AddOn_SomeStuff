@@ -1849,6 +1849,8 @@ bool ParamHelpers::ParseParamName (GS::UniString& expression, ParamDictValue& pa
             if (part_.Contains ("{@id:")) pvalue.fromID = true;
             if (part_.Contains ("{@class:")) pvalue.fromClassification = true;
             if (part_.Contains ("{@formula:")) pvalue.val.hasFormula = true;
+            if (part_.Contains ("{@element:")) pvalue.fromElement = true;
+            if (part_.Contains ("{@mep:")) pvalue.fromMEP = true;
             pvalue.name = name_;
             pvalue.val.formatstring = formatstring;
             paramDict.Add (part_, pvalue);
@@ -1997,6 +1999,7 @@ void ParamHelpers::GetParamTypeList (GS::Array<GS::UniString>& paramTypesList)
     paramTypesList.Push ("{@class:");
     paramTypesList.Push ("{@formula:");
     paramTypesList.Push ("{@element:");
+    paramTypesList.Push ("{@mep:");
 }
 
 GS::UniString PropertyHelpers::ToString (const API_Variant& variant, const FormatString& stringformat)
@@ -3708,6 +3711,11 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         }
         if (paramType.IsEqual ("{@element:")) {
             needCompare = ParamHelpers::ReadElementValues (element, paramByType);
+        }
+        if (paramType.IsEqual ("{@mep:")) {
+            #if defined (AC_28)
+            needCompare = MEPv1::ReadMEP (elem_head, paramByType);
+            #endif
         }
         if (needCompare) {
             #if defined(TESTING)
