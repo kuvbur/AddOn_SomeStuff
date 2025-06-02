@@ -266,12 +266,12 @@ void RoomBook ()
             Favorite_FindName (propertyParams, otdw.favorite, otdw.material, otdw.type, otdw.draw_type, favdict, paramDict_favorite, param_composite);
             if (otdw.favorite.is_composite_read && !otdw.favorite.composite.IsEmpty ()) {
                 ParamValueComposite p = {};
-                if (otdw.base_composite.GetLast ().inx == -1) {
+                if (otdw.base_composite.GetLast ().num == -1) {
                     p = otdw.base_composite.GetLast ();
                     otdw.base_composite.DeleteLast ();
                 }
                 otdw.base_composite.Append (otdw.favorite.composite);
-                if (p.inx == -1) otdw.base_composite.Push (p);
+                if (p.num == -1) otdw.base_composite.Push (p);
             }
         }
         otd.otdwall = opw; // Заменяем на разбитые стены
@@ -516,7 +516,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
                     }
                     w_area = GetTextWidth (c.font, c.fontsize, area_sring);
                 }
-                if (w_area - c.width_area > 0.1) area_sring.Append (c.narow_space);
+                if (w_area - c.width_area > 0.1) area_sring = c.narow_space + area_sring;
                 area_sring.Append (" ");
                 if (!new_val.IsEmpty ()) new_val.Append (c.delim_line);
                 GS::Array<GS::UniString> lines_mat = DelimTextLine (c.font, c.fontsize, c.width_mat, mat, c.no_breake_space, c.narow_space);

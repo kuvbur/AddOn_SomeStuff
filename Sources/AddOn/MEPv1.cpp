@@ -7,23 +7,23 @@ using namespace ACAPI::MEP;
 
 API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::VentilationRigidSegmentID;
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::PipingRigidSegmentID;
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::CableCarrierRigidSegmentID;
 
     return APINULLGuid;
@@ -31,25 +31,25 @@ API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid& routingEl
 
 API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::VentilationBendID;
 
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::PipingBendID;
 
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::CableCarrierBendID;
 
     return APINULLGuid;
@@ -57,25 +57,25 @@ API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid& routingElemClassI
 
 API_Guid GetTransitionClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::VentilationTransitionID;
 
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::PipingTransitionID;
 
-#if defined (AC_28)
+    #if defined (AC_28)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
-#else
+        #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
-#endif
+        #endif
         return ACAPI::MEP::CableCarrierTransitionID;
 
     return APINULLGuid;
@@ -83,6 +83,20 @@ API_Guid GetTransitionClassIDFromRoutingElemClassID (const API_Guid& routingElem
 
 namespace MEPv1
 {
+
+bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
+{
+    #if !defined (AC_28)
+    return false;
+    #else
+
+
+    bool flag_find = false;
+    return flag_find;
+    #endif
+}
+
+
 void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
 {
     ACAPI::Result<RoutingElement> routingElement = RoutingElement::Get (Adapter::UniqueID (elemGuid));
@@ -140,8 +154,38 @@ void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& sube
         }
     }
 }
-void GetRouting (const API_Guid& elemGuid)
+void GetPreferenceTable (const API_Elem_Head& elem_head)
 {
+    if (IsRoutingElement (elem_head.type.classID)) {
+        return;
+    }
+    if (IsBranch (elem_head.type.classID)) {
+        return;
+    }
+    if (IsAccessory (elem_head.type.classID)) {
+        return;
+    }
+    if (IsEquipment (elem_head.type.classID)) {
+        return;
+    }
+    if (IsTerminal (elem_head.type.classID)) {
+        return;
+    }
+    if (IsFitting (elem_head.type.classID)) {
+        return;
+    }
+    if (IsFlexibleSegment (elem_head.type.classID)) {
+        return;
+    }
+    if (IsTransition (elem_head.type.classID)) {
+        return;
+    }
+    if (IsBend (elem_head.type.classID)) {
+        return;
+    }
+    if (IsRigidSegment (elem_head.type.classID)) {
+        return;
+    }
 }
 
 void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)

@@ -3,6 +3,7 @@
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
 #if defined(AC_27) || defined(AC_28)
+#include "CommonFunction.hpp"
 #include "Definitions.hpp"
 // ACAPI
 
@@ -43,13 +44,13 @@
 #include "ACAPI/MEPPreferenceTableBase.hpp"
 #endif
 
-namespace MEPv1
-{
-void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+namespace MEPv1 {
+    bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
+    void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 
-void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+    void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 
-void GetRouting (const API_Guid& elemGuid);
+    void GetPreferenceTable (const API_Elem_Head& elem_head);
 }
 #endif
 #endif
