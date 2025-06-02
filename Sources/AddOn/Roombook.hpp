@@ -65,6 +65,8 @@ typedef struct
 {
     GS::UniString name = ""; // Имя избранного 
     API_ElemTypeID type = API_ZombieElemID; // Тип элемента в избранном
+    GS::Array<ParamValueComposite> composite; // Состав элемента (только отделочные слои)
+    bool is_composite_read = false;
 } MatarialToFavorite;
 typedef GS::HashTable<GS::UniString, MatarialToFavorite> MatarialToFavoriteDict;
 
@@ -255,6 +257,8 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
 
 void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name);
 
+void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name);
+
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
@@ -263,18 +267,18 @@ void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadPara
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void OpeningReveals_Create_One (const MatarialToFavoriteDict& favdict, GS::Array<OtdSlab>& otdslabs, const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
-void SetMaterialByType (const MatarialToFavoriteDict& favdict, OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
-void SetMaterialFinish (const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, const MatarialToFavoriteDict& favdict, GS::Array<ParamValueComposite>& base_composite, MatarialToFavorite& favorite);
+void SetMaterialFinish (const OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite);
 
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void OtdWall_Delim_All (GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
 // -----------------------------------------------------------------------------
@@ -282,7 +286,7 @@ void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool OtdWall_Delim_One (const MatarialToFavoriteDict& favdict, OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
 // -----------------------------------------------------------------------------
@@ -383,7 +387,8 @@ void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, U
 
 API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name);
 MatarialToFavoriteDict Favorite_GetDict ();
-void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, const MatarialToFavoriteDict& favdict);
+void Favorite_ReadComposite (ParamDictValue& propertyParams, const ParamValue& param_composite, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, const GS::UniString& fav_name);
+void Favorite_FindName (ParamDictValue& propertyParams, MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, ParamValue& param_composite);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 

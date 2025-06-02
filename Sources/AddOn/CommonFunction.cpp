@@ -997,7 +997,7 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
         msg_rep ("GetTextWidth err : zero width", "text = ~" + var + "~", err, APINULLGuid);
 }
     #ifdef TESTING
-    DBtest (width < 0.00001, "GetTextWidth zero width", false);
+    DBtest (width > 0.00001, "GetTextWidth zero width", false);
     #endif
     if (width < 0.00001) width = 0.1;
     return width;

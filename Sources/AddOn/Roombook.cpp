@@ -80,6 +80,7 @@ void RoomBook ()
     UnicGuid finclassguids;
     ClassificationFunc::GetAllClassification (systemdict);
     Class_FindFinClass (systemdict, finclass, finclassguids);
+    systemdict.Clear ();
     Stories storyLevels = GetStories (); // Уровни этажей в проекте
     // Поиск перекрытий в зонах
     GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
@@ -159,24 +160,28 @@ void RoomBook ()
 
     ParamDictElement paramToRead; // Прочитанные из элементов свойства
     ParamValue param_composite; // Состав базовых конструкций
+    ParamDictValue paramDict;
+    ParamDictValue paramDict_favorite;
     typeinzone.Push (API_ZoneID);
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (guidselementToRead.ContainsKey (typeelem)) {
-            ParamDictValue paramDict;
+            paramDict.Clear ();
             if (typeelem == API_ZoneID) {
                 Param_ToParamDict (paramDict, roomParams);
             }
-            if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
-                Param_GetForBase (propertyParams, paramDict, param_composite);
-            }
             if (typeelem == API_WindowID) {
                 Param_ToParamDict (paramDict, windowParams);
+            }
+            if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
+                Param_GetForBase (propertyParams, paramDict, param_composite);
+                paramDict_favorite = paramDict;
             }
             if (!paramDict.IsEmpty ()) {
                 for (const API_Guid& guid : guidselementToRead[typeelem]) {
                     ParamHelpers::AddParamDictValue2ParamDictElement (guid, paramDict, paramToRead);
                 }
             }
+
         }
     }
     funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ()); nPhase += 1;
@@ -222,7 +227,8 @@ void RoomBook ()
             GS::UniString fav_name;
             Param_SetToBase (otdslab.base_guid, base_flipped, otdslab.base_composite, paramToRead, param_composite, fav_name);
             otdslab.favorite.name = fav_name;
-            SetMaterialFinish (otdslab.material, otdslab.type, otdslab.draw_type, favdict, otdslab.base_composite, otdslab.favorite);
+            SetMaterialFinish (otdslab.material, otdslab.base_composite);
+            Favorite_FindName (propertyParams, otdslab.favorite, otdslab.material, otdslab.type, otdslab.draw_type, favdict, paramDict_favorite, param_composite);
         }
         if (otd.otdwall.IsEmpty ()) continue;
         GS::Array<OtdWall> opw; // Массив созданных стен
@@ -247,19 +253,31 @@ void RoomBook ()
                     // Заполняем данные для окон
                     Param_SetToWindows (op, paramToRead, windowParams, otdw);
                     if (walldir.HasValue ()) {
-                        OpeningReveals_Create_One (favdict, otd.otdslab, otdw, op, walldir_perp, opw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
+                        OpeningReveals_Create_One (otd.otdslab, otdw, op, walldir_perp, opw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
                     }
                 }
             }
         }
         for (OtdWall& otdw : otd.otdwall) {
             // Разделяем стенки
-            OtdWall_Delim_All (favdict, opw, otdw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
+            OtdWall_Delim_All (opw, otdw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
+        }
+        for (OtdWall& otdw : opw) {
+            Favorite_FindName (propertyParams, otdw.favorite, otdw.material, otdw.type, otdw.draw_type, favdict, paramDict_favorite, param_composite);
+            if (otdw.favorite.is_composite_read && !otdw.favorite.composite.IsEmpty ()) {
+                ParamValueComposite p = {};
+                if (otdw.base_composite.GetLast ().inx == -1) {
+                    p = otdw.base_composite.GetLast ();
+                    otdw.base_composite.DeleteLast ();
+                }
+                otdw.base_composite.Append (otdw.favorite.composite);
+                if (p.inx == -1) otdw.base_composite.Push (p);
+            }
         }
         otd.otdwall = opw; // Заменяем на разбитые стены
     }
     // Получаем список существующих элементов отделки для обрабатываемых зон
-    zones.Clear ();
+    zones.Clear (); paramDict_favorite.Clear (); favdict.Clear ();
     ParamDictElement paramToWrite; // Параметры для записи в зоны и элементы отделки
     ColumnFormatDict columnFormat; // Словарь с форматом текста для столбцов
     funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
@@ -269,7 +287,6 @@ void RoomBook ()
         #else
         OtdRoom& otd = *cIt->value;
         #endif
-
         nPhase += 1;
         #if defined(AC_27) || defined(AC_28)
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
@@ -278,7 +295,6 @@ void RoomBook ()
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
         #endif
-
         if (otd.isValid && (otd.create_all_elements || otd.create_ceil_elements || otd.create_floor_elements || otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
             zones.Push (otd.zone_guid);
         }
@@ -293,7 +309,7 @@ void RoomBook ()
             WriteOtdDataToRoom (columnFormat, otd, paramToWrite, paramToRead);
         }
     }
-
+    paramToRead.Clear ();
     // Проверка существования классов и свойств
     if (!zones.IsEmpty ()) {
         if (!Check (finclass, propertyParams, finclassguids)) {
@@ -1880,6 +1896,7 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
     if (roominfo.height < 0.0001) roominfo.isValid = false;
 }
 
+
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
@@ -1896,32 +1913,36 @@ void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::A
     // Состав базового компонента
     if (!baseparam.ContainsKey (param_composite.rawName)) return;
     ParamValue& base_composite = baseparam.Get (param_composite.rawName);
-    //TODO Дописать определение вывода слоя в ведомость отделки исходя из свойств
+    Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name);
+}
+
+// -----------------------------------------------------------------------------
+// Запись прочитанных свойств в отделочные стены
+// -----------------------------------------------------------------------------
+void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name)
+{
     Int32 ncomp = base_composite.composite.GetSize ();
     if (ncomp == 0) return;
+    fav_name.Clear ();
     bool flag_core = false;
+    GS::Array<ParamValueComposite> cpmpoosite;
     if (base_flipped) {
         for (Int32 j = ncomp - 1; j >= 0; j--) {
             if (!flag_core) {
-                if (base_composite.composite[j].val.Contains ("l[1:")) {
-                    otdcpmpoosite.Push (base_composite.composite[j]);
-                }
+                cpmpoosite.Push (base_composite.composite[j]);
                 if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
             }
         }
     } else {
         for (Int32 j = 0; j < ncomp; j++) {
             if (!flag_core) {
-                if (base_composite.composite[j].val.Contains ("l[1:")) {
-                    otdcpmpoosite.Push (base_composite.composite[j]);
-                }
+                cpmpoosite.Push (base_composite.composite[j]);
                 if (base_composite.composite[j].structype == APICWallComp_Core) flag_core = true;
             }
         }
     }
-    fav_name.Clear ();
-    for (UInt32 j = 0; j < otdcpmpoosite.GetSize (); j++) {
-        GS::UniString v = otdcpmpoosite[j].val;
+    for (UInt32 j = 0; j < cpmpoosite.GetSize (); j++) {
+        GS::UniString v = cpmpoosite[j].val;
         if (v.Contains ("f[]")) {
             v = v.GetPrefix (v.GetLength () - 5);
             v = v.GetSuffix (v.GetLength () - 4);
@@ -1940,9 +1961,13 @@ void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::A
             v.ReplaceAll ("l[1:", "@");
             v = v.GetSubstring ('@', ']', 0);
         }
-        otdcpmpoosite[j].val = v;
+        if (cpmpoosite[j].val.Contains ("l[1:")) {
+            cpmpoosite[j].val = v;
+            otdcpmpoosite.Push (cpmpoosite[j]);
+        }
     }
     if (!fav_name.IsEmpty ()) fav_name.SetToLowerCase ();
+    cpmpoosite.Clear ();
 }
 
 // -----------------------------------------------------------------------------
@@ -2174,7 +2199,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void OpeningReveals_Create_One (const MatarialToFavoriteDict& favdict, GS::Array<OtdSlab>& otdslabs, const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
     if (op.base_reveal_width < min_dim) return;
@@ -2216,7 +2241,7 @@ void OpeningReveals_Create_One (const MatarialToFavoriteDict& favdict, GS::Array
         wallotd.draw_type = API_ColumnID;
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
-        OtdWall_Delim_All (favdict, opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+        OtdWall_Delim_All (opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     }
     lambda = (op.objLoc + op.width / 2) / dr;
     begedge.x = otdw.begC.x - dx * lambda;
@@ -2241,7 +2266,7 @@ void OpeningReveals_Create_One (const MatarialToFavoriteDict& favdict, GS::Array
         wallotd.draw_type = API_ColumnID;
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
-        OtdWall_Delim_All (favdict, opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+        OtdWall_Delim_All (opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     }
     walledge = { begedge_up , endedge_up };
     if (!walledge.IsZeroLength () && !is_upper_wall) {
@@ -2260,14 +2285,14 @@ void OpeningReveals_Create_One (const MatarialToFavoriteDict& favdict, GS::Array
         wallotd.draw_type = API_BeamID;
         wallotd.type = Reveal_Main;
         op.has_reveal = true;
-        OtdWall_Delim_All (favdict, opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+        OtdWall_Delim_All (opw, wallotd, otd_zBottom, otd_height_down, otd_height_main, otd_height_up, otd_height, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     }
 }
 
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void OtdWall_Delim_All (GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
     TypeOtd type = otdw.type;
@@ -2283,7 +2308,7 @@ void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall
         if (otdw.base_type == API_WindowID) type = Reveal_Down;
         if (otdw.type == Ceil) type = Ceil;
         if (otdw.type == Floor) type = Floor;
-        if (OtdWall_Delim_One (favdict, otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
+        if (OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
     }
     // Основная часть
     if (otd_height_main > 0) {
@@ -2294,7 +2319,7 @@ void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall
         if (otdw.type == Floor) type = Floor;
         height = otd_height_main;
         zBottom = otd_zBottom + otd_height_down;
-        if (OtdWall_Delim_One (favdict, otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
+        if (OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
     }
     // Пространство за потолком
     if (otd_height_up > 0) {
@@ -2304,7 +2329,7 @@ void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall
         if (otdw.type == Ceil) type = Ceil;
         if (otdw.type == Floor) type = Floor;
         if (otdw.base_type == API_WindowID) type = Reveal_Up;
-        if (OtdWall_Delim_One (favdict, otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
+        if (OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone)) has_delim = true;
     }
     //Если высоты заданы не были - подгоним стенку под зону
     if (!has_delim) {
@@ -2314,7 +2339,7 @@ void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall
         if (otdw.base_type == API_WindowID) type = Reveal_Main;
         if (otdw.type == Ceil) type = Ceil;
         if (otdw.type == Floor) type = Floor;
-        OtdWall_Delim_One (favdict, otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+        OtdWall_Delim_One (otdw, opw, height, zBottom, type, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     }
 }
 
@@ -2323,7 +2348,7 @@ void OtdWall_Delim_All (const MatarialToFavoriteDict& favdict, GS::Array<OtdWall
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool OtdWall_Delim_One (const MatarialToFavoriteDict& favdict, OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
     if (height < min_dim || is_equal (height, 0)) {
@@ -2371,12 +2396,12 @@ bool OtdWall_Delim_One (const MatarialToFavoriteDict& favdict, OtdWall otdn, GS:
     otdn.height = height;
     if (!is_equal (otdn.width, 0)) otdn.length = height;
     otdn.type = type;
-    SetMaterialByType (favdict, otdn, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+    SetMaterialByType (otdn, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
     opw.PushNew (otdn);
     return true;
 }
 
-void SetMaterialByType (const MatarialToFavoriteDict& favdict, OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
+void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
     OtdMaterial material;
@@ -2462,12 +2487,11 @@ void SetMaterialByType (const MatarialToFavoriteDict& favdict, OtdWall& otdw, Ot
     }
     if (material.smaterial.IsEmpty ()) material = om_zone;
     otdw.material = material;
-    SetMaterialFinish (material, otdw.type, otdw.draw_type, favdict, otdw.base_composite, otdw.favorite);
+    SetMaterialFinish (material, otdw.base_composite);
 }
 
-void SetMaterialFinish (const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, const MatarialToFavoriteDict& favdict, GS::Array<ParamValueComposite>& base_composite, MatarialToFavorite& favorite)
+void SetMaterialFinish (const OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
 {
-    Favorite_FindName (favorite, material, type, draw_type, favdict);
     ParamValueComposite p;
     #if defined(AC_27) || defined(AC_28)
     p.inx = ACAPI_CreateAttributeIndex (material.material);
@@ -3389,7 +3413,27 @@ MatarialToFavoriteDict Favorite_GetDict ()
     return favdict;
 }
 
-void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, const MatarialToFavoriteDict& favdict)
+void Favorite_ReadComposite (ParamDictValue& propertyParams, const ParamValue& param_composite, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, const GS::UniString& fav_name)
+{
+    if (!favdict.ContainsKey (fav_name)) return;
+    if (favdict.Get (fav_name).is_composite_read) return;
+
+    favdict.Get (fav_name).is_composite_read = true;
+    API_Element element; BNZeroMemory (&element, sizeof (API_Element));
+    if (!Favorite_GetByName (favdict.Get (fav_name).name, element)) return;
+    if (!paramToRead_favorite.ContainsKey (param_composite.rawName)) return;
+    paramToRead_favorite.Set (param_composite.rawName, param_composite);
+    if (!ParamHelpers::ReadMaterial (element, paramToRead_favorite, propertyParams)) return;
+    if (!paramToRead_favorite.Get (param_composite.rawName).isValid) return;
+    GS::UniString fav_name_ = "";
+    bool base_flipped = element.wall.flipped;
+    ParamValue& base_composite = paramToRead_favorite.Get (param_composite.rawName);
+    GS::Array<ParamValueComposite>& otdcpmpoosite = favdict.Get (fav_name).composite;
+    Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name_);
+    return;
+}
+
+void Favorite_FindName (ParamDictValue& propertyParams, MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, ParamValue& param_composite)
 {
     API_ElemTypeID possibly_type = draw_type;
     GS::UniString fav_name = favorite.name;
@@ -3402,6 +3446,7 @@ void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& materia
             GS::UniString part_full = part + "_" + fav_name;
             if (favdict.ContainsKey (part_full)) {
                 if (favdict.Get (part_full).type == draw_type || favdict.Get (part_full).type == API_ObjectID) {
+                    Favorite_ReadComposite (propertyParams, param_composite, favdict, paramToRead_favorite, part_full);
                     favorite = favdict.Get (part_full);
                     return;
                 }
@@ -3409,6 +3454,7 @@ void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& materia
         }
         if (favdict.ContainsKey (part)) {
             if (favdict.Get (part).type == draw_type || favdict.Get (part).type == API_ObjectID) {
+                Favorite_ReadComposite (propertyParams, param_composite, favdict, paramToRead_favorite, part);
                 favorite = favdict.Get (part);
                 return;
             }
@@ -3417,6 +3463,7 @@ void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& materia
     if (!fav_name.IsEmpty ()) {
         if (favdict.ContainsKey (fav_name)) {
             if (favdict.Get (fav_name).type == draw_type || favdict.Get (fav_name).type == API_ObjectID) {
+                Favorite_ReadComposite (propertyParams, param_composite, favdict, paramToRead_favorite, fav_name);
                 favorite = favdict.Get (fav_name);
                 return;
             }
@@ -3457,6 +3504,7 @@ void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& materia
         }
         if (favdict.ContainsKey (favorite_name_defult)) {
             if (favdict.Get (favorite_name_defult).type == possibly_type || favdict.Get (favorite_name_defult).type == API_ObjectID) {
+                Favorite_ReadComposite (propertyParams, param_composite, favdict, paramToRead_favorite, favorite_name_defult);
                 favorite = favdict.Get (favorite_name_defult);
                 return;
             }
