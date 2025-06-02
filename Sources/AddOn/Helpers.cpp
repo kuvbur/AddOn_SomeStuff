@@ -1990,12 +1990,12 @@ void ParamHelpers::GetParamTypeList (GS::Array<GS::UniString>& paramTypesList)
     paramTypesList.Push ("{@info:");
     paramTypesList.Push ("{@ifc:");
     paramTypesList.Push ("{@morph:");
+    paramTypesList.Push ("{@attrib:");
     paramTypesList.Push ("{@material:");
     paramTypesList.Push ("{@glob:");
     paramTypesList.Push ("{@id:");
     paramTypesList.Push ("{@class:");
     paramTypesList.Push ("{@formula:");
-    paramTypesList.Push ("{@attrib:");
     paramTypesList.Push ("{@element:");
 }
 
@@ -3491,12 +3491,8 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& 
     if (!ParamHelpers::hasGlob (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_glob}")) {
         if (ParamHelpers::hasUnreadGlob (paramToRead, propertyParams)) ParamHelpers::GetAllGlobToParamDict (propertyParams);
     }
-
     if (!ParamHelpers::hasProperyDefinition (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_properydefinition}")) {
         if (ParamHelpers::hasUnreadProperyDefinition (paramToRead)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-    }
-    if (!ParamHelpers::hasAttribute (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_attrib}")) {
-        if (ParamHelpers::hasUnreadAttribute (paramToRead)) ParamHelpers::GetAllAttributeToParamDict (propertyParams);
     }
     if (!ParamHelpers::has_LocOrigin (propertyParams)) {
         if (ParamHelpers::hasUnreadCoord (paramToRead)) ParamHelpers::GetLocOriginToParamDict (propertyParams);
@@ -4438,6 +4434,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Elem_Head & elem_head, ParamDi
     DBprnt ("    ReadAttributeValues");
     #endif
     if (!params.ContainsKey ("{@attrib:layer}")) return false;
+    if (!ParamHelpers::hasAttribute (propertyParams)) ParamHelpers::GetAllAttributeToParamDict (propertyParams);
     if (ParamHelpers::hasAttribute (propertyParams)) {
         #if defined(AC_27) || defined(AC_28)
         GS::Int32 intValue = elem_head.layer.ToInt32_Deprecated ();
@@ -5775,7 +5772,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     pvalue.isValid = true;
     pvalue.fromAttribElement = true;
     return true;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
@@ -6042,8 +6039,8 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         if (!existsmaterial.ContainsKey (constrinxL)) {
             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
             existsmaterial.Add (constrinxL, true);
+        }
     }
-}
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
@@ -6149,7 +6146,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         ParamValue p = {};
         param_composite.Add (20, p);
         param_composite.Add (6, p);
-        } else {
+    } else {
 
         // Проходим по сегментам, соединяем их в одну линию
         for (GS::HashTable<short, GS::Array<Sector>>::PairIterator cIt = segment.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -6242,18 +6239,18 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                             existsmaterial.Add (constrinxL, true);
                                         }
                                         hasData = true;
-                                        }
+                                    }
+                                }
                             }
                         }
-                }
-        } else {
+                    } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
                 }
                 break;
-                    }
+        }
         ++profileDescriptionIt1;
     }
     if (hasData) {
@@ -6293,6 +6290,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
     return false;
     #endif
 }
+
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
@@ -6342,7 +6340,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             } else {
                 msg_rep ("ParamHelpers::Components", "Multisegment column not supported", NoError, element.header.guid);
                 return false;
-                }
+            }
             #endif
             break;
         case API_BeamID:
@@ -6459,7 +6457,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-            }
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -6567,4 +6565,4 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     }
     #endif
     return flag_find;
-    }
+}

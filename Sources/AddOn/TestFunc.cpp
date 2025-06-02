@@ -15,6 +15,50 @@ void Test ()
     TestCalc ();
     TestFormula ();
     DBprnt ("TEST", "end");
+
+    //GS::UniString var = " ";
+    //TestGetTextLineLength (var);
+    //var = u8"\u2007"; TestGetTextLineLength (var);
+}
+
+void TestGetTextLineLength (GS::UniString& var)
+{
+    GSErrCode err = NoError;
+    GS::UniString fontname = "Arial";
+    double fontsize = 2.5;
+    short font_inx = 0; double width = 0.0;
+    API_TextLinePars tlp; BNZeroMemory (&tlp, sizeof (API_TextLinePars));
+    #if defined(AC_27) || defined(AC_28)
+    API_FontType font; BNZeroMemory (&font, sizeof (API_FontType));
+    font.head.index = 0;
+    font.head.uniStringNamePtr = &fontname;
+    err = ACAPI_Font_SearchFont (font);
+    font_inx = font.head.index;
+    #else
+    API_Attribute attrib; BNZeroMemory (&attrib, sizeof (API_Attribute));
+    attrib.header.typeID = API_FontID;
+    attrib.header.index = 0;
+    attrib.header.uniStringNamePtr = &fontname;
+    err = ACAPI_Attribute_Search (&attrib.header);
+    font_inx = attrib.header.index;
+    #endif
+    font_inx = 135;
+    tlp.drvScaleCorr = false;
+    tlp.index = 0;
+    tlp.wantsLongestIndex = false;
+    tlp.lineUniStr = &var;
+    tlp.wFace = APIFace_Plain;
+    tlp.wFont = font_inx;
+    tlp.wSize = fontsize;
+    tlp.wSlant = PI / 2.0;
+    #if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Element_GetTextLineLength (&tlp, &width);
+    #else
+    err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
+    #endif
+    #ifdef TESTING
+    DBtest (width > 0.00001, "TestGetTextLineLength", false);
+    #endif
 }
 
 void TestCalc ()
