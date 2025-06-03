@@ -559,12 +559,13 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     if (syncall && !flagfindclass) syncclass = true;
     GS::Array <WriteData> mainsyncRules;
     bool hassubguid = false;
-    if (syncall) hassubguid = ParamHelpers::SubGuid_GetParamValue (elemGuid, propertyParams, definitions);
+    ParamDictValue subproperty;
+    if (syncall) hassubguid = ParamHelpers::SubGuid_GetParamValue (elemGuid, propertyParams, definitions, subproperty);
     ParamDictElement paramToRead; // Словарь с параметрами для чтения
     bool hasSub = false;
     for (UInt32 i = 0; i < definitions.GetSize (); i++) {
         // Получаем список правил синхронизации из всех свойств
-        ParseSyncString (elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, propertyParams, syncall, synccoord, syncclass); // Парсим описание свойства
+        ParseSyncString (elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, propertyParams, syncall, synccoord, syncclass, subproperty); // Парсим описание свойства
     }
     if (mainsyncRules.IsEmpty ()) return false;
     if (propertyParams.IsEmpty () || hasSub) {
@@ -743,7 +744,7 @@ void SyncAddRule (const WriteData& writeSub, WriteDict& syncRules, ParamDictElem
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams, bool syncall, bool synccoord, bool syncclass)
+bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams, bool syncall, bool synccoord, bool syncclass, ParamDictValue& subproperty)
 {
     // TODO Попробовать отключать часть синхронизаций в зависимости от изменённых параметров (API_ActTranPars acttype)
     GS::UniString description_string = definition.description;
@@ -773,6 +774,9 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
     bool hasRule = false;
     if (description_string.Contains ("Sync_") && description_string.Contains ("{") && description_string.Contains ("}")) {
         if (description_string.Contains (" {")) {
+            description_string.ReplaceAll ("\n", "");
+            description_string.ReplaceAll ("\r", "");
+            description_string.ReplaceAll ("\t", "");
             description_string.ReplaceAll ("from {", "from{");
             description_string.ReplaceAll ("from  {", "from{");
             description_string.ReplaceAll ("to {", "to{");
@@ -810,9 +814,9 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                 if (nparams == 2) {
                     GS::UniString rawname = "";
                     Name2Rawname (params[0], rawname);
-                    if (propertyParams.ContainsKey (rawname)) {
-                        if (propertyParams.Get (rawname).isValid) {
-                            elemGuidfrom = APIGuidFromString (propertyParams.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                    if (subproperty.ContainsKey (rawname)) {
+                        if (subproperty.Get (rawname).isValid) {
+                            elemGuidfrom = APIGuidFromString (subproperty.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             rulestring_one = "Sync_from{" + params[1];
                         }
                     }
@@ -826,9 +830,9 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                 if (nparams == 2) {
                     GS::UniString rawname = "";
                     Name2Rawname (params[0], rawname);
-                    if (propertyParams.ContainsKey (rawname)) {
-                        if (propertyParams.Get (rawname).isValid) {
-                            elemGuidto = APIGuidFromString (propertyParams.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                    if (subproperty.ContainsKey (rawname)) {
+                        if (subproperty.Get (rawname).isValid) {
+                            elemGuidto = APIGuidFromString (subproperty.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             param.fromGuid = elemGuidto;
                             rulestring_one = "Sync_to{" + params[1];
                         }

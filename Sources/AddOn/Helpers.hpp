@@ -294,7 +294,7 @@ void GetParamTypeList (GS::Array<GS::UniString>& paramTypesList);
 // Конвертация значений ParamValue в свойства, находящиеся в нём
 // Возвращает true если значения отличались
 // -----------------------------------------------------------------------------
-bool ConvertToProperty (ParamValue& pvalue);
+//bool ConvertToProperty (ParamValue& pvalue);
 
 // -----------------------------------------------------------------------------
 // Синхронизация ParamValue и API_Property
@@ -503,7 +503,7 @@ bool SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition>& definitions
 // --------------------------------------------------------------------
 // Получение словаря значений свойств с указанием GUID родительского объекта
 // --------------------------------------------------------------------
-bool SubGuid_GetParamValue (const API_Guid& elemGuid, ParamDictValue& propertyParams, const GS::Array<API_PropertyDefinition>& definitions);
+bool SubGuid_GetParamValue (const API_Guid& elemGuid, ParamDictValue& propertyParams, const GS::Array<API_PropertyDefinition>& definitions, ParamDictValue& subproperty);
 
 // --------------------------------------------------------------------
 // Заполнение свойств для элемента
