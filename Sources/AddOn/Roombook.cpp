@@ -369,48 +369,49 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
     if (descripton.Contains ("{") && descripton.Contains ("}") && descripton.Contains (";")) {
         descripton = descripton.GetSubstring ('{', '}', 0);
         GS::Array<GS::UniString> partstring;
-        if (StringSplt (descripton, ";", partstring) != 4) {
-            c.fontsize = 3;
-            c.width_mat = 40;
-            c.width_area = 20;
-        } else {
+        UInt32 n = StringSplt (descripton, ";", partstring);
+        if (n > 0) {
+            fontname = "Arial";
             if (!UniStringToDouble (partstring[0], c.width_mat)) c.width_mat = 50;
+        }
+        if (n > 1) {
             if (!UniStringToDouble (partstring[1], c.width_area)) c.width_area = 20;
-            if (!UniStringToDouble (partstring[2], c.fontsize)) c.fontsize = 3;
+        }
+        if (n > 2) {
+            if (!UniStringToDouble (partstring[2], c.fontsize)) c.fontsize = 2.5;
+        }
+        if (n > 3) {
             fontname = partstring[3];
         }
-    } else {
-        c.fontsize = 3;
-        c.width_mat = 50;
-        c.width_area = 20;
+        if (n > 4) {
+            GS::UniString space = partstring[4].ToLowerCase ();
+            if (space.Contains ("nbs")) space = u8"\u2007";
+            if (space.Contains ("ns")) space = u8"\u202F";
+            if (space.Contains ("s")) space = " ";
+            c.no_breake_space = space;
+        }
+        if (n > 6) {
+            GS::UniString space = partstring[5].ToLowerCase ();
+            if (space.Contains ("nbs")) space = u8"\u2007";
+            if (space.Contains ("ns")) space = u8"\u202F";
+            if (space.Contains ("s")) space = " ";
+            c.narow_space = space;
+        }
     }
     c.font = GetFontIndex (fontname);
-    if (c.font == 0) {
-        fontname = "GOST 2.304 type A";
-        c.font = GetFontIndex (fontname);
-    }
-    if (c.font == 0) {
-        fontname = "ISOCPEUR";
-        c.font = GetFontIndex (fontname);
-    }
-    if (c.font == 0) {
+    if (c.font == 1) {
         fontname = "Arial";
         c.font = GetFontIndex (fontname);
     }
     Int32 addspace = 0;
     GS::UniString delim = "-";
-    #ifdef AC_25
-    c.no_breake_space = " ";
-    c.narow_space = " ";
-    #endif // AC_25
-
     c.width_no_breake_space = GetTextWidth (c.font, c.fontsize, c.no_breake_space);
-    if (c.width_no_breake_space < 0.001) {
+    if (c.width_no_breake_space < 0.001 || is_equal (c.width_no_breake_space, 0)) {
         c.no_breake_space = " ";
         c.width_no_breake_space = GetTextWidth (c.font, c.fontsize, c.no_breake_space);
     }
     c.width_narow_space = GetTextWidth (c.font, c.fontsize, c.narow_space);
-    if (c.width_narow_space < 0.001) {
+    if (c.width_narow_space < 0.001 || is_equal (c.width_narow_space, 0)) {
         c.narow_space = " ";
         c.width_narow_space = GetTextWidth (c.font, c.fontsize, c.narow_space);
     }
@@ -464,7 +465,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
                 WriteOtdDataToRoom_AddValue (dct, rawname, mat, area);
             }
         }
-    }
+}
 
     for (const OtdSlab& otdslab : otd.otdslab) {
         const TypeOtd& t = otdslab.type;
@@ -710,7 +711,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
                 GetRelationsElement (elGuid, syncSettings, subelemGuid);
                 for (const API_Guid& elGuid_ : subelemGuid) {
                     Param_AddUnicElementByType (elGuid_, zoneGuid, API_WindowID, elementToRead);
-                }
+            }
                 if (!roominfo.walledges.ContainsKey (elGuid)) {
                     GS::Array<Sector> t;
                     t.Push (tedge);
@@ -731,10 +732,10 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
                         if (typeelem == API_WallID || typeelem == API_ColumnID) elementToRead.Get (typeelem).Get (elGuid).Push (zoneGuid);
                     }
                 }
-            } else {
+        } else {
                 msg_rep ("CollectRoomInfo err", "ACAPI_Element_SearchElementByCoord element not found", err, zoneGuid);
             }
-        }
+}
     }
     roominfo.wallPart = relData.wallPart;
     roominfo.beamPart = relData.beamPart;
@@ -1610,7 +1611,7 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
             if (param_name.Contains ("{@")) {
                 // Если это gdl парметр - добавляем
                 valid_rawnames.Push (param_name);
-            } else {
+    } else {
                 bool flag_find = false;
                 for (auto& cItt : propertyParams) {
                     #if defined(AC_28)
@@ -1626,13 +1627,13 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
                         }
                         valid_rawnames.Push (parameters.rawName);
                         break;
+                        }
                     }
                 }
             }
-        }
         param.rawnames = valid_rawnames;
-    }
 }
+    }
 
 bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams)
 {
@@ -1661,9 +1662,9 @@ bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead,
                     param.val.type = API_PropertyStringValueType;
                 }
                 break;
-            }
         }
     }
+}
     return flag;
 }
 
@@ -2171,7 +2172,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
         edges.Clear ();
     }
     restedges = roomedges;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
@@ -2206,7 +2207,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
         }
     }
     return;
-}
+            }
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
@@ -2518,13 +2519,13 @@ void SetMaterialFinish (const OtdMaterial& material, GS::Array<ParamValueComposi
         part = part.GetSubstring ('@', '@', 0);
         part.Trim ();
         p.val = part;
-    } else {
+} else {
         p.val = material.smaterial;
     }
     p.num = -1;
     p.structype = APICWallComp_Finish;
     base_composite.Push (p);
-}
+        }
 
 bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
 {
@@ -2624,7 +2625,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                     }
                     group.Push (otdwall.otd_guid);
                 }
-            } else {
+        } else {
                 otd.otdwall.Clear ();
             }
             if (otd.create_ceil_elements || otd.create_floor_elements) {
@@ -2652,7 +2653,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 if (err != NoError) msg_rep ("Draw_Elements", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
             }
 
-        }
+            }
         return NoError;
     });
     #if defined(TESTING)
@@ -3102,7 +3103,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         #else
         slabelement.slab.botMat.overridden = true;
         #endif
-    }
+}
     if (otdslab.type == Floor) {
         #if defined(AC_27) || defined(AC_28)
         slabelement.slab.topMat.hasValue = true;
@@ -3115,7 +3116,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return;
-    }
+}
     err = ACAPI_Element_Create (&slabelement, &memo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -3124,7 +3125,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     otdslab.otd_guid = slabelement.header.guid;
     ACAPI_DisposeElemMemoHdls (&memo);
     return;
-}
+    }
 
 void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab)
 {
@@ -3309,7 +3310,7 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
                 if (desc.Contains (cls.all_class)) {
                     findict.Add (cls.all_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
-                }
+        }
                 if (desc.Contains (cls.ceil_class)) {
                     findict.Add (cls.ceil_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
@@ -3334,9 +3335,9 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
                     findict.Add (cls.otdwall_down_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
-            }
-        }
     }
+}
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -3381,16 +3382,16 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                     suffix = "zone";
                 } else {
                     suffix = "base element";
-                }
+            }
                 if (SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite, suffix, false)) {
                     if (!syncguidsdict.ContainsKey (guid)) {
                         syncguidsdict.Add (guid, true);
                         syncguids.Push (guid);
                     }
                 }
-            }
         }
     }
+}
     if (!paramToWrite.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Write GUID base and GUID zone to %d finishing element(s)", paramToWrite.GetSize ());
         nPhase += 1;
@@ -3406,8 +3407,8 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                 [&]() -> GSErrCode {
             ParamHelpers::ElementsWrite (paramToWrite);
             return NoError;
-        });
-    }
+    });
+}
     if (!syncguids.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
         nPhase += 1;
@@ -3634,7 +3635,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     }
     return false;
     #endif
-}
+    }
 
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
@@ -3651,7 +3652,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
         element = favorite.element;
         memo = *favorite.memo;
         return true;
-    }
+}
     ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
     return false;
     #endif
@@ -3699,10 +3700,10 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
                     ACAPI_WriteReport (msgString, true);
                     return false;
                 }
+                }
             }
         }
-    }
     return true;
-}
+    }
 #endif
 }
