@@ -809,6 +809,7 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
         if (paramFrom != paramTo) {
             paramTo.val = paramFrom.val; // Записываем только значения
             paramTo.isValid = true;
+
             return true;
         }
     }
@@ -2292,18 +2293,18 @@ bool operator== (const API_Property& lhs, const API_Property& rhs)
 // Конвертация значений ParamValue в свойства, находящиеся в нём
 // Возвращает true если значения отличались
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToProperty (ParamValue& pvalue)
-{
-    if (!pvalue.isValid) return false;
-    if (!pvalue.fromPropertyDefinition) return false;
-    API_Property property = pvalue.property;
-    if (ParamHelpers::ConvertToProperty (pvalue, property)) {
-        pvalue.property = property;
-        return true;
-    } else {
-        return false;
-    }
-}
+//bool ParamHelpers::ConvertToProperty (ParamValue& pvalue)
+//{
+//    if (!pvalue.isValid) return false;
+//    if (!pvalue.fromPropertyDefinition) return false;
+//    API_Property property = pvalue.property;
+//    if (ParamHelpers::ConvertToProperty (pvalue, property)) {
+//        pvalue.property = property;
+//        return true;
+//    } else {
+//        return false;
+//    }
+//}
 
 // -----------------------------------------------------------------------------
 // Синхронизация ParamValue и API_Property
@@ -4022,7 +4023,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
 {
     if (definitions.IsEmpty ()) return;
     #if defined(TESTING)
-    DBprnt ("GetAllPropertyDefinitionToParamDict definition start");
+    DBprnt ("AllPropertyDefinitionToParamDict definition start");
     #endif
     UInt32 nparams = propertyParams.GetSize ();
     bool needAddNew = (nparams == 0);
@@ -4039,7 +4040,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
                 nparams--;
                 if (nparams == 0) {
                     #if defined(TESTING)
-                    DBprnt ("    GetAllPropertyDefinitionToParamDict definition return");
+                    DBprnt ("    AllPropertyDefinitionToParamDict definition return");
                     #endif
                     return;
                 }
@@ -4047,7 +4048,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
         }
     }
     #if defined(TESTING)
-    DBprnt ("  GetAllPropertyDefinitionToParamDict definition end");
+    DBprnt ("  AllPropertyDefinitionToParamDict definition end");
     #endif
 }
 
@@ -4073,12 +4074,11 @@ bool ParamHelpers::SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition
 // --------------------------------------------------------------------
 // Получение словаря значений свойств с указанием GUID родительского объекта
 // --------------------------------------------------------------------
-bool ParamHelpers::SubGuid_GetParamValue (const API_Guid & elemGuid, ParamDictValue & propertyParams, const GS::Array<API_PropertyDefinition>&definitions)
+bool ParamHelpers::SubGuid_GetParamValue (const API_Guid & elemGuid, ParamDictValue & propertyParams, const GS::Array<API_PropertyDefinition>&definitions, ParamDictValue & subproperty)
 {
     if (definitions.IsEmpty ()) return false;
     GS::Array<API_PropertyDefinition> subdefinitions;
     if (!SubGuid_GetDefinition (definitions, subdefinitions)) return false;
-    ParamDictValue subproperty;
     ParamHelpers::AllPropertyDefinitionToParamDict (subproperty, subdefinitions);
     ClassificationFunc::SystemDict systemdict;
     ParamHelpers::Read (elemGuid, subproperty, propertyParams, systemdict);
@@ -4203,7 +4203,7 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
             }
         }
     }
-    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_ProperyDefinition");
+    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_properydefinition");
     #if defined(TESTING)
     DBprnt ("  AllPropertyDefinitionToParamDict end");
     #endif
@@ -5506,10 +5506,29 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
         value = property.value;
     }
     #endif
-    if (!pvalue.isValid) {
+    pvalue.fromProperty = true;
+    pvalue.fromPropertyDefinition = !pvalue.fromAttribDefinition;
+    pvalue.definition = property.definition;
+    pvalue.property = property;
+    if (pvalue.rawName.Contains ("buildingmaterial")) {
+        pvalue.fromAttribDefinition = true;
+    }
+    if (!pvalue.fromAttribDefinition) {
+        if (pvalue.rawName.Contains ("component")) pvalue.fromAttribDefinition = true;
+    }
+    // Костыль для обработки классификации. Переписать
+    if (property.definition.description.Contains ("to{Class:")) {
+        GS::Array<GS::UniString> params;
+        UInt32 nparam = StringSplt (property.definition.description, "to{Class", params);
+        if (nparam > 1) {
+            GS::UniString systemname = params.Get (1).GetSubstring (':', '}', 0);
+            pvalue.name = systemname.ToLowerCase ();
+        }
+        pvalue.fromClassification = true;
+    }
+    if (!pvalue.isValid && property.definition.guid == APINULLGuid) {
         return false;
     }
-
     pvalue.val.uniStringValue = PropertyHelpers::ToString (property);
     //std::string var = pvalue.val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
     FormatStringDict formatstringdict;
@@ -5601,27 +5620,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             return false;
             break;
     }
-    if (pvalue.rawName.Contains ("buildingmaterial")) {
-        pvalue.fromAttribDefinition = true;
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (pvalue.rawName.Contains ("component")) pvalue.fromAttribDefinition = true;
-    }
-    // Костыль для обработки классификации. Переписать
-    if (property.definition.description.Contains ("to{Class:")) {
-        GS::Array<GS::UniString> params;
-        UInt32 nparam = StringSplt (property.definition.description, "to{Class", params);
-        if (nparam > 1) {
-            GS::UniString systemname = params.Get (1).GetSubstring (':', '}', 0);
-            pvalue.name = systemname.ToLowerCase ();
-        }
-        pvalue.fromClassification = true;
-    }
     pvalue.type = pvalue.val.type;
-    pvalue.fromProperty = true;
-    pvalue.fromPropertyDefinition = !pvalue.fromAttribDefinition;
-    pvalue.definition = property.definition;
-    pvalue.property = property;
     return true;
 }
 

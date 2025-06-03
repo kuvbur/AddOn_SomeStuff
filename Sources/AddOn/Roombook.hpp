@@ -314,24 +314,30 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
 // -----------------------------------------------------------------------------
 // Построение отделочных стен (общая)
 // -----------------------------------------------------------------------------
-void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& wallobjelement, API_ElementMemo& wallobjmemo, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, UnicElementByType& subelementByparent);
+
+void OtdBeam_Draw_Beam (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges);
+
+bool OtdBeam_GetDefult_Beam (const GS::UniString& favorite_name, API_Element& beamelement, API_ElementMemo& beammemo);
+
+void OtdBeam_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges);
+
+bool OtdBeam_GetDefult_Object (const GS::UniString& favorite_name, API_Element& beamelement, API_ElementMemo& beammemo);
 
 // -----------------------------------------------------------------------------
 // Построение отделочных стен аксессуаром
 // -----------------------------------------------------------------------------
-void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
+void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges);
 
 // -----------------------------------------------------------------------------
 // Получение из избранного аксессуара стены для простроения 
 // -----------------------------------------------------------------------------
 bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo);
 
-void Reveal_Up_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
-
 // -----------------------------------------------------------------------------
 // Построение отделочных стен стандартной стеной
 // -----------------------------------------------------------------------------
-void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, UnicElementByType& subelementByparent);
+void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, UnicElementByType& subelementByparent);
 
 // -----------------------------------------------------------------------------
 // Получение из избранного стены для простроения 
@@ -341,21 +347,21 @@ bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wa
 // -----------------------------------------------------------------------------
 // Построение проёмов в отделочных стенах 
 // -----------------------------------------------------------------------------
-void Opening_Draw (API_Element& wallelement, API_Element& windowelement, API_ElementMemo& windowmemo, OtdOpening& op, UnicElementByType& subelementByparent, const double& zBottom);
+void Opening_Draw (API_Element& wallelement, OtdOpening& op, UnicElementByType& subelementByparent, const double& zBottom);
 
 // -----------------------------------------------------------------------------
 // Получение настроек проёмов в отделочных стенах 
 // -----------------------------------------------------------------------------
-bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& memo);
+bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& windowmemo);
 
 // -----------------------------------------------------------------------------
 // Построение потолка/пола (общая)
 // -----------------------------------------------------------------------------
-void Floor_Draw (const Stories& storyLevels, API_Element& slabelement, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab, UnicElementByType& subelementByparent);
+void Floor_Draw (const Stories& storyLevels, OtdSlab& otdslab, UnicElementByType& subelementByparent);
 
-void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabelement, OtdSlab& otdslab);
+void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab);
 
-void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, API_Element& slabobjelement, API_ElementMemo& slabobjmemo, OtdSlab& otdslab);
+void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab);
 
 bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo);
 
