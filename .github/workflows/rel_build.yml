@@ -8,11 +8,55 @@ defaults:
     shell: bash
 
 jobs:
+  build_win_old:
+    strategy:
+      fail-fast: true
+      matrix:
+        ac-version: [22, 23, 24]
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout the submodule
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup MSVC Developer Command Prompt
+        uses: TheMrMilchmann/setup-msvc-dev@v3.0.1
+        with:
+          arch: x86_amd64
+          toolset: 14.0
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install requests
+      
+      - name: Run build script
+        run: |
+          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
+      - name: Get Time
+        id: time
+        uses: nanzm/get-time-action@master
+        with:
+          format: 'YYYY-MM-DD-HH'
+      - name: Upload Artifact
+        env:
+          TIME: "${{ steps.time.outputs.time }}"
+        uses: actions/upload-artifact@v4
+        with:
+          name: SomeStuff AC${{ matrix.ac-version }} Win ${{ env.TIME }}
+          path: Build/Package/SomeStuff/${{ matrix.ac-version }}
   build_win:
     strategy:
       fail-fast: false
       matrix:
-        ac-version: [22, 23, 24, 25, 26, 27, 28]
+        ac-version: [25, 26, 27, 28]
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
