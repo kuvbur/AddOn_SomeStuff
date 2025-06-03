@@ -993,11 +993,8 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
     #else
     err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
     #endif
-    if (err != NoError) {
+    if (err != NoError || width < 0.001) {
         msg_rep ("GetTextWidth err : zero width", "text = ~" + var + "~", err, APINULLGuid);
-    }
-    if (width < 0.01) {
-        width = 0.1;
     }
     return width;
 }
@@ -1093,7 +1090,7 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
     if (err == NoError) {
         isteamwork = projectInfo.teamwork;
         userid = projectInfo.userId;
-    }
+}
     return err;
 }
 
@@ -1416,7 +1413,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     if (err != NoError) {
         msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-    }
+}
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
     #else
@@ -1765,7 +1762,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         case API_HotlinkID:
         default:
             return false;
-    }
+}
 
     return true;
 }		// ElemHead_To_Neig
@@ -1820,8 +1817,8 @@ bool	ClickAnElem (const char* prompt,
         if (err == NoError) {
             elemHead.type = pars.type;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
-        }
     }
+}
 
     if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
         pointInfo.neig.elemPartType = APINeigElemPart_None;

@@ -89,8 +89,13 @@ bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
     #if !defined (AC_28)
     return false;
     #else
-
-
+    ACAPI::Result<RoutingElement> routingElement = RoutingElement::Get (Adapter::UniqueID (elem_head.guid));
+    if (routingElement.IsErr ()) {
+        ACAPI_WriteReport (routingElement.UnwrapErr ().text.c_str (), false);
+        return false;
+    }
+    std::vector<ACAPI::MEP::UniqueID> routingNodeIds = routingElement->GetRoutingNodeIds ();
+    std::vector<ACAPI::MEP::UniqueID> routingSegmentIds = routingElement->GetRoutingSegmentIds ();
     bool flag_find = false;
     return flag_find;
     #endif
