@@ -440,7 +440,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     #if defined(TESTING)
     DBprnt ("RunParam");
     #endif
-    API_Elem_Head	tElemHead;
+    API_Elem_Head tElemHead = {};
     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
     tElemHead.guid = elemGuid;
     GSErrCode	err = ACAPI_Element_GetHeader (&tElemHead);
@@ -862,6 +862,10 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                         for (UInt32 inx = 0; inx < 20; inx++) {
                             ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
                         }
+                        if (param.fromQuantity) {
+                            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_th");
+                            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_units");
+                        }
                         ParamHelpers::AddParamDictValue2ParamDictElement (elemGuid, paramDict, paramToRead);
                         hasSub = true; // Нужно будет прочитать все свойства
                     }
@@ -1083,6 +1087,11 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     if (synctypefind == false) {
         if (rulestring_one.Contains ("Material:") && (rulestring_one.Contains ('"') || hasformula)) {
             synctypefind = true;
+            if (rulestring_one.Contains ("QtyMaterial:") || rulestring_one.Contains ("QMaterial:")) {
+                rulestring_one.ReplaceAll ("QtyMaterial:", "Material:");
+                rulestring_one.ReplaceAll ("QMaterial:", "Material:");
+                param.fromQuantity = true;
+            }
             rulestring_one.ReplaceAll ("Material:", "");
             rulestring_one.ReplaceAll ("{Layers;", "{Layers,20;");
             rulestring_one.ReplaceAll ("{Layers_inv;", "{Layers_inv,20;");
@@ -1582,7 +1591,7 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 #endif
                 //TODO Дописать фильтр по типу, слою, свойству
                 if (!param.val.uniStringValue.IsEmpty () && check_guid) {
-                    API_Elem_Head elementHead;
+                    API_Elem_Head elementHead = {}; BNZeroMemory (&elementHead, sizeof (API_Elem_Head));
                     elementHead.guid = APIGuidFromString (param.val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                     err = ACAPI_Element_GetHeader (&elementHead);
                     if (err != NoError) {
@@ -1662,7 +1671,6 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     API_DatabaseInfo elementdatabaseInfo;
     BNZeroMemory (&homedatabaseInfo, sizeof (API_DatabaseInfo));
     bool checkdb = false; bool isfloorplan = false;
-
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetCurrentDatabase (&homedatabaseInfo);
     #else
@@ -1674,8 +1682,9 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     } else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
+    GS::UniString pname = GetDBName (homedatabaseInfo);
     int count_inv = 0; int count_all = 0; int count_otherplan = 0; int count_del = 0;
-    API_Elem_Head tElemHead;
+    API_Elem_Head tElemHead = {}; BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
     for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentGuid.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         UnicGuid guids = cIt->value;
@@ -1695,6 +1704,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
                 tElemHead.guid = guid;
                 if (ACAPI_Element_GetHeader (&tElemHead, 0) != NoError) {
+                    msg_rep ("SyncShowSubelement", "Has been delete", err, guid);
                     count_del++;
                     continue;
                 } else {
@@ -1704,6 +1714,12 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             }
             if (isfloorplan) {
                 if (!ACAPI_Element_Filter (guid, APIFilt_OnActFloor)) {
+                    BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
+                    tElemHead.guid = guid; GS::UniString name = "";
+                    if (ACAPI_Element_GetHeader (&tElemHead, 0) == NoError) {
+                        name = GS::UniString::Printf ("%d", tElemHead.floorInd);
+                    }
+                    msg_rep ("SyncShowSubelement", "Diff floor: " + name, err, guid);
                     selNeigs.PushNew (guid);
                     count_otherplan++;
                     continue;
@@ -1719,6 +1735,8 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 if (err == NoError) {
                     if (elementdatabaseInfo.databaseUnId != homedatabaseInfo.databaseUnId) {
                         selNeigs.PushNew (guid);
+                        GS::UniString name = GetDBName (elementdatabaseInfo);
+                        msg_rep ("SyncShowSubelement", "Diff DB: " + pname + " <-> " + name, err, guid);
                         count_otherplan++;
                         continue;
                     }

@@ -137,7 +137,7 @@ bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettin
     if (!ACAPI_Element_Filter (objectId, APIFilt_HasAccessRight)) return false;
     if (!ACAPI_Element_Filter (objectId, APIFilt_IsEditable)) return false;
     // Проверяем - на находится ли объект в модуле
-    API_Elem_Head	tElemHead;
+    API_Elem_Head	tElemHead = {};
     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
     tElemHead.guid = objectId;
     if (ACAPI_Element_GetHeader (&tElemHead) != NoError) return false;
@@ -1773,8 +1773,16 @@ GS::UniString GetPropertyENGName (GS::UniString& name)
     if (name.IsEqual ("@property:id")) return "@property:BuildingMaterialProperties/Building Material ID";
     if (name.IsEqual ("@property:n")) return "@material:n";
     if (name.IsEqual ("@property:layer_thickness")) return "@material:layer thickness";
+    if (name.IsEqual ("@property:th")) return "@material:layer thickness";
     if (name.IsEqual ("@property:bmat_inx")) return "@material:bmat_inx";
     if (name.IsEqual ("@property:cutfill_inx")) return "@material:cutfill_inx";
+    if (name.IsEqual ("@property:some_stuff_th")) return "@property:buildingmaterialproperties/some_stuff_th";
+    if (name.IsEqual ("@property:some_stuff_units")) return "@property:buildingmaterialproperties/some_stuff_units";
+    if (name.IsEqual ("@property:unit")) return "@property:buildingmaterialproperties/some_stuff_units";
+    if (name.IsEqual ("@property:area")) return "@material:area";
+    if (name.IsEqual ("@property:volume")) return "@material:volume";
+    if (name.IsEqual ("@property:qty")) return "@material:qty";
+
     GS::UniString nameproperty = "";
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     nameproperty = "@property:" + RSGetIndString (iseng, BuildingMaterialNameID, ACAPI_GetOwnResModule ());
@@ -4909,6 +4917,107 @@ bool ParamHelpers::ReadFormula (ParamDictValue & paramByType, ParamDictValue & p
     }
     return flag_find;
 }
+
+// -----------------------------------------------------------------------------
+// Получение информации о элементе
+// -----------------------------------------------------------------------------
+void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue & params, ParamDictValue & propertyParams, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, ParamDictValue & paramlayers)
+{
+    API_ElementQuantity quantity;
+    API_QuantityPar paramq;
+    BNZeroMemory (&paramq, sizeof (API_QuantityPar));
+    paramq.minOpeningSize = EPS;
+    GSErrCode err = NoError;
+    GS::Array <API_CompositeQuantity> composites;
+    GS::Array <API_ElemPartQuantity> elemPartQuantities;
+    GS::Array <API_ElemPartCompositeQuantity> elemPartComposites;
+    API_QuantitiesMask mask;
+
+    //ACAPI_ELEMENT_QUANTITY_MASK_CLEAR (mask);
+    //ACAPI_ELEMENT_COMPOSITES_QUANTITY_MASK_SETFULL (mask);
+    GS::Array<API_Quantities> quantities; quantities.Push (API_Quantities ());
+    quantities[0].elements = &quantity;
+    quantities[0].composites = &composites;
+    quantities[0].elemPartQuantities = &elemPartQuantities;
+    quantities[0].elemPartComposites = &elemPartComposites;
+    GS::Array<API_Guid> elemGuids; elemGuids.Push (element.header.guid);
+    err = ACAPI_Element_GetMoreQuantities (&elemGuids, &paramq, &quantities, &mask);
+    if (err != NoError) {
+        msg_rep ("ReadQuantities", "ACAPI_Element_GetMoreQuantities", err, element.header.guid);
+        return;
+    }
+    GS::Array<ParamValueComposite> composite = {};
+    ParamDictValue paramsAdd;
+    ParamValueComposite p;
+    GS::UniString rawname_th = "@property:buildingmaterialproperties/some_stuff_th";
+    GS::UniString rawname_unit = "@property:buildingmaterialproperties/some_stuff_units";
+    GS::UniString units = "";
+    ParamHelpers::AddValueToParamDictValue (params, rawname_th); rawname_th = "{" + rawname_th;
+    ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = "{" + rawname_unit;
+    bool flag_find = false;
+    for (UInt32 i = 0; i < composites.GetSize (); i++) {
+        API_AttributeIndex constrinx = composites[i].buildMatIndices;
+        if (!existsmaterial.ContainsKey (constrinx)) {
+            if (ParamHelpers::GetAttributeValues (constrinx, params, paramsAdd)) {
+                existsmaterial.Add (constrinx, true);
+            }
+        }
+        GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + "}";
+        double volume = composites[i].volumes;
+        double projarea = composites[i].projectedArea;
+        double th = 0; units = "";
+        if (params.ContainsKey (rawname_unit + attribsuffix)) {
+            if (params.Get (rawname_unit + attribsuffix).isValid) {
+                units = params.Get (rawname_unit + attribsuffix).val.uniStringValue;
+            }
+        }
+        if (params.ContainsKey (rawname_th + attribsuffix)) {
+            if (params.Get (rawname_th + attribsuffix).isValid) {
+                th = params.Get (rawname_th + attribsuffix).val.doubleValue;
+            }
+        }
+        if (is_equal (volume, 0) && projarea > 0 && th > 0) volume = th * projarea;
+        if (!is_equal (projarea, 0) && projarea > 0) th = volume / projarea;
+        p.inx = constrinx;
+        p.area = projarea;
+        p.volume = volume;
+        p.fillThick = th;
+        p.num = i;
+        p.unit = units;
+        flag_find = true;
+        composite.PushNew (p);
+    }
+    if (!flag_find) return;
+    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28)
+        ParamValue& param_composite = cIt->value;
+        #else
+        ParamValue& param_composite = *cIt->value;
+        #endif
+        if (!param_composite.fromQuantity) continue;
+    }
+    GS::UniString rawName = "{@material:layers_all";
+    ParamValue param_composite = {};
+    param_composite.fromGuid = element.header.guid;
+    param_composite.isValid = true;
+    param_composite.composite_pen = 0;
+    param_composite.composite = composite;
+    param_composite.eltype = GetElemTypeID (element.header);
+    if (params.ContainsKey (rawName + "}")) {
+        params.Get (rawName + "}").composite = composite;
+        params.Get (rawName + "}").isValid = true;
+    } else {
+        params.Add (rawName + "}", param_composite);
+    }
+    if (paramlayers.ContainsKey (rawName + "}")) {
+        paramlayers.Get (rawName + "}").composite = composite;
+        paramlayers.Get (rawName + "}").isValid = true;
+    } else {
+        paramlayers.Add (rawName + "}", param_composite);
+    }
+    return;
+}
+
 // -----------------------------------------------------------------------------
 // Получение информации о элементе
 // -----------------------------------------------------------------------------
@@ -4953,8 +5062,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
     #endif
     // Получим состав элемента, добавив в словарь требуемые параметры
     ParamDictValue paramsAdd;
-    if (!ParamHelpers::Components (element, params, paramsAdd)) return false;
+    GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
+    if (!ParamHelpers::Components (element, params, paramsAdd, existsmaterial)) return false;
 
+    bool needReadQuantities = false;
     ParamDictValue paramlayers;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
@@ -4967,13 +5078,16 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 paramlayers.Add (param.rawName, param);
             }
         }
+        if (param.fromQuantity) needReadQuantities = true;
     }
     if (paramlayers.IsEmpty ()) return true;
-
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (!paramsAdd.IsEmpty ()) {
+        if (needReadQuantities) {
+            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_th");
+            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
+        }
         ParamHelpers::CompareParamDictValue (propertyParams, paramsAdd);
-        GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28)
             ParamValue& param_composite = cIt->value;
@@ -5006,7 +5120,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
         }
     }
     bool flag_add = false;
-
+    if (needReadQuantities) ParamHelpers::ReadQuantities (element, params, propertyParams, existsmaterial, paramlayers);
     // Если есть строка-шаблон - заполним её
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
@@ -5479,7 +5593,22 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
         }
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
-    if (property.definition.description.Contains ("Sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
+    GS::UniString description = property.definition.description.ToLowerCase ();
+    if (description.Contains ("sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
+    if (description.Contains ("some_stuff_th")) {
+        // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
+        GS::UniString inx = "";
+        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th" + inx + "}";
+        pvalue.name = "some_stuff_th";
+    }
+    if (description.Contains ("some_stuff_units")) {
+        // Единицы измерения
+        GS::UniString inx = "";
+        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units" + inx + "}";
+        pvalue.name = "some_stuff_units";
+    }
 }
 
 
@@ -5640,15 +5769,20 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyD
 
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
-    if (pvalue.rawName.Contains ("buildingmaterial")) {
+    GS::UniString description = definition.description.ToLowerCase ();
+    if (description.Contains ("some_stuff_th")) {
+        // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th}";
+        pvalue.name = "some_stuff_th";
         pvalue.fromAttribDefinition = true;
     }
-    if (!pvalue.fromAttribDefinition) {
-        if (pvalue.rawName.Contains ("component")) {
-            pvalue.fromAttribDefinition = true;
-        }
+    if (description.Contains ("some_stuff_units")) {
+        // Единицы измерения
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units}";
+        pvalue.name = "some_stuff_units";
+        pvalue.fromAttribDefinition = true;
     }
-    if (definition.description.Contains ("ync_name")) {
+    if (description.Contains ("ync_name")) {
         if (!pvalue.rawName.Contains ("{@property:sync_name")) {
             pvalue.rawName = "{@property:sync_name0}";
             pvalue.name = "Sync_name0";
@@ -5656,20 +5790,32 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyD
         pvalue.fromAttribDefinition = true;
     }
     if (!pvalue.fromAttribDefinition) {
-        if (definition.description.ToLowerCase ().Contains ("{@property:buildingmaterialproperties}")) {
+        if (pvalue.rawName.Contains ("buildingmaterial")) {
             pvalue.fromAttribDefinition = true;
         }
     }
     if (!pvalue.fromAttribDefinition) {
-        if (definition.description.ToLowerCase ().Contains ("some_stuff_fin_onoff")) {
+        if (pvalue.rawName.Contains ("component")) {
             pvalue.fromAttribDefinition = true;
         }
     }
-    if (definition.description.ToLowerCase ().Contains ("some_stuff_fin_description")) {
-        pvalue.fromAttribDefinition = true;
+    if (!pvalue.fromAttribDefinition) {
+        if (description.Contains ("{@property:buildingmaterialproperties}")) {
+            pvalue.fromAttribDefinition = true;
+        }
     }
     if (!pvalue.fromAttribDefinition) {
-        if (definition.description.ToLowerCase ().Contains ("some_stuff_fin_favorite_name")) {
+        if (description.Contains ("some_stuff_fin_onoff")) {
+            pvalue.fromAttribDefinition = true;
+        }
+    }
+    if (!pvalue.fromAttribDefinition) {
+        if (description.Contains ("some_stuff_fin_description")) {
+            pvalue.fromAttribDefinition = true;
+        }
+    }
+    if (!pvalue.fromAttribDefinition) {
+        if (description.Contains ("some_stuff_fin_favorite_name")) {
             pvalue.fromAttribDefinition = true;
         }
     }
@@ -6301,24 +6447,22 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
-bool ParamHelpers::Components (const API_Element & element, ParamDictValue & params, ParamDictValue & paramsAdd)
+bool ParamHelpers::Components (const API_Element & element, ParamDictValue & params, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial)
 {
     #if defined(TESTING)
     DBprnt ("        Components");
     #endif
-    API_ModelElemStructureType	structtype = API_BasicStructure;
-    API_AttributeIndex			constrinx = {};
-    double						fillThick = 0;
+    API_ModelElemStructureType structtype = API_BasicStructure;
+    API_AttributeIndex constrinx = {};
+    double fillThick = 0;
 
     // Отделка колонн
-    API_AttributeIndex			constrinx_ven = {};
-    double						fillThick_ven = 0;
+    API_AttributeIndex constrinx_ven = {};
+    double fillThick_ven = 0;
     API_Elem_Head elemhead = element.header;
-    GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
-
     // Получаем данные о составе конструкции. Т.к. для разных типов элементов
     // информация храница в разных местах - запишем всё в одни переменные
-    API_ElemTypeID eltype = GetElemTypeID (element);
+    API_ElemTypeID eltype = GetElemTypeID (elemhead);
     API_ElementMemo	memo = {};
     switch (eltype) {
         case API_ColumnID:

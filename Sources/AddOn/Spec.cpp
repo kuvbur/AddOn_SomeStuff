@@ -8,6 +8,7 @@
 #endif
 namespace Spec
 {
+API_DatabaseInfo homedatabaseInfo;
 // --------------------------------------------------------------------
 // Получение правил из свойств элемента по умолчанию
 // --------------------------------------------------------------------
@@ -48,39 +49,38 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules)
                 GS::Array<API_Guid> elemGuids;
                 API_Guid classificationItemGuid = rule.rule_definitions.availability[i];
                 if (ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids) == NoError) {
+                    SpecFilter (elemGuids);
                     for (UInt32 j = 0; j < elemGuids.GetSize (); j++) {
-                        if (ACAPI_Element_Filter (elemGuids[j], APIFilt_OnVisLayer)) {
-                            if (ACAPI_Element_Filter (elemGuids[j], APIFilt_IsVisibleByRenovation)) {
-                                if (ACAPI_Element_Filter (elemGuids[j], APIFilt_IsInStructureDisplay)) {
-                                    API_Property propertyflag = {};
-                                    bool flagfindspec = false;
-                                    if (ACAPI_Element_GetPropertyValue (elemGuids[j], rule.rule_definitions.guid, propertyflag) == NoError) {
-                                        #if defined(AC_22) || defined(AC_23)
-                                        if (!propertyflag.isEvaluated) {
-                                            flagfindspec = true;
-                                        }
-                                        if (propertyflag.isDefault && !propertyflag.isEvaluated) {
-                                            flagfindspec = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
-                                        } else {
-                                            flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
-                                        }
-                                        #else
-                                        if (propertyflag.status == API_Property_NotAvailable) {
-                                            flagfindspec = true;
-                                        }
-                                        if (propertyflag.isDefault && propertyflag.status == API_Property_NotEvaluated) {
-                                            flagfindspec = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
-                                        } else {
-                                            flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
-                                        }
-                                        #endif
-                                    }
-                                    if (flagfindspec) {
-                                        rule.elements.Push (elemGuids[j]);
-                                        has_element = true;
-                                    }
-                                }
-                            }
+                        API_Property propertyflag = {};
+                        bool flagfindspec = false;
+                        error = ACAPI_Element_GetPropertyValue (elemGuids[j], rule.rule_definitions.guid, propertyflag);
+                        if (error != NoError) {
+                            msg_rep ("Spec::GetRuleFromDefaultElem", "ACAPI_Element_GetPropertyValue", error, elemGuids[j]);
+                            continue;
+                        }
+                        #if defined(AC_22) || defined(AC_23)
+                        if (!propertyflag.isEvaluated) {
+                            flagfindspec = true;
+                        }
+                        if (propertyflag.isDefault && !propertyflag.isEvaluated) {
+                            flagfindspec = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+                        } else {
+                            flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
+                        }
+                        #else
+                        if (propertyflag.status == API_Property_NotAvailable) {
+                            flagfindspec = true;
+                        }
+                        if (propertyflag.isDefault && propertyflag.status == API_Property_NotEvaluated) {
+                            flagfindspec = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+                        } else {
+                            flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
+                        }
+                        #endif
+                        if (flagfindspec) {
+                            rule.elements.Push (elemGuids[j]);
+                            has_element = true;
+
                         }
                     }
                 }
@@ -93,12 +93,86 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules)
 
 GSErrCode SpecAll (const SyncSettings& syncSettings)
 {
+    GSErrCode err = NoError;
+    BNZeroMemory (&homedatabaseInfo, sizeof (API_DatabaseInfo));
+    #if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Database_GetCurrentDatabase (&homedatabaseInfo);
+    #else
+    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &homedatabaseInfo, nullptr);
+    #endif
+    if (err != NoError) {
+        return err;
+    }
     SpecRuleDict rules; bool hasrule = false;
     GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false);
+    SpecFilter (guidArray);
     if (guidArray.IsEmpty ()) hasrule = GetRuleFromDefaultElem (rules);
-    if (guidArray.IsEmpty () && !hasrule) ACAPI_Element_GetElemList (API_ZombieElemID, &guidArray, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
+    if (guidArray.IsEmpty () && !hasrule) {
+        err = ACAPI_Element_GetElemList (API_ZombieElemID, &guidArray, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
+        SpecFilter (guidArray);
+        if (err != NoError) return err;
+    }
     if (guidArray.IsEmpty () && !hasrule) return NoError;
     return SpecArray (syncSettings, guidArray, rules);
+}
+
+void SpecFilter (API_Guid& elemguid)
+{
+    GSErrCode err = NoError;
+    if (homedatabaseInfo.databaseUnId.elemSetId == APINULLGuid) return;
+    API_DatabaseInfo elementdatabaseInfo;
+    BNZeroMemory (&elementdatabaseInfo, sizeof (API_DatabaseInfo));
+    #if defined(AC_27) || defined(AC_28)
+    err = ACAPI_Database_GetContainingDatabase (&elemguid, &elementdatabaseInfo);
+    #else
+    err = ACAPI_Database (APIDb_GetContainingDatabaseID, &elemguid, &elementdatabaseInfo);
+    #endif
+    if (err == NoError) {
+        if (elementdatabaseInfo.databaseUnId == homedatabaseInfo.databaseUnId) {
+            return;
+        } else {
+            elemguid = APINULLGuid;
+            GS::UniString name = elementdatabaseInfo.name;
+            msg_rep ("SpecFilter", "Filter element in diff DB:", err, elemguid);
+        }
+    } else {
+        msg_rep ("SpecFilter", "APIDb_GetCurrentDatabaseID", err, elemguid);
+        return;
+    }
+}
+
+void SpecFilter (GS::Array<API_Guid>& guidArray)
+{
+    GSErrCode err = NoError;
+    if (homedatabaseInfo.databaseUnId.elemSetId == APINULLGuid) return;
+    API_DatabaseInfo elementdatabaseInfo;
+    GS::Array<API_Guid> out;
+    GS::UniString рname = GetDBName (homedatabaseInfo);
+    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+        API_Guid elemguid = guidArray[i];
+        if (!ACAPI_Element_Filter (elemguid, APIFilt_OnVisLayer)) continue;
+        if (!ACAPI_Element_Filter (elemguid, APIFilt_IsVisibleByRenovation)) continue;
+        if (!ACAPI_Element_Filter (elemguid, APIFilt_IsInStructureDisplay)) continue;
+        BNZeroMemory (&elementdatabaseInfo, sizeof (API_DatabaseInfo));
+        #if defined(AC_27) || defined(AC_28)
+        err = ACAPI_Database_GetContainingDatabase (&elemguid, &elementdatabaseInfo);
+        #else
+        err = ACAPI_Database (APIDb_GetContainingDatabaseID, &elemguid, &elementdatabaseInfo);
+        #endif
+        if (err == NoError) {
+            if (elementdatabaseInfo.databaseUnId == homedatabaseInfo.databaseUnId) {
+                out.Push (elemguid);
+            } else {
+                GS::UniString name = GetDBName (elementdatabaseInfo);
+                msg_rep ("SpecFilter", "Filter element in diff DB: " + рname + " <-> " + name, err, elemguid);
+            }
+        } else {
+            msg_rep ("SpecFilter", "APIDb_GetCurrentDatabaseID", err, elemguid);
+            continue;
+        }
+    }
+    guidArray.Clear ();
+    guidArray = out;
 }
 
 GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules)
@@ -116,15 +190,14 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
     #endif
-
+    GSErrCode err = NoError;
     subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
     #if defined(AC_27) || defined(AC_28)
-    maxval = 1; ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+    maxval = 2; ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
     #else
-    i = 1; ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+    i = 2; ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
     #endif
     int dummymode = IsDummyModeOn ();
-    GSErrCode err = NoError;
     if (!guidArray.IsEmpty ()) {
         bool flagfindspec = false;
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
