@@ -130,6 +130,10 @@ typedef struct
     short structype = APICWallComp_Core;	//Является ядром?
     int num = 0;							//Номер слоя
     GS::UniString val = "";					//Прочитанные свойства слоя
+    double area = 0;
+    double volume = 0;
+    double length = 0;
+    GS::UniString unit = "";
 } ParamValueComposite;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
@@ -161,7 +165,8 @@ typedef struct
     bool fromMaterial = false;			 // Взять инфо из состава конструкции
     bool fromAttribDefinition = false;	 // Взять инфо из свойств аттрибута
     bool fromAttribElement = false;	     // Взять инфо из аттрибута элемента (слой и т.д.)
-    bool fromElement = false;	         // Взять из информации об элементе (замета материала и т.д.)
+    bool fromQuantity = false;	         // Взять инфо о количестве
+    bool fromElement = false;	         // Взять из информации об элементе (замена материала и т.д.)
     bool fromMEP = false;	             // Взять из информации МЕР
     bool fromGDLArray = false;			 // Взять из массива
     bool toQRCode = false;			     // Результат вывести QR
@@ -182,6 +187,8 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
+
+GS::UniString GetDBName (API_DatabaseInfo& databaseInfo);
 
 // -----------------------------------------------------------------------------
 // Читает информацию об этажах в проекте

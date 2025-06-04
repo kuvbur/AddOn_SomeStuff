@@ -66,6 +66,10 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules);
 
 GSErrCode SpecAll (const SyncSettings& syncSettings);
 
+void SpecFilter (API_Guid& elemguid);
+
+void SpecFilter (GS::Array<API_Guid>& guidArray);
+
 GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules);
 
 // --------------------------------------------------------------------

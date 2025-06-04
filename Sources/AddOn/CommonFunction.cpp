@@ -8,6 +8,76 @@
 #include <limits>
 #include <math.h>
 static const Int32 VersionId = 49;
+
+GS::UniString GetDBName (API_DatabaseInfo& databaseInfo)
+{
+    GS::UniString рname = "";
+    switch (databaseInfo.typeID) {
+        case (APIWind_FloorPlanID):
+            рname = "FloorPlan";
+            break;
+        case (APIWind_SectionID):
+            рname = "Section";
+            break;											// section window type
+        case (APIWind_DetailID):
+            рname = "Detail";
+            break;											// detail window type
+        case (APIWind_3DModelID):
+            рname = "3DModel";
+            break;											// 3D model window type
+        case (APIWind_LayoutID):
+            рname = "Layout";
+            break;											// layout window type
+        case (APIWind_DrawingID):
+            рname = "Drawing";
+            break;											// drawing's database type
+        case (APIWind_MyTextID):
+            рname = "MyText";
+            break;											// custom text window type
+        case (APIWind_MyDrawID):
+            рname = "MyDraw";
+            break;											// custom draw window type
+        case (APIWind_MasterLayoutID):
+            рname = "MasterLayout";
+            break;										// master layout window type
+        case (APIWind_ElevationID):
+            рname = "Elevation";
+            break;										// elevation window type
+        case (APIWind_InteriorElevationID):
+            рname = "InteriorElevation";
+            break;								// interior elevation window type
+        case (APIWind_WorksheetID):
+            рname = "Worksheet";
+            break;										// worksheet window type
+        case (APIWind_ReportID):
+            рname = "Report";
+            break;											// report window type
+        case (APIWind_DocumentFrom3DID):
+            рname = "DocumentFrom3D";
+            break;									// 3D Document window type
+        case (APIWind_External3DID):
+            рname = "External3D";
+            break;										// External 3D window type
+        case (APIWind_Movie3DID):
+            рname = "Movie3D";
+            break;											// movie 3D window type
+        case (APIWind_MovieRenderingID):
+            рname = "MovieRendering";
+            break;									// movie rendering window type
+        case (APIWind_RenderingID):
+            рname = "Rendering";
+            break;										// rendering window type
+        case (APIWind_ModelCompareID):
+            рname = "ModelCompare";
+            break;
+        default:
+            break;
+    }
+    рname = рname + " ";
+    рname = рname + databaseInfo.title;
+    return рname;
+}
+
 Stories GetStories ()
 {
     Stories stories;
@@ -526,7 +596,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     }
     if (elemGuid != APINULLGuid) {
         error_type = "GUID element: " + APIGuid2GSGuid (elemGuid).ToUniString () + " " + error_type;
-        API_Elem_Head elem_head = {};
+        API_Elem_Head elem_head = {}; BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
             GS::UniString elemName;
@@ -691,7 +761,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType)
 {
     GSErrCode		err = NoError;
-    API_Elem_Head elem_head;
+    API_Elem_Head elem_head = {};
     BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
@@ -745,6 +815,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
 {
     if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
     GSErrCode error = NoError;
+
     if (definision.name.Contains ("ync_name")) {
         name = definision.name;
     } else {
@@ -1090,7 +1161,7 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
     if (err == NoError) {
         isteamwork = projectInfo.teamwork;
         userid = projectInfo.userId;
-}
+    }
     return err;
 }
 
@@ -1411,9 +1482,9 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
     err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
     #endif
     if (err != NoError) {
-        msg_rep ("GetGDLParameters", "APIAny_OpenParametersID", err, elemGuid);
+        msg_rep ("GetGDLParameters", "APIAny_OpenParametersID. Check library for missing library parts", err, elemGuid);
         return GetGDLParametersFromMemo (elemGuid, params);
-}
+    }
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
     #else
@@ -1762,7 +1833,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         case API_HotlinkID:
         default:
             return false;
-}
+    }
 
     return true;
 }		// ElemHead_To_Neig
@@ -1817,8 +1888,8 @@ bool	ClickAnElem (const char* prompt,
         if (err == NoError) {
             elemHead.type = pars.type;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
+        }
     }
-}
 
     if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
         pointInfo.neig.elemPartType = APINeigElemPart_None;
@@ -1873,7 +1944,7 @@ bool	ClickAnElem (const char* prompt,
     }
 
     if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
-        API_Elem_Head elemHead;
+        API_Elem_Head elemHead = {};
         BNZeroMemory (&elemHead, sizeof (API_Elem_Head));
         API_ElemSearchPars	pars;
         BNZeroMemory (&pars, sizeof (API_ElemSearchPars));
