@@ -49,27 +49,9 @@ GS::UniString GetDBName (API_DatabaseInfo& databaseInfo)
         case (APIWind_WorksheetID):
             рname = "Worksheet";
             break;										// worksheet window type
-        case (APIWind_ReportID):
-            рname = "Report";
-            break;											// report window type
         case (APIWind_DocumentFrom3DID):
             рname = "DocumentFrom3D";
             break;									// 3D Document window type
-        case (APIWind_External3DID):
-            рname = "External3D";
-            break;										// External 3D window type
-        case (APIWind_Movie3DID):
-            рname = "Movie3D";
-            break;											// movie 3D window type
-        case (APIWind_MovieRenderingID):
-            рname = "MovieRendering";
-            break;									// movie rendering window type
-        case (APIWind_RenderingID):
-            рname = "Rendering";
-            break;										// rendering window type
-        case (APIWind_ModelCompareID):
-            рname = "ModelCompare";
-            break;
         default:
             break;
     }
