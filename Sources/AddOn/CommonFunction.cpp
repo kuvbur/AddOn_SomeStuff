@@ -136,8 +136,10 @@ GS::UniString TextToQRCode (GS::UniString& text, int error_lvl)
             break;
         case 2:
             lvl = qrcodegen::QrCode::Ecc::MEDIUM;
+            break;
         case 3:
             lvl = qrcodegen::QrCode::Ecc::QUARTILE;
+            break;
         case 4:
             lvl = qrcodegen::QrCode::Ecc::HIGH;
             break;
