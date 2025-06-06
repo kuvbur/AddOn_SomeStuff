@@ -374,7 +374,47 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
     err = ACAPI_Goodies (APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
     #endif
     #endif
+    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
+    API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
     switch (elementType) {
+        #ifndef AC_22
+        case API_ColumnID:
+            if (syncSettings.cwallS) {
+                element.header.guid = elemGuid;
+                err = ACAPI_Element_Get (&element);
+                if (err != NoError) {
+                    msg_rep ("GetRelationsElement", "ACAPI_Element_Get", err, elemGuid);
+                    return;
+                }
+                if (element.column.nSegments == 1) return;
+                err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
+                if (err == NoError && memo.columnSegments != nullptr) {
+                    for (UInt32 i = 0; i < element.column.nSegments; i++) {
+                        subelemGuid.Push (memo.columnSegments[0].head.guid);
+                    }
+                }
+                ACAPI_DisposeElemMemoHdls (&memo);
+            }
+            break;
+        case API_BeamID:
+            if (syncSettings.cwallS) {
+                element.header.guid = elemGuid;
+                err = ACAPI_Element_Get (&element);
+                if (err != NoError) {
+                    msg_rep ("GetRelationsElement", "ACAPI_Element_Get", err, elemGuid);
+                    return;
+                }
+                if (element.beam.nSegments == 1) return;
+                err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
+                if (err == NoError && memo.beamSegments != nullptr) {
+                    for (UInt32 i = 0; i < element.beam.nSegments; i++) {
+                        subelemGuid.Push (memo.beamSegments[0].head.guid);
+                    }
+                }
+                ACAPI_DisposeElemMemoHdls (&memo);
+            }
+            break;
+            #endif
         case API_WallID:
             if (syncSettings.widoS) {
                 GS::Array<API_Guid> windows;
@@ -4933,8 +4973,8 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
     GS::Array <API_ElemPartCompositeQuantity> elemPartComposites;
     API_QuantitiesMask mask;
 
-    //ACAPI_ELEMENT_QUANTITY_MASK_CLEAR (mask);
-    //ACAPI_ELEMENT_COMPOSITES_QUANTITY_MASK_SETFULL (mask);
+    ACAPI_ELEMENT_QUANTITY_MASK_CLEAR (mask);
+    ACAPI_ELEMENT_COMPOSITES_QUANTITY_MASK_SETFULL (mask);
     GS::Array<API_Quantities> quantities; quantities.Push (API_Quantities ());
     quantities[0].elements = &quantity;
     quantities[0].composites = &composites;
@@ -6465,6 +6505,26 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     API_ElemTypeID eltype = GetElemTypeID (elemhead);
     API_ElementMemo	memo = {};
     switch (eltype) {
+        #ifndef AC_22
+        case API_ColumnSegmentID:
+            structtype = element.columnSegment.assemblySegmentData.modelElemStructureType;
+            if (structtype == API_BasicStructure) {
+                constrinx = element.columnSegment.assemblySegmentData.buildingMaterial;
+                fillThick = element.columnSegment.assemblySegmentData.nominalHeight;
+                constrinx_ven = element.columnSegment.venBuildingMaterial;
+                fillThick_ven = element.columnSegment.venThick;
+            }
+            if (structtype == API_ProfileStructure) constrinx = element.columnSegment.assemblySegmentData.profileAttr;
+            break;
+        case API_BeamSegmentID:
+            structtype = element.beamSegment.assemblySegmentData.modelElemStructureType;
+            if (structtype == API_BasicStructure) {
+                constrinx = element.beamSegment.assemblySegmentData.buildingMaterial;
+                fillThick = element.beamSegment.assemblySegmentData.nominalHeight;
+            }
+            if (structtype == API_ProfileStructure) constrinx = element.beamSegment.assemblySegmentData.profileAttr;
+            break;
+            #endif
         case API_ColumnID:
             #ifdef AC_22
             constrinx = element.column.buildingMaterial;
