@@ -241,7 +241,7 @@ void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны 
 // -----------------------------------------------------------------------------
-void Column_Create_One (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
+void OtdWall_Create_FromColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead);
 
 // -----------------------------------------------------------------------------
 // Обработка полов и потолков
