@@ -127,13 +127,16 @@ typedef struct
     API_AttributeIndex inx;					// Индекс материала
     double fillThick = 0.0;					// Толщина слой
     double rfromstart = 0.0;				//Удаление от начальной точки (для определения порядка следования)
-    short structype = APICWallComp_Core;	//Является ядром?
+    short structype = 0;	//Является ядром?
     int num = 0;							//Номер слоя
     GS::UniString val = "";					//Прочитанные свойства слоя
-    double area = 0;
-    double volume = 0;
-    double length = 0;
-    GS::UniString unit = "";
+    double area = 0; // Площадь поверхности
+    double area_fill = 0; // Площадь поверхности
+    double volume = 0; // Объём
+    double length = 0; // Длина
+    double kzap = 1; // Коэфф. запаса
+    double qty = 0; // Вывод количества на основе единиц измерения
+    GS::UniString unit = ""; // Единица измерения
 } ParamValueComposite;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
