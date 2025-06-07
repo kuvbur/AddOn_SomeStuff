@@ -6577,7 +6577,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             case SyHatch:
                 {
                     const HatchObject& syHatch = profileDescriptionIt1;
+                    short structype = 0;
+                    #if defined(AC_27) || defined(AC_28)
+                    const ProfileItem profileItemInfo = syHatch.GetProfileItem ();
+                    if (profileItemInfo.IsFinish ()) structype = APICWallComp_Finish;
+                    if (profileItemInfo.IsCore ()) structype = APICWallComp_Core;
+                    #else
                     const ProfileItem* profileItemInfo = syHatch.GetProfileItemPtr ();
+                    if (profileItemInfo->IsFinish ()) structype = APICWallComp_Finish;
+                    if (profileItemInfo->IsCore ()) structype = APICWallComp_Core;
+                    #endif
                     Geometry::MultiPolygon2D result;
 
                     // Получаем полигон штриховки
@@ -6654,8 +6663,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                 layer.fillThick = th;
                                 layer.rfromstart = Geometry::Dist (startp, centr);
                                 layer.area_fill = area_fill;
-                                if (profileItemInfo->IsFinish ()) layer.structype = APICWallComp_Finish;
-                                if (profileItemInfo->IsCore ()) layer.structype = APICWallComp_Core;
+                                layer.structype = structype;
                                 if (!existsmaterial.ContainsKey (constrinxL)) {
                                     ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
                                     existsmaterial.Add (constrinxL, true);
@@ -6683,8 +6691,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         layer.fillThick = fillThickL;
                                         layer.rfromstart = rfromstart;
                                         layer.area_fill = area_fill;
-                                        if (profileItemInfo->IsFinish ()) layer.structype = APICWallComp_Finish;
-                                        if (profileItemInfo->IsCore ()) layer.structype = APICWallComp_Core;
+                                        layer.structype = structype;
                                         param_composite.Get (pen).composite.Push (layer);
                                         if (!existsmaterial.ContainsKey (constrinxL)) {
                                             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
@@ -6747,7 +6754,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     paramlayers.Get (*cIt->key).composite = paramout;
                     #endif
                 }
-            }
+                }
         }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
     }
@@ -6903,8 +6910,8 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                 param.composite_type = structtype;
                 paramlayers.Add (param.rawName, param);
             }
-        }
     }
+}
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramlayers.IsEmpty ()) {
@@ -7029,8 +7036,8 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 API_PropertyDefinition definition = param.definition;
                 if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
             }
-        }
     }
+}
     #ifndef AC_22
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;
