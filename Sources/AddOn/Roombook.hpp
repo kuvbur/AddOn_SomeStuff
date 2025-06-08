@@ -77,6 +77,7 @@ typedef struct
     short floorInd = 0; // Этаж
     double height = 0;
     OtdMaterial material;
+    GS::UniString tip = ""; // Тип потолка/пола из зоны
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
     API_ElemTypeID draw_type = API_SlabID; // Тип отрисовываемого элемента
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
@@ -148,6 +149,8 @@ typedef struct
     GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
     bool has_ceil = true;
     bool has_floor = true;
+    bool ceil_by_slab = false; // Создавать потолок только по перекрытиям
+    bool floor_by_slab = false; // Создавать потолок только по перекрытиям
     GS::UniString tip_pot = "";
     GS::UniString tip_pol = "";
     API_Guid zone_guid = APINULLGuid; // GUID базового элемента
@@ -296,7 +299,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
 
 void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
 
-void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material);
+void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material, bool only_on_slab);
 
 bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 
@@ -403,7 +406,7 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
 bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams);
 void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict, ParamValueData& val);
 ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams);
-ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams);
+ReadParams Param_GetForRooms (ParamDictValue& propertyParams);
 
 bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamDictValue& propertyParams, UnicGuid& finclassguids);
 #endif

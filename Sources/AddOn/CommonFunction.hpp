@@ -448,6 +448,12 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo& memo, Geomet
 
 GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D& polygon, API_Polygon& poly, API_ElementMemo& memo);
 
+void UnhideUnlockElementLayer (const API_Guid& elemGuid);
+
+void UnhideUnlockElementLayer (const API_Elem_Head& elem_head);
+
+void UnhideUnlockElementLayer (const API_AttributeIndex& layer);
+
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID& type, API_AttributeIndex& attribinx);
 
 GSErrCode Favorite_GetNum (const API_ElemTypeID& type, short* count, GS::Array<API_FavoriteFolderHierarchy>* folders, GS::Array<GS::UniString>* names);

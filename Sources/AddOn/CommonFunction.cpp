@@ -1049,7 +1049,9 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
     err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
     #endif
     if (err != NoError || width < 0.001) {
-        msg_rep ("GetTextWidth err : zero width", "text = ~" + var + "~", err, APINULLGuid);
+        #if defined(TESTING)
+        DBprnt ("GetTextWidth err", "zero width text = ~" + var + "~");
+        #endif 
     }
     return width;
 }
@@ -2307,6 +2309,54 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D & polygon, API
     }
     Geometry::FreePolygon2DData (&polygon2DData);
     return err;
+}
+
+void UnhideUnlockElementLayer (const API_Guid & elemGuid)
+{
+    GSErrCode err = NoError;
+    if (ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer)) return;
+    API_Elem_Head elem_head = {};
+    BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
+    elem_head.guid = elemGuid;
+    err = ACAPI_Element_GetHeader (&elem_head);
+    if (err != NoError) {
+        msg_rep ("UnhideUnlockElementLayer", "", err, elemGuid);
+        return;
+    }
+    UnhideUnlockElementLayer (elem_head);
+}
+
+void UnhideUnlockElementLayer (const API_Elem_Head & elem_head)
+{
+    if (ACAPI_Element_Filter (elem_head.guid, APIFilt_OnVisLayer)) return;
+    UnhideUnlockElementLayer (elem_head.layer);
+}
+
+void UnhideUnlockElementLayer (const API_AttributeIndex & layer)
+{
+    API_Attribute attrib;
+    GSErrCode err;
+    BNZeroMemory (&attrib, sizeof (API_Attribute));
+    attrib.header.typeID = API_LayerID;
+    attrib.header.index = layer;
+    err = ACAPI_Attribute_Get (&attrib);
+    if (err != NoError) {
+        msg_rep ("UnhideUnlockElementLayer", "ACAPI_Attribute_Get", err, APINULLGuid);
+        return;
+    }
+    bool flag_write = false;
+    if (attrib.header.flags & APILay_Hidden) {
+        attrib.header.flags ^= APILay_Hidden;
+        flag_write = true;
+    }
+    if (attrib.header.flags & APILay_Locked) {
+        attrib.header.flags ^= APILay_Locked;
+        flag_write = true;
+    }
+    if (flag_write) {
+        err = ACAPI_Attribute_Modify (&attrib, NULL);
+        if (err != NoError) msg_rep ("UnhideUnlockElementLayer", attrib.header.name, err, APINULLGuid);
+    }
 }
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & type, API_AttributeIndex & attribinx)
