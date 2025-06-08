@@ -1616,9 +1616,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
+            }
         }
     }
-}
     return has_element;
 }
 
@@ -1708,13 +1708,28 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             if (!isvisible) {
                 BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
                 tElemHead.guid = guid;
-                if (ACAPI_Element_GetHeader (&tElemHead, 0) != NoError) {
-                    msg_rep ("SyncShowSubelement", "Has been delete", err, guid);
+                err = ACAPI_Element_GetHeader (&tElemHead, 0);
+                if (err != NoError) {
+                    msg_rep ("ShowSubelement", "Has been delete", err, guid);
                     count_del++;
                     continue;
                 } else {
-                    count_inv++;
-                    continue;
+                    UnhideUnlockElementLayer (tElemHead);
+                    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_OnVisLayer)) {
+                        msg_rep ("ShowSubelement", "Element hide by Layer", err, guid);
+                        count_inv++;
+                        continue;
+                    }
+                    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_IsVisibleByRenovation)) {
+                        msg_rep ("ShowSubelement", "Element hide by Renovation", err, guid);
+                        count_inv++;
+                        continue;
+                    }
+                    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_IsInStructureDisplay)) {
+                        msg_rep ("ShowSubelement", "Element hide by StructureDisplay", err, guid);
+                        count_inv++;
+                        continue;
+                    }
                 }
             }
             if (isfloorplan) {
@@ -1724,7 +1739,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                     if (ACAPI_Element_GetHeader (&tElemHead, 0) == NoError) {
                         name = GS::UniString::Printf ("%d", tElemHead.floorInd);
                     }
-                    msg_rep ("SyncShowSubelement", "Diff floor: " + name, err, guid);
+                    msg_rep ("ShowSubelement", "Diff floor: " + name, err, guid);
                     selNeigs.PushNew (guid);
                     count_otherplan++;
                     continue;
@@ -1741,19 +1756,19 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                     if (elementdatabaseInfo.databaseUnId != homedatabaseInfo.databaseUnId) {
                         selNeigs.PushNew (guid);
                         GS::UniString name = GetDBName (elementdatabaseInfo);
-                        msg_rep ("SyncShowSubelement", "Diff DB: " + pname + " <-> " + name, err, guid);
+                        msg_rep ("ShowSubelement", "Diff DB: " + pname + " <-> " + name, err, guid);
                         count_otherplan++;
                         continue;
                     }
                 } else {
                     selNeigs.PushNew (guid);
                     count_otherplan++;
-                    msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
+                    msg_rep ("ShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
                 }
             }
             selNeigs.PushNew (guid);
-}
+        }
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -1810,7 +1825,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1907,7 +1922,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                         }
                     }
                 }
-        }
+            }
         }
     }
     if (!find) {
@@ -1970,7 +1985,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
                     }
                 }
             }
-}
+        }
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
@@ -2003,7 +2018,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-}
+    }
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);

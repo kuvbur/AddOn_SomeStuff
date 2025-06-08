@@ -5058,7 +5058,6 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
         }
         flag_find = true;
     }
-
     GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity_param;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
@@ -6754,7 +6753,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     paramlayers.Get (*cIt->key).composite = paramout;
                     #endif
                 }
-                }
+            }
         }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
     }
@@ -6910,8 +6909,8 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                 param.composite_type = structtype;
                 paramlayers.Add (param.rawName, param);
             }
+        }
     }
-}
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramlayers.IsEmpty ()) {
@@ -7036,8 +7035,8 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 API_PropertyDefinition definition = param.definition;
                 if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
             }
+        }
     }
-}
     #ifndef AC_22
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;

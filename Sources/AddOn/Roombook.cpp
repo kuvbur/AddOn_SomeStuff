@@ -156,7 +156,7 @@ void RoomBook ()
     }
     // Необходимые для чтения параметры и свойства
     ReadParams windowParams = Param_GetForWindowParams (propertyParams);
-    ReadParams roomParams = Param_GetForZoneParams (propertyParams);
+    ReadParams roomParams = Param_GetForRooms (propertyParams);
 
     ParamDictElement paramToRead; // Прочитанные из элементов свойства
     ParamValue param_composite; // Состав базовых конструкций
@@ -229,6 +229,8 @@ void RoomBook ()
             otdslab.favorite.name = fav_name;
             SetMaterialFinish (otdslab.material, otdslab.base_composite);
             Favorite_FindName (propertyParams, otdslab.favorite, otdslab.material, otdslab.type, otdslab.draw_type, favdict, paramDict_favorite, param_composite);
+            if (otdslab.type == Ceil) otdslab.tip = otd.tip_pot;
+            if (otdslab.type == Floor) otdslab.tip = otd.tip_pol;
         }
         if (otd.otdwall.IsEmpty ()) continue;
         GS::Array<OtdWall> opw; // Массив созданных стен
@@ -265,13 +267,7 @@ void RoomBook ()
         for (OtdWall& otdw : opw) {
             Favorite_FindName (propertyParams, otdw.favorite, otdw.material, otdw.type, otdw.draw_type, favdict, paramDict_favorite, param_composite);
             if (otdw.favorite.is_composite_read && !otdw.favorite.composite.IsEmpty ()) {
-                ParamValueComposite p = {};
-                if (otdw.base_composite.GetLast ().num == -1) {
-                    p = otdw.base_composite.GetLast ();
-                    otdw.base_composite.DeleteLast ();
-                }
                 otdw.base_composite.Append (otdw.favorite.composite);
-                if (p.num == -1) otdw.base_composite.Push (p);
             }
         }
         otd.otdwall = opw; // Заменяем на разбитые стены
@@ -623,6 +619,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
         return false;
     }
     roominfo.height = zoneelement.zone.roomHeight;
+    roominfo.height = std::round (roominfo.height * 1000) / 1000;
     if (roominfo.height < 0.0001) {
         msg_rep ("CollectRoomInfo err", "room.height < 0.0001", err, zoneGuid);
         roominfo.isValid = false;
@@ -650,6 +647,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
         return false;
     }
     roominfo.zBottom = GetzPos (zoneelement.zone.roomBaseLev, zoneelement.header.floorInd, storyLevels);
+    roominfo.zBottom = std::round (roominfo.zBottom * 1000) / 1000;
     roominfo.floorInd = zoneelement.header.floorInd;
     GS::Array<API_ElemTypeID> typeinzone;
     typeinzone.Push (API_WindowID);
@@ -1187,32 +1185,36 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
     if (roominfo.has_floor) {
         roominfo.poly.zBottom = roominfo.zBottom;
         if (!roominfo.floorslab.IsEmpty ()) {
-            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, paramToRead, Floor, roominfo.om_floor);
+            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, paramToRead, Floor, roominfo.om_floor, roominfo.floor_by_slab);
         } else {
-            OtdSlab poly = roominfo.poly;
-            poly.type = Floor;
-            poly.material = roominfo.om_floor;
-            poly.floorInd = roominfo.floorInd;
-            roominfo.otdslab.Push (poly);
+            if (!roominfo.floor_by_slab) {
+                OtdSlab poly = roominfo.poly;
+                poly.type = Floor;
+                poly.material = roominfo.om_floor;
+                poly.floorInd = roominfo.floorInd;
+                roominfo.otdslab.Push (poly);
+            }
         }
     }
     if (roominfo.has_ceil) {
         roominfo.poly.zBottom = roominfo.zBottom + roominfo.height_main + roominfo.height_down;
         roominfo.poly.material = roominfo.om_ceil;
         if (!roominfo.ceilslab.IsEmpty ()) {
-            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, Ceil, roominfo.om_ceil);
+            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, Ceil, roominfo.om_ceil, roominfo.ceil_by_slab);
         } else {
-            OtdSlab poly = roominfo.poly;
-            poly.type = Ceil;
-            poly.material = roominfo.om_ceil;
-            poly.floorInd = roominfo.floorInd;
-            roominfo.otdslab.Push (poly);
+            if (!roominfo.ceil_by_slab) {
+                OtdSlab poly = roominfo.poly;
+                poly.type = Ceil;
+                poly.material = roominfo.om_ceil;
+                poly.floorInd = roominfo.floorInd;
+                roominfo.otdslab.Push (poly);
+            }
         }
     }
     roominfo.poly.poly.Clear ();
 }
 
-void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material)
+void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material, bool only_on_slab)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
     GSErrCode err;
@@ -1245,6 +1247,8 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
         }
         double zBottom = GetzPos (element.slab.level + element.slab.offsetFromTop - element.slab.thickness, element.header.floorInd, storyLevels);
         double zUp = zBottom + element.slab.thickness;
+        zBottom = std::round (zBottom * 1000) / 1000;
+        zUp = std::round (zUp * 1000) / 1000;
         if (poly.zBottom >= zBottom && poly.zBottom <= zUp) {
             Geometry::Polygon2D reducedroom;
             Geometry::Polygon2D wallpolygon;
@@ -1300,10 +1304,11 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
             otdslab.base_type = API_SlabID;
             otdslab.base_guid = slabGuid;
             if (type == Ceil) {
-                otdslab.zBottom = zBottom - otd_thickness;
+                otdslab.zBottom = zBottom;
             } else {
-                otdslab.zBottom = zUp + otd_thickness;
+                otdslab.zBottom = zUp;
             }
+            otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
             otdslab.floorInd = floorInd;
             otdslab.type = type;
             otdslab.material = poly.material;
@@ -1311,33 +1316,27 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
         }
         ACAPI_DisposeElemMemoHdls (&memo);
     }
-    OtdSlab otdslab = poly;
-    otdslab.type = type;
-    if (type == Ceil) {
-        otdslab.zBottom -= otd_thickness;
-    } else {
-        otdslab.zBottom += otd_thickness;
+    if (!only_on_slab) {
+        OtdSlab otdslab = poly;
+        otdslab.type = type;
+        otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
+        otdslab.floorInd = floorInd;
+        otdslab.poly = roompolygon;
+        roompolygon.Clear ();
+        otdslabs.Push (otdslab);
     }
-    otdslab.floorInd = floorInd;
-    otdslab.poly = roompolygon;
-    roompolygon.Clear ();
-    otdslabs.Push (otdslab);
 }
 
 void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams)
 {
-    if (zoneparams.IsEmpty ()) {
-        return;
-    }
+    if (zoneparams.IsEmpty ()) return;
     for (auto& p : zoneparams) {
         #if defined(AC_28)
         ReadParam param = p.value;
         #else
         ReadParam param = *p.value;
         #endif
-        for (UInt32 i = 0; i < param.rawnames.GetSize (); ++i) {
-            ParamHelpers::AddValueToParamDictValue (paramDict, param.rawnames[i]);
-        }
+        for (UInt32 i = 0; i < param.rawnames.GetSize (); ++i) ParamHelpers::AddValueToParamDictValue (paramDict, param.rawnames[i]);
     }
 }
 
@@ -1444,11 +1443,44 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
     ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param_composite, paramDict);
 }
 
-ReadParams Param_GetForZoneParams (ParamDictValue& propertyParams)
+ReadParams Param_GetForRooms (ParamDictValue& propertyParams)
 {
     ReadParams zoneparams = {};
     ReadParam zoneparam = {};
     GS::UniString zoneparam_name = "";
+
+    // Включение потолка
+    zoneparam_name = "has_ceil";
+    zoneparam.rawnames.Push ("some_stuff_fin_has_ceil");
+    zoneparam.rawnames.Push ("{@gdl:has_ceil}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Включение потолка
+    zoneparam_name = "has_floor";
+    zoneparam.rawnames.Push ("some_stuff_fin_has_floor");
+    zoneparam.rawnames.Push ("{@gdl:has_floor}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Включение потолка только по плитам
+    zoneparam_name = "ceil_by_slab";
+    zoneparam.rawnames.Push ("some_stuff_fin_ceil_by_slab");
+    zoneparam.rawnames.Push ("{@gdl:ceil_by_slab}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Тип потолка
+    zoneparam_name = "tip_pot";
+    zoneparam.rawnames.Push ("{@gdl:tip_pot}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Тип пола
+    zoneparam_name = "tip_pol";
+    zoneparam.rawnames.Push ("{@gdl:tip_pol}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
 
     // Основная отделка стен
     zoneparam_name = "om_main";
@@ -1706,6 +1738,44 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
     }
     GS::UniString param_name = "";
     ParamValueData val = {};
+
+    param_name = "tip_pot";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.tip_pot = val.uniStringValue;
+        }
+    }
+
+    param_name = "tip_pol";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.tip_pol = val.uniStringValue;
+        }
+    }
+    param_name = "has_ceil";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.has_ceil = val.doubleValue;
+        }
+    }
+    param_name = "has_floor";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            roominfo.has_floor = val.doubleValue;
+        }
+    }
+    param_name = "ceil_by_slab";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            if (roominfo.has_ceil) roominfo.ceil_by_slab = val.doubleValue;
+        }
+    }
+
     param_name = "om_column";
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
@@ -1907,6 +1977,10 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
         roominfo.height_main = roominfo.height_main - roominfo.height_down;
     }
     if (roominfo.height < 0.0001) roominfo.isValid = false;
+    roominfo.height = std::round (roominfo.height * 1000) / 1000;
+    roominfo.height_main = std::round (roominfo.height_main * 1000) / 1000;
+    roominfo.height_down = std::round (roominfo.height_down * 1000) / 1000;
+    roominfo.height_up = std::round (roominfo.height_up * 1000) / 1000;
 }
 
 
@@ -3082,7 +3156,6 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     if (!Floor_GetDefult_Slab (favorite_name, slabelement)) {
         return;
     }
-    slabelement.slab.thickness = otd_thickness;
     slabelement.header.floorInd = otdslab.floorInd;
     slabelement.slab.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
     #if defined(AC_27) || defined(AC_28)
@@ -3103,8 +3176,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         #else
         slabelement.slab.botMat.overridden = true;
         #endif
-    }
-    if (otdslab.type == Floor) {
+    } else {
         #if defined(AC_27) || defined(AC_28)
         slabelement.slab.topMat.hasValue = true;
         #else
@@ -3137,7 +3209,6 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     }
     GDLHelpers::ParamDict accsessoryparams;
     GDLHelpers::Param p;
-    p.num = 0.02; accsessoryparams.Add ("{@gdl:ac_thickness}", p);
     if (otdslab.type == Ceil) {
         p.num = otdslab.zBottom; accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
         slabobjelement.object.level = GetzPos (0, otdslab.floorInd, storyLevels);
@@ -3146,13 +3217,14 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
         p.num = otdslab.zBottom; accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
         slabobjelement.object.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
     }
+    p.str = otdslab.tip; accsessoryparams.Add ("{@gdl:tip_pol}", p);  p.str = "";
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_pitch}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceilling_side}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceiling_type}", p);
     p.num = otdslab.material.material; accsessoryparams.Add ("{@gdl:ceil_mat}", p);
     p.num = 0.02; accsessoryparams.Add ("{@gdl:ceil_thk}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
-    p.num = 1; accsessoryparams.Add ("{@gdl:sbros}", p);
+    p.num = 1; accsessoryparams.Add ("{@gdl:auto_height}", p);
 
     Geometry::Polygon2DData polygon2DData;
     Geometry::InitPolygon2DData (&polygon2DData);
@@ -3180,6 +3252,20 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     ac_whole_poly.dim1 = 1; ac_whole_poly.dim2 = ac_whole_poly.arr_num.GetSize ();
     accsessoryparams.Add ("{@gdl:ac_whole_poly}", ac_whole_poly);
     accsessoryparams.Add ("{@gdl:ac_coords}", ac_coords);
+
+    if (otdslab.type == Ceil) {
+        p.num = bbox.xMax - bbox.xMin - 0.1; accsessoryparams.Add ("{@gdl:pos_x2}", p);
+        p.num = bbox.yMax - bbox.yMin - 0.1; accsessoryparams.Add ("{@gdl:pos_y2}", p);
+
+        p.num = (bbox.xMax - bbox.xMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
+        p.num = (bbox.yMax - bbox.yMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
+
+    }
+    if (otdslab.type == Floor) {
+        p.num = otdslab.poly.GetCenter ().x - bbox.xMin; accsessoryparams.Add ("{@gdl:pos_x1}", p);
+        p.num = otdslab.poly.GetCenter ().y - bbox.yMin; accsessoryparams.Add ("{@gdl:pos_y1}", p);
+    }
+
     Geometry::FreePolygon2DData (&polygon2DData);
     GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
     slabobjelement.header.floorInd = otdslab.floorInd;
@@ -3524,7 +3610,6 @@ void Favorite_ReadComposite (ParamDictValue& propertyParams, const ParamValue& p
 {
     if (!favdict.ContainsKey (fav_name)) return;
     if (favdict.Get (fav_name).is_composite_read) return;
-
     favdict.Get (fav_name).is_composite_read = true;
     API_Element element; BNZeroMemory (&element, sizeof (API_Element));
     if (!Favorite_GetByName (favdict.Get (fav_name).name, element)) return;
@@ -3631,6 +3716,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     err = ACAPI_Favorite_Get (&favorite);
     if (err == NoError) {
         element = favorite.element;
+        UnhideUnlockElementLayer (element.header);
         return true;
     }
     return false;
@@ -3650,6 +3736,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     err = ACAPI_Favorite_Get (&favorite);
     if (err == NoError) {
         element = favorite.element;
+        UnhideUnlockElementLayer (element.header);
         memo = *favorite.memo;
         return true;
     }
