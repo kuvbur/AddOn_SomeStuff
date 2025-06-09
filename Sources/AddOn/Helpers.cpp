@@ -5007,9 +5007,9 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
     GS::UniString rawname_unit = "@property:buildingmaterialproperties/some_stuff_units";
     GS::UniString rawname_kzap = "@property:buildingmaterialproperties/some_stuff_kzap";
     GS::UniString units = ""; double kzap = 1;
-    ParamHelpers::AddValueToParamDictValue (params, rawname_th); rawname_th = "{" + rawname_th;
-    ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = "{" + rawname_unit;
-    ParamHelpers::AddValueToParamDictValue (params, rawname_kzap); rawname_kzap = "{" + rawname_kzap;
+    if (propertyParams.ContainsKey ("{" + rawname_th + "}")) ParamHelpers::AddValueToParamDictValue (params, rawname_th); rawname_th = "{" + rawname_th;
+    if (propertyParams.ContainsKey ("{" + rawname_unit + "}")) ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = "{" + rawname_unit;
+    if (propertyParams.ContainsKey ("{" + rawname_kzap + "}")) ParamHelpers::AddValueToParamDictValue (params, rawname_kzap); rawname_kzap = "{" + rawname_kzap;
     bool flag_find = false;
     for (UInt32 i = 0; i < composites.GetSize (); i++) {
         API_AttributeIndex constrinx = composites[i].buildMatIndices;
@@ -5098,10 +5098,10 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
 
             double proc = 0;
             // Определяем долю площади проекции для текущего слоя
-            if (is_equal (p.fillThick, fillThick_total) && is_equal (proc, 0)) {
+            if (is_equal (p.fillThick, fillThick_total) && is_equal (proc, 0) && !is_equal (p.fillThick, 0)) {
                 proc = 1; // Если площадь слоя совпадает с суммарной площадью материала
             }
-            if (is_equal (area_fill_total, p.area_fill) && is_equal (proc, 0)) {
+            if (is_equal (area_fill_total, p.area_fill) && is_equal (proc, 0) && !is_equal (p.area_fill, 0)) {
                 proc = 1; // Если площадь слоя совпадает с суммарной площадью материала
             }
             // Определяем долю площади проекции для текущего слоя
@@ -5231,9 +5231,9 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (!paramsAdd.IsEmpty ()) {
         if (needReadQuantities) {
-            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_th");
-            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
-            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_kzap");
+            if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_th")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_th");
+            if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_units}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
+            if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_kzap}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_kzap");
         }
         ParamHelpers::CompareParamDictValue (propertyParams, paramsAdd);
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {

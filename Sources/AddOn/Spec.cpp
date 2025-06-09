@@ -208,6 +208,11 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             msg_rep ("Spec::SpecArray", "Rules not found", APIERR_GENERAL, APINULLGuid);
             GS::UniString SpecRuleNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecRuleNotFoundString, true);
+            #if defined(AC_27) || defined(AC_28)
+            ACAPI_ProcessWindow_CloseProcessWindow ();
+            #else
+            ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+            #endif
             return APIERR_GENERAL;
         }
     }
@@ -223,12 +228,22 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         msg_rep ("Spec::SpecArray", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
         GS::UniString SpecRuleReadFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecRuleReadFoundString, true);
+        #if defined(AC_27) || defined(AC_28)
+        ACAPI_ProcessWindow_CloseProcessWindow ();
+        #else
+        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+        #endif
         return APIERR_GENERAL;
     }
     if (paramToWrite.IsEmpty ()) {
         msg_rep ("Spec::SpecArray", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
         GS::UniString SpecWriteNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecWriteNotFoundString, true);
+        #if defined(AC_27) || defined(AC_28)
+        ACAPI_ProcessWindow_CloseProcessWindow ();
+        #else
+        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+        #endif
         return APIERR_GENERAL;
     }
     subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
@@ -297,6 +312,11 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         msg_rep ("Spec::SpecArray", "Elements list empty", APIERR_GENERAL, APINULLGuid);
         GS::UniString SpecEmptyListdString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecEmptyListdId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString, true);
+        #if defined(AC_27) || defined(AC_28)
+        ACAPI_ProcessWindow_CloseProcessWindow ();
+        #else
+        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+        #endif
         return APIERR_GENERAL;
     }
     Point2D startpos;
@@ -398,15 +418,18 @@ void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid
     description.ReplaceAll ("} ", "}");
     description.ReplaceAll (" ;", ";");
     description.ReplaceAll ("; ", ";");
+    description.ReplaceAll ("gm (", "gm(");
+    description.ReplaceAll (" gm(", "gm(");
     description.ReplaceAll ("g (", "g(");
     description.ReplaceAll ("s (", "s(");
     description.ReplaceAll (" g(", "g(");
     description.ReplaceAll (" s(", "s(");
-    description.ReplaceAll ("g(", "g%");
-    description.ReplaceAll ("s(", "s%");
-    description.ReplaceAll (")s", "%s");
-    description.ReplaceAll (")g", "%g");
-    description.ReplaceAll ("))", ")%");
+    description.ReplaceAll ("g(", "g@@");
+    description.ReplaceAll ("s(", "s@@");
+    description.ReplaceAll (")s", "@@s");
+    description.ReplaceAll (")g", "@@g");
+    description.ReplaceAll ("))", ")@@");
+    description.ReplaceAll ("gm(", "g@@Material_all@");
     GS::Array<GS::UniString> partstring;
     if (StringSplt (description, "}", partstring, "pec_rule") > 0) {
         description = partstring[0] + "}";
@@ -680,7 +703,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     GS::Array<GS::UniString> paramss;
     // Разбивка на группы и итог
     GS::Array<GS::UniString> rulestring_summ;
-    if (StringSplt (description, "s%", rulestring_summ) < 2) {
+    if (StringSplt (description, "s@@", rulestring_summ) < 2) {
         rule.is_Valid = false;
         return rule;
     }
@@ -701,6 +724,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
                 FormatString formatstring;
                 GS::UniString name = rulestring_param[i];
                 name.Trim ('%');
+                name.Trim ('@');
                 name.Trim ('{');
                 name.Trim ('}');
                 name.Trim ();
@@ -720,7 +744,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     // Параметры для чтения
     // До точки с запятой - уникальные парамерты , после - параметры для суммы
     GS::Array<GS::UniString> rulestring_group;
-    UInt32 nrule_group = StringSplt (rulestring_summ[0], "g%", rulestring_group);
+    UInt32 nrule_group = StringSplt (rulestring_summ[0], "g@@", rulestring_group);
     if (nrule_group < 1) {
         rule.is_Valid = false;
         return rule;
@@ -729,10 +753,11 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     for (UInt32 igroup = 0; igroup < nrule_group; igroup++) {
         GS::Array<GS::UniString> rulestring_read;
         UInt32 nrule_read = StringSplt (rulestring_group[igroup], ";", rulestring_read);
-        if (nrule_read < 1) {
+        if (nrule_read <= 1) {
             rule.is_Valid = false;
             return rule;
         }
+        bool flag_add = false;
         GroupSpec group;
         Int32 min_row = 0;
         for (UInt32 part = 0; part < nrule_read; part++) {
@@ -741,6 +766,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
             if (nrule_param > 0) {
                 for (UInt32 i = 0; i < nrule_param; i++) {
                     GS::UniString name = rulestring_param[i];
+                    name.Trim ('@');
                     name.Trim ('%');
                     name.Trim ('{');
                     name.Trim ('}');
@@ -761,14 +787,21 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
                             }
                             FormatString formatstring;
                             GS::UniString rawName = ParamHelpers::NameToRawName (name, formatstring);
-                            if (part == 0) group.unic_paramrawname.Push (rawName);
-                            if (part == 1) group.out_paramrawname.Push (rawName);
-                            if (part == 2) group.flag_paramrawname = rawName;
-                            if (part == 3) group.sum_paramrawname.Push (rawName);
+                            if (!rawName.Contains ("%")) {
+                                if (part == 0) group.unic_paramrawname.Push (rawName);
+                                if (part == 1) group.out_paramrawname.Push (rawName);
+                                if (part == 2) group.flag_paramrawname = rawName;
+                                if (part == 3) group.sum_paramrawname.Push (rawName);
+                                flag_add = true;
+                            }
                         }
                     }
                 }
             }
+        }
+        if (flag_add) {
+            rule.is_Valid = false;
+            return rule;
         }
         // Добавим значения для суммы
         if (group.sum_paramrawname.GetSize () < rule.out_sum_paramrawname.GetSize ()) {
