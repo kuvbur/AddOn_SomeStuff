@@ -62,13 +62,13 @@ typedef GS::HashTable<GS::UniString, SpecRule> SpecRuleDict; // Словарь �
 // --------------------------------------------------------------------
 // Получение правил из свойств элемента по умолчанию
 // --------------------------------------------------------------------
-bool GetRuleFromDefaultElem (SpecRuleDict& rules);
+bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabaseInfo);
 
 GSErrCode SpecAll (const SyncSettings& syncSettings);
 
-void SpecFilter (API_Guid& elemguid);
+void SpecFilter (API_Guid& elemguid, API_DatabaseInfo& homedatabaseInfo);
 
-void SpecFilter (GS::Array<API_Guid>& guidArray);
+void SpecFilter (GS::Array<API_Guid>& guidArray, API_DatabaseInfo& homedatabaseInfo);
 
 GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules);
 

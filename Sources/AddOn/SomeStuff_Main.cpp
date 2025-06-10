@@ -346,7 +346,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     RunParamSelected (syncSettings);
                     break;
                 case Spec_CommandID:
-                    Spec::SpecAll (syncSettings);
+                    err = Spec::SpecAll (syncSettings);
                     break;
                 case ShowSub_CommandID:
                     SyncShowSubelement (syncSettings);

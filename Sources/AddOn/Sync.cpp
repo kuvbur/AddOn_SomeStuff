@@ -1084,15 +1084,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             syncdirection = SYNC_TO;
         }
     }
-
     if (synctypefind == false) {
         if (rulestring_one.Contains ("Material:") && (rulestring_one.Contains ('"') || hasformula)) {
             synctypefind = true;
-            if (rulestring_one.Contains ("QtyMaterial:") || rulestring_one.Contains ("QMaterial:")) {
-                rulestring_one.ReplaceAll ("QtyMaterial:", "Material:");
-                rulestring_one.ReplaceAll ("QMaterial:", "Material:");
-                param.fromQuantity = true;
-            }
             rulestring_one.ReplaceAll ("Material:", "");
             rulestring_one.ReplaceAll ("{Layers;", "{Layers,20;");
             rulestring_one.ReplaceAll ("{Layers_inv;", "{Layers_inv,20;");
@@ -1132,8 +1126,13 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                     param.composite_pen = -1;
                     param.fromQuantity = true;
                 } else {
-                    short pen = std::atoi (penstring.ToCStr ());
-                    if (pen > 0) param.composite_pen = pen;
+                    if (penstring.Contains ("unic")) {
+                        param.composite_pen = -2;
+                        param.fromQuantity = true;
+                    } else {
+                        short pen = std::atoi (penstring.ToCStr ());
+                        if (pen > 0) param.composite_pen = pen;
+                    }
                 }
             }
             if (!templatestring.IsEmpty ()) syncdirection = SYNC_FROM;
