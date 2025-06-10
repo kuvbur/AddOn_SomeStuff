@@ -1823,6 +1823,7 @@ GS::UniString GetPropertyENGName (GS::UniString& name)
     if (name.IsEqual ("@property:area")) return "@material:area";
     if (name.IsEqual ("@property:volume")) return "@material:volume";
     if (name.IsEqual ("@property:qty")) return "@material:qty";
+    if (name.IsEqual ("@property:unit_prefix")) return "@material:unit_prefix";
     if (name.IsEqual ("@property:length")) return "@material:length";
     GS::UniString nameproperty = "";
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
@@ -5158,6 +5159,40 @@ bool ParamHelpers::ReadElementValues (const API_Element & element, ParamDictValu
     return flag_find;
 }
 
+GS::UniString ParamHelpers::GetUnitsPrefix (GS::UniString & unit)
+{
+    if (unit.IsEmpty ()) {
+        return "";
+    }
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString nameunits = RSGetIndString (iseng, 58, ACAPI_GetOwnResModule ());
+    GS::UniString units = unit.ToLowerCase ();
+    if (units.Contains (nameunits)) {
+        return "";
+    }
+    nameunits = RSGetIndString (iseng, 53, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        return "S";
+    }
+    nameunits = RSGetIndString (iseng, 54, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        return "S";
+    }
+    nameunits = RSGetIndString (iseng, 55, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        return "V";
+    }
+    nameunits = RSGetIndString (iseng, 56, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        return "V";
+    }
+    nameunits = RSGetIndString (iseng, 57, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        return "L";
+    }
+    return "";
+}
+
 void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite & comp)
 {
     if (comp.unit.IsEmpty ()) {
@@ -5297,6 +5332,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 param_composite.val.uniStringValue.ReplaceAll ("{@property:nosyncname}", "");
                 ignore_sync = true;
             }
+            if (param_composite.composite_pen == -2) ParamHelpers::ComponentsGetUnic (param_composite.composite);
             Int32 nlayers = param_composite.composite.GetSize ();
             if (param_composite.val.hasFormula) {
                 //Если есть формула - заменим повторим все участки, заключенные в <> по количеству слоёв
@@ -5396,18 +5432,11 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         params.Get (layer_thickness).val.type = API_PropertyRealValueType;
                         params.Get (layer_thickness).isValid = true;
                     }
-                    layer_thickness = "{@material:qty}"; defult_formatstring = "2m";
+                    layer_thickness = "{@material:unit_prefix}"; defult_formatstring = "2m";
                     if (params.ContainsKey (layer_thickness)) {
-                        double val = param_composite.composite[indx].qty;
-                        FormatString formatsting = params.Get (layer_thickness).val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            params.Get (layer_thickness).val.formatstring = formatsting;
-                        }
-                        params.Get (layer_thickness).val.doubleValue = val;
-                        params.Get (layer_thickness).val.rawDoubleValue = val;
-                        params.Get (layer_thickness).val.hasrawDouble = true;
-                        params.Get (layer_thickness).val.type = API_PropertyRealValueType;
+                        GS::UniString val = ParamHelpers::GetUnitsPrefix (param_composite.composite[indx].unit);
+                        params.Get (layer_thickness).val.uniStringValue = val;
+                        params.Get (layer_thickness).val.type = API_PropertyStringValueType;
                         params.Get (layer_thickness).isValid = true;
                     }
                 }
@@ -6373,6 +6402,37 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     }
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
+}
+
+void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
+{
+    GS::Array<ParamValueComposite> p;
+    GS::HashTable<GS::UniString, ParamValueComposite> existsmaterial;
+    for (const auto& c : composite) {
+        GS::UniString key = GS::UniString::Printf ("%d", c.inx) + GS::UniString::Printf ("_%.4f", c.fillThick);
+        if (existsmaterial.ContainsKey (key)) {
+            ParamValueComposite& e = existsmaterial.Get (key);
+            e.area += c.area;
+            e.volume += c.volume;
+            e.area_fill += c.area_fill;
+            e.length += c.length;
+            e.qty += c.qty;
+        } else {
+            existsmaterial.Add (key, c);
+        }
+    }
+    if (existsmaterial.IsEmpty ()) return;
+    for (GS::HashTable<GS::UniString, ParamValueComposite>::PairIterator cIt = existsmaterial.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28)
+        ParamValueComposite c = cIt->value;
+        #else
+        ParamValueComposite c = *cIt->value;
+        #endif
+        p.Push (c);
+    }
+    composite.Clear ();
+    composite = p;
+    return;
 }
 
 // --------------------------------------------------------------------
