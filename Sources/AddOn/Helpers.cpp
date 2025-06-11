@@ -163,13 +163,13 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, const SyncSettings& syncSettings, bool addSubelement)
 {
-    GSErrCode            err;
-    API_SelectionInfo    selectionInfo;
+    GSErrCode err;
+    API_SelectionInfo selectionInfo = {};
     GS::UniString errorString = RSGetIndString (ID_ADDON_STRINGS + isEng (), ErrorSelectID, ACAPI_GetOwnResModule ());
     #ifdef AC_22
     API_Neig** selNeigs;
     #else
-    GS::Array<API_Neig>  selNeigs;
+    GS::Array<API_Neig> selNeigs = {};
     #endif
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, onlyEditable);
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
@@ -184,7 +184,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
         #endif // AC_22
         return GS::Array<API_Guid> ();
     }
-    GS::Array<API_Guid> guidArray;
+    GS::Array<API_Guid> guidArray = {};
     #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
     for (USize i = 0; i < nSel; i++) {
@@ -348,7 +348,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
 {
     GSErrCode	err = NoError;
     API_RoomRelation	relData;
-    GS::Array<API_ElemTypeID> typeinzone;
+    GS::Array<API_ElemTypeID> typeinzone = {};
     API_Guid ownerElemApiGuid = APINULLGuid;
     API_Guid ownerElemApiGuid_root = APINULLGuid;
     API_Guid elemGuid_t = elemGuid;
@@ -417,7 +417,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             #endif
         case API_WallID:
             if (syncSettings.widoS) {
-                GS::Array<API_Guid> windows;
+                GS::Array<API_Guid> windows = {};
                 #if defined(AC_27) || defined(AC_28)
                 err = ACAPI_Grouping_GetConnectedElements (elemGuid, API_WindowID, &windows, APIFilt_None, APINULLGuid);
                 #else
@@ -428,7 +428,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                         subelemGuid.Push (windows[i]);
                     }
                 }
-                GS::Array<API_Guid> doors;
+                GS::Array<API_Guid> doors = {};
                 #if defined(AC_27) || defined(AC_28)
                 err = ACAPI_Grouping_GetConnectedElements (elemGuid, API_DoorID, &doors, APIFilt_None, APINULLGuid);
                 #else
@@ -457,7 +457,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
         case API_CurtainWallAccessoryID:
         case API_CurtainWallPanelID:
             if (syncSettings.cwallS) {
-                API_CWPanelRelation crelData;
+                API_CWPanelRelation crelData = {};
                 err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &crelData);
                 if (err == NoError) {
                     if (crelData.fromRoom != APINULLGuid) subelemGuid.Push (crelData.fromRoom);
@@ -471,7 +471,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             break;
         case API_DoorID:
             if (syncSettings.widoS) {
-                API_DoorRelation drelData;
+                API_DoorRelation drelData = {};
                 err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &drelData);
                 if (err == NoError) {
                     if (drelData.fromRoom != APINULLGuid) subelemGuid.Push (drelData.fromRoom);
@@ -485,7 +485,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             break;
         case API_WindowID:
             if (syncSettings.widoS) {
-                API_WindowRelation wrelData;
+                API_WindowRelation wrelData = {};
                 err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &wrelData);
                 if (err == NoError) {
                     if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push (wrelData.fromRoom);
@@ -588,7 +588,7 @@ bool ParamHelpers::ReadMorphParam (const API_Element& element, ParamDictValue& p
     #if defined(TESTING)
     DBprnt ("      ReadMorphParam");
     #endif
-    API_ElementMemo  memo;
+    API_ElementMemo memo;
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo);
     if (err != NoError || memo.morphBody == nullptr) {
@@ -3601,6 +3601,15 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         return;
     }
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
+    bool can_read_fromMaterial = true;
+    if (eltype != API_WallID &&
+       eltype != API_SlabID &&
+       eltype != API_ColumnID &&
+       eltype != API_BeamID &&
+       eltype != API_RoofID &&
+       eltype != API_BeamSegmentID &&
+       eltype != API_ColumnSegmentID &&
+       eltype != API_ShellID) can_read_fromMaterial = false;
     // Для некоторых типов элементов есть общая информация, которая может потребоваться
     // Пройдём по параметрам и посмотрим - что нам нужно заранее прочитать
     bool needGetElement = false;
@@ -3620,7 +3629,10 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         if (param.fromGuid == elemGuid && param.fromGuid != APINULLGuid) {
 
             // Когда нужно получить весь элемент
-            if (param.fromElement || param.fromGDLdescription || param.fromCoord || param.fromMorph || param.fromMaterial || param.fromAttribDefinition) {
+            if (param.fromElement || param.fromGDLdescription || param.fromCoord || (param.fromMorph && eltype == API_MorphID) || param.fromAttribDefinition) {
+                needGetElement = true;
+            }
+            if (can_read_fromMaterial && param.fromMaterial) {
                 needGetElement = true;
             }
             if (eltype == API_CurtainWallPanelID || eltype == API_CurtainWallFrameID
@@ -3763,7 +3775,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
             needCompare = ParamHelpers::ReadClassification (elemGuid, systemdict, paramByType);
         }
-        if (paramType.IsEqual ("{@material:")) {
+        if (paramType.IsEqual ("{@material:") && can_read_fromMaterial) {
             ParamHelpers::ReadMaterial (element, params, propertyParams);
         }
         if (paramType.IsEqual ("{@formula:")) {
@@ -4980,30 +4992,29 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
     #if defined(TESTING)
     DBprnt ("        Quantities");
     #endif
-    API_ElementQuantity quantity;
-    API_QuantityPar paramq;
-    BNZeroMemory (&paramq, sizeof (API_QuantityPar));
+    API_ElementQuantity quantity = {};
+    API_QuantityPar paramq = {}; BNZeroMemory (&paramq, sizeof (API_QuantityPar));
     paramq.minOpeningSize = EPS;
     GSErrCode err = NoError;
-    GS::Array <API_CompositeQuantity> composites;
-    GS::Array <API_ElemPartQuantity> elemPartQuantities;
-    GS::Array <API_ElemPartCompositeQuantity> elemPartComposites;
+    GS::Array <API_CompositeQuantity> composites = {};
+    GS::Array <API_ElemPartQuantity> elemPartQuantities = {};
+    GS::Array <API_ElemPartCompositeQuantity> elemPartComposites = {};
     API_QuantitiesMask mask;
-    GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity;
+    GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity = {};
     ACAPI_ELEMENT_QUANTITY_MASK_CLEAR (mask);
     ACAPI_ELEMENT_COMPOSITES_QUANTITY_MASK_SETFULL (mask);
-    GS::Array<API_Quantities> quantities; quantities.Push (API_Quantities ());
+    GS::Array<API_Quantities> quantities = {}; quantities.Push (API_Quantities ());
     quantities[0].elements = &quantity;
     quantities[0].composites = &composites;
     quantities[0].elemPartQuantities = &elemPartQuantities;
     quantities[0].elemPartComposites = &elemPartComposites;
-    GS::Array<API_Guid> elemGuids; elemGuids.Push (element.header.guid);
+    GS::Array<API_Guid> elemGuids = {}; elemGuids.Push (element.header.guid);
     err = ACAPI_Element_GetMoreQuantities (&elemGuids, &paramq, &quantities, &mask);
     if (err != NoError) {
         msg_rep ("ReadQuantities", "ACAPI_Element_GetMoreQuantities", err, element.header.guid);
         return;
     }
-    ParamDictValue paramsAdd;
+    ParamDictValue paramsAdd = {};
     GS::UniString rawname_th = "@property:buildingmaterialproperties/some_stuff_th";
     GS::UniString rawname_unit = "@property:buildingmaterialproperties/some_stuff_units";
     GS::UniString rawname_kzap = "@property:buildingmaterialproperties/some_stuff_kzap";
@@ -5048,7 +5059,7 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
                     th = 0;
                 }
             }
-            ParamValueComposite p;
+            ParamValueComposite p = {};
             p.inx = constrinx;
             p.volume = volume;
             p.fillThick = th;
@@ -5059,7 +5070,7 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
         }
         flag_find = true;
     }
-    GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity_param;
+    GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity_param = {};
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         ParamValue& param = cIt->value;
@@ -5243,12 +5254,12 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
     DBprnt ("    ReadMaterial");
     #endif
     // Получим состав элемента, добавив в словарь требуемые параметры
-    ParamDictValue paramsAdd;
+    ParamDictValue paramsAdd = {};
     GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
     if (!ParamHelpers::Components (element, params, paramsAdd, existsmaterial)) return false;
 
     bool needReadQuantities = false;
-    ParamDictValue paramlayers;
+    ParamDictValue paramlayers = {};
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         ParamValue& param = cIt->value;
@@ -5277,7 +5288,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             #else
             ParamValue& param_composite = *cIt->value;
             #endif
-            ParamDictValue paramsAdd_1;
+            ParamDictValue paramsAdd_1 = {};
             if (param_composite.val.uniStringValue.Contains ("{")) {
                 Int32 nlayers = param_composite.composite.GetSize ();
                 bool flag = false;
@@ -6842,7 +6853,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     // Получаем данные о составе конструкции. Т.к. для разных типов элементов
     // информация храница в разных местах - запишем всё в одни переменные
     API_ElemTypeID eltype = GetElemTypeID (elemhead);
-    API_ElementMemo	memo = {};
+    API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
     switch (eltype) {
         #ifndef AC_22
         case API_ColumnSegmentID:
@@ -6957,7 +6968,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
     // Получим словарь исключительно с определениями состава
-    ParamDictValue paramlayers;
+    ParamDictValue paramlayers = {};;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         ParamValue& param = cIt->value;
@@ -6992,7 +7003,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure (elemhead.guid, constrinx, params, paramlayers, paramsAdd, existsmaterial);
     #ifndef AC_23
     if (structtype == API_ProfileStructure) {
-        API_ElementMemo	memo = {};
+        API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
         UInt64 mask = APIMemoMask_StretchedProfile;
         GSErrCode err = ACAPI_Element_GetMemo (elemhead.guid, &memo, mask);
         if (err != NoError) {
