@@ -40,7 +40,7 @@ typedef struct
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
     API_PropertyDefinition paramTo = {};
-    GS::Array<GS::UniString> ignorevals;
+    GS::Array<GS::UniString> ignorevals = {};
     GS::UniString templatestring = "";
     int synctype = 0;
     int syncdirection = 0;
@@ -52,7 +52,7 @@ typedef struct
     API_Guid guidFrom = APINULLGuid;
     ParamValue paramFrom;
     ParamValue paramTo;
-    GS::Array<GS::UniString> ignorevals;
+    GS::Array<GS::UniString> ignorevals = {};
     FormatString formatstring; //Формат строки (задаётся с помощью #mm или #0)
     bool toSub = false;
     bool fromSub = false;

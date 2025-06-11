@@ -20,39 +20,42 @@ namespace Spec
 {
 typedef struct
 {
-    GS::Array<GS::UniString> unic_paramrawname; // Массив имён уникальных параметров
-    GS::Array<GS::UniString> out_paramrawname; // Массив имён параметров для передачи новым элементам
-    GS::Array<GS::UniString> sum_paramrawname; // Массив имён параметров, которые требуется просуммировать
-    GS::UniString flag_paramrawname;           // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
+    GS::Array<GS::UniString> unic_paramrawname = {}; // Массив имён уникальных параметров
+    GS::Array<GS::UniString> out_paramrawname = {}; // Массив имён параметров для передачи новым элементам
+    GS::Array<GS::UniString> sum_paramrawname = {}; // Массив имён параметров, которые требуется просуммировать
+    GS::UniString flag_paramrawname = "";           // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
     bool is_Valid = true;
+    bool fromMaterial = false;
+    GS::Int32 n_layer = 0;
 } GroupSpec;
 
 
 typedef struct
 {
-    GS::Array<GroupSpec> groups;                   // Массив с группами подэлементов 
-    GS::Array<GS::UniString> out_paramrawname;     // Массив имён параметров новых элементов
-    GS::Array<GS::UniString> out_sum_paramrawname; // Массив имён параметров сумм новых элементов
+    GS::Array<GroupSpec> groups = {};                   // Массив с группами подэлементов 
+    GS::Array<GS::UniString> out_paramrawname = {};     // Массив имён параметров новых элементов
+    GS::Array<GS::UniString> out_sum_paramrawname = {}; // Массив имён параметров сумм новых элементов
     GS::UniString subguid_paramrawname = "";       // Имя свойства для записи GUID созданных элементов (в описании должно содержатся Sync_GUID+Имя правила)
     GS::UniString subguid_rulename = "";           // Имя свойства с правилом, на основании которого созданы элементы
     GS::UniString subguid_rulevalue = "";
-    GS::Array<API_Guid> elements;                  // Элементы, которые обрабатываются правилом
-    API_PropertyDefinition rule_definitions;       // Определение свойства с правилом для поиска элементов, в которых оно доступно
+    GS::Array<API_Guid> elements = {};                  // Элементы, которые обрабатываются правилом
+    API_PropertyDefinition rule_definitions = {};       // Определение свойства с правилом для поиска элементов, в которых оно доступно
     GS::UniString favorite_name = "";              //Имя элемента в избранном
     bool is_Valid = true;
+    bool delete_old = false;
 } SpecRule;
 
 typedef struct
 {
-    GS::Array<ParamValue> out_param;
-    GS::Array<ParamValue> out_sum_param;
+    GS::Array<ParamValue> out_param = {};
+    GS::Array<ParamValue> out_sum_param = {};
     GS::Array<GS::UniString> out_paramrawname;
     GS::Array<GS::UniString> out_sum_paramrawname;
     GS::UniString subguid_paramrawname = "";
     GS::UniString subguid_rulename = "";
     GS::UniString subguid_rulevalue = "";
     GS::UniString favorite_name = "";              //Имя элемента в избранном
-    GS::Array<API_Guid> elements;                  // Элементы, которые обрабатываются правилом
+    GS::Array<API_Guid> elements = {};                  // Элементы, которые обрабатываются правилом
 } Element;
 
 typedef GS::HashTable<GS::UniString, Element> ElementDict; // Словарь элементов для создания, ключ - сцепка значений уникальных параметров
@@ -91,6 +94,8 @@ void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid
 // Spec_rule {КРИТЕРИЙ ;g(P1, P2, P3; Q1, Q2) g(P4, P5, P6; Q3, Q4) s(Pn1, Pn2, Pn3; Qn1, Qn2)}
 // --------------------------------------------------------------------
 SpecRule GetRuleFromDescription (GS::UniString& description);
+
+bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, GS::Int32 n_layer);
 
 // --------------------------------------------------------------------
 // Выбирает из параметров групп имена свойств для дальнейшего чтения

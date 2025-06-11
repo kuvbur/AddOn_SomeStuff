@@ -1334,12 +1334,13 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
         partstring.Push (instring);
         return 1;
     }
-    GS::Array<GS::UniString> parts;
+    GS::Array<GS::UniString> parts = {};
     GS::UniString tinstring = instring;
     UInt32 npart = instring.Split (delim, &parts);
     UInt32 n = 0;
+    GS::UniString part = "";
     for (UInt32 i = 0; i < npart; i++) {
-        GS::UniString part = parts[i];
+        part = parts.Get (i);
         if (!part.IsEmpty ()) {
             part.Trim ('\r');
             part.Trim ('\n');
@@ -1363,7 +1364,7 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
         partstring.Push (instring);
         return 1;
     }
-    GS::Array<GS::UniString> parts;
+    GS::Array<GS::UniString> parts = {};
     UInt32 n = 0;
     UInt32 npart = StringSplt (instring, delim, parts);
     for (UInt32 i = 0; i < npart; i++) {
@@ -1410,6 +1411,7 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
 GSErrCode GetGDLParametersFromMemo (const API_Guid & elemGuid, API_AddParType * *&params)
 {
     API_ElementMemo	memo = {};
+    BNZeroMemory (&memo, sizeof (API_ElementMemo));
     GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
     params = memo.params;
     if (err != NoError) {
@@ -1502,13 +1504,13 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&elementsSymbolGuids)
 {
-    API_Element      element = {};
+    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
     element.header.guid = cwGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError || !element.header.hasMemo) {
         return err;
     }
-    API_ElementMemo	memo = {};
+    API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
     UInt64 mask = APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
     err = ACAPI_Element_GetMemo (cwGuid, &memo, mask);
     if (err != NoError) {
@@ -1562,14 +1564,13 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>&elementsGuids)
 {
-    API_Element      element = {};
+    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
     element.header.guid = elemGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError) {
         return err;
     }
-    API_ElementMemo	memo = {};
-
+    API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
     UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost | APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail | APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster | APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd | APIMemoMask_RailingHandrailEnd | APIMemoMask_RailingToprailEnd | APIMemoMask_RailingRailConnection | APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
     err = ACAPI_Element_GetMemo (elemGuid, &memo, mask);
     if (err != NoError) {
@@ -2402,6 +2403,17 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array<
     return ACAPI_Favorite_GetNum (type, APIVarId_Generic, count, folders, names);
     #endif
     #endif
+}
+
+API_ElemTypeID GetElemTypeID (const API_Guid & guid)
+{
+    API_ElemTypeID eltype = API_ZombieElemID;
+    API_Elem_Head elementHead = {}; BNZeroMemory (&elementHead, sizeof (API_Elem_Head));
+    elementHead.guid = guid;
+    GSErrCode err = NoError;
+    err = ACAPI_Element_GetHeader (&elementHead);
+    if (err == NoError) eltype = GetElemTypeID (elementHead);
+    return eltype;
 }
 
 API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)

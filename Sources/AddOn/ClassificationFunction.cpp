@@ -15,7 +15,7 @@ GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автоклас
 GSErrCode GetAllClassification (SystemDict& systemdict)
 {
     GSErrCode err = NoError;
-    GS::Array<API_ClassificationSystem> systems;
+    GS::Array<API_ClassificationSystem> systems = {};
     err = ACAPI_Classification_GetClassificationSystems (systems);
     if (err != NoError) {
         msg_rep ("ClassificationFunc::GetAllClassification", "ACAPI_Classification_GetClassificationSystems", err, APINULLGuid);
@@ -25,13 +25,13 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
         GS::UniString systemname = systems[i].name.ToLowerCase ();
         systemname.Trim ();
         if (!systemdict.ContainsKey (systemname)) {
-            GS::Array<API_ClassificationItem> allItems;
-            GS::Array<API_ClassificationItem> rootItems;
-            ClassificationDict classifications;
+            GS::Array<API_ClassificationItem> allItems = {};
+            GS::Array<API_ClassificationItem> rootItems = {};
+            ClassificationDict classifications = {};
             err = ACAPI_Classification_GetClassificationSystemRootItems (systems[i].guid, rootItems);
             if (err == NoError) {
                 for (UIndex j = 0; j < rootItems.GetSize (); ++j) {
-                    API_ClassificationItem parent;
+                    API_ClassificationItem parent = {};
                     AddClassificationItem (rootItems[j], parent, classifications, systems[i]);
                     GatherAllDescendantOfClassification (rootItems[j], classifications, systems[i]);
                 }
@@ -43,7 +43,7 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
                 AddClassificationItem (item, parent, classifications, systems[i]);
                 systemdict.Add (systemname, classifications);
                 if (classifications.ContainsKey (autoclassname)) {
-                    ClassificationDict autoclassifications;
+                    ClassificationDict autoclassifications = {};
                     autoclassifications.Add (autoclassname, classifications.Get (autoclassname));
                     systemdict.Add (autoclassname, autoclassifications);
                 }
@@ -55,7 +55,7 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
 void GatherAllDescendantOfClassification (const API_ClassificationItem& item, ClassificationDict& classifications, const  API_ClassificationSystem& system)
 {
     GSErrCode err = NoError;
-    GS::Array<API_ClassificationItem> directChildren;
+    GS::Array<API_ClassificationItem> directChildren = {};
     err = ACAPI_Classification_GetClassificationItemChildren (item.guid, directChildren);
     if (err == NoError) {
         for (UIndex i = 0; i < directChildren.GetSize (); ++i) {
@@ -73,7 +73,7 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
     GS::UniString desc = item.description.ToLowerCase ();
     if (itemname.IsEmpty ()) itemname = "@system@";
     if (!classifications.ContainsKey (itemname)) {
-        ClassificationValues classificationitem;
+        ClassificationValues classificationitem = {};
         classificationitem.item = item;
         classificationitem.system = system;
         classificationitem.itemname = itemname;
@@ -82,7 +82,7 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
     }
 
     if (desc.ToLowerCase ().Contains ("some_stuff_class") || desc.ToLowerCase ().Contains ("somestuff_class") || desc.ToLowerCase ().Contains ("somestuffclass")) {
-        ClassificationValues classificationitem;
+        ClassificationValues classificationitem = {};
         classificationitem.item = item;
         classificationitem.system = system;
         classificationitem.itemname = autoclassname;
@@ -136,7 +136,7 @@ void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid)
     API_ClassificationItem item = systemdict.Get (autoclassname).Get (autoclassname).item;
     API_ClassificationSystem system = systemdict.Get (autoclassname).Get (autoclassname).system;
     GSErrCode err = NoError;
-    GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
+    GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs = {};
     err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
     bool needChangeClass = false;
     if (systemItemPairs.IsEmpty ()) needChangeClass = true;
