@@ -2537,11 +2537,25 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
 //--------------------------------------------------------------------------------------------------------------------------
 //Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind)
+bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind, bool check)
 {
     flagfind = false;
+    bool flag = false;
     if (definitions.IsEmpty ()) return false;
     GSErrCode	err = NoError;
+    short n = 0; GS::UniString flag_name = "";
+    if (check) {
+        for (UInt32 i = 0; i < definitions.GetSize (); i++) {
+            if (!definitions[i].description.IsEmpty ()) {
+                if (definitions[i].description.Contains (property_flag_name)) {
+                    n++;
+                    flag_name.Append (definitions[i].name); flag_name.Append ("; ");
+                }
+            }
+        }
+        if (n == 0) return false;
+        if (n > 1) msg_rep ("There are several sync flags as an element. This can lead to errors.", flag_name, APIERR_GENERAL, elemGuid);
+    }
     for (UInt32 i = 0; i < definitions.GetSize (); i++) {
         if (!definitions[i].description.IsEmpty ()) {
             if (definitions[i].description.Contains (property_flag_name)) {

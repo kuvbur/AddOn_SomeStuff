@@ -545,14 +545,15 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     bool syncall = true; bool flagfindall = true;
     bool synccoord = true; bool flagfindcoord = true;
     bool syncclass = true; bool flagfindclass = true;
+    bool check = !propertyParams.ContainsKey ("{@flag:no_attrib}");
     if (dummymode == DUMMY_MODE_ON) {
         syncall = GetElemStateReverse (elemGuid, definitions, "Sync_flag", flagfindall);
         synccoord = GetElemStateReverse (elemGuid, definitions, "Sync_correct_flag", flagfindcoord);
         syncclass = GetElemStateReverse (elemGuid, definitions, "Sync_class_flag", flagfindclass);
     } else {
-        syncall = GetElemState (elemGuid, definitions, "Sync_flag", flagfindall);
-        synccoord = GetElemState (elemGuid, definitions, "Sync_correct_flag", flagfindcoord);
-        syncclass = GetElemState (elemGuid, definitions, "Sync_class_flag", flagfindclass);
+        syncall = GetElemState (elemGuid, definitions, "Sync_flag", flagfindall, check);
+        synccoord = GetElemState (elemGuid, definitions, "Sync_correct_flag", flagfindcoord, check);
+        syncclass = GetElemState (elemGuid, definitions, "Sync_class_flag", flagfindclass, check);
     }
     if (!syncall && !synccoord && !syncclass) return false; //Если оба свойства-флага ложь - выходим
     if (syncall && !flagfindcoord) synccoord = true; //Если флаг координат не найден - проверку всё равно делаем
@@ -634,8 +635,8 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
                         }
                     }
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -1616,9 +1617,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
-            }
         }
     }
+}
     return has_element;
 }
 
@@ -1768,7 +1769,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 }
             }
             selNeigs.PushNew (guid);
-        }
+}
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -1825,7 +1826,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1922,7 +1923,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                         }
                     }
                 }
-            }
+        }
         }
     }
     if (!find) {
@@ -1985,7 +1986,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
                     }
                 }
             }
-        }
+}
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
@@ -2018,7 +2019,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-    }
+}
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
