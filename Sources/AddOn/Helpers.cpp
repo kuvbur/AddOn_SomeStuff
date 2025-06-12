@@ -5062,6 +5062,7 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
             if (params.ContainsKey (rawname_kzap + attribsuffix)) {
                 if (params.Get (rawname_kzap + attribsuffix).isValid) {
                     kzap = params.Get (rawname_kzap + attribsuffix).val.doubleValue;
+                    if (is_equal (kzap, 0) || kzap < 0) kzap = 1;
                 } else {
                     kzap = 1;
                 }
@@ -5104,7 +5105,7 @@ void ParamHelpers::ReadQuantities (const API_Element & element, ParamDictValue &
             }
             break;
         }
-    }
+}
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
         ParamValue& param = cIt->value;
@@ -5231,6 +5232,11 @@ void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite & com
         comp.qty = 0;
         return;
     }
+    nameunits = RSGetIndString (iseng, 64, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        comp.qty = comp.area * comp.kzap;
+        return;
+    }
     nameunits = RSGetIndString (iseng, 53, ACAPI_GetOwnResModule ());
     if (units.Contains (nameunits)) {
         comp.qty = comp.area * comp.kzap;
@@ -5256,7 +5262,32 @@ void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite & com
         comp.qty = comp.length * comp.kzap;
         return;
     }
-}
+    nameunits = RSGetIndString (iseng, 59, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        comp.qty = comp.area * comp.kzap;
+        return;
+    }
+    nameunits = RSGetIndString (iseng, 60, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        comp.qty = comp.area * comp.kzap;
+        return;
+    }
+    nameunits = RSGetIndString (iseng, 61, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        comp.qty = comp.volume * comp.kzap;
+        return;
+    }
+    nameunits = RSGetIndString (iseng, 62, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        comp.qty = comp.volume * comp.kzap;
+        return;
+    }
+    nameunits = RSGetIndString (iseng, 63, ACAPI_GetOwnResModule ());
+    if (units.Contains (nameunits)) {
+        comp.qty = comp.length * comp.kzap;
+        return;
+    }
+    }
 
 
 // -----------------------------------------------------------------------------
@@ -5294,7 +5325,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_th")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_th");
             if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_units}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
             if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_kzap}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_kzap");
-        }
+}
         ParamHelpers::CompareParamDictValue (propertyParams, paramsAdd);
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28)
@@ -5314,8 +5345,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         }
                         if (!existsmaterial.ContainsKey (constrinx)) existsmaterial.Add (constrinx, true);
                         flag = true;
-                    }
-                }
+            }
+        }
                 if (flag) {
                     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd.EnumeratePairs (); cIt != NULL; ++cIt) {
                         #if defined(AC_28)
@@ -5326,10 +5357,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
+                        }
                     }
                 }
-            }
-        }
+}
     }
     bool flag_add = false;
     if (needReadQuantities) ParamHelpers::ReadQuantities (element, params, propertyParams, existsmaterial, paramlayers);
@@ -6163,7 +6194,7 @@ bool ParamHelpers::ConvertBoolToParamValue (ParamValue & pvalue, const GS::UniSt
         pvalue.val.uniStringValue = RSGetIndString (ID_ADDON_STRINGS + isEng (), TrueId, ACAPI_GetOwnResModule ());
         pvalue.val.intValue = 1;
         pvalue.val.doubleValue = 1.0;
-    } else {
+} else {
         pvalue.val.uniStringValue = RSGetIndString (ID_ADDON_STRINGS + isEng (), FalseId, ACAPI_GetOwnResModule ());
         pvalue.val.intValue = 0;
         pvalue.val.doubleValue = 0.0;
@@ -6391,7 +6422,7 @@ GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatStr
             DBBREAK ();
             return "Invalid Value";
     }
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
@@ -6424,7 +6455,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
         #endif
-    }
+}
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
 }
@@ -6612,7 +6643,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         ParamValue p = {};
         param_composite.Add (20, p);
         param_composite.Add (6, p);
-    } else {
+} else {
         // Проходим по сегментам, соединяем их в одну линию
         for (GS::HashTable<short, GS::Array<Sector>>::PairIterator cIt = segment.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28)
@@ -6642,8 +6673,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 if (r < min_r) {
                     cutline.c2 = segment[j].c2;
                     min_r = r;
-                }
             }
+    }
             #if defined(AC_28)
             lines.Get (cIt->key).cut_start = cutline.c2;
             lines.Get (cIt->key).cut_direction = Geometry::SectorVector (cutline);
@@ -6784,18 +6815,18 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
-                            }
-                        }
-                    } else {
+                                    }
+                                }
+                            } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-                }
+                        }
                 break;
-        }
+                    }
         ++profileDescriptionIt1;
-    }
+                }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
         short pen = -1;
         if (param_composite.ContainsKey (pen)) {
@@ -6841,12 +6872,12 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             }
         }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
-    }
+        }
     return hasData;
     #else
     return false;
     #endif
-}
+    }
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -7036,7 +7067,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-}
+    }
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя

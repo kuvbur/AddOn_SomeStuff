@@ -149,6 +149,12 @@
 /* [  56] */ 	"м³"
 /* [  57] */ 	"п.м."
 /* [  58] */ 	"не специфицировать"
+/* [  59] */ 	"square meters"
+/* [  60] */ 	"m²"
+/* [  61] */ 	"cubic meters"
+/* [  62] */ 	"m³"
+/* [  63] */ 	"m"
+/* [  64] */ 	"do not specify"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -294,12 +300,18 @@
 /* [  50] */	"Required finishing element class `some_stuff_fin_class` not found. Configure classes according to the add-on documentation."
 /* [  51] */	"Descriptions are missing for some classes. Element classification may be inaccurate. The process will continue. Configure classes according to the add-on documentation."
 /* [  52] */	"`Sync_GUID zone` property is missing for finishing elements. Configure properties as per the add-on documentation."
-/* [  53] */ 	"square meters"
-/* [  54] */ 	"m²"
-/* [  55] */ 	"cubic meters"
-/* [  56] */ 	"m³"
-/* [  57] */ 	"m"
-/* [  58] */ 	"do not specify"
+/* [  53] */ 	"кв.м."
+/* [  54] */ 	"м²"
+/* [  55] */ 	"куб.м."
+/* [  56] */ 	"м³"
+/* [  57] */ 	"п.м."
+/* [  58] */ 	"не специфицировать"
+/* [  59] */ 	"square meters"
+/* [  60] */ 	"m²"
+/* [  61] */ 	"cubic meters"
+/* [  62] */ 	"m³"
+/* [  63] */ 	"m"
+/* [  64] */ 	"do not specify"
 }
 
 'GICN' 32500 "Sync" {
