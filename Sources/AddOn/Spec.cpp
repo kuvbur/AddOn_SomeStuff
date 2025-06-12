@@ -605,13 +605,13 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
             if (!group.is_Valid) {
                 continue;
             }
-            for (const GS::UniString rawname : group.sum_paramrawname) {
+            for (const GS::UniString& rawname : group.sum_paramrawname) {
                 if (!params.ContainsKey (rawname)) params.Add (rawname, true);
             }
-            for (const GS::UniString rawname : group.unic_paramrawname) {
+            for (const GS::UniString& rawname : group.unic_paramrawname) {
                 if (!params.ContainsKey (rawname)) params.Add (rawname, true);
             }
-            for (const GS::UniString rawname : group.out_paramrawname) {
+            for (const GS::UniString& rawname : group.out_paramrawname) {
                 if (!params.ContainsKey (rawname)) params.Add (rawname, true);
             }
         }
@@ -650,10 +650,10 @@ void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& property
         }
         // Добавляем параметры для записи
         ParamDict paramswrite = {};
-        for (const GS::UniString rawname : rule.out_sum_paramrawname) {
+        for (const GS::UniString& rawname : rule.out_sum_paramrawname) {
             if (!paramswrite.ContainsKey (rawname)) paramswrite.Add (rawname, true);
         }
-        for (const GS::UniString rawname : rule.out_paramrawname) {
+        for (const GS::UniString& rawname : rule.out_paramrawname) {
             if (!paramswrite.ContainsKey (rawname)) paramswrite.Add (rawname, true);
         }
 
