@@ -541,7 +541,9 @@ bool GDLParamByName (const API_Element& element, const API_Elem_Head& elem_head,
 // -----------------------------------------------------------------------------
 bool ReadFormula (ParamDictValue& paramByType, ParamDictValue& params);
 
-void ReadQuantities (const API_Element& element, ParamDictValue& params, ParamDictValue& propertyParams, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictValue& paramlayers);
+bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& params);
+
+void ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictValue& paramlayers);
 
 bool ReadElementValues (const API_Element& element, ParamDictValue& params);
 
