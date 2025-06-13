@@ -386,7 +386,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                     msg_rep ("GetRelationsElement", "ACAPI_Element_Get", err, elemGuid);
                     return;
                 }
-                if (element.column.nSegments == 1) return;
+                if (element.column.nSegments == 0) return;
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
                 if (err == NoError && memo.columnSegments != nullptr) {
                     for (UInt32 i = 0; i < element.column.nSegments; i++) {
@@ -404,7 +404,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                     msg_rep ("GetRelationsElement", "ACAPI_Element_Get", err, elemGuid);
                     return;
                 }
-                if (element.beam.nSegments == 1) return;
+                if (element.beam.nSegments == 0) return;
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
                 if (err == NoError && memo.beamSegments != nullptr) {
                     for (UInt32 i = 0; i < element.beam.nSegments; i++) {
@@ -1812,6 +1812,7 @@ GS::UniString GetPropertyENGName (GS::UniString& name)
     if (name.Contains ("@property:sync_name")) return name;
     if (name.IsEqual ("@property:id")) return "@property:BuildingMaterialProperties/Building Material ID";
     if (name.IsEqual ("@property:n")) return "@material:n";
+    if (name.IsEqual ("@property:ns")) return "@material:ns";
     if (name.IsEqual ("@property:layer_thickness")) return "@material:layer thickness";
     if (name.IsEqual ("@property:th")) return "@material:layer thickness";
     if (name.IsEqual ("@property:bmat_inx")) return "@material:bmat_inx";
@@ -2143,7 +2144,7 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
                 #else // AC_25
                 string += ToString (value->singleEnumVariant.displayVariant, stringformat);
                 #endif
-            } break;
+                } break;
         case API_PropertyMultipleChoiceEnumerationCollectionType:
             {
                 #if defined(AC_25) || defined(AC_26) || defined(AC_27) || defined(AC_28)
@@ -2169,14 +2170,14 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
                     }
                 }
                 #endif
-            } break;
+                } break;
         default:
             {
                 break;
             }
-    }
+            }
     return string;
-}
+            }
 
 ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs)
 {
@@ -2271,7 +2272,7 @@ bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumer
 bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs)
 {
     return lhs.variants == rhs.variants;
-}
+    }
 #endif
 
 bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType)
@@ -2652,7 +2653,7 @@ GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement& paramToWrite)
         if (!params.IsEmpty ()) {
             if (ParamHelpers::Write (elemGuid, params)) rereadelem.Push (elemGuid);
         }
-    }
+}
     #if defined(TESTING)
     if (!rereadelem.IsEmpty ()) DBprnt ("ElementsWrite ReRead");
     DBprnt ("ElementsWrite end");
@@ -2689,7 +2690,7 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
             ParamValue& param = *cIt->value;
             #endif
             if (param.rawName.Contains (paramType)) paramByType.Add (param.rawName, param);
-        }
+    }
         if (!paramByType.IsEmpty ()) {
 
             // Проходим поиском, специфичным для каждого типа
@@ -2712,7 +2713,7 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
                 ParamHelpers::WriteCoord (elemGuid, paramByType);
             }
         }
-    }
+}
     return needReread;
 }
 
@@ -2740,8 +2741,8 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
                 ParamValue& param = *cIt->value;
                 #endif
                 if (param.fromInfo && !paramsinfo.ContainsKey (param.rawName)) paramsinfo.Add (param.rawName, param);
-            }
         }
+}
     }
     if (paramsinfo.IsEmpty ()) return;
     #if defined(TESTING)
@@ -2791,7 +2792,7 @@ bool ParamHelpers::WriteClassification (const API_Guid& elemGuid, ParamDictValue
             }
             if (err != NoError) msg_rep ("WriteClassification", "ACAPI_Element_AddClassificationItem", err, APINULLGuid);
         }
-    }
+}
     return needReread;
 }
 
@@ -3220,13 +3221,13 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
                         #else
                         attribinxint = attribinx;
                         #endif
-                    } else {
+                } else {
                         attribinxint = paramfrom.intValue;
                     }
-                } else {
+            } else {
                     attribinxint = paramfrom.intValue;
                 }
-            }
+        }
             if (actualParam.typeID == APIParT_CString) {
                 GS::uchar_t* buffer = new GS::uchar_t[256];
                 GS::ucsncpy (buffer, paramfrom.uniStringValue.ToUStr ().Get (), 256);
@@ -3280,7 +3281,7 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
                 msg_rep ("ParamHelpers::WriteGDL", "APIAny_ChangeAParameterID", err, elem_head.guid);
                 return;
             }
-        }
+            }
     }
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryPart_GetActParameters (&apiParams);
@@ -3316,7 +3317,7 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
             return;
         }
     }
-}
+    }
 
 // --------------------------------------------------------------------
 // Запись ParamDictValue в свойства
@@ -3341,7 +3342,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
             API_PropertyDefinition definition = param.definition;
             propertyDefinitions.Push (definition);
         }
-    }
+}
 
     if (!propertyDefinitions.IsEmpty ()) {
         #if defined(TESTING)
@@ -3405,8 +3406,8 @@ bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement& paramToRead)
                 if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) {
                     return true;
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3429,8 +3430,8 @@ bool ParamHelpers::hasUnreadCoord (ParamDictElement& paramToRead)
                 if (param.fromCoord) {
                     return true;
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3453,8 +3454,8 @@ bool ParamHelpers::hasUnreadAttribute (ParamDictElement& paramToRead)
                 if (param.fromAttribElement) {
                     return true;
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3484,8 +3485,8 @@ bool ParamHelpers::hasUnreadInfo (ParamDictElement& paramToRead, ParamDictValue&
                         return true; // В списке общих параметров не найден, перечитаем
                     }
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3550,8 +3551,8 @@ bool ParamHelpers::hasUnreadGlob (ParamDictElement& paramToRead, ParamDictValue&
                         return true; // В списке общих параметров не найден, перечитаем
                     }
                 }
-            }
         }
+}
     }
     return false;
 }
@@ -3591,7 +3592,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& 
             if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, params); // Сопоставляем свойства
             ParamHelpers::Read (elemGuid, params, propertyParams, systemdict);
         }
-    }
+}
     #if defined(TESTING)
     DBprnt ("ElementsRead end");
     #endif
@@ -3679,7 +3680,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 }
             }
         }
-    }
+}
 
     if (needGetAllDefinitions) {
         AllPropertyDefinitionToParamDict (params, elemGuid);  // Проверим - для всех ли свойств подобраны определения
@@ -3718,7 +3719,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                     if (param.rawName.Contains (paramType)) paramByType.Add (param.rawName, param);
                 }
             }
-        }
+    }
         if (paramByType.IsEmpty ()) continue;
 
         bool needCompare = false; // Флаг необходимости записи в словарь. Поднимается только при наличии результата на каждом этапе
@@ -3747,8 +3748,8 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                             #endif
                         }
                     }
-                }
             }
+        }
         }
         if (paramType.IsEqual ("{@coord:")) {
             // Для определения угла к северу нам потребуется значение направления на север.
@@ -3918,7 +3919,7 @@ void ParamHelpers::GetLocOriginToParamDict (ParamDictValue& propertyParams)
     #if defined(TESTING)
     DBprnt ("  GetLocOriginToParamDict end");
     #endif
-}
+    }
 
 // --------------------------------------------------------------------
 // Заполнение информации о проекте
@@ -4021,7 +4022,7 @@ void ParamHelpers::GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     #if defined(TESTING)
     DBprnt ("  GetAllAttributeToParamDict end");
     #endif
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
@@ -4314,7 +4315,7 @@ void ParamHelpers::CompareParamDictElement (ParamDictElement & paramsFrom, Param
         if (paramsFrom.ContainsKey (elemGuid)) {
             ParamHelpers::CompareParamDictValue (paramsFrom.Get (elemGuid), paramTo, false);
         }
-    }
+}
 }
 
 // --------------------------------------------------------------------
@@ -4349,7 +4350,7 @@ void ParamHelpers::CompareParamDictValue (ParamDictValue & paramsFrom, ParamDict
                 paramsTo.Add (k, paramFrom);
             }
         }
-    }
+}
     return;
 }
 
@@ -4379,7 +4380,7 @@ bool ParamHelpers::ReadProperty (const API_Guid & elemGuid, ParamDictValue & par
                 propertyDefinitions.Push (definition);
             }
         }
-    }
+}
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;
         GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
@@ -4480,7 +4481,7 @@ bool ParamHelpers::ReadClassification (const API_Guid & elemGuid, const Classifi
             param.val.uniStringValue = ""; // Если система не найдена - обнулим значение
             msg_rep ("System not found", param.name, NoError, APINULLGuid);
         }
-    }
+}
     if (elementsystem.IsEmpty ()) return false;
     bool flag_find = false;
     for (GS::HashTable<GS::UniString, API_Guid>::PairIterator cIt = elementsystem.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -4546,7 +4547,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Elem_Head & elem_head, ParamDi
         } else {
             msg_rep ("ParamHelpers::ReadAttributeValues", "Layer not found - " + name, NoError, elem_head.guid);
         }
-    } else {
+} else {
         API_Attribute attrib = {};
         GS::UniString name = "";
         BNZeroMemory (&attrib, sizeof (API_Attribute));
@@ -4661,7 +4662,7 @@ bool ParamHelpers::ReadGDL (const API_Element & element, const API_Elem_Head & e
                 paramdiap.Add (arr_col_end.rawName, arr_col_end);
             }
         }
-    }
+}
     if (!paramdiap.IsEmpty ()) {
         if (ParamHelpers::GDLParamByName (element, elem_head, paramdiap, paramnamearray)) {
             for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -4684,8 +4685,8 @@ bool ParamHelpers::ReadGDL (const API_Element & element, const API_Elem_Head & e
                         if (paramdiap.ContainsKey (param.rawName_col_end)) params.Get (param.rawName).val.array_column_end = paramdiap.Get (param.rawName_col_end).val.intValue;
                     }
                 }
-            }
         }
+    }
     }
 
     // Разбиваем по типам поиска - по описанию/по имени
@@ -4783,7 +4784,7 @@ bool ParamHelpers::ReadGDL (const API_Element & element, const API_Elem_Head & e
                 paramByName.Add (*cIt->key, param_by_name);
                 #endif
             }
-        }
+    }
     }
     if (flag_find_name) ParamHelpers::CompareParamDictValue (paramByName, params);
     return (flag_find_name);
@@ -4994,7 +4995,7 @@ bool ParamHelpers::ReadFormula (ParamDictValue & paramByType, ParamDictValue & p
                 paramByType.Get (key).isValid = true;
             }
         }
-    }
+}
     return flag_find;
 }
 
@@ -5287,7 +5288,7 @@ void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite & com
         comp.qty = comp.length * comp.kzap;
         return;
     }
-    }
+}
 
 
 // -----------------------------------------------------------------------------
@@ -5317,7 +5318,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             }
         }
         if (param.fromQuantity) needReadQuantities = true;
-    }
+}
     if (paramlayers.IsEmpty ()) return true;
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (!paramsAdd.IsEmpty ()) {
@@ -5325,7 +5326,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_th")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_th");
             if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_units}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
             if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_kzap}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_kzap");
-}
+        }
         ParamHelpers::CompareParamDictValue (propertyParams, paramsAdd);
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28)
@@ -5345,8 +5346,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         }
                         if (!existsmaterial.ContainsKey (constrinx)) existsmaterial.Add (constrinx, true);
                         flag = true;
-            }
-        }
+                    }
+                }
                 if (flag) {
                     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd.EnumeratePairs (); cIt != NULL; ++cIt) {
                         #if defined(AC_28)
@@ -5357,10 +5358,22 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
-                        }
-                    }
                 }
-}
+            }
+                if (!paramsAdd_1.IsEmpty ()) {
+                    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
+                        #if defined(AC_28)
+                        if (!params.ContainsKey (cIt->key)) {
+                            params.Add (cIt->key, cIt->value);
+                            #else
+                        if (!params.ContainsKey (*cIt->key)) {
+                            params.Add (*cIt->key, *cIt->value);
+                            #endif
+                        }
+                }
+    }
+            }
+        }
     }
     bool flag_add = false;
     if (needReadQuantities) ParamHelpers::ReadQuantities (element, params, propertyParams, existsmaterial, paramlayers);
@@ -5405,6 +5418,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     }
                 }
             }
+            Int32 ns = 0;
             for (Int32 i = 0; i < nlayers; ++i) {
                 GS::UniString templatestring = param_composite.val.uniStringValue;
                 // Для формул возьмём только часть в <>, только она повторяется для каждого слоя
@@ -5496,7 +5510,34 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         params.Get (layer_thickness).isValid = true;
                     }
                 }
-                templatestring.ReplaceAll ("{@material:n}", GS::UniString::Printf ("%d", i + 1));
+                GS::UniString n_txt = GS::UniString::Printf ("%d", i + 1);
+                templatestring.ReplaceAll ("{@material:n}", n_txt);
+
+                layer_thickness = "{@material:n}"; defult_formatstring = "0m";
+                if (params.ContainsKey (layer_thickness)) {
+                    params.Get (layer_thickness).val.uniStringValue = n_txt;
+                    params.Get (layer_thickness).val.intValue = i + 1;
+                    params.Get (layer_thickness).val.doubleValue = i + 1;
+                    params.Get (layer_thickness).val.rawDoubleValue = i + 1;
+                    params.Get (layer_thickness).val.type = API_PropertyStringValueType;
+                    params.Get (layer_thickness).isValid = true;
+                } else {
+                    ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, "material:", "n", n_txt);
+                }
+
+                n_txt = GS::UniString::Printf ("%d", ns + 1);
+                templatestring.ReplaceAll ("{@material:ns}", n_txt);
+                layer_thickness = "{@material:ns}"; defult_formatstring = "0m";
+                if (params.ContainsKey (layer_thickness)) {
+                    params.Get (layer_thickness).val.uniStringValue = n_txt;
+                    params.Get (layer_thickness).val.intValue = i + 1;
+                    params.Get (layer_thickness).val.doubleValue = i + 1;
+                    params.Get (layer_thickness).val.rawDoubleValue = i + 1;
+                    params.Get (layer_thickness).val.type = API_PropertyStringValueType;
+                    params.Get (layer_thickness).isValid = true;
+                } else {
+                    ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, "material:", "ns", n_txt);
+                }
                 templatestring.ReplaceAll ("}", attribsuffix);
                 if (ParamHelpers::ReplaceParamInExpression (params, templatestring)) {
                     flag = true;
@@ -5508,6 +5549,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     } else {
                         outstring.Append (templatestring);
                     }
+                    templatestring.Trim ();
+                    if (!templatestring.IsEmpty ()) ns += 1;
                 }
             }
         }
@@ -6194,7 +6237,7 @@ bool ParamHelpers::ConvertBoolToParamValue (ParamValue & pvalue, const GS::UniSt
         pvalue.val.uniStringValue = RSGetIndString (ID_ADDON_STRINGS + isEng (), TrueId, ACAPI_GetOwnResModule ());
         pvalue.val.intValue = 1;
         pvalue.val.doubleValue = 1.0;
-} else {
+    } else {
         pvalue.val.uniStringValue = RSGetIndString (ID_ADDON_STRINGS + isEng (), FalseId, ACAPI_GetOwnResModule ());
         pvalue.val.intValue = 0;
         pvalue.val.doubleValue = 0.0;
@@ -6233,7 +6276,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     pvalue.isValid = true;
     pvalue.fromAttribElement = true;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
@@ -6422,7 +6465,7 @@ GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatStr
             DBBREAK ();
             return "Invalid Value";
     }
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
@@ -6485,11 +6528,11 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
         ParamValueComposite c = *cIt->value;
         #endif
         p.Push (c);
-    }
+}
     composite.Clear ();
     composite = p;
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
@@ -6539,7 +6582,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
         #endif
-    }
+}
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
@@ -6579,7 +6622,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         if (!needReadQuantities) {
             if (paramlayers.Get (rawName).fromQuantity) needReadQuantities = true;
         }
-    }
+}
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
     #endif
@@ -6643,7 +6686,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         ParamValue p = {};
         param_composite.Add (20, p);
         param_composite.Add (6, p);
-} else {
+    } else {
         // Проходим по сегментам, соединяем их в одну линию
         for (GS::HashTable<short, GS::Array<Sector>>::PairIterator cIt = segment.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28)
@@ -6673,8 +6716,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 if (r < min_r) {
                     cutline.c2 = segment[j].c2;
                     min_r = r;
+                }
             }
-    }
             #if defined(AC_28)
             lines.Get (cIt->key).cut_start = cutline.c2;
             lines.Get (cIt->key).cut_direction = Geometry::SectorVector (cutline);
@@ -6682,7 +6725,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-        }
+            }
     }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
@@ -6815,20 +6858,25 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
-                                    }
-                                }
-                            } else {
+                        }
+                }
+        } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-                        }
+    }
                 break;
-                    }
+        }
         ++profileDescriptionIt1;
-                }
+    }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
         short pen = -1;
+        if (param_composite.ContainsKey (pen)) {
+            param_composite.Get (pen).composite = composite_all;
+            hasData = true;
+        }
+        pen = -2;
         if (param_composite.ContainsKey (pen)) {
             param_composite.Get (pen).composite = composite_all;
             hasData = true;
@@ -6848,7 +6896,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     #else
                     paramlayers.Get (*cIt->key).composite = param_composite.Get (pen).composite;
                     #endif
-                } else {
+            } else {
                     // Теперь нам надо отсортировать слои по параметру rfromstart
                     std::map<double, ParamValueComposite> comps;
                     GS::Array<ParamValueComposite> param = param_composite.Get (pen).composite;
@@ -6868,16 +6916,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     #else
                     paramlayers.Get (*cIt->key).composite = paramout;
                     #endif
+                    }
                 }
-            }
-        }
+    }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
-        }
+    }
     return hasData;
     #else
     return false;
     #endif
-    }
+}
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -7026,7 +7074,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                 paramlayers.Add (param.rawName, param);
             }
         }
-    }
+}
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramlayers.IsEmpty ()) {
@@ -7152,7 +7200,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
             }
         }
-    }
+}
     #ifndef AC_22
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;

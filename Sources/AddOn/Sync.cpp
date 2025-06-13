@@ -144,6 +144,10 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType (API_MorphID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
+
+    if (!flag_chanel && syncSettings.wallS) flag_chanel = SyncByType (API_ShellID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
+    nPhase = nPhase + 1;
+
     if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_CurtainWallID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
     nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_RailingID, syncSettings, nPhase, propertyParams, paramToWrite, dummymode, systemdict);
@@ -173,8 +177,8 @@ void SyncAndMonAll (SyncSettings& syncSettings)
             GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
             msg_rep ("SyncAll - write", time, NoError, APINULLGuid);
             return NoError;
-        });
-    } else {
+});
+} else {
         msg_rep ("SyncAll - write", "No data to write", NoError, APINULLGuid);
     }
     ParamHelpers::InfoWrite (paramToWrite);
@@ -192,7 +196,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
     #endif
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
@@ -244,7 +248,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
         #else
         if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
-    }
+}
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -348,7 +352,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
         #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return rereadelem;
         #endif
-    }
+}
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -371,7 +375,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
             GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
             msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
             return NoError;
-        });
+    });
     } else {
         msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
     }
@@ -406,7 +410,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
     if (err != NoError) {
         msg_rep (fmane, "APIEnv_GetCurrLayerCombID", err, APINULLGuid);
         return;
-    }
+}
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
     #else
@@ -430,7 +434,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметра элемента
@@ -475,7 +479,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     if (err != NoError) {
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
-    }
+}
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryManagement_RunGDLParScript (&tElemHead, 0);
     #else
@@ -1618,8 +1622,8 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 }
                 if (flag_write) break;
             }
-        }
     }
+}
     return has_element;
 }
 
@@ -1767,9 +1771,9 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                     msg_rep ("ShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
                 }
-            }
+                }
             selNeigs.PushNew (guid);
-        }
+            }
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -1826,7 +1830,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1924,15 +1928,15 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                     }
                 }
             }
+            }
         }
-    }
     if (!find) {
         parentGuid.Clear ();
         errcode = 2;
     }
     return find;
     #endif
-}
+    }
 
 
 // --------------------------------------------------------------------

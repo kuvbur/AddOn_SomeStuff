@@ -95,7 +95,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
         case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
-            DimRoundAll (syncSettings);
+            DimRoundAll (syncSettings, false);
             break;
         default:
             break;
@@ -131,7 +131,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     API_EditCmdID acttype = actTranPars.typeID;
     if (!syncSettings.syncMon) return NoError;
     if (elemType->notifID == APINotifyElement_EndEvents) {
-        DimRoundAll (syncSettings);
+        DimRoundAll (syncSettings, true);
         return NoError;
     }
     if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
@@ -372,6 +372,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
             break;
     }
     (void) err;
+    DimRoundAll (syncSettings, false);
     WriteSyncSettingsToPreferences (syncSettings);
     MenuSetState (syncSettings);
     #if defined(AC_27) || defined(AC_28)
