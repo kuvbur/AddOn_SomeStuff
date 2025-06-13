@@ -129,7 +129,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
             dimrule.flag_custom = true;
             flag_find = true;
         }
-        if (partstring_1[1].Contains ("ClassicRound")) {
+        if (partstring_1[1].Contains ("lassic")) {
             dimrule.classic_round_mode = true;
         }
         if (!partstring_1[1].Contains (",")) return flag_find;
@@ -169,8 +169,24 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings)
+GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings, bool isUndo)
 {
+    if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace)) {
+        return NoError;
+    }
+    if (!ACAPI_Element_Filter (elemGuid, APIFilt_HasAccessRight)) {
+        return NoError;
+    }
+    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable)) {
+        return NoError;
+    }
+    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsVisibleByRenovation)) {
+        return NoError;
+    }
+    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsInStructureDisplay)) {
+        return NoError;
+    }
+
     API_ElemTypeID elementType;
     if (GetTypeByGUID (elemGuid, elementType) != NoError) return NoError;
     if (elementType != API_DimensionID) return NoError;
@@ -184,8 +200,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
             return err;
         }
     }
-    API_Element element;
-    BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
     element.header.guid = elemGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
@@ -237,37 +252,51 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         return err;
     }
     bool flag_write = false;
-    for (auto dimrule : rules) {
+    for (const auto& dimrule : rules) {
         pen_rounded = dimrule.pen_rounded;
         flag_change_rule = dimrule.flag_change;
         short pen = pen_rounded;
         pen_original = pen_dimenstion; // Быстрофикс
         API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
+        API_ElemTypeID elementType;
+        #if defined AC_26 || defined AC_27 || defined AC_28
+        elementType = (*memo.dimElems)[0].base.base.type.typeID;
+        #else
+        elementType = (*memo.dimElems)[0].base.base.typeID;
+        #endif // AC_26
+        if (elementType == API_OpeningID) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return err;
+        }
         for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
             UInt32 flag_change = DIM_NOCHANGE;
             UInt32 flag_highlight = DIM_NOCHANGE;
-            auto& dimElem = (*memo.dimElems)[k];
-            API_ElemTypeID elementType;
             #if defined AC_26 || defined AC_27 || defined AC_28
-            elementType = dimElem.base.base.type.typeID;
+            elementType = (*memo.dimElems)[k].base.base.type.typeID;
             #else
-            elementType = dimElem.base.base.typeID;
+            elementType = (*memo.dimElems)[k].base.base.typeID;
             #endif // AC_26
 
             // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
-            if (dimElem.dimVal == 0 && elementType == API_ColumnID) {
+            if ((*memo.dimElems)[k].dimVal == 0 && elementType == API_ColumnID) {
                 ACAPI_DisposeElemMemoHdls (&memo);
                 return err;
             };
-            if (dimElem.dimVal == 0) continue;
-            GS::UniString content = GS::UniString::Printf ("%s", dimElem.note.content);
-            API_Guid ref_elemGuid = dimElem.base.base.guid;
+            if (elementType == API_OpeningID) {
+                ACAPI_DisposeElemMemoHdls (&memo);
+                return err;
+            }
+            if ((*memo.dimElems)[k].dimVal == 0) {
+                continue;
+            }
+            GS::UniString content = GS::UniString::Printf ("%s", (*memo.dimElems)[k].note.content);
+            API_Guid ref_elemGuid = (*memo.dimElems)[k].base.base.guid;
             bool is_sameGUID = (ref_elemGuid == bef_elemGuid);
             if (!is_sameGUID) ref_elemGuid = APINULLGuid;
             bool is_wall = (elementType == API_WallID);
             bool flag_deletewall = is_wall && is_sameGUID && dimrule.flag_deletewall;
-            API_NoteContentType contentType = dimElem.note.contentType;
-            if (!flag_deletewall && !dimrule.flag_reset && DimParse (dimElem.dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
+            API_NoteContentType contentType = (*memo.dimElems)[k].note.contentType;
+            if (!flag_deletewall && !dimrule.flag_reset && DimParse ((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
                 if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
                 if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
                     flag_write = true;
@@ -276,7 +305,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
                         delete (*memo.dimElems)[k].note.contentUStr;
                     (*memo.dimElems)[k].note.contentUStr = new GS::UniString (content);
                 }
-                if (flag_change == DIM_CHANGE_OFF && dimElem.note.contentType != API_NoteContent_Measured && flag_change_rule) {
+                if (flag_change == DIM_CHANGE_OFF && (*memo.dimElems)[k].note.contentType != API_NoteContent_Measured && flag_change_rule) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
                     if ((*memo.dimElems)[k].note.contentUStr != nullptr)
@@ -285,7 +314,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
                 }
                 if (flag_highlight == DIM_HIGHLIGHT_ON) pen = pen_rounded;
                 if (flag_highlight == DIM_HIGHLIGHT_OFF) pen = pen_original;
-                if (flag_highlight != DIM_NOCHANGE && dimElem.note.notePen != pen) {
+                if (flag_highlight != DIM_NOCHANGE && (*memo.dimElems)[k].note.notePen != pen) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.notePen = pen;
                 }
@@ -299,7 +328,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
                 (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
             }
             // Сброс пользовательского текста
-            if (dimrule.flag_reset && dimElem.note.contentType != API_NoteContent_Measured) {
+            if (dimrule.flag_reset && (*memo.dimElems)[k].note.contentType != API_NoteContent_Measured) {
                 flag_write = true;
                 (*memo.dimElems)[k].note.notePen = pen_original;
                 (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
@@ -309,42 +338,29 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
             }
             // Проверка перебитых размеров
             if (dimrule.flag_custom) {
-                if (contentType == API_NoteContent_Custom && dimElem.note.notePen != pen_rounded) {
+                if (contentType == API_NoteContent_Custom && (*memo.dimElems)[k].note.notePen != pen_rounded) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.notePen = pen_rounded;
                 }
-                if (contentType == API_NoteContent_Measured && dimElem.note.notePen != pen_original && !flag_write) {
+                if (contentType == API_NoteContent_Measured && (*memo.dimElems)[k].note.notePen != pen_original && !flag_write) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.notePen = pen_original;
                 }
             }
-            bef_elemGuid = dimElem.base.base.guid;
+            bef_elemGuid = (*memo.dimElems)[k].base.base.guid;
         }
     }
     if (flag_write) {
-        API_Element mask;
-        ACAPI_ELEMENT_MASK_SETFULL (mask);
-        API_Guid elemGuid_n = elemGuid;
-        err = ACAPI_CallUndoableCommand ("Change dimension text", [&]() -> GSErrCode {
-            return ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
-
-            //return ACAPI_Element_ChangeMemo(elemGuid_n, APIMemoMask_AdditionalPolygon, &memo);
-        });
+        API_Element mask = {};
+        ACAPI_ELEMENT_MASK_CLEAR (mask);
+        if (!isUndo) {
+            err = ACAPI_CallUndoableCommand ("Change dimension text", [&]() -> GSErrCode {
+                return ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
+            });
+        } else {
+            err = ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
+        }
         if (err == APIERR_REFUSEDCMD) { // Я сказал надо!
-            if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace)) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                return err;
-            }
-            if (!ACAPI_Element_Filter (elemGuid, APIFilt_HasAccessRight)) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                return err;
-            }
-            if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable)) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                return err;
-            }
-
-            //err = ACAPI_Element_ChangeMemo(elemGuid_n, APIMemoMask_AdditionalPolygon, &memo);
             err = ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
         }
     }
@@ -358,7 +374,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule, ParamDictValue& propertyParams)
+bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, const DimRule& dimrule, ParamDictValue& propertyParams)
 {
     flag_change = DIM_NOCHANGE;
     flag_highlight = DIM_NOCHANGE;
@@ -442,7 +458,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
     return (flag_change != DIM_NOCHANGE || flag_highlight != DIM_NOCHANGE);
 }
 
-void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings)
+void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
 {
     (void) syncSettings;
     DoneElemGuid doneelemguid;
@@ -455,13 +471,13 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
     ParamDictValue propertyParams;
-    DimAutoRound (elemGuid, dimrules, propertyParams, syncSettings);
+    DimAutoRound (elemGuid, dimrules, propertyParams, syncSettings, isUndo);
 }
 
 // -----------------------------------------------------------------------------
 // Округление всего доступного согласно настроек
 // -----------------------------------------------------------------------------
-void DimRoundAll (const SyncSettings& syncSettings)
+void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 {
     DoneElemGuid doneelemguid;
     DimRules dimrules;
@@ -473,7 +489,7 @@ void DimRoundAll (const SyncSettings& syncSettings)
     if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
     ParamDictValue propertyParams;
-    if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, dimrules, propertyParams, syncSettings);
+    if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, dimrules, propertyParams, syncSettings, isUndo);
 
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
@@ -485,7 +501,7 @@ void DimRoundAll (const SyncSettings& syncSettings)
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings)
+bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings, bool isUndo)
 {
     GSErrCode	err = NoError;
     GS::Array<API_Guid>	guidArray;
@@ -494,7 +510,7 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
     if (err == NoError) {
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
             if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
-                err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams, syncSettings);
+                err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams, syncSettings, isUndo);
                 if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
             }
             #if defined(AC_27) || defined(AC_28)
