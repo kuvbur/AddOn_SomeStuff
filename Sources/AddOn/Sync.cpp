@@ -177,8 +177,8 @@ void SyncAndMonAll (SyncSettings& syncSettings)
             GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
             msg_rep ("SyncAll - write", time, NoError, APINULLGuid);
             return NoError;
-});
-} else {
+        });
+    } else {
         msg_rep ("SyncAll - write", "No data to write", NoError, APINULLGuid);
     }
     ParamHelpers::InfoWrite (paramToWrite);
@@ -196,7 +196,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
     #endif
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Синхронизация элементов по типу
@@ -248,7 +248,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
         #else
         if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
-}
+    }
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -352,7 +352,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
         #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return rereadelem;
         #endif
-}
+    }
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -375,7 +375,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
             GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
             msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
             return NoError;
-    });
+        });
     } else {
         msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
     }
@@ -410,7 +410,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
     if (err != NoError) {
         msg_rep (fmane, "APIEnv_GetCurrLayerCombID", err, APINULLGuid);
         return;
-}
+    }
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
     #else
@@ -434,7 +434,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметра элемента
@@ -479,7 +479,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     if (err != NoError) {
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
-}
+    }
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_LibraryManagement_RunGDLParScript (&tElemHead, 0);
     #else
@@ -1014,6 +1014,13 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
             paramNamePrefix = "{@mep:";
         }
     }
+    if (synctypefind == false) {
+        if (name.Contains ("Listdata:")) {
+            synctypefind = true;
+            name.ReplaceAll ("Listdata:", "");
+            paramNamePrefix = "{@listdata:";
+        }
+    }
     if (synctypefind == false) return false;
     GS::Array<GS::UniString> params;
     GS::UniString tparamName = name.GetSubstring ('{', '}', 0);
@@ -1248,6 +1255,15 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             syncdirection = SYNC_FROM;
         }
     }
+    if (synctypefind == false) {
+        if (rulestring_one.Contains ("Listdata:")) {
+            synctypefind = true;
+            rulestring_one.ReplaceAll ("Listdata:", "");
+            paramNamePrefix = "{@listdata:";
+            param.fromListData = true;
+            syncdirection = SYNC_FROM;
+        }
+    }
     if (synctypefind == false) return false;
     param.eltype = elementType;
 
@@ -1264,6 +1280,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
            elementType == API_MorphID) synctypefind = false;
     }
     if (param.fromGDLdescription) {
+        if (elementType != API_ObjectID) synctypefind = false;
+    }
+    if (param.fromListData) {
         if (elementType != API_ObjectID) synctypefind = false;
     }
     if (param.fromMaterial) {
@@ -1622,8 +1641,8 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 }
                 if (flag_write) break;
             }
+        }
     }
-}
     return has_element;
 }
 
@@ -1666,7 +1685,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     if (!SyncGetSubelement (guidArray, parentGuid, propertyParams, "", errcode)) {
         if (SyncGetPatentelement (guidArray, parentGuid, propertyParams, "", errcode)) {
             fmane = "Show Sub Element";
-        } else {
+} else {
             GS::UniString SubElementHotFoundIdString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId, ACAPI_GetOwnResModule ());
             if (errcode > 0) {
                 SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
@@ -1674,7 +1693,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             ACAPI_WriteReport (SubElementHotFoundIdString, true);
             return;
         }
-    } else {
+            } else {
         fmane = "Show Parent Element";
     }
     API_DatabaseInfo homedatabaseInfo;
@@ -1689,7 +1708,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     if (err == NoError) {
         checkdb = (homedatabaseInfo.typeID != APIWind_3DModelID);
         isfloorplan = (homedatabaseInfo.typeID == APIWind_FloorPlanID);
-    } else {
+        } else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
     GS::UniString pname = GetDBName (homedatabaseInfo);
@@ -1736,7 +1755,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                         continue;
                     }
                 }
-            }
+                    }
             if (isfloorplan) {
                 if (!ACAPI_Element_Filter (guid, APIFilt_OnActFloor)) {
                     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
@@ -1771,10 +1790,10 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                     msg_rep ("ShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
                 }
-                }
-            selNeigs.PushNew (guid);
             }
-    }
+            selNeigs.PushNew (guid);
+                }
+            }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
 
@@ -1863,7 +1882,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                 classificationforread.Get (cls).Push (param.definition.guid);
             }
         }
-    }
+        }
     if (classificationforread.IsEmpty ()) {
         errcode = 1;
         return false;
@@ -1928,8 +1947,8 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                     }
                 }
             }
-            }
         }
+    }
     if (!find) {
         parentGuid.Clear ();
         errcode = 2;
@@ -1989,12 +2008,12 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
                         }
                     }
                 }
-            }
-        }
-    }
+                        }
+                    }
+                }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
-}
+            }
 
 // --------------------------------------------------------------------
 // Получение прочитанных свойств Sync_GUID для массива элементов
