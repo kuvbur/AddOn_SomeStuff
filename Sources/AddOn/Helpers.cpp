@@ -125,6 +125,20 @@ bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettin
     return res;
 }
 
+bool IsElementEditable (const API_Elem_Head& tElemHead, const SyncSettings& syncSettings, const bool needCheckElementType)
+{
+    if (tElemHead.guid == APINULLGuid) return false;
+    // Проверяем - на находится ли объект в модуле
+    if (tElemHead.hotlinkGuid != APINULLGuid) return false;
+    API_ElemTypeID eltype = GetElemTypeID (tElemHead);
+    if (needCheckElementType && !CheckElementType (eltype, syncSettings)) return false;
+    // Проверяем - зарезервирован ли объект
+    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_InMyWorkspace)) return false;
+    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_HasAccessRight)) return false;
+    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_IsEditable)) return false;
+    return true;
+}
+
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // Возвращает тип элемента
