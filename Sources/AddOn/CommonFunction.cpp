@@ -1429,73 +1429,74 @@ GSErrCode GetGDLParametersFromMemo (const API_Guid & elemGuid, API_AddParType * 
 // -----------------------------------------------------------------------------
 GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & elemGuid, API_AddParType * *&params)
 {
-    GSErrCode	err = NoError;
-    API_ParamOwnerType	apiOwner = {};
-    API_GetParamsType	apiParams = {};
-    BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
-    BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
+    return GetGDLParametersFromMemo (elemGuid, params);
+    /*   GSErrCode	err = NoError;
+       API_ParamOwnerType	apiOwner = {};
+       API_GetParamsType	apiParams = {};
+       BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
+       BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
 
-    if (elemType == API_RailingToprailID
-       || elemType == API_RailingHandrailID
-       || elemType == API_RailingRailID
-       || elemType == API_RailingPostID
-       || elemType == API_RailingInnerPostID
-       || elemType == API_RailingBalusterID
-       || elemType == API_RailingPanelID
-       || elemType == API_RailingNodeID
-       || elemType == API_RailingToprailEndID
-       || elemType == API_RailingHandrailEndID
-       || elemType == API_RailingRailEndID
-       || elemType == API_RailingToprailConnectionID
-       || elemType == API_RailingHandrailConnectionID
-       || elemType == API_RailingRailConnectionID
-       || elemType == API_RailingEndFinishID) {
-        return GetGDLParametersFromMemo (elemGuid, params);
-    }
+       if (elemType == API_RailingToprailID
+          || elemType == API_RailingHandrailID
+          || elemType == API_RailingRailID
+          || elemType == API_RailingPostID
+          || elemType == API_RailingInnerPostID
+          || elemType == API_RailingBalusterID
+          || elemType == API_RailingPanelID
+          || elemType == API_RailingNodeID
+          || elemType == API_RailingToprailEndID
+          || elemType == API_RailingHandrailEndID
+          || elemType == API_RailingRailEndID
+          || elemType == API_RailingToprailConnectionID
+          || elemType == API_RailingHandrailConnectionID
+          || elemType == API_RailingRailConnectionID
+          || elemType == API_RailingEndFinishID) {
+           return GetGDLParametersFromMemo (elemGuid, params);
+       }
 
-    #if defined(AC_27) || defined(AC_28)
-    if (elemType == API_ExternalElemID) {
-        return GetGDLParametersFromMemo (elemGuid, params);
-    }
-    #endif
-    apiOwner.guid = elemGuid;
-    #if defined AC_26 || defined AC_27 || defined AC_28
-    apiOwner.type.typeID = elemType;
-    #else
-    apiOwner.typeID = elemType;
-    #endif
-    #if defined(AC_27) || defined(AC_28)
-    err = ACAPI_LibraryPart_OpenParameters (&apiOwner);
-    #else
-    err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
-    #endif
-    if (err != NoError) {
-        msg_rep ("GetGDLParameters", "APIAny_OpenParametersID. Check library for missing library parts", err, elemGuid);
-        return GetGDLParametersFromMemo (elemGuid, params);
-    }
-    #if defined(AC_27) || defined(AC_28)
-    err = ACAPI_LibraryPart_GetActParameters (&apiParams);
-    #else
-    err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams);
-    #endif
-    if (err != NoError) {
-        msg_rep ("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
-        #if defined(AC_27) || defined(AC_28)
-        err = ACAPI_LibraryPart_CloseParameters ();
-        #else
-        err = ACAPI_Goodies (APIAny_CloseParametersID);
-        #endif
-        if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
-        return err;
-    }
-    params = apiParams.params;
-    #if defined(AC_27) || defined(AC_28)
-    err = ACAPI_LibraryPart_CloseParameters ();
-    #else
-    err = ACAPI_Goodies (APIAny_CloseParametersID);
-    #endif
-    if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
-    return err;
+       #if defined(AC_27) || defined(AC_28)
+       if (elemType == API_ExternalElemID) {
+           return GetGDLParametersFromMemo (elemGuid, params);
+       }
+       #endif
+       apiOwner.guid = elemGuid;
+       #if defined AC_26 || defined AC_27 || defined AC_28
+       apiOwner.type.typeID = elemType;
+       #else
+       apiOwner.typeID = elemType;
+       #endif
+       #if defined(AC_27) || defined(AC_28)
+       err = ACAPI_LibraryPart_OpenParameters (&apiOwner);
+       #else
+       err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
+       #endif
+       if (err != NoError) {
+           msg_rep ("GetGDLParameters", "APIAny_OpenParametersID. Check library for missing library parts", err, elemGuid);
+           return GetGDLParametersFromMemo (elemGuid, params);
+       }
+       #if defined(AC_27) || defined(AC_28)
+       err = ACAPI_LibraryPart_GetActParameters (&apiParams);
+       #else
+       err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams);
+       #endif
+       if (err != NoError) {
+           msg_rep ("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
+           #if defined(AC_27) || defined(AC_28)
+           err = ACAPI_LibraryPart_CloseParameters ();
+           #else
+           err = ACAPI_Goodies (APIAny_CloseParametersID);
+           #endif
+           if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
+           return err;
+       }
+       params = apiParams.params;
+       #if defined(AC_27) || defined(AC_28)
+       err = ACAPI_LibraryPart_CloseParameters ();
+       #else
+       err = ACAPI_Goodies (APIAny_CloseParametersID);
+       #endif
+       if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
+       return err;*/
 }
 
 

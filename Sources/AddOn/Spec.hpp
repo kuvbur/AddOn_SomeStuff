@@ -43,6 +43,7 @@ typedef struct
     GS::UniString favorite_name = "";              //Имя элемента в избранном
     bool is_Valid = true;
     bool delete_old = false;
+    bool stop_on_error = true;
 } SpecRule;
 
 typedef struct

@@ -122,13 +122,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
     #endif // PK_1
-    API_ActTranPars actTranPars;
-    #if defined(AC_27) || defined(AC_28)
-    ACAPI_Notification_GetTranParams (&actTranPars);
-    #else
-    ACAPI_Notify_GetTranParams (&actTranPars);
-    #endif
-    API_EditCmdID acttype = actTranPars.typeID;
     if (!syncSettings.syncMon) return NoError;
     if (elemType->notifID == APINotifyElement_EndEvents) {
         DimRoundAll (syncSettings, true);
@@ -141,23 +134,29 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     #if defined(TESTING)
     DBprnt ("ElementEventHandlerProc start");
     #endif
-    if (acttype == APIEdit_Drag) {
-        if (is_equal (actTranPars.theDisp.x, 0) && is_equal (actTranPars.theDisp.y, 0) && is_equal (actTranPars.theDispZ, 0)) {
-            #if defined(TESTING)
-            DBprnt ("acttype == APIEdit_Drag 0");
-            #endif
-            return NoError;
-        }
-    }
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) return NoError;
+    //API_ActTranPars actTranPars;
+    //#if defined(AC_27) || defined(AC_28)
+    //ACAPI_Notification_GetTranParams (&actTranPars);
+    //#else
+    //ACAPI_Notify_GetTranParams (&actTranPars);
+    //#endif
+    //API_EditCmdID acttype = actTranPars.typeID;
+    //if (acttype == APIEdit_Drag) {
+    //    if (is_equal (actTranPars.theDisp.x, 0) && is_equal (actTranPars.theDisp.y, 0) && is_equal (actTranPars.theDispZ, 0)) {
+    //        #if defined(TESTING)
+    //        DBprnt ("acttype == APIEdit_Drag 0");
+    //        #endif
+    //        return NoError;
+    //    }
+    //}
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
-    if (!CheckElementType (elementType, syncSettings)) return NoError;
-    if (!IsElementEditable (elemType->elemHead.guid, syncSettings, false)) return NoError;
+    ClassificationFunc::SystemDict systemdict = {};
+    if (!IsElementEditable (elemType->elemHead, syncSettings, true)) return NoError;
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:no_attrib"); // Во время отслеживания не будем получать весь список слоёв
-    ClassificationFunc::SystemDict systemdict;
     bool needresync = false;
     switch (elemType->notifID) {
         case APINotifyElement_New:
@@ -187,12 +186,12 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
             }
             needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
             if (!paramToWrite.IsEmpty ()) {
-                GS::Array<API_Guid> rereadelem;
+                GS::Array<API_Guid> rereadelem = {};
                 rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
                 if (needresync) {
                     paramToWrite.Clear ();
                     needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
-                    GS::Array<API_Guid> rereadelem_;
+                    GS::Array<API_Guid> rereadelem_ = {};
                     rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
                     if (!rereadelem_.IsEmpty ()) rereadelem.Append (rereadelem_);
                 }

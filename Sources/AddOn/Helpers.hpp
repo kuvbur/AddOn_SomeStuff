@@ -106,6 +106,8 @@ bool CheckElementType (const API_ElemTypeID& elementType, const SyncSettings& sy
 // -----------------------------------------------------------------------------
 bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
 
+bool IsElementEditable (const API_Elem_Head& tElemHead, const SyncSettings& syncSettings, const bool needCheckElementType);
+
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // Возвращает тип элемента
