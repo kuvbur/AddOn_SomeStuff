@@ -2659,9 +2659,16 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) {
+            #ifndef AC_22
             bool suspGrp = false;
+            #if defined(AC_27) || defined(AC_28)
+            err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
+            if (!suspGrp) ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
+            #else
             err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
             if (!suspGrp) ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
+            #endif
+            #endif // !AC_22
             err = ACAPI_Element_Delete (deletelist);
             msg_rep ("RoomBook", GS::UniString::Printf ("Removed %d obsolete finishing elements", deletelist.GetSize ()), err, APINULLGuid);
         } else {
@@ -2730,13 +2737,13 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 if (err != NoError) msg_rep ("Draw_Elements", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
             }
 
-        }
+            }
         return NoError;
-    });
+        });
     #if defined(TESTING)
     DBprnt ("Draw_Elements", "end");
     #endif
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Построение отделочных стен (общая)
@@ -2804,7 +2811,7 @@ void OtdBeam_Draw_Beam (const GS::UniString& favorite_name, const Stories& story
         return;
     }
     edges.otd_guid = beamelement.header.guid;
-}
+    }
 
 bool OtdBeam_GetDefult_Beam (const GS::UniString& favorite_name, API_Element& beamelement, API_ElementMemo& beammemo)
 {
@@ -3399,7 +3406,7 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
                 if (desc.Contains (cls.all_class)) {
                     findict.Add (cls.all_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
-                }
+    }
                 if (desc.Contains (cls.ceil_class)) {
                     findict.Add (cls.ceil_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
@@ -3424,9 +3431,9 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
                     findict.Add (cls.otdwall_down_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
-            }
-        }
-    }
+}
+}
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -3469,7 +3476,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                 parentelementhead.guid = guid;
                 if (typeelem == API_ZoneID) {
                     suffix = "zone";
-                } else {
+            } else {
                     suffix = "base element";
                 }
                 if (SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite, suffix, false)) {
@@ -3478,9 +3485,9 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                         syncguids.Push (guid);
                     }
                 }
-            }
         }
     }
+}
     if (!paramToWrite.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Write GUID base and GUID zone to %d finishing element(s)", paramToWrite.GetSize ());
         nPhase += 1;
@@ -3496,8 +3503,8 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                 [&]() -> GSErrCode {
             ParamHelpers::ElementsWrite (paramToWrite);
             return NoError;
-        });
-    }
+    });
+}
     if (!syncguids.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
         nPhase += 1;
@@ -3777,7 +3784,7 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
         if (param.definition.description.Contains ("Sync_GUID") && param.definition.description.Contains ("zone")) {
             for (const API_Guid& classguid : param.definition.availability) {
                 if (finclassguids.ContainsKey (classguid)) finclassguids.Set (classguid, true);
-            }
+    }
             for (GS::HashTable<API_Guid, bool>::PairIterator cIt = finclassguids.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28)
                 bool msg = cIt->value;
@@ -3789,8 +3796,8 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
                     msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
                     ACAPI_WriteReport (msgString, true);
                     return false;
-                }
             }
+}
         }
     }
     return true;
