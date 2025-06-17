@@ -2457,6 +2457,40 @@ void SetElemTypeID (API_Elem_Head & elementhead, const API_ElemTypeID eltype)
     #endif
 }
 
+GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & definition, const GS::UniString value)
+{
+    GSErrCode error = NoError;
+    GS::Array<API_Guid> elements = {};
+    for (const auto& classificationItemGuid : definition.availability) {
+        GS::Array<API_Guid> elemGuids = {};
+        error = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
+        if (error != NoError) {
+            msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetElementsWithClassification", error, classificationItemGuid);
+            continue;
+        }
+        for (const auto& elemGuid : elemGuids) {
+            API_Property propertyflag = {};
+            error = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
+            if (error != NoError) {
+                msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetPropertyValue", error, elemGuid);
+                continue;
+            }
+            #if defined(AC_22) || defined(AC_23)
+            if (!propertyflag.isEvaluated) continue;
+            if (propertyflag.isDefault) continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ()) continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == value.ToLowerCase ())                     elements.Push (elemGuid);
+            #else
+            if (propertyflag.status != API_Property_HasValue) continue;
+            if (propertyflag.isDefault) continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ()) continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (value)) elements.Push (elemGuid);
+            #endif
+        }
+    }
+    return elements;
+}
+
 namespace GDLHelpers
 {
 bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)

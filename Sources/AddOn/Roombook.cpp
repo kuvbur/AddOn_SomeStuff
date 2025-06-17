@@ -2659,6 +2659,9 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) {
+            bool suspGrp = false;
+            err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
+            if (!suspGrp) ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
             err = ACAPI_Element_Delete (deletelist);
             msg_rep ("RoomBook", GS::UniString::Printf ("Removed %d obsolete finishing elements", deletelist.GetSize ()), err, APINULLGuid);
         } else {
