@@ -68,6 +68,8 @@ static const Int32 SpecEmptyListdId = 45;
 static const Int32 SpecNotFoundParametersId = 46;
 static const Int32 RoombookId = 47;
 static const Int32 SubElementNotExsistId = 48;
+static const Int32 SpecParamPlaceNotFoundId = 65;
+static const Int32 SpecFlagOff = 66;
 
 typedef struct
 {
