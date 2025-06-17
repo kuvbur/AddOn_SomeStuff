@@ -40,7 +40,7 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabase
     GS::HashTable<GS::UniString, bool> error_name = {};
     for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
-        SpecRule& rule = cIt.value;
+        SpecRule& rule = cIt->value;
         #else
         SpecRule& rule = *cIt->value;
         #endif
@@ -416,7 +416,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     // Читаем свойства избранного
     for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
-        SpecRule& rule = cIt.value;
+        SpecRule& rule = cIt->value;
         #else
         SpecRule& rule = *cIt->value;
         #endif
@@ -514,7 +514,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
     for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
-        SpecRule& rule = cIt.value;
+        SpecRule& rule = cIt->value;
         #else
         SpecRule& rule = *cIt->value;
         #endif
@@ -550,13 +550,20 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     start = clock ();
     PlaceElements (elements_new, paramToWrite, paramOut, startpos);
     ACAPI_CallUndoableCommand ("Write properties", [&]() -> GSErrCode {
+        #ifndef AC_22
         if (!elements_delete.IsEmpty ()) {
             bool suspGrp = false;
+            #if defined(AC_27) || defined(AC_28)
+            err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
+            if (!suspGrp) ACAPI_Grouping_Tool (elements_delete, APITool_SuspendGroups, nullptr);
+            #else
             err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
             if (!suspGrp) ACAPI_Element_Tool (elements_delete, APITool_SuspendGroups, nullptr);
+            #endif
             err = ACAPI_Element_Delete (elements_delete);
             msg_rep ("Spec", GS::UniString::Printf ("Removed %d obsolete spec elements", elements_delete.GetSize ()), err, APINULLGuid);
         }
+        #endif // !AC_22
         ParamHelpers::ElementsWrite (paramOut);
         return NoError;
     });
@@ -693,7 +700,7 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams
 {
     for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
-        SpecRule& rule = cIt.value;
+        SpecRule& rule = cIt->value;
         #else
         SpecRule& rule = *cIt->value;
         #endif
@@ -1238,7 +1245,11 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     GS::Array<API_PropertyDefinition> definitions = {};
+    #if defined(AC_27) || defined(AC_28) || defined(AC_26)
+    err = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (element.header.type, API_PropertyDefinitionFilter_UserDefined, definitions);
+    #else
     err = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (element.header.typeID, element.header.variationID, API_PropertyDefinitionFilter_UserDefined, definitions);
+    #endif
     if (err != NoError) {
         msg_rep ("Spec", "ACAPI_Element_GetPropertyDefinitionsOfDefaultElem", err, APINULLGuid);
         return err;
@@ -1339,6 +1350,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
                     continue;
                 }
+                UnhideUnlockElementLayer (element.header);
                 bool flag_find_row = GetSizePlaceElement (element, memo, dx, dy);
                 // Запись параметров
                 ParamDictValue param = {};

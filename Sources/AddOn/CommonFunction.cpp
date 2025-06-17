@@ -2461,6 +2461,9 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
 {
     GSErrCode error = NoError;
     GS::Array<API_Guid> elements = {};
+    #ifdef AC_22
+    return elements;
+    #else
     for (const auto& classificationItemGuid : definition.availability) {
         GS::Array<API_Guid> elemGuids = {};
         error = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
@@ -2489,6 +2492,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
         }
     }
     return elements;
+    #endif // AC_22
 }
 
 namespace GDLHelpers
