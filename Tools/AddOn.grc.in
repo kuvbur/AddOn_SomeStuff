@@ -157,6 +157,10 @@
 /* [  64] */ 	"do not specify"
 /* [  65] */ 	"Необходимые свойства отсутствуют в элементе по умолчанию или Избранном элементе.\nПроверьте Классификацию и настройки Свойств."
 /* [  66] */ 	"Правило спецификации найдено, но для элементов на плане свойство-правило отключено (не Истина).\nПроверьте значение этого свойства у элементов:"
+/* [  67] */ 	"Ошибок нет"
+/* [  68] */ 	"Создано элементов - "
+/* [  69] */ 	"Изменено элементов - "
+/* [  70] */ 	"Удалено элементов - "
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -316,6 +320,10 @@
 /* [  64] */ 	"do not specify"
 /* [  65] */ 	"Required properties missing in Default Element or Favorite Element.\nVerify Classification and Property settings."
 /* [  66] */ 	"Schedule rule found, but the 'Include in Schedule' property is disabled (not True) for elements on the plan. Check this property value on the elements."
+/* [  67] */ 	"All the elements are relevant"
+/* [  68] */ 	"New elements - "
+/* [  69] */ 	"Modified elements - "
+/* [  70] */ 	"Outdated elements - "
 }
 
 'GICN' 32500 "Sync" {

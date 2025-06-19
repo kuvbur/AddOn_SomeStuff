@@ -95,6 +95,11 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
         case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
+            #if defined(AC_27) || defined(AC_28)
+            ACAPI_UserInput_ClearElementHighlight ();
+            #else
+            ACAPI_Interface (APIIo_HighlightElementsID);
+            #endif
             DimRoundAll (syncSettings, false);
             break;
         default:
@@ -301,6 +306,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
     #endif // PK_1
+    #if defined(AC_27) || defined(AC_28)
+    ACAPI_UserInput_ClearElementHighlight ();
+    #else
+    ACAPI_Interface (APIIo_HighlightElementsID);
+    #endif
     const Int32 AddOnMenuID = ID_ADDON_MENU;
     switch (menuParams->menuItemRef.menuResID) {
         case AddOnMenuID:
@@ -314,9 +324,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     MonAll (syncSettings);
                     break;
                 case SyncAll_CommandID:
+                    msg_rep ("SyncAndMonAll", "============== START ==============", NoError, APINULLGuid);
                     syncSettings.syncAll = true;
                     SyncAndMonAll (syncSettings);
                     syncSettings.syncAll = false;
+                    msg_rep ("SyncAndMonAll", "=============== END ===============", NoError, APINULLGuid);
                     break;
                 case SyncSelect_CommandID:
                     SyncSelected (syncSettings);
@@ -345,7 +357,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     RunParamSelected (syncSettings);
                     break;
                 case Spec_CommandID:
+                    msg_rep ("Spec", "============== START ==============", NoError, APINULLGuid);
                     err = Spec::SpecAll (syncSettings);
+                    msg_rep ("Spec", "=============== END ===============", NoError, APINULLGuid);
                     break;
                 case ShowSub_CommandID:
                     SyncShowSubelement (syncSettings);
@@ -357,7 +371,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     SyncSetSubelement (syncSettings);
                     break;
                 case RoomBook_CommandID:
+                    msg_rep ("RoomBook", "============== START ==============", NoError, APINULLGuid);
                     AutoFunc::RoomBook ();
+                    msg_rep ("RoomBook", "=============== END ===============", NoError, APINULLGuid);
                     break;
                     #ifndef AC_22
                 case Auto3D_CommandID:
