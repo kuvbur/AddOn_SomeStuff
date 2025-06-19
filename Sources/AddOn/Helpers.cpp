@@ -865,7 +865,6 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
         if (paramFrom != paramTo) {
             paramTo.val = paramFrom.val; // Записываем только значения
             paramTo.isValid = true;
-
             return true;
         }
     }

@@ -98,7 +98,11 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             #if defined(AC_27) || defined(AC_28)
             ACAPI_UserInput_ClearElementHighlight ();
             #else
+            #if defined(AC_26)
+            ACAPI_Interface_ClearElementHighlight ();
+            #else
             ACAPI_Interface (APIIo_HighlightElementsID);
+            #endif
             #endif
             DimRoundAll (syncSettings, false);
             break;
@@ -309,7 +313,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     #if defined(AC_27) || defined(AC_28)
     ACAPI_UserInput_ClearElementHighlight ();
     #else
+    #if defined(AC_26)
+    ACAPI_Interface_ClearElementHighlight ();
+    #else
     ACAPI_Interface (APIIo_HighlightElementsID);
+    #endif
     #endif
     const Int32 AddOnMenuID = ID_ADDON_MENU;
     switch (menuParams->menuItemRef.menuResID) {
