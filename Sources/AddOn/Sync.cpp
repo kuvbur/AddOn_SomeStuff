@@ -171,6 +171,14 @@ void SyncAndMonAll (SyncSettings& syncSettings)
             #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &title, &i);
             #endif
+            bool suspGrp = false;
+            #if defined(AC_27) || defined(AC_28)
+            err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
+            if (!suspGrp) ACAPI_Grouping_Tool (rereadelem, APITool_SuspendGroups, nullptr);
+            #else
+            ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
+            if (!suspGrp) ACAPI_Element_Tool (rereadelem, APITool_SuspendGroups, nullptr);
+            #endif
             rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
             finish = clock ();
             duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -1685,7 +1693,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     if (!SyncGetSubelement (guidArray, parentGuid, propertyParams, "", errcode)) {
         if (SyncGetPatentelement (guidArray, parentGuid, propertyParams, "", errcode)) {
             fmane = "Show Sub Element";
-} else {
+        } else {
             GS::UniString SubElementHotFoundIdString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId, ACAPI_GetOwnResModule ());
             if (errcode > 0) {
                 SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
@@ -1693,7 +1701,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
             ACAPI_WriteReport (SubElementHotFoundIdString, true);
             return;
         }
-            } else {
+    } else {
         fmane = "Show Parent Element";
     }
     API_DatabaseInfo homedatabaseInfo;
@@ -1708,7 +1716,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     if (err == NoError) {
         checkdb = (homedatabaseInfo.typeID != APIWind_3DModelID);
         isfloorplan = (homedatabaseInfo.typeID == APIWind_FloorPlanID);
-        } else {
+    } else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
     GS::UniString pname = GetDBName (homedatabaseInfo);
@@ -1755,7 +1763,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                         continue;
                     }
                 }
-                    }
+            }
             if (isfloorplan) {
                 if (!ACAPI_Element_Filter (guid, APIFilt_OnActFloor)) {
                     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
@@ -1792,8 +1800,8 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 }
             }
             selNeigs.PushNew (guid);
-                }
-            }
+        }
+    }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
 
@@ -1849,7 +1857,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1882,7 +1890,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
                 classificationforread.Get (cls).Push (param.definition.guid);
             }
         }
-        }
+    }
     if (classificationforread.IsEmpty ()) {
         errcode = 1;
         return false;
@@ -1955,7 +1963,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
     }
     return find;
     #endif
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -2008,12 +2016,12 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
                         }
                     }
                 }
-                        }
-                    }
-                }
+            }
+        }
+    }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
-            }
+}
 
 // --------------------------------------------------------------------
 // Получение прочитанных свойств Sync_GUID для массива элементов

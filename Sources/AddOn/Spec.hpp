@@ -102,7 +102,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
 
 bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, GS::Int32 n_layer);
 
-Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete);
+Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete, UnicGuid& error_element);
 
 // --------------------------------------------------------------------
 // Выбирает из параметров групп имена свойств для дальнейшего чтения

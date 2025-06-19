@@ -28,11 +28,11 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
 {
     GS::UniString funcname ("Numbering");
     GS::Int32 nPhase = 1;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-#else
+    #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
-#endif
+    #endif
     clock_t start, finish;
     double  duration;
     start = clock ();
@@ -50,28 +50,36 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions)) {
             flag_write = false;
             msg_rep ("ReNumSelected", GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + "No data to write", NoError, APINULLGuid);
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             ACAPI_ProcessWindow_CloseProcessWindow ();
-#else
+            #else
             ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-#endif
+            #endif
             return NoError;
         }
         GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", paramToWriteelem.GetSize ()); short i = 2;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         bool showPercent = false;
         Int32 maxval = 2;
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
+        #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+        #endif
+        bool suspGrp = false;
+        #if defined(AC_27) || defined(AC_28)
+        err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
+        if (!suspGrp) ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #else
+        ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
+        if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         ACAPI_ProcessWindow_CloseProcessWindow ();
-#else
+        #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-#endif
+        #endif
         return NoError;
     });
     if (flag_write) {
@@ -93,9 +101,9 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
 // -----------------------------------------------------------------------------------------------------------------------
 bool GetRenumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions)
 {
-#if defined(AC_22)
+    #if defined(AC_22)
     return false;
-#else
+    #else
     GS::Array<API_PropertyDefinition> definitions_;
     GSErrCode err = ACAPI_Element_GetPropertyDefinitions (elemguid, API_PropertyDefinitionFilter_UserDefined, definitions_);
     if (err == NoError && !definitions_.IsEmpty ()) {
@@ -108,7 +116,7 @@ bool GetRenumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid,
         }
     }
     return (!definitions.IsEmpty ());
-#endif
+    #endif
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -116,15 +124,15 @@ bool GetRenumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid,
 // -----------------------------------------------------------------------------------------------------------------------
 void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray)
 {
-#if defined(AC_22)
+    #if defined(AC_22)
     return;
-#else
+    #else
     for (auto& cIt : definitions) {
-#if defined(AC_28)
+        #if defined(AC_28)
         API_PropertyDefinition definition = cIt.value;
-#else
+        #else
         API_PropertyDefinition definition = *cIt.value;
-#endif
+        #endif
         for (UInt32 i = 0; i < definition.availability.GetSize (); i++) {
             GS::Array<API_Guid> elemGuids;
             API_Guid classificationItemGuid = definition.availability[i];
@@ -135,7 +143,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
             }
         }
     }
-#endif
+    #endif
 }
 
 bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
@@ -167,18 +175,18 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
             }
         }
         if (hasDef) {
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             bool showPercent = true;
             Int32 maxval = guidArray.GetSize ();
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
+            #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
-#if defined(AC_27) || defined(AC_28)
+            #endif
+            #if defined(AC_27) || defined(AC_28)
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) return false;
-#else
+            #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
-#endif
+            #endif
             ParamDictValue propertyParams;
             ParamDictValue paramToRead;
             ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, definitions);
@@ -192,11 +200,11 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
 
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28)
+        #if defined(AC_28)
         const RenumRule& rule = cIt->value;
-#else
+        #else
         const RenumRule& rule = *cIt->value;
-#endif
+        #endif
         if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem);
     }
     return !paramToWriteelem.IsEmpty ();
@@ -210,11 +218,11 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams,
     bool hasRenum = false;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
-#if defined(AC_28)
+        #if defined(AC_28)
         ParamValue& param = cIt->value;
-#else
+        #else
         ParamValue& param = *cIt->value;
-#endif
+        #endif
         API_PropertyDefinition& definition = param.definition;
         if (definition.description.Contains ("Renum_flag") && definition.description.Contains ("{") && definition.description.Contains ("}")) {
             if (!rules.ContainsKey (definition.guid)) {
