@@ -173,7 +173,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
             #endif
             bool suspGrp = false;
             #if defined(AC_27) || defined(AC_28)
-            err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
+            ACAPI_View_IsSuspendGroupOn (&suspGrp);
             if (!suspGrp) ACAPI_Grouping_Tool (rereadelem, APITool_SuspendGroups, nullptr);
             #else
             ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);

@@ -565,7 +565,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         #endif
         #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Selection_Select (error_elements, true);
-        if (err == NoError && errmsg.IsEmpty ()) ACAPI_View_ZoomToSelected ();
+        if (err == NoError) ACAPI_View_ZoomToSelected ();
         #else
         err = ACAPI_Element_Select (error_elements, true);
         if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
