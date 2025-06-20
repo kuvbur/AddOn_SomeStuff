@@ -1181,7 +1181,10 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead)
 {
-    if (!roominfo.has_floor || !roominfo.has_ceil) return;
+    if (!roominfo.has_floor && !roominfo.has_ceil) {
+        roominfo.poly.poly.Clear ();
+        return;
+    }
     if (roominfo.has_floor) {
         roominfo.poly.zBottom = roominfo.zBottom;
         if (!roominfo.floorslab.IsEmpty ()) {
@@ -1452,14 +1455,21 @@ ReadParams Param_GetForRooms (ParamDictValue& propertyParams)
     // Включение потолка
     zoneparam_name = "has_ceil";
     zoneparam.rawnames.Push ("some_stuff_fin_has_ceil");
-    zoneparam.rawnames.Push ("{@gdl:has_ceil}");
+    zoneparam.rawnames.Push ("{@gdl:ispot}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
-    // Включение потолка
+    // Включение пола
     zoneparam_name = "has_floor";
     zoneparam.rawnames.Push ("some_stuff_fin_has_floor");
-    zoneparam.rawnames.Push ("{@gdl:has_floor}");
+    zoneparam.rawnames.Push ("{@gdl:ispol}");
+    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparam.rawnames.Clear ();
+
+    // Включение потолка только по плитам
+    zoneparam_name = "floor_by_slab";
+    zoneparam.rawnames.Push ("some_stuff_fin_floor_by_slab");
+    zoneparam.rawnames.Push ("{@gdl:floor_by_slab}");
     zoneparams.Add (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
@@ -1758,21 +1768,29 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
-            roominfo.has_ceil = val.doubleValue;
+            roominfo.has_ceil = val.boolValue;
         }
     }
     param_name = "has_floor";
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
-            roominfo.has_floor = val.doubleValue;
+            roominfo.has_floor = val.boolValue;
         }
     }
     param_name = "ceil_by_slab";
     if (readparams.ContainsKey (param_name)) {
         if (readparams.Get (param_name).isValid) {
             val = readparams.Get (param_name).val;
-            if (roominfo.has_ceil) roominfo.ceil_by_slab = val.doubleValue;
+            if (roominfo.has_ceil) roominfo.ceil_by_slab = val.boolValue;
+        }
+    }
+
+    param_name = "floor_by_slab";
+    if (readparams.ContainsKey (param_name)) {
+        if (readparams.Get (param_name).isValid) {
+            val = readparams.Get (param_name).val;
+            if (roominfo.has_floor) roominfo.floor_by_slab = val.boolValue;
         }
     }
 
@@ -3228,11 +3246,13 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
         slabobjelement.object.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
     }
     p.str = otdslab.tip; accsessoryparams.Add ("{@gdl:tip_pol}", p);  p.str = "";
+    p.num = 1; accsessoryparams.Add ("{@gdl:mun_zone}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_pitch}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceilling_side}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceiling_type}", p);
     p.num = otdslab.material.material; accsessoryparams.Add ("{@gdl:ceil_mat}", p);
     p.num = 0.02; accsessoryparams.Add ("{@gdl:ceil_thk}", p);
+    p.num = 0.02; accsessoryparams.Add ("{@gdl:ac_thickness}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
     p.num = 1; accsessoryparams.Add ("{@gdl:auto_height}", p);
 
@@ -3275,6 +3295,7 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
         p.num = otdslab.poly.GetCenter ().x - bbox.xMin; accsessoryparams.Add ("{@gdl:pos_x1}", p);
         p.num = otdslab.poly.GetCenter ().y - bbox.yMin; accsessoryparams.Add ("{@gdl:pos_y1}", p);
     }
+    p.dim1 = 1; p.dim2 = 2; p.arr_num.Push (otdslab.poly.GetCenter ().x - bbox.xMin); p.arr_num.Push (otdslab.poly.GetCenter ().y - bbox.yMin); accsessoryparams.Add ("{@gdl:fieldorig}", p);
 
     Geometry::FreePolygon2DData (&polygon2DData);
     GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
