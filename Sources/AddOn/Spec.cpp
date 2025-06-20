@@ -563,12 +563,14 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
         #endif
         #endif
+        #ifndef AC_22
         #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Selection_Select (error_elements, true);
         if (err == NoError) ACAPI_View_ZoomToSelected ();
         #else
         err = ACAPI_Element_Select (error_elements, true);
         if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
+        #endif
         #endif
     }
     if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
@@ -680,6 +682,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     }
     ACAPI_CallUndoableCommand ("Writing properties to created spec elements", [&]() -> GSErrCode {
         bool suspGrp = false;
+        #ifndef AC_22
         #if defined(AC_27) || defined(AC_28)
         err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
         if (!suspGrp) ACAPI_Grouping_Tool (elements_delete, APITool_SuspendGroups, nullptr);
@@ -687,7 +690,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
         if (!suspGrp) ACAPI_Element_Tool (elements_delete, APITool_SuspendGroups, nullptr);
         #endif
-        #ifndef AC_22
         if (!elements_delete.IsEmpty ()) {
             err = ACAPI_Element_Delete (elements_delete);
             msg_rep ("Spec", GS::UniString::Printf ("Removed %d obsolete spec elements", elements_delete.GetSize ()), err, APINULLGuid);
