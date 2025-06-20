@@ -65,6 +65,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
+        #ifndef AC_22
         bool suspGrp = false;
         #if defined(AC_27) || defined(AC_28)
         ACAPI_View_IsSuspendGroupOn (&suspGrp);
@@ -72,6 +73,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         #else
         ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
         if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #endif
         #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();

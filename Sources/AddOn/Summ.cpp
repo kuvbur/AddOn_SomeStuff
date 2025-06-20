@@ -68,12 +68,14 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
         bool suspGrp = false;
+        #ifndef AC_22
         #if defined(AC_27) || defined(AC_28)
         ACAPI_View_IsSuspendGroupOn (&suspGrp);
         if (!suspGrp) ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
         #else
         ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
         if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #endif
         #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
