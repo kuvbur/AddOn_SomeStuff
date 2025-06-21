@@ -532,6 +532,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         if (!elements_m.IsEmpty ()) elements_mod.Push (elements_m);
         if (rule.delete_old) has_v2 = true;
     }
+    #ifndef AC_22
     if (!error_element.IsEmpty ()) {
         #if defined(AC_27) || defined(AC_28)
         ACAPI_UserInput_ClearElementHighlight ();
@@ -563,7 +564,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
         #endif
         #endif
-        #ifndef AC_22
         #if defined(AC_27) || defined(AC_28)
         err = ACAPI_Selection_Select (error_elements, true);
         if (err == NoError) ACAPI_View_ZoomToSelected ();
@@ -571,8 +571,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         err = ACAPI_Element_Select (error_elements, true);
         if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
         #endif
-        #endif
     }
+    #endif
     if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
     if (!elements_mod.IsEmpty ()) {
         #if defined(AC_27) || defined(AC_28)

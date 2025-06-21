@@ -5,6 +5,7 @@
 #if defined(AC_27) || defined(AC_28)
 #include "CommonFunction.hpp"
 #include "Definitions.hpp"
+#include "Helpers.hpp"
 // ACAPI
 
 #include "ACAPI/Result.hpp"
@@ -37,20 +38,53 @@
 #include "ACAPI/MEPUniqueID.hpp"
 #include "ACAPI/MEPPreferenceTableContainerBase.hpp"
 #include "GSUnID.hpp"
+
 #if defined(AC_27)
 #include "ACAPI/MEPDuctPreferenceTableContainer.hpp"
 #include "ACAPI/MEPPipePreferenceTableContainer.hpp"
 #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
 #include "ACAPI/MEPPreferenceTableBase.hpp"
 #endif
+#if defined(AC_28)
+#include "ACAPI/MEPPreferenceTableContainerBase.hpp"
+#include "ACAPI/MEPDuctSegmentPreferenceTableContainer.hpp"
+#include "ACAPI/MEPPipeSegmentPreferenceTableContainer.hpp"
+#include "ACAPI/MEPCableCarrierSegmentPreferenceTableContainer.hpp"
+#include "ACAPI/MEPPipeSegmentPreferenceTable.hpp"
+#include "ACAPI/MEPDuctCircularSegmentPreferenceTable.hpp"
+#include "ACAPI/MEPDuctRectangularSegmentPreferenceTable.hpp"
+#include "ACAPI/MEPCableCarrierSegmentPreferenceTable.hpp"
+#include "ACAPI/MEPPipeElbowPreferenceTableContainer.hpp"
+#include "ACAPI/MEPPipeElbowPreferenceTable.hpp"
+#include "ACAPI/MEPDuctReferenceSet.hpp"
+#include "ACAPI/MEPPipeReferenceSet.hpp"
+#include "ACAPI/MEPDuctElbowPreferenceTableContainer.hpp"
+#include "ACAPI/MEPDuctElbowPreferenceTable.hpp"
+#include "ACAPI/MEPPipeBranchPreferenceTableContainer.hpp"
+#include "ACAPI/MEPPipeBranchPreferenceTable.hpp"
+#include "ACAPI/MEPDuctBranchPreferenceTableContainer.hpp"
+#include "ACAPI/MEPDuctBranchPreferenceTable.hpp"
+#include <ACAPI/MEPEnums.hpp>
+#endif
 
-namespace MEPv1 {
-    bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
-    void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+namespace MEPv1
+{
+void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 
-    void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
+bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
+#if defined (AC_28)
+bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
+bool ReadBendData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid);
+bool ReadRigidSegmentData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::UniqueID& segmentId);
+bool ReadRoutingSegmentData (const ACAPI::MEP::UniqueID& segmentId, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid);
+bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid);
+bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid);
+bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid);
+bool ReadPipeBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid);
+#endif
 
-    void GetPreferenceTable (const API_Elem_Head& elem_head);
+
 }
 #endif
 #endif
