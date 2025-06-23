@@ -1669,7 +1669,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GSErrCode err = NoError;
     #ifndef AC_22
     GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false);
-    GS::Array<API_Guid> guidArray;
+    GS::Array<API_Guid> guidArray = {};
     for (UInt32 i = 0; i < guidArray_all.GetSize (); i++) {
         API_ElemTypeID elementType;
         if (GetTypeByGUID (guidArray_all[i], elementType) == NoError) {
@@ -1688,12 +1688,12 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     }
     if (guidArray.IsEmpty ()) return;
     Int32 bisEng = isEng ();
-    GS::Array<API_Neig> selNeigs;
-    GS::HashTable<API_Guid, UnicGuid> parentGuid;
-    ParamDictValue propertyParams;
+    GS::Array<API_Neig> selNeigs = {};
+    UnicGuidByGuid parentGuid = {};
+    ParamDictValue propertyParams = {};
     int errcode = 0;
     if (!SyncGetSubelement (guidArray, parentGuid, propertyParams, "", errcode)) {
-        if (SyncGetPatentelement (guidArray, parentGuid, propertyParams, "", errcode)) {
+        if (SyncGetParentelement (guidArray, parentGuid, propertyParams, "", errcode)) {
             fmane = "Show Sub Element";
         } else {
             GS::UniString SubElementHotFoundIdString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId, ACAPI_GetOwnResModule ());
@@ -1864,7 +1864,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
 // --------------------------------------------------------------------
-bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, UnicGuid>& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode)
+bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode)
 {
     #ifdef AC_22
     return false;
@@ -1917,7 +1917,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
         GS::Array<API_Guid> elemGuids;
         err = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
         if (err != NoError) {
-            msg_rep ("SyncGetPatentelement", "ACAPI_Element_GetElementsWithClassification", err, classificationItemGuid);
+            msg_rep ("SyncGetParentelement", "ACAPI_Element_GetElementsWithClassification", err, classificationItemGuid);
             continue;
         }
         if (elemGuids.IsEmpty ()) continue;
@@ -1926,7 +1926,7 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
             GS::Array<API_Property> properties;
             err = ACAPI_Element_GetPropertyValuesByGuid (subguid, propertyDefinitions, properties);
             if (err != NoError) {
-                msg_rep ("SyncGetPatentelement", "ACAPI_Element_GetPropertyValuesByGuid", err, subguid);
+                msg_rep ("SyncGetParentelement", "ACAPI_Element_GetPropertyValuesByGuid", err, subguid);
                 continue;
             }
             for (const auto& prop : properties) {
@@ -1971,10 +1971,10 @@ bool SyncGetPatentelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<A
 // --------------------------------------------------------------------
 // Получение словаря с GUID родительских объектов для массива объектов
 // --------------------------------------------------------------------
-bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, UnicGuid>& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode)
+bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& parentGuid, ParamDictValue& propertyParams, const GS::UniString& suffix, int& errcode)
 {
     if (guidArray.IsEmpty ()) return false;
-    ParamDictElement paramToRead;
+    ParamDictElement paramToRead = {};
     if (!SyncGetSyncGUIDProperty (guidArray, paramToRead, propertyParams, suffix)) {
         errcode = 1;
         return false;
@@ -1994,14 +1994,14 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, GS::HashTable<API_
             ParamValue param = *cItt.value;
             #endif
             if (param.isValid && !param.val.uniStringValue.IsEmpty ()) {
-                GS::Array<GS::UniString> rulestring_param;
+                GS::Array<GS::UniString> rulestring_param = {};
                 UInt32 nrule_param = StringSplt (param.val.uniStringValue, ";", rulestring_param);
                 if (nrule_param > 0) {
                     for (UInt32 i = 0; i < nrule_param; i++) {
                         API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
                         if (guid != APINULLGuid) {
                             if (!parentGuid.ContainsKey (subguid)) {
-                                UnicGuid un;
+                                UnicGuid un = {};
                                 parentGuid.Add (subguid, un);
                             }
                             if (parentGuid.ContainsKey (subguid)) {
@@ -2032,7 +2032,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
 {
     if (propertyParams.IsEmpty ()) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
     if (propertyParams.IsEmpty ()) return false;
-    ParamDictValue paramDict;
+    ParamDictValue paramDict = {};
     for (auto& cItt : propertyParams) {
         #if defined(AC_28)
         ParamValue param = cItt.value;
