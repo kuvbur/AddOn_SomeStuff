@@ -3268,8 +3268,22 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
 {
     GSErrCode err = NoError;
     API_Element slabelement;
-    if (!Floor_GetDefult_Slab (favorite_name, slabelement)) {
-        return;
+    bool is_new = (otdslab.otd_guid == APINULLGuid);// Элемент уже существует, нужно только обновить
+    API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    if (is_new) {
+        if (!Floor_GetDefult_Slab (favorite_name, slabelement)) return;
+    } else {
+        slabelement.header.guid = otdslab.otd_guid;
+        err = ACAPI_Element_Get (&slabelement);
+        if (err != NoError) {
+            msg_rep ("Floor_Draw_Object", "ACAPI_Element_Get", err, otdslab.otd_guid);
+            return;
+        }
+        err = ACAPI_Element_GetMemo (slabelement.header.guid, &memo, APIMemoMask_Polygon);
+        if (err != NoError) {
+            msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
+            return;
+        }
     }
     slabelement.header.floorInd = otdslab.floorInd;
     slabelement.slab.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
@@ -3298,19 +3312,26 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         slabelement.slab.topMat.overridden = true;
         #endif
     }
-    API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ConvertPolygon2DToAPIPolygon (otdslab.poly, slabelement.slab.poly, memo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return;
     }
-    err = ACAPI_Element_Create (&slabelement, &memo);
-    if (err != NoError) {
-        ACAPI_DisposeElemMemoHdls (&memo);
-        return;
+    if (is_new) {
+        err = ACAPI_Element_Create (&slabelement, &memo);
+    } else {
+        API_Element mask = {};
+        ACAPI_ELEMENT_MASK_CLEAR (mask);
+        ACAPI_ELEMENT_MASK_SETFULL (mask);
+        err = ACAPI_Element_Change (&slabelement, &mask, &memo, APIMemoMask_Polygon, false);
     }
-    otdslab.otd_guid = slabelement.header.guid;
     ACAPI_DisposeElemMemoHdls (&memo);
+    if (err != NoError) {
+        msg_rep ("Floor_Draw_Slab", favorite_name, err, APINULLGuid);
+        return;
+    } else {
+        otdslab.otd_guid = slabelement.header.guid;
+    }
     return;
 }
 
@@ -3321,11 +3342,20 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     API_ElementMemo slabobjmemo = {};
     bool is_new = (otdslab.otd_guid == APINULLGuid);// Элемент уже существует, нужно только обновить
     if (is_new) {
-        if (!Floor_GetDefult_Object (favorite_name, slabobjelement, slabobjmemo)) {
+        if (!Floor_GetDefult_Object (favorite_name, slabobjelement, slabobjmemo)) return;
+    } else {
+        slabobjelement.header.guid = otdslab.otd_guid;
+        err = ACAPI_Element_Get (&slabobjelement);
+        if (err != NoError) {
+            msg_rep ("Floor_Draw_Object", "ACAPI_Element_Get", err, otdslab.otd_guid);
             return;
         }
-    } else {
-        return;
+        err = ACAPI_Element_GetMemo (otdslab.otd_guid, &slabobjmemo);
+        if (err != NoError) {
+            ACAPI_DisposeElemMemoHdls (&slabobjmemo);
+            msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
+            return;
+        }
     }
     GDLHelpers::ParamDict accsessoryparams = {};
     GDLHelpers::Param p = {};
@@ -3375,32 +3405,41 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     ac_whole_poly.dim1 = 1; ac_whole_poly.dim2 = ac_whole_poly.arr_num.GetSize ();
     accsessoryparams.Add ("{@gdl:ac_whole_poly}", ac_whole_poly);
     accsessoryparams.Add ("{@gdl:ac_coords}", ac_coords);
+    if (is_new) {
+        if (otdslab.type == Ceil) {
+            p.num = bbox.xMax - bbox.xMin - 0.1; accsessoryparams.Add ("{@gdl:pos_x2}", p);
+            p.num = bbox.yMax - bbox.yMin - 0.1; accsessoryparams.Add ("{@gdl:pos_y2}", p);
 
-    if (otdslab.type == Ceil) {
-        p.num = bbox.xMax - bbox.xMin - 0.1; accsessoryparams.Add ("{@gdl:pos_x2}", p);
-        p.num = bbox.yMax - bbox.yMin - 0.1; accsessoryparams.Add ("{@gdl:pos_y2}", p);
-
-        p.num = (bbox.xMax - bbox.xMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
-        p.num = (bbox.yMax - bbox.yMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
-
+            p.num = (bbox.xMax - bbox.xMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
+            p.num = (bbox.yMax - bbox.yMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
+        }
+        if (otdslab.type == Floor) {
+            p.num = otdslab.poly.GetCenter ().x - bbox.xMin; accsessoryparams.Add ("{@gdl:pos_x1}", p);
+            p.num = otdslab.poly.GetCenter ().y - bbox.yMin; accsessoryparams.Add ("{@gdl:pos_y1}", p);
+        }
+        p.dim1 = 1; p.dim2 = 2; p.arr_num.Push (otdslab.poly.GetCenter ().x - bbox.xMin); p.arr_num.Push (otdslab.poly.GetCenter ().y - bbox.yMin); accsessoryparams.Add ("{@gdl:fieldorig}", p);
     }
-    if (otdslab.type == Floor) {
-        p.num = otdslab.poly.GetCenter ().x - bbox.xMin; accsessoryparams.Add ("{@gdl:pos_x1}", p);
-        p.num = otdslab.poly.GetCenter ().y - bbox.yMin; accsessoryparams.Add ("{@gdl:pos_y1}", p);
-    }
-    p.dim1 = 1; p.dim2 = 2; p.arr_num.Push (otdslab.poly.GetCenter ().x - bbox.xMin); p.arr_num.Push (otdslab.poly.GetCenter ().y - bbox.yMin); accsessoryparams.Add ("{@gdl:fieldorig}", p);
     Geometry::FreePolygon2DData (&polygon2DData);
     GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
     slabobjelement.header.floorInd = otdslab.floorInd;
     slabobjelement.object.pos.x = bbox.xMin;
     slabobjelement.object.pos.y = bbox.yMin;
     double y_start = 0;
-    err = ACAPI_Element_Create (&slabobjelement, &slabobjmemo);
+    if (is_new) {
+        err = ACAPI_Element_Create (&slabobjelement, &slabobjmemo);
+    } else {
+        API_Element mask = {};
+        ACAPI_ELEMENT_MASK_CLEAR (mask);
+        ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
+        err = ACAPI_Element_Change (&slabobjelement, &mask, &slabobjmemo, APIMemoMask_AddPars, true);
+    }
     ACAPI_DisposeElemMemoHdls (&slabobjmemo);
     if (err != NoError) {
+        msg_rep ("Floor_Draw_Object", favorite_name, err, APINULLGuid);
         return;
+    } else {
+        otdslab.otd_guid = slabobjelement.header.guid;
     }
-    otdslab.otd_guid = slabobjelement.header.guid;
 }
 
 bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo)
