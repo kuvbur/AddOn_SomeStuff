@@ -3284,6 +3284,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
             msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
             return;
         }
+
     }
     slabelement.header.floorInd = otdslab.floorInd;
     slabelement.slab.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
@@ -3320,10 +3321,28 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     if (is_new) {
         err = ACAPI_Element_Create (&slabelement, &memo);
     } else {
+        // Setting side materials and edge angles
+        BMhKill ((GSHandle*) &memo.edgeTrims);
+        BMhKill ((GSHandle*) &memo.edgeIDs);
+        BMpFree (reinterpret_cast<GSPtr> (memo.sideMaterials));
+        API_EdgeTrimID edgeType = APIEdgeTrim_Perpendicular;
+        memo.edgeTrims = (API_EdgeTrim**) BMAllocateHandle ((slabelement.slab.poly.nCoords + 1) * sizeof (API_EdgeTrim), ALLOCATE_CLEAR, 0);
+        memo.sideMaterials = (API_OverriddenAttribute*) BMAllocatePtr ((slabelement.slab.poly.nCoords + 1) * sizeof (API_OverriddenAttribute), ALLOCATE_CLEAR, 0);
+        for (Int32 k = 1; k <= slabelement.slab.poly.nCoords; ++k) {
+            memo.sideMaterials[k] = slabelement.slab.sideMat;
+            (*(memo.edgeTrims))[k].sideType = edgeType;
+            (*(memo.edgeTrims))[k].sideAngle = PI / 2;
+        }
         API_Element mask = {};
-        ACAPI_ELEMENT_MASK_CLEAR (mask);
-        ACAPI_ELEMENT_MASK_SETFULL (mask);
-        err = ACAPI_Element_Change (&slabelement, &mask, &memo, APIMemoMask_Polygon, false);
+        ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, botMat);
+        ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, topMat);
+        ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, sideMat);
+        ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nSubPolys);
+        ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nCoords);
+        ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, poly.nArcs);
+        ACAPI_ELEMENT_MASK_SET (mask, API_SlabType, level);
+        ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
+        err = ACAPI_Element_Change (&slabelement, &mask, &memo, APIMemoMask_Polygon | APIMemoMask_SideMaterials | APIMemoMask_EdgeTrims, true);
     }
     ACAPI_DisposeElemMemoHdls (&memo);
     if (err != NoError) {
@@ -3431,6 +3450,8 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
         API_Element mask = {};
         ACAPI_ELEMENT_MASK_CLEAR (mask);
         ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, pos);
+        ACAPI_ELEMENT_MASK_SET (mask, API_ObjectType, level);
+        ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, floorInd);
         err = ACAPI_Element_Change (&slabobjelement, &mask, &slabobjmemo, APIMemoMask_AddPars, true);
     }
     ACAPI_DisposeElemMemoHdls (&slabobjmemo);
