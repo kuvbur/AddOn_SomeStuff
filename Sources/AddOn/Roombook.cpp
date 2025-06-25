@@ -419,8 +419,8 @@ UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, Param
     }
     for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentdict.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
-        API_Guid subguid = *cIt->key;
-        bool isvisible = cIt->value;
+        API_Guid subguid = cIt->key;
+        UnicGuid parentels = cIt->value;
         #else
         API_Guid subguid = *cIt->key;
         UnicGuid parentels = *cIt->value;
