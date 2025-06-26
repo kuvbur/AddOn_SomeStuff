@@ -223,6 +223,7 @@ void RoomBook ()
         if (!otd.isValid) continue;
         // Расчёт пола и потолка
         Floor_Create_All (storyLevels, otd, guidselementToRead, paramToRead);
+        if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty ()) continue;
         for (OtdSlab& otdslab : otd.otdslab) {
             bool base_flipped = false;
             GS::UniString fav_name;
@@ -244,31 +245,31 @@ void RoomBook ()
                     }
                 }
             }
-            if (otd.otdwall.IsEmpty ()) continue;
-            GS::Array<OtdWall> opw; // Массив созданных стен
-            for (OtdWall& otdw : otd.otdwall) {
-                // Заполняем данные для отделочных стен (состав)
-                GS::UniString fav_name;
-                Param_SetToBase (otdw.base_guid, otdw.base_flipped, otdw.base_composite, paramToRead, param_composite, fav_name);
-                otdw.favorite.name = fav_name;
-                if (!otdw.openings.IsEmpty ()) {
-                    Point2D wbegC = { otdw.begC.x, otdw.begC.y };
-                    Point2D wendC = { otdw.endC.x, otdw.endC.y };
-                    Sector walledge = { wbegC , wendC };
-                    GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
-                    Geometry::Vector2<double> walldir_perp;
+        } // Обработка перекрытий
+        if (otd.otdwall.IsEmpty ()) continue;
+        GS::Array<OtdWall> opw; // Массив созданных стен
+        for (OtdWall& otdw : otd.otdwall) {
+            // Заполняем данные для отделочных стен (состав)
+            GS::UniString fav_name;
+            Param_SetToBase (otdw.base_guid, otdw.base_flipped, otdw.base_composite, paramToRead, param_composite, fav_name);
+            otdw.favorite.name = fav_name;
+            if (!otdw.openings.IsEmpty ()) {
+                Point2D wbegC = { otdw.begC.x, otdw.begC.y };
+                Point2D wendC = { otdw.endC.x, otdw.endC.y };
+                Sector walledge = { wbegC , wendC };
+                GS::Optional<UnitVector_2D>	walldir = walledge.GetDirection ();
+                Geometry::Vector2<double> walldir_perp;
+                if (walldir.HasValue ()) {
+                    double angz = -DEGRAD * 90;
+                    double co = cos (angz);
+                    double si = sin (angz);
+                    walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
+                }
+                for (OtdOpening& op : otdw.openings) {
+                    // Заполняем данные для окон
+                    Param_SetToWindows (op, paramToRead, windowParams, otdw);
                     if (walldir.HasValue ()) {
-                        double angz = -DEGRAD * 90;
-                        double co = cos (angz);
-                        double si = sin (angz);
-                        walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
-                    }
-                    for (OtdOpening& op : otdw.openings) {
-                        // Заполняем данные для окон
-                        Param_SetToWindows (op, paramToRead, windowParams, otdw);
-                        if (walldir.HasValue ()) {
-                            OpeningReveals_Create_One (otd.otdslab, otdw, op, walldir_perp, opw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
-                        }
+                        OpeningReveals_Create_One (otd.otdslab, otdw, op, walldir_perp, opw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
                     }
                 }
             }
@@ -282,91 +283,91 @@ void RoomBook ()
                     otdw.base_composite.Append (otdw.favorite.composite);
                 }
             }
-            otd.otdwall = opw; // Заменяем на разбитые стены
-        }
-        // Получаем список существующих элементов отделки для обрабатываемых зон
-        zones.Clear (); paramDict_favorite.Clear (); favdict.Clear ();
-        ParamDictElement paramToWrite; // Параметры для записи в зоны и элементы отделки
-        ColumnFormatDict columnFormat; // Словарь с форматом текста для столбцов
-        funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
-        for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-            #if defined(AC_28)
-            OtdRoom& otd = cIt->value;
-            #else
-            OtdRoom& otd = *cIt->value;
-            #endif
-            nPhase += 1;
-            #if defined(AC_27) || defined(AC_28)
-            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-            if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
-            #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
-            #endif
-            if (otd.isValid && (otd.create_all_elements || otd.create_ceil_elements || otd.create_floor_elements || otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
-                zones.Push (otd.zone_guid);
-            }
-            if (otd.isValid && paramToRead.ContainsKey (otd.zone_guid)) {
-                GS::Array<GS::UniString> rawnames = { otd.om_up.rawname, otd.om_main.rawname, otd.om_down.rawname , otd.om_column.rawname , otd.om_reveals.rawname, otd.om_floor.rawname, otd.om_ceil.rawname };
-                for (const GS::UniString& rawname : rawnames) {
-                    if (rawname.IsEmpty ()) continue;
-                    if (columnFormat.ContainsKey (rawname)) continue;
-                    if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
-                    WriteOtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description, rawname, columnFormat);
-                }
-                WriteOtdDataToRoom (columnFormat, otd, paramToWrite, paramToRead);
-            }
-        }
-        paramToRead.Clear ();
-        // Проверка существования классов и свойств
-        if (!zones.IsEmpty ()) {
-            if (!Check (finclass, propertyParams, finclassguids)) {
-                #if defined(AC_27) || defined(AC_28)
-                ACAPI_ProcessWindow_CloseProcessWindow ();
-                #else
-                ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-                #endif
-                return;
-            }
-        }
-        // Неиспользованные существующие элементы удаляем
-        for (GS::HashTable<API_Guid, UnicGuidByGuid>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs (); cIt_1 != NULL; ++cIt_1) {
-            #if defined(AC_28)
-            UnicGuidByGuid byzone = cIt_1->value;
-            #else
-            UnicGuidByGuid byzone = *cIt_1->value;
-            #endif
-            for (UnicGuidByGuid::PairIterator cIt_2 = byzone.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
-                #if defined(AC_28)
-                UnicGuid byparent = cIt_2->value;
-                #else
-                UnicGuid byparent = *cIt_2->value;
-                #endif
-                for (UnicGuid::PairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
-                    #if defined(AC_28)
-                    API_Guid guid = cIt_3->key;
-                    #else
-                    API_Guid guid = *cIt_3->key;
-                    #endif
-                    deletelist.Push (guid);
-                }
-            }
-        }
-        UnicElementByType subelementByparent; // Словарь с созданными родительскими и дочерними элементами
-        // Отросовка элементов отделки
-        Draw_Elements (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
-        // Привязка отделочных элементов к базовым
-        SetSyncOtdWall (subelementByparent, propertyParams, paramToWrite);
-        finish = clock ();
-        duration = (double) (finish - start) / CLOCKS_PER_SEC;
-        GS::UniString time = GS::UniString::Printf ("Calculate complete for %d room(s) by", zones.GetSize ()) + GS::UniString::Printf (" %.3f s", duration);
-        msg_rep ("RoomBook", time, NoError, APINULLGuid);
-        #if defined(AC_27) || defined(AC_28)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
+        } // Обработка стен
+        otd.otdwall = opw; // Заменяем на разбитые стены
+    } // Обработка зон
+    // Получаем список существующих элементов отделки для обрабатываемых зон
+    zones.Clear (); paramDict_favorite.Clear (); favdict.Clear ();
+    ParamDictElement paramToWrite; // Параметры для записи в зоны и элементы отделки
+    ColumnFormatDict columnFormat; // Словарь с форматом текста для столбцов
+    funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
+    for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28)
+        OtdRoom& otd = cIt->value;
         #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+        OtdRoom& otd = *cIt->value;
         #endif
+        nPhase += 1;
+        #if defined(AC_27) || defined(AC_28)
+        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
+        if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
+        #else
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
+        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
+        #endif
+        if (otd.isValid && (otd.create_all_elements || otd.create_ceil_elements || otd.create_floor_elements || otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
+            zones.Push (otd.zone_guid);
+        }
+        if (otd.isValid && paramToRead.ContainsKey (otd.zone_guid)) {
+            GS::Array<GS::UniString> rawnames = { otd.om_up.rawname, otd.om_main.rawname, otd.om_down.rawname , otd.om_column.rawname , otd.om_reveals.rawname, otd.om_floor.rawname, otd.om_ceil.rawname };
+            for (const GS::UniString& rawname : rawnames) {
+                if (rawname.IsEmpty ()) continue;
+                if (columnFormat.ContainsKey (rawname)) continue;
+                if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
+                WriteOtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description, rawname, columnFormat);
+            }
+            WriteOtdDataToRoom (columnFormat, otd, paramToWrite, paramToRead);
+        }
     }
+    paramToRead.Clear ();
+    // Проверка существования классов и свойств
+    if (!zones.IsEmpty ()) {
+        if (!Check (finclass, propertyParams, finclassguids)) {
+            #if defined(AC_27) || defined(AC_28)
+            ACAPI_ProcessWindow_CloseProcessWindow ();
+            #else
+            ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+            #endif
+            return;
+        }
+    }
+    // Неиспользованные существующие элементы удаляем
+    for (GS::HashTable<API_Guid, UnicGuidByGuid>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs (); cIt_1 != NULL; ++cIt_1) {
+        #if defined(AC_28)
+        UnicGuidByGuid byzone = cIt_1->value;
+        #else
+        UnicGuidByGuid byzone = *cIt_1->value;
+        #endif
+        for (UnicGuidByGuid::PairIterator cIt_2 = byzone.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
+            #if defined(AC_28)
+            UnicGuid byparent = cIt_2->value;
+            #else
+            UnicGuid byparent = *cIt_2->value;
+            #endif
+            for (UnicGuid::PairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
+                #if defined(AC_28)
+                API_Guid guid = cIt_3->key;
+                #else
+                API_Guid guid = *cIt_3->key;
+                #endif
+                deletelist.Push (guid);
+            }
+        }
+    }
+    UnicElementByType subelementByparent; // Словарь с созданными родительскими и дочерними элементами
+    // Отросовка элементов отделки
+    Draw_Elements (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
+    // Привязка отделочных элементов к базовым
+    SetSyncOtdWall (subelementByparent, propertyParams, paramToWrite);
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf ("Calculate complete for %d room(s) by", zones.GetSize ()) + GS::UniString::Printf (" %.3f s", duration);
+    msg_rep ("RoomBook", time, NoError, APINULLGuid);
+    #if defined(AC_27) || defined(AC_28)
+    ACAPI_ProcessWindow_CloseProcessWindow ();
+    #else
+    ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+    #endif
 }
 
 GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ParamDictValue& propertyParams)
@@ -1828,9 +1829,7 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
 {
     API_Guid base_guid = roominfo.zone_guid;
     if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
-        #if defined(TESTING)
-        DBprnt ("Param_SetToRooms err", "!Param_Property_Read");
-        #endif
+        msg_rep ("Roombook", "Can't read zone params", NoError, base_guid);
         return;
     }
     GS::UniString param_name = "";
@@ -2757,23 +2756,21 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     #if defined(TESTING)
     DBprnt ("Draw_Elements", "start");
     #endif
-
     GS::UniString funcname = "Draw finishing element(s)";
-
     GSErrCode err = NoError;
     GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
+    #ifndef AC_22
+    bool suspGrp = false;
+    #if defined(AC_27) || defined(AC_28)
+    err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
+    if (!suspGrp) ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
+    #else
+    err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
+    if (!suspGrp) ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
+    #endif
+    #endif // !AC_22
     ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) {
-            #ifndef AC_22
-            bool suspGrp = false;
-            #if defined(AC_27) || defined(AC_28)
-            err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
-            if (!suspGrp) ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
-            #else
-            err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-            if (!suspGrp) ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
-            #endif
-            #endif // !AC_22
             err = ACAPI_Element_Delete (deletelist);
             msg_rep ("RoomBook", GS::UniString::Printf ("Removed %d obsolete finishing elements", deletelist.GetSize ()), err, APINULLGuid);
         } else {
@@ -3255,10 +3252,27 @@ bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowe
 // -----------------------------------------------------------------------------
 void Floor_Draw (const Stories& storyLevels, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
-    if (otdslab.favorite.type == API_ObjectID) {
+    // Провери там существующего элемента
+    API_ElemTypeID type = otdslab.favorite.type;
+    API_Guid otd_guid = otdslab.otd_guid;
+    bool is_new = (otd_guid == APINULLGuid);
+    if (!is_new) {
+        type = GetElemTypeID (otd_guid);
+    }
+    if (type == API_ObjectID) {
         Floor_Draw_Object (otdslab.favorite.name, storyLevels, otdslab);
     } else {
         Floor_Draw_Slab (otdslab.favorite.name, storyLevels, otdslab);
+    }
+    // Если обновить объект не получилось - удаляем старый и создаём новый
+    if (!is_new && otdslab.otd_guid == APINULLGuid) {
+        GS::Array<API_Guid> deletelist = { otd_guid };
+        ACAPI_Element_Delete (deletelist);
+        if (otdslab.favorite.type == API_ObjectID) {
+            Floor_Draw_Object (otdslab.favorite.name, storyLevels, otdslab);
+        } else {
+            Floor_Draw_Slab (otdslab.favorite.name, storyLevels, otdslab);
+        }
     }
     otdslab.poly.Clear ();
     Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
@@ -3366,11 +3380,13 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
         slabobjelement.header.guid = otdslab.otd_guid;
         err = ACAPI_Element_Get (&slabobjelement);
         if (err != NoError) {
+            otdslab.otd_guid = APINULLGuid;
             msg_rep ("Floor_Draw_Object", "ACAPI_Element_Get", err, otdslab.otd_guid);
             return;
         }
         err = ACAPI_Element_GetMemo (otdslab.otd_guid, &slabobjmemo);
         if (err != NoError) {
+            otdslab.otd_guid = APINULLGuid;
             ACAPI_DisposeElemMemoHdls (&slabobjmemo);
             msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
             return;
@@ -3456,6 +3472,7 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     }
     ACAPI_DisposeElemMemoHdls (&slabobjmemo);
     if (err != NoError) {
+        otdslab.otd_guid = APINULLGuid;
         msg_rep ("Floor_Draw_Object", favorite_name, err, APINULLGuid);
         return;
     } else {
@@ -3869,7 +3886,7 @@ void Favorite_FindName (ParamDictValue& propertyParams, MatarialToFavorite& favo
                 if (draw_type == API_ColumnID) {
                     favorite_name_defult = "smstf reveal side";
                 }
-                if (!favdict.ContainsKey (favorite_name_defult)) {
+                if (!favdict.ContainsKey (favorite_name_defult) || favorite_name_defult.IsEmpty ()) {
                     favorite_name_defult = "smstf wall";
                     possibly_type = API_WallID;
                 }

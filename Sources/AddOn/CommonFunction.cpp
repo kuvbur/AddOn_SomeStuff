@@ -2340,6 +2340,9 @@ void UnhideUnlockElementLayer (const API_Guid & elemGuid)
 
 void UnhideUnlockElementLayer (const API_Elem_Head & elem_head)
 {
+    API_ElemTypeID typeID = GetElemTypeID (elem_head);
+    if (typeID == API_DoorID) return;
+    if (typeID == API_WindowID) return;
     if (ACAPI_Element_Filter (elem_head.guid, APIFilt_OnVisLayer)) return;
     UnhideUnlockElementLayer (elem_head.layer);
 }
