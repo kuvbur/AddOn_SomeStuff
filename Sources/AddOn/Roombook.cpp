@@ -537,7 +537,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
         if (!exsists_rawname.ContainsKey (rawname)) exsists_rawname.Add (rawname, false);
     }
 
-    OtdMaterialAreaDictByType dct; // Основной словарь
+    OtdMaterialAreaDictByType dct = {}; // Основной словарь
     // Разбивка по отделочным слоям, вычисление площадей и добавление их в словарь по типам отделки
     for (const OtdWall& otdw : otd.otdwall) {
         const TypeOtd& t = otdw.type;
@@ -576,7 +576,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
         GS::UniString new_val = "";
         // Если такой тип отделки есть в словаре - записываем послойно материалы и площади
         if (dct.ContainsKey (rawname)) {
-            ColumnFormat c;
+            ColumnFormat c = {};
             if (columnFormat.ContainsKey (rawname)) c = columnFormat.Get (rawname);
             OtdMaterialAreaDict& dcta = dct.Get (rawname);
             std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_material = {};
@@ -637,7 +637,7 @@ void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const GS::UniS
 {
     if (area < 0.000001) return;
     if (!dct.ContainsKey (rawname)) {
-        OtdMaterialAreaDict dcta;
+        OtdMaterialAreaDict dcta = {};
         dcta.Add (mat, area);
         dct.Add (rawname, dcta);
         return;
@@ -720,10 +720,10 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
         msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetMemo zone", err, zoneGuid);
         return false;
     }
-    GS::Array<Sector> walledges; // Границы стен, не явяющихся границей зоны
-    GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
-    GS::Array<Sector> restedges; // Границы зоны
-    GS::Array<Sector> gableedges;
+    GS::Array<Sector> walledges = {}; // Границы стен, не явяющихся границей зоны
+    GS::Array<Sector> columnedges = {}; // Границы колонн, не явяющихся границей зоны
+    GS::Array<Sector> restedges = {}; // Границы зоны
+    GS::Array<Sector> gableedges = {};
     Edges_GetFromRoom (zonememo, zoneelement, walledges, columnedges, restedges, gableedges);
     roominfo.edges = restedges;
     roominfo.columnedges = columnedges;
@@ -737,7 +737,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     roominfo.zBottom = GetzPos (zoneelement.zone.roomBaseLev, zoneelement.header.floorInd, storyLevels);
     roominfo.zBottom = std::round (roominfo.zBottom * 1000) / 1000;
     roominfo.floorInd = zoneelement.header.floorInd;
-    GS::Array<API_ElemTypeID> typeinzone;
+    GS::Array<API_ElemTypeID> typeinzone = {};
     typeinzone.Push (API_WindowID);
     typeinzone.Push (API_DoorID);
     typeinzone.Push (API_WallID);
@@ -758,7 +758,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
             Param_AddUnicElementByType (elGuid, zoneGuid, API_SlabID, elementToRead);
         }
     }
-    OtdSlab otdslab;
+    OtdSlab otdslab = {};
     ConstructPolygon2DFromElementMemo (zonememo, otdslab.poly);
     #if defined(AC_27) || defined(AC_28)
     otdslab.material.material = zoneelement.zone.material.ToInt32_Deprecated ();
@@ -824,9 +824,9 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
         }
     }
     roominfo.wallPart = relData.wallPart;
-    roominfo.beamPart = relData.beamPart;
-    roominfo.cwSegmentPart = relData.cwSegmentPart;
-    roominfo.niches = relData.niches;
+    //roominfo.beamPart = relData.beamPart;
+    //roominfo.cwSegmentPart = relData.cwSegmentPart;
+    //roominfo.niches = relData.niches;
     roominfo.zone_guid = zoneGuid;
     roominfo.isValid = flag;
     #if defined(AC_27) || defined(AC_28)

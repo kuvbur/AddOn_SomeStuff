@@ -136,9 +136,9 @@ typedef struct
     GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
     GS::Array<Sector> edges; // Границы зоны
     GS::Array<API_WallPart> wallPart; // Участки стен в зоне
-    GS::Array<API_BeamPart> beamPart; // Участки балок в зоне
-    GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
-    GS::Array<API_Niche> niches; // Ниши в зоне
+    //GS::Array<API_BeamPart> beamPart; // Участки балок в зоне
+    //GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
+    //GS::Array<API_Niche> niches; // Ниши в зоне
     double height_down = 0; // Высота панелей
     double height_main = 0; // Высота основной отделки
     double height_up = 0; // Высота верхней части отделки
