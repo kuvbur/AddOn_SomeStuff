@@ -7073,7 +7073,9 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #ifdef AC_22
             constrinx = element.column.buildingMaterial;
             #else
-            // TODO Добавить поддержку многосегментных колонн
+            if (element.header.guid == APINULLGuid) {
+                return false;
+            }
             if (element.column.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
@@ -7104,7 +7106,9 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #ifdef AC_22
             constrinx = element.beam.buildingMaterial;
             #else
-            // TODO Добавить поддержку многосегментных балок
+            if (element.header.guid == APINULLGuid) {
+                return false;
+            }
             if (element.beam.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
