@@ -26,9 +26,9 @@ bool GetDimAutotext (GS::UniString& autotext)
     #if defined(TESTING)
     DBprnt ("DimReadPref start");
     #endif
-    GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
-    API_AutotextType	type = APIAutoText_Custom;
-    GSErrCode	err = NoError;
+    GS::Array<GS::ArrayFB<GS::UniString, 3> > autotexts = {};
+    API_AutotextType type = APIAutoText_Custom;
+    GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28)
     err = ACAPI_AutoText_GetAutoTexts (&autotexts, type);
     #else
@@ -63,10 +63,10 @@ bool DimReadPref (DimRules& dimrules, GS::UniString& autotext)
     API_AutotextType	type = APIAutoText_Custom;
     bool hasexpression = false; // Нужно ли нам читать список свойств
     if (autotext.Contains (";")) {
-        GS::Array<GS::UniString> partstring;
+        GS::Array<GS::UniString> partstring = {};
         StringSplt (autotext, ";", partstring);
         for (UInt32 k = 0; k < partstring.GetSize (); k++) {
-            DimRule dimrule;
+            DimRule dimrule = {};
             if (DimParsePref (partstring[k], dimrule, hasexpression)) {
                 GS::UniString kstr;
                 if (dimrule.layer.IsEmpty ()) {
@@ -78,9 +78,9 @@ bool DimReadPref (DimRules& dimrules, GS::UniString& autotext)
             }
         }
     } else {
-        DimRule dimrule;
+        DimRule dimrule = {};
         if (DimParsePref (autotext, dimrule, hasexpression)) {
-            GS::UniString kstr;
+            GS::UniString kstr = "";
             if (dimrule.layer.IsEmpty ()) {
                 kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
             } else {
@@ -100,7 +100,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
     if (rawrule.IsEmpty ()) return false;
     if (!rawrule.Contains ("-")) return false;
     bool flag_find = false;
-    GS::Array<GS::UniString> partstring_1;
+    GS::Array<GS::UniString> partstring_1 = {};
     if (StringSplt (rawrule, "-", partstring_1) == 2) {
         //Проверяем - что указано в правиле: слой или номер пера
         // Слой указываем в кавычках, в regexp формате
@@ -133,7 +133,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
             dimrule.classic_round_mode = true;
         }
         if (!partstring_1[1].Contains (",")) return flag_find;
-        GS::Array<GS::UniString> partstring_2;
+        GS::Array<GS::UniString> partstring_2 = {};
         if (StringSplt (partstring_1[1], ",", partstring_2) > 1) {
             if (!partstring_2[0].IsEmpty ()) {
                 dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
@@ -147,7 +147,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
             for (UInt32 k = 2; k < partstring_2.GetSize (); k++) {
                 if (partstring_2[k].IsEmpty ()) continue;
                 if (partstring_2[k].Contains ("{") && partstring_2[k].Contains ("}")) {
-                    ParamDictValue paramDict;
+                    ParamDictValue paramDict = {};
                     GS::UniString expression = partstring_2[k];
                     expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
                     ParamHelpers::ParseParamName (expression, paramDict);
@@ -215,7 +215,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
     short pen_rounded = 0;
     bool flag_change_rule = false;
     GS::UniString kstr = GS::UniString::Printf ("%d", pen_dimenstion);
-    GS::Array<DimRule> rules; //Массив найденных правил
+    GS::Array<DimRule> rules = {}; //Массив найденных правил
 
     if (pen_dimenstion > 0 && dimrules.ContainsKey (kstr)) {
         DimRule d = dimrules.Get (kstr);
