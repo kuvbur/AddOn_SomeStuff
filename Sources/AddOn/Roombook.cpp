@@ -3413,7 +3413,6 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     p.num = 0.02; accsessoryparams.Add ("{@gdl:ceil_thk}", p);
     p.num = 0.02; accsessoryparams.Add ("{@gdl:ac_thickness}", p);
     p.num = 0; accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
-    p.num = 1; accsessoryparams.Add ("{@gdl:auto_height}", p);
     Geometry::Polygon2DData polygon2DData;
     Geometry::InitPolygon2DData (&polygon2DData);
     Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, otdslab.poly);
@@ -3893,6 +3892,10 @@ void Favorite_FindName (ParamDictValue& propertyParams, MatarialToFavorite& favo
                 break;
             case Floor:
                 favorite_name_defult = "smstf floor";
+                if (draw_type == API_WallID) {
+                    favorite_name_defult = "smstf wall";
+                    possibly_type = API_WallID;
+                }
                 break;
             case Ceil:
                 favorite_name_defult = "smstf ceil";
