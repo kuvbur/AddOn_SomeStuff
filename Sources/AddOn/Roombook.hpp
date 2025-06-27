@@ -200,9 +200,9 @@ typedef GS::HashTable<GS::UniString, ColumnFormat> ColumnFormatDict;
 // -----------------------------------------------------------------------------
 void RoomBook ();
 
-GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ParamDictValue& propertyParams);
+GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ParamDictValue& propertyParams, bool& has_base_element);
 
-UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, ParamDictValue& propertyParams);
+UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, ParamDictValue& propertyParams, bool& has_base_element);
 
 void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat);
 
