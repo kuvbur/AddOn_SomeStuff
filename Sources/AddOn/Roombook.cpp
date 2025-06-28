@@ -305,14 +305,48 @@ void RoomBook ()
             zones.Push (otd.zone_guid);
         }
         if (otd.isValid && paramToRead.ContainsKey (otd.zone_guid)) {
-            GS::Array<GS::UniString> rawnames = { otd.om_up.rawname, otd.om_main.rawname, otd.om_down.rawname , otd.om_column.rawname , otd.om_reveals.rawname, otd.om_floor.rawname, otd.om_ceil.rawname };
-            for (const GS::UniString& rawname : rawnames) {
-                if (rawname.IsEmpty ()) continue;
-                if (columnFormat.ContainsKey (rawname)) continue;
-                if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
-                WriteOtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description, rawname, columnFormat);
+            GS::Array<GS::UniString> rawnames = {};
+            GS::UniString msg = "";
+            if (!otd.om_up.rawname.IsEmpty ()) {
+                rawnames.Push (otd.om_up.rawname);
             }
-            WriteOtdDataToRoom (columnFormat, otd, paramToWrite, paramToRead);
+            if (!otd.om_main.rawname.IsEmpty ()) {
+                rawnames.Push (otd.om_main.rawname);
+            } else {
+                msg += "'some_stuff_fin_main_result' ";
+            }
+            if (!otd.om_down.rawname.IsEmpty ()) {
+                rawnames.Push (otd.om_down.rawname);
+            } else {
+                msg += "'some_stuff_fin_column_result' ";
+            }
+            if (!otd.om_column.rawname.IsEmpty ()) {
+                rawnames.Push (otd.om_column.rawname);
+            } else {
+                msg += "'some_stuff_fin_main_result' ";
+            }
+            if (!otd.om_reveals.rawname.IsEmpty ()) {
+                rawnames.Push (otd.om_reveals.rawname);
+            }
+            if (!otd.om_floor.rawname.IsEmpty ()) {
+                rawnames.Push (otd.om_floor.rawname);
+            }
+            if (!otd.om_ceil.rawname.IsEmpty ()) {
+                rawnames.Push (otd.om_ceil.rawname);
+            } else {
+                msg += "'some_stuff_fin_ceil_result' ";
+            }
+            if (!msg.IsEmpty ()) {
+                msg_rep ("RoomBook", "Properties for recording finish layers to the Zone were not found.\nRecording will not be performed. Missing properties: " + msg, NoError, APINULLGuid);
+            } else {
+                for (const GS::UniString& rawname : rawnames) {
+                    if (rawname.IsEmpty ()) continue;
+                    if (columnFormat.ContainsKey (rawname)) continue;
+                    if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
+                    WriteOtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description, rawname, columnFormat);
+                }
+                WriteOtdDataToRoom (columnFormat, otd, paramToWrite, paramToRead);
+            }
         }
     }
     paramToRead.Clear ();
@@ -412,7 +446,6 @@ UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, Param
     UnicGuidByGuid exsistot_byparent = {};
     UnicGuidByGuid parentdict = {}; // Для считывания элементов
     if (!SyncGetSubelement (otd_elements, parentdict, propertyParams, "base element", errcode)) {
-        msg_rep ("RoomBook", "Property 'Sync_GUID base element' not found", NoError, APINULLGuid);
         API_Guid parentguid = APINULLGuid;
         for (const API_Guid& subguid : otd_elements) {
             if (!exsistot_byparent.ContainsKey (parentguid)) {
@@ -1529,9 +1562,13 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
         param_composite.val.uniStringValue = "l[" + rawName_onoff + ":" + rawName_desc;
     } else {
         param_composite.val.uniStringValue = "l[1:%BuildingMaterialProperties/Building Material Name%";
+        msg_rep ("RoomBook", "Required properties 'some_stuff_fin_onoff' and 'some_stuff_fin_description' not found in Building Materials. Processing all Finish layers with Building Material Name as identifier.", NoError, APINULLGuid);
     }
     param_composite.val.uniStringValue.Append ("]f[");
-    if (!rawName_fav.IsEmpty ()) param_composite.val.uniStringValue.Append (rawName_fav);
+    if (!rawName_fav.IsEmpty ()) {
+        param_composite.val.uniStringValue.Append (rawName_fav);
+        msg_rep ("RoomBook", "Building Materials contain a property with the description 'some_stuff_fin_favorite_name'", NoError, APINULLGuid);
+    }
     param_composite.val.uniStringValue.Append ("] %nosyncname%");
     if (ParamHelpers::ParseParamNameMaterial (param_composite.val.uniStringValue, paramDict)) {
         for (UInt32 inx = 0; inx < 20; inx++) {
@@ -3826,13 +3863,19 @@ MatarialToFavoriteDict Favorite_GetDict ()
         }
     }
     if (favdict.IsEmpty ()) {
-        msg_rep ("RoomBook favorite", "Favorite not found", NoError, APINULLGuid);
+        msg_rep ("RoomBook favorite", "Recommended items not found in favorites", NoError, APINULLGuid);
     } else {
-        if (!favdict.ContainsKey ("smstf wall")) msg_rep ("RoomBook favorite", "Recomented favorite not found - 'smstf wall'", NoError, APINULLGuid);
-        if (!favdict.ContainsKey ("smstf floor")) msg_rep ("RoomBook favorite", "Recomented favorite not found - 'smstf floor'", NoError, APINULLGuid);
-        if (!favdict.ContainsKey ("smstf reveal side")) msg_rep ("RoomBook favorite", "Recomented favorite not found - 'smstf reveal side'", NoError, APINULLGuid);
-        if (!favdict.ContainsKey ("smstf reveal up")) msg_rep ("RoomBook favorite", "Recomented favorite not found - 'smstf reveal up'", NoError, APINULLGuid);
-        if (!favdict.ContainsKey ("smstf ceil")) msg_rep ("RoomBook favorite", "Recomented favorite not found - 'smstf ceil'", NoError, APINULLGuid);
+        GS::UniString msg = "";
+
+        if (!favdict.ContainsKey ("smstf wall")) msg += "'smstf wall' ";
+        if (!favdict.ContainsKey ("smstf floor")) msg += "'smstf floor' ";
+        if (!favdict.ContainsKey ("smstf reveal side")) msg += "'smstf reveal side' ";
+        if (!favdict.ContainsKey ("smstf reveal up")) msg += "'smstf reveal up' ";
+        if (!favdict.ContainsKey ("smstf ceil")) msg += "'smstf ceil' ";
+        if (!favdict.ContainsKey ("smstf window")) msg += "'smstf window' ";
+        if (!msg.IsEmpty ()) {
+            msg_rep ("RoomBook favorite", "The recommended elements were not found in Favorites. Default tool settings will be used to create these elements.\nMissing element names:" + msg, NoError, APINULLGuid);
+        }
     }
     return favdict;
 }
@@ -4043,12 +4086,12 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
                 if (finclassguids.ContainsKey (classguid)) find_cls = true;
             }
             if (!find_cls) {
-                msg_rep ("RoomBook", "Sync_GUID base element found, but not visible in finish element", NoError, APINULLGuid);
+                msg_rep ("RoomBook", "'Sync_GUID base element' property found, but not displayed in Finish Element classification.\nFloor/ceiling updates require this property to be visible. Existing elements will be replaced.", NoError, APINULLGuid);
             }
         }
     }
     if (!find) {
-        msg_rep ("RoomBook", "Sync_GUID base element not found", NoError, APINULLGuid);
+        msg_rep ("RoomBook", "Missing 'Sync_GUID base element' property. Floor/ceiling updates require this property. Existing elements will be replaced", NoError, APINULLGuid);
     }
     return true;
 }
