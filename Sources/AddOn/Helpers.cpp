@@ -3216,89 +3216,90 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
     Int32 nfind = params.GetSize ();
     for (Int32 i = 0; i < addParNum; ++i) {
         API_AddParType& actualParam = (*apiParams.params)[i];
+        if (actualParam.typeMod != API_ParSimple) continue;
         GS::UniString name = actualParam.name;
         GS::UniString rawname = "{@gdl:" + name.ToLowerCase () + "}";
-        if (params.ContainsKey (rawname) && actualParam.typeMod == API_ParSimple) {
-            ParamValueData paramfrom = params.Get (rawname).val;
-            BNZeroMemory (&chgParam, sizeof (API_ChangeParamType));
-            chgParam.index = actualParam.index;
-            CHTruncate (actualParam.name, chgParam.name, API_NameLen);
-            // Поиск индекса аттрибута при необходимости
-            API_AttributeIndex attribinx; Int32 attribinxint = 0;
-            API_AttrTypeID type = API_ZombieAttrID;
-            if (actualParam.typeID == APIParT_LineTyp) type = API_LinetypeID;
-            if (actualParam.typeID == APIParT_Profile) type = API_ProfileID;
-            if (actualParam.typeID == APIParT_BuildingMaterial) type = API_BuildingMaterialID;
-            if (actualParam.typeID == APIParT_FillPat) type = API_FilltypeID;
-            if (actualParam.typeID == APIParT_Mater) type = API_MaterialID;
-            if (type != API_ZombieAttrID) {
-                if (paramfrom.type == API_PropertyStringValueType) {
-                    if (API_AttributeIndexFindByName (paramfrom.uniStringValue, type, attribinx)) {
-                        #if defined(AC_27) || defined(AC_28)
-                        attribinxint = attribinx.ToInt32_Deprecated ();
-                        #else
-                        attribinxint = attribinx;
-                        #endif
-                    } else {
-                        attribinxint = paramfrom.intValue;
-                    }
+        if (!params.ContainsKey (rawname)) continue;
+
+        ParamValueData paramfrom = params.Get (rawname).val;
+        BNZeroMemory (&chgParam, sizeof (API_ChangeParamType));
+        chgParam.index = actualParam.index;
+        CHTruncate (actualParam.name, chgParam.name, API_NameLen);
+        // Поиск индекса аттрибута при необходимости
+        API_AttributeIndex attribinx; Int32 attribinxint = 0;
+        API_AttrTypeID type = API_ZombieAttrID;
+        if (actualParam.typeID == APIParT_LineTyp) type = API_LinetypeID;
+        if (actualParam.typeID == APIParT_Profile) type = API_ProfileID;
+        if (actualParam.typeID == APIParT_BuildingMaterial) type = API_BuildingMaterialID;
+        if (actualParam.typeID == APIParT_FillPat) type = API_FilltypeID;
+        if (actualParam.typeID == APIParT_Mater) type = API_MaterialID;
+        if (type != API_ZombieAttrID) {
+            if (paramfrom.type == API_PropertyStringValueType) {
+                if (API_AttributeIndexFindByName (paramfrom.uniStringValue, type, attribinx)) {
+                    #if defined(AC_27) || defined(AC_28)
+                    attribinxint = attribinx.ToInt32_Deprecated ();
+                    #else
+                    attribinxint = attribinx;
+                    #endif
                 } else {
                     attribinxint = paramfrom.intValue;
                 }
+            } else {
+                attribinxint = paramfrom.intValue;
             }
-            if (actualParam.typeID == APIParT_CString) {
-                GS::uchar_t* buffer = new GS::uchar_t[256];
-                GS::ucsncpy (buffer, paramfrom.uniStringValue.ToUStr ().Get (), 256);
-                chgParam.uStrValue = buffer;
+        }
+        if (actualParam.typeID == APIParT_CString) {
+            GS::uchar_t* buffer = new GS::uchar_t[256];
+            GS::ucsncpy (buffer, paramfrom.uniStringValue.ToUStr ().Get (), 256);
+            chgParam.uStrValue = buffer;
+        }
+        if (actualParam.typeID == APIParT_Integer) {
+            chgParam.realValue = paramfrom.intValue;
+        }
+        if (actualParam.typeID == APIParT_PenCol) {
+            if (paramfrom.intValue > 0 && paramfrom.intValue < 255) chgParam.realValue = paramfrom.intValue;
+        }
+        if (type != API_ZombieAttrID && attribinxint > 0) {
+            chgParam.realValue = attribinxint;
+        }
+        if (actualParam.typeID == APIParT_Length) {
+            if (paramfrom.formatstring.forceRaw) {
+                chgParam.realValue = paramfrom.rawDoubleValue;
+            } else {
+                chgParam.realValue = paramfrom.doubleValue;
             }
-            if (actualParam.typeID == APIParT_Integer) {
-                chgParam.realValue = paramfrom.intValue;
+        }
+        if (actualParam.typeID == APIParT_Angle) {
+            if (paramfrom.formatstring.forceRaw) {
+                chgParam.realValue = paramfrom.rawDoubleValue;
+            } else {
+                chgParam.realValue = paramfrom.doubleValue;
             }
-            if (actualParam.typeID == APIParT_PenCol) {
-                if (paramfrom.intValue > 0 && paramfrom.intValue < 255) chgParam.realValue = paramfrom.intValue;
+        }
+        if (actualParam.typeID == APIParT_RealNum ||
+            actualParam.typeID == APIParT_ColRGB ||
+            actualParam.typeID == APIParT_Intens) {
+            if (paramfrom.formatstring.forceRaw) {
+                chgParam.realValue = paramfrom.rawDoubleValue;
+            } else {
+                chgParam.realValue = paramfrom.doubleValue;
             }
-            if (type != API_ZombieAttrID && attribinxint > 0) {
-                chgParam.realValue = attribinxint;
+        }
+        if (actualParam.typeID == APIParT_Boolean) {
+            if (paramfrom.boolValue) {
+                chgParam.realValue = 1;
+            } else {
+                chgParam.realValue = 0;
             }
-            if (actualParam.typeID == APIParT_Length) {
-                if (paramfrom.formatstring.forceRaw) {
-                    chgParam.realValue = paramfrom.rawDoubleValue;
-                } else {
-                    chgParam.realValue = paramfrom.doubleValue;
-                }
-            }
-            if (actualParam.typeID == APIParT_Angle) {
-                if (paramfrom.formatstring.forceRaw) {
-                    chgParam.realValue = paramfrom.rawDoubleValue;
-                } else {
-                    chgParam.realValue = paramfrom.doubleValue;
-                }
-            }
-            if (actualParam.typeID == APIParT_RealNum ||
-                actualParam.typeID == APIParT_ColRGB ||
-                actualParam.typeID == APIParT_Intens) {
-                if (paramfrom.formatstring.forceRaw) {
-                    chgParam.realValue = paramfrom.rawDoubleValue;
-                } else {
-                    chgParam.realValue = paramfrom.doubleValue;
-                }
-            }
-            if (actualParam.typeID == APIParT_Boolean) {
-                if (paramfrom.boolValue) {
-                    chgParam.realValue = 1;
-                } else {
-                    chgParam.realValue = 0;
-                }
-            }
-            #if defined(AC_27) || defined(AC_28)
-            err = ACAPI_LibraryPart_ChangeAParameter (&chgParam);
-            #else
-            err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr);
-            #endif
-            if (err != NoError) {
-                msg_rep ("ParamHelpers::WriteGDL", "APIAny_ChangeAParameterID", err, elem_head.guid);
-                return;
-            }
+        }
+        #if defined(AC_27) || defined(AC_28)
+        err = ACAPI_LibraryPart_ChangeAParameter (&chgParam);
+        #else
+        err = ACAPI_Goodies (APIAny_ChangeAParameterID, &chgParam, nullptr);
+        #endif
+        if (err != NoError) {
+            msg_rep ("ParamHelpers::WriteGDL", "APIAny_ChangeAParameterID", err, elem_head.guid);
+            return;
         }
     }
     #if defined(AC_27) || defined(AC_28)

@@ -1531,6 +1531,7 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
     GS::UniString propdesc_onoff = "some_stuff_fin_onoff";
     GS::UniString propdesc_desc = "some_stuff_fin_description";
     GS::UniString propdesc_fav = "some_stuff_fin_favorite_name";
+
     GS::UniString rawName_onoff = "";
     GS::UniString rawName_desc = "";
     GS::UniString rawName_fav = "";
@@ -2138,17 +2139,10 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
 // -----------------------------------------------------------------------------
 void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name)
 {
-    if (!paramToRead.ContainsKey (base_guid)) {
-        #if defined(TESTING)
-        DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey(base_guid)");
-        #endif
+    ParamValue base_composite = {};
+    if (!ParamHelpers::GetParamValueForElements (base_guid, param_composite.rawName, paramToRead, base_composite)) {
         return;
     }
-    // Прочитанные параметры базового компонента
-    ParamDictValue& baseparam = paramToRead.Get (base_guid);
-    // Состав базового компонента
-    if (!baseparam.ContainsKey (param_composite.rawName)) return;
-    ParamValue& base_composite = baseparam.Get (param_composite.rawName);
     Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name);
 }
 
