@@ -121,19 +121,27 @@ GSErrCode SpecAll (const SyncSettings& syncSettings)
     }
     SpecRuleDict rules = {}; bool hasrule = false;
     GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false);
-    if (!guidArray.IsEmpty ()) msg_rep ("Spec", "Create spec from selection", NoError, APINULLGuid);
-    SpecFilter (guidArray, homedatabaseInfo);
+    UnicGuid selected_elements = {};
+    if (!guidArray.IsEmpty ()) {
+        msg_rep ("Spec", "Create spec from selection", NoError, APINULLGuid);
+        SpecFilter (guidArray, homedatabaseInfo);
+        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+            if (!selected_elements.ContainsKey (guidArray[i])) selected_elements.Add (guidArray[i], true);
+        }
+    }
     bool has_elementspec = false;
     if (guidArray.IsEmpty ()) hasrule = GetRuleFromDefaultElem (rules, homedatabaseInfo, has_elementspec);
     if (hasrule) msg_rep ("Spec", "Create spec from default element", NoError, APINULLGuid);
     if (guidArray.IsEmpty () && !hasrule) {
         err = ACAPI_Element_GetElemList (API_ZombieElemID, &guidArray, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
         if (err != NoError) return err;
-        SpecFilter (guidArray, homedatabaseInfo);
-        if (!guidArray.IsEmpty ()) msg_rep ("Spec", "Create spec from all visible element", NoError, APINULLGuid);
+        if (!guidArray.IsEmpty ()) {
+            SpecFilter (guidArray, homedatabaseInfo);
+            msg_rep ("Spec", "Create spec from all visible element", NoError, APINULLGuid);
+        }
     }
     if (guidArray.IsEmpty () && (!hasrule || !has_elementspec)) return NoError;
-    err = SpecArray (syncSettings, guidArray, rules);
+    err = SpecArray (syncSettings, guidArray, rules, selected_elements);
     return err;
 }
 
@@ -330,7 +338,7 @@ void SpecFilter (GS::Array<API_Guid>& guidArray, API_DatabaseInfo& homedatabaseI
     }
 }
 
-GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules)
+GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules, const UnicGuid& selected_elements)
 {
     clock_t start, finish;
     double  duration;
@@ -473,7 +481,14 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         if (rule.subguid_rulename.IsEmpty ()) continue;
         if (!flag_find) continue;
         if (!propertyParams.ContainsKey (rule.subguid_rulename)) continue;
-        rule.exsist_elements = GetElementByPropertyDescription (propertyParams.Get (rule.subguid_rulename).definition, rule.subguid_rulevalue.ToLowerCase ());
+        GS::Array<API_Guid> exsist_elements = GetElementByPropertyDescription (propertyParams.Get (rule.subguid_rulename).definition, rule.subguid_rulevalue.ToLowerCase ());
+        if (!selected_elements.IsEmpty ()) {
+            for (UInt32 i = 0; i < exsist_elements.GetSize (); i++) {
+                if (selected_elements.ContainsKey (exsist_elements[i])) rule.exsist_elements.Push (exsist_elements[i]);
+            }
+        } else {
+            rule.exsist_elements = exsist_elements;
+        }
         if (rule.exsist_elements.IsEmpty ()) continue;
         // Собираем список параметрв для чтения у существующих элементов
         ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента

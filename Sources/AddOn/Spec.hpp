@@ -76,7 +76,7 @@ void SpecFilter (API_Guid& elemguid, API_DatabaseInfo& homedatabaseInfo);
 
 void SpecFilter (GS::Array<API_Guid>& guidArray, API_DatabaseInfo& homedatabaseInfo);
 
-GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules);
+GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules, const UnicGuid& selected_elements);
 
 // --------------------------------------------------------------------
 // Проверяет значение свойства с правилом и формрует правила

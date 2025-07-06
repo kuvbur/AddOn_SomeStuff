@@ -2485,6 +2485,10 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
             continue;
         }
         for (const auto& elemGuid : elemGuids) {
+            if (!ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer)) continue;
+            if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsVisibleByRenovation)) continue;
+            if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsInStructureDisplay)) continue;
+            if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable)) continue;
             API_Property propertyflag = {};
             error = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
             if (error != NoError) {
