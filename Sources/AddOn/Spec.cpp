@@ -1588,6 +1588,18 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
     API_Coord pos = { startpos.x, startpos.y };
     GS::Array <API_Elem_Head> elemsheader = {};
     double dx = 0; double dy = 0;
+    API_StoryInfo storyInfo = {};
+    #if defined AC_27 || defined AC_28
+    err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
+    #else
+    err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);
+    #endif
+    short act_st = 0; bool find_stor = false;
+    if (err == NoError) {
+        act_st = storyInfo.actStory;
+        find_stor = true;
+        BMKillHandle ((GSHandle*) &storyInfo.data);
+    }
     ACAPI_CallUndoableCommand ("Create Spec element", [&]() -> GSErrCode {
         int n_elem = 0;
         for (UInt32 i = 0; i < elementstocreate.GetSize (); i++) {
@@ -1605,6 +1617,9 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     ACAPI_DisposeElemMemoHdls (&memo);
                     msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
                     continue;
+                }
+                if (find_stor) {
+                    element.header.floorInd = act_st;
                 }
                 UnhideUnlockElementLayer (element.header);
                 bool flag_find_row = GetSizePlaceElement (element, memo, dx, dy);
@@ -1739,7 +1754,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
             }
         }
         return NoError;
-    });
+            });
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
         #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
