@@ -85,6 +85,7 @@ typedef struct
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
     MatarialToFavorite favorite = {}; // Избранное
+    bool isValid = true;
 } OtdSlab;
 
 typedef struct
@@ -109,6 +110,7 @@ typedef struct
     API_ElemTypeID draw_type = API_WallID; // Тип отрисовываемого элемента
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
     MatarialToFavorite favorite = {}; // Избранное
+    bool isValid = true;
 } OtdWall; // Структура со стенами для отделки
 
 typedef struct
@@ -262,9 +264,9 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
 
 void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
 
-void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name);
+bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name);
 
-void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name);
+void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin);
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
@@ -280,7 +282,9 @@ void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otd
 void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone);
 
-void SetMaterialFinish (const OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite);
+void SetMaterialFinish_ByComposite (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite);
+
+void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite);
 
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
