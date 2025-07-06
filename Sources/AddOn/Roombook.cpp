@@ -2872,10 +2872,8 @@ void SetMaterialFinish_ByComposite (OtdMaterial& material, GS::Array<ParamValueC
     if (base_composite.IsEmpty ()) return;
     ParamValueComposite& last = base_composite.GetLast ();
     if (last.structype != -1) return;
-    ParamValueComposite p;
     material.smaterial = last.pos;
     material.material = (short) last.length;
-    #endif
 }
 
 void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
