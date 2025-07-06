@@ -6256,17 +6256,22 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyD
         }
     }
     if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("some_stuff_fin_onoff")) {
+        if (description.Contains ("some_stuff_layer_onoff")) {
             pvalue.fromAttribDefinition = true;
         }
     }
     if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("some_stuff_fin_description")) {
+        if (description.Contains ("some_stuff_layer_has_finish")) {
             pvalue.fromAttribDefinition = true;
         }
     }
     if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("some_stuff_fin_favorite_name")) {
+        if (description.Contains ("some_stuff_layer_description")) {
+            pvalue.fromAttribDefinition = true;
+        }
+    }
+    if (!pvalue.fromAttribDefinition) {
+        if (description.Contains ("some_stuff_layer_favorite_name")) {
             pvalue.fromAttribDefinition = true;
         }
     }

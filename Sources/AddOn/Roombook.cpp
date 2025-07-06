@@ -228,7 +228,8 @@ void RoomBook ()
         for (OtdSlab& otdslab : otd.otdslab) {
             bool base_flipped = false;
             GS::UniString fav_name;
-            Param_SetToBase (otdslab.base_guid, base_flipped, otdslab.base_composite, paramToRead, param_composite, fav_name);
+            if (!Param_SetToBase (otdslab.base_guid, base_flipped, otdslab.base_composite, paramToRead, param_composite, fav_name)) otdslab.isValid = false;
+            if (!otdslab.isValid) continue;
             otdslab.favorite.name = fav_name;
             SetMaterialFinish (otdslab.material, otdslab.base_composite);
             Favorite_FindName (propertyParams, otdslab.favorite, otdslab.material, otdslab.type, otdslab.draw_type, favdict, paramDict_favorite, param_composite);
@@ -252,7 +253,8 @@ void RoomBook ()
         for (OtdWall& otdw : otd.otdwall) {
             // Заполняем данные для отделочных стен (состав)
             GS::UniString fav_name;
-            Param_SetToBase (otdw.base_guid, otdw.base_flipped, otdw.base_composite, paramToRead, param_composite, fav_name);
+            if (!Param_SetToBase (otdw.base_guid, otdw.base_flipped, otdw.base_composite, paramToRead, param_composite, fav_name)) otdw.isValid = false;
+            if (!otdw.isValid) continue;
             otdw.favorite.name = fav_name;
             if (otdw.openings.IsEmpty ()) continue;
             Point2D wbegC = { otdw.begC.x, otdw.begC.y };
@@ -272,11 +274,14 @@ void RoomBook ()
             }
         } // Обработка стен
         for (OtdWall& otdw : otd.otdwall) {
+            if (!otdw.isValid) continue;
             OtdWall_Delim_All (opw, otdw, otd.zBottom, otd.height_down, otd.height_main, otd.height_up, otd.height, otd.om_main, otd.om_up, otd.om_down, otd.om_reveals, otd.om_column, otd.om_floor, otd.om_ceil, otd.om_zone);
         } // Разбивка стен
         for (OtdWall& otdw : opw) {
+            if (!otdw.isValid) continue;
             Favorite_FindName (propertyParams, otdw.favorite, otdw.material, otdw.type, otdw.draw_type, favdict, paramDict_favorite, param_composite);
             if (otdw.favorite.is_composite_read && !otdw.favorite.composite.IsEmpty ()) {
+                SetMaterialFinish_ByComposite (otdw.material, otdw.favorite.composite);
                 otdw.base_composite.Append (otdw.favorite.composite);
             }
         } // Назначение избранного
@@ -581,6 +586,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
     OtdMaterialAreaDictByType dct = {}; // Основной словарь
     // Разбивка по отделочным слоям, вычисление площадей и добавление их в словарь по типам отделки
     for (const OtdWall& otdw : otd.otdwall) {
+        if (!otdw.isValid) continue;
         const TypeOtd& t = otdw.type;
         if (paramnamebytype.ContainsKey (t)) {
             double area = OtdWall_GetArea (otdw);
@@ -593,6 +599,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
     }
 
     for (const OtdSlab& otdslab : otd.otdslab) {
+        if (!otdslab.isValid) continue;
         const TypeOtd& t = otdslab.type;
         if (paramnamebytype.ContainsKey (t)) {
             double area = otdslab.poly.CalcArea ();
@@ -1528,13 +1535,18 @@ ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams)
 void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite)
 {
     // Поиск свойств со включением слоя отделки и имени
-    GS::UniString propdesc_onoff = "some_stuff_fin_onoff";
-    GS::UniString propdesc_desc = "some_stuff_fin_description";
-    GS::UniString propdesc_fav = "some_stuff_fin_favorite_name";
-
+    GS::UniString propdesc_onoff = "some_stuff_layer_onoff";
+    GS::UniString propdesc_desc = "some_stuff_layer_description";
+    GS::UniString propdesc_fav = "some_stuff_layer_favorite_name";
+    GS::UniString propdesc_hasfin = "some_stuff_layer_has_finish";
+    GS::UniString propdesc_hasfin_elem = "some_stuff_element_has_finish";
+    GS::UniString propdesc_onoff_elem = "some_stuff_element_onoff";
     GS::UniString rawName_onoff = "";
     GS::UniString rawName_desc = "";
     GS::UniString rawName_fav = "";
+    GS::UniString rawName_hasfin = "";
+    ParamValue param_hasfin_elem = {}; ParamValue param_onoff_elem = {};
+    GS::UniString msg = "";
     for (auto& cItt : propertyParams) {
         #if defined(AC_28)
         ParamValue param = cItt.value;
@@ -1542,18 +1554,58 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
         ParamValue param = *cItt.value;
         #endif
         if (param.definition.description.Contains (propdesc_onoff)) {
-            rawName_onoff = param.rawName;
+            if (rawName_onoff.IsEmpty ()) {
+                rawName_onoff = param.rawName;
+            } else {
+                msg += param.definition.name + " ";
+            }
             continue;
         }
         if (param.definition.description.Contains (propdesc_desc)) {
-            rawName_desc = param.rawName;
+            if (rawName_desc.IsEmpty ()) {
+                rawName_desc = param.rawName;
+            } else {
+                msg += param.definition.name + " ";
+            }
             continue;
         }
         if (param.definition.description.Contains (propdesc_fav)) {
-            rawName_fav = param.rawName;
+            if (rawName_fav.IsEmpty ()) {
+                rawName_fav = param.rawName;
+            } else {
+                msg += param.definition.name + " ";
+            }
             continue;
         }
-        if (!rawName_onoff.IsEmpty () && !rawName_desc.IsEmpty () && !rawName_fav.IsEmpty ()) break;
+        if (param.definition.description.Contains (propdesc_hasfin)) {
+            if (rawName_hasfin.IsEmpty ()) {
+                rawName_hasfin = param.rawName;
+            } else {
+                msg += param.definition.name + " ";
+            }
+            continue;
+        }
+        if (param.definition.description.Contains (propdesc_hasfin_elem)) {
+            if (param_hasfin_elem.rawName.IsEmpty ()) {
+                param_hasfin_elem = param;
+            } else {
+                msg += param.definition.name + " ";
+            }
+            continue;
+        }
+
+        if (param.definition.description.Contains (propdesc_onoff_elem)) {
+            if (param_onoff_elem.rawName.IsEmpty ()) {
+                param_onoff_elem = param;
+            } else {
+                msg += param.definition.name + " ";
+            }
+            continue;
+        }
+    }
+    if (!msg.IsEmpty ()) {
+        msg_rep ("RoomBook", "Duplicate properties for materials/elements were found: " + msg, NoError, APINULLGuid);
+        msg.Clear ();
     }
     // Подготавливаем свойство для чтения из слоёв многослойки
     GS::UniString rawName = "{@material:layers,20}";
@@ -1563,12 +1615,17 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
         param_composite.val.uniStringValue = "l[" + rawName_onoff + ":" + rawName_desc;
     } else {
         param_composite.val.uniStringValue = "l[1:%BuildingMaterialProperties/Building Material Name%";
-        msg_rep ("RoomBook", "Required properties 'some_stuff_fin_onoff' and 'some_stuff_fin_description' not found in Building Materials. Processing all Finish layers with Building Material Name as identifier.", NoError, APINULLGuid);
+        msg_rep ("RoomBook", "Required properties 'some_stuff_layer_onoff' and 'some_stuff_layer_description' not found in Building Materials. Processing all Finish layers with Building Material Name as identifier.", NoError, APINULLGuid);
     }
     param_composite.val.uniStringValue.Append ("]f[");
     if (!rawName_fav.IsEmpty ()) {
         param_composite.val.uniStringValue.Append (rawName_fav);
-        msg_rep ("RoomBook", "Building Materials contain a property with the description 'some_stuff_fin_favorite_name'", NoError, APINULLGuid);
+        msg_rep ("RoomBook", "Building Materials contain a property with the description 'some_stuff_layer_favorite_name'", NoError, APINULLGuid);
+    }
+    param_composite.val.uniStringValue.Append ("]h[");
+    if (!rawName_hasfin.IsEmpty ()) {
+        param_composite.val.uniStringValue.Append (rawName_hasfin);
+        msg_rep ("RoomBook", "Building Materials contain a property with the description 'some_stuff_layer_has_finish'", NoError, APINULLGuid);
     }
     param_composite.val.uniStringValue.Append ("] %nosyncname%");
     if (ParamHelpers::ParseParamNameMaterial (param_composite.val.uniStringValue, paramDict)) {
@@ -1576,6 +1633,22 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
             ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
         }
         ParamHelpers::CompareParamDictValue (propertyParams, paramDict);
+    }
+    if (!param_hasfin_elem.rawName.IsEmpty ()) {
+        ParamValue param = {};
+        param.rawName = "{@flag:rawname_hasfin_elem}";
+        param.val.uniStringValue = param_hasfin_elem.rawName;
+        ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param, paramDict);
+        ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param_hasfin_elem, paramDict);
+        msg_rep ("RoomBook", "Find property with the description 'some_stuff_element_has_finish'", NoError, APINULLGuid);
+    }
+    if (!param_onoff_elem.rawName.IsEmpty ()) {
+        ParamValue param = {};
+        param.rawName = "{@flag:rawname_element_onoff}";
+        param.val.uniStringValue = param_onoff_elem.rawName;
+        ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param, paramDict);
+        ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param_onoff_elem, paramDict);
+        msg_rep ("RoomBook", "Find property with the description 'some_stuff_element_onoff'", NoError, APINULLGuid);
     }
     ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param_composite, paramDict);
 }
@@ -2137,19 +2210,43 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name)
+bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name)
 {
-    ParamValue base_composite = {};
-    if (!ParamHelpers::GetParamValueForElements (base_guid, param_composite.rawName, paramToRead, base_composite)) {
-        return;
+    if (!paramToRead.ContainsKey (base_guid)) {
+        #if defined(TESTING)
+        DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey(base_guid)");
+        #endif
+        return true;
     }
-    Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name);
+    // Прочитанные параметры базового компонента
+    ParamDictValue& baseparam = paramToRead.Get (base_guid);
+    // Состав базового компонента
+    if (!baseparam.ContainsKey (param_composite.rawName)) {
+        return true;
+    }
+    if (baseparam.ContainsKey ("{@flag:rawname_element_onoff}")) {
+        if (baseparam.ContainsKey (baseparam.Get ("{@flag:rawname_element_onoff}").val.uniStringValue)) {
+            ParamValue& is_fin = baseparam.Get (baseparam.Get ("{@flag:rawname_element_onoff}").val.uniStringValue);
+            if (is_fin.isValid && !is_fin.val.boolValue) return false;
+        }
+    }
+    ParamValue& base_composite = baseparam.Get (param_composite.rawName);
+    // Нужно ли добавлять финишную отделку?
+    bool has_fin = true;
+    if (baseparam.ContainsKey ("{@flag:rawname_hasfin_elem}")) {
+        if (baseparam.ContainsKey (baseparam.Get ("{@flag:rawname_hasfin_elem}").val.uniStringValue)) {
+            ParamValue& is_fin = baseparam.Get (baseparam.Get ("{@flag:rawname_hasfin_elem}").val.uniStringValue);
+            if (is_fin.isValid && !is_fin.val.boolValue) has_fin = false;
+        }
+    }
+    Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name, has_fin);
+    return true;
 }
 
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name)
+void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin)
 {
     Int32 ncomp = base_composite.composite.GetSize ();
     if (ncomp == 0) return;
@@ -2173,6 +2270,10 @@ void Param_SetComposite (const ParamValue& base_composite, const bool& base_flip
     }
     for (UInt32 j = 0; j < cpmpoosite.GetSize (); j++) {
         GS::UniString v = cpmpoosite[j].val;
+        bool fin_add = true;
+        if (v.Contains ("h[0]")) fin_add = false;
+        v.ReplaceAll ("h[1]", "");
+        v.ReplaceAll ("h[0]", "");
         if (v.Contains ("f[]")) {
             v = v.GetPrefix (v.GetLength () - 5);
             v = v.GetSuffix (v.GetLength () - 4);
@@ -2193,10 +2294,54 @@ void Param_SetComposite (const ParamValue& base_composite, const bool& base_flip
         }
         if (cpmpoosite[j].val.Contains ("l[1:")) {
             cpmpoosite[j].val = v;
+            if (!fin_add) cpmpoosite[j].structype = -1;
             otdcpmpoosite.Push (cpmpoosite[j]);
         }
     }
     if (!fav_name.IsEmpty ()) fav_name.SetToLowerCase ();
+    // Получаем индекс и имя прокрытия для последнего слоя
+    ParamValueComposite last = {};
+    if (otdcpmpoosite.IsEmpty () && !has_fin) {
+        last = cpmpoosite.GetLast ();
+        last.structype = -1;
+    } else {
+        if (otdcpmpoosite.IsEmpty ()) return;
+        last = otdcpmpoosite.GetLast ();
+    }
+    if (last.structype == -1) {
+        API_Attribute attrib = {};
+        attrib.header.typeID = API_BuildingMaterialID;
+        attrib.header.index = last.inx;
+        GSErrCode err = ACAPI_Attribute_Get (&attrib);
+        if (err == NoError) {
+            API_AttributeIndex cutMaterial = attrib.buildingMaterial.cutMaterial;
+            GS::UniString attribname = "";
+            BNZeroMemory (&attrib, sizeof (API_Attribute));
+            attrib.header.typeID = API_MaterialID;
+            attrib.header.index = cutMaterial;
+            attrib.header.uniStringNamePtr = &attribname;
+            err = ACAPI_Attribute_Get (&attrib);
+            if (err == NoError) {
+                #if defined(AC_27) || defined(AC_28)
+                last.length = cutMaterial.ToInt32_Deprecated ();
+                #else
+                last.length = cutMaterial;
+                #endif
+                last.pos = attribname;
+                last.val.Clear ();
+                if (otdcpmpoosite.IsEmpty ()) {
+                    otdcpmpoosite.Push (last);
+                } else {
+                    otdcpmpoosite.GetLast ().length = last.length;
+                    otdcpmpoosite.GetLast ().pos = last.pos;
+                }
+            } else {
+                msg_rep ("RoomBook", "ACAPI_Attribute_Get material " + last.val, err, APINULLGuid);
+            }
+        } else {
+            msg_rep ("RoomBook", "ACAPI_Attribute_Get building material " + last.val, err, APINULLGuid);
+        }
+    }
     cpmpoosite.Clear ();
 }
 
@@ -2716,12 +2861,26 @@ void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up,
             break;
     }
     if (material.smaterial.IsEmpty ()) material = om_zone;
-    otdw.material = material;
     SetMaterialFinish (material, otdw.base_composite);
+    otdw.material = material;
 }
 
-void SetMaterialFinish (const OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
+
+void SetMaterialFinish_ByComposite (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
 {
+    // Проверим последний слой - а нужна ли вообще отделка?
+    if (base_composite.IsEmpty ()) return;
+    ParamValueComposite& last = base_composite.GetLast ();
+    if (last.structype != -1) return;
+    ParamValueComposite p;
+    material.smaterial = last.pos;
+    material.material = (short) last.length;
+    #endif
+}
+
+void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
+{
+    SetMaterialFinish_ByComposite (material, base_composite);
     ParamValueComposite p;
     #if defined(AC_27) || defined(AC_28)
     p.inx = ACAPI_CreateAttributeIndex (material.material);
@@ -2729,6 +2888,9 @@ void SetMaterialFinish (const OtdMaterial& material, GS::Array<ParamValueComposi
     p.inx = material.material;
     #endif
     GS::UniString part = material.smaterial;
+    if (part.Contains ("fin_ignore")) {
+        return;
+    }
     part.Trim ();
     part.ReplaceAll ("  ", " ");
     if (part.Contains ('@')) {
@@ -2739,8 +2901,7 @@ void SetMaterialFinish (const OtdMaterial& material, GS::Array<ParamValueComposi
     } else {
         p.val = material.smaterial;
     }
-    p.num = -1;
-    p.structype = APICWallComp_Finish;
+    p.structype = -1;
     base_composite.Push (p);
 }
 
@@ -2836,6 +2997,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
             GS::Array<API_Guid> group;
             if (otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements) {
                 for (OtdWall& otdwall : otd.otdwall) {
+                    if (!otdwall.isValid) continue;
                     if ((otdwall.type == Wall_Main || otdwall.type == Wall_Up || otdwall.type == Wall_Down) && !otd.create_wall_elements) continue;
                     if ((otdwall.type == Column) && !otd.create_column_elements) continue;
                     if ((otdwall.type == Reveal_Main || otdwall.type == Reveal_Down || otdwall.type == Reveal_Up) && !otd.create_reveal_elements) continue;
@@ -2848,9 +3010,13 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                         // Классификация созданных стен
                         Class_SetClass (otdwall, finclass);
                         for (OtdOpening& op : otdwall.openings) {
+                            if (op.otd_guid == APINULLGuid) continue;
+                            n_elem += 1;
                             Class_SetClass (op, finclass);
                         }
                         group.Push (otdwall.otd_guid);
+                    } else {
+                        msg_rep ("RoomBook", "otdwall.otd_guid == APINULLGuid", NoError, APINULLGuid);
                     }
                 }
             } else {
@@ -2858,6 +3024,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
             }
             if (otd.create_ceil_elements || otd.create_floor_elements) {
                 for (OtdSlab& otdslab : otd.otdslab) {
+                    if (!otdslab.isValid) continue;
                     if (otdslab.type == Ceil && !otd.create_ceil_elements) continue;
                     if (otdslab.type == Floor && !otd.create_floor_elements) continue;
                     Floor_Draw (storyLevels, otdslab, subelementByparent);
@@ -2865,6 +3032,8 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                         Param_AddUnicElementByType (otd.zone_guid, otdslab.otd_guid, API_ZoneID, subelementByparent); // Привязка перекрытий к зоне
                         Class_SetClass (otdslab, finclass);
                         group.Push (otdslab.otd_guid);
+                    } else {
+                        msg_rep ("RoomBook", "otdwall.otd_guid == APINULLGuid", NoError, APINULLGuid);
                     }
                 }
             } else {
@@ -2886,7 +3055,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
         }
         return NoError;
     });
-    msg_rep ("RoomBook", GS::UniString::Printf ("Create %d finishing elements", n_elem), err, APINULLGuid);
+    msg_rep ("RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
 }
 
 // -----------------------------------------------------------------------------
@@ -3345,7 +3514,6 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
             msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
             return;
         }
-
     }
     slabelement.header.floorInd = otdslab.floorInd;
     slabelement.slab.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
@@ -3845,6 +4013,7 @@ MatarialToFavoriteDict Favorite_GetDict ()
     types.Push (API_BeamID);
     types.Push (API_ColumnID);
     types.Push (API_ObjectID);
+    types.Push (API_WindowID);
     GS::UniString name_ = ""; short count = 0; GS::Array<GS::UniString> names;
     for (API_ElemTypeID type : types) {
         if (Favorite_GetNum (type, &count, nullptr, &names) != NoError) continue;
@@ -3860,16 +4029,25 @@ MatarialToFavoriteDict Favorite_GetDict ()
         msg_rep ("RoomBook favorite", "Recommended items not found in favorites", NoError, APINULLGuid);
     } else {
         GS::UniString msg = "";
-
         if (!favdict.ContainsKey ("smstf wall")) msg += "'smstf wall' ";
         if (!favdict.ContainsKey ("smstf floor")) msg += "'smstf floor' ";
-        if (!favdict.ContainsKey ("smstf reveal side")) msg += "'smstf reveal side' ";
-        if (!favdict.ContainsKey ("smstf reveal up")) msg += "'smstf reveal up' ";
         if (!favdict.ContainsKey ("smstf ceil")) msg += "'smstf ceil' ";
         if (!favdict.ContainsKey ("smstf window")) msg += "'smstf window' ";
         if (!msg.IsEmpty ()) {
             msg_rep ("RoomBook favorite", "The recommended elements were not found in Favorites. Default tool settings will be used to create these elements.\nMissing element names:" + msg, NoError, APINULLGuid);
         }
+
+        msg = "";
+        if (!favdict.ContainsKey ("smstf reveal side")) msg += "'smstf reveal side' ";
+        if (!favdict.ContainsKey ("smstf reveal up")) msg += "'smstf reveal up' ";
+        if (!msg.IsEmpty ()) {
+            if (favdict.ContainsKey ("smstf wall")) {
+                msg_rep ("RoomBook favorite", "The recommended elements for reveal were not found in Favorites. 'smstf wall' will be used to create these elements.\nMissing element names:" + msg, NoError, APINULLGuid);
+            } else {
+                msg_rep ("RoomBook favorite", "The recommended elements for reveal were not found in Favorites. Default tool settings will be used to create these elements.\nMissing element names:" + msg, NoError, APINULLGuid);
+            }
+        }
+
     }
     return favdict;
 }
@@ -3889,7 +4067,7 @@ void Favorite_ReadComposite (ParamDictValue& propertyParams, const ParamValue& p
     bool base_flipped = element.wall.flipped;
     ParamValue& base_composite = paramToRead_favorite.Get (param_composite.rawName);
     GS::Array<ParamValueComposite>& otdcpmpoosite = favdict.Get (fav_name).composite;
-    Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name_);
+    Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name_, true);
     return;
 }
 
