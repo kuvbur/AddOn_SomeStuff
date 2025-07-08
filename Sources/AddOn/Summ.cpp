@@ -22,15 +22,17 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 // -----------------------------------------------------------------------------------------------------------------------
 GSErrCode SumSelected (SyncSettings& syncSettings)
 {
-    long time_start = clock ();
+    clock_t start, finish;
+    double  duration;
+    start = clock ();
     GS::UniString funcname = "Summation";
     GS::Int32 nPhase = 1;
-#if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28)
     bool showPercent = true;
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-#else
+    #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
-#endif
+    #endif
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true);
     if (guidArray.IsEmpty ()) return NoError;
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions;
@@ -39,47 +41,61 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     }
     GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSumId, ACAPI_GetOwnResModule ());
     bool flag_write = true;
+    UInt32 qtywrite = 0;
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());; short i = 1;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         Int32 maxval = 2;
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
+        #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+        #endif
         ParamDictElement paramToWriteelem;
         if (!GetSumValuesOfElements (guidArray, paramToWriteelem, rule_definitions)) {
             flag_write = false;
             msg_rep ("SumSelected", "No data to write", NoError, APINULLGuid);
-#if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28)
             ACAPI_ProcessWindow_CloseProcessWindow ();
-#else
+            #else
             ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-#endif
+            #endif
             return NoError;
         }
         subtitle = GS::UniString::Printf ("Writing data to %d elements", paramToWriteelem.GetSize ()); i = 2;
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
+        #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
+        #endif
+        bool suspGrp = false;
+        #ifndef AC_22
+        #if defined(AC_27) || defined(AC_28)
+        ACAPI_View_IsSuspendGroupOn (&suspGrp);
+        if (!suspGrp) ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #else
+        ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
+        if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #endif
+        #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
-        long time_end = clock ();
-        GS::UniString time = GS::UniString::Printf (" %d s", (time_end - time_start) / 1000);
-        GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", paramToWriteelem.GetSize ()) + time;
-        msg_rep ("SumSelected", intString, NoError, APINULLGuid);
-#if defined(AC_27) || defined(AC_28)
+        qtywrite = paramToWriteelem.GetSize ();
+        #if defined(AC_27) || defined(AC_28)
         ACAPI_ProcessWindow_CloseProcessWindow ();
-#else
+        #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-#endif
+        #endif
         return NoError;
     });
     if (flag_write) {
         ClassificationFunc::SystemDict systemdict;
-        SyncArray (syncSettings, guidArray, systemdict);
+        ParamDictValue propertyParams;
+        SyncArray (syncSettings, guidArray, systemdict, propertyParams);
     }
+    finish = clock ();
+    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+    GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", qtywrite) + time;
+    msg_rep ("SumSelected", intString, NoError, APINULLGuid);
     return NoError;
 }
 
@@ -90,9 +106,9 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
 // -----------------------------------------------------------------------------------------------------------------------
 bool GetSumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions)
 {
-#if defined(AC_22)
+    #if defined(AC_22)
     return false;
-#else
+    #else
     GS::Array<API_PropertyDefinition> definitions_;
     GSErrCode err = ACAPI_Element_GetPropertyDefinitions (elemguid, API_PropertyDefinitionFilter_UserDefined, definitions_);
     if (err == NoError && !definitions_.IsEmpty ()) {
@@ -105,7 +121,7 @@ bool GetSumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, A
         }
     }
     return (!definitions.IsEmpty ());
-#endif
+    #endif
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -113,15 +129,15 @@ bool GetSumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, A
 // -----------------------------------------------------------------------------------------------------------------------
 void GetSumElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray)
 {
-#if defined(AC_22)
+    #if defined(AC_22)
     return;
-#else
+    #else
     for (auto& cIt : definitions) {
-#if defined(AC_28)
+        #if defined(AC_28)
         API_PropertyDefinition definition = cIt.value;
-#else
+        #else
         API_PropertyDefinition definition = *cIt.value;
-#endif
+        #endif
         for (UInt32 i = 0; i < definition.availability.GetSize (); i++) {
             GS::Array<API_Guid> elemGuids;
             API_Guid classificationItemGuid = definition.availability[i];
@@ -132,7 +148,7 @@ void GetSumElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Prope
             }
         }
     }
-#endif
+    #endif
 }
 
 bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
@@ -145,18 +161,18 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
     // Получаем список правил суммирования
     bool hasSum = false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-#if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
         if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-#else
+        #else
         if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-#endif
-#if defined(AC_27) || defined(AC_28)
+        #endif
+        #if defined(AC_27) || defined(AC_28)
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return false;
-#else
+        #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
-#endif
+        #endif
         ParamDictValue propertyParams;
         ParamDictValue paramToRead;
         ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, guidArray[i]);
@@ -174,11 +190,11 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
 
     // Суммируем, заполняе словарь для записи
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28)
+        #if defined(AC_28)
         const SumRule& rule = cIt->value;
-#else
+        #else
         const SumRule& rule = *cIt->value;
-#endif
+        #endif
         if (!rule.elemts.IsEmpty ()) Sum_OneRule (rule, paramToReadelem, paramToWriteelem);
     }
     return !paramToWriteelem.IsEmpty ();
@@ -191,11 +207,11 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
 {
     bool has_sum = false;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28)
+        #if defined(AC_28)
         ParamValue& param = cIt->value;
-#else
+        #else
         ParamValue& param = *cIt->value;
-#endif
+        #endif
         API_PropertyDefinition& definition = param.definition;
         // Является ли свойство описанием системы суммирования?
         if (param.definition.description.Contains ("Sum") && param.definition.description.Contains ("{") && param.definition.description.Contains ("}")) {

@@ -2,42 +2,14 @@
 #pragma once
 #ifndef HELPERS_HPP
 #define HELPERS_HPP
-#include "CommonFunction.hpp"
-#ifdef AC_22
-#include	"APICommon22.h"
-#endif // AC_25
-#ifdef AC_23
-#include	"APICommon23.h"
-#endif // AC_25
-#ifdef AC_24
-#include	"APICommon24.h"
-#endif // AC_25
-#ifdef AC_25
-#include	"APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include	"APICommon26.h"
-#endif // AC_26
-#ifdef AC_27
-#include	"APICommon27.h"
-#endif // AC_27
-#ifdef AC_28
-#include	"APICommon28.h"
-#endif // AC_27
 #include "basicgeometry.h"
+#include "ClassificationFunction.hpp"
+#include "CommonFunction.hpp"
 #include "StringConversion.hpp"
 #include "SyncSettings.hpp"
-#include "ClassificationFunction.hpp"
 
 #define SYNC_RESET 1
 #define SYNC 2
-
-// Типы операций по переводу значений массива гдл параметра в совйство
-#define ARRAY_UNDEF 0
-#define ARRAY_UNIC 1	// Вывод уникальных значений
-#define ARRAY_SUM 2		// Вывод суммы (для текста - конкатенация)
-#define ARRAY_MAX 3
-#define ARRAY_MIN 4
 
 #define DUMMY_MODE_UNDEF 0
 #define DUMMY_MODE_ON 1
@@ -81,14 +53,32 @@ static const Int32 Nov_StringID = 30;
 static const Int32 Annul_StringID = 31;
 static const Int32 RVI_StringID = 33;
 
+static const Int32 SubElementHotFoundId = 34;
+static const Int32 SubElementHotFoundId1 = 35;
+static const Int32 SubElementHotFoundId2 = 36;
+static const Int32 SubElementOtherPlanId = 37;
+static const Int32 SubElementHiddenId = 38;
+static const Int32 SubElementTotalId = 39;
+static const Int32 SubElementNoSelectId = 40;
+static const Int32 SubElementHalfId = 41;
+static const Int32 SpecRuleNotFoundId = 42;
+static const Int32 SpecRuleReadFoundId = 43;
+static const Int32 SpecWriteNotFoundId = 44;
+static const Int32 SpecEmptyListdId = 45;
+static const Int32 SpecNotFoundParametersId = 46;
+static const Int32 RoombookId = 47;
+static const Int32 SubElementNotExsistId = 48;
+static const Int32 SpecParamPlaceNotFoundId = 65;
+static const Int32 SpecFlagOff = 66;
+
 typedef struct
 {
-    GS::Array<API_Guid> guid;
+    GS::Array<API_Guid> guid = {};
 } SortGUID;
 
 typedef struct
 {
-    GS::Array<UInt32> inx;
+    GS::Array<UInt32> inx = {};
 } SortInx;
 
 // Массив отрезков с указанием точки начала
@@ -99,90 +89,7 @@ typedef struct
     Point2D cut_start;
     Point2D start;
 } OrientedSegments;
-// Хранение данных параметра
-// type - API_VariantType (как у свойств)
-// name - имя для поиска
-// uniStringValue, intValue, boolValue, doubleValue - значения
-// canCalculate - можно ли использовать в математических вычислениях
-typedef struct
-{
-    // Собственно значения
-    API_VariantType type = API_PropertyUndefinedValueType; // Прочитанный тип данных
-    GS::UniString uniStringValue = "";
-    GS::Int32 intValue = 0;
-    bool boolValue = false;
-    double doubleValue = 0.0; //дробное значение, округлённое
-    double rawDoubleValue = 0.0; //прочитанное значение
-    API_Guid guidval = APINULLGuid;
-    bool canCalculate = false;			// Может ли быть использован в формулах?
-    bool hasrawDouble = false;			// Было ли записано неокругленное значение при чтении?
-    bool hasFormula = false; // В поле uniStringValue содержится выражение, которое надо вычислить
-    FormatString formatstring; 	// Формат строки (задаётся с помощью .mm или .0)
-    int array_row_start = 0;				// Начальная строка массива
-    int array_row_end = 0;				// Последняя строка массива
-    int array_column_start = 0;			// Начальный столбец массива
-    int array_column_end = 0;				// Последний столбец массива
-    int array_format_out = ARRAY_UNDEF;	// В каком виде выводить в свойство
-} ParamValueData;
 
-// Структура для описания слоя в многослойной конструкции
-typedef struct
-{
-    API_AttributeIndex inx;		// Индекс материала
-    double fillThick = 0.0;		// Толщина слой
-    double rfromstart = 0.0;	//Удаление от начальной точки (для определения порядка следования)
-    bool isCore = false;		//Является ядром?
-    int num = 0;
-} ParamValueComposite;
-
-// Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
-// Это позволяет свободно конвертировать и записывать данные в любое место
-typedef struct
-{
-    API_VariantType type = API_PropertyUndefinedValueType; // Тип данных для записи
-    GS::UniString rawName = "";							   // Имя для сопоставления в словаре - с указанием откуда взято
-    GS::UniString name = "";							   // Очищенное имя для поиска
-    ParamValueData val = {};
-    bool isValid = false;					// Валидность (был считан без ошибок)
-    API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
-    API_Property property = {};				// Само свойство, для упрощения чтения/записи
-    GS::Array<ParamValueComposite> composite = {};
-    API_ModelElemStructureType composite_type = API_BasicStructure;
-    API_ElemTypeID eltype = API_ZombieElemID;
-    short composite_pen = 0;
-    bool fromClassification = false;	 // Данные о классификаторе
-    bool fromGDLparam = false;			 // Найден в гдл параметрах
-    bool fromGDLdescription = false;	 // Найден по описанию в гдл параметрах
-    bool fromProperty = false;			 // Найден в свойствах
-    bool fromMorph = false;				 // Найден свойствах морфа
-    bool fromInfo = false;				 // Найден в инфо о проекте
-    bool fromGlob = false;				 // Найден в глобальных переменных
-    bool fromIFCProperty = false;		 // Найден в IFC свойствах
-    bool fromID = false;				 // Найден в ID
-    bool fromCoord = false;				 // Координаты
-    bool fromPropertyDefinition = false; // Задан определением свойства, искать не нужно
-    bool fromMaterial = false;			 // Взять инфо из состава конструкции
-    bool fromAttribDefinition = false;	 // Взять инфо из свойств аттрибута
-    bool fromAttribElement = false;	     // Взять инфо из аттрибута элемента (слой и т.д.)
-    bool fromGDLArray = false;			 // Взять из массива
-    bool toQRCode = false;			     // Результат вывести QR
-    bool needPreRead = false;			 // Необходимо прочитать значения диапазонов из параметров элемента
-    GS::UniString rawName_row_start = "";// Имя параметра со значением начала диапазона чтения строк
-    GS::UniString rawName_row_end = "";	 // Имя параметра со значением конца диапазона чтения строк
-    GS::UniString rawName_col_start = "";// Имя параметра со значением начала диапазона чтения столбцов
-    GS::UniString rawName_col_end = "";	 // Имя параметра со значением конца диапазона чтения столбцов
-    API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
-} ParamValue;
-
-// Словарь с заранее вычисленными данными в пределах обного элемента
-typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
-
-// Словарь с параметрами для вычисления
-// Служит для формирования уникального списка свойств и параметров
-typedef GS::HashTable<GS::UniString, bool> ParamDict;
-
-// Словарь с параметрами для элементов
-typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 
 int IsDummyModeOn ();
 
@@ -200,6 +107,8 @@ bool CheckElementType (const API_ElemTypeID& elementType, const SyncSettings& sy
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
 bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
+
+bool IsElementEditable (const API_Elem_Head& tElemHead, const SyncSettings& syncSettings, const bool needCheckElementType);
 
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
@@ -389,7 +298,7 @@ void GetParamTypeList (GS::Array<GS::UniString>& paramTypesList);
 // Конвертация значений ParamValue в свойства, находящиеся в нём
 // Возвращает true если значения отличались
 // -----------------------------------------------------------------------------
-bool ConvertToProperty (ParamValue& pvalue);
+//bool ConvertToProperty (ParamValue& pvalue);
 
 // -----------------------------------------------------------------------------
 // Синхронизация ParamValue и API_Property
@@ -598,7 +507,7 @@ bool SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition>& definitions
 // --------------------------------------------------------------------
 // Получение словаря значений свойств с указанием GUID родительского объекта
 // --------------------------------------------------------------------
-bool SubGuid_GetParamValue (const API_Guid& elemGuid, ParamDictValue& propertyParams, const GS::Array<API_PropertyDefinition>& definitions);
+bool SubGuid_GetParamValue (const API_Guid& elemGuid, ParamDictValue& propertyParams, const GS::Array<API_PropertyDefinition>& definitions, ParamDictValue& subproperty);
 
 // --------------------------------------------------------------------
 // Заполнение свойств для элемента
@@ -636,6 +545,16 @@ bool GDLParamByName (const API_Element& element, const API_Elem_Head& elem_head,
 // -----------------------------------------------------------------------------
 bool ReadFormula (ParamDictValue& paramByType, ParamDictValue& params);
 
+bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& params);
+
+void ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictValue& paramlayers);
+
+bool ReadElementValues (const API_Element& element, ParamDictValue& params);
+
+GS::UniString GetUnitsPrefix (GS::UniString& unit);
+
+void SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp);
+
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
@@ -644,7 +563,9 @@ bool ReadMaterial (const API_Element& element, ParamDictValue& params, ParamDict
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
-bool ComponentsBasicStructure (const API_AttributeIndex& constrinx, const double& fillThick, const API_AttributeIndex& constrinx_ven, const double& fillThick_ven, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd);
+bool ComponentsBasicStructure (const API_AttributeIndex& constrinx, const double& fillThick, const API_AttributeIndex& constrinx_ven, const double& fillThick_ven, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, short& structype_ven);
+
+void ComponentsGetUnic (GS::Array<ParamValueComposite>& composite);
 
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
@@ -659,7 +580,7 @@ bool ComponentsProfileStructure (ProfileVectorImage& profileDescription, ParamDi
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
-bool Components (const API_Element& element, ParamDictValue& params, ParamDictValue& paramsAdd);
+bool Components (const API_Element& element, ParamDictValue& params, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial);
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -712,7 +633,7 @@ bool operator!=(const T& lhs, const T& rhs)
 //--------------------------------------------------------------------------------------------------------------------------
 // Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind);
+bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind, bool check);
 
 bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind);
 

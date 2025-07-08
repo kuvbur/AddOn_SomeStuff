@@ -24,6 +24,7 @@ typedef struct
     bool	flag_deletewall = false;
     bool	flag_reset = false;
     bool	flag_custom = false;
+    bool	classic_round_mode = false; // Использовать вместо округления вверх обычное округление
     GS::UniString expression = "";
     GS::UniString layer = "";
     ParamDictValue paramDict;
@@ -58,25 +59,25 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings);
+GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings, bool isUndo);
 
 // -----------------------------------------------------------------------------
 // Обрабатывает размер и решает - что с ним делать
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, DimRule& dimrule, ParamDictValue& propertyParams);
+bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, const DimRule& dimrule, ParamDictValue& propertyParams);
 
-void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings);
+void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo);
 
 // -----------------------------------------------------------------------------
 // Округление всего доступного согласно настроек
 // -----------------------------------------------------------------------------
-void DimRoundAll (const SyncSettings& syncSettings);
+void DimRoundAll (const SyncSettings& syncSettings, bool isUndo);
 
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings);
+bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings, bool isUndo);
 
 #endif

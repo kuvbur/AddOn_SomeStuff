@@ -2,7 +2,7 @@
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
 }
 
 'STR#' 32500 "Strings for the Menu" {
@@ -21,6 +21,7 @@
 /* [  12] */	"Показать связанные элементы^ES^E3^S^32617"
 /* [  13] */	"Заполнение изменений на макетах^T^D2^EL^32619"
 /* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  15] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
 }
 
 
@@ -40,6 +41,7 @@
 /* [  12] */	"Показать связанные элементы"
 /* [  13] */	"Заполнение изменений на макетах"
 /* [  14] */	"Привязать элементы к выделенному"
+/* [  15] */	"Ведомость отделки"
 }
 
 'STR#' 30500 "Strings for the Menu" {
@@ -58,9 +60,9 @@
 /* [  12] */	"Показать связанные элементы^ES^E3^S^32617"
 /* [  13] */	"Заполнение изменений на макетах^T^D2^EL^32619"
 /* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
-/* [  15] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
+/* [  15] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  17] */	"Выровнять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 'STR#' 30502 "Strings for the Menu" {
@@ -79,9 +81,9 @@
 /* [  12] */	"Показать связанные элементы"
 /* [  13] */	"Заполнение изменений на макетах"
 /* [  14] */	"Привязать элементы к выделенному"
-/* [  15] */	"Обновить геометрию фасонки по выбранному"
+/* [  15] */	"Ведомость отделки"
 /* [  16] */	"Построить профиль по линии"
-/* [  17] */	"Выронять выделенные чертежи"
+/* [  17] */	"Выровнять выделенные чертежи"
 }
 
 
@@ -115,18 +117,55 @@
 /* [  25] */	"ЮВ"
 /* [  26] */	"В"
 /* [  27] */	"СВ"
-
 /* [  28] */	"Изм"
 /* [  29] */	"Зам"
 /* [  30] */	"Нов"
 /* [  31] */	"Аннул"
 /* [  32] */	"Суммирование выделенных элементов"
 /* [  33] */	"рви"
+
+/* [  34] */	"Связанные элементы не найдены"
+/* [  35] */	"Свойства Sync_GUID не найдены"
+/* [  36] */	"Значения Sync_GUID пусты"
+/* [  37] */	"расположены на другом этаже"
+/* [  38] */	"скрыты слоями/фильтрами"
+/* [  39] */	"Найдено связанных элементов: "
+/* [  40] */	"Связанные элементы найдены, но в текущем виде недоступны"
+/* [  41] */	"Часть связанных элементов не видна"
+/* [  42] */	"Правила спецификации не найдены\nПроверьте классификацию и свойства элемента по умолчанию"
+/* [  43] */	"Свойства/параметры для чтения не найдены\nПроверьте классификацию и свойства элементов"
+/* [  44] */	"Свойства/параметры для записи не найдены"
+/* [  45] */	"Создание элементов не требуется"
+/* [  46] */	"Не удалось найти параметры/свойства, указанные в правиле\nПроверьте классификацию и свойства элементов"
+/* [  47] */	"Создание элементов отделки"
+/* [  48] */	"не существуют (возможно, удалены)"
+/* [  49] */	"SomeStuff addon @ADDON_VERSION@: "
+/* [  50] */	"Не найден обязательный класс для элементов отделки `some_stuff_fin_class`.\nНастройте классы согласно документации аддона."
+/* [  51] */	"Не все классы имеют описания. Классификация элементов может быть некорректной.\nРабота продолжится. Настройте классы согласно документации аддона."
+/* [  52] */	"Не найдено свойство Sync_GUID zone для элементов отделки.\nНастройте свойства согласно документации аддона."
+/* [  53] */ 	"кв.м."
+/* [  54] */ 	"м²"
+/* [  55] */ 	"куб.м."
+/* [  56] */ 	"м³"
+/* [  57] */ 	"п.м."
+/* [  58] */ 	"не специфицировать"
+/* [  59] */ 	"square meters"
+/* [  60] */ 	"m²"
+/* [  61] */ 	"cubic meters"
+/* [  62] */ 	"m³"
+/* [  63] */ 	"m"
+/* [  64] */ 	"do not specify"
+/* [  65] */ 	"Необходимые свойства отсутствуют в элементе по умолчанию или Избранном элементе.\nПроверьте Классификацию и настройки Свойств."
+/* [  66] */ 	"Правило спецификации найдено, но для элементов на плане свойство-правило отключено (не Истина).\nПроверьте значение этого свойства у элементов:"
+/* [  67] */ 	"Ошибок нет"
+/* [  68] */ 	"Создано элементов - "
+/* [  69] */ 	"Изменено элементов - "
+/* [  70] */ 	"Удалено элементов - "
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
-/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ https://github.com/kuvbur/AddOn_SomeStuff"
+/* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
 }
 
 'STR#' 33500 "Strings for the Menu" {
@@ -142,9 +181,10 @@
 /* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
 /* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
 /* [  11] */	"Create subelements^E3^32618"
-/* [  12] */	"Show subelements^ES^E3^S^32617"
+/* [  12] */	"Select linked elements^ES^E3^S^32617"
 /* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Set subelements^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  14] */	"Set link to an element^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
 }
 
 'STR#' 33502 "Strings for the Menu" {
@@ -160,9 +200,10 @@
 /* [  9] */		"Sum the selections"
 /* [  10] */	"Run the script for the parameters of the selections"
 /* [  11] */	"Create subelements"
-/* [  12] */	"Show subelements"
+/* [  12] */	"Select linked elements"
 /* [  13] */	"Process changes on layouts (RU_GOST)"
-/* [  14] */	"Set subelements"
+/* [  14] */	"Set link to an element"
+/* [  15] */	"Create finishing elements for the zones"
 }
 
 'STR#' 31500 "Strings for the Menu" {
@@ -180,10 +221,10 @@
 /* [  11] */	"Create subelements^E3^32618"
 /* [  12] */	"Show subelements^ES^E3^S^32617"
 /* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Set subelements^E3^ES^EE^ED^EW^EL^S^R^T^32620"
-/* [  15] */	"Обновить геометрию фасонки по выбранному^E3^ES^EE^ED^EW^EL^S^R^T^32614"
+/* [  14] */	"Set link to an element^E3^ES^EE^ED^EW^EL^S^R^T^32620"
+/* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  17] */	"Выронять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
+/* [  17] */	"Выровнять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
 
@@ -201,11 +242,11 @@
 /* [  10] */	"Run the script for the parameters of the selections"
 /* [  11] */	"Create subelements"
 /* [  12] */	"Show element parents"
-/* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Set subelements"
-/* [  15] */	"Обновить геометрию фасонки по выбранному"
+/* [  13] */	"Process changes on layouts (RU_GOST)"
+/* [  14] */	"Set link to an element"
+/* [  15] */	"Create finishing elements for the zones"
 /* [  16] */	"Построить профиль по линии"
-/* [  17] */	"Выронять выделенные чертежи"
+/* [  17] */	"Выровнять выделенные чертежи"
 }
 
 
@@ -246,6 +287,43 @@
 /* [  31] */	"Аннул"
 /* [  32] */	"Sum the selections"
 /* [  33] */	"рви"
+/* [  34] */	"Related items were not found"
+/* [  35] */	"There are no available properties with the Sync_GUID description"
+/* [  36] */	"Properties with the Sync_GUID description were found, but their values are empty"
+/* [  37] */	"are on another floor"
+/* [  38] */	"located on hidden layers/filters"
+/* [  39] */	"Related elements found: "
+/* [  40] */	"Related elements have been found, but are not available in their current form"
+/* [  41] */	"Some of the related elements are not visible"
+/* [  42] */	"Specification rules not found"
+/* [  43] */	"Read properties/parameters not found"
+/* [  44] */	"Properties/parameters for writing were not found"
+/* [  45] */	"Creation of elements is not required"
+/* [  46] */	"The parameters/properties specified in the rule could not be found"
+/* [  47] */	"Create finishing elements for the zones"
+/* [  48] */	"not exsist"
+/* [  49] */	"SomeStuff addon @ADDON_VERSION@: "
+/* [  50] */	"Required finishing element class `some_stuff_fin_class` not found.\nConfigure classes according to the add-on documentation."
+/* [  51] */	"Descriptions are missing for some classes. Element classification may be inaccurate.\nThe process will continue. Configure classes according to the add-on documentation."
+/* [  52] */	"`Sync_GUID zone` property is missing for finishing elements.\nConfigure properties as per the add-on documentation."
+/* [  53] */ 	"кв.м."
+/* [  54] */ 	"м²"
+/* [  55] */ 	"куб.м."
+/* [  56] */ 	"м³"
+/* [  57] */ 	"п.м."
+/* [  58] */ 	"не специфицировать"
+/* [  59] */ 	"square meters"
+/* [  60] */ 	"m²"
+/* [  61] */ 	"cubic meters"
+/* [  62] */ 	"m³"
+/* [  63] */ 	"m"
+/* [  64] */ 	"do not specify"
+/* [  65] */ 	"Required properties missing in Default Element or Favorite Element.\nVerify Classification and Property settings."
+/* [  66] */ 	"Schedule rule found, but the 'Include in Schedule' property is disabled (not True) for elements on the plan. Check this property value on the elements."
+/* [  67] */ 	"All the elements are relevant"
+/* [  68] */ 	"New elements - "
+/* [  69] */ 	"Modified elements - "
+/* [  70] */ 	"Outdated elements - "
 }
 
 'GICN' 32500 "Sync" {
@@ -301,4 +379,7 @@
 }
 'GICN' 32620 "SetSUBGUIDIcon" {
     "SetSUBGUIDIcon"
+}
+'GICN' 32621 "CreateFinishIcon" {
+    "CreateFinishIcon"
 }

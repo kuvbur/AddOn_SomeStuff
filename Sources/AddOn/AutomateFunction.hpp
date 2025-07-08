@@ -2,17 +2,8 @@
 #pragma once
 #if !defined (AUTOMATE_HPP)
 #define	AUTOMATE_HPP
-#ifdef AC_25
-#include "APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include "APICommon26.h"
-#endif // AC_26
-#ifdef AC_27
-#include "APICommon27.h"
-#endif // AC_26
+#include    "Helpers.hpp"
 #include	"Sector2DData.h"
-
 namespace AutoFunc
 {
 
@@ -23,10 +14,10 @@ typedef struct
     double angz_1 = 0; // Угол подрезки начала отрезка
     double angz_2 = 0; // Угол подрезки конца отрезка
     Sector s; // Отрезок для построения 3д сечения
+    API_Guid elemguid = APINULLGuid;
     API_DatabaseUnId databaseUnId; // UnId базы данных созданного или найденного 3д документа
     API_Tranmat tm; // Матрица преобразования координат, получена из API_3DProjectionInfo
 } SSectLine;
-
 // -----------------------------------------------------------------------------
 // Ищет в массиве отрезок, начало или конец которого находятся возле точки start
 // Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
@@ -35,7 +26,7 @@ bool GetNear (const GS::Array<Sector>& k, const Point2D& start, UInt32& inx, boo
 // -----------------------------------------------------------------------------
 // Устанавливает подрезку по отрезку, возвращает  API_3DCutPlanesInfo cutInfo
 // -----------------------------------------------------------------------------
-GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo);
+GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo, const double& depth);
 // -----------------------------------------------------------------------------
 // Устанавливает камеру перпендикулярно направлению angz, задаёт масштаб по осям x y
 // -----------------------------------------------------------------------------
@@ -53,7 +44,7 @@ GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniS
 // -----------------------------------------------------------------------------
 // Создание 3д документа для одного отрезка
 // -----------------------------------------------------------------------------
-GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id, const double& koeff);
+GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniString& id, const double& koeff, const double& depth);
 // -----------------------------------------------------------------------------
 // Размещение на созданном отрезке элементов оформления
 // По краям отрезка устанавливаются hotspot
@@ -76,8 +67,6 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
 // Выравнивание чертежей по расположенным в них hotspot
 // -----------------------------------------------------------------------------
 void AlignDrawingsByPoints ();
-void KM_ListUpdate ();
-GSErrCode KM_WriteGDL (API_Guid elemGuid, GS::Array<API_Coord>& coords);
 }
 
 #endif

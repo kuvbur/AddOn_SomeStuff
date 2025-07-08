@@ -20,23 +20,37 @@ namespace ClassificationFunc
 
 typedef struct
 {
-    API_ClassificationSystem system;
-    API_ClassificationItem item;
-    GS::UniString parentname = "";
-    GS::UniString itemname = "";
-} ClassificationValues;
+    API_ClassificationSystem system; // Система
+    API_ClassificationItem item; // Класс
+    GS::UniString parentname = ""; // Имя родиельского класса
+    GS::UniString itemname = ""; // Имя класса
+} ClassificationValues; // Структура для хранения класса
 
-// ������� � ��������
-typedef GS::HashTable<GS::UniString, ClassificationValues> ClassificationDict;
+typedef GS::HashTable<GS::UniString, ClassificationValues> ClassificationDict; // Словарь классов в системе
 
-// ������� � ���������
-typedef GS::HashTable<GS::UniString, ClassificationDict> SystemDict;
+typedef GS::HashTable<GS::UniString, ClassificationDict> SystemDict; // Словарь систем с вложенными классами
 
+// -----------------------------------------------------------------------------
+// Получение словаря со всеми классами во всех системах классифкации
+// -----------------------------------------------------------------------------
 GSErrCode GetAllClassification (SystemDict& systemdict);
+
 void GatherAllDescendantOfClassification (const API_ClassificationItem& item, ClassificationDict& classifications, const API_ClassificationSystem& system);
 void AddClassificationItem (const API_ClassificationItem& item, const  API_ClassificationItem& parent, ClassificationDict& classifications, const API_ClassificationSystem& system);
+
+// -----------------------------------------------------------------------------
+// Получение полного имени класса с чётом родительских классов
+// -----------------------------------------------------------------------------
 void GetFullName (const API_ClassificationItem& item, const ClassificationDict& classifications, GS::UniString& fullname);
+
+// -----------------------------------------------------------------------------
+// Поиск класса по ID в заданной классификации, возвращает Guid класса
+// -----------------------------------------------------------------------------
 API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS::UniString& classname);
+
+// -----------------------------------------------------------------------------
+// Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
+// -----------------------------------------------------------------------------
 void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid);
 }
 
