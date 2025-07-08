@@ -17,10 +17,9 @@
 #define	 Menu_ShowSub		12
 #define	 Menu_SetRevision	13
 #define	 Menu_SetSub	14
-#define	 Menu_AutoList		15
+#define	 Menu_RoomBook	15
 #define	 Menu_AutoProfile	16
 #define	 Menu_AutoLay	17
-
 
 static const Int32 MonAll_CommandID = 1;
 static const Int32 SyncAll_CommandID = 2;
@@ -36,10 +35,9 @@ static const Int32 Spec_CommandID = 11;
 static const Int32 ShowSub_CommandID = 12;
 static const Int32 SetRevision_CommandID = 13;
 static const Int32 SetSub_CommandID = 14;
-static const Int32 AutoList_CommandID = 15;
+static const Int32 RoomBook_CommandID = 15;
 static const Int32 Auto3D_CommandID = 16;
 static const Int32 AutoLay_CommandID = 17;
-
 #if defined(AC_28)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 

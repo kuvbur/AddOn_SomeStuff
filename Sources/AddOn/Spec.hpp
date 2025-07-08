@@ -20,39 +20,45 @@ namespace Spec
 {
 typedef struct
 {
-    GS::Array<GS::UniString> unic_paramrawname; // Массив имён уникальных параметров
-    GS::Array<GS::UniString> out_paramrawname; // Массив имён параметров для передачи новым элементам
-    GS::Array<GS::UniString> sum_paramrawname; // Массив имён параметров, которые требуется просуммировать
-    GS::UniString flag_paramrawname;           // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
+    GS::Array<GS::UniString> unic_paramrawname = {}; // Массив имён уникальных параметров
+    GS::Array<GS::UniString> out_paramrawname = {}; // Массив имён параметров для передачи новым элементам
+    GS::Array<GS::UniString> sum_paramrawname = {}; // Массив имён параметров, которые требуется просуммировать
+    GS::UniString flag_paramrawname = "";           // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
     bool is_Valid = true;
+    bool fromMaterial = false;
+    GS::Int32 n_layer = 0;
 } GroupSpec;
 
 
 typedef struct
 {
-    GS::Array<GroupSpec> groups;                   // Массив с группами подэлементов 
-    GS::Array<GS::UniString> out_paramrawname;     // Массив имён параметров новых элементов
-    GS::Array<GS::UniString> out_sum_paramrawname; // Массив имён параметров сумм новых элементов
+    GS::Array<GroupSpec> groups = {};                   // Массив с группами подэлементов 
+    GS::Array<GS::UniString> out_paramrawname = {};     // Массив имён параметров новых элементов
+    GS::Array<GS::UniString> out_sum_paramrawname = {}; // Массив имён параметров сумм новых элементов
     GS::UniString subguid_paramrawname = "";       // Имя свойства для записи GUID созданных элементов (в описании должно содержатся Sync_GUID+Имя правила)
     GS::UniString subguid_rulename = "";           // Имя свойства с правилом, на основании которого созданы элементы
     GS::UniString subguid_rulevalue = "";
-    GS::Array<API_Guid> elements;                  // Элементы, которые обрабатываются правилом
-    API_PropertyDefinition rule_definitions;       // Определение свойства с правилом для поиска элементов, в которых оно доступно
+    GS::Array<API_Guid> elements = {};                  // Элементы, которые обрабатываются правилом
+    GS::Array<API_Guid> exsist_elements = {}; // Прежде созданные элементы для этого правила
+    API_PropertyDefinition rule_definitions = {};       // Определение свойства с правилом для поиска элементов, в которых оно доступно
     GS::UniString favorite_name = "";              //Имя элемента в избранном
     bool is_Valid = true;
+    bool delete_old = false;
+    bool stop_on_error = true;
 } SpecRule;
 
 typedef struct
 {
-    GS::Array<ParamValue> out_param;
-    GS::Array<ParamValue> out_sum_param;
+    GS::Array<ParamValue> out_param = {};
+    GS::Array<ParamValue> out_sum_param = {};
     GS::Array<GS::UniString> out_paramrawname;
     GS::Array<GS::UniString> out_sum_paramrawname;
     GS::UniString subguid_paramrawname = "";
     GS::UniString subguid_rulename = "";
     GS::UniString subguid_rulevalue = "";
     GS::UniString favorite_name = "";              //Имя элемента в избранном
-    GS::Array<API_Guid> elements;                  // Элементы, которые обрабатываются правилом
+    GS::Array<API_Guid> elements = {};                  // Элементы, которые обрабатываются правилом
+    API_Guid exs_guid = APINULLGuid; // GUID существующего элемента для перезаписи
 } Element;
 
 typedef GS::HashTable<GS::UniString, Element> ElementDict; // Словарь элементов для создания, ключ - сцепка значений уникальных параметров
@@ -62,11 +68,15 @@ typedef GS::HashTable<GS::UniString, SpecRule> SpecRuleDict; // Словарь �
 // --------------------------------------------------------------------
 // Получение правил из свойств элемента по умолчанию
 // --------------------------------------------------------------------
-bool GetRuleFromDefaultElem (SpecRuleDict& rules);
+bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabaseInfo, bool& has_elementspec);
 
 GSErrCode SpecAll (const SyncSettings& syncSettings);
 
-GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules);
+void SpecFilter (API_Guid& elemguid, API_DatabaseInfo& homedatabaseInfo);
+
+void SpecFilter (GS::Array<API_Guid>& guidArray, API_DatabaseInfo& homedatabaseInfo);
+
+GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules, const UnicGuid& selected_elements);
 
 // --------------------------------------------------------------------
 // Проверяет значение свойства с правилом и формрует правила
@@ -88,12 +98,16 @@ void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid
 // --------------------------------------------------------------------
 SpecRule GetRuleFromDescription (GS::UniString& description);
 
+GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::HashTable<GS::UniString, GS::UniString>& paramdict);
+
+bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, GS::Int32 n_layer);
+
+Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete, UnicGuid& error_element);
+
 // --------------------------------------------------------------------
 // Выбирает из параметров групп имена свойств для дальнейшего чтения
 // --------------------------------------------------------------------
-void GetParamToReadFromRule (const SpecRuleDict& rules, ParamDictValue& propertyParams, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
-
-Int32 GetElementsForRule (const SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements);
+void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
 
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 
