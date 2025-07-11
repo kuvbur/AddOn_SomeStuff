@@ -4138,9 +4138,9 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
     #endif
     UInt32 nparams = propertyParams.GetSize ();
     bool needAddNew = (nparams == 0);
-    for (UInt32 j = 0; j < definitions.GetSize (); j++) {
+    for (const auto& definition : definitions) {
         ParamValue pvalue = {};
-        ParamHelpers::ConvertToParamValue (pvalue, definitions[j]);
+        ParamHelpers::ConvertToParamValue (pvalue, definition);
         bool changeExs = propertyParams.ContainsKey (pvalue.rawName);
         if (needAddNew && !changeExs) {
             propertyParams.Add (pvalue.rawName, pvalue);
@@ -4248,6 +4248,12 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
             if (err != NoError) msg_rep ("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
             if (err == NoError) {
                 for (UInt32 j = 0; j < definitions.GetSize (); j++) {
+                    if (definitions[j].availability.IsEmpty () && groups[i].groupType == API_PropertyCustomGroupType) {
+                        #if defined(TESTING)
+                        DBprnt ("AllPropertyDefinitionToParamDict skip " + definitions[j].name);
+                        #endif
+                        continue;
+                    }
                     // TODO Когда в проекте есть два и более свойств с описанием Sync_name возникает ошибка
                     if (definitions[j].description.Contains ("Sync_name")) {
                         for (UInt32 inx = 0; inx < 20; inx++) {
@@ -5134,9 +5140,9 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
     GS::UniString rawname_unit = "@property:buildingmaterialproperties/some_stuff_units";
     GS::UniString rawname_kzap = "@property:buildingmaterialproperties/some_stuff_kzap";
     GS::UniString units = ""; double kzap = 1;
-    if (propertyParams.ContainsKey ("{" + rawname_th + "}")) ParamHelpers::AddValueToParamDictValue (params, rawname_th); rawname_th = "{" + rawname_th;
-    if (propertyParams.ContainsKey ("{" + rawname_unit + "}")) ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = "{" + rawname_unit;
-    if (propertyParams.ContainsKey ("{" + rawname_kzap + "}")) ParamHelpers::AddValueToParamDictValue (params, rawname_kzap); rawname_kzap = "{" + rawname_kzap;
+    ParamHelpers::AddValueToParamDictValue (params, rawname_th); rawname_th = "{" + rawname_th;
+    ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = "{" + rawname_unit;
+    ParamHelpers::AddValueToParamDictValue (params, rawname_kzap); rawname_kzap = "{" + rawname_kzap;
     bool flag_find = false;
     for (UInt32 i = 0; i < composites.GetSize (); i++) {
         API_AttributeIndex constrinx = composites[i].buildMatIndices;
@@ -5222,8 +5228,18 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
             double fillThick_total = qty_param.fillThick;
             // Определяем толщину
             double fillThick = composites_quantity.Get (p.inx).fillThick;
-            if (is_equal (fillThick, 0)) fillThick = p.fillThick;
+            if (is_equal (fillThick, 0)) {
+                fillThick = p.fillThick;
+            } else {
 
+                if (!is_equal (fillThick, p.fillThick)) {
+                    GS::UniString msg = GS::UniString::Printf ("%f", fillThick);
+                    msg += " <-> ";
+                    msg += GS::UniString::Printf ("%f", p.fillThick);
+                    msg += GS::UniString::Printf (" attrib inx: %d", p.inx);
+                    msg_rep ("Warning : Layer thickness", "Different thickness in property and model : " + msg, APIERR_GENERAL, elemGuid);
+                }
+            }
             double proc = 0;
             // Определяем долю площади проекции для текущего слоя
             if (is_equal (p.fillThick, fillThick_total) && is_equal (proc, 0) && !is_equal (p.fillThick, 0)) {
@@ -5246,7 +5262,6 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
             if (!is_equal (p.area_fill, 0)) p.length = p.volume / p.area_fill;
             ParamHelpers::SetUnitsAndQty2ParamValueComposite (p);
         }
-
     }
     return;
 }
@@ -5423,9 +5438,9 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (!paramsAdd.IsEmpty ()) {
         if (needReadQuantities) {
-            if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_th")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_th");
-            if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_units}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
-            if (propertyParams.ContainsKey ("{@property:buildingmaterialproperties/some_stuff_kzap}")) ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_kzap");
+            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_th");
+            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
+            ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_kzap");
         }
         ParamHelpers::CompareParamDictValue (propertyParams, paramsAdd);
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -6032,13 +6047,18 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
     GS::UniString description = property.definition.description.ToLowerCase ();
-    if (description.Contains ("sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
+    if (description.Contains ("sync_correct_flag")) {
+        pvalue.rawName = "{@property:sync_correct_flag}";
+        return;
+    }
     if (description.Contains ("some_stuff_th")) {
         // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
         GS::UniString inx = "";
         if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
         pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th" + inx + "}";
         pvalue.name = "some_stuff_th";
+        pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+        return;
     }
     if (description.Contains ("some_stuff_units")) {
         // Единицы измерения
@@ -6046,6 +6066,7 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
         if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
         pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units" + inx + "}";
         pvalue.name = "some_stuff_units";
+        return;
     }
     if (description.Contains ("some_stuff_kzap")) {
         // Единицы измерения
@@ -6053,6 +6074,7 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
         if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
         pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap" + inx + "}";
         pvalue.name = "some_stuff_kzap";
+        return;
     }
 }
 
@@ -6081,30 +6103,15 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     }
     #endif
     pvalue.fromProperty = true;
-    pvalue.fromPropertyDefinition = !pvalue.fromAttribDefinition;
+
     pvalue.definition = property.definition;
     pvalue.property = property;
-    if (pvalue.rawName.Contains ("buildingmaterial")) {
-        pvalue.fromAttribDefinition = true;
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (pvalue.rawName.Contains ("component")) pvalue.fromAttribDefinition = true;
-    }
-    // Костыль для обработки классификации. Переписать
-    if (property.definition.description.Contains ("to{Class:")) {
-        GS::Array<GS::UniString> params;
-        UInt32 nparam = StringSplt (property.definition.description, "to{Class", params);
-        if (nparam > 1) {
-            GS::UniString systemname = params.Get (1).GetSubstring (':', '}', 0);
-            pvalue.name = systemname.ToLowerCase ();
-        }
-        pvalue.fromClassification = true;
-    }
+    ParamHelpers::ConvertToParamValue_CheckAttrib (pvalue, property.definition);
+    if (!pvalue.fromAttribDefinition) pvalue.fromPropertyDefinition = true;
     if (!pvalue.isValid && property.definition.guid == APINULLGuid) {
         return false;
     }
     pvalue.val.uniStringValue = PropertyHelpers::ToString (property);
-    //std::string var = pvalue.val.uniStringValue.ToCStr (0, MaxUSize, GChCode).Get ();
     FormatStringDict formatstringdict;
     switch (property.definition.valueType) {
         case API_PropertyIntegerValueType:
@@ -6132,7 +6139,14 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
                 pvalue.val.doubleValue = round (value.singleVariant.variant.doubleValue * 100000.0) / 100000.0;
                 if (value.singleVariant.variant.doubleValue - pvalue.val.doubleValue > 0.001) pvalue.val.doubleValue += 0.001;
             }
-            //pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
+            if (pvalue.rawName.IsEqual ("{@property:buildingmaterialproperties/some_stuff_th}")) {
+                if (property.definition.measureType != API_PropertyLengthMeasureType) {
+                    pvalue.val.rawDoubleValue = pvalue.val.rawDoubleValue / 1000.0;
+                    pvalue.val.doubleValue = pvalue.val.doubleValue / 1000.0;
+                    pvalue.val.doubleValue = round (pvalue.val.doubleValue * 100000.0) / 100000.0;
+                    pvalue.val.rawDoubleValue = round (pvalue.val.rawDoubleValue * 100000.0) / 100000.0;
+                }
+            }
             pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
             if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
             if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
@@ -6142,6 +6156,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
                 int n_zero = formatstringdict.Get (property.definition.measureType).n_zero;
                 GS::UniString stringformat = formatstringdict.Get (property.definition.measureType).stringformat;
                 bool needRound = formatstringdict.Get (property.definition.measureType).needRound;
+                if (pvalue.rawName.IsEqual ("{@property:buildingmaterialproperties/some_stuff_th}")) needRound = false;
                 if (needRound && property.definition.measureType != API_PropertyLengthMeasureType) {
                     double l = pow (10, n_zero);
                     pvalue.val.doubleValue = round (pvalue.val.doubleValue * pow (10, n_zero)) / pow (10, n_zero);
@@ -6198,6 +6213,80 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     return true;
 }
 
+void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const API_PropertyDefinition & definition)
+{
+    GS::UniString description = definition.description.ToLowerCase ();
+    if (description.Contains ("to{Class:")) {
+        GS::Array<GS::UniString> params;
+        UInt32 nparam = StringSplt (definition.description, "to{Class", params);
+        if (nparam > 1) {
+            GS::UniString systemname = params.Get (1).GetSubstring (':', '}', 0);
+            pvalue.name = systemname.ToLowerCase ();
+        }
+        pvalue.fromClassification = true;
+        return;
+    }
+    if (description.Contains ("some_stuff_th")) {
+        // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th}";
+        pvalue.name = "some_stuff_th";
+        pvalue.fromAttribDefinition = true;
+        pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+        return;
+    }
+    if (description.Contains ("some_stuff_units")) {
+        // Единицы измерения
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units}";
+        pvalue.name = "some_stuff_units";
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (description.Contains ("some_stuff_kzap")) {
+        // Единицы измерения
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap}";
+        pvalue.name = "some_stuff_kzap";
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (description.Contains ("ync_name")) {
+        if (!pvalue.rawName.Contains ("{@property:sync_name")) {
+            pvalue.rawName = "{@property:sync_name0}";
+            pvalue.name = "Sync_name0";
+        }
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+
+    if (pvalue.rawName.Contains ("buildingmaterial")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (pvalue.rawName.Contains ("component")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (description.Contains ("{@property:buildingmaterialproperties}")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (description.Contains ("some_stuff_layer_onoff")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (description.Contains ("some_stuff_layer_has_finish")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (description.Contains ("some_stuff_layer_description")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+    if (description.Contains ("some_stuff_layer_favorite_name")) {
+        pvalue.fromAttribDefinition = true;
+        return;
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Конвертация определения свойства в ParamValue
 // -----------------------------------------------------------------------------
@@ -6214,81 +6303,9 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyD
 
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
-    GS::UniString description = definition.description.ToLowerCase ();
-    if (description.Contains ("some_stuff_th")) {
-        // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th}";
-        pvalue.name = "some_stuff_th";
-        pvalue.fromAttribDefinition = true;
-    }
-    if (description.Contains ("some_stuff_units")) {
-        // Единицы измерения
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units}";
-        pvalue.name = "some_stuff_units";
-        pvalue.fromAttribDefinition = true;
-    }
-    if (description.Contains ("some_stuff_kzap")) {
-        // Единицы измерения
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap}";
-        pvalue.name = "some_stuff_kzap";
-        pvalue.fromAttribDefinition = true;
-    }
-    if (description.Contains ("ync_name")) {
-        if (!pvalue.rawName.Contains ("{@property:sync_name")) {
-            pvalue.rawName = "{@property:sync_name0}";
-            pvalue.name = "Sync_name0";
-        }
-        pvalue.fromAttribDefinition = true;
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (pvalue.rawName.Contains ("buildingmaterial")) {
-            pvalue.fromAttribDefinition = true;
-        }
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (pvalue.rawName.Contains ("component")) {
-            pvalue.fromAttribDefinition = true;
-        }
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("{@property:buildingmaterialproperties}")) {
-            pvalue.fromAttribDefinition = true;
-        }
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("some_stuff_layer_onoff")) {
-            pvalue.fromAttribDefinition = true;
-        }
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("some_stuff_layer_has_finish")) {
-            pvalue.fromAttribDefinition = true;
-        }
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("some_stuff_layer_description")) {
-            pvalue.fromAttribDefinition = true;
-        }
-    }
-    if (!pvalue.fromAttribDefinition) {
-        if (description.Contains ("some_stuff_layer_favorite_name")) {
-            pvalue.fromAttribDefinition = true;
-        }
-    }
-    // Костыль для обработки классификации. Переписать
-    if (!pvalue.fromAttribDefinition) {
-        if (definition.description.Contains ("to{Class:")) {
-            GS::Array<GS::UniString> params;
-            UInt32 nparam = StringSplt (definition.description, "to{Class", params);
-            if (nparam > 1) {
-                GS::UniString systemname = params.Get (1).GetSubstring (':', '}', 0);
-                pvalue.name = systemname.ToLowerCase ();
-            }
-            pvalue.fromClassification = true;
-        }
-    }
+    ParamHelpers::ConvertToParamValue_CheckAttrib (pvalue, definition);
     pvalue.fromProperty = true;
-    pvalue.fromPropertyDefinition = !pvalue.fromAttribDefinition;
+    if (!pvalue.fromAttribDefinition) pvalue.fromPropertyDefinition = true;
     pvalue.definition = definition;
     return true;
 }
@@ -7306,7 +7323,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
             }
             if (flag_add) {
                 API_PropertyDefinition definition = param.definition;
-                if (!definition.name.Contains (CharENTER)) propertyDefinitions.Push (definition);
+                if (!definition.name.Contains (CharENTER) && definition.guid != APINULLGuid) propertyDefinitions.Push (definition);
             }
         }
     }
