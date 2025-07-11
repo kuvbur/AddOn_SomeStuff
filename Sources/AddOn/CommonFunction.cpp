@@ -212,6 +212,41 @@ GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
     return "";
 }
 
+void DBprnt (double a, GS::UniString reportString)
+{
+    #if defined(TESTING)
+    GS::UniString msg = GS::UniString::Printf ("%f", a);
+    #if defined(AC_22)
+    DBPrintf ("== SMSTF == ");
+    #else
+    DBPrint ("== SMSTF == ");
+    #endif
+    if (!reportString.IsEmpty ()) {
+        std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
+        #if defined(AC_22)
+        DBPrintf (reportString_str.c_str ());
+        DBPrintf (" : ");
+        #else
+        DBPrint (reportString_str.c_str ());
+        DBPrint (" : ");
+        #endif
+    }
+    std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
+    #if defined(AC_22)
+    DBPrintf (var_str.c_str ());
+    #else
+    DBPrint (var_str.c_str ());
+    #endif
+    #if defined(AC_22)
+    DBPrintf ("\n");
+    #else
+    DBPrint ("\n");
+    #endif
+    #else
+    UNUSED_VARIABLE (a);
+    UNUSED_VARIABLE (reportString);
+    #endif
+}
 
 void DBprnt (GS::UniString msg, GS::UniString reportString)
 {
@@ -294,7 +329,7 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
 void DBtest (double a, double b, GS::UniString reportString, bool asserton)
 {
     #if defined(TESTING)
-    GS::UniString out = GS::UniString::Printf ("%d = %d", a, b);
+    GS::UniString out = GS::UniString::Printf ("%f = %f", a, b);
     if (is_equal (a, b)) {
         reportString = "test " + reportString + " ok";
         DBprnt (out, reportString);
