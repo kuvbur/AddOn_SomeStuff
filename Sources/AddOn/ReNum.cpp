@@ -49,7 +49,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         ParamDictElement paramToWriteelem;
         if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions)) {
             flag_write = false;
-            msg_rep ("ReNumSelected", GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + "No data to write", NoError, APINULLGuid);
+            msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
             #if defined(AC_27) || defined(AC_28)
             ACAPI_ProcessWindow_CloseProcessWindow ();
             #else
@@ -91,9 +91,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     }
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
-    GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
-    GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", qtywrite) + time;
-    msg_rep ("ReNumSelected", intString, NoError, APINULLGuid);
+    msg_rep ("ReNumSelected", GS::UniString::Printf ("Time spent %.3f s", duration), NoError, APINULLGuid);
     return NoError;
 }
 
@@ -136,7 +134,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
         API_PropertyDefinition definition = *cIt.value;
         #endif
         for (UInt32 i = 0; i < definition.availability.GetSize (); i++) {
-            GS::Array<API_Guid> elemGuids;
+            GS::Array<API_Guid> elemGuids = {};
             API_Guid classificationItemGuid = definition.availability[i];
             if (ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids) == NoError) {
                 for (UInt32 j = 0; j < elemGuids.GetSize (); j++) {
@@ -151,10 +149,11 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
 bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
 {
     // Получаем список правил суммирования
-    Rules rules;
-    ParamDictElement paramToReadelem;
+    Rules rules = {};
+    ParamDictElement paramToReadelem = {};
     bool hasRule = !rule_definitions.IsEmpty ();
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
+    GS::HashTable<GS::UniString, bool> error_propertyname = {};
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         GS::Array<API_PropertyDefinition>	definitions;
         GSErrCode err = ACAPI_Element_GetPropertyDefinitions (guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
@@ -176,30 +175,55 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
                 hasDef = ReNumHasFlag (definitions);
             }
         }
-        if (hasDef) {
-            #if defined(AC_27) || defined(AC_28)
-            bool showPercent = true;
-            Int32 maxval = guidArray.GetSize ();
-            ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-            #else
-            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-            #endif
-            #if defined(AC_27) || defined(AC_28)
-            if (ACAPI_ProcessWindow_IsProcessCanceled ()) return false;
-            #else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
-            #endif
-            ParamDictValue propertyParams;
-            ParamDictValue paramToRead;
-            ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, definitions);
-            if (ReNum_GetElement (guidArray[i], propertyParams, paramToRead, rules)) ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
-        }
+        #if defined(AC_27) || defined(AC_28)
+        bool showPercent = true;
+        Int32 maxval = guidArray.GetSize ();
+        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+        #else
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+        #endif
+        #if defined(AC_27) || defined(AC_28)
+        if (ACAPI_ProcessWindow_IsProcessCanceled ()) return false;
+        #else
+        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
+        #endif
+        if (!hasDef) continue;
+        ParamDictValue propertyParams = {};
+        ParamDictValue paramToRead = {};
+        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, definitions);
+        if (ReNum_GetElement (guidArray[i], propertyParams, paramToRead, rules, error_propertyname)) ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
     }
-    if (paramToReadelem.IsEmpty () || rules.IsEmpty ()) return false;
-    ParamDictValue propertyParams; // Все свойства уже считаны, поэтому словарь просто пустой
-    ClassificationFunc::SystemDict systemdict;
+    if (!error_propertyname.IsEmpty ()) {
+        GS::UniString out = ":\n";
+        for (auto& cIt : error_propertyname) {
+            #if defined(AC_28)
+            GS::UniString s = cIt.key;
+            #else
+            GS::UniString s = *cIt.key;
+            #endif
+            s.ReplaceAll ("{@", "");
+            s.ReplaceAll ("}", "");
+            s.ReplaceAll (":", " : ");
+            out.Append (s); out.Append ("\n");
+        }
+        msg_rep ("ReNumSelected", "Can't find property, check name: " + out, APIERR_GENERAL, APINULLGuid);
+        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecEmptyListdString + out, true);
+        return false;
+    }
+    if (!paramToReadelem.IsEmpty ()) msg_rep ("ReNumSelected", GS::UniString::Printf ("Find elements - %d ", paramToReadelem.GetSize ()), NoError, APINULLGuid);
+    if (!rules.IsEmpty ()) msg_rep ("ReNumSelected", GS::UniString::Printf ("Find rules - %d ", rules.GetSize ()), NoError, APINULLGuid);
+    if (paramToReadelem.IsEmpty () || rules.IsEmpty ()) {
+        if (paramToReadelem.IsEmpty ()) msg_rep ("ReNumSelected", "Parameters for read not found", NoError, APINULLGuid);
+        if (rules.IsEmpty ()) msg_rep ("ReNumSelected", "Rules not found", NoError, APINULLGuid);
+        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecEmptyListdString, true);
+        return false;
+    }
+    ParamDictValue propertyParams = {}; // Все свойства уже считаны, поэтому словарь просто пустой
+    ClassificationFunc::SystemDict systemdict = {};
     ParamHelpers::ElementsRead (paramToReadelem, propertyParams, systemdict); // Читаем значения
-
+    bool has_error = false;
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28)
@@ -207,15 +231,28 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
         #else
         const RenumRule& rule = *cIt->value;
         #endif
-        if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem);
+        if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem, has_error);
+}
+    if (paramToWriteelem.IsEmpty ()) {
+        msg_rep ("ReNumSelected", "No position changes required", NoError, APINULLGuid);
+        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecEmptyListdString, true);
+        return false;
     }
+    // TODO Добавить описание сообщений об ошибках
+    if (has_error) {
+        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecEmptyListdString, true);
+        return false;
+    }
+    if (!paramToReadelem.IsEmpty ()) msg_rep ("ReNumSelected", GS::UniString::Printf ("Elements with new position  - %d ", paramToReadelem.GetSize ()), NoError, APINULLGuid);
     return !paramToWriteelem.IsEmpty ();
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules)
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname)
 {
     bool hasRenum = false;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -226,96 +263,111 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams,
         ParamValue& param = *cIt->value;
         #endif
         API_PropertyDefinition& definition = param.definition;
-        if (definition.description.Contains ("Renum_flag") && definition.description.Contains ("{") && definition.description.Contains ("}")) {
-            if (!rules.ContainsKey (definition.guid)) {
-                RenumRule rulecritetia = {};
-
-                // Разбираем - что записано в свойстве с флагом
-                // В нём должно быть имя свойства и, возможно, флаг добавления нулей
-                GS::UniString paramName = definition.description.ToLowerCase ();
-                GS::Array<GS::UniString> partstring;
-                if (StringSplt (paramName, "}", partstring, "enum_flag") > 0) {
-                    paramName = partstring[0] + "}";
-                }
-                paramName = paramName.GetSubstring ('{', '}', 0);
-                paramName.ReplaceAll ("\\/", "/");
-                GS::UniString rawNameposition = "{@";
-                if (paramName.Contains (";")) { // Есть указание на нули
-                    GS::Array<GS::UniString>	partstring;
-                    int nparam = StringSplt (paramName, ";", partstring);
-                    rawNameposition = rawNameposition + partstring[0] + "}";
-                    if (nparam > 1) {
-                        if (partstring[1].Contains ("null")) rulecritetia.nulltype = ADDZEROS;
-                        if (partstring[1].Contains ("allnull")) rulecritetia.nulltype = ADDMAXZEROS;
-                        if (partstring[1].Contains ("space")) rulecritetia.nulltype = ADDSPACE;
-                        if (partstring[1].Contains ("allspace")) rulecritetia.nulltype = ADDMAXSPACE;
-                        // Добавление нужного количества знаков
-                        if (rulecritetia.nulltype != NOZEROS && partstring[1].Contains ("_")) {
-                            GS::Array<GS::UniString> partstring_;
-                            if (StringSplt (partstring[1], "_", partstring_) > 0) {
-                                double nullcount = 0;
-                                if (UniStringToDouble (partstring_[0], nullcount)) rulecritetia.nullcount = (int) nullcount;
-                            }
-
-                        }
-                    };
-                } else {
-                    rawNameposition = rawNameposition + paramName + "}";
-                }
-                if (!rawNameposition.Contains ("property")) rawNameposition.ReplaceAll ("{", "{@gdl:");
-
-                // Проверяем - есть ли у объекта такое свойство-правило
-                if (propertyParams.ContainsKey (rawNameposition)) {
-
-                    // В описании правила может быть указано имя свойства-критерия и, возможно, имя свойства-разбивки
-                    GS::UniString ruleparamName = propertyParams.Get (rawNameposition).definition.description;
-                    ruleparamName.ReplaceAll ("\\/", "/");
-                    if (ruleparamName.Contains ("Renum") && ruleparamName.Contains ("{") && ruleparamName.Contains ("}")) {
-                        GS::Array<GS::UniString> partstring;
-                        if (StringSplt (ruleparamName, "}", partstring, "enum") > 0) {
-                            ruleparamName = partstring[0] + "}";
-                        }
-                        ruleparamName = ruleparamName.ToLowerCase ().GetSubstring ('{', '}', 0);
-                        GS::UniString rawNamecriteria = "{@";
-                        GS::UniString rawNamedelimetr = "";
-                        if (ruleparamName.Contains (";")) { // Есть указание на нули
-                            GS::Array<GS::UniString>	partstring;
-                            int nparam = StringSplt (ruleparamName, ";", partstring);
-                            rawNamecriteria = rawNamecriteria + partstring[0] + "}";
-                            if (nparam > 1) rawNamedelimetr = "{@" + rawNamedelimetr + partstring[1] + "}";
-                        } else {
-                            rawNamecriteria = rawNamecriteria + ruleparamName + "}";
-                        }
-                        if (!rawNamecriteria.Contains ("property")) rawNamecriteria.ReplaceAll ("{", "{@gdl:");
-                        if (!rawNamedelimetr.IsEmpty () && !rawNamedelimetr.Contains ("property")) rawNamedelimetr.ReplaceAll ("{", "{@gdl:");
-
-                        // Если такие свойства есть - записываем правило
-                        if (propertyParams.ContainsKey (rawNamecriteria) && (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ())) {
-                            rulecritetia.state = true;
-                            //if (definition.valueType != API_PropertyBooleanValueType)
-                            rulecritetia.oldalgoritm = false;
-                            rulecritetia.position = rawNameposition;
-                            rulecritetia.flag = param.rawName;
-                            rulecritetia.criteria = rawNamecriteria;
-                            rulecritetia.delimetr = rawNamedelimetr;
-                            rulecritetia.guid = definition.guid;
-                            flag = true;
+        if (!definition.description.Contains ("Renum_flag")) continue;
+        if (!definition.description.Contains ("{")) {
+            msg_rep ("ReNumSelected", definition.name + " Renum_flag: check the opening bracket, there should be {", APIERR_GENERAL, APINULLGuid);
+            continue;
+        }
+        if (!definition.description.Contains ("}")) {
+            msg_rep ("ReNumSelected", definition.name + " Renum_flag: check the closing bracket, there should be }", APIERR_GENERAL, APINULLGuid);
+            continue;
+        }
+        if (!rules.ContainsKey (definition.guid)) {
+            RenumRule rulecritetia = {};
+            // Разбираем - что записано в свойстве с флагом
+            // В нём должно быть имя свойства и, возможно, флаг добавления нулей
+            GS::UniString paramName = definition.description.ToLowerCase ();
+            GS::Array<GS::UniString> partstring;
+            if (StringSplt (paramName, "}", partstring, "enum_flag") > 0) {
+                paramName = partstring[0] + "}";
+            }
+            paramName = paramName.GetSubstring ('{', '}', 0);
+            paramName.ReplaceAll ("\\/", "/");
+            GS::UniString rawNameposition = "{@";
+            if (paramName.Contains (";")) { // Есть указание на нули
+                GS::Array<GS::UniString>	partstring;
+                int nparam = StringSplt (paramName, ";", partstring);
+                rawNameposition = rawNameposition + partstring[0] + "}";
+                if (nparam > 1) {
+                    if (partstring[1].Contains ("null")) rulecritetia.nulltype = ADDZEROS;
+                    if (partstring[1].Contains ("allnull")) rulecritetia.nulltype = ADDMAXZEROS;
+                    if (partstring[1].Contains ("space")) rulecritetia.nulltype = ADDSPACE;
+                    if (partstring[1].Contains ("allspace")) rulecritetia.nulltype = ADDMAXSPACE;
+                    // Добавление нужного количества знаков
+                    if (rulecritetia.nulltype != NOZEROS && partstring[1].Contains ("_")) {
+                        GS::Array<GS::UniString> partstring_;
+                        if (StringSplt (partstring[1], "_", partstring_) > 0) {
+                            double nullcount = 0;
+                            if (UniStringToDouble (partstring_[0], nullcount)) rulecritetia.nullcount = (int) nullcount;
                         }
                     }
                 }
-                rules.Add (definition.guid, rulecritetia);
             } else {
-                flag = true; // Правило уже существует, просто добавим свойства в словарь чтения и id в правила
+                rawNameposition = rawNameposition + paramName + "}";
             }
-            if (flag) {
-                hasRenum = true;
-                rules.Get (definition.guid).elemts.Push (elemGuid);
-                RenumRule& rulecritetia = rules.Get (definition.guid);
-                if (!rulecritetia.position.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.position), paramToRead);
-                if (!rulecritetia.flag.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.flag), paramToRead);
-                if (!rulecritetia.criteria.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.criteria), paramToRead);
-                if (!rulecritetia.delimetr.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.delimetr), paramToRead);
+            if (!rawNameposition.Contains ("property")) rawNameposition.ReplaceAll ("{", "{@gdl:");
+            // Проверяем - есть ли у объекта такое свойство-правило
+            if (propertyParams.ContainsKey (rawNameposition)) {
+                // В описании правила может быть указано имя свойства-критерия и, возможно, имя свойства-разбивки
+                GS::UniString ruleparamName = propertyParams.Get (rawNameposition).definition.description;
+                ruleparamName.ReplaceAll ("\\/", "/");
+                if (ruleparamName.Contains ("Renum") && ruleparamName.Contains ("{") && ruleparamName.Contains ("}")) {
+                    GS::Array<GS::UniString> partstring;
+                    if (StringSplt (ruleparamName, "}", partstring, "enum") > 0) {
+                        ruleparamName = partstring[0] + "}";
+                    }
+                    ruleparamName = ruleparamName.ToLowerCase ().GetSubstring ('{', '}', 0);
+                    GS::UniString rawNamecriteria = "{@";
+                    GS::UniString rawNamedelimetr = "";
+                    if (ruleparamName.Contains (";")) { // Есть указание на нули
+                        GS::Array<GS::UniString>	partstring;
+                        int nparam = StringSplt (ruleparamName, ";", partstring);
+                        rawNamecriteria = rawNamecriteria + partstring[0] + "}";
+                        if (nparam > 1) rawNamedelimetr = "{@" + rawNamedelimetr + partstring[1] + "}";
+                    } else {
+                        rawNamecriteria = rawNamecriteria + ruleparamName + "}";
+                    }
+                    if (!rawNamecriteria.Contains ("property")) rawNamecriteria.ReplaceAll ("{", "{@gdl:");
+                    if (!rawNamedelimetr.IsEmpty () && !rawNamedelimetr.Contains ("property")) rawNamedelimetr.ReplaceAll ("{", "{@gdl:");
+
+                    // Если такие свойства есть - записываем правило
+                    if (propertyParams.ContainsKey (rawNamecriteria) && (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ())) {
+                        rulecritetia.state = true;
+                        rulecritetia.oldalgoritm = false;
+                        rulecritetia.position = rawNameposition;
+                        rulecritetia.flag = param.rawName;
+                        rulecritetia.criteria = rawNamecriteria;
+                        rulecritetia.delimetr = rawNamedelimetr;
+                        rulecritetia.guid = definition.guid;
+                        flag = true;
+                    } else {
+                        if (!propertyParams.ContainsKey (rawNamecriteria) && !error_propertyname.ContainsKey (rawNamecriteria)) error_propertyname.Add (rawNamecriteria, false);
+                        if (!rawNamedelimetr.IsEmpty () && !propertyParams.ContainsKey (rawNamedelimetr) && !error_propertyname.ContainsKey (rawNamedelimetr)) error_propertyname.Add (rawNamedelimetr, false);
+                    }
+                } else {
+                    if (ruleparamName.Contains ("Renum")) {
+                        GS::UniString msg = ", in property description " + propertyParams.Get (rawNameposition).definition.name;
+                        if (!ruleparamName.Contains ("{")) msg_rep ("ReNumSelected", "Renum: check the closing bracket, there should be }" + msg, APIERR_GENERAL, APINULLGuid);
+                        if (!ruleparamName.Contains ("}")) msg_rep ("ReNumSelected", "Renum: check the opening bracket, there should be {" + msg, APIERR_GENERAL, APINULLGuid);
+                    } else {
+                        msg_rep ("ReNumSelected", "Renum_flag must refer to a property with the description Renum, check property description " + definition.name, APIERR_GENERAL, APINULLGuid);
+                    }
+                }
+            } else {
+                if (!error_propertyname.ContainsKey (rawNameposition)) error_propertyname.Add (rawNameposition, false);
             }
+            rules.Add (definition.guid, rulecritetia);
+        } else {
+            flag = true; // Правило уже существует, просто добавим свойства в словарь чтения и id в правила
+        }
+        if (flag) {
+            RenumRule& rulecritetia = rules.Get (definition.guid);
+            if (rulecritetia.guid != APINULLGuid) hasRenum = true;
+            rulecritetia.elemts.Push (elemGuid);
+            if (!rulecritetia.position.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.position), paramToRead);
+            if (!rulecritetia.flag.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.flag), paramToRead);
+            if (!rulecritetia.criteria.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.criteria), paramToRead);
+            if (!rulecritetia.delimetr.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (rulecritetia.delimetr), paramToRead);
         }
     }
     return hasRenum;
@@ -368,12 +420,12 @@ RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::st
     return pos;
 }
 
-void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem)
+void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem, bool& has_error)
 {
 
     // Рассортируем элементы по разделителю, типу нумерации и критерию.
     Delimetr delimetrList;
-    if (!ElementsSeparation (rule, paramToReadelem, delimetrList)) return;
+    if (!ElementsSeparation (rule, paramToReadelem, delimetrList, has_error)) return;
 
     DRenumPosDict unicpos;				// Словарь соответствия позиции критерию
     DStringDict unicriteria;			// Словарь соответствия критерия поизции (обратный предыдущему)
@@ -509,66 +561,83 @@ void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, Par
     return;
 }
 
-bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramToReadelem, Delimetr& delimetrList)
+bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error)
 {
     if (!rule.state) return false;
     GS::Array<API_Guid> elemArray = rule.elemts;
-    GS::Array<API_Guid> elemrenumArray;
+    GS::Array<API_Guid> elemrenumArray = {};
     bool needAddSet = false;
     bool flag = false;
 
     // Собираем значения свойств из criteria. Нам нужны только уникальные значения.
     for (UInt32 i = 0; i < elemArray.GetSize (); i++) {
-        if (paramToReadelem.ContainsKey (elemArray[i])) {
+        if (!paramToReadelem.ContainsKey (elemArray[i])) continue;
 
-            // Сразу проверим режим нумерации элемента
-            short state = RENUM_SKIP;
-            RenumPos pos;
-            ParamDictValue params = paramToReadelem.Get (elemArray[i]);
-            if (params.ContainsKey (rule.flag) && params.ContainsKey (rule.position)) {
-                ParamValue paramflag = params.Get (rule.flag);
-                ParamValue paramposition = params.Get (rule.position);
-                state = ReNumGetFlag (paramflag, paramposition);
-
-                // Получаем позицию, если она есть
-                if (paramposition.isValid && state != RENUM_SKIP) pos = RenumPos (paramposition);
-                if (state != RENUM_IGNORE && state != RENUM_SKIP) needAddSet = true;
+        // Сразу проверим режим нумерации элемента
+        short state = RENUM_SKIP;
+        RenumPos pos;
+        const ParamDictValue& params = paramToReadelem.Get (elemArray[i]);
+        if (params.ContainsKey (rule.flag) && params.ContainsKey (rule.position)) {
+            const ParamValue& paramflag = params.Get (rule.flag);
+            const ParamValue& paramposition = params.Get (rule.position);
+            if (!paramflag.isValid) {
+                msg_rep ("ReNumSelected", "Skip element with not valid value in flag: " + rule.delimetr, APIERR_GENERAL, elemArray[i]);
+                has_error = true;
             }
-            if (state != RENUM_IGNORE && state != RENUM_SKIP && !rule.oldalgoritm) {
-                elemrenumArray.Push (elemArray[i]);
+            state = ReNumGetFlag (paramflag, paramposition);
 
-                // Проверим - не нумеровался ли прежде этот элемент. Если нет - ставим флаг перенумерации
-                //if (!rule.exselemts.IsEmpty() && !rule.exselemts.Contains(elemArray[i])) state = RENUM_NORMAL;
-            }
+            // Получаем позицию, если она есть
+            if (paramposition.isValid && state != RENUM_SKIP) pos = RenumPos (paramposition);
+            if (state != RENUM_IGNORE && state != RENUM_SKIP) needAddSet = true;
+        }
+        if (state != RENUM_IGNORE && state != RENUM_SKIP && !rule.oldalgoritm) {
+            elemrenumArray.Push (elemArray[i]);
 
-            if (state != RENUM_SKIP) {
+            // Проверим - не нумеровался ли прежде этот элемент. Если нет - ставим флаг перенумерации
+            //if (!rule.exselemts.IsEmpty() && !rule.exselemts.Contains(elemArray[i])) state = RENUM_NORMAL;
+        }
 
-                // Получаем разделитель, если он есть
-                std::string delimetr = "";
-                if (params.ContainsKey (rule.delimetr)) {
-                    ParamValue param = params.Get (rule.delimetr);
-                    if (param.isValid) {
-                        GSCharCode chcode = GetCharCode (param.val.uniStringValue);
-                        delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
-                    }
+        if (state != RENUM_SKIP) {
+
+            // Получаем разделитель, если он есть
+            std::string delimetr = "";
+            if (params.ContainsKey (rule.delimetr)) {
+                const ParamValue& param = params.Get (rule.delimetr);
+                if (param.isValid) {
+                    GSCharCode chcode = GetCharCode (param.val.uniStringValue);
+                    delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+                } else {
+                    msg_rep ("ReNumSelected", "Skip element with not valid value in delimetr: " + rule.delimetr, APIERR_GENERAL, elemArray[i]);
+                    has_error = true;
+                    state = RENUM_SKIP;
                 }
+            }
 
-                // Получаем критерий, если он есть
-                std::string criteria = "";
-                if (params.ContainsKey (rule.criteria)) {
-                    ParamValue param = params.Get (rule.criteria);
-                    if (param.isValid) {
+            // Получаем критерий, если он есть
+            std::string criteria = "";
+            if (params.ContainsKey (rule.criteria)) {
+                const ParamValue& param = params.Get (rule.criteria);
+                if (param.isValid) {
+                    if (param.val.uniStringValue.IsEmpty ()) {
+                        msg_rep ("ReNumSelected", "Skip element with empty value in criteria: " + rule.criteria, APIERR_GENERAL, elemArray[i]);
+                        has_error = true;
+                        state = RENUM_SKIP;
+                    } else {
                         GSCharCode chcode = GetCharCode (param.val.uniStringValue);
                         criteria = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
                     }
+                } else {
+                    msg_rep ("ReNumSelected", "Skip element with not valid value in criteria: " + rule.criteria, APIERR_GENERAL, elemArray[i]);
+                    has_error = true;
+                    state = RENUM_SKIP;
                 }
-                if (state != RENUM_SKIP) {
-                    if (delimetrList.count (delimetr) == 0) delimetrList[delimetr] = {};
-                    if (delimetrList[delimetr].count (state) == 0) delimetrList[delimetr][state] = {};
-                    if (delimetrList[delimetr][state].count (criteria) == 0) delimetrList[delimetr][state][criteria] = {};
-                    delimetrList[delimetr][state][criteria].elements.Push (pos);
-                    flag = true;
-                }
+            }
+            if (state != RENUM_SKIP) {
+                if (delimetrList.count (delimetr) == 0) delimetrList[delimetr] = {};
+                if (delimetrList[delimetr].count (state) == 0) delimetrList[delimetr][state] = {};
+                if (delimetrList[delimetr][state].count (criteria) == 0) delimetrList[delimetr][state][criteria] = {};
+                delimetrList[delimetr][state][criteria].elements.Push (pos);
+                flag = true;
             }
         }
     }

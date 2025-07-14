@@ -2093,9 +2093,9 @@ GS::UniString PropertyHelpers::ToString (const API_Variant& variant, const Forma
         case API_PropertyBooleanValueType: return GS::ValueToUniString (variant.boolValue);
         case API_PropertyGuidValueType: return APIGuid2GSGuid (variant.guidValue).ToUniString ();
         case API_PropertyUndefinedValueType:
-            return "Undefined Value";
+            return "@Undefined Value@";
         default: DBBREAK ();
-            return "Invalid Value";
+            return "@Invalid Value@";
     }
 }
 
@@ -6086,7 +6086,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
 {
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) ParamHelpers::SetrawNameFromProperty (pvalue, property);
     if (property.definition.description.Contains ("Sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
-    API_PropertyValue value;
+    API_PropertyValue value = {};
     #if defined(AC_22) || defined(AC_23)
     pvalue.isValid = property.isEvaluated;
     if (property.isDefault && !property.isEvaluated) {
@@ -6112,7 +6112,11 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
         return false;
     }
     pvalue.val.uniStringValue = PropertyHelpers::ToString (property);
-    FormatStringDict formatstringdict;
+    if (pvalue.val.uniStringValue.IsEqual ("@Undefined Value@") && property.isDefault) {
+        pvalue.isValid = false;
+        return false;
+    }
+    FormatStringDict formatstringdict = {};
     switch (property.definition.valueType) {
         case API_PropertyIntegerValueType:
             pvalue.val.intValue = value.singleVariant.variant.intValue;
@@ -6203,9 +6207,11 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             pvalue.val.hasrawDouble = true;
             break;
         case API_PropertyUndefinedValueType:
+            pvalue.isValid = false;
             return false;
             break;
         default:
+            pvalue.isValid = false;
             return false;
             break;
     }
@@ -6217,7 +6223,7 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
 {
     GS::UniString description = definition.description.ToLowerCase ();
     if (description.Contains ("to{Class:")) {
-        GS::Array<GS::UniString> params;
+        GS::Array<GS::UniString> params = {};
         UInt32 nparam = StringSplt (definition.description, "to{Class", params);
         if (nparam > 1) {
             GS::UniString systemname = params.Get (1).GetSubstring (':', '}', 0);
@@ -6293,7 +6299,7 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
 bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyDefinition & definition)
 {
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) {
-        GS::UniString fname;
+        GS::UniString fname = "";
         GetPropertyFullName (definition, fname);
         if (pvalue.rawName.IsEmpty ()) {
             pvalue.rawName = "{@property:";
@@ -6627,8 +6633,8 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
 
 void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
 {
-    GS::Array<ParamValueComposite> p;
-    GS::HashTable<GS::UniString, ParamValueComposite> existsmaterial;
+    GS::Array<ParamValueComposite> p = {};
+    GS::HashTable<GS::UniString, ParamValueComposite> existsmaterial = {};
     for (const auto& c : composite) {
         GS::UniString key = GS::UniString::Printf ("%d", c.inx) + GS::UniString::Printf ("_%.4f", c.fillThick);
         if (existsmaterial.ContainsKey (key)) {
@@ -6664,10 +6670,10 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
     #if defined(TESTING)
     DBprnt ("        ComponentsCompositeStructure");
     #endif
-    API_Attribute attrib;
+    API_Attribute attrib = {};
     BNZeroMemory (&attrib, sizeof (API_Attribute));
 
-    API_AttributeDef defs;
+    API_AttributeDef defs = {};
     BNZeroMemory (&defs, sizeof (API_AttributeDef));
 
     attrib.header.index = constrinx;
@@ -6721,9 +6727,9 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
     DBprnt ("        ComponentsProfileStructure");
     #endif
     ConstProfileVectorImageIterator profileDescriptionIt (profileDescription);
-    GS::HashTable<short, OrientedSegments> lines; // Для хранения точки начала сечения и линии сечения
-    GS::HashTable<short, GS::Array<Sector>> segment; // Для хранения отрезков линий сечения и последующего объединения
-    GS::HashTable<short, ParamValue> param_composite;
+    GS::HashTable<short, OrientedSegments> lines = {}; // Для хранения точки начала сечения и линии сечения
+    GS::HashTable<short, GS::Array<Sector>> segment = {}; // Для хранения отрезков линий сечения и последующего объединения
+    GS::HashTable<short, ParamValue> param_composite = {};
 
     // Получаем список перьев в параметрах
     bool needReadQuantities = false;
@@ -6735,8 +6741,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         #endif
         short pen = paramlayers.Get (rawName).composite_pen;
         if (pen < 0) needReadQuantities = true;
-        OrientedSegments s;
-        GS::Array<Sector> segments;
+        OrientedSegments s = {};
+        GS::Array<Sector> segments = {};
         lines.Add (pen, s);
         segment.Add (pen, segments);
         ParamValue p = {};
@@ -6784,7 +6790,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         Point2D p1 = { -1000, 0 };
         Point2D p2 = { 1000, 0 };
         Sector cut1 = { p1, p2 };
-        OrientedSegments d;
+        OrientedSegments d = {};
         d.start = p2;
         d.cut_start = p1;
         d.cut_direction = Geometry::SectorVector (cut1);
@@ -6796,7 +6802,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         Point2D p3 = { 0, -1000 };
         Point2D p4 = { 0, 1000 };
         Sector cut2 = { p3, p4 };
-        OrientedSegments d2;
+        OrientedSegments d2 = {};
         d2.start = p3;
         d2.cut_start = p4;
         d2.cut_direction = Geometry::SectorVector (cut2);

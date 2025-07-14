@@ -323,11 +323,11 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     MonAll (syncSettings);
                     break;
                 case SyncAll_CommandID:
-                    msg_rep ("SyncAndMonAll", "============== START ==============", NoError, APINULLGuid);
+                    msg_rep ("SyncAll", "============== START ==============", NoError, APINULLGuid);
                     syncSettings.syncAll = true;
                     SyncAndMonAll (syncSettings);
                     syncSettings.syncAll = false;
-                    msg_rep ("SyncAndMonAll", "=============== END ===============", NoError, APINULLGuid);
+                    msg_rep ("SyncAll", "=============== END ===============", NoError, APINULLGuid);
                     break;
                 case SyncSelect_CommandID:
                     SyncSelected (syncSettings);
@@ -346,11 +346,15 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                     #ifndef AC_22
                 case ReNum_CommandID:
+                    msg_rep ("ReNumSelected", "============== START ==============", NoError, APINULLGuid);
                     err = ReNumSelected (syncSettings);
+                    msg_rep ("ReNumSelected", "=============== END ===============", NoError, APINULLGuid);
                     break;
                     #endif
                 case Sum_CommandID:
+                    msg_rep ("SumSelected", "============== START ==============", NoError, APINULLGuid);
                     err = SumSelected (syncSettings);
+                    msg_rep ("SumSelected", "=============== END ===============", NoError, APINULLGuid);
                     break;
                 case RunParam_CommandID:
                     RunParamSelected (syncSettings);

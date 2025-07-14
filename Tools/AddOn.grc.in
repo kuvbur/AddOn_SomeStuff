@@ -161,6 +161,7 @@
 /* [  68] */ 	"Создано элементов - "
 /* [  69] */ 	"Изменено элементов - "
 /* [  70] */ 	"Удалено элементов - "
+/* [  71] */ 	"Не найдены свойства, заданные в правилах нумерации.\nПроверьте имена и видимость свойств"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -324,6 +325,7 @@
 /* [  68] */ 	"New elements - "
 /* [  69] */ 	"Modified elements - "
 /* [  70] */ 	"Outdated elements - "
+/* [  71] */ 	"The properties specified in the numbering rules were not found.\nCheck the names and visibility of the properties"
 }
 
 'GICN' 32500 "Sync" {
