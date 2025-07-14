@@ -42,7 +42,7 @@ public:
     }
 
     // TODO Добавить парсинг префикса и суффикса позиции
-    RenumPos (ParamValue& param)
+    RenumPos (const ParamValue& param)
     {
         guid = param.fromGuid;
         if (param.val.canCalculate) {
@@ -217,10 +217,10 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
 
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition);
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules);
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname);
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos>& eleminpos);
 RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::string& delimetr, const std::string& criteria);
-bool ElementsSeparation (const RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList);
-void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
+bool ElementsSeparation (const RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error);
+void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem, bool& has_error);
 
 #endif

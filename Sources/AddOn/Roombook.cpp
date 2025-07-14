@@ -564,7 +564,7 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
 void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead)
 {
 
-    GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
+    GS::HashTable<TypeOtd, GS::UniString> paramnamebytype = {};
     paramnamebytype.Add (Wall_Up, otd.om_up.rawname); // Отделка стен выше потолка
     paramnamebytype.Add (Wall_Main, otd.om_main.rawname); // Отделка стен основная
     paramnamebytype.Add (Wall_Down, otd.om_down.rawname); // Отделка низа стен
@@ -573,7 +573,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
     paramnamebytype.Add (Floor, otd.om_floor.rawname); // Отделка пола
     paramnamebytype.Add (Ceil, otd.om_ceil.rawname); // Отделка потолка
 
-    GS::HashTable<GS::UniString, bool> exsists_rawname;
+    GS::HashTable<GS::UniString, bool> exsists_rawname = {};
     for (auto& cItt : paramnamebytype) {
         #if defined(AC_28)
         GS::UniString rawname = cItt.value;
