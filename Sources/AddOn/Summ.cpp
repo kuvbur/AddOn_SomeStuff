@@ -114,7 +114,7 @@ bool GetSumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, A
     if (err == NoError && !definitions_.IsEmpty ()) {
         for (UInt32 i = 0; i < definitions_.GetSize (); i++) {
             if (!definitions_[i].description.IsEmpty ()) {
-                if (definitions_[i].description.Contains ("Renum_flag")) {
+                if (definitions_[i].description.Contains ("Sum") && definitions_[i].description.Contains ("{") && definitions_[i].description.Contains ("}")) {
                     if (!definitions.ContainsKey (definitions_[i].guid)) definitions.Add (definitions_[i].guid, definitions_[i]);
                 }
             }
@@ -214,36 +214,43 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
         #endif
         API_PropertyDefinition& definition = param.definition;
         // Является ли свойство описанием системы суммирования?
-        if (param.definition.description.Contains ("Sum") && param.definition.description.Contains ("{") && param.definition.description.Contains ("}")) {
-            bool flag_add = false;
-            bool flag_hasrule = true;
-            if (!rule_definitions.IsEmpty ()) {
-                if (!rule_definitions.ContainsKey (definition.guid)) flag_hasrule = false;
-            }
-            if (flag_hasrule) {
-                if (!rules.ContainsKey (definition.guid)) {
-                    SumRule paramtype = {};
-                    if (Sum_Rule (elemGuid, definition, propertyParams, paramtype)) {
-                        paramtype.position = param.rawName;
-                        rules.Add (definition.guid, paramtype);
-                        flag_add = true;
-                    }
-                } else {
+        if (!definition.description.Contains ("Sum")) continue;
+        if (!definition.description.Contains ("{")) {
+            msg_rep ("SumSelected", definition.name + " Sum: check the opening bracket, there should be {", APIERR_GENERAL, APINULLGuid);
+            continue;
+        }
+        if (!definition.description.Contains ("}")) {
+            msg_rep ("SumSelected", definition.name + " Sum: check the closing bracket, there should be }", APIERR_GENERAL, APINULLGuid);
+            continue;
+        }
+        bool flag_add = false;
+        bool flag_hasrule = true;
+        if (!rule_definitions.IsEmpty ()) {
+            if (!rule_definitions.ContainsKey (definition.guid)) flag_hasrule = false;
+        }
+        if (flag_hasrule) {
+            if (!rules.ContainsKey (definition.guid)) {
+                SumRule paramtype = {};
+                if (Sum_Rule (elemGuid, definition, propertyParams, paramtype)) {
+                    paramtype.position = param.rawName;
+                    rules.Add (definition.guid, paramtype);
                     flag_add = true;
                 }
+            } else {
+                flag_add = true;
             }
-            if (flag_add) {
+        }
+        if (flag_add) {
 
-                // Дописываем элемент в правило
-                rules.Get (definition.guid).elemts.Push (elemGuid);
+            // Дописываем элемент в правило
+            rules.Get (definition.guid).elemts.Push (elemGuid);
 
-                // Добавляем свойства для чтения в словарь
-                SumRule paramtype = rules.Get (definition.guid);
-                if (!paramtype.position.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (paramtype.position), paramToRead);
-                if (!paramtype.value.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (paramtype.value), paramToRead);
-                if (!paramtype.criteria.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (paramtype.criteria), paramToRead);
-                has_sum = true;
-            }
+            // Добавляем свойства для чтения в словарь
+            SumRule paramtype = rules.Get (definition.guid);
+            if (!paramtype.position.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (paramtype.position), paramToRead);
+            if (!paramtype.value.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (paramtype.value), paramToRead);
+            if (!paramtype.criteria.IsEmpty ()) ParamHelpers::AddParamValue2ParamDict (elemGuid, propertyParams.Get (paramtype.criteria), paramToRead);
+            has_sum = true;
         }
     }
     return has_sum;
@@ -266,7 +273,7 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
     if (definition.valueType == API_PropertyRealValueType || definition.valueType == API_PropertyIntegerValueType) paramtype.sum_type = NumSum;
     if (!paramtype.sum_type) return false;
     GS::UniString paramName = definition.description;
-    GS::Array<GS::UniString> partstring;
+    GS::Array<GS::UniString> partstring = {};
     if (StringSplt (paramName.ToLowerCase (), "}", partstring, "sum") > 0) {
         paramName = partstring[0] + "}";
     }
@@ -278,7 +285,7 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
     if (propertyParams.ContainsKey ("{@" + partstring[0] + "}")) {
         paramtype.value = "{@" + partstring[0] + "}";
     } else {
-        msg_rep ("SumSelected", "Check that the property name is correct and must begin with Property:", NoError, elemGuid);
+        msg_rep ("SumSelected", "Check that the property name is correct and must begin with Property. " + definition.name, NoError, elemGuid);
         return false;
     }
     // Ищём определение свойства-критерия
