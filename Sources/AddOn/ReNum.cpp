@@ -216,7 +216,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
     if (paramToReadelem.IsEmpty () || rules.IsEmpty ()) {
         if (paramToReadelem.IsEmpty ()) msg_rep ("ReNumSelected", "Parameters for read not found", NoError, APINULLGuid);
         if (rules.IsEmpty ()) msg_rep ("ReNumSelected", "Rules not found", NoError, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
+        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 75, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString, true);
         return false;
     }
@@ -232,20 +232,22 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
         const RenumRule& rule = *cIt->value;
         #endif
         if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem, has_error);
-}
+    }
+    if (has_error) {
+        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 72, ACAPI_GetOwnResModule ());
+        ACAPI_WriteReport (SpecEmptyListdString, true);
+        return false;
+    }
     if (paramToWriteelem.IsEmpty ()) {
         msg_rep ("ReNumSelected", "No position changes required", NoError, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
+        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 73, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString, true);
         return false;
     }
-    // TODO Добавить описание сообщений об ошибках
-    if (has_error) {
-        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
-        ACAPI_WriteReport (SpecEmptyListdString, true);
-        return false;
-    }
-    if (!paramToReadelem.IsEmpty ()) msg_rep ("ReNumSelected", GS::UniString::Printf ("Elements with new position  - %d ", paramToReadelem.GetSize ()), NoError, APINULLGuid);
+    GS::UniString msg = GS::UniString::Printf ("%d", paramToReadelem.GetSize ());
+    GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 74, ACAPI_GetOwnResModule ());
+    ACAPI_WriteReport (SpecEmptyListdString + msg, true);
+    msg_rep ("ReNumSelected", GS::UniString::Printf ("Elements with new position  - %d ", paramToReadelem.GetSize ()), NoError, APINULLGuid);
     return !paramToWriteelem.IsEmpty ();
 }
 

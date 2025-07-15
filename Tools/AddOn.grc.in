@@ -162,6 +162,10 @@
 /* [  69] */ 	"Изменено элементов - "
 /* [  70] */ 	"Удалено элементов - "
 /* [  71] */ 	"Не найдены свойства, заданные в правилах нумерации.\nПроверьте имена и видимость свойств"
+/* [  72] */ 	"Часть элементов не была пронумерована из-за ошибок в свойствах\nПроверьте отчёт"
+/* [  73] */ 	"Изменение нумерации не требуется"
+/* [  74] */ 	"Элементов с изменённой нумерацией - "
+/* [  75] */ 	"Ошибка в правиле нумерации\nПроверьте отчёт"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -326,6 +330,10 @@
 /* [  69] */ 	"Modified elements - "
 /* [  70] */ 	"Outdated elements - "
 /* [  71] */ 	"The properties specified in the numbering rules were not found.\nCheck the names and visibility of the properties"
+/* [  72] */ 	"Some elements were not numbered due to errors in properties\nCheck the report"
+/* [  73] */ 	"No need to change the numbering"
+/* [  74] */ 	"Elements with changed numbering - "
+/* [  75] */ 	"Error in the numbering rule\nCheck the report"
 }
 
 'GICN' 32500 "Sync" {
