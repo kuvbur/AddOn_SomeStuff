@@ -2084,14 +2084,41 @@ GS::UniString GetFormatString (GS::UniString& paramName)
                 UIndex attribinx = formatstring.FindLast (CharENTER);
                 formatstring = formatstring.GetSubstring (0, attribinx);
             }
-            paramName.ReplaceAll ('.' + formatstring, "");
-            ReplaceMeters (formatstring, iseng);
+            if (IsValid (formatstring, iseng)) {
+                paramName.ReplaceAll ('.' + formatstring, "");
+                ReplaceMeters (formatstring, iseng);
+            } else {
+                formatstring = "";
+            }
         } else {
             // Если .м найдена не в последнем блоке - то это не строка-формат
             formatstring = "";
         }
     }
     return formatstring;
+}
+
+bool IsValid (GS::UniString formatstring, Int32& iseng)
+{
+    ReplaceMeters (formatstring, iseng);
+    if (!formatstring.Contains ('m')) return false;
+    formatstring.ReplaceAll ("m", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.Trim ();
+    formatstring.ReplaceAll (" ", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (".", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll ("c", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll ("d", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll ("p", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll ("r", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll ("f", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll ("g", ""); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll ("k", ""); if (formatstring.IsEmpty ()) return true;
+    for (UInt32 i = 0; i < 10; i++) {
+        formatstring.ReplaceAll (GS::UniString::Printf ("%d", i), "");
+        if (formatstring.IsEmpty ()) return true;
+    }
+    if (formatstring.IsEmpty ()) return true;
+    return false;
 }
 
 void ReplaceMeters (GS::UniString& formatstring)
@@ -2104,9 +2131,9 @@ void ReplaceMeters (GS::UniString& formatstring, Int32& iseng)
 {
     GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "m");
-    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, DMeterStringID, ACAPI_GetOwnResModule ());
-    formatstring.ReplaceAll (meterString, "d");
     meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, CMeterStringID, ACAPI_GetOwnResModule ());
+    formatstring.ReplaceAll (meterString, "d");
+    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, DMeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "c");
 }
 

@@ -201,6 +201,7 @@ void TestFormatString ()
     // =============================================================================
     fstring.stringformat = ""; fstring.n_zero = 3;
     // =============================================================================
+
     test_expression = "ConWidth_1"; test_name = "ConWidth_1";
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
 
@@ -208,12 +209,20 @@ void TestFormatString ()
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
 
     test_expression = "from{Layers, 6; \"1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>\"}";
+
     test_name = "1/{Property:Теплотехнический расчёт/αint, Вт/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>";
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
 
-
-
     test_expression = "Спецификация сэндвич/Площадь, кв.м. (без подрезок)"; test_name = test_expression;
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    test_expression = "Спецификация сэндвич/Площадь, кв.м. (без малых подрезок)"; test_name = test_expression;
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    test_expression = "Спецификация сэндвич/Площадь, кв.м. (или в п.м.)"; test_name = test_expression;
+    tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
+
+    test_expression = "SomeStuff Материалы/Конструкции.Имя в спецификации"; test_name = test_expression;
     tests.Push (test_expression); rezult_format.Push (fstring); rezult_name.Push (test_name);
     // =============================================================================
     fstring.isEmpty = false; fstring.isRead = true; fstring.koeff = 1000;
