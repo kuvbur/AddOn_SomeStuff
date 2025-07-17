@@ -549,43 +549,53 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     }
     #ifndef AC_22
     if (!error_element.IsEmpty ()) {
-        #if defined(AC_27) || defined(AC_28)
-        ACAPI_UserInput_ClearElementHighlight ();
-        #else
-        #if defined(AC_26)
-        ACAPI_Interface_ClearElementHighlight ();
-        #else
-        ACAPI_Interface (APIIo_HighlightElementsID);
-        #endif
-        #endif
-        GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
-        API_RGBAColor hlColor = { 1, 0.0, 0.0, 1 };
-        GS::Array<API_Neig> error_elements = {};
-        for (const auto& cIt : error_element) {
-            #if defined(AC_28)
-            API_Guid el = cIt.key;
+        if (error_element.GetSize () < 20) {
+            #if defined(AC_27) || defined(AC_28)
+            ACAPI_UserInput_ClearElementHighlight ();
             #else
-            API_Guid el = *cIt.key;
+            #if defined(AC_26)
+            ACAPI_Interface_ClearElementHighlight ();
+            #else
+            ACAPI_Interface (APIIo_HighlightElementsID);
             #endif
-            hlElems.Add (el, hlColor);
-            error_elements.PushNew (el);
+            #endif
+            GS::HashTable<API_Guid, API_RGBAColor> hlElems = {};
+            API_RGBAColor hlColor = { 1, 0.0, 0.0, 1 };
+            GS::Array<API_Neig> error_elements = {};
+            for (const auto& cIt : error_element) {
+                #if defined(AC_28)
+                API_Guid el = cIt.key;
+                #else
+                API_Guid el = *cIt.key;
+                #endif
+                hlElems.Add (el, hlColor);
+                error_elements.PushNew (el);
+            }
+            #if defined(AC_27) || defined(AC_28)
+            ACAPI_UserInput_SetElementHighlight (hlElems);
+            #else
+            #if defined(AC_26)
+            ACAPI_Interface_SetElementHighlight (hlElems);
+            #else
+            ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+            #endif
+            #endif
+            #if defined(AC_27) || defined(AC_28)
+            err = ACAPI_Selection_Select (error_elements, true);
+            if (err == NoError) ACAPI_View_ZoomToSelected ();
+            #else
+            err = ACAPI_Element_Select (error_elements, true);
+            if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
+            #endif
+        } else {
+            msg_rep ("Spec", GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()), err, APINULLGuid);
         }
         #if defined(AC_27) || defined(AC_28)
-        ACAPI_UserInput_SetElementHighlight (hlElems);
+        ACAPI_ProcessWindow_CloseProcessWindow ();
         #else
-        #if defined(AC_26)
-        ACAPI_Interface_SetElementHighlight (hlElems);
-        #else
-        ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
         #endif
-        #endif
-        #if defined(AC_27) || defined(AC_28)
-        err = ACAPI_Selection_Select (error_elements, true);
-        if (err == NoError) ACAPI_View_ZoomToSelected ();
-        #else
-        err = ACAPI_Element_Select (error_elements, true);
-        if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
-        #endif
+        return APIERR_GENERAL;
     }
     #endif
     if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
@@ -885,7 +895,7 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams
                 continue;
             }
             for (const GS::UniString& rawname : group.sum_paramrawname) {
-                if (!params.ContainsKey (rawname)) params.Add (rawname, true);
+                if (!params.ContainsKey (rawname) && !rawname.IsEqual("1")) params.Add (rawname, true);
             }
             for (const GS::UniString& rawname : group.unic_paramrawname) {
                 if (!params.ContainsKey (rawname)) params.Add (rawname, true);
@@ -1084,22 +1094,49 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
             }
         }
     }
-
     if (rule.stop_on_error) {
         if (!not_found_paramname.IsEmpty ()) {
-            n_elements = 0;
-            elements.Clear ();
             GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecNotFoundParametersString, true);
-            return 0;
-        } else {
-            if (!not_found_unic.IsEmpty ()) {
-                n_elements = 0;
-                elements.Clear ();
-                GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
-                ACAPI_WriteReport (SpecNotFoundParametersString, true);
-                return 0;
+            GS::UniString out = "Not found param:";
+            for (auto& cIt : not_found_paramname) {
+                #if defined(AC_28)
+                GS::UniString s = cIt.key;
+                #else
+                GS::UniString s = *cIt.key;
+                #endif
+                out.Append (s); out.Append ("; ");
             }
+            out.ReplaceAll ("{@", "");
+            out.ReplaceAll ("}", "");
+            out.ReplaceAll (":", " : ");
+            out.ReplaceAll ("%", "");
+            out.ReplaceAll ("nosyncname", "");
+            msg_rep ("Spec", out, NoError, APINULLGuid);
+        }
+        if (!not_found_unic.IsEmpty ()) {
+            GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
+            ACAPI_WriteReport (SpecNotFoundParametersString, true);
+            GS::UniString out = "Not found unic:";
+            for (auto& cIt : not_found_unic) {
+                #if defined(AC_28)
+                GS::UniString s = cIt.key;
+                #else
+                GS::UniString s = *cIt.key;
+                #endif
+                out.Append (s); out.Append ("; ");
+            }
+            out.ReplaceAll ("{@", "");
+            out.ReplaceAll ("}", "");
+            out.ReplaceAll (":", " : ");
+            out.ReplaceAll ("%", "");
+            out.ReplaceAll ("nosyncname", "");
+            msg_rep ("Spec", out, NoError, APINULLGuid);
+        }
+        if (!not_found_paramname.IsEmpty () || !not_found_unic.IsEmpty ()) {
+            n_elements = 0;
+            elements.Clear ();
+            return 0;
         }
     }
     if (!rule.delete_old) return n_elements;
@@ -1369,6 +1406,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
         if (group.sum_paramrawname.GetSize () < rule.out_sum_paramrawname.GetSize ()) {
             for (UInt32 i = group.sum_paramrawname.GetSize (); i < rule.out_sum_paramrawname.GetSize (); i++) {
                 group.sum_paramrawname.Push ("1");
+                msg_rep ("Spec", "Check if the number of quantity parameters matches", NoError, APINULLGuid);
             }
         }
         if (min_row > 0) {
@@ -1737,7 +1775,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-            }
+        }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -1752,9 +1790,9 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 #endif
                 if (err != NoError) msg_rep ("Spec", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-        }
+    }
         return NoError;
-    });
+});
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
         #if defined(AC_27) || defined(AC_28)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -1762,7 +1800,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elemsheader[i], 0);
         #endif
         if (err != NoError) msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
-    }
+}
     return NoError;
 }
 
