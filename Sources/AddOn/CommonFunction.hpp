@@ -132,7 +132,7 @@ typedef struct
     int num = 0;							//Номер слоя
     GS::UniString val = "";					//Прочитанные свойства слоя
     double area = 0; // Площадь поверхности
-    double area_fill = 0; // Площадь поверхности
+    double area_fill = 0; // Площадь сечения
     double volume = 0; // Объём
     double length = 0; // Длина
     double width = 0; // Ширина
