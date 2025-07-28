@@ -2203,7 +2203,20 @@ ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs)
     if (!lhs.hasrawDouble || !rhs.hasrawDouble) out.hasrawDouble = false;
     if (lhs.hasrawDouble && rhs.hasrawDouble) out.hasrawDouble = true;
     out.doubleValue = lhs.doubleValue + rhs.doubleValue;
-    if (out.hasrawDouble) out.rawDoubleValue = lhs.rawDoubleValue + rhs.rawDoubleValue;
+
+    double lhsrawDoubleValue = 0;
+    if (lhs.hasrawDouble) {
+        lhsrawDoubleValue = lhs.rawDoubleValue;
+    } else {
+        lhsrawDoubleValue = lhs.doubleValue;
+    }
+    double rhsrawDoubleValue = 0;
+    if (rhs.hasrawDouble) {
+        rhsrawDoubleValue = rhs.rawDoubleValue;
+    } else {
+        rhsrawDoubleValue = rhs.doubleValue;
+    }
+    out.rawDoubleValue = lhsrawDoubleValue + rhsrawDoubleValue;
     out.uniStringValue = lhs.uniStringValue;
     out.uniStringValue.Append (";");
     out.uniStringValue.Append (rhs.uniStringValue);
@@ -3827,7 +3840,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             #endif
         }
         if (paramType.IsEqual ("{@listdata:") && eltype == API_ObjectID) {
-            needCompare = ParamHelpers::ReadListData (elem_head, paramByType);
+            ParamHelpers::ReadListData (elem_head, params);
         }
         if (needCompare) {
             #if defined(TESTING)
@@ -3835,7 +3848,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             #endif
             ParamHelpers::CompareParamDictValue (paramByType, params);
         } else {
-            if (!paramType.IsEqual ("{@material:")) {
+            if (!paramType.IsEqual ("{@material:") && !paramType.IsEqual ("{@listdata:")) {
                 #if defined(TESTING)
                 DBprnt ("Read err", "not found" + paramType);
                 #endif
@@ -6892,69 +6905,46 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                             double area_fill = result[i].CalcArea ();
                             Point2D centr = result[i].GetCenter ();
                             if (needReadQuantities) {
-                                Coord pbegC, pendC; double pdx = 0; double pdy = 0; double plen = 0; double th = 0;
+                                double th = 0;
                                 for (UIndex edgeIndex = 1; edgeIndex <= result[i].GetEdgeNum (); ++edgeIndex) {
                                     typename Geometry::Polygon2D::ConstEdgeIterator edgeIt = result[i].GetEdgeIterator (edgeIndex);
-                                    Coord begC, endC;
-                                    double _a = 0.0;
-                                    result[i].GetSector (edgeIt, begC, endC, _a);
-                                    double dx = endC.x - begC.x;
-                                    double dy = endC.y - begC.y;
-                                    double len = std::sqrt (dx * dx + dy * dy);
-                                    if (edgeIndex == 1) {
-                                        pdx = dx; pdy = dy; plen = len;
-                                        pbegC = begC, pendC = endC;
-                                        continue;
-                                    }
-                                    if (!(begC == pendC || begC == pbegC || endC == pbegC || endC == pendC) || is_equal (len, 0)) {
-                                        pdx = dx; pdy = dy; plen = len;
-                                        pbegC = begC, pendC = endC;
-                                        continue;
-                                    }
-                                    double dot = dx * pdx + dy * pdy;
-                                    double cosAngle = std::abs (dot) / (len * plen);
-                                    if (cosAngle > 1.0) cosAngle = 1.0;
-                                    double angle = RADDEG * std::acos (cosAngle);
-                                    if (is_equal (angle, 90.0) || fabs (angle - 90.0) < 0.0001) {
-                                        if (is_equal (th, 0)) {
-                                            th = plen;
-                                        } else {
-                                            th = fmin (th, plen);
+                                    Sector edge; GenArc _a;
+                                    result[i].GetSector (edgeIt, edge, _a);
+                                    GS::Optional<Point2D> ppoint = edge.ProjectPoint (centr);
+                                    if (ppoint.HasValue ()) {
+                                        Sector edge_norm = { centr, ppoint.Get () };
+                                        Vector2D cut_direction = Geometry::SectorVector (edge_norm);
+                                        GS::Array<Sector> resSectors = {};
+                                        bool h = result[i].Intersect (centr, cut_direction, &resSectors);
+                                        if (!resSectors.IsEmpty ()) {
+                                            for (UInt32 k = 0; k < resSectors.GetSize (); k++) {
+                                                double fillThickL = resSectors[k].GetLength ();
+                                                if (is_equal (th, 0)) {
+                                                    th = fillThickL;
+                                                } else {
+                                                    th = fmin (th, fillThickL);
+                                                }
+                                            }
                                         }
                                     }
-                                    if (is_equal (angle, 0)) {
-                                        if (pendC == endC) {
-                                            int hh = 1;
-                                        }
-                                        if (pbegC == begC) {
-                                            int hh = 1;
-                                        }
-                                        if (pendC == begC) {
-                                            begC = pbegC;
-                                            int hh = 1;
-                                        }
-                                        if (pbegC == endC) {
-                                            endC = pendC;
-                                            int hh = 1;
-                                        }
-                                        dx = endC.x - begC.x;
-                                        dy = endC.y - begC.y;
-                                        len = plen + len;
-                                    }
-                                    pdx = dx; pdy = dy; plen = len;
-                                    pbegC = begC, pendC = endC;
                                 }
-                                ParamValueComposite layer = {};
-                                layer.inx = constrinxL;
-                                layer.fillThick = th;
-                                layer.rfromstart = Geometry::Dist (startp, centr);
-                                layer.area_fill = area_fill;
-                                layer.structype = structype;
-                                if (!existsmaterial.ContainsKey (constrinxL)) {
-                                    ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
-                                    existsmaterial.Add (constrinxL, true);
+                                if (!is_equal (th, 0)) {
+                                    ParamValueComposite layer = {};
+                                    layer.inx = constrinxL;
+                                    layer.fillThick = th;
+                                    layer.rfromstart = Geometry::Dist (startp, centr);
+                                    layer.area_fill = area_fill;
+                                    layer.structype = structype;
+                                    if (!existsmaterial.ContainsKey (constrinxL)) {
+                                        ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
+                                        existsmaterial.Add (constrinxL, true);
+                                    }
+                                    composite_all.Push (layer);
+                                } else {
+                                    #if defined(TESTING)
+                                    DBprnt ("ERR is_equal (th, 0) ====================");
+                                    #endif
                                 }
-                                composite_all.Push (layer);
                             }
                             // Находим пересечения каждого полигона с линиями
                             for (GS::HashTable<short, OrientedSegments>::PairIterator cIt = lines.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -6965,7 +6955,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                 OrientedSegments& l = *cIt->value;
                                 short pen = *cIt->key;
                                 #endif
-                                GS::Array<Sector> resSectors;
+                                GS::Array<Sector> resSectors = {};
                                 if (pen < 0) continue;
                                 bool h = result[i].Intersect (l.cut_start, l.cut_direction, &resSectors);
                                 if (!resSectors.IsEmpty ()) {
