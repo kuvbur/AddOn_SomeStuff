@@ -1841,6 +1841,9 @@ GS::UniString GetPropertyENGName (GS::UniString& name)
     if (name.IsEqual ("@property:qty")) return "@material:qty";
     if (name.IsEqual ("@property:unit_prefix")) return "@material:unit_prefix";
     if (name.IsEqual ("@property:length")) return "@material:length";
+    if (name.IsEqual ("@property:area_section")) return "@material:area_section";
+    if (name.IsEqual ("@property:width")) return "@material:width";
+
     GS::UniString nameproperty = "";
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     nameproperty = "@property:" + RSGetIndString (iseng, BuildingMaterialNameID, ACAPI_GetOwnResModule ());
@@ -5157,12 +5160,15 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
     ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = "{" + rawname_unit;
     ParamHelpers::AddValueToParamDictValue (params, rawname_kzap); rawname_kzap = "{" + rawname_kzap;
     bool flag_find = false;
+
     for (UInt32 i = 0; i < composites.GetSize (); i++) {
         API_AttributeIndex constrinx = composites[i].buildMatIndices;
         double volume = composites[i].volumes;
+        double area_fill = composites[i].projectedArea;
         if (composites_quantity.ContainsKey (constrinx)) {
             ParamValueComposite& p = composites_quantity.Get (constrinx);
             p.volume += volume;
+            p.area_fill += area_fill;
         } else {
             if (!existsmaterial.ContainsKey (constrinx)) {
                 if (ParamHelpers::GetAttributeValues (constrinx, params, paramsAdd)) {
@@ -5197,6 +5203,7 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
             ParamValueComposite p = {};
             p.inx = constrinx;
             p.volume = volume;
+            p.area_fill = area_fill;
             p.fillThick = th;
             p.num = i;
             p.unit = units;
@@ -5218,7 +5225,10 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
                     ParamValueComposite& pc = composites_quantity_param.Get (p.inx);
                     pc.area_fill += p.area_fill;
                     pc.fillThick += p.fillThick;
-                    if (composites_quantity.ContainsKey (p.inx)) pc.volume += composites_quantity.Get (p.inx).volume;
+                    if (composites_quantity.ContainsKey (p.inx)) {
+                        if (is_equal (pc.area_fill, 0)) pc.area_fill += composites_quantity.Get (p.inx).area_fill;
+                        pc.volume += composites_quantity.Get (p.inx).volume;
+                    }
                 } else {
                     composites_quantity_param.Add (p.inx, p);
                 }
@@ -5238,13 +5248,15 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
             ParamValueComposite& qty_param = composites_quantity_param.Get (p.inx);
             double volume_total = composites_quantity.Get (p.inx).volume;
             double area_fill_total = qty_param.area_fill;
+            if (is_equal (area_fill_total, 0)) {
+                area_fill_total = composites_quantity.Get (p.inx).area_fill;
+            }
             double fillThick_total = qty_param.fillThick;
             // Определяем толщину
             double fillThick = composites_quantity.Get (p.inx).fillThick;
             if (is_equal (fillThick, 0)) {
                 fillThick = p.fillThick;
             } else {
-
                 if (!is_equal (fillThick, p.fillThick)) {
                     GS::UniString msg = GS::UniString::Printf ("%f", fillThick);
                     msg += " <-> ";
@@ -5256,23 +5268,32 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
             double proc = 0;
             // Определяем долю площади проекции для текущего слоя
             if (is_equal (p.fillThick, fillThick_total) && is_equal (proc, 0) && !is_equal (p.fillThick, 0)) {
-                proc = 1; // Если площадь слоя совпадает с суммарной площадью материала
+                proc = 1; // Если толщина слоя совпадает с суммарной площадью материала
             }
             if (is_equal (area_fill_total, p.area_fill) && is_equal (proc, 0) && !is_equal (p.area_fill, 0)) {
                 proc = 1; // Если площадь слоя совпадает с суммарной площадью материала
             }
             // Определяем долю площади проекции для текущего слоя
+            // По соотношению площадей
             if (!is_equal (area_fill_total, 0) && is_equal (proc, 0)) {
                 proc = p.area_fill / area_fill_total;
             }
-            // Если не удалось - возьмём долю по общей толщине
+            // По оотношению толщин
             if (!is_equal (fillThick_total, 0) && is_equal (proc, 0)) {
                 proc = p.fillThick / fillThick_total;
             }
+            // Расчитываем площадь сечения, если она пустая
+            if (is_equal (p.area_fill, 0) && !is_equal (p.length, 0)) {
+                p.area_fill = p.volume / p.length;
+            }
+            if (is_equal (p.area_fill, 0)) {
+                p.area_fill = area_fill_total * proc;
+            }
             p.unit = composites_quantity.Get (p.inx).unit;
             p.volume = volume_total * proc;
-            if (!is_equal (fillThick, 0)) p.area = p.volume / fillThick;
-            if (!is_equal (p.area_fill, 0)) p.length = p.volume / p.area_fill;
+            if (!is_equal (fillThick, 0) && is_equal (p.area, 0)) p.area = p.volume / fillThick;
+            if (!is_equal (p.area_fill, 0) && is_equal (p.length, 0)) p.length = p.volume / p.area_fill;
+            if (!is_equal (p.fillThick, 0) && is_equal (p.width, 0)) p.width = p.area_fill / fillThick;
             ParamHelpers::SetUnitsAndQty2ParamValueComposite (p);
         }
     }
@@ -5446,7 +5467,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             }
         }
         if (param.fromQuantity) needReadQuantities = true;
-    }
+}
     if (paramlayers.IsEmpty ()) return true;
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (!paramsAdd.IsEmpty ()) {
@@ -5486,8 +5507,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
+                        }
                     }
-                }
                 if (!paramsAdd_1.IsEmpty ()) {
                     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
                         #if defined(AC_28)
@@ -5498,7 +5519,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
-                    }
+                        }
                 }
             }
         }
@@ -5591,6 +5612,48 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     layer_thickness = "{@material:area}"; defult_formatstring = "2m";
                     if (params.ContainsKey (layer_thickness)) {
                         double val = param_composite.composite[indx].area;
+                        FormatString formatsting = params.Get (layer_thickness).val.formatstring;
+                        if (formatsting.isEmpty) {
+                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
+                            params.Get (layer_thickness).val.formatstring = formatsting;
+                        }
+                        params.Get (layer_thickness).val.doubleValue = val;
+                        params.Get (layer_thickness).val.rawDoubleValue = val;
+                        params.Get (layer_thickness).val.hasrawDouble = true;
+                        params.Get (layer_thickness).val.type = API_PropertyRealValueType;
+                        params.Get (layer_thickness).isValid = true;
+                    }
+                    layer_thickness = "{@material:area_section}"; defult_formatstring = "2m";
+                    if (params.ContainsKey (layer_thickness)) {
+                        double val = param_composite.composite[indx].area_fill;
+                        FormatString formatsting = params.Get (layer_thickness).val.formatstring;
+                        if (formatsting.isEmpty) {
+                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
+                            params.Get (layer_thickness).val.formatstring = formatsting;
+                        }
+                        params.Get (layer_thickness).val.doubleValue = val;
+                        params.Get (layer_thickness).val.rawDoubleValue = val;
+                        params.Get (layer_thickness).val.hasrawDouble = true;
+                        params.Get (layer_thickness).val.type = API_PropertyRealValueType;
+                        params.Get (layer_thickness).isValid = true;
+                    }
+                    layer_thickness = "{@material:width}"; defult_formatstring = "0mm";
+                    if (params.ContainsKey (layer_thickness)) {
+                        double val = param_composite.composite[indx].width;
+                        FormatString formatsting = params.Get (layer_thickness).val.formatstring;
+                        if (formatsting.isEmpty) {
+                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
+                            params.Get (layer_thickness).val.formatstring = formatsting;
+                        }
+                        params.Get (layer_thickness).val.doubleValue = val;
+                        params.Get (layer_thickness).val.rawDoubleValue = val;
+                        params.Get (layer_thickness).val.hasrawDouble = true;
+                        params.Get (layer_thickness).val.type = API_PropertyRealValueType;
+                        params.Get (layer_thickness).isValid = true;
+                    }
+                    layer_thickness = "{@material:length}"; defult_formatstring = "0mm";
+                    if (params.ContainsKey (layer_thickness)) {
+                        double val = param_composite.composite[indx].length;
                         FormatString formatsting = params.Get (layer_thickness).val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5919,10 +5982,10 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 #endif
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
-            } else {
+        } else {
                 if (err != APIERR_BADNAME) return false;
             }
-        }
+}
     }
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
@@ -6106,7 +6169,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
         value = property.definition.defaultValue.basicValue;
     } else {
         value = property.value;
-    }
+}
     #else
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {
@@ -6417,7 +6480,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     pvalue.isValid = true;
     pvalue.fromAttribElement = true;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
@@ -6611,7 +6674,7 @@ GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatStr
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
-bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, short& structype_ven)
+bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, short& structype_ven, double& width, double& length)
 {
     #if defined(TESTING)
     DBprnt ("        ComponentsBasicStructure\n");
@@ -6623,12 +6686,16 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         layer.fillThick = fillThick_ven;
         layer.num = 2;
         layer.structype = structype_ven;
+        layer.length = length;
+        layer.width = width;
         param_composite.composite.Push (layer);
         ParamHelpers::GetAttributeValues (constrinx_ven, params, paramsAdd);
     }
     ParamValueComposite layer = {};
     layer.inx = constrinx;
     layer.fillThick = fillThick;
+    layer.length = length;
+    layer.width = width;
     layer.num = 1;
     layer.structype = APICWallComp_Core;
     param_composite.composite.Push (layer);
@@ -6639,7 +6706,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
         #endif
-    }
+}
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
 }
@@ -6678,7 +6745,7 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
 // --------------------------------------------------------------------
-bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial)
+bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, double& width, double& length)
 {
     #if defined(TESTING)
     DBprnt ("        ComponentsCompositeStructure");
@@ -6711,6 +6778,8 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         layer.fillThick = fillThickL;
         layer.num = i + 1;
         layer.structype = (*defs.cwall_compItems)[i].flagBits;
+        layer.length = length;
+        layer.width = width;
         param_composite.composite.Push (layer);
         if (!existsmaterial.ContainsKey (constrinxL)) {
             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
@@ -6723,17 +6792,17 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
         #endif
-    }
+        }
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля
 // --------------------------------------------------------------------
 
-bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescription, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial)
+bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescription, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, double& width, double& length)
 {
     #if !defined(AC_22) && !defined(AC_23)
     #if defined(TESTING)
@@ -6763,7 +6832,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         if (!needReadQuantities) {
             if (paramlayers.Get (rawName).fromQuantity) needReadQuantities = true;
         }
-    }
+}
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
     #endif
@@ -6866,8 +6935,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-        }
-    }
+                }
+            }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = { -10000, 0 };
@@ -6903,6 +6972,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                         for (UInt32 i = 0; i < result.GetSize (); i++) {
                             // Запись всех слоёв
                             double area_fill = result[i].CalcArea ();
+                            double perimetr = 0;
+                            USize ncont = result[i].GetContourNum ();
+                            if (ncont == 1) {
+                                perimetr = result[i].CalcPerimeter ();
+                            } else {
+                                for (UIndex cIndex = 1; cIndex <= ncont; ++cIndex) {
+                                    typename Geometry::Polygon2D::ConstContourIterator cIt = result[i].GetContourIterator (cIndex);
+                                    perimetr = fmax (perimetr, result[i].CalcContourPerimeter (cIt));
+                                }
+                            }
                             Point2D centr = result[i].GetCenter ();
                             if (needReadQuantities) {
                                 double th = 0;
@@ -6934,6 +7013,13 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                     layer.fillThick = th;
                                     layer.rfromstart = Geometry::Dist (startp, centr);
                                     layer.area_fill = area_fill;
+                                    if (ncont == 1) {
+                                        layer.width = 0.5 * perimetr - th;
+                                    } else {
+                                        layer.width = perimetr;
+                                    }
+                                    if (is_equal (layer.width, 0)) layer.width = width;
+                                    layer.length = length;
                                     layer.structype = structype;
                                     if (!existsmaterial.ContainsKey (constrinxL)) {
                                         ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
@@ -6978,16 +7064,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                 }
                             }
                         }
-                    } else {
+        } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-                }
-                break;
-        }
-        ++profileDescriptionIt1;
     }
+                break;
+    }
+        ++profileDescriptionIt1;
+}
     if (needReadQuantities && !composite_all.IsEmpty ()) {
         short pen = -1;
         if (param_composite.ContainsKey (pen)) {
@@ -7014,7 +7100,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     #else
                     paramlayers.Get (*cIt->key).composite = param_composite.Get (pen).composite;
                     #endif
-                } else {
+    } else {
                     // Теперь нам надо отсортировать слои по параметру rfromstart
                     std::map<double, ParamValueComposite> comps;
                     GS::Array<ParamValueComposite> param = param_composite.Get (pen).composite;
@@ -7055,8 +7141,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     #endif
     API_ModelElemStructureType structtype = API_BasicStructure;
     API_AttributeIndex constrinx = {};
-    double fillThick = 0;
-
+    double fillThick = 0, width = 0, length = 0;
     // Отделка колонн
     API_AttributeIndex constrinx_ven = {};
     double fillThick_ven = 0; short structype_ven = 0;
@@ -7072,6 +7157,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             if (structtype == API_BasicStructure) {
                 constrinx = element.columnSegment.assemblySegmentData.buildingMaterial;
                 fillThick = element.columnSegment.assemblySegmentData.nominalHeight;
+                width = element.columnSegment.assemblySegmentData.nominalWidth;
                 constrinx_ven = element.columnSegment.venBuildingMaterial;
                 fillThick_ven = element.columnSegment.venThick;
                 if (element.columnSegment.venType == APIVeneer_Core) structype_ven = APICWallComp_Core;
@@ -7084,6 +7170,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             if (structtype == API_BasicStructure) {
                 constrinx = element.beamSegment.assemblySegmentData.buildingMaterial;
                 fillThick = element.beamSegment.assemblySegmentData.nominalHeight;
+                width = element.beamSegment.assemblySegmentData.nominalWidth;
             }
             if (structtype == API_ProfileStructure) constrinx = element.beamSegment.assemblySegmentData.profileAttr;
             break;
@@ -7104,6 +7191,8 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                     if (structtype == API_BasicStructure) {
                         constrinx = memo.columnSegments[0].assemblySegmentData.buildingMaterial;
                         fillThick = memo.columnSegments[0].assemblySegmentData.nominalHeight;
+                        width = memo.columnSegments[0].assemblySegmentData.nominalWidth;
+                        length = element.column.height;
                         constrinx_ven = memo.columnSegments[0].venBuildingMaterial;
                         fillThick_ven = memo.columnSegments[0].venThick;
                         if (memo.columnSegments[0].venType == APIVeneer_Core) structype_ven = APICWallComp_Core;
@@ -7135,8 +7224,14 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                     elemhead = memo.beamSegments[0].head;
                     structtype = memo.beamSegments[0].assemblySegmentData.modelElemStructureType;
                     if (structtype == API_BasicStructure) {
+                        width = memo.beamSegments[0].assemblySegmentData.nominalWidth;
                         constrinx = memo.beamSegments[0].assemblySegmentData.buildingMaterial;
                         fillThick = memo.beamSegments[0].assemblySegmentData.nominalHeight;
+                    }
+                    if (element.beam.isFlipped) {
+                        length = sqrt ((element.beam.endC.x - element.beam.begC.x) * (element.beam.endC.x - element.beam.begC.x) + (element.beam.endC.y - element.beam.begC.y) * (element.beam.endC.y - element.beam.begC.y));
+                    } else {
+                        length = sqrt ((element.beam.begC.x - element.beam.endC.x) * (element.beam.begC.x - element.beam.endC.x) + (element.beam.begC.y - element.beam.endC.y) * (element.beam.begC.y - element.beam.endC.y));
                     }
                     if (structtype == API_ProfileStructure) constrinx = memo.beamSegments[0].assemblySegmentData.profileAttr;
                 } else {
@@ -7152,6 +7247,12 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             break;
         case API_WallID:
             structtype = element.wall.modelElemStructureType;
+            width = element.wall.height;
+            if (element.wall.flipped) {
+                length = sqrt ((element.wall.endC.x - element.wall.begC.x) * (element.wall.endC.x - element.wall.begC.x) + (element.wall.endC.y - element.wall.begC.y) * (element.wall.endC.y - element.wall.begC.y));
+            } else {
+                length = sqrt ((element.wall.begC.x - element.wall.endC.x) * (element.wall.begC.x - element.wall.endC.x) + (element.wall.begC.y - element.wall.endC.y) * (element.wall.begC.y - element.wall.endC.y));
+            }
             if (structtype == API_CompositeStructure) constrinx = element.wall.composite;
             if (structtype == API_BasicStructure) constrinx = element.wall.buildingMaterial;
             if (structtype == API_ProfileStructure) constrinx = element.wall.profileAttr;
@@ -7196,7 +7297,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                 paramlayers.Add (param.rawName, param);
             }
         }
-    }
+}
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramlayers.IsEmpty ()) {
@@ -7213,9 +7314,9 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
 
     // Получим индексы строительных материалов и толщины
     if (structtype == API_BasicStructure) {
-        hasData = ParamHelpers::ComponentsBasicStructure (constrinx, fillThick, constrinx_ven, fillThick_ven, params, paramlayers, paramsAdd, structype_ven);
+        hasData = ParamHelpers::ComponentsBasicStructure (constrinx, fillThick, constrinx_ven, fillThick_ven, params, paramlayers, paramsAdd, structype_ven, width, length);
     }
-    if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure (elemhead.guid, constrinx, params, paramlayers, paramsAdd, existsmaterial);
+    if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure (elemhead.guid, constrinx, params, paramlayers, paramsAdd, existsmaterial, width, length);
     #ifndef AC_23
     if (structtype == API_ProfileStructure) {
         API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
@@ -7232,7 +7333,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             return false;
         }
         ProfileVectorImage profileDescription = *memo.stretchedProfile;
-        hasData = ParamHelpers::ComponentsProfileStructure (profileDescription, params, paramlayers, paramsAdd, existsmaterial);
+        hasData = ParamHelpers::ComponentsProfileStructure (profileDescription, params, paramlayers, paramsAdd, existsmaterial, width, length);
         ACAPI_DisposeElemMemoHdls (&memo);
     }
     #endif
@@ -7322,7 +7423,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 if (!definition.name.Contains (CharENTER) && definition.guid != APINULLGuid) propertyDefinitions.Push (definition);
             }
         }
-    }
+}
     #ifndef AC_22
     if (!propertyDefinitions.IsEmpty ()) {
         GS::Array<API_Property> properties;
