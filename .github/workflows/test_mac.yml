@@ -1,0 +1,53 @@
+name: Add-On Build
+on:
+  push
+
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build_mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        ac-version: [27]
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout the submodule
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+
+      - name: Setup Xcode
+        run: sudo xcode-select -s /Applications/Xcode_14.2.app
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install requests
+      
+      - name: Run build script
+        run: |
+          python Tools/BuildAddOn.py --configFile config.json --acVersion ${{ matrix.ac-version }} --release  --package
+      - name: Get Time
+        id: time
+        uses: nanzm/get-time-action@master
+        with:
+          format: 'YYYY-MM-DD-HH'
+      - name: Upload Artifact
+        env:
+          TIME: "${{ steps.time.outputs.time }}"
+        uses: actions/upload-artifact@v4
+        with:
+          name: SomeStuff AC${{ matrix.ac-version }} Mac ${{ env.TIME }}
+          path: Build/Package/SomeStuff/${{ matrix.ac-version }}
+
