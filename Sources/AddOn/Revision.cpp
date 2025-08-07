@@ -194,7 +194,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                     // Обрабатываем маркеры
                     GetChangesMarker (changes);
                     GetChangesLayout (layoutchange, changes, layout_note_guid);
-                    if (!CheckChanges (changes, revision.layoutInfo.subsetName, revision.layoutInfo.id)) has_change_error = true;
+                    if (CheckChanges (changes, revision.layoutInfo.subsetName, revision.layoutInfo.id)) has_change_error = true;
                     ChangeMarkerTextOnLayout (changes);
                     ChangeLayoutProperty (changes, layout_note_guid, dbInfo.databaseUnId, revision.layoutInfo.id, layoutRVI, allchanges);
                 }
@@ -634,7 +634,7 @@ bool CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
                         has_error = true;
                     }
                 } else {
-                    msg_rep ("GetChangesMarker", "Marker not in on workspace : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, true);
+                    msg_rep ("GetChangesMarker", "Marker not in on workspace : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, false);
                     has_error = true;
                 }
             }
