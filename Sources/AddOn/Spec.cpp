@@ -1268,10 +1268,10 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
 }
 
 // --------------------------------------------------------------------
-// Разбивает строку на части. Будем постепенно заменять на пустоту обработанные части 
+// Разбивает строку на части. Будем постепенно заменять на пустоту обработанные части
 // Критерий - значение, по которому будет сгруппированы элементы
 // g(P1, P2, P3; F; Q1, Q2) - P1...P3 параметры, уникальные для вложенного элемента,
-// 
+//
 //                            F - флаг включения группы 1/0. Если не найден - всегда 1
 //                            Q1...Q2 параметры или значения количества, будут просуммированы. Если их нет - запишем 1 для суммы.
 // s(Pn1, Pn2, Pn3; Qn1, Qn2) - Pn1...Pn3 параметры размещаемых объектов,
@@ -1596,17 +1596,45 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
 // --------------------------------------------------------------------
 bool GetSizePlaceElement (const API_Element& elementt, const API_ElementMemo& memot, double& dx, double& dy)
 {
+    bool flag_find_dx = false; bool flag_find_dy = false; bool flag_find_type = false;
+    double somestuff_spec_hrow = 0;
+    double somestuff_spec_bcol = 0;
+    Int32 show_type = 0;
     const GSSize nParams = BMGetHandleSize ((GSHandle) memot.params) / sizeof (API_AddParType);
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memot.params)[ii];
         GS::UniString name = GS::UniString (actParam.name);
         if (name.IsEqual ("somestuff_spec_hrow")) {
+            somestuff_spec_hrow = actParam.value.real;
+            flag_find_dx = true;
+        }
+        if (name.IsEqual ("somestuff_spec_bcol")) {
+            somestuff_spec_bcol = actParam.value.real;
+            flag_find_dy = true;
+        }
+        if (name.IsEqual ("show_type")) {
+            show_type = (Int32) actParam.value.real;
+            flag_find_type = true;
+        }
+        if (flag_find_dx && flag_find_dy && flag_find_type) break;
+    }
+    if (flag_find_type) {
+        if (show_type == 1) {
             dx = 0;
-            dy = actParam.value.real;
+            dy = somestuff_spec_hrow;
             return true;
         }
+        if (show_type == 2 || show_type == 3) {
+            dx = somestuff_spec_bcol;
+            dy = somestuff_spec_hrow;
+            return false;
+        }
     }
-    bool flag_find_dx = false; bool flag_find_dy = false;
+    if (flag_find_dx) {
+        dx = 0;
+        dy = somestuff_spec_hrow;
+        return true;
+    }
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memot.params)[ii];
         GS::UniString name = GS::UniString (actParam.name);
