@@ -2274,6 +2274,7 @@ void Param_SetComposite (const ParamValue& base_composite, const bool& base_flip
         if (v.Contains ("h[0]")) fin_add = false;
         v.ReplaceAll ("h[1]", "");
         v.ReplaceAll ("h[0]", "");
+        v.ReplaceAll ("h[]", "");
         if (v.Contains ("f[]")) {
             v = v.GetPrefix (v.GetLength () - 5);
             v = v.GetSuffix (v.GetLength () - 4);
