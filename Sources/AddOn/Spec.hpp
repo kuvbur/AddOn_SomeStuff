@@ -45,6 +45,7 @@ typedef struct
     bool is_Valid = true;
     bool delete_old = false;
     bool stop_on_error = true;
+    bool only_visible = true;
 } SpecRule;
 
 typedef struct
