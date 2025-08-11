@@ -4185,7 +4185,6 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue & propertyPa
 bool ParamHelpers::SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition>&definitions, GS::Array<API_PropertyDefinition>&definitionsout)
 {
     if (definitions.IsEmpty ()) return false;
-    GS::HashTable<GS::UniString, API_PropertyDefinition> GuidDefinition = {};
     bool flag_find = false;
     for (UInt32 i = 0; i < definitions.GetSize (); i++) {
         if (!definitions[i].description.IsEmpty ()) {

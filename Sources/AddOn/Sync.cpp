@@ -759,7 +759,7 @@ void SyncAddRule (const WriteData& writeSub, WriteDict& syncRules, ParamDictElem
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
-bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams, bool syncall, bool synccoord, bool syncclass, ParamDictValue& subproperty)
+bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementType, const API_PropertyDefinition& definition, GS::Array <WriteData>& syncRules, ParamDictElement& paramToRead, bool& hasSub, ParamDictValue& propertyParams, bool syncall, bool synccoord, bool syncclass, ParamDictValue& subproperty)
 {
     // TODO Попробовать отключать часть синхронизаций в зависимости от изменённых параметров (API_ActTranPars acttype)
     GS::UniString description_string = definition.description;
@@ -821,6 +821,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
             GS::UniString rulestring_one = rulestring[i];
             API_Guid elemGuidfrom = elemGuid; // Элемент, из которого читаем данные
             API_Guid elemGuidto = elemGuid; // Элемент, в котороый записываем данные
+            API_ElemTypeID elementType_from = elementType; // Тип элемента, из которого читаем данные
             // Копировать из другого элемента
             if (rulestring_one.Contains ("from_GUID{")) {
                 GS::Array<GS::UniString> params;
@@ -833,6 +834,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                         if (subproperty.Get (rawname).isValid) {
                             elemGuidfrom = APIGuidFromString (subproperty.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             rulestring_one = "Sync_from{" + params[1];
+                            elementType_from = GetElemTypeID (elemGuidfrom);
                         }
                     }
                 }
@@ -854,7 +856,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const  API_ElemTypeID& elementTy
                     }
                 }
             }
-            if (SyncString (elementType, rulestring_one, syncdirection, param, ignorevals, stringformat, syncall, synccoord, syncclass)) {
+            if (SyncString (elementType_from, rulestring_one, syncdirection, param, ignorevals, stringformat, syncall, synccoord, syncclass)) {
                 hasRule = true;
                 WriteData writeOne;
                 writeOne.formatstring = stringformat;
