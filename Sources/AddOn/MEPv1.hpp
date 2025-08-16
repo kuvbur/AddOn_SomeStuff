@@ -25,7 +25,7 @@
 #include "ACAPI/MEPRigidSegmentDefault.hpp"
 #include "ACAPI/MEPRoutingNode.hpp"
 #include "ACAPI/MEPRoutingNodeDefault.hpp"
-#include "ACAPI/MEPBend.hpp"
+//#include "ACAPI/MEPBend.hpp"
 #include "ACAPI/MEPBendDefault.hpp"
 #include "ACAPI/MEPTransition.hpp"
 #include "ACAPI/MEPTransitionDefault.hpp"

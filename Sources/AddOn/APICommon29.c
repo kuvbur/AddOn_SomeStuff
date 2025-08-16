@@ -10,7 +10,7 @@
 
 #include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#include	"APICommon28.h"
+#include	"APICommon29.h"
 
 
 // =============================================================================
@@ -491,7 +491,7 @@ bool	ClickAnElem (const char*			prompt,
 					 API_Coord3D*			c /*= nullptr*/,
 					 bool					ignorePartialSelection /*= true*/)
 {
-	API_GetPointType	pointInfo = {};
+	API_GetPointType	pointInfo {};
 	API_ElemType		clickedType;
 	GSErrCode			err;
 
