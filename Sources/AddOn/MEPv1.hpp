@@ -2,7 +2,7 @@
 #pragma once
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28)
 #include "CommonFunction.hpp"
 #include "Definitions.hpp"
 #include "Helpers.hpp"
@@ -25,7 +25,7 @@
 #include "ACAPI/MEPRigidSegmentDefault.hpp"
 #include "ACAPI/MEPRoutingNode.hpp"
 #include "ACAPI/MEPRoutingNodeDefault.hpp"
-//#include "ACAPI/MEPBend.hpp"
+#include "ACAPI/MEPBend.hpp"
 #include "ACAPI/MEPBendDefault.hpp"
 #include "ACAPI/MEPTransition.hpp"
 #include "ACAPI/MEPTransitionDefault.hpp"

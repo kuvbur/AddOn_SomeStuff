@@ -1,5 +1,5 @@
 //------------ kuvbur 2022 ------------
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28)
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"MEPv1.hpp"
@@ -8,19 +8,19 @@ using namespace ACAPI::MEP;
 
 API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
         #endif
         return ACAPI::MEP::VentilationRigidSegmentID;
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
         #endif
         return ACAPI::MEP::PipingRigidSegmentID;
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
@@ -32,21 +32,21 @@ API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid& routingEl
 
 API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
         #endif
         return ACAPI::MEP::VentilationBendID;
 
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
         #endif
         return ACAPI::MEP::PipingBendID;
 
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
@@ -58,21 +58,21 @@ API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid& routingElemClassI
 
 API_Guid GetTransitionClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
         #endif
         return ACAPI::MEP::VentilationTransitionID;
 
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
         #endif
         return ACAPI::MEP::PipingTransitionID;
 
-    #if defined (AC_28)
+    #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
@@ -87,13 +87,12 @@ namespace MEPv1
 
 bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
 {
-    #if !defined (AC_28)
+    #if !defined (AC_28) && !defined(AC_29)
     return false;
     #else
     return GetMEPData (elem_head, paramByType);
     #endif
 }
-
 
 void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
 {
@@ -209,7 +208,7 @@ void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
         return;
     }
 }
-#if defined (AC_28)
+#if defined (AC_28) || defined(AC_29)
 bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
 {
     bool flag = false;

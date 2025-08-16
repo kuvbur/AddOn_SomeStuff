@@ -4,7 +4,7 @@
 #include    <cmath>
 #include    <limits>
 #include    <math.h>
-#if defined(AC_27)|| defined (AC_28)|| defined (AC_29)
+#if defined(AC_27) || defined (AC_28)
 #include	"MEPv1.hpp"
 #endif // AC_27
 #ifdef TESTING
@@ -3840,7 +3840,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             needCompare = ParamHelpers::ReadElementValues (element, paramByType);
         }
         if (paramType.IsEqual ("{@mep:")) {
-            #if defined (AC_28) || defined(AC_29)
+            #if defined (AC_28)
             needCompare = MEPv1::ReadMEP (elem_head, paramByType);
             #endif
         }
