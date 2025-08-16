@@ -29,7 +29,7 @@ bool GetDimAutotext (GS::UniString& autotext)
     GS::Array<GS::ArrayFB<GS::UniString, 3> > autotexts = {};
     API_AutotextType type = APIAutoText_Custom;
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_AutoText_GetAutoTexts (&autotexts, type);
     #else
     err = ACAPI_Goodies (APIAny_GetAutoTextsID, &autotexts, (void*) (GS::IntPtr) type);
@@ -230,7 +230,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         if (ACAPI_Attribute_Get (&layer) != NoError) return err;
         GS::UniString layert = GS::UniString::Printf ("%s", layer.header.name);
         for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs (); cIt != NULL; ++cIt) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             const GS::UniString& regexpstring = cIt->key;
             #else
             const GS::UniString& regexpstring = *cIt->key;
@@ -513,7 +513,7 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
                 err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams, syncSettings, isUndo);
                 if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
             }
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) return true;
             #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;

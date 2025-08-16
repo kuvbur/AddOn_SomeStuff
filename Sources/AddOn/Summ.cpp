@@ -27,7 +27,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     start = clock ();
     GS::UniString funcname = "Summation";
     GS::Int32 nPhase = 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     bool showPercent = true;
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
     #else
@@ -44,7 +44,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     UInt32 qtywrite = 0;
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());; short i = 1;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         Int32 maxval = 2;
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
         #else
@@ -54,7 +54,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         if (!GetSumValuesOfElements (guidArray, paramToWriteelem, rule_definitions)) {
             flag_write = false;
             msg_rep ("SumSelected", "No data to write", NoError, APINULLGuid);
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             ACAPI_ProcessWindow_CloseProcessWindow ();
             #else
             ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -62,14 +62,14 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
             return NoError;
         }
         subtitle = GS::UniString::Printf ("Writing data to %d elements", paramToWriteelem.GetSize ()); i = 2;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
         #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
         bool suspGrp = false;
         #ifndef AC_22
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_View_IsSuspendGroupOn (&suspGrp);
         if (!suspGrp) ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
         #else
@@ -79,7 +79,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
         #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -133,7 +133,7 @@ void GetSumElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Prope
     return;
     #else
     for (auto& cIt : definitions) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         API_PropertyDefinition definition = cIt.value;
         #else
         API_PropertyDefinition definition = *cIt.value;
@@ -161,14 +161,14 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
     // Получаем список правил суммирования
     bool hasSum = false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
         if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
         #else
         if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return false;
         #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
@@ -190,7 +190,7 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
 
     // Суммируем, заполняе словарь для записи
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         const SumRule& rule = cIt->value;
         #else
         const SumRule& rule = *cIt->value;
@@ -207,7 +207,7 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
 {
     bool has_sum = false;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
         ParamValue& param = *cIt->value;
