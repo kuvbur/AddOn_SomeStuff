@@ -1661,7 +1661,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
     GS::Array <API_Elem_Head> elemsheader = {};
     double dx = 0; double dy = 0;
     API_StoryInfo storyInfo = {};
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
     #else
     err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);

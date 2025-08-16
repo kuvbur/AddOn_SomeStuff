@@ -187,8 +187,8 @@ struct ColumnFormat
     double width_area = 20; // Ширина для площади
     double width_no_breake_space = 1; // Ширина пробела
     double width_narow_space = 1; // Ширина пробела
-    GS::UniString no_breake_space = u8"\u2007";
-    GS::UniString narow_space = u8"\u202F";
+    GS::UniString no_breake_space = reinterpret_cast<const char*>(u8"\u2007");
+    GS::UniString narow_space = reinterpret_cast<const char*>(u8"\u202F");
     GS::UniString space_line = "";
     GS::UniString delim_line = "";
 };
