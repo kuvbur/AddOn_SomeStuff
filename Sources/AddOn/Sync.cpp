@@ -229,7 +229,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     #ifdef TESTING
     TestFunc::ResetSyncPropertyArray (guidArray);
     #endif
-    #if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28)
     API_ElemType elemType;
     elemType.typeID = elementType;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
