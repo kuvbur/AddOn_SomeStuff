@@ -904,8 +904,13 @@ bool CheckIgnoreVal (const std::string & ignoreval, const GS::UniString & val)
 bool CheckIgnoreVal (const GS::UniString & ignoreval, const GS::UniString & val)
 {
     if (ignoreval.IsEmpty ()) return false;
-    if ((ignoreval.ToLowerCase () == "empty" || ignoreval.ToLowerCase () == u8"пусто") && val.GetLength () < 1) {
-        return true;
+    GS::UniString emp_1 = "empty";
+    GS::UniString emp_2 = u8"пусто";
+    GS::UniString ignoreval_ = ignoreval.ToLowerCase ();
+    if (val.GetLength () < 1) {
+        if ((ignoreval_.Compare (emp_1) || ignoreval_.Compare (emp_2))) {
+            return true;
+        }
     }
     if (val == ignoreval) {
         return true;
@@ -1033,6 +1038,7 @@ void ReplaceSymbSpase (GS::UniString & outstring)
 {
     GetNumSymbSpase (outstring, '~', ' ');
     GetNumSymbSpase (outstring, '@', CharTAB);
+    #if !defined (AC_29)
     outstring.ReplaceAll ("\\TAB", u8"\u0009");
     outstring.ReplaceAll ("\\CRLF", u8"\u000D\u000A");
     outstring.ReplaceAll ("\\CR", u8"\u000D");
@@ -1041,6 +1047,7 @@ void ReplaceSymbSpase (GS::UniString & outstring)
     outstring.ReplaceAll ("\\LS", u8"\u2028");
     outstring.ReplaceAll ("\\NEL", u8"\u0085");
     outstring.ReplaceAll ("\\NL", u8"\u2424");
+    #endif
 }
 
 
