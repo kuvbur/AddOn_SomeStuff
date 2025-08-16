@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ac-version: [25, 26, 27, 28]
+        ac-version: [25, 26, 27, 28, 29]
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ac-version: [25, 26, 27, 28]
+        ac-version: [25, 26, 27, 28, 29]
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
