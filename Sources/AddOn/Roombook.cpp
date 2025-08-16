@@ -520,7 +520,7 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
             if (space.Contains ("s")) space = " ";
             c.no_breake_space = space;
         }
-        if (n > 6) {
+        if (n > 5) {
             GS::UniString space = partstring[5].ToLowerCase ();
             if (space.Contains ("nbs")) space = u8"\u2007";
             if (space.Contains ("ns")) space = u8"\u202F";
@@ -3067,6 +3067,10 @@ void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, UnicElementByType
     double dy = -edges.endC.y + edges.begC.y;
     double dr = sqrt (dx * dx + dy * dy);
     if (dr < min_dim) return;
+
+
+
+
     if (edges.favorite.type == API_ObjectID) {
         // горизонтальную часть откоса строим в этом случае аксессуаром пола/потолка
         if (edges.draw_type == API_BeamID) {
@@ -3466,7 +3470,7 @@ bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowe
 // -----------------------------------------------------------------------------
 void Floor_Draw (const Stories& storyLevels, OtdSlab& otdslab, UnicElementByType& subelementByparent)
 {
-    // Провери там существующего элемента
+    // Провери тип существующего элемента
     API_ElemTypeID type = otdslab.favorite.type;
     API_Guid otd_guid = otdslab.otd_guid;
     bool is_new = (otd_guid == APINULLGuid);
@@ -3883,9 +3887,15 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                     suffix = "base element";
                 }
                 if (SyncSetSubelementScope (parentelementhead, subguids, propertyParams, paramToWrite, suffix, false)) {
-                    if (!syncguidsdict.ContainsKey (guid)) {
-                        syncguidsdict.Add (guid, true);
-                        syncguids.Push (guid);
+                    //if (!syncguidsdict.ContainsKey (guid)) {
+                    //    syncguidsdict.Add (guid, true);
+                    //    syncguids.Push (guid);
+                    //}
+                    for (const auto& g : subguids) {
+                        if (!syncguidsdict.ContainsKey (g)) {
+                            syncguidsdict.Add (g, true);
+                            syncguids.Push (g);
+                        }
                     }
                 }
             }

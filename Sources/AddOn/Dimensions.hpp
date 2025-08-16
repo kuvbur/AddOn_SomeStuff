@@ -15,7 +15,7 @@
 #include	"SyncSettings.hpp"
 #include	"Helpers.hpp"
 
-typedef struct
+struct DimRule
 {
     short	pen_original = 0;
     short	pen_rounded = 0;
@@ -28,7 +28,7 @@ typedef struct
     GS::UniString expression = "";
     GS::UniString layer = "";
     ParamDictValue paramDict;
-} DimRule;
+};
 
 typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
 

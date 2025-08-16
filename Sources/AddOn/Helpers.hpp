@@ -71,24 +71,24 @@ static const Int32 SubElementNotExsistId = 48;
 static const Int32 SpecParamPlaceNotFoundId = 65;
 static const Int32 SpecFlagOff = 66;
 
-typedef struct
+struct SortGUID
 {
     GS::Array<API_Guid> guid = {};
-} SortGUID;
+};
 
-typedef struct
+struct SortInx
 {
     GS::Array<UInt32> inx = {};
-} SortInx;
+};
 
 // Массив отрезков с указанием точки начала
 
-typedef struct
+struct OrientedSegments
 {
     Vector2D cut_direction;
     Point2D cut_start;
     Point2D start;
-} OrientedSegments;
+};
 
 
 int IsDummyModeOn ();

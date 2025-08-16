@@ -68,15 +68,14 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {
-    }
+    {}
     short  index;
     double level;
 };
 using Stories = GS::Array<Story>; // Хранение информации об этажах в формате Индекс - Уровень
 
 // Структура для хранения формата перевода чисел в строку и округления чисел
-typedef struct
+struct FormatString
 {
     int n_zero = 3; //Количество нулей после запятой
     GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
@@ -88,7 +87,7 @@ typedef struct
     bool isEmpty = true; // Строка не задана
     bool forceRaw = false; // Использовать неокруглённое значение для записи
     GS::UniString delimetr = ",";
-} FormatString;
+};
 
 // Словарь с форматированием и округлением
 typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
@@ -101,7 +100,7 @@ typedef GS::HashTable<API_Guid, UnicGuid> UnicGuidByGuid;
 // name - имя для поиска
 // uniStringValue, intValue, boolValue, doubleValue - значения
 // canCalculate - можно ли использовать в математических вычислениях
-typedef struct
+struct ParamValueData
 {
     // Собственно значения
     API_VariantType type = API_PropertyUndefinedValueType; // Прочитанный тип данных
@@ -120,10 +119,10 @@ typedef struct
     int array_column_start = 0;			// Начальный столбец массива
     int array_column_end = 0;				// Последний столбец массива
     int array_format_out = ARRAY_UNDEF;	// В каком виде выводить в свойство
-} ParamValueData;
+};
 
 // Структура для описания слоя в многослойной конструкции
-typedef struct
+struct ParamValueComposite
 {
     API_AttributeIndex inx = {};					// Индекс материала
     double fillThick = 0.0;					// Толщина слой
@@ -140,11 +139,11 @@ typedef struct
     double qty = 0; // Вывод количества на основе единиц измерения
     GS::UniString unit = ""; // Единица измерения
     GS::UniString pos = ""; // Позиция
-} ParamValueComposite;
+};
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
-typedef struct
+struct ParamValue
 {
     API_VariantType type = API_PropertyUndefinedValueType; // Тип данных для записи
     GS::UniString rawName = "";							   // Имя для сопоставления в словаре - с указанием откуда взято
@@ -183,7 +182,7 @@ typedef struct
     GS::UniString rawName_col_start = "";// Имя параметра со значением начала диапазона чтения столбцов
     GS::UniString rawName_col_end = "";	 // Имя параметра со значением конца диапазона чтения столбцов
     API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
-} ParamValue;
+};
 
 // Словарь с заранее вычисленными данными в пределах обного элемента
 typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
@@ -480,7 +479,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition& def
 
 namespace GDLHelpers
 {
-typedef struct
+struct Param
 {
     GS::Array <double> arr_num;
     GS::Array <GS::UniString> arr_str;
@@ -488,7 +487,7 @@ typedef struct
     Int32 dim2 = 1;
     double num = 0;
     GS::UniString str = "";
-} Param; // Структура для чтения/записи в объекты
+}; // Структура для чтения/записи в объекты
 
 typedef GS::HashTable <GS::UniString, Param> ParamDict;
 

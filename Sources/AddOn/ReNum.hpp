@@ -38,8 +38,7 @@ public:
     std::string suffix = ""; // Суффикс
     GSCharCode chcode = GChCode;
     RenumPos ()
-    {
-    }
+    {}
 
     // TODO Добавить парсинг префикса и суффикса позиции
     RenumPos (const ParamValue& param)
@@ -167,13 +166,13 @@ private:
     }
 };
 
-typedef struct
+struct RenumElem
 {
     GS::Array<RenumPos> elements;
     RenumPos mostFrequentPos;
-} RenumElem;
+};
 
-typedef struct
+struct RenumRule
 {
     bool state = false;
     bool oldalgoritm = true;
@@ -185,7 +184,7 @@ typedef struct
     int nullcount = 0;             // Количество нулей, если задано жёское количество
     GS::Array<API_Guid> elemts;	   // Массив элементов
     API_Guid guid = APINULLGuid;   // GUID свойства с правилом
-} RenumRule;
+};
 
 typedef std::map<std::string, RenumElem, doj::alphanum_less<std::string>> Values; // Словарь элементов по критериям
 
