@@ -9,7 +9,7 @@ namespace AutoFunc
 #if defined(AC_22) || defined(AC_23)
 void RoomBook ();
 #else
-typedef enum
+enum TypeOtd
 {
     NoSet = 0,
     Wall_Main = 1,
@@ -21,13 +21,13 @@ typedef enum
     Column = 7,
     Floor = 8,
     Ceil = 9,
-} TypeOtd;
+};
 
 
 const double min_dim = 0.0001; // Минимальный размер элемента
 const double otd_thickness = 0.001;
 
-typedef struct
+struct ClassOtd
 {
     const GS::UniString otdwall_class = "some_stuff_fin_walls";
     const GS::UniString otdwall_down_class = "some_stuff_fin_down_walls";
@@ -36,9 +36,9 @@ typedef struct
     const GS::UniString floor_class = "some_stuff_fin_floors";
     const GS::UniString ceil_class = "some_stuff_fin_ceils";
     const GS::UniString all_class = "some_stuff_fin_class";
-} ClassOtd;
+};
 
-typedef struct
+struct OtdOpening
 {
     double zBottom = 0; // Аболютная координата z низа
     double height = 0; // Высота проёма
@@ -50,27 +50,25 @@ typedef struct
     double base_reveal_width = 0; // Глубина откоса базового проёма
     API_Guid base_guid = APINULLGuid; // GUID базового проёма
     API_Guid otd_guid = APINULLGuid; // GUID созданного проёма
-} OtdOpening; // Проём в стене
+}; // Проём в стене
 
-
-typedef struct
+struct OtdMaterial
 {
     short material = 0; // Индекс материала
     GS::UniString smaterial = ""; // Имя материала
     GS::UniString rawname = ""; // Имя свойства для записи
-} OtdMaterial;
+};
 
-
-typedef struct
+struct MatarialToFavorite
 {
     GS::UniString name = ""; // Имя избранного 
     API_ElemTypeID type = API_ZombieElemID; // Тип элемента в избранном
     GS::Array<ParamValueComposite> composite; // Состав элемента (только отделочные слои)
     bool is_composite_read = false;
-} MatarialToFavorite;
+};
 typedef GS::HashTable<GS::UniString, MatarialToFavorite> MatarialToFavoriteDict;
 
-typedef struct
+struct OtdSlab
 {
     Geometry::Polygon2D poly;
     double zBottom = 0; // Аболютная координата z низа
@@ -86,9 +84,9 @@ typedef struct
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
     MatarialToFavorite favorite = {}; // Избранное
     bool isValid = true;
-} OtdSlab;
+};
 
-typedef struct
+struct OtdWall
 {
     double ang_begC = 90 * DEGRAD; // Угол подрезки начала
     double ang_endC = 90 * DEGRAD; // Угол подрезки конца
@@ -111,17 +109,17 @@ typedef struct
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
     MatarialToFavorite favorite = {}; // Избранное
     bool isValid = true;
-} OtdWall; // Структура со стенами для отделки
+}; // Структура со стенами для отделки
 
-typedef struct
+struct RoomEdges
 {
     GS::Array<Sector> walledges; // Границы стен, не явяющихся границей зоны
     GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
     GS::Array<Sector> restedges; // Границы зоны
     GS::Array<Sector> gableedges;
-} RoomEdges;
+};
 
-typedef struct
+struct OtdRoom
 {
     OtdMaterial om_up; // Отделка стен выше потолка
     OtdMaterial om_main; // Отделка стен основная
@@ -163,7 +161,7 @@ typedef struct
     bool create_wall_elements = false; // Создавать элементы отделки стен
     bool create_column_elements = false; // Создавать элементы отделки колонн
     bool create_reveal_elements = false; // Создавать элементы отделки откосов
-} OtdRoom; // Структура для хранения информации о зоне
+}; // Структура для хранения информации о зоне
 
 typedef GS::HashTable <API_Guid, OtdRoom> OtdRooms; // Словарь отделки всех зон
 typedef GS::HashTable<API_Guid, GS::Array<API_Guid>> UnicElement; // Словарь GUID элемента - массив GUID зон, где они встречаются
@@ -173,15 +171,15 @@ typedef GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> UnicGUIDByType;
 typedef GS::HashTable<GS::UniString, double> OtdMaterialAreaDict;
 typedef GS::HashTable<GS::UniString, OtdMaterialAreaDict> OtdMaterialAreaDictByType;
 
-typedef struct
+struct ReadParam
 {
     bool isValid = false; // Параметр считан успешно
     GS::Array<GS::UniString> rawnames; // Варианты имён параметров для считывания
     ParamValueData val = {}; // Прочитанное значение
-} ReadParam;
+};
 typedef GS::HashTable<GS::UniString, ReadParam> ReadParams;
 
-typedef struct
+struct ColumnFormat
 {
     short font = 1; // Индекс шрифта
     double fontsize = 2.5; // Размер шрифта
@@ -193,7 +191,7 @@ typedef struct
     GS::UniString narow_space = u8"\u202F";
     GS::UniString space_line = "";
     GS::UniString delim_line = "";
-} ColumnFormat;
+};
 
 typedef GS::HashTable<GS::UniString, ColumnFormat> ColumnFormatDict;
 

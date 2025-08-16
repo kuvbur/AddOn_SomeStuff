@@ -835,8 +835,14 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                             elemGuidfrom = APIGuidFromString (subproperty.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             rulestring_one = "Sync_from{" + params[1];
                             elementType_from = GetElemTypeID (elemGuidfrom);
+                        } else {
+                            return false;
                         }
+                    } else {
+                        return false;
                     }
+                } else {
+                    return false;
                 }
             }
             // Копировать в другой элемент
@@ -852,8 +858,14 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                             elemGuidto = APIGuidFromString (subproperty.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             param.fromGuid = elemGuidto;
                             rulestring_one = "Sync_to{" + params[1];
+                        } else {
+                            return false;
                         }
+                    } else {
+                        return false;
                     }
+                } else {
+                    return false;
                 }
             }
             if (SyncString (elementType_from, rulestring_one, syncdirection, param, ignorevals, stringformat, syncall, synccoord, syncclass)) {

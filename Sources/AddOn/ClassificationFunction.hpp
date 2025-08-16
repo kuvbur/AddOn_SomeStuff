@@ -18,13 +18,13 @@
 namespace ClassificationFunc
 {
 
-typedef struct
+struct ClassificationValues
 {
     API_ClassificationSystem system; // Система
     API_ClassificationItem item; // Класс
     GS::UniString parentname = ""; // Имя родиельского класса
     GS::UniString itemname = ""; // Имя класса
-} ClassificationValues; // Структура для хранения класса
+}; // Структура для хранения класса
 
 typedef GS::HashTable<GS::UniString, ClassificationValues> ClassificationDict; // Словарь классов в системе
 

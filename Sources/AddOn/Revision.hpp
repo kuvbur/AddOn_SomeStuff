@@ -20,7 +20,7 @@ static const Int32 TypeZam = 2;
 static const Int32 TypeNov = 3;
 static const Int32 TypeAnnul = 4;
 
-typedef struct
+struct Change
 {
     API_Coord startpoint = { 0,0 };
     API_Guid markerguid = APINULLGuid;
@@ -32,9 +32,9 @@ typedef struct
     GS::UniString fam = "";  // Фамилия
     GS::Int32 code = 0; // Код изменения
     GS::Int32 typeizm = TypeNone;
-} Change; // Хранение одного изменения (облака)
+}; // Хранение одного изменения (облака)
 
-typedef struct
+struct Changes
 {
     GS::Array<Change> arr;
     GS::Int32 nuch = 0; // Количество участков
@@ -44,16 +44,16 @@ typedef struct
     GS::UniString nizm = ""; // Номер изменения
     GS::UniString note = ""; // Описание изменений
     GS::Int32 code = 0; // Код изменения
-} Changes; // Массив изменений на листе
+}; // Массив изменений на листе
 
 typedef GS::HashTable < GS::UniString, Changes> ChangeMarkerDict;
 
-typedef struct
+struct Notes
 {
     GS::HashTable < GS::UniString, GS::Int32> layoutId; // Список листов. Ключ - ID макета, значение - тип изменения
     GS::Int32 code = 0; // Код изменения
     GS::UniString nizm = ""; // Номер изменения
-} Notes;
+};
 
 typedef GS::HashTable< GS::UniString, Notes> NoteDict; //Словарь с описаниями. Ключ - описание изменения (note)
 typedef GS::HashTable< GS::UniString, NoteDict> NoteByChangeDict; //Словарь с описаниями по изменениям. Ключ - ID изменения

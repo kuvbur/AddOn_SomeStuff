@@ -22,7 +22,8 @@ static const short NumSum = 2;
 static const short MinSum = 3;
 static const short MaxSum = 4;
 
-typedef struct {
+struct SumRule
+{
     GS::UniString position = "";
     GS::UniString value = "";
     GS::UniString criteria = "";
@@ -30,7 +31,7 @@ typedef struct {
     std::string ignore_val = "";
     short sum_type = 0;
     GS::Array <API_Guid> elemts;
-} SumRule;
+};
 
 typedef GS::HashTable<API_Guid, SumRule> SumRules;
 

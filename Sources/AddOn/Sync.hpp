@@ -34,7 +34,7 @@
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
-typedef struct
+struct SyncRule
 {
     GS::UniString paramNameFrom = "";
     API_PropertyDefinition paramFrom = {};
@@ -44,9 +44,9 @@ typedef struct
     GS::UniString templatestring = "";
     int synctype = 0;
     int syncdirection = 0;
-} SyncRule;
+};
 
-typedef struct
+struct WriteData
 {
     API_Guid guidTo = APINULLGuid;
     API_Guid guidFrom = APINULLGuid;
@@ -56,7 +56,7 @@ typedef struct
     FormatString formatstring; //Формат строки (задаётся с помощью #mm или #0)
     bool toSub = false;
     bool fromSub = false;
-} WriteData;
+};
 
 // Словарь с параметрами для записи
 typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;

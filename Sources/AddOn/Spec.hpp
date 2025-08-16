@@ -18,7 +18,7 @@
 
 namespace Spec
 {
-typedef struct
+struct GroupSpec
 {
     GS::Array<GS::UniString> unic_paramrawname = {}; // Массив имён уникальных параметров
     GS::Array<GS::UniString> out_paramrawname = {}; // Массив имён параметров для передачи новым элементам
@@ -27,10 +27,10 @@ typedef struct
     bool is_Valid = true;
     bool fromMaterial = false;
     GS::Int32 n_layer = 0;
-} GroupSpec;
+};
 
 
-typedef struct
+struct SpecRule
 {
     GS::Array<GroupSpec> groups = {};                   // Массив с группами подэлементов 
     GS::Array<GS::UniString> out_paramrawname = {};     // Массив имён параметров новых элементов
@@ -46,9 +46,9 @@ typedef struct
     bool delete_old = false;
     bool stop_on_error = true;
     bool only_visible = true;
-} SpecRule;
+};
 
-typedef struct
+struct Element
 {
     GS::Array<ParamValue> out_param = {};
     GS::Array<ParamValue> out_sum_param = {};
@@ -60,7 +60,7 @@ typedef struct
     GS::UniString favorite_name = "";              //Имя элемента в избранном
     GS::Array<API_Guid> elements = {};                  // Элементы, которые обрабатываются правилом
     API_Guid exs_guid = APINULLGuid; // GUID существующего элемента для перезаписи
-} Element;
+};
 
 typedef GS::HashTable<GS::UniString, Element> ElementDict; // Словарь элементов для создания, ключ - сцепка значений уникальных параметров
 
