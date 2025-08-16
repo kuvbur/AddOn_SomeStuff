@@ -67,7 +67,15 @@ jobs:
           python-version: 3.8
 
       - name: Setup Xcode
-        run: sudo xcode-select -s /Applications/Xcode_14.2.app
+        if: runner.os == 'macOS'
+        run: |
+          if [ ${{ matrix.ac-version }} -lt 29 ]; then
+            xcVersion=14.2
+          else
+            xcVersion=15.1
+          fi
+          echo "Using Xcode version: ${xcVersion}"
+          sudo xcode-select -s /Applications/Xcode_${xcVersion}.app
           
       - name: Install dependencies
         run: |
