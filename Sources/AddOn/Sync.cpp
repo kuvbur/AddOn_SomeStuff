@@ -220,7 +220,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     double  duration;
     start = clock ();
     ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
-    #if defined (AC_28) || defined(AC_29)
+    #if defined (AC_28)
     if (elementType == API_ExternalElemID) {
         guidArray = ACAPI::MEP::CollectAllMEPElements ();
     }
