@@ -3812,9 +3812,11 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         if (paramType.IsEqual ("{@gdl:") && can_read_fromGDL) {
             needCompare = ParamHelpers::ReadGDL (element, elem_head, paramByType);
         }
+        #if !defined (AC_29)
         if (paramType.IsEqual ("{@ifc:")) {
             needCompare = ParamHelpers::ReadIFC (elemGuid, paramByType);
         }
+        #endif
         if (paramType.IsEqual ("{@morph:") && eltype == API_MorphID) {
             needCompare = ParamHelpers::ReadMorphParam (element, paramByType);
         }
@@ -4442,6 +4444,7 @@ bool ParamHelpers::ReadProperty (const API_Guid & elemGuid, ParamDictValue & par
 // -----------------------------------------------------------------------------
 // Получение значения IFC свойств
 // -----------------------------------------------------------------------------
+#if !defined (AC_29)
 bool ParamHelpers::ReadIFC (const API_Guid & elemGuid, ParamDictValue & params)
 {
     if (params.IsEmpty ()) return false;
@@ -4497,6 +4500,7 @@ bool ParamHelpers::ReadIFC (const API_Guid & elemGuid, ParamDictValue & params)
     }
     return flag_find;
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // Обработка данных о классификации
@@ -6534,6 +6538,7 @@ bool ParamHelpers::ConvertDoubleToParamValue (ParamValue & pvalue, const GS::Uni
 // -----------------------------------------------------------------------------
 // Конвертация API_IFCProperty в ParamValue
 // -----------------------------------------------------------------------------
+#if !defined (AC_29)
 bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProperty & property)
 {
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) {
@@ -6627,6 +6632,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
     pvalue.type = pvalue.val.type;
     return pvalue.isValid;
 }
+#endif
+
 void ParamHelpers::ConvertByFormatString (ParamValue & pvalue)
 {
     if (pvalue.val.type == API_PropertyRealValueType || pvalue.val.type == API_PropertyIntegerValueType) {

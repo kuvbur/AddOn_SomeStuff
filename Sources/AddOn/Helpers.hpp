@@ -326,8 +326,9 @@ bool ReadProperty (const API_Guid& elemGuid, ParamDictValue& params);
 // -----------------------------------------------------------------------------
 // Получение значения IFC свойств в ParamDictValue
 // -----------------------------------------------------------------------------
+#if !defined (AC_29)
 bool ReadIFC (const API_Guid& elemGuid, ParamDictValue& params);
-
+#endif
 // -----------------------------------------------------------------------------
 // Обработка данных о классификации
 // -----------------------------------------------------------------------------
@@ -477,7 +478,9 @@ bool ConvertDoubleToParamValue (ParamValue& pvalue, const GS::UniString& paramNa
 // -----------------------------------------------------------------------------
 // Конвертация API_IFCProperty в ParamValue
 // -----------------------------------------------------------------------------
+#if !defined (AC_29)
 bool ConvertToParamValue (ParamValue& pvalue, const API_IFCProperty& property);
+#endif // !AC_29
 
 void ConvertByFormatString (ParamValue& pvalue);
 
