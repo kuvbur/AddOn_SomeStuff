@@ -544,7 +544,7 @@ void ProfileByLine ()
         BNZeroMemory (&elemline, sizeof (API_Element));
         API_AttributeIndex layer;
         SetElemTypeID (elemline, API_HotspotID);
-        #if defined AC_27 || defined AC_28
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         layer = ACAPI_CreateAttributeIndex (1);
         #else
         layer = 1;
@@ -741,7 +741,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
     API_Element hotspotelem;
     bool flag_find = false;
     API_AttributeIndex layer;
-    #if defined AC_27 || defined AC_28
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     layer = ACAPI_CreateAttributeIndex (1);
     #else
     layer = 1;

@@ -213,7 +213,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
             API_ElemTypeID elementType;
             API_NeigID neigID = neig.neigID;
             GSErrCode err = NoError;
-            #if defined AC_26 || defined AC_27 || defined AC_28
+            #if defined(AC_26) || defined(AC_27) || defined(AC_28)
             API_ElemType elemType26;
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Element_NeigIDToElemType (neigID, elemType26);
@@ -249,7 +249,7 @@ void GetParentGUIDSectElem (const API_Guid& sectElemguid, API_Guid& parentguid, 
         msg_rep ("GetParentGUIDSectElem", "ACAPI_Element_Get", err, sectElemguid);
     } else {
         parentguid = elem.sectElem.parentGuid;
-        #if defined AC_26 || defined AC_27 || defined AC_28
+        #if defined(AC_26) || defined(AC_27) || defined(AC_28)
         parentType = elem.sectElem.parentType.typeID;
         #else
         parentType = elem.sectElem.parentID;
@@ -3194,7 +3194,7 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
     BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
     BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
     apiOwner.guid = elemGuidt;
-    #if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28)
     apiOwner.type.typeID = elemType;
     #else
     apiOwner.typeID = elemType;
@@ -3904,7 +3904,7 @@ void ParamHelpers::GetLocOriginToParamDict (ParamDictValue& propertyParams)
     API_Coord3D locOrigin;
     API_Coord offset;
     GSErrCode err = NoError;
-    #if defined AC_27 || defined AC_28
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetLocOrigo (&locOrigin);
     #else
     err = ACAPI_Database (APIDb_GetLocOrigoID, &locOrigin);
@@ -3913,7 +3913,7 @@ void ParamHelpers::GetLocOriginToParamDict (ParamDictValue& propertyParams)
         msg_rep ("GetLocOriginToParamDict", "APIDb_GetLocOrigoID", err, APINULLGuid);
         return;
     }
-    #if defined AC_27 || defined AC_28
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_ProjectSetting_GetOffset (&offset);
     #else
     err = ACAPI_Database (APIDb_GetOffsetID, &offset);

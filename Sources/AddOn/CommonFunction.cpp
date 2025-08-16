@@ -64,7 +64,7 @@ Stories GetStories ()
 {
     Stories stories;
     API_StoryInfo storyInfo = {};
-    #if defined AC_27 || defined AC_28
+    #if defined(AC_27) || defined(AC_28) || defined (AC_29)
     GSErrCode err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
     #else
     GSErrCode err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);
@@ -792,7 +792,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
     return err;
 }
 
-#if defined AC_26 || defined AC_27 || defined AC_28
+#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------
@@ -1495,7 +1495,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
        }
        #endif
        apiOwner.guid = elemGuid;
-       #if defined AC_26 || defined AC_27 || defined AC_28
+       #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
        apiOwner.type.typeID = elemType;
        #else
        apiOwner.typeID = elemType;
@@ -2471,7 +2471,7 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array<
     #if defined AC_22
     return APIERR_GENERAL;
     #else
-    #if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_ElemType type_;
     type_.typeID = type;
     return ACAPI_Favorite_GetNum (type, count, folders, names);
@@ -2495,7 +2495,7 @@ API_ElemTypeID GetElemTypeID (const API_Guid & guid)
 API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)
 {
     API_ElemTypeID eltype;
-    #if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     eltype = elementhead.type.typeID;
     #else
     eltype = elementhead.typeID;
@@ -2506,7 +2506,7 @@ API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)
 API_ElemTypeID GetElemTypeID (const API_Element & element)
 {
     API_ElemTypeID eltype;
-    #if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     eltype = element.header.type.typeID;
     #else
     eltype = element.header.typeID;
@@ -2516,7 +2516,7 @@ API_ElemTypeID GetElemTypeID (const API_Element & element)
 
 void SetElemTypeID (API_Element & element, const API_ElemTypeID eltype)
 {
-    #if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     element.header.type.typeID = eltype;
     #else
     element.header.typeID = eltype;
@@ -2525,7 +2525,7 @@ void SetElemTypeID (API_Element & element, const API_ElemTypeID eltype)
 
 void SetElemTypeID (API_Elem_Head & elementhead, const API_ElemTypeID eltype)
 {
-    #if defined AC_26 || defined AC_27 || defined AC_28
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     elementhead.type.typeID = eltype;
     #else
     elementhead.typeID = eltype;

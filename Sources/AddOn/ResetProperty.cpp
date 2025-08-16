@@ -325,7 +325,7 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId, const GS::Array<API_Prop
     GSErrCode	err = NoError;
     GS::Array<API_Property>  properties;
     GS::Array<API_Property>  properties_to_reset;
-#if defined AC_26 || defined AC_27 || defined AC_28
+#if defined(AC_26) || defined(AC_27) || defined(AC_28)
     API_ElemType type;
     type.typeID = typeId;
     type.variationID = static_cast<API_ElemVariationID>(variationID);
@@ -346,7 +346,7 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId, const GS::Array<API_Prop
             }
         }
         if (properties_to_reset.GetSize () > 0) {
-#if defined AC_26 || defined AC_27 || defined AC_28
+#if defined(AC_26) || defined(AC_27) || defined(AC_28)
             err = ACAPI_Element_SetPropertiesOfDefaultElem (type, properties);
 #else
             err = ACAPI_Element_SetPropertiesOfDefaultElem (typeId, static_cast<API_ElemVariationID>(variationID), properties_to_reset);
