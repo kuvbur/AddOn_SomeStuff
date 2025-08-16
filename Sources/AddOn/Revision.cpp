@@ -17,7 +17,7 @@ void SetRevision (void)
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     GS::IntPtr	store = 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_StoreViewSettings (store);
     #else
     err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
@@ -27,7 +27,7 @@ void SetRevision (void)
         err = NoError;
     }
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetCurrentDatabase (&databasestart);
     #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
@@ -37,7 +37,7 @@ void SetRevision (void)
         return;
     }
     BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_GetCurrentWindow (&windowstart);
     #else
     err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
@@ -49,7 +49,7 @@ void SetRevision (void)
     GetAllChangesMarker (layout_note_guid);
 
     // Возвращение на исходную БД и окно
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
     #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
@@ -58,7 +58,7 @@ void SetRevision (void)
         msg_rep ("SetRevision", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return;
     }
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_ChangeWindow (&windowstart);
     #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
@@ -69,7 +69,7 @@ void SetRevision (void)
     }
     if (store == 1) {
         store = 0;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_View_StoreViewSettings (store);
         #else
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
@@ -82,7 +82,7 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
 {
     GSErrCode err = NoError;
     API_LayoutBook layoutScheme;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Navigator_GetLayoutBook (&layoutScheme);
     #else
     err = ACAPI_Database (APIDb_GetLayoutBookID, &layoutScheme);
@@ -92,7 +92,7 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
         return false;
     }
     for (auto layout : layoutScheme.customScheme) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         GS::UniString name = layout.value;
         API_Guid guid = layout.key;
         #else
@@ -108,13 +108,13 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
         }
     }
     GS::HashTable<API_Guid, GS::UniString> customScheme;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Revision_GetRVMChangeCustomScheme (&customScheme);
     #else
     err = ACAPI_Database (APIDb_GetRVMChangeCustomSchemeID, &customScheme);
     #endif
     for (auto rev : customScheme) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         GS::UniString name = rev.value;
         API_Guid guid = rev.key;
         #else
@@ -137,7 +137,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
     NoteByChangeDict allchanges;
     LayoutRevisionDict layoutRVI;
     GS::Array<API_RVMDocumentRevision> api_revisions;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Revision_GetRVMDocumentRevisions (&api_revisions);
     #else
     err = ACAPI_Database (APIDb_GetRVMDocumentRevisionsID, &api_revisions);
@@ -152,7 +152,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
     bool has_change_error = false;
     for (auto revision : api_revisions) {
         GS::Array<API_RVMChange> api_changes;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Revision_GetRVMDocumentRevisionChanges (&revision.guid, &api_changes);
         #else
         err = ACAPI_Database (APIDb_GetRVMDocumentRevisionChangesID, &revision.guid, &api_changes);
@@ -160,7 +160,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
         if (err == NoError) {
             if (isteamwork) {
                 short userId;
-                #if defined(AC_27) || defined(AC_28)
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 err = ACAPI_Teamwork_GetTWOwner (&revision.layoutInfo.dbId, &userId);
                 #else
                 err = ACAPI_Database (APIDb_GetTWOwnerID, &revision.layoutInfo.dbId, &userId);
@@ -178,14 +178,14 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
             dbInfo.typeID = APIWind_LayoutID;
             dbInfo.databaseUnId = revision.layoutInfo.dbId;
 
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
             #else
             err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
             #endif
             if (err == NoError) {
                 GS::Array<API_RVMChange> layoutchange;
-                #if defined(AC_27) || defined(AC_28)
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 err = ACAPI_Revision_GetRVMLayoutCurrentRevisionChanges (&(dbInfo.databaseUnId), &layoutchange);
                 #else
                 err = ACAPI_Database (APIDb_GetRVMLayoutCurrentRevisionChangesID, &(dbInfo.databaseUnId), &layoutchange);
@@ -208,7 +208,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
     if (has_change_error) msg_rep ("", "Check Marker reservation", APIERR_GENERAL, APINULLGuid, true);
     if (layoutRVI.IsEmpty () || allchanges.IsEmpty ()) return;
     for (auto ch : allchanges) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         NoteDict change = ch.value;
         GS::UniString id = ch.key;
         #else
@@ -219,7 +219,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
         API_DatabaseUnId databaseUnId = layoutRVI.Get (id);
         bool flag_write = false;
         API_LayoutInfo	layoutInfo;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Navigator_GetLayoutSets (&layoutInfo, &(databaseUnId));
         #else
         err = ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(databaseUnId));
@@ -254,7 +254,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
         }
         GS::Int32 n_row = 1;
         for (auto n : change) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             Notes note = n.value;
             GS::UniString note_txt = n.key;
             #else
@@ -283,7 +283,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                 // Правильная сортировка по алфавиту
                 std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {};
                 for (auto l : note.layoutId) {
-                    #if defined(AC_28)
+                    #if defined(AC_28) || defined(AC_29)
                     GS::Int32 change = l.value;
                     GS::UniString id = l.key;
                     #else
@@ -343,7 +343,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
             #if defined(TESTING)
             DBprnt ("GetAllChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
             #endif
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Navigator_ChangeLayoutSets (&layoutInfo, &(databaseUnId));
             #else
             err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(databaseUnId));
@@ -364,7 +364,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
     API_LayoutInfo	layoutInfo;
     BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Navigator_GetLayoutSets (&layoutInfo, &(databaseUnId));
     #else
     err = ACAPI_Environment (APIEnv_GetLayoutSetsID, &layoutInfo, &(databaseUnId));
@@ -386,7 +386,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
     // Правильная сортировка по алфавиту
     std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {};
     for (auto ch : changes) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         Changes& change = ch.value;
         GS::UniString id = ch.key;
         #else
@@ -570,7 +570,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         #if defined(TESTING)
         DBprnt ("GetChangesMarker::APIEnv_ChangeLayoutSetsID", "start");
         #endif
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Navigator_ChangeLayoutSets (&layoutInfo, &(databaseUnId));
         #else
         err = ACAPI_Environment (APIEnv_ChangeLayoutSetsID, &layoutInfo, &(databaseUnId));
@@ -589,7 +589,7 @@ bool CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
     // Проверка данных в изменениях
     bool has_error = false;
     for (auto ch : changes) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         Changes& change = ch.value;
         GS::UniString id = ch.key;
         #else
@@ -844,7 +844,7 @@ void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
     GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         for (auto ch : changes) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             Changes& change = ch.value;
             #else
             Changes& change = *ch.value;
@@ -880,7 +880,7 @@ void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString&
         msg_rep ("ChangeMarkerText", "Marker not Editable", NoError, markerguid);
         return;
     }
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     if (ACAPI_Teamwork_HasConnection () && !ACAPI_Element_Filter (markerguid, APIFilt_InMyWorkspace)) {
         #else
     if (ACAPI_TeamworkControl_HasConnection () && !ACAPI_Element_Filter (markerguid, APIFilt_InMyWorkspace)) {

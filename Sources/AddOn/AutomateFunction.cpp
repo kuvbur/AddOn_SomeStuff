@@ -35,7 +35,7 @@ GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo& cutInfo, const
 {
     BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_Get3DCuttingPlanes (&cutInfo);
     #else
     err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
@@ -141,7 +141,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
 {
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
     #else
     err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -153,7 +153,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     proj3DInfo.isPersp = false;
     proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
     proj3DInfo.u.axono.projMod = 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
     #else
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -163,7 +163,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
         return err;
     }
     BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
     #else
     err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -178,7 +178,7 @@ GSErrCode Get3DProjectionInfo (API_3DProjectionInfo& proj3DInfo, const double& a
     proj3DInfo.u.axono.tranmat.tmx[4] = proj3DInfo.u.axono.tranmat.tmx[4] * koeff;
     proj3DInfo.u.axono.tranmat.tmx[1] = proj3DInfo.u.axono.tranmat.tmx[1] * koeff;
     proj3DInfo.u.axono.tranmat.tmx[5] = proj3DInfo.u.axono.tranmat.tmx[5] * koeff;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
     #else
     err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -201,7 +201,7 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
     GSErrCode err = NoError;
     GS::Array<API_DatabaseUnId> dbases;
 
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetDocumentFrom3DDatabases (nullptr, &dbases);
     #else
     err = ACAPI_Database (APIDb_GetDocumentFrom3DDatabasesID, nullptr, &dbases);
@@ -210,7 +210,7 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
         for (const auto& dbUnId : dbases) {
             BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
             dbInfo.databaseUnId = dbUnId;
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Window_GetDatabaseInfo (&dbInfo);
             #else
             err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbInfo, nullptr);
@@ -233,7 +233,7 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
     dbInfo.typeID = APIWind_DocumentFrom3DID;
     GS::snuprintf (dbInfo.name, sizeof (dbInfo.name), name.ToUStr ().Get ());
     GS::snuprintf (dbInfo.ref, sizeof (dbInfo.ref), id.ToUStr ().Get ());
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_NewDatabase (&dbInfo);
     #else
     err = ACAPI_Database (APIDb_NewDatabaseID, &dbInfo);
@@ -376,7 +376,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
     // Назначение секущих плоскостей по краям отрезка
     API_3DCutPlanesInfo cutInfo;
     if (GetCuplane (sline, cutInfo, depth) == NoError) {
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_View_Change3DCuttingPlanes (&cutInfo);
         #else
         err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
@@ -405,7 +405,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
     }
 
     API_DocumentFrom3DType documentFrom3DType;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_GetDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
     #else
     err = ACAPI_Environment (APIEnv_GetDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
@@ -427,7 +427,7 @@ GSErrCode DoSect (SSectLine& sline, const GS::UniString& name, const GS::UniStri
         }
     }
     documentFrom3DType.projectionSetting = proj3DInfo;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_ChangeDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
     #else
     err = ACAPI_Environment (APIEnv_ChangeDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
@@ -453,7 +453,7 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
     API_DatabaseInfo dbInfo = {};
     windowInfo.typeID = APIWind_DocumentFrom3DID;
     windowInfo.databaseUnId = sline.databaseUnId;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_ChangeWindow (&windowInfo);
     #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
@@ -464,7 +464,7 @@ GSErrCode PlaceDocSect (SSectLine& sline, API_Element& elemline)
     }
     dbInfo.typeID = APIWind_DocumentFrom3DID;
     dbInfo.databaseUnId = sline.databaseUnId;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
     #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
@@ -528,7 +528,7 @@ void ProfileByLine ()
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     GS::IntPtr	store = 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_StoreViewSettings (store);
     #else
     err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
@@ -557,7 +557,7 @@ void ProfileByLine ()
         elemline.header.layer = layer;
         elemline.hotspot.pen = 143;
         BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Database_GetCurrentDatabase (&databasestart);
         #else
         err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
@@ -567,7 +567,7 @@ void ProfileByLine ()
             return err;
         }
         BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Window_GetCurrentWindow (&windowstart);
         #else
         err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
@@ -593,7 +593,7 @@ void ProfileByLine ()
             msg_rep ("ProfileByLine", "APIEnv_Change3DImageSetsID", err, APINULLGuid);
         }
         #endif
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_View_ShowAllIn3D ();
         #else
         err = ACAPI_Automate (APIDo_ShowAllIn3DID, nullptr, nullptr);
@@ -652,7 +652,7 @@ void ProfileByLine ()
         }
     }
     // Возвращение на исходную БД и окно
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
     #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
@@ -661,7 +661,7 @@ void ProfileByLine ()
         msg_rep ("ProfileByLine", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return;
     }
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_ChangeWindow (&windowstart);
     #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
@@ -672,7 +672,7 @@ void ProfileByLine ()
     }
     API_3DCutPlanesInfo cutInfo;
     BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_Get3DCuttingPlanes (&cutInfo);
     #else
     err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
@@ -681,7 +681,7 @@ void ProfileByLine ()
         msg_rep ("ProfileByLine", "APIEnv_Get3DCuttingPlanesID", err, APINULLGuid);
     } else {
         cutInfo.isCutPlanes = false;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_View_Change3DCuttingPlanes (&cutInfo);
         #else
         err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
@@ -693,7 +693,7 @@ void ProfileByLine ()
     BMKillHandle ((GSHandle*) &(cutInfo.shapes));
     if (store == 1) {
         store = 0;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_View_StoreViewSettings (store);
         #else
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
@@ -720,7 +720,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
     BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
     dbInfo.typeID = APIWind_DrawingID;
     dbInfo.linkedElement = element.header.guid;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
     #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
@@ -777,7 +777,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         startpos.x = startpos.x + l * kscale;
     }
     // Возвращение на исходную БД и окно
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
     #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
@@ -786,7 +786,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return err;
     }
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_ChangeWindow (&windowstart);
     #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
@@ -808,7 +808,7 @@ GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
     GS::Array<API_Guid> drawings;
     for (UInt32 i = 0; i < elems.GetSize (); i++) {
         BNZeroMemory (&drawingLinkInfo, sizeof (API_DrawingLinkInfo));
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Drawing_GetDrawingLink (&(elems[i]), &drawingLinkInfo);
         #else
         err = ACAPI_Database (APIDb_GetDrawingLinkID, (void*) (&(elems[i])), &drawingLinkInfo);
@@ -844,7 +844,7 @@ void AlignDrawingsByPoints ()
     API_Coord zeropos = startpos;
     // Запоминаем настройки отображения
     GS::IntPtr	store = 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_StoreViewSettings (store);
     #else
     err = ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
@@ -856,7 +856,7 @@ void AlignDrawingsByPoints ()
     API_DatabaseInfo databasestart;
     API_WindowInfo windowstart;
     BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetCurrentDatabase (&databasestart);
     #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
@@ -866,7 +866,7 @@ void AlignDrawingsByPoints ()
         return;
     }
     BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_GetCurrentWindow (&windowstart);
     #else
     err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
@@ -891,7 +891,7 @@ void AlignDrawingsByPoints ()
         }
     }
     // Возвращение на исходную БД и окно
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
     #else
     err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
@@ -900,7 +900,7 @@ void AlignDrawingsByPoints ()
         msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         return;
     }
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_ChangeWindow (&windowstart);
     #else
     err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
@@ -933,13 +933,13 @@ void AlignDrawingsByPoints ()
     });
     if (store == 1) {
         store = 0;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_View_StoreViewSettings (store);
         #else
         ACAPI_Database (APIDb_StoreViewSettingsID, (void*) store);
         #endif
     }
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_View_Zoom (nullptr, nullptr);
     #else
     ACAPI_Automate (APIDo_ZoomID, nullptr, nullptr);

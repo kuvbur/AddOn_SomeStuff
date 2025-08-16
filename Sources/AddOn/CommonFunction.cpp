@@ -357,7 +357,7 @@ Int32 isEng ()
     #endif
     GSErrCode err = NoError;
     API_ServerApplicationInfo AppInfo;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_AddOnIdentification_Application (&AppInfo);
     #else
     err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
@@ -620,7 +620,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
             GS::UniString elemName;
 
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
                 #else
             #ifdef AC_26
@@ -667,7 +667,7 @@ void	MenuItemCheckAC (short itemInd, bool checked)
     itemRef.itemIndex = itemInd;
 
     itemFlags = 0;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
     #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -676,7 +676,7 @@ void	MenuItemCheckAC (short itemInd, bool checked)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
     #else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -740,7 +740,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
         long time_start = clock ();
         GS::UniString subtitle ("working...");
         GS::Int32 nPhase = 1;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
         ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
@@ -748,13 +748,13 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
         ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
         #endif
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
             #else
             if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
             #endif
             function (guidArray[i]);
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
             #else
             if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
@@ -764,7 +764,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
         msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
         #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -800,7 +800,7 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 {
     GS::UniString	ustr;
     GSErrCode	err = NoError;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Element_GetElemTypeName (elemType, ustr);
     #else
     err = ACAPI_Goodies_GetElemTypeName (elemType, ustr);
@@ -838,7 +838,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition & definision, GS::Un
     if (definision.name.Contains ("ync_name")) {
         name = definision.name;
     } else {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         name = GetPropertyNameByGUID (definision.guid);
         if (!name.IsEmpty ()) {
             if (definision.name.Contains (CharENTER)) {
@@ -1048,7 +1048,7 @@ short GetFontIndex (GS::UniString & fontname)
 {
     GSErrCode err = NoError;
     short inx = 0;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_FontType font; BNZeroMemory (&font, sizeof (API_FontType));
     font.head.index = 0;
     font.head.uniStringNamePtr = &fontname;
@@ -1078,7 +1078,7 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
     tlp.wFont = font;
     tlp.wSize = fontsize;
     tlp.wSlant = PI / 2.0;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Element_GetTextLineLength (&tlp, &width);
     #else
     err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
@@ -1174,7 +1174,7 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
     userid = 0;
     API_ProjectInfo projectInfo = {};
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_ProjectOperation_Project (&projectInfo);
     #else
     err = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
@@ -1258,7 +1258,7 @@ bool MenuInvertItemMark (short menuResID, short itemIndex)
     itemRef.menuResID = menuResID;
     itemRef.itemIndex = itemIndex;
     itemFlags = 0;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
     #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -1267,7 +1267,7 @@ bool MenuInvertItemMark (short menuResID, short itemIndex)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
     #else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -1489,7 +1489,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
            return GetGDLParametersFromMemo (elemGuid, params);
        }
 
-       #if defined(AC_27) || defined(AC_28)
+       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
        if (elemType == API_ExternalElemID) {
            return GetGDLParametersFromMemo (elemGuid, params);
        }
@@ -1500,7 +1500,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
        #else
        apiOwner.typeID = elemType;
        #endif
-       #if defined(AC_27) || defined(AC_28)
+       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
        err = ACAPI_LibraryPart_OpenParameters (&apiOwner);
        #else
        err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
@@ -1509,14 +1509,14 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
            msg_rep ("GetGDLParameters", "APIAny_OpenParametersID. Check library for missing library parts", err, elemGuid);
            return GetGDLParametersFromMemo (elemGuid, params);
        }
-       #if defined(AC_27) || defined(AC_28)
+       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
        err = ACAPI_LibraryPart_GetActParameters (&apiParams);
        #else
        err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams);
        #endif
        if (err != NoError) {
            msg_rep ("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
-           #if defined(AC_27) || defined(AC_28)
+           #if defined(AC_27) || defined(AC_28) || defined(AC_29)
            err = ACAPI_LibraryPart_CloseParameters ();
            #else
            err = ACAPI_Goodies (APIAny_CloseParametersID);
@@ -1525,7 +1525,7 @@ GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & el
            return err;
        }
        params = apiParams.params;
-       #if defined(AC_27) || defined(AC_28)
+       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
        err = ACAPI_LibraryPart_CloseParameters ();
        #else
        err = ACAPI_Goodies (APIAny_CloseParametersID);
@@ -1557,7 +1557,7 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
     const GSSize nPanels = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof (API_CWPanelType);
     if (nPanels > 0) {
         for (Int32 idx = 0; idx < nPanels; ++idx) {
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_CurtainWall_IsCWPanelDegenerate (&memo.cWallPanels[idx].head.guid, &isDegenerate);
             #else
             err = ACAPI_Database (APIDb_IsCWPanelDegenerateID, (void*) (&memo.cWallPanels[idx].head.guid), &isDegenerate);
@@ -1726,7 +1726,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_UserInput_GetPoint (&pointInfo);
     #else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
@@ -1739,7 +1739,7 @@ bool	ClickAPoint (const char* prompt, Point2D * c)
     return true;
 }		// ClickAPoint
 
-#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
@@ -1778,7 +1778,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
                           const API_Elem_Head * elemHead)
 {
     API_ElemTypeID typeID = API_ZombieElemID;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_26)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
     *neig = {};
     neig->guid = elemHead->guid;
     API_ElemType type = elemHead->type;
@@ -1870,7 +1870,7 @@ bool	ElemHead_To_Neig (API_Neig * neig,
 //	true:	the user clicked the correct element
 //	false:	the input is canceled or wrong type of element was clicked
 // -----------------------------------------------------------------------------
-#if defined(AC_27) || defined(AC_28) || defined(AC_26)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
 bool	ClickAnElem (const char* prompt,
                      const API_ElemType & needType,
                      API_Neig * neig /*= nullptr*/,
@@ -1886,7 +1886,7 @@ bool	ClickAnElem (const char* prompt,
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_UserInput_GetPoint (&pointInfo);
     #else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
@@ -1903,7 +1903,7 @@ bool	ClickAnElem (const char* prompt,
         pars.loc.y = pointInfo.pos.y;
         pars.z = 1.00E6;
         pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
         #else
         err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
@@ -2146,13 +2146,13 @@ FormatStringDict GetFotmatStringForMeasureType ()
     FormatStringDict fdict = {};
     // Получаем данные об округлении и типе расчёта
     API_CalcUnitPrefs unitPrefs1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
     #else
     ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
     #endif
     API_WorkingUnitPrefs unitPrefs;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
     #else
     ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
@@ -2442,7 +2442,7 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     if (type == API_ZombieAttrID) return false;
     double inx = 0;
     if (UniStringToDouble (name, inx)) {
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         attribinx = ACAPI_CreateAttributeIndex ((Int32) inx);
         #else
         attribinx = (Int32) inx;

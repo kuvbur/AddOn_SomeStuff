@@ -30,7 +30,7 @@ void RoomBook ()
     start = clock ();
     GS::UniString funcname ("RoomBook");
     nPhase = 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
     #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
@@ -45,7 +45,7 @@ void RoomBook ()
     if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
         for (const API_Neig& neig : selNeigs) {
             API_ElemTypeID elementType;
-            #if defined(AC_27) || defined(AC_28) || defined(AC_26)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
             API_ElemType elementType_ = Neig_To_ElemID (neig.neigID);
             elementType = elementType_.typeID;
             #else
@@ -98,7 +98,7 @@ void RoomBook ()
     Floor_FindAll (slabsinzone, finclassguids, zones);
     for (API_Guid zoneGuid : zones) {
         nPhase += 1;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
         #else
@@ -122,14 +122,14 @@ void RoomBook ()
         if (elementToRead.ContainsKey (typeelem)) {
             for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
                 nPhase += 1;
-                #if defined(AC_27) || defined(AC_28)
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
                 if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
                 #else
                 ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
                 if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
                 #endif
-                #if defined(AC_28)
+                #if defined(AC_28) || defined(AC_29)
                 API_Guid guid = cIt->key;
                 GS::Array<API_Guid> zoneGuids = cIt->value;
                 #else
@@ -185,7 +185,7 @@ void RoomBook ()
         }
     }
     funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ()); nPhase += 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
     if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
     #else
@@ -203,7 +203,7 @@ void RoomBook ()
     funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
     GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         OtdRoom& otd = cIt->value;
         API_Guid zoneGuid = cIt->key;
         #else
@@ -211,7 +211,7 @@ void RoomBook ()
         API_Guid zoneGuid = *cIt->key;
         #endif
         nPhase += 1;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
         #else
@@ -293,13 +293,13 @@ void RoomBook ()
     ColumnFormatDict columnFormat; // Словарь с форматом текста для столбцов
     funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         OtdRoom& otd = cIt->value;
         #else
         OtdRoom& otd = *cIt->value;
         #endif
         nPhase += 1;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
         #else
@@ -358,7 +358,7 @@ void RoomBook ()
     // Проверка существования классов и свойств
     if (!zones.IsEmpty ()) {
         if (!Check (finclass, propertyParams, finclassguids)) {
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             ACAPI_ProcessWindow_CloseProcessWindow ();
             #else
             ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -368,19 +368,19 @@ void RoomBook ()
     }
     // Неиспользованные существующие элементы удаляем
     for (GS::HashTable<API_Guid, UnicGuidByGuid>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs (); cIt_1 != NULL; ++cIt_1) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         UnicGuidByGuid byzone = cIt_1->value;
         #else
         UnicGuidByGuid byzone = *cIt_1->value;
         #endif
         for (UnicGuidByGuid::PairIterator cIt_2 = byzone.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             UnicGuid byparent = cIt_2->value;
             #else
             UnicGuid byparent = *cIt_2->value;
             #endif
             for (UnicGuid::PairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
-                #if defined(AC_28)
+                #if defined(AC_28) || defined(AC_29)
                 API_Guid guid = cIt_3->key;
                 #else
                 API_Guid guid = *cIt_3->key;
@@ -398,7 +398,7 @@ void RoomBook ()
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf ("Calculate complete for %d room(s) by", zones.GetSize ()) + GS::UniString::Printf (" %.3f s", duration);
     msg_rep ("RoomBook", time, NoError, APINULLGuid);
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_CloseProcessWindow ();
     #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -420,7 +420,7 @@ GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_G
         return exsistot_byzone;
     }
     for (UnicGuidByGuid::PairIterator cIt = exsistotdelements.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         UnicGuid guids = cIt->value;
         API_Guid zoneguid = cIt->key;
         #else
@@ -429,7 +429,7 @@ GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_G
         #endif
         GS::Array<API_Guid> otd_elements = {}; // Список всех элементов отделки
         for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             API_Guid guid = cItt->key;
             bool isvisible = cItt->value;
             #else
@@ -464,7 +464,7 @@ UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, Param
         return exsistot_byparent;
     }
     for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentdict.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         API_Guid subguid = cIt->key;
         UnicGuid parentels = cIt->value;
         #else
@@ -472,7 +472,7 @@ UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, Param
         UnicGuid parentels = *cIt->value;
         #endif
         for (UnicGuid::PairIterator cItt = parentels.EnumeratePairs (); cItt != NULL; ++cItt) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             API_Guid parentguid = cItt->key;
             #else
             API_Guid parentguid = *cItt->key;
@@ -575,7 +575,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
 
     GS::HashTable<GS::UniString, bool> exsists_rawname = {};
     for (auto& cItt : paramnamebytype) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         GS::UniString rawname = cItt.value;
         #else
         GS::UniString rawname = *cItt.value;
@@ -612,7 +612,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
     }
 
     for (auto& cItt : exsists_rawname) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         GS::UniString rawname = cItt.key;
         #else
         GS::UniString rawname = *cItt.key;
@@ -629,7 +629,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
             OtdMaterialAreaDict& dcta = dct.Get (rawname);
             std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_material = {};
             for (auto& cIt : dcta) {
-                #if defined(AC_28)
+                #if defined(AC_28) || defined(AC_29)
                 GS::UniString mat = cIt.key;
                 #else
                 GS::UniString mat = *cIt.key;
@@ -808,7 +808,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     }
     OtdSlab otdslab = {};
     ConstructPolygon2DFromElementMemo (zonememo, otdslab.poly);
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     otdslab.material.material = zoneelement.zone.material.ToInt32_Deprecated ();
     #else
     otdslab.material.material = zoneelement.zone.material;
@@ -828,12 +828,12 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
             searchPars.loc.x = tedge.GetMidPoint ().x;
             searchPars.loc.y = tedge.GetMidPoint ().y;
             searchPars.z = roominfo.zBottom + roominfo.height;
-            #if defined(AC_27) || defined(AC_28) || defined(AC_26)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
             searchPars.type.typeID = typeelem;
             #else
             searchPars.typeID = typeelem;
             #endif
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Element_SearchElementByCoord (&searchPars, &elGuid);
             #else
             elGuid = APINULLGuid;
@@ -877,7 +877,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
     //roominfo.niches = relData.niches;
     roominfo.zone_guid = zoneGuid;
     roominfo.isValid = flag;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     roominfo.om_zone.material = zoneelement.zone.material.ToInt32_Deprecated ();
     #else
     roominfo.om_zone.material = zoneelement.zone.material;
@@ -1470,7 +1470,7 @@ void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams)
 {
     if (zoneparams.IsEmpty ()) return;
     for (auto& p : zoneparams) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ReadParam param = p.value;
         #else
         ReadParam param = *p.value;
@@ -1548,7 +1548,7 @@ void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict
     ParamValue param_hasfin_elem = {}; ParamValue param_onoff_elem = {};
     GS::UniString msg = "";
     for (auto& cItt : propertyParams) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ParamValue param = cItt.value;
         #else
         ParamValue param = *cItt.value;
@@ -1848,7 +1848,7 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
         return;
     }
     for (auto& p : zoneparams) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ReadParam& param = p.value;
         GS::UniString name = p.key;
         #else
@@ -1863,7 +1863,7 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
             } else {
                 bool flag_find = false;
                 for (auto& cItt : propertyParams) {
-                    #if defined(AC_28)
+                    #if defined(AC_28) || defined(AC_29)
                     ParamValue parameters = cItt.value;
                     #else
                     ParamValue parameters = *cItt.value;
@@ -1894,7 +1894,7 @@ bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead,
     // Прочитанные параметры базового компонента
     ParamDictValue& baseparam = paramToRead.Get (elGuid);
     for (auto& p : zoneparams) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ReadParam& param = p.value;
         #else
         ReadParam& param = *p.value;
@@ -1925,13 +1925,13 @@ void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict,
             val.intValue = material_dict.Get (val.uniStringValue);
         } else {
             API_AttributeIndex attribinx;
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             attribinx = ACAPI_CreateAttributeIndex (val.intValue);
             #else
             attribinx = val.intValue;
             #endif
             API_AttributeIndexFindByName (val.uniStringValue, type, attribinx);
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             val.intValue = attribinx.ToInt32_Deprecated ();
             #else
             val.intValue = attribinx;
@@ -2323,7 +2323,7 @@ void Param_SetComposite (const ParamValue& base_composite, const bool& base_flip
             attrib.header.uniStringNamePtr = &attribname;
             err = ACAPI_Attribute_Get (&attrib);
             if (err == NoError) {
-                #if defined(AC_27) || defined(AC_28)
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 last.length = cutMaterial.ToInt32_Deprecated ();
                 #else
                 last.length = cutMaterial;
@@ -2418,7 +2418,7 @@ void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadPara
 // -----------------------------------------------------------------------------
 // Полчение полигона зоны (в том числе стен, колонн)
 // -----------------------------------------------------------------------------
-#if defined(AC_27) || defined(AC_28) 
+#if defined(AC_27) || defined(AC_28) || defined(AC_29) 
 void RoomReductionPolyProc (const API_RoomReductionPolyType* roomRed)
 #else
 static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
@@ -2481,7 +2481,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
     RoomEdges rdges;
     reducededges = &rdges;
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28) 
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29) 
     err = ACAPI_Element_RoomReductions (&zoneelement.header.guid, RoomReductionPolyProc);
     #else
     err = ACAPI_Database (APIDb_RoomReductionsID, &zoneelement.header.guid, (void*) (GS::IntPtr) RoomRedProc);
@@ -2545,7 +2545,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (elementToRead.ContainsKey (typeelem)) {
             for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28)
+                #if defined(AC_28) || defined(AC_29)
                 API_Guid guid = cIt->key;
                 GS::Array<API_Guid> zoneGuids_ = cIt->value;
                 #else
@@ -2558,7 +2558,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
                 }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
-                    #if defined(AC_28)
+                    #if defined(AC_28) || defined(AC_29)
                     API_Guid zoneGuid = cIt->key;
                     #else
                     API_Guid zoneGuid = *cIt->key;
@@ -2881,7 +2881,7 @@ void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& b
 {
     SetMaterialFinish_ByComposite (material, base_composite);
     ParamValueComposite p;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     p.inx = ACAPI_CreateAttributeIndex (material.material);
     #else
     p.inx = material.material;
@@ -2961,7 +2961,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     #ifndef AC_22
     bool suspGrp = false;
     Int32 n_elem = 0;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
     if (!suspGrp) ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
     #else
@@ -2977,13 +2977,13 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
             msg_rep ("RoomBook", "Obsolete finishing elements not found", NoError, APINULLGuid);
         }
         for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             OtdRoom& otd = cIt->value;
             #else
             OtdRoom& otd = *cIt->value;
             #endif
             nPhase += 1;
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ()) return NoError;
             #else
@@ -3040,7 +3040,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
             }
             n_elem += group.GetSize ();
             if (group.GetSize () > 1) {
-                #if defined(AC_27) || defined(AC_28)
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
                 #else
                 API_Guid groupGuid = APINULLGuid;
@@ -3098,7 +3098,7 @@ void OtdBeam_Draw_Beam (const GS::UniString& favorite_name, const Stories& story
         beammemo.beamSegments[0].assemblySegmentData.nominalWidth = edges.width;
         beammemo.beamSegments[0].assemblySegmentData.nominalHeight = edges.height;
 
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
         //beammemo.beamSegments[0].sidMat.hasValue = true;
         //beammemo.beamSegments[0].refMat.value = ematerial;
@@ -3273,7 +3273,7 @@ void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& sto
     wallobjelement.object.angle = ang;
     wallobjelement.object.pos = edges.endC;
     wallobjelement.header.floorInd = edges.floorInd;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
     wallobjelement.object.mat = ematerial;
     #else
@@ -3335,7 +3335,7 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
     wallelement.wall.height = edges.height;
     wallelement.header.floorInd = edges.floorInd;
     wallelement.wall.bottomOffset = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
     wallelement.wall.refMat.hasValue = true;
     wallelement.wall.sidMat.hasValue = true;
@@ -3516,7 +3516,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     }
     slabelement.header.floorInd = otdslab.floorInd;
     slabelement.slab.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (otdslab.material.material);
     slabelement.slab.topMat.value = ematerial;
     slabelement.slab.sideMat.value = ematerial;
@@ -3529,13 +3529,13 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     slabelement.slab.sideMat.overridden = true;
     #endif
     if (otdslab.type == Ceil) {
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         slabelement.slab.botMat.hasValue = true;
         #else
         slabelement.slab.botMat.overridden = true;
         #endif
     } else {
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         slabelement.slab.topMat.hasValue = true;
         #else
         slabelement.slab.topMat.overridden = true;
@@ -3789,7 +3789,7 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
 {
     if (systemdict.IsEmpty ()) return;
     for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict>::PairIterator cIt = systemdict.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         GS::UniString system = cIt->key;
         ClassificationFunc::ClassificationDict& classes = cIt->value;
         #else
@@ -3797,7 +3797,7 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
         ClassificationFunc::ClassificationDict& classes = *cIt->value;
         #endif
         for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationValues>::PairIterator cIt = classes.EnumeratePairs (); cIt != NULL; ++cIt) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             GS::UniString clasname = cIt->key;
             ClassificationFunc::ClassificationValues& clas = cIt->value;
             #else
@@ -3859,7 +3859,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (subelementByparent.ContainsKey (typeelem)) {
             for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28)
+                #if defined(AC_28) || defined(AC_29)
                 API_Guid guid = cIt->key;
                 GS::Array<API_Guid> subguids = cIt->value;
                 #else
@@ -3868,7 +3868,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
                 #endif
 
                 nPhase += 1;
-                #if defined(AC_27) || defined(AC_28)
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
                 if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
                 #else
@@ -3894,7 +3894,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
     if (!paramToWrite.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Write GUID base and GUID zone to %d finishing element(s)", paramToWrite.GetSize ());
         nPhase += 1;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
         #else
@@ -3902,7 +3902,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
         #endif
         bool suspGrp = false;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_View_IsSuspendGroupOn (&suspGrp);
         if (!suspGrp) ACAPI_Grouping_Tool (syncguids, APITool_SuspendGroups, nullptr);
         #else
@@ -3918,7 +3918,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
     if (!syncguids.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
         nPhase += 1;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
         #else
@@ -4217,7 +4217,7 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
     }
     // Проверка наличия свойств `Sync_GUID zone`
     for (auto& cItt : propertyParams) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ParamValue param = cItt.value;
         #else
         ParamValue param = *cItt.value;
@@ -4229,7 +4229,7 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
         }
     }
     for (GS::HashTable<API_Guid, bool>::PairIterator cIt = finclassguids.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         bool msg = cIt->value;
         #else
         bool msg = *cIt->value;
@@ -4245,7 +4245,7 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
     // Проверка наличия свойств `Sync_GUID base`
     bool find = false;
     for (auto& cItt : propertyParams) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ParamValue param = cItt.value;
         #else
         ParamValue param = *cItt.value;

@@ -24,7 +24,7 @@
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 static GSErrCode ReservationChangeHandler (const GS::HashTable<API_Guid, short>& reserved,
                                            const GS::HashSet<API_Guid>& released,
                                            const GS::HashSet<API_Guid>& deleted)
@@ -46,7 +46,7 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
     syncSettings.syncMon = true;
     #endif // PK_1
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         AttachObserver ((it->key), syncSettings);
         #else
         AttachObserver (*(it->key), syncSettings);
@@ -58,7 +58,7 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
 // -----------------------------------------------------------------------------
 // Срабатывает при событиях проекта (открытие, сохранение)
 // -----------------------------------------------------------------------------
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
 {
     DBprnt ("ProjectEventHandlerProc");
@@ -84,7 +84,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             break;
         case APINotify_Close:
         case APINotify_Quit:
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             ACAPI_Element_CatchNewElement (nullptr, nullptr);
             ACAPI_Element_InstallElementObserver (nullptr);
             #else
@@ -107,7 +107,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
 // -----------------------------------------------------------------------------
 // Срабатывает при изменении элемента
 // -----------------------------------------------------------------------------
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
     SyncSettings syncSettings (false, false, true, true, true, true, false);
@@ -138,7 +138,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) return NoError;
     //API_ActTranPars actTranPars;
-    //#if defined(AC_27) || defined(AC_28)
+    //#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     //ACAPI_Notification_GetTranParams (&actTranPars);
     //#else
     //ACAPI_Notify_GetTranParams (&actTranPars);
@@ -230,7 +230,7 @@ void	Do_ElementMonitor (bool& syncMon)
         #if defined(TESTING)
         DBprnt ("Do_ElementMonitor on");
         #endif
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_Element_CatchNewElement (nullptr, ElementEventHandlerProc);
         ACAPI_Element_InstallElementObserver (ElementEventHandlerProc);
         ACAPI_Notification_CatchElementReservationChange (ReservationChangeHandler);
@@ -244,7 +244,7 @@ void	Do_ElementMonitor (bool& syncMon)
         #if defined(TESTING)
         DBprnt ("Do_ElementMonitor off");
         #endif
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
         ACAPI_Element_InstallElementObserver (nullptr);
         ACAPI_Notification_CatchElementReservationChange (nullptr);
@@ -283,7 +283,7 @@ void SetPaletteMenuText (short paletteItemInd, Int32 & bisEng)
     itemStr = RSGetIndString (ID_ADDON_PROMT + bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = paletteItemInd;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_SetMenuItemText (&itemRef, nullptr, &itemStr);
     #else
     ACAPI_Interface (APIIo_SetMenuItemTextID, &itemRef, nullptr, &itemStr);
@@ -301,7 +301,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
     #endif // PK_1
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_UserInput_ClearElementHighlight ();
     #else
     #if defined(AC_26)
@@ -393,7 +393,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     DimRoundAll (syncSettings, false);
     WriteSyncSettingsToPreferences (syncSettings);
     MenuSetState (syncSettings);
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_CloseProcessWindow ();
     #else
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -405,7 +405,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     return NoError;
 }
 
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 API_AddonType CheckEnvironment (API_EnvirParams * envir)
 {
     #else
@@ -421,7 +421,7 @@ API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams * envir)
     ACAPI_KeepInMemory (true);
     return APIAddon_Preload;
 }
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 GSErrCode RegisterInterface (void)
 {
     #else
@@ -432,14 +432,14 @@ GSErrCode __ACDLL_CALL RegisterInterface (void)
     DBprnt ("RegisterInterface");
     #endif
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_MenuItem_RegisterMenu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
     #else
     err = ACAPI_Register_Menu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
     #endif
     return err;
 }
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 GSErrCode Initialize (void)
 {
     #else
@@ -457,19 +457,19 @@ GSErrCode __ACENV_CALL Initialize (void)
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.syncMon);
     MonAll (syncSettings);
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     #else
     ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     #endif
     ACAPI_KeepInMemory (true);
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     return ACAPI_MenuItem_InstallMenuHandler (ID_ADDON_MENU, MenuCommandHandler);
     #else
     return ACAPI_Install_MenuHandler (ID_ADDON_MENU, MenuCommandHandler);
     #endif
 }
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 GSErrCode FreeData (void)
 {
     #else

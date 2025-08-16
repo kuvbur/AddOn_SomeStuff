@@ -28,7 +28,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
 {
     GS::UniString funcname ("Numbering");
     GS::Int32 nPhase = 1;
-    #if defined(AC_27) || defined(AC_28)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
     #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
@@ -50,7 +50,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions)) {
             flag_write = false;
             msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             ACAPI_ProcessWindow_CloseProcessWindow ();
             #else
             ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -58,7 +58,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
             return NoError;
         }
         GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", paramToWriteelem.GetSize ()); short i = 2;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         bool showPercent = false;
         Int32 maxval = 2;
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -67,7 +67,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         #endif
         #ifndef AC_22
         bool suspGrp = false;
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_View_IsSuspendGroupOn (&suspGrp);
         if (!suspGrp) ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
         #else
@@ -77,7 +77,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
         #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -128,7 +128,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     return;
     #else
     for (auto& cIt : definitions) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         API_PropertyDefinition definition = cIt.value;
         #else
         API_PropertyDefinition definition = *cIt.value;
@@ -175,14 +175,14 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
                 hasDef = ReNumHasFlag (definitions);
             }
         }
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
         #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return false;
         #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
@@ -196,7 +196,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
     if (!error_propertyname.IsEmpty ()) {
         GS::UniString out = ":\n";
         for (auto& cIt : error_propertyname) {
-            #if defined(AC_28)
+            #if defined(AC_28) || defined(AC_29)
             GS::UniString s = cIt.key;
             #else
             GS::UniString s = *cIt.key;
@@ -226,7 +226,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
     bool has_error = false;
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         const RenumRule& rule = cIt->value;
         #else
         const RenumRule& rule = *cIt->value;
@@ -259,7 +259,7 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams,
     bool hasRenum = false;
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
-        #if defined(AC_28)
+        #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
         ParamValue& param = *cIt->value;
