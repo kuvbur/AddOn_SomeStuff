@@ -372,12 +372,14 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
     API_HierarchicalOwnerType hierarchicalOwnerType = API_ParentHierarchicalOwner;
     API_HierarchicalElemType hierarchicalElemType = API_SingleElem;
     API_HierarchicalElemType hierarchicalElemType_root = API_SingleElem;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     #if defined(AC_27) || defined(AC_28)
     if (syncSettings.objS && elementType == API_ExternalElemID) {
         MEPv1::GetSubElement (elemGuid, subelemGuid);
         ACAPI_DisposeRoomRelationHdls (&relData);
         return;
     }
+    #endif
     err = ACAPI_HierarchicalEditing_GetHierarchicalElementOwner (&elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
     #else
     err = ACAPI_Goodies (APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid);
