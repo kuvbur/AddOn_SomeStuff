@@ -1,4 +1,4 @@
-﻿//------------ kuvbur 2022 ------------
+//------------ kuvbur 2022 ------------
 #pragma once
 #if !defined (RESET_HPP)
 #define	RESET_HPP
@@ -8,7 +8,7 @@
 #ifdef AC_26
 #include	"APICommon26.h"
 #endif // AC_26
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
 #include	"APICommon27.h"
 #endif // AC_27
 #ifdef AC_28

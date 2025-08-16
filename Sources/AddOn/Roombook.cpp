@@ -515,15 +515,15 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
         }
         if (n > 4) {
             GS::UniString space = partstring[4].ToLowerCase ();
-            if (space.Contains ("nbs")) space = u8"\u2007";
-            if (space.Contains ("ns")) space = u8"\u202F";
+            if (space.Contains ("nbs")) space = reinterpret_cast<const char*>(u8"\u2007");
+            if (space.Contains ("ns")) space = reinterpret_cast<const char*>(u8"\u202F");
             if (space.Contains ("s")) space = " ";
             c.no_breake_space = space;
         }
         if (n > 5) {
             GS::UniString space = partstring[5].ToLowerCase ();
-            if (space.Contains ("nbs")) space = u8"\u2007";
-            if (space.Contains ("ns")) space = u8"\u202F";
+            if (space.Contains ("nbs")) space = reinterpret_cast<const char*>(u8"\u2007");
+            if (space.Contains ("ns")) space = reinterpret_cast<const char*>(u8"\u202F");
             if (space.Contains ("s")) space = " ";
             c.narow_space = space;
         }
@@ -3384,7 +3384,7 @@ bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wa
     wallelement.wall.zoneRel = APIZRel_None;
     wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
     wallelement.wall.flipped = false;
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28)
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     #else
     wallelement.wall.refMat.overridden = true;
     wallelement.wall.oppMat.overridden = true;
@@ -3733,7 +3733,7 @@ bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slab
     }
     slabelement.slab.offsetFromTop = 0;
     slabelement.slab.materialsChained = true;
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28)
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     #else
     slabelement.slab.sideMat.overridden = true;
     slabelement.slab.topMat.overridden = true;
@@ -3756,7 +3756,6 @@ void Class_SetClass (const OtdWall& op, const ClassificationFunc::Classification
 // -----------------------------------------------------------------------------
 // Назначение класса проёму
 // -----------------------------------------------------------------------------
-void Class_SetClass (const OtdOpening& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (NoSet, finclass);

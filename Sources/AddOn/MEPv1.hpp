@@ -2,7 +2,7 @@
 #pragma once
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
 #include "CommonFunction.hpp"
 #include "Definitions.hpp"
 #include "Helpers.hpp"
@@ -45,7 +45,7 @@
 #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
 #include "ACAPI/MEPPreferenceTableBase.hpp"
 #endif
-#if defined(AC_28)
+#if defined(AC_28) || defined(AC_29)
 #include "ACAPI/MEPPreferenceTableContainerBase.hpp"
 #include "ACAPI/MEPDuctSegmentPreferenceTableContainer.hpp"
 #include "ACAPI/MEPPipeSegmentPreferenceTableContainer.hpp"

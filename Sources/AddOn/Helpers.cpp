@@ -4,7 +4,7 @@
 #include    <cmath>
 #include    <limits>
 #include    <math.h>
-#if defined(AC_27)|| defined (AC_28)
+#if defined(AC_27)|| defined (AC_28)|| defined (AC_29)
 #include	"MEPv1.hpp"
 #endif // AC_27
 #ifdef TESTING
@@ -213,7 +213,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
             API_ElemTypeID elementType;
             API_NeigID neigID = neig.neigID;
             GSErrCode err = NoError;
-            #if defined(AC_26) || defined(AC_27) || defined(AC_28)
+            #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
             API_ElemType elemType26;
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Element_NeigIDToElemType (neigID, elemType26);
@@ -249,7 +249,7 @@ void GetParentGUIDSectElem (const API_Guid& sectElemguid, API_Guid& parentguid, 
         msg_rep ("GetParentGUIDSectElem", "ACAPI_Element_Get", err, sectElemguid);
     } else {
         parentguid = elem.sectElem.parentGuid;
-        #if defined(AC_26) || defined(AC_27) || defined(AC_28)
+        #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
         parentType = elem.sectElem.parentType.typeID;
         #else
         parentType = elem.sectElem.parentID;
@@ -2302,7 +2302,7 @@ bool operator== (const API_SingleEnumerationVariant& lhs, const API_SingleEnumer
     return lhs.keyVariant == rhs.keyVariant && lhs.displayVariant == rhs.displayVariant;
 }
 
-#if !defined(AC_25) && !defined(AC_26) && !defined(AC_27) && !defined(AC_28) || defined(AC_29)
+#if !defined(AC_25) && !defined(AC_26) && !defined(AC_27) && !defined(AC_28) && !defined(AC_29)
 bool operator== (const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs)
 {
     return lhs.variants == rhs.variants;
@@ -3194,7 +3194,7 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
     BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
     BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
     apiOwner.guid = elemGuidt;
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28)
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     apiOwner.type.typeID = elemType;
     #else
     apiOwner.typeID = elemType;
@@ -3840,7 +3840,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             needCompare = ParamHelpers::ReadElementValues (element, paramByType);
         }
         if (paramType.IsEqual ("{@mep:")) {
-            #if defined (AC_28)
+            #if defined (AC_28) || defined(AC_29)
             needCompare = MEPv1::ReadMEP (elem_head, paramByType);
             #endif
         }
