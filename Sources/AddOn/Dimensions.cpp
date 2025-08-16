@@ -259,7 +259,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         pen_original = pen_dimenstion; // Быстрофикс
         API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
         API_ElemTypeID elementType;
-        #if defined(AC_26) || defined(AC_27) || defined(AC_28)
+        #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
         elementType = (*memo.dimElems)[0].base.base.type.typeID;
         #else
         elementType = (*memo.dimElems)[0].base.base.typeID;
@@ -271,7 +271,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
         for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
             UInt32 flag_change = DIM_NOCHANGE;
             UInt32 flag_highlight = DIM_NOCHANGE;
-            #if defined(AC_26) || defined(AC_27) || defined(AC_28)
+            #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
             elementType = (*memo.dimElems)[k].base.base.type.typeID;
             #else
             elementType = (*memo.dimElems)[k].base.base.typeID;

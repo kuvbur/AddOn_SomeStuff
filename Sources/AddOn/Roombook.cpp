@@ -3756,6 +3756,7 @@ void Class_SetClass (const OtdWall& op, const ClassificationFunc::Classification
 // -----------------------------------------------------------------------------
 // Назначение класса проёму
 // -----------------------------------------------------------------------------
+void Class_SetClass (const OtdOpening& op, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (NoSet, finclass);

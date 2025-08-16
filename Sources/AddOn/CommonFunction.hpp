@@ -24,7 +24,10 @@
 #endif // AC_27
 #ifdef AC_28
 #include "APICommon28.h"
-#endif // AC_27
+#endif // AC_28
+#ifdef AC_29
+#include "APICommon29.h"
+#endif // AC_29
 #include "ResourceIds.hpp"
 #include "DG.h"
 #include "exprtk.h"
