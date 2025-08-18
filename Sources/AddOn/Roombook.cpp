@@ -2397,12 +2397,12 @@ void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadPara
     if (plaster_show_3D && plaster_show_2D) {
         double max_plaster_th = 0;
         UInt32 nsl = 0;
-        if (!AutoTurnIn) {
+        if (!AutoTurnIn || otdw.base_composite.IsEmpty ()) {
             nsl = bOverIn;
         } else {
             nsl = otdw.base_composite.GetSize () - 1;
         }
-        if (nsl > 0) {
+        if (nsl > 0 && !otdw.base_composite.IsEmpty ()) {
             nsl = nsl - 1;
             if (nsl >= 0) {
                 for (UInt32 j = 0; j <= nsl; j++) {
