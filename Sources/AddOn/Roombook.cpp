@@ -540,10 +540,16 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
         c.no_breake_space = " ";
         c.width_no_breake_space = GetTextWidth (c.font, c.fontsize, c.no_breake_space);
     }
+    if (c.width_no_breake_space < 0.001) {
+        c.width_no_breake_space = 0.5;
+    }
     c.width_narow_space = GetTextWidth (c.font, c.fontsize, c.narow_space);
     if (c.width_narow_space < 0.001 || is_equal (c.width_narow_space, 0)) {
         c.narow_space = " ";
         c.width_narow_space = GetTextWidth (c.font, c.fontsize, c.narow_space);
+    }
+    if (c.width_narow_space < 0.001) {
+        c.width_narow_space = 0.5;
     }
     addspace = (Int32) (c.width_area / c.width_narow_space);
     if (fabs (addspace * c.width_narow_space - c.width_area) > c.width_narow_space) addspace -= 1;
@@ -609,7 +615,7 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
                 WriteOtdDataToRoom_AddValue (dct, rawname, mat, area);
             }
         }
-    }
+            }
 
     for (auto& cItt : exsists_rawname) {
         #if defined(AC_28) || defined(AC_29)
@@ -671,15 +677,15 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
                     }
                 }
             }
-        }
+    }
         if (new_val.IsEmpty ()) new_val = "-";
         if (!old_val.IsEqual (new_val)) {
             paramtow.val.uniStringValue = new_val;
             paramtow.isValid = true;
             ParamHelpers::AddParamValue2ParamDictElement (otd.zone_guid, paramtow, paramToWrite);
         }
+        }
     }
-}
 
 void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const GS::UniString& rawname, const GS::UniString& mat, const double& area)
 {
@@ -1846,7 +1852,7 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
 {
     if (zoneparams.IsEmpty ()) {
         return;
-    }
+}
     for (auto& p : zoneparams) {
         #if defined(AC_28) || defined(AC_29)
         ReadParam& param = p.value;
@@ -1860,7 +1866,7 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
             if (param_name.Contains ("{@")) {
                 // Если это gdl парметр - добавляем
                 valid_rawnames.Push (param_name);
-            } else {
+        } else {
                 bool flag_find = false;
                 for (auto& cItt : propertyParams) {
                     #if defined(AC_28) || defined(AC_29)
@@ -1879,9 +1885,9 @@ void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zo
                     }
                 }
             }
-        }
-        param.rawnames = valid_rawnames;
     }
+        param.rawnames = valid_rawnames;
+}
 }
 
 bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams)
@@ -1915,7 +1921,7 @@ bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead,
         }
     }
     return flag;
-}
+    }
 
 void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict, ParamValueData& val)
 {
@@ -1923,7 +1929,7 @@ void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict,
     if (val.type == API_PropertyStringValueType) {
         if (material_dict.ContainsKey (val.uniStringValue)) {
             val.intValue = material_dict.Get (val.uniStringValue);
-        } else {
+} else {
             API_AttributeIndex attribinx;
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             attribinx = ACAPI_CreateAttributeIndex (val.intValue);
@@ -1938,7 +1944,7 @@ void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict,
             #endif
             material_dict.Add (val.uniStringValue, val.intValue);
         }
-    }
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -2535,7 +2541,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
         edges.Clear ();
     }
     restedges = roomedges;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
@@ -2556,7 +2562,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                 GS::Array<API_Guid> zoneGuids;
                 for (API_Guid zoneGuid : zoneGuids_) {
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
-                }
+            }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
                     #if defined(AC_28) || defined(AC_29)
                     API_Guid zoneGuid = cIt->key;
@@ -2566,8 +2572,8 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                     zoneGuids.Push (zoneGuid);
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
-            }
         }
+}
     }
     return;
 }
@@ -3037,7 +3043,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 }
             } else {
                 otd.otdslab.Clear ();
-            }
+                }
             n_elem += group.GetSize ();
             if (group.GetSize () > 1) {
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -3051,11 +3057,11 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
                 #endif
                 if (err != NoError) msg_rep ("Draw_Elements", "ACAPI_Grouping_CreateGroup", err, APINULLGuid);
             }
-        }
+            }
         return NoError;
-    });
+        });
     msg_rep ("RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Построение отделочных стен (общая)
@@ -3117,7 +3123,7 @@ void OtdBeam_Draw_Beam (const GS::UniString& favorite_name, const Stories& story
         beammemo.beamSegments[0].rightMaterial.attributeIndex = edges.material.material;
         #endif
 
-    }
+}
     beamelement.header.floorInd = edges.floorInd;
     beamelement.beam.level = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
     beamelement.beam.isFlipped = false;
@@ -3364,7 +3370,7 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
     for (OtdOpening& op : edges.openings) {
         Opening_Draw (wallelement, op, subelementByparent, edges.zBottom);
     }
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Получение из избранного стены для простроения 
@@ -3393,7 +3399,7 @@ bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wa
     wallelement.wall.modelElemStructureType = API_BasicStructure;
     wallelement.wall.thickness = otd_thickness;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Построение проёмов в отделочных стенах 
@@ -3584,7 +3590,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         otdslab.otd_guid = slabelement.header.guid;
     }
     return;
-}
+        }
 
 void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab)
 {
@@ -3841,7 +3847,7 @@ void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, Classificat
             }
         }
     }
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
@@ -3947,8 +3953,8 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
             #endif
             SyncArray (syncSettings, rereadelem, systemdict, propertyParams);
         }
-    }
-}
+        }
+            }
 
 bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids)
 {
@@ -4224,7 +4230,7 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
             msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
             return false;
         }
-    }
+        }
     // Проверка наличия свойств `Sync_GUID zone`
     for (auto& cItt : propertyParams) {
         #if defined(AC_28) || defined(AC_29)
@@ -4275,6 +4281,6 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamD
         msg_rep ("RoomBook", "Missing 'Sync_GUID base element' property. Floor/ceiling updates require this property. Existing elements will be replaced", NoError, APINULLGuid);
     }
     return true;
-}
+        }
 #endif
-}
+    }
