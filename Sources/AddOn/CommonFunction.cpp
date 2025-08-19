@@ -1110,8 +1110,9 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
     }
     var.ReplaceAll (" ", no_breake_space);
     width_space = GetTextWidth (font, fontsize, narow_space);
+    Int32 addspace = 1;
     if (width_in < width) {
-        Int32 addspace = (Int32) ((width - width_in) / width_space);
+        if (width_space > 0.001) addspace = (Int32) ((width - width_in) / width_space);
         if (fabs (addspace * width_space - width + width_in) > 0.01) addspace -= 1;
         GS::UniString addspace_txt = var;
         if (addspace > 0) {
@@ -1135,7 +1136,7 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
     };
     GS::UniString out = "";
     GS::UniString old = "";
-    double width_old = 0; Int32 addspace = 0;
+    double width_old = 0;
     for (UInt32 i = 0; i < npart; i++) {
         if (out.IsEmpty ()) {
             out = parts.Get (i);
@@ -1145,7 +1146,7 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         }
         width_in = GetTextWidth (font, fontsize, out);
         if (width_in > width && !old.IsEmpty ()) {
-            addspace = (Int32) ((width - width_old) / width_space);
+            if (width_space > 0.001) addspace = (Int32) ((width - width_old) / width_space);
             if (fabs (addspace * width_space - width + width_old) > 0.01) addspace -= 1;
             if (addspace > 0) {
                 for (Int32 j = 0; j < addspace; j++) {
@@ -1157,7 +1158,7 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         }
         if (i == npart - 1) {
             width_in = GetTextWidth (font, fontsize, out);
-            addspace = (Int32) ((width - width_in) / width_space);
+            if (width_space > 0.001) addspace = (Int32) ((width - width_in) / width_space);
             if (fabs (addspace * width_space - width + width_in) > 0.01) addspace -= 1;
             if (addspace > 0) {
                 for (Int32 j = 0; j < addspace; j++) {
