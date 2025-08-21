@@ -14,6 +14,9 @@
 #ifdef AC_28
 #include	"APICommon28.h"
 #endif // AC_28
+#ifdef AC_29
+#include	"APICommon29.h"
+#endif // AC_28
 #include	"Helpers.hpp"
 
 namespace Spec
