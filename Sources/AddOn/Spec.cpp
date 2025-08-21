@@ -88,7 +88,8 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabase
     }
     if (has_element && !has_elementspec) {
         msg_rep ("Spec", "All elements is off", APIERR_GENERAL, APINULLGuid);
-        GS::UniString SpecRuleNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecFlagOff, ACAPI_GetOwnResModule ());
+        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+        GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecFlagOff, ACAPI_GetOwnResModule ());
         if (!error_name.IsEmpty ()) {
             for (auto& cIt : error_name) {
                 #if defined(AC_28) || defined(AC_29)
@@ -98,10 +99,10 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabase
                 #endif
                 SpecRuleNotFoundString.Append ("\n");
                 SpecRuleNotFoundString.Append (s);
-            }
         }
-        ACAPI_WriteReport (SpecRuleNotFoundString, true);
     }
+        ACAPI_WriteReport (SpecRuleNotFoundString, true);
+}
     return has_element;
     #endif
 }
@@ -472,7 +473,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
                 }
             }
             if (flag_find && !rule.subguid_rulename.IsEmpty ()) break;
-        }
+}
         // Поиск существующих объектов
         if (!rule.delete_old) continue;
         if (rule.subguid_rulename.IsEmpty ()) continue;
@@ -514,7 +515,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             s.ReplaceAll ("}", "");
             s.ReplaceAll (":", " : ");
             out.Append (s); out.Append ("\n");
-        }
+    }
         msg_rep ("Spec", "Can't find parameters in place element: " + out, err, APINULLGuid);
         GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString + out, true);
@@ -584,7 +585,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             err = ACAPI_Element_Select (error_elements, true);
             if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
             #endif
-        } else {
+    } else {
             msg_rep ("Spec", GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()), err, APINULLGuid);
         }
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -593,7 +594,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
         #endif
         return APIERR_GENERAL;
-    }
+        }
     #endif
     if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
     if (!elements_mod.IsEmpty ()) {
@@ -665,7 +666,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
                     }
                 }
                 paramOut.Add (el.exs_guid, param);
-            }
+        }
         }
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_UserInput_SetElementHighlight (hlElems);
@@ -808,9 +809,9 @@ GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules)
                 flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
             }
             #endif
-        }
-        if (flagfindspec) AddRule (definitions[i], elemguid, rules);
     }
+        if (flagfindspec) AddRule (definitions[i], elemguid, rules);
+}
     return NoError;
 }
 
@@ -932,7 +933,7 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams
             } else {
                 ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
             }
-        }
+}
         // Добавляем параметры для каждого элемента
         for (const API_Guid elemguid : rule.elements) {
             ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
@@ -1111,14 +1112,14 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                 GS::UniString s = *cIt.key;
                 #endif
                 out.Append (s); out.Append ("; ");
-            }
+        }
             out.ReplaceAll ("{@", "");
             out.ReplaceAll ("}", "");
             out.ReplaceAll (":", " : ");
             out.ReplaceAll ("%", "");
             out.ReplaceAll ("nosyncname", "");
             msg_rep ("Spec", out, NoError, APINULLGuid);
-        }
+    }
         if (!not_found_unic.IsEmpty ()) {
             GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecNotFoundParametersString, true);
@@ -1130,14 +1131,14 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                 GS::UniString s = *cIt.key;
                 #endif
                 out.Append (s); out.Append ("; ");
-            }
+        }
             out.ReplaceAll ("{@", "");
             out.ReplaceAll ("}", "");
             out.ReplaceAll (":", " : ");
             out.ReplaceAll ("%", "");
             out.ReplaceAll ("nosyncname", "");
             msg_rep ("Spec", out, NoError, APINULLGuid);
-        }
+}
         if (!not_found_paramname.IsEmpty () || !not_found_unic.IsEmpty ()) {
             n_elements = 0;
             elements.Clear ();
@@ -1812,7 +1813,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-            }
+        }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -1827,9 +1828,9 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 #endif
                 if (err != NoError) msg_rep ("Spec", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-        }
+    }
         return NoError;
-    });
+});
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);

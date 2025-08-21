@@ -11,6 +11,12 @@
 #ifdef AC_27
 #include	"APICommon27.h"
 #endif // AC_27
+#ifdef AC_28
+#include "APICommon28.h"
+#endif // AC_28
+#ifdef AC_29
+#include	"APICommon29.h"
+#endif // AC_29
 #include "DG.h"
 #include "Helpers.hpp"
 #include "alphanum.h"
@@ -38,7 +44,8 @@ public:
     std::string suffix = ""; // Суффикс
     GSCharCode chcode = GChCode;
     RenumPos ()
-    {}
+    {
+    }
 
     // TODO Добавить парсинг префикса и суффикса позиции
     RenumPos (const ParamValue& param)

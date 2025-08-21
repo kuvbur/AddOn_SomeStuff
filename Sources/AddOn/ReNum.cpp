@@ -152,6 +152,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
     Rules rules = {};
     ParamDictElement paramToReadelem = {};
     bool hasRule = !rule_definitions.IsEmpty ();
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
     GS::HashTable<GS::UniString, bool> error_propertyname = {};
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
@@ -207,7 +208,7 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
             out.Append (s); out.Append ("\n");
         }
         msg_rep ("ReNumSelected", "Can't find property, check name: " + out, APIERR_GENERAL, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 71, ACAPI_GetOwnResModule ());
+        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 71, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString + out, true);
         return false;
     }
@@ -216,14 +217,16 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
     if (paramToReadelem.IsEmpty () || rules.IsEmpty ()) {
         if (paramToReadelem.IsEmpty ()) msg_rep ("ReNumSelected", "Parameters for read not found", NoError, APINULLGuid);
         if (rules.IsEmpty ()) msg_rep ("ReNumSelected", "Rules not found", NoError, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 75, ACAPI_GetOwnResModule ());
+        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 75, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString, true);
         return false;
     }
     ParamDictValue propertyParams = {}; // Все свойства уже считаны, поэтому словарь просто пустой
     ClassificationFunc::SystemDict systemdict = {};
     ParamHelpers::ElementsRead (paramToReadelem, propertyParams, systemdict); // Читаем значения
-    bool has_error = false;
+    bool has_error_ones = false;
+    GS::UniString error_rule_name = "";
+    GS::UniString ok_rule_name = "";
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
@@ -231,21 +234,45 @@ bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToW
         #else
         const RenumRule& rule = *cIt->value;
         #endif
+        bool has_error = false;
         if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem, has_error);
+        if (has_error) {
+            has_error_ones = true;
+            error_rule_name.Append (rule.position);
+            error_rule_name.Append (";\n");
+        } else {
+            ok_rule_name.Append (rule.position);
+            ok_rule_name.Append (";\n");
+        }
     }
-    if (has_error) {
-        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 72, ACAPI_GetOwnResModule ());
+    if (!error_rule_name.IsEmpty ()) {
+        error_rule_name.ReplaceAll ("{@", "");
+        error_rule_name.ReplaceAll ("}", "");
+        error_rule_name.ReplaceAll (":", "");
+        error_rule_name.ReplaceAll ("property", "");
+        error_rule_name.Trim ();
+        error_rule_name = "\n" + error_rule_name;
+    }
+    if (!ok_rule_name.IsEmpty ()) {
+        ok_rule_name.ReplaceAll ("{@", "");
+        ok_rule_name.ReplaceAll ("}", "");
+        ok_rule_name.ReplaceAll (":", "");
+        ok_rule_name.ReplaceAll ("property", "");
+        ok_rule_name.Trim ();
+        ok_rule_name = "\n" + ok_rule_name;
+    }
+    if (has_error_ones) {
+        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 72, ACAPI_GetOwnResModule ()) + error_rule_name;
         ACAPI_WriteReport (SpecEmptyListdString, true);
-        return false;
     }
     if (paramToWriteelem.IsEmpty ()) {
         msg_rep ("ReNumSelected", "No position changes required", NoError, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 73, ACAPI_GetOwnResModule ());
+        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 73, ACAPI_GetOwnResModule ()) + error_rule_name + ok_rule_name;
         ACAPI_WriteReport (SpecEmptyListdString, true);
         return false;
     }
-    GS::UniString msg = GS::UniString::Printf ("%d", paramToReadelem.GetSize ());
-    GS::UniString SpecEmptyListdString = RSGetIndString (isEng (), 74, ACAPI_GetOwnResModule ());
+    GS::UniString msg = GS::UniString::Printf ("%d", paramToReadelem.GetSize ()) + ok_rule_name;
+    GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 74, ACAPI_GetOwnResModule ());
     ACAPI_WriteReport (SpecEmptyListdString + msg, true);
     msg_rep ("ReNumSelected", GS::UniString::Printf ("Elements with new position  - %d ", paramToReadelem.GetSize ()), NoError, APINULLGuid);
     return !paramToWriteelem.IsEmpty ();
@@ -583,7 +610,7 @@ bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramTo
             const ParamValue& paramflag = params.Get (rule.flag);
             const ParamValue& paramposition = params.Get (rule.position);
             if (!paramflag.isValid) {
-                msg_rep ("ReNumSelected", "Skip element with not valid value in flag: " + rule.delimetr, APIERR_GENERAL, elemArray[i]);
+                msg_rep ("ReNumSelected", "Skip element with not valid value in flag: " + rule.flag, APIERR_GENERAL, elemArray[i]);
                 has_error = true;
             }
             state = ReNumGetFlag (paramflag, paramposition);
@@ -610,8 +637,8 @@ bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramTo
                     delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
                 } else {
                     msg_rep ("ReNumSelected", "Skip element with not valid value in delimetr: " + rule.delimetr, APIERR_GENERAL, elemArray[i]);
-                    has_error = true;
                     state = RENUM_SKIP;
+                    has_error = true;
                 }
             }
 
@@ -622,16 +649,16 @@ bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramTo
                 if (param.isValid) {
                     if (param.val.uniStringValue.IsEmpty ()) {
                         msg_rep ("ReNumSelected", "Skip element with empty value in criteria: " + rule.criteria, APIERR_GENERAL, elemArray[i]);
-                        has_error = true;
                         state = RENUM_SKIP;
+                        has_error = true;
                     } else {
                         GSCharCode chcode = GetCharCode (param.val.uniStringValue);
                         criteria = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
                     }
                 } else {
                     msg_rep ("ReNumSelected", "Skip element with not valid value in criteria: " + rule.criteria, APIERR_GENERAL, elemArray[i]);
-                    has_error = true;
                     state = RENUM_SKIP;
+                    has_error = true;
                 }
             }
             if (state != RENUM_SKIP) {
