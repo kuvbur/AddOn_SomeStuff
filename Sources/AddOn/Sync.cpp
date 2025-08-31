@@ -1404,6 +1404,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.val.array_format_out = ARRAY_MAX;
             hasArray = true;
         }
+        if (hasArray && !param.fromListData && !param.fromGDLparam) hasArray = false;
         if (hasArray) {
             int array_row_start = 0;
             int array_row_end = 0;
@@ -1428,7 +1429,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim0, p)) {
                                 array_row_start = (int) p;
                             } else {
-                                rawName_row_start = "{@gdl:";
+                                rawName_row_start = paramNamePrefix;
                                 rawName_row_start.Append (dim0);
                                 rawName_row_start.Append ("}");
                             }
@@ -1438,7 +1439,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim1, p)) {
                                 array_row_end = (int) p;
                             } else {
-                                rawName_row_end = "{@gdl:";
+                                rawName_row_end = paramNamePrefix;
                                 rawName_row_end.Append (dim1);
                                 rawName_row_end.Append ("}");
                             }
@@ -1448,7 +1449,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             array_row_start = (int) p;
                             array_row_end = (int) p;
                         } else {
-                            rawName_row_start = "{@gdl:";
+                            rawName_row_start = paramNamePrefix;
                             rawName_row_start.Append (sr1);
                             rawName_row_start.Append ("}");
                             rawName_row_end = rawName_col_start;
@@ -1466,7 +1467,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim0, p)) {
                                 array_column_start = (int) p;
                             } else {
-                                rawName_col_start = "{@gdl:";
+                                rawName_col_start = paramNamePrefix;
                                 rawName_col_start.Append (dim0);
                                 rawName_col_start.Append ("}");
                             }
@@ -1476,7 +1477,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             if (UniStringToDouble (dim1, p)) {
                                 array_column_end = (int) p;
                             } else {
-                                rawName_col_end = "{@gdl:";
+                                rawName_col_end = paramNamePrefix;
                                 rawName_col_end.Append (dim1);
                                 rawName_col_end.Append ("}");
                             }
@@ -1486,7 +1487,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             array_column_start = (int) p;
                             array_column_end = (int) p;
                         } else {
-                            rawName_col_start = "{@gdl:";
+                            rawName_col_start = paramNamePrefix;
                             rawName_col_start.Append (sr1);
                             rawName_col_start.Append ("}");
                             rawName_col_end = rawName_col_start;
@@ -1664,9 +1665,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
-            }
         }
     }
+}
     return has_element;
 }
 
@@ -1816,7 +1817,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 }
             }
             selNeigs.PushNew (guid);
-        }
+}
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -1873,7 +1874,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1970,7 +1971,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid&
                         }
                     }
                 }
-            }
+        }
         }
     }
     if (!find) {
@@ -2033,7 +2034,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
                     }
                 }
             }
-        }
+}
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
@@ -2066,7 +2067,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-    }
+}
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);

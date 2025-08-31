@@ -99,10 +99,10 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabase
                 #endif
                 SpecRuleNotFoundString.Append ("\n");
                 SpecRuleNotFoundString.Append (s);
+            }
         }
-    }
         ACAPI_WriteReport (SpecRuleNotFoundString, true);
-}
+    }
     return has_element;
     #endif
 }
@@ -473,7 +473,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
                 }
             }
             if (flag_find && !rule.subguid_rulename.IsEmpty ()) break;
-}
+        }
         // Поиск существующих объектов
         if (!rule.delete_old) continue;
         if (rule.subguid_rulename.IsEmpty ()) continue;
@@ -515,7 +515,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             s.ReplaceAll ("}", "");
             s.ReplaceAll (":", " : ");
             out.Append (s); out.Append ("\n");
-    }
+        }
         msg_rep ("Spec", "Can't find parameters in place element: " + out, err, APINULLGuid);
         GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString + out, true);
@@ -585,7 +585,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             err = ACAPI_Element_Select (error_elements, true);
             if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
             #endif
-    } else {
+        } else {
             msg_rep ("Spec", GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()), err, APINULLGuid);
         }
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -594,7 +594,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
         #endif
         return APIERR_GENERAL;
-        }
+    }
     #endif
     if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
     if (!elements_mod.IsEmpty ()) {
@@ -666,7 +666,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
                     }
                 }
                 paramOut.Add (el.exs_guid, param);
-        }
+            }
         }
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_UserInput_SetElementHighlight (hlElems);
@@ -809,9 +809,9 @@ GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules)
                 flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
             }
             #endif
-    }
+        }
         if (flagfindspec) AddRule (definitions[i], elemguid, rules);
-}
+    }
     return NoError;
 }
 
@@ -933,7 +933,7 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams
             } else {
                 ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
             }
-}
+        }
         // Добавляем параметры для каждого элемента
         for (const API_Guid elemguid : rule.elements) {
             ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
@@ -1019,12 +1019,12 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                 ParamValue pvalue = {};
                 if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer)) {
                     hasunic = false;
-                    if (!group.fromMaterial && rule.stop_on_error) {
-                        if (!not_found_unic.ContainsKey (rawname)) {
-                            if (!error_element.ContainsKey (elemguid)) error_element.Add (elemguid, true);
-                            msg_rep ("Spec", "Unic parameter not valid: " + rawname, APIERR_GENERAL, elemguid);
-                            not_found_unic.Add (rawname, true);
-                        }
+                    bool is_error = !group.fromMaterial;
+                    if (pvalue.fromGDLArray) is_error = pvalue.val.array_row_start == 1;
+                    if (is_error && rule.stop_on_error && !not_found_unic.ContainsKey (rawname)) {
+                        if (!error_element.ContainsKey (elemguid)) error_element.Add (elemguid, true);
+                        msg_rep ("Spec", "Unic parameter not valid: " + rawname, APIERR_GENERAL, elemguid);
+                        not_found_unic.Add (rawname, true);
                     }
                 }
                 GS::UniString val = pvalue.val.uniStringValue;
@@ -1044,7 +1044,9 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                     if (GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer)) {
                         element.out_sum_param.Push (pvalue);
                     } else {
-                        if (!not_found_paramname.ContainsKey ("sum:" + rawname) && !group.fromMaterial && rule.stop_on_error) {
+                        bool is_error = !group.fromMaterial;
+                        if (pvalue.fromGDLArray) is_error = pvalue.val.array_row_start == 1;
+                        if (is_error && rule.stop_on_error && !not_found_paramname.ContainsKey ("sum:" + rawname)) {
                             if (!error_element.ContainsKey (elemguid)) error_element.Add (elemguid, true);
                             msg_rep ("Spec", "Sum parameter not valid: " + rawname, APIERR_GENERAL, elemguid);
                             not_found_paramname.Add ("sum:" + rawname, false);
@@ -1071,7 +1073,9 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                         element.out_param.Push (pvalue);
                         key_out = key_out + "@" + ParamHelpers::ToString (pvalue, fstr);
                     } else {
-                        if (!not_found_paramname.ContainsKey (rawname) && rule.stop_on_error) {
+                        bool is_error = !group.fromMaterial;
+                        if (pvalue.fromGDLArray) is_error = pvalue.val.array_row_start == 1;
+                        if (!not_found_paramname.ContainsKey (rawname) && rule.stop_on_error && is_error) {
                             if (!error_element.ContainsKey (elemguid)) error_element.Add (elemguid, true);
                             not_found_paramname.Add ("out:" + rawname, false);
                         }
@@ -1112,14 +1116,14 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                 GS::UniString s = *cIt.key;
                 #endif
                 out.Append (s); out.Append ("; ");
-        }
+            }
             out.ReplaceAll ("{@", "");
             out.ReplaceAll ("}", "");
             out.ReplaceAll (":", " : ");
             out.ReplaceAll ("%", "");
             out.ReplaceAll ("nosyncname", "");
             msg_rep ("Spec", out, NoError, APINULLGuid);
-    }
+        }
         if (!not_found_unic.IsEmpty ()) {
             GS::UniString SpecNotFoundParametersString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecNotFoundParametersString, true);
@@ -1131,14 +1135,14 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                 GS::UniString s = *cIt.key;
                 #endif
                 out.Append (s); out.Append ("; ");
-        }
+            }
             out.ReplaceAll ("{@", "");
             out.ReplaceAll ("}", "");
             out.ReplaceAll (":", " : ");
             out.ReplaceAll ("%", "");
             out.ReplaceAll ("nosyncname", "");
             msg_rep ("Spec", out, NoError, APINULLGuid);
-}
+        }
         if (!not_found_paramname.IsEmpty () || !not_found_unic.IsEmpty ()) {
             n_elements = 0;
             elements.Clear ();
@@ -1346,7 +1350,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
         }
     }
     // Параметры для чтения
-    // До точки с запятой - уникальные парамерты , после - параметры для суммы
+    // До точки с запятой - уникальные параметры , после - параметры для суммы
     GS::Array<GS::UniString> rulestring_group = {};
     UInt32 nrule_group = StringSplt (rulestring_summ[0], "g@@", rulestring_group);
     if (nrule_group < 1) {
@@ -1563,7 +1567,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
         if (!paramdict.ContainsKey (rawName)) paramdict.Add (rawName, definition.description.ToLowerCase ());
     }
     return err;
-}
+        }
 
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
@@ -1593,7 +1597,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
         msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
     }
     return err;
-}
+        }
 // --------------------------------------------------------------------
 // Получение размеров элемента для размещения по сетке
 // Возвращает истину, если был найден параметр somestuff_spec_hrow - в этом случае элементы размещаются сверху вниз
@@ -1813,7 +1817,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     msg_rep ("Spec", "ACAPI_Element_Create", err, APINULLGuid);
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
-        }
+            }
             pos.y += 2 * dy;
             if (group.GetSize () > 1) {
                 API_Guid groupGuid = APINULLGuid;
@@ -1828,9 +1832,9 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 #endif
                 if (err != NoError) msg_rep ("Spec", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-    }
+        }
         return NoError;
-});
+    });
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -1840,6 +1844,6 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         if (err != NoError) msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
     }
     return NoError;
-}
+    }
 
 }
