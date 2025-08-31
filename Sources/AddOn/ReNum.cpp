@@ -146,7 +146,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     #endif
 }
 
-bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
+bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
 {
     // Получаем список правил суммирования
     Rules rules = {};

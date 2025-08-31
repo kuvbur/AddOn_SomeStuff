@@ -219,7 +219,7 @@ bool GetRenumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid,
 // -----------------------------------------------------------------------------------------------------------------------
 void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray);
 
-bool GetRenumElements (GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
+bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
 
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition);

@@ -547,7 +547,7 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     }
     if (elementType == API_DimensionID) return false;
     ClassificationFunc::SetAutoclass (systemdict, elemGuid);
-    GS::Array<API_PropertyDefinition> definitions;
+    GS::Array<API_PropertyDefinition> definitions = {};
     err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
     if (err != NoError) {
         msg_rep ("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
@@ -572,11 +572,11 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     if (!syncall && !synccoord && !syncclass) return false; //Если оба свойства-флага ложь - выходим
     if (syncall && !flagfindcoord) synccoord = true; //Если флаг координат не найден - проверку всё равно делаем
     if (syncall && !flagfindclass) syncclass = true;
-    GS::Array <WriteData> mainsyncRules;
+    GS::Array <WriteData> mainsyncRules = {};
     bool hassubguid = false;
-    ParamDictValue subproperty;
+    ParamDictValue subproperty = {};
     if (syncall) hassubguid = ParamHelpers::SubGuid_GetParamValue (elemGuid, propertyParams, definitions, subproperty);
-    ParamDictElement paramToRead; // Словарь с параметрами для чтения
+    ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
     bool hasSub = false;
     for (UInt32 i = 0; i < definitions.GetSize (); i++) {
         // Получаем список правил синхронизации из всех свойств
@@ -601,7 +601,7 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     // Читаем все возможные свойства
     if (paramToRead.IsEmpty ()) return false;
     ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
-    GS::HashTable<API_Guid, GS::UniString> property_write_guid; // Словарь GUID свойств, в которые могла быть осуществлена запись
+    GS::HashTable<API_Guid, GS::UniString> property_write_guid = {}; // Словарь GUID свойств, в которые могла быть осуществлена запись
     SyncCalcRule (syncRules, subelemGuids, paramToRead, paramToWrite, property_write_guid);
     if (paramToWrite.IsEmpty ()) return false;
     // Некоторые свойства, возможно, ссылались на изменённые. Чтоб не запускать полную синхронизацию ещё раз
@@ -622,33 +622,29 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
         ParamDictValue& params = *cIt->value;
         API_Guid elemGuid = *cIt->key;
         #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cIt->value;
-                #else
-                ParamValue& param = *cIt->value;
-                #endif
-                if (param.definition.defaultValue.hasExpression) {
-                    if (property_write_guid.ContainsKey (param.definition.guid)) {
-                        continue;
-                    }
-                    for (GS::UniString expr : param.definition.defaultValue.propertyExpressions) {
-                        GS::Array<GS::UniString> partstring;
-                        if (expr.Contains ("###Property:")) {
-                            if (StringSplt (expr, "###", partstring, "Property:") > 0) {
-                                for (GS::UniString part : partstring) {
-                                    GS::UniString h = part.GetSuffix (36);
-                                    API_Guid pguid = APIGuidFromString (h.ToCStr (0, MaxUSize, GChCode));
-                                    if (property_write_guid.ContainsKey (pguid)) {
-                                        msg_rep ("Find property in expression for resync", property_write_guid.Get (pguid) + " => " + param.rawName, NoError, elemGuid);
-                                        return true;
-                                    }
-                                }
-                            }
+        if (params.IsEmpty ()) continue;
+        for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cItt = params.EnumeratePairs (); cItt != NULL; ++cItt) {
+            #if defined(AC_28) || defined(AC_29)
+            ParamValue& param = cItt->value;
+            #else
+            ParamValue& param = *cItt->value;
+            #endif
+            if (!param.definition.defaultValue.hasExpression) continue;
+            if (property_write_guid.ContainsKey (param.definition.guid)) continue;
+            for (const GS::UniString& expr : param.definition.defaultValue.propertyExpressions) {
+                if (!expr.Contains ("###Property:")) continue;
+                GS::Array<GS::UniString> partstring = {};
+                if (StringSplt (expr, "###", partstring, "Property:") > 0) {
+                    for (const GS::UniString& part : partstring) {
+                        GS::UniString h = part.GetSuffix (36);
+                        API_Guid pguid = APIGuidFromString (h.ToCStr (0, MaxUSize, GChCode));
+                        if (property_write_guid.ContainsKey (pguid)) {
+                            msg_rep ("Find property in expression for resync", property_write_guid.Get (pguid) + " => " + param.rawName, NoError, elemGuid);
+                            return true;
                         }
                     }
                 }
+
             }
         }
     }
@@ -1665,9 +1661,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
+            }
         }
     }
-}
     return has_element;
 }
 
@@ -1817,7 +1813,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 }
             }
             selNeigs.PushNew (guid);
-}
+        }
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -1874,7 +1870,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -1971,7 +1967,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid&
                         }
                     }
                 }
-        }
+            }
         }
     }
     if (!find) {
@@ -2034,7 +2030,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
                     }
                 }
             }
-}
+        }
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
@@ -2067,7 +2063,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-}
+    }
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
