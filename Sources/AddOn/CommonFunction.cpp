@@ -1373,14 +1373,14 @@ bool ProbeCharCode (const GS::UniString & instring, GSCharCode chcode)
 // -----------------------------------------------------------------------------
 UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring)
 {
-    return StringSplt (instring, delim, partstring, true);
+    return StringSplt_ (instring, delim, partstring, true);
 }
 
 
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, bool filter_empty)
+UInt32 StringSplt_ (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, bool filter_empty)
 {
     if (!instring.Contains (delim)) {
         partstring.Push (instring);
@@ -1582,8 +1582,8 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
+        }
     }
-}
     const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
@@ -2465,7 +2465,7 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
         attribinx = (Int32) inx;
         #endif
         return true;
-} else {
+    } else {
         GSErrCode err = NoError;
         API_Attribute attrib;
         BNZeroMemory (&attrib, sizeof (API_Attribute));
@@ -2585,11 +2585,11 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ()) continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (value)) elements.Push (elemGuid);
             #endif
-            }
         }
+    }
     return elements;
     #endif // AC_22
-    }
+}
 
 namespace GDLHelpers
 {

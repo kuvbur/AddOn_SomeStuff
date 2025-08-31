@@ -5157,7 +5157,7 @@ bool ParamHelpers::ReadListData (const API_Elem_Head & elem_head, ParamDictValue
         }
         short version = 0; if (name.Contains ("v4%%")) version = 2;
         GS::Array<GS::UniString> partstring = {};
-        UInt32 n = StringSplt (name, ";", partstring, false);
+        UInt32 n = StringSplt_ (name, ";", partstring, false);
         if (n < 3) continue;
         GS::UniString subpos = partstring[0];
         GS::UniString elemtype = partstring[1];
@@ -5407,7 +5407,7 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
         }
     }
     return;
-        }
+}
 
 // -----------------------------------------------------------------------------
 // Получение информации о элементе
@@ -5616,8 +5616,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
-                        }
                     }
+                }
                 if (!paramsAdd_1.IsEmpty ()) {
                     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
                         #if defined(AC_28) || defined(AC_29)
@@ -5628,11 +5628,11 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
-                        }
-                        }
                     }
                 }
             }
+        }
+    }
     bool flag_add = false;
     if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, propertyParams, existsmaterial, paramlayers);
     // Если есть строка-шаблон - заполним её
@@ -5877,9 +5877,9 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             params.Get (rawName).val.type = API_PropertyStringValueType;
             params.Get (rawName).composite = param_composite.composite;
         }
-        }
+    }
     return flag_add;
-        }
+}
 
 
 void ParamHelpers::Array2ParamValue (GS::Array<ParamValueData>&pvalue, ParamValueData & pvalrezult)
@@ -6091,10 +6091,10 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 #endif
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
-        } else {
+            } else {
                 if (err != APIERR_BADNAME) return false;
             }
-}
+        }
     }
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
@@ -6402,7 +6402,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     }
     pvalue.type = pvalue.val.type;
     return true;
-    }
+}
 
 void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const API_PropertyDefinition & definition)
 {
@@ -6852,7 +6852,7 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
     composite.Clear ();
     composite = p;
     return;
-        }
+}
 
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
@@ -6908,7 +6908,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
-        }
+}
 
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля
@@ -7047,8 +7047,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-                }
-            }
+        }
+    }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = { -10000, 0 };
@@ -7174,16 +7174,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
-                                }
                             }
-                        } else {
+                        }
+                    } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-        }
+                }
                 break;
-    }
+        }
         ++profileDescriptionIt1;
     }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
@@ -7233,7 +7233,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     paramlayers.Get (*cIt->key).composite = paramout;
                     #endif
                 }
-        }
+            }
         }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
     }
@@ -7241,7 +7241,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
     #else
     return false;
     #endif
-        }
+}
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -7391,7 +7391,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-            }
+    }
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -7450,7 +7450,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-    }
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
