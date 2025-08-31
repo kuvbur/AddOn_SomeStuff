@@ -711,26 +711,72 @@ void ParamHelpers::SetParamValueSourseByName (ParamValue& pvalue)
        pvalue.fromGDLArray ||
        pvalue.fromAttribDefinition ||
        pvalue.fromAttribElement ||
+       pvalue.fromListData ||
+       pvalue.fromElement ||
+       pvalue.fromMEP ||
        pvalue.fromID
        ) return;
-    if (pvalue.rawName.Contains ("{@coord:")) pvalue.fromCoord = true;
-    if (pvalue.rawName.Contains ("{@gdl")) pvalue.fromGDLparam = true;
     if (pvalue.rawName.Contains ("{@description:")) {
         pvalue.fromGDLparam = true;
         pvalue.fromGDLdescription = true;
     }
-    if ((pvalue.fromGDLparam || pvalue.fromGDLdescription) && pvalue.rawName.Contains ("@arr_")) pvalue.fromGDLArray = true;
-    if (pvalue.fromGDLparam && (!pvalue.rawName_row_start.IsEmpty () || !pvalue.rawName_row_end.IsEmpty () || !pvalue.rawName_col_start.IsEmpty () || !pvalue.rawName_col_end.IsEmpty ())) pvalue.needPreRead = true;
-    if (pvalue.rawName.Contains ("{@property")) pvalue.fromProperty = true;
-    if (pvalue.rawName.Contains ("{@material")) pvalue.fromMaterial = true;
-    if (pvalue.rawName.Contains ("{@info")) pvalue.fromInfo = true;
-    if (pvalue.rawName.Contains ("{@ifc")) pvalue.fromIFCProperty = true;
-    if (pvalue.rawName.Contains ("{@morph")) pvalue.fromMorph = true;
-    if (pvalue.rawName.Contains ("{@id")) pvalue.fromID = true;
-    if (pvalue.rawName.Contains ("{@attrib")) pvalue.fromAttribElement = true;
-    if (pvalue.rawName.Contains ("{@mep")) pvalue.fromMEP = true;
-    if (pvalue.rawName.Contains ("{@listdata")) pvalue.fromListData = true;
+    if (pvalue.rawName.Contains ("{@property:")) pvalue.fromPropertyDefinition = true;
+    if (pvalue.rawName.Contains ("{@coord:")) pvalue.fromCoord = true;
+    if (pvalue.rawName.Contains ("{@gdl:")) pvalue.fromGDLparam = true;
+    if (pvalue.rawName.Contains ("{@info:")) pvalue.fromInfo = true;
+    if (pvalue.rawName.Contains ("{@ifc:")) pvalue.fromIFCProperty = true;
+    if (pvalue.rawName.Contains ("{@morph:")) pvalue.fromMorph = true;
+    if (pvalue.rawName.Contains ("{@material:")) pvalue.fromMaterial = true;
+    if (pvalue.rawName.Contains ("{@glob:")) pvalue.fromGlob = true;
+    if (pvalue.rawName.Contains ("{@id:")) pvalue.fromID = true;
+    if (pvalue.rawName.Contains ("{@class:")) pvalue.fromClassification = true;
+    if (pvalue.rawName.Contains ("{@formula:")) pvalue.val.hasFormula = true;
+    if (pvalue.rawName.Contains ("{@element:")) pvalue.fromElement = true;
+    if (pvalue.rawName.Contains ("{@mep:")) pvalue.fromMEP = true;
+    if (pvalue.rawName.Contains ("{@attrib:")) pvalue.fromAttribElement = true;
+    if (pvalue.rawName.Contains ("{@listdata:")) pvalue.fromListData = true;
     if (pvalue.rawName.Contains ("{@property:buildingmaterialproperties/")) pvalue.fromAttribDefinition = true;
+    if (pvalue.fromGDLparam || pvalue.fromGDLdescription || pvalue.fromListData) ParamHelpers::SetArrayByRawname (pvalue);
+    if (pvalue.fromGDLparam && (!pvalue.rawName_row_start.IsEmpty () || !pvalue.rawName_row_end.IsEmpty () || !pvalue.rawName_col_start.IsEmpty () || !pvalue.rawName_col_end.IsEmpty ())) pvalue.needPreRead = true;
+}
+
+void ParamHelpers::SetArrayByRawname (ParamValue& pvalue)
+{
+    if (!pvalue.rawName.Contains ("@arr_")) return;
+    GS::Array<GS::UniString> partstring = {};
+    StringSplt (pvalue.rawName, "@", partstring, "arr_");
+    GS::UniString arr = partstring.Get (2);
+    arr.ReplaceAll ("arr_", "");
+    arr.ReplaceAll ("}", "");
+    partstring.Clear ();
+    UInt32 n = StringSplt (arr, "_", partstring);
+    for (UInt32 i = 0; i < n; i++) {
+        double inx = 0;
+        if (UniStringToDouble (partstring[i], inx)) {
+            if (inx > 0.01) {
+                switch (i) {
+                    case 0:
+                        pvalue.val.array_row_start = (int) inx;
+                        break;
+                    case 1:
+                        pvalue.val.array_row_end = (int) inx;
+                        break;
+                    case 2:
+                        pvalue.val.array_column_start = (int) inx;
+                        break;
+                    case 3:
+                        pvalue.val.array_column_end = (int) inx;
+                        break;
+                    case 4:
+                        pvalue.val.array_format_out = (int) inx;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+    pvalue.fromGDLArray = true;
 }
 
 GS::UniString ParamHelpers::NameToRawName (const GS::UniString& name, FormatString& formatstring)
@@ -3848,7 +3894,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             #endif
         }
         if (paramType.IsEqual ("{@listdata:") && eltype == API_ObjectID) {
-            ParamHelpers::ReadListData (elem_head, params);
+            needCompare = ParamHelpers::ReadListData (elem_head, paramByType);
         }
         if (needCompare) {
             #if defined(TESTING)
@@ -3856,7 +3902,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             #endif
             ParamHelpers::CompareParamDictValue (paramByType, params);
         } else {
-            if (!paramType.IsEqual ("{@material:") && !paramType.IsEqual ("{@listdata:")) {
+            if (!paramType.IsEqual ("{@material:")) {
                 #if defined(TESTING)
                 DBprnt ("Read err", "not found" + paramType);
                 #endif
@@ -5053,7 +5099,6 @@ bool ParamHelpers::ReadListData (const API_Elem_Head & elem_head, ParamDictValue
 {
     GSErrCode err = NoError;
     Int32 nComp = 0;
-    GS::Array<ParamValueComposite> composites = {};
     #if defined(AC_22) || defined(AC_23) || defined(AC_24)
     API_ComponentRefType** compRefs;
     err = ACAPI_Element_GetComponents (&elem_head, &compRefs, &nComp);
@@ -5061,11 +5106,11 @@ bool ParamHelpers::ReadListData (const API_Elem_Head & elem_head, ParamDictValue
     API_Obsolete_ComponentRefType** compRefs;
     err = ACAPI_Element_GetComponents_Obsolete (&elem_head, &compRefs, &nComp);
     #endif
+    ParamDictValue pdictvalue = {};
     if (err != NoError) {
         msg_rep ("ReadListData", "ACAPI_Element_GetComponents_Obsolete", err, elem_head.guid);
         return false;
     }
-    GS::UniString out = "";
     for (Int32 i = 0; i < nComp; i++) {
         if ((*compRefs)[i].status == APIDBRef_Deleted) continue;
         API_ListData listdata = {};
@@ -5099,32 +5144,90 @@ bool ParamHelpers::ReadListData (const API_Elem_Head & elem_head, ParamDictValue
             msg_rep ("ReadListData", "ACAPI_ListData_Get", err, elem_head.guid);
             continue;
         }
-        ParamValueComposite p = {};
         char tname[API_DBNameLen];
         CHTruncate (listdata.component.name, tname, API_DBNameLen);
-        p.val = GS::UniString (tname);
-        p.qty = listdata.component.quantity;
+        GS::UniString name = GS::UniString (tname);
         char tunitcode[API_DBCodeLen];
         CHTruncate (listdata.component.unitcode, tunitcode, API_DBCodeLen);
-        p.unit = GS::UniString (tunitcode);
-        out += p.val + GS::UniString::Printf (" %.3f ", p.qty) + p.unit + ";                             ";
-        composites.Push (p);
+        GS::UniString gid = GS::UniString (tunitcode);
+        GS::UniString suffix = GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", i + 1, i + 1, 1, 1, ARRAY_UNIC);
+        if (!name.Contains ("v3%%") && !name.Contains ("v4%%")) {
+            double qty = listdata.component.quantity;
+            continue;
+        }
+        short version = 0; if (name.Contains ("v4%%")) version = 2;
+        GS::Array<GS::UniString> partstring = {};
+        UInt32 n = StringSplt (name, ";", partstring, false);
+        if (n < 3) continue;
+        GS::UniString subpos = partstring[0];
+        GS::UniString elemtype = partstring[1];
+        GS::UniString pos = partstring[2];
+        GS::UniString naen = "";
+        GS::UniString obozn = "";
+        GS::UniString unit = "";
+        GS::UniString ves = "";
+        GS::UniString qty = "";
+        GS::UniString spec_add_param = partstring[5 - version];
+        spec_add_param.ReplaceAll ("v3%%", "");
+        spec_add_param.ReplaceAll ("v4%%", "");
+        // Арматура
+        if (elemtype.IsEqual ("10")) {
+            elemtype = reinterpret_cast<const char*>(u8"Арматура");
+            unit = partstring[10];
+            ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "arm_class" + suffix, partstring[6 - version]);
+            ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "arm_l" + suffix, partstring[8 - version]);
+            ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "arm_d" + suffix, partstring[7 - version]);
+        }
+        // Прокат
+        if (elemtype.IsEqual ("20")) {
+            elemtype = reinterpret_cast<const char*>(u8"Прокат");
+        }
+        // Материал
+        if (elemtype.IsEqual ("30")) {
+            elemtype = reinterpret_cast<const char*>(u8"Материалы");
+            obozn = partstring[6 - version];
+            naen = partstring[7 - version];
+        }
+        // Изделие
+        if (elemtype.IsEqual ("40")) {
+            elemtype = reinterpret_cast<const char*>(u8"Изделия");
+            obozn = partstring[6 - version];
+            naen = partstring[7 - version];
+            ves = partstring[8 - version];
+            qty = partstring[9 - version];
+            unit = partstring[10 - version];
+        }
+        // Сборка
+        if (elemtype.IsEqual ("45")) {
+            elemtype = reinterpret_cast<const char*>(u8"Сборочные единицы");
+        }
+        ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "subpos" + suffix, subpos);
+        ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "pos" + suffix, pos);
+        ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "naen" + suffix, naen);
+        ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "obozn" + suffix, obozn);
+        ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "elemtype" + suffix, elemtype);
+        ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "subpos" + suffix, subpos);
+        if (qty.IsEmpty ()) {
+            ParamHelpers::AddDoubleValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "qty" + suffix, listdata.component.quantity);
+        } else {
+            ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "qty" + suffix, qty);
+        }
+        ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "unit" + suffix, unit);
+
     }
     BMKillHandle ((GSHandle*) &compRefs);
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamValue& param = cIt->value;
-        #else
-        ParamValue& param = *cIt->value;
-        #endif
-        if (!param.fromListData) continue;
-        param.composite = composites;
-        param.val.uniStringValue = out;
-        param.isValid = true;
-        param.type = API_PropertyStringValueType;
-        param.val.type = API_PropertyStringValueType;
+    if (!pdictvalue.IsEmpty ()) {
+        for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = pdictvalue.EnumeratePairs (); cIt != NULL; ++cIt) {
+            #if defined(AC_28) || defined(AC_29)
+            ParamValue& param = cIt->value;
+            #else
+            ParamValue& param = *cIt->value;
+            #endif
+            ParamHelpers::SetParamValueSourseByName (param);
+        }
+        ParamHelpers::CompareParamDictValue (pdictvalue, params);
     }
-    return !composites.IsEmpty ();
+    return !pdictvalue.IsEmpty ();
 }
 
 // -----------------------------------------------------------------------------
@@ -5304,7 +5407,7 @@ void ParamHelpers::ReadQuantities (const API_Guid & elemGuid, ParamDictValue & p
         }
     }
     return;
-}
+        }
 
 // -----------------------------------------------------------------------------
 // Получение информации о элементе
@@ -5513,8 +5616,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
+                        }
                     }
-                }
                 if (!paramsAdd_1.IsEmpty ()) {
                     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
                         #if defined(AC_28) || defined(AC_29)
@@ -5525,11 +5628,11 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                             params.Add (*cIt->key, *cIt->value);
                             #endif
                         }
+                        }
+                        }
                     }
                 }
             }
-        }
-    }
     bool flag_add = false;
     if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, propertyParams, existsmaterial, paramlayers);
     // Если есть строка-шаблон - заполним её
@@ -5774,9 +5877,9 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             params.Get (rawName).val.type = API_PropertyStringValueType;
             params.Get (rawName).composite = param_composite.composite;
         }
-    }
+        }
     return flag_add;
-}
+        }
 
 
 void ParamHelpers::Array2ParamValue (GS::Array<ParamValueData>&pvalue, ParamValueData & pvalrezult)
@@ -5988,10 +6091,10 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 #endif
                 param_real = param_int / 1.0;
                 pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
-            } else {
+        } else {
                 if (err != APIERR_BADNAME) return false;
             }
-        }
+}
     }
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
@@ -6299,7 +6402,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     }
     pvalue.type = pvalue.val.type;
     return true;
-}
+    }
 
 void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const API_PropertyDefinition & definition)
 {
@@ -6749,7 +6852,7 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
     composite.Clear ();
     composite = p;
     return;
-}
+        }
 
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
@@ -6805,7 +6908,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
     ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
-}
+        }
 
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля
@@ -6944,8 +7047,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-        }
-    }
+                }
+            }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = { -10000, 0 };
@@ -7071,16 +7174,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
+                                }
                             }
-                        }
-                    } else {
+                        } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-                }
-                break;
         }
+                break;
+    }
         ++profileDescriptionIt1;
     }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
@@ -7130,7 +7233,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     paramlayers.Get (*cIt->key).composite = paramout;
                     #endif
                 }
-            }
+        }
         }
         ParamHelpers::CompareParamDictValue (paramlayers, params);
     }
@@ -7138,7 +7241,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
     #else
     return false;
     #endif
-}
+        }
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -7288,7 +7391,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-    }
+            }
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -7347,7 +7450,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-}
+    }
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
