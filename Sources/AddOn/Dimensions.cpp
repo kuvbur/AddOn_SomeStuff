@@ -470,7 +470,7 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bo
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
-    ParamDictValue propertyParams;
+    ParamDictValue propertyParams = {};
     DimAutoRound (elemGuid, dimrules, propertyParams, syncSettings, isUndo);
 }
 
@@ -479,8 +479,8 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bo
 // -----------------------------------------------------------------------------
 void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 {
-    DoneElemGuid doneelemguid;
-    DimRules dimrules;
+    DoneElemGuid doneelemguid = {};
+    DimRules dimrules = {};
     #if defined(TESTING)
     DBprnt ("DimRoundAll start");
     #endif
@@ -488,7 +488,7 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
-    ParamDictValue propertyParams;
+    ParamDictValue propertyParams = {};
     if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, dimrules, propertyParams, syncSettings, isUndo);
 
     //if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
@@ -503,8 +503,8 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 // -----------------------------------------------------------------------------
 bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings, bool isUndo)
 {
-    GSErrCode	err = NoError;
-    GS::Array<API_Guid>	guidArray;
+    GSErrCode err = NoError;
+    GS::Array<API_Guid>	guidArray = {};
     err = ACAPI_Element_GetElemList (typeID, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
     if (guidArray.GetSize () == 0 || err != NoError) return false;
     if (err == NoError) {

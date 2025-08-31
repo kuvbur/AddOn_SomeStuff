@@ -36,7 +36,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     clock_t start, finish;
     double  duration;
     start = clock ();
-    GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true);
+    GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true, false, false);
     if (guidArray.IsEmpty ()) return NoError;
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions;
     if (guidArray.GetSize () == 1) {
