@@ -121,7 +121,7 @@ GSErrCode SpecAll (const SyncSettings& syncSettings)
         msg_rep ("Spec", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
     SpecRuleDict rules = {}; bool hasrule = false;
-    GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false);
+    GS::Array<API_Guid> guidArray = GetSelectedElements (false, false, syncSettings, false, false, false);
     UnicGuid selected_elements = {};
     if (!guidArray.IsEmpty ()) {
         msg_rep ("Spec", "Create spec from selection", NoError, APINULLGuid);
@@ -1567,7 +1567,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
         if (!paramdict.ContainsKey (rawName)) paramdict.Add (rawName, definition.description.ToLowerCase ());
     }
     return err;
-        }
+}
 
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
@@ -1597,7 +1597,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
         msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
     }
     return err;
-        }
+}
 // --------------------------------------------------------------------
 // Получение размеров элемента для размещения по сетке
 // Возвращает истину, если был найден параметр somestuff_spec_hrow - в этом случае элементы размещаются сверху вниз
@@ -1844,6 +1844,6 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         if (err != NoError) msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
     }
     return NoError;
-    }
+}
 
 }

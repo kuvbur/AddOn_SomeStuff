@@ -33,7 +33,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
     #endif
-    GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true);
+    GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true, false, false);
     if (guidArray.IsEmpty ()) return NoError;
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions;
     if (guidArray.GetSize () == 1) {

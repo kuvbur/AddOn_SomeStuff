@@ -166,17 +166,42 @@ bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettin
 // Получить массив Guid выбранных элементов
 // Настройки будут считаны при вызове функции
 // -----------------------------------------------------------------------------
+GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, const SyncSettings& syncSettings, bool addSubelement)
+{
+    bool addZone = false;
+    bool addConnect = false;
+    if (addSubelement) {
+        addZone = true;
+        addConnect = true;
+    }
+    return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect);
+}
+
 GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement /*= true*/)
 {
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
-    return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement);
+    bool addZone = false;
+    bool addConnect = false;
+    if (addSubelement) {
+        addZone = true;
+        addConnect = true;
+    }
+    return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect);
+}
+
+
+GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement /*= true*/, bool addZone, bool addConnect)
+{
+    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    LoadSyncSettingsFromPreferences (syncSettings);
+    return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect);
 }
 
 // -----------------------------------------------------------------------------
 // Получить массив Guid выбранных элементов в соответсвии с настройками обработки
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, const SyncSettings& syncSettings, bool addSubelement)
+GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, const SyncSettings& syncSettings, bool addSubelement, bool addZone, bool addConnect)
 {
     GSErrCode err;
     API_SelectionInfo selectionInfo = {};
@@ -230,7 +255,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
                 err = GetTypeByGUID (neig.guid, elementType);
             }
             #endif // AC_27
-            if (err == NoError) GetRelationsElement (elemguid, elementType, syncSettings, guidArray);
+            if (err == NoError) GetRelationsElement (elemguid, elementType, syncSettings, guidArray, addZone, addConnect);
         }
     }
     #endif // AC_22
@@ -351,15 +376,20 @@ void CallOnSelectedElem (void (*function)(const API_Guid&), bool assertIfNoSel /
 // --------------------------------------------------------------------
 void GetRelationsElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid)
 {
+    GetRelationsElement (elemGuid, syncSettings, subelemGuid, true, true);
+}
+
+void GetRelationsElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid, bool addZone, bool addConnect)
+{
     API_ElemTypeID elementType;
     if (GetTypeByGUID (elemGuid, elementType) != NoError) return;
-    GetRelationsElement (elemGuid, elementType, syncSettings, subelemGuid);
+    GetRelationsElement (elemGuid, elementType, syncSettings, subelemGuid, addZone, addConnect);
 }
 
 // --------------------------------------------------------------------
 // Поиск связанных элементов для определённого типа
 // --------------------------------------------------------------------
-void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid)
+void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid, bool addZone, bool addConnect)
 {
     GSErrCode	err = NoError;
     API_RoomRelation	relData;
@@ -433,7 +463,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             break;
             #endif
         case API_WallID:
-            if (syncSettings.widoS) {
+            if (syncSettings.widoS && addConnect) {
                 GS::Array<API_Guid> windows = {};
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 err = ACAPI_Grouping_GetConnectedElements (elemGuid, API_WindowID, &windows, APIFilt_None, APINULLGuid);
@@ -474,11 +504,13 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
         case API_CurtainWallAccessoryID:
         case API_CurtainWallPanelID:
             if (syncSettings.cwallS) {
-                API_CWPanelRelation crelData = {};
-                err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &crelData);
-                if (err == NoError) {
-                    if (crelData.fromRoom != APINULLGuid) subelemGuid.Push (crelData.fromRoom);
-                    if (crelData.toRoom != APINULLGuid) subelemGuid.Push (crelData.toRoom);
+                if (addZone) {
+                    API_CWPanelRelation crelData = {};
+                    err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &crelData);
+                    if (err == NoError) {
+                        if (crelData.fromRoom != APINULLGuid) subelemGuid.Push (crelData.fromRoom);
+                        if (crelData.toRoom != APINULLGuid) subelemGuid.Push (crelData.toRoom);
+                    }
                 }
                 #ifndef AC_22
                 if (ownerElemApiGuid != APINULLGuid && hierarchicalElemType == API_ChildElemInMultipleElem) subelemGuid.Push (ownerElemApiGuid);
@@ -488,11 +520,13 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             break;
         case API_DoorID:
             if (syncSettings.widoS) {
-                API_DoorRelation drelData = {};
-                err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &drelData);
-                if (err == NoError) {
-                    if (drelData.fromRoom != APINULLGuid) subelemGuid.Push (drelData.fromRoom);
-                    if (drelData.toRoom != APINULLGuid) subelemGuid.Push (drelData.toRoom);
+                if (addZone) {
+                    API_DoorRelation drelData = {};
+                    err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &drelData);
+                    if (err == NoError) {
+                        if (drelData.fromRoom != APINULLGuid) subelemGuid.Push (drelData.fromRoom);
+                        if (drelData.toRoom != APINULLGuid) subelemGuid.Push (drelData.toRoom);
+                    }
                 }
                 #ifndef AC_22
                 if (ownerElemApiGuid != APINULLGuid && hierarchicalElemType == API_ChildElemInMultipleElem) subelemGuid.Push (ownerElemApiGuid);
@@ -502,11 +536,13 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             break;
         case API_WindowID:
             if (syncSettings.widoS) {
-                API_WindowRelation wrelData = {};
-                err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &wrelData);
-                if (err == NoError) {
-                    if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push (wrelData.fromRoom);
-                    if (wrelData.toRoom != APINULLGuid) subelemGuid.Push (wrelData.toRoom);
+                if (addZone) {
+                    API_WindowRelation wrelData = {};
+                    err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &wrelData);
+                    if (err == NoError) {
+                        if (wrelData.fromRoom != APINULLGuid) subelemGuid.Push (wrelData.fromRoom);
+                        if (wrelData.toRoom != APINULLGuid) subelemGuid.Push (wrelData.toRoom);
+                    }
                 }
                 #ifndef AC_22
                 if (ownerElemApiGuid != APINULLGuid && hierarchicalElemType == API_ChildElemInMultipleElem) subelemGuid.Push (ownerElemApiGuid);
@@ -515,7 +551,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             }
             break;
         case API_ZoneID:
-            if (syncSettings.objS) {
+            if (syncSettings.objS && addZone) {
                 err = ACAPI_Element_GetRelations (elemGuid, API_ZombieElemID, &relData);
                 if (err == NoError) {
                     #if defined(AC_23) || defined(AC_22)
@@ -3589,10 +3625,10 @@ bool ParamHelpers::hasInfo (ParamDictValue& propertyParams)
     return true;
 }
 
-bool ParamHelpers::has_LocOrigin (ParamDictValue& propertyParams)
+bool ParamHelpers::hasLocOrigin (ParamDictValue& propertyParams)
 {
     if (propertyParams.IsEmpty ()) return false;
-    if (!propertyParams.ContainsKey ("{@flag:has_LocOrigin}")) return false;
+    if (!propertyParams.ContainsKey ("{@flag:has_locorigin}")) return false;
     return true;
 }
 
@@ -3659,7 +3695,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& 
     if (!ParamHelpers::hasProperyDefinition (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_properydefinition}")) {
         if (ParamHelpers::hasUnreadProperyDefinition (paramToRead)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
     }
-    if (!ParamHelpers::has_LocOrigin (propertyParams)) {
+    if (!ParamHelpers::hasLocOrigin (propertyParams)) {
         if (ParamHelpers::hasUnreadCoord (paramToRead)) ParamHelpers::GetLocOriginToParamDict (propertyParams);
     }
 
@@ -4004,7 +4040,7 @@ void ParamHelpers::GetLocOriginToParamDict (ParamDictValue& propertyParams)
     ParamHelpers::ConvertDoubleToParamValue (pvalue, "", offset.y);
     propertyParams.Add (pvalue.rawName, pvalue);
 
-    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_LocOrigin");
+    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_locorigin");
     #if defined(TESTING)
     DBprnt ("  GetLocOriginToParamDict end");
     #endif
@@ -4046,7 +4082,7 @@ void ParamHelpers::GetAllInfoToParamDict (ParamDictValue& propertyParams)
             propertyParams.Add (rawName, pvalue);
         }
     }
-    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_Info");
+    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_info");
     #if defined(TESTING)
     DBprnt ("  GetAllInfoToParamDict end");
     #endif
@@ -4161,7 +4197,7 @@ void ParamHelpers::GetAllGlobToParamDict (ParamDictValue & propertyParams)
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, round ((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
     propertyParams.Add (rawName, pvalue);
-    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_Glob");
+    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_glob");
     #if defined(TESTING)
     DBprnt ("  GetAllGlobToParamDict end");
     #endif
