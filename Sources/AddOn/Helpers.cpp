@@ -780,12 +780,13 @@ void ParamHelpers::SetArrayByRawname (ParamValue& pvalue)
 {
     if (!pvalue.rawName.Contains ("@arr_")) return;
     GS::Array<GS::UniString> partstring = {};
-    StringSplt (pvalue.rawName, "@", partstring, "arr_");
-    GS::UniString arr = partstring.Get (2);
-    arr.ReplaceAll ("arr_", "");
+    UInt32 n = StringSplt (pvalue.rawName, "@arr_", partstring, "}");
+    if (n == 0) return;
+    GS::UniString arr = partstring.Get (0);
     arr.ReplaceAll ("}", "");
     partstring.Clear ();
-    UInt32 n = StringSplt (arr, "_", partstring);
+    n = StringSplt (arr, "_", partstring);
+    if (n == 0) return;
     for (UInt32 i = 0; i < n; i++) {
         double inx = 0;
         if (UniStringToDouble (partstring[i], inx)) {
