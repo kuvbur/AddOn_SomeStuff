@@ -57,29 +57,30 @@ struct OtdMaterial
     short material = 0; // Индекс материала
     GS::UniString smaterial = ""; // Имя материала
     GS::UniString rawname = ""; // Имя свойства для записи
+    GS::UniString rawname_bytype = ""; // Имя свойства для записи c разбивкой
 };
 
 struct MatarialToFavorite
 {
     GS::UniString name = ""; // Имя избранного 
     API_ElemTypeID type = API_ZombieElemID; // Тип элемента в избранном
-    GS::Array<ParamValueComposite> composite; // Состав элемента (только отделочные слои)
+    GS::Array<ParamValueComposite> composite = {}; // Состав элемента (только отделочные слои)
     bool is_composite_read = false;
 };
 typedef GS::HashTable<GS::UniString, MatarialToFavorite> MatarialToFavoriteDict;
 
 struct OtdSlab
 {
-    Geometry::Polygon2D poly;
+    Geometry::Polygon2D poly = {};
     double zBottom = 0; // Аболютная координата z низа
     short floorInd = 0; // Этаж
     double height = 0;
-    OtdMaterial material;
+    OtdMaterial material = {};
     GS::UniString tip = ""; // Тип потолка/пола из зоны
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
     API_ElemTypeID draw_type = API_SlabID; // Тип отрисовываемого элемента
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
-    GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
+    GS::Array<ParamValueComposite> base_composite = {}; // Состав базового элемента (только отделочные слои)
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
     TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
     MatarialToFavorite favorite = {}; // Избранное
@@ -101,8 +102,8 @@ struct OtdWall
     API_Guid base_guid = APINULLGuid; // GUID базового элемента
     API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
     bool base_flipped = false; // Базовая конструкция отзеркалена (для чтения состава)
-    GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
-    GS::Array<OtdOpening> openings; // Проёмы в стене-отделке
+    GS::Array<ParamValueComposite> base_composite = {}; // Состав базового элемента (только отделочные слои)
+    GS::Array<OtdOpening> openings = {}; // Проёмы в стене-отделке
     OtdMaterial material;
     API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
     API_ElemTypeID draw_type = API_WallID; // Тип отрисовываемого элемента
@@ -113,46 +114,47 @@ struct OtdWall
 
 struct RoomEdges
 {
-    GS::Array<Sector> walledges; // Границы стен, не явяющихся границей зоны
-    GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
-    GS::Array<Sector> restedges; // Границы зоны
-    GS::Array<Sector> gableedges;
+    GS::Array<Sector> walledges = {}; // Границы стен, не явяющихся границей зоны
+    GS::Array<Sector> columnedges = {}; // Границы колонн, не явяющихся границей зоны
+    GS::Array<Sector> restedges = {}; // Границы зоны
+    GS::Array<Sector> gableedges = {};
 };
 
 struct OtdRoom
 {
-    OtdMaterial om_up; // Отделка стен выше потолка
-    OtdMaterial om_main; // Отделка стен основная
-    OtdMaterial om_down; // Отделка низа стен
-    OtdMaterial om_column; // Отделка колонн
-    OtdMaterial om_reveals; // Отделка откосов
-    OtdMaterial om_floor; // Отделка пола
-    OtdMaterial om_ceil; // Отделка потолка
-    OtdMaterial om_zone; // Отделка из параметров зоны
+    OtdMaterial om_up = {}; // Отделка стен выше потолка
+    OtdMaterial om_main = {}; // Отделка стен основная
+    OtdMaterial om_down = {}; // Отделка низа стен
+    OtdMaterial om_column = {}; // Отделка колонн
+    OtdMaterial om_reveals = {}; // Отделка откосов
+    OtdMaterial om_floor = {}; // Отделка пола
+    OtdMaterial om_ceil = {}; // Отделка потолка
+    OtdMaterial om_zone = {}; // Отделка из параметров зоны
     double height = 0; // Высота зоны
     double zBottom = 0; // Аболютная координата z низа
     short floorInd = 0; // Этаж
-    GS::HashTable <API_Guid, GS::Array<Sector>> walledges; // Границы стен, не явяющихся границей зоны
-    GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
-    GS::Array<Sector> edges; // Границы зоны
-    GS::Array<API_WallPart> wallPart; // Участки стен в зоне
+    GS::HashTable <API_Guid, GS::Array<Sector>> walledges = {}; // Границы стен, не явяющихся границей зоны
+    GS::Array<Sector> columnedges = {}; // Границы колонн, не явяющихся границей зоны
+    GS::Array<Sector> edges = {}; // Границы зоны
+    GS::Array<API_WallPart> wallPart = {}; // Участки стен в зоне
     //GS::Array<API_BeamPart> beamPart; // Участки балок в зоне
     //GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
     //GS::Array<API_Niche> niches; // Ниши в зоне
     double height_down = 0; // Высота панелей
     double height_main = 0; // Высота основной отделки
     double height_up = 0; // Высота верхней части отделки
-    OtdSlab poly; // Полгон зоны для полов/потолков
-    GS::Array<API_Guid> floorslab; // Перекрытия в уровне пола
-    GS::Array<API_Guid> ceilslab; // Перекрытия в уровне потолка
-    GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
-    GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
+    OtdSlab poly = {}; // Полгон зоны для полов/потолков
+    GS::Array<API_Guid> floorslab = {}; // Перекрытия в уровне пола
+    GS::Array<API_Guid> ceilslab = {}; // Перекрытия в уровне потолка
+    GS::Array<OtdWall> otdwall = {}; // Стены-отделки, созданные для расчётов и отрисовки
+    GS::Array<OtdSlab> otdslab = {}; // Потолки/полы для построения
     bool has_ceil = true;
     bool has_floor = true;
     bool ceil_by_slab = false; // Создавать потолок только по перекрытиям
     bool floor_by_slab = false; // Создавать потолок только по перекрытиям
-    GS::UniString tip_pot = "";
-    GS::UniString tip_pol = "";
+    GS::UniString tip_pot = ""; // Тип потолка для записи в аксессуар
+    GS::UniString tip_pol = ""; // Тип пола для записи в аксессуар
+    GS::UniString tip_otd = ""; // Тип отделки для разбивки
     API_Guid zone_guid = APINULLGuid; // GUID базового элемента
     bool isValid = true; // Зона считана нормально
     bool create_all_elements = true; // Создавать элементы отделки
@@ -174,7 +176,7 @@ typedef GS::HashTable<GS::UniString, OtdMaterialAreaDict> OtdMaterialAreaDictByT
 struct ReadParam
 {
     bool isValid = false; // Параметр считан успешно
-    GS::Array<GS::UniString> rawnames; // Варианты имён параметров для считывания
+    GS::Array<GS::UniString> rawnames = {}; // Варианты имён параметров для считывания
     ParamValueData val = {}; // Прочитанное значение
 };
 typedef GS::HashTable<GS::UniString, ReadParam> ReadParams;

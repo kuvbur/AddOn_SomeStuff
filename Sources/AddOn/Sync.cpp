@@ -246,8 +246,8 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     GS::UniString subtitle_ = GS::UniString::Printf ("Reading data from %d elements : ", guidArray.GetSize ()) + subtitle;
 
     // Словарь со всеми возможными определениями свойств
-    if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
     if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+    if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
     if (!ParamHelpers::hasInfo (propertyParams)) ParamHelpers::GetAllInfoToParamDict (propertyParams);
     if (!ParamHelpers::hasGlob (propertyParams)) ParamHelpers::GetAllGlobToParamDict (propertyParams);
     if (propertyParams.IsEmpty ()) return true;
@@ -343,16 +343,16 @@ void SyncSelected (const SyncSettings& syncSettings)
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, ClassificationFunc::SystemDict& systemdict, ParamDictValue& propertyParams)
 {
-    GS::Array<API_Guid> rereadelem;
+    GS::Array<API_Guid> rereadelem = {};
     if (guidArray.IsEmpty ()) return rereadelem;
     GS::UniString funcname = "Sync Selected";
-    if (propertyParams.IsEmpty ()) {
-        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-        ParamHelpers::GetAllInfoToParamDict (propertyParams);
-        ParamHelpers::GetAllGlobToParamDict (propertyParams);
+    if (guidArray.GetSize () > 3) {
+        if (!ParamHelpers::hasProperyDefinition (propertyParams)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
+        if (!ParamHelpers::hasInfo (propertyParams)) ParamHelpers::GetAllInfoToParamDict (propertyParams);
+        if (!ParamHelpers::hasGlob (propertyParams)) ParamHelpers::GetAllGlobToParamDict (propertyParams);
+        if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
     }
-    if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
-    ParamDictElement paramToWrite;
+    ParamDictElement paramToWrite = {};
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
     GS::Int32 nPhase = 1;
     int dummymode = IsDummyModeOn ();
@@ -438,7 +438,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
     if (err != NoError) {
         msg_rep (fmane, "APIEnv_GetCurrLayerCombID", err, APINULLGuid);
         return;
-}
+    }
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
     #else
@@ -516,7 +516,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
     if (err != NoError) {
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
-}
+    }
 }
 
 // --------------------------------------------------------------------
@@ -564,6 +564,7 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
         }
     }
     if (elementType == API_DimensionID) return false;
+    if (systemdict.IsEmpty ()) ClassificationFunc::GetAllClassification (systemdict);
     ClassificationFunc::SetAutoclass (systemdict, elemGuid);
     GS::Array<API_PropertyDefinition> definitions = {};
     err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
@@ -1631,7 +1632,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Запись Guid связанных элементов
@@ -1747,7 +1748,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     if (err == NoError) {
         checkdb = (homedatabaseInfo.typeID != APIWind_3DModelID);
         isfloorplan = (homedatabaseInfo.typeID == APIWind_FloorPlanID);
-} else {
+    } else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
     GS::UniString pname = GetDBName (homedatabaseInfo);
@@ -1823,15 +1824,15 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                         count_otherplan++;
                         continue;
                     }
-            } else {
+                } else {
                     selNeigs.PushNew (guid);
                     count_otherplan++;
                     msg_rep ("ShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
                 }
-    }
+            }
             selNeigs.PushNew (guid);
-}
+        }
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -2047,9 +2048,9 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
                         }
                     }
                 }
+            }
         }
     }
-}
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
 }
@@ -2080,8 +2081,8 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                     }
                 }
             }
+        }
     }
-}
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
