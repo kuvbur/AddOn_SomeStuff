@@ -171,8 +171,8 @@ typedef GS::HashTable<API_ElemTypeID, UnicElement> UnicElementByType;
 typedef GS::HashTable<API_ElemTypeID, GS::Array<API_Guid>> UnicGUIDByType;
 
 typedef GS::HashTable<GS::UniString, double> OtdMaterialAreaDict;
-typedef GS::HashTable<GS::UniString, OtdMaterialAreaDict> OtdMaterialAreaDictByType;
-
+typedef GS::HashTable<TypeOtd, OtdMaterialAreaDict> OtdMaterialAreaDictByType;
+typedef GS::HashTable<GS::UniString, OtdMaterialAreaDictByType> OtdMaterialAreaDictByOtdType;
 struct ReadParam
 {
     bool isValid = false; // Параметр считан успешно
@@ -206,11 +206,13 @@ GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_G
 
 UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, ParamDictValue& propertyParams, bool& has_base_element);
 
-void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat);
+void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat);
 
-void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead);
+void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead, OtdMaterialAreaDictByOtdType& dct_bytype);
 
-void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const GS::UniString& rawname, const GS::UniString& mat, const double& area);
+void OtdData_WriteToRoom (const ColumnFormatDict& columnFormat, const API_Guid& zone_guid, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead, const OtdMaterialAreaDictByType& dct, const GS::HashTable<TypeOtd, GS::UniString>& paramnamebytype);
+
+void OtdData_AddValueToDict (OtdMaterialAreaDictByType& dct, const TypeOtd& type, const GS::UniString& mat, const double& area);
 
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
