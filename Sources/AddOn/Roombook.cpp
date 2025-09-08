@@ -289,8 +289,10 @@ void RoomBook ()
     } // Обработка зон
     // Получаем список существующих элементов отделки для обрабатываемых зон
     zones.Clear (); paramDict_favorite.Clear (); favdict.Clear ();
-    ParamDictElement paramToWrite; // Параметры для записи в зоны и элементы отделки
-    ColumnFormatDict columnFormat; // Словарь с форматом текста для столбцов
+    ParamDictElement paramToWrite = {}; // Параметры для записи в зоны и элементы отделки
+    ColumnFormatDict columnFormat = {}; // Словарь с форматом текста для столбцов
+    OtdMaterialAreaDictByOtdType dct_bytype = {}; // Словарь с отделкой по типу отделки
+    GS::Array<API_Guid> zones_bytype = {}; // Зоны для записи отделки по типам
     funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
     for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
@@ -333,15 +335,33 @@ void RoomBook ()
             if (!msg.IsEmpty ()) {
                 msg_rep ("RoomBook", "Properties for recording finish layers to the Zone were not found.\nRecording will not be performed. Missing properties: " + msg, NoError, APINULLGuid);
             } else {
+                // Получение форматов столбцов
                 for (const GS::UniString& rawname : rawnames) {
                     if (rawname.IsEmpty ()) continue;
                     if (columnFormat.ContainsKey (rawname)) continue;
                     if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
-                    WriteOtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description, rawname, columnFormat);
+                    OtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description, rawname, columnFormat);
                 }
-                WriteOtdDataToRoom (columnFormat, otd, paramToWrite, paramToRead);
+                // Расчёт площадей
+                OtdData_CalcForRoom (columnFormat, otd, paramToWrite, paramToRead, dct_bytype);
+                zones_bytype.Push (otd.zone_guid);
             }
         }
+    }
+    // Запись отделки с разбивкой
+    for (const API_Guid& subguid : zones_bytype) {
+        OtdRoom& otd = roomsinfo.Get (subguid);
+        if (!dct_bytype.ContainsKey (otd.tip_otd)) continue;
+        OtdMaterialAreaDictByType& dct = dct_bytype.Get (otd.tip_otd);
+        GS::HashTable<TypeOtd, GS::UniString> paramnamebytype = {};
+        paramnamebytype.Add (Wall_Up, otd.om_up.rawname_bytype); // Отделка стен выше потолка
+        paramnamebytype.Add (Wall_Main, otd.om_main.rawname_bytype); // Отделка стен основная
+        paramnamebytype.Add (Wall_Down, otd.om_down.rawname_bytype); // Отделка низа стен
+        paramnamebytype.Add (Column, otd.om_column.rawname_bytype); // Отделка колонн
+        paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname_bytype); // Отделка откосов
+        paramnamebytype.Add (Floor, otd.om_floor.rawname_bytype); // Отделка пола
+        paramnamebytype.Add (Ceil, otd.om_ceil.rawname_bytype); // Отделка потолка
+        OtdData_WriteToRoom (columnFormat, otd.zone_guid, paramToWrite, paramToRead, dct, paramnamebytype);
     }
     paramToRead.Clear ();
     // Проверка существования классов и свойств
@@ -481,7 +501,7 @@ UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, Param
 
 
 // Настройки для форматирования текста в таблицу
-void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat)
+void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat)
 {
     GS::UniString fontname = "GOST 2.304 type A";
     ColumnFormat c;
@@ -556,9 +576,54 @@ void WriteOtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniStrin
     columnFormat.Add (rawname, c);
 }
 
-void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead)
+void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead, OtdMaterialAreaDictByOtdType& dct_bytype)
 {
+    OtdMaterialAreaDictByType dct = {}; // Основной словарь
+    // Разбивка по отделочным слоям, вычисление площадей и добавление их в словарь по типам отделки
+    for (const OtdWall& otdw : otd.otdwall) {
+        if (!otdw.isValid) continue;
+        const TypeOtd& t = otdw.type;
+        const double area = OtdWall_GetArea (otdw);
+        for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
+            GS::UniString mat = otdw.base_composite[j].val;
+            if (mat.Contains (";")) {
+                GS::Array<GS::UniString> partstring = {};
+                UInt32 n = StringSpltUnic (mat, ";", partstring);
+                if (n < 1) {
+                    OtdData_AddValueToDict (dct, t, mat, area);
+                } else {
+                    for (const GS::UniString mat_ : partstring) {
+                        OtdData_AddValueToDict (dct, t, mat_, area);
+                    }
+                }
+            } else {
+                OtdData_AddValueToDict (dct, t, mat, area);
+            }
+        }
+    }
 
+    for (const OtdSlab& otdslab : otd.otdslab) {
+        if (!otdslab.isValid) continue;
+        const TypeOtd& t = otdslab.type;
+        const double area = otdslab.poly.CalcArea ();
+        for (UInt32 j = 0; j < otdslab.base_composite.GetSize (); j++) {
+            GS::UniString mat = otdslab.base_composite[j].val;
+            if (mat.Contains (";")) {
+                GS::Array<GS::UniString> partstring = {};
+                UInt32 n = StringSpltUnic (mat, ";", partstring);
+                if (n < 1) {
+                    OtdData_AddValueToDict (dct, t, mat, area);
+                } else {
+                    for (const GS::UniString mat_ : partstring) {
+                        OtdData_AddValueToDict (dct, t, mat_, area);
+                    }
+                }
+            } else {
+                OtdData_AddValueToDict (dct, t, mat, area);
+            }
+        }
+    }
+    // Записываем результаты в результаты для каждого помещения
     GS::HashTable<TypeOtd, GS::UniString> paramnamebytype = {};
     paramnamebytype.Add (Wall_Up, otd.om_up.rawname); // Отделка стен выше потолка
     paramnamebytype.Add (Wall_Main, otd.om_main.rawname); // Отделка стен основная
@@ -567,61 +632,100 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
     paramnamebytype.Add (Reveal_Main, otd.om_reveals.rawname); // Отделка откосов
     paramnamebytype.Add (Floor, otd.om_floor.rawname); // Отделка пола
     paramnamebytype.Add (Ceil, otd.om_ceil.rawname); // Отделка потолка
+    OtdData_WriteToRoom (columnFormat, otd.zone_guid, paramToWrite, paramToRead, dct, paramnamebytype);
+    // Формируем словарь для разбивки по типам
 
-    GS::HashTable<GS::UniString, bool> exsists_rawname = {};
+    if (!dct_bytype.ContainsKey (otd.tip_otd)) {
+        dct_bytype.Add (otd.tip_otd, dct);
+        return;
+    }
+    OtdMaterialAreaDictByType& dct_to = dct_bytype.Get (otd.tip_otd);
+    for (auto& cItt : dct) {
+        #if defined(AC_28) || defined(AC_29)
+        const OtdMaterialAreaDict dct_t = cItt.value;
+        const TypeOtd typeotd = cItt.key;
+        #else
+        const OtdMaterialAreaDict dct_t = *cItt.value;
+        const TypeOtd typeotd = *cItt.key;
+        #endif
+        for (auto& cIt : dct_t) {
+            #if defined(AC_28) || defined(AC_29)
+            const double area = cIt.value;
+            const GS::UniString mat = cIt.key;
+            #else
+            const double area = *cIt.value;
+            const GS::UniString mat = *cIt.key;
+            #endif
+            OtdData_AddValueToDict (dct_to, typeotd, mat, area);
+        }
+    }
+}
+
+void OtdData_WriteToRoom (const ColumnFormatDict& columnFormat, const API_Guid& zone_guid, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead, const OtdMaterialAreaDictByType& dct, const GS::HashTable<TypeOtd, GS::UniString>& paramnamebytype)
+{
+    // Мы получили словарь по типам отделки
+    // Проблема в том, что для разных типов имя свойство может быть одно
+    // Это означает, что нужно просуммировать отделку для каждого имени свойства
+    GS::HashTable<GS::UniString, GS::Array<TypeOtd>> exsists_rawname = {}; // словарь существующих свойств для типов отделки
     for (auto& cItt : paramnamebytype) {
         #if defined(AC_28) || defined(AC_29)
-        GS::UniString rawname = cItt.value;
+        const GS::UniString rawname = cItt.value;
+        const TypeOtd typeotd = cItt.key;
         #else
-        GS::UniString rawname = *cItt.value;
+        const GS::UniString rawname = *cItt.value;
+        const TypeOtd typeotd = *cItt.key;
         #endif
-        if (!exsists_rawname.ContainsKey (rawname)) exsists_rawname.Add (rawname, false);
-    }
-
-    OtdMaterialAreaDictByType dct = {}; // Основной словарь
-    // Разбивка по отделочным слоям, вычисление площадей и добавление их в словарь по типам отделки
-    for (const OtdWall& otdw : otd.otdwall) {
-        if (!otdw.isValid) continue;
-        const TypeOtd& t = otdw.type;
-        if (paramnamebytype.ContainsKey (t)) {
-            double area = OtdWall_GetArea (otdw);
-            GS::UniString rawname = paramnamebytype.Get (t);
-            for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
-                GS::UniString mat = otdw.base_composite[j].val;
-                WriteOtdDataToRoom_AddValue (dct, rawname, mat, area);
-            }
+        if (rawname.IsEmpty ()) continue;
+        if (!paramToRead.Get (zone_guid).ContainsKey (rawname)) continue;
+        if (!exsists_rawname.ContainsKey (rawname)) {
+            GS::Array<TypeOtd> t = {};
+            exsists_rawname.Add (rawname, t);
         }
-    }
-
-    for (const OtdSlab& otdslab : otd.otdslab) {
-        if (!otdslab.isValid) continue;
-        const TypeOtd& t = otdslab.type;
-        if (paramnamebytype.ContainsKey (t)) {
-            double area = otdslab.poly.CalcArea ();
-            GS::UniString rawname = paramnamebytype.Get (t);
-            for (UInt32 j = 0; j < otdslab.base_composite.GetSize (); j++) {
-                GS::UniString mat = otdslab.base_composite[j].val;
-                WriteOtdDataToRoom_AddValue (dct, rawname, mat, area);
-            }
-        }
+        exsists_rawname.Get (rawname).Push (typeotd);
     }
 
     for (auto& cItt : exsists_rawname) {
         #if defined(AC_28) || defined(AC_29)
         GS::UniString rawname = cItt.key;
+        GS::Array<TypeOtd> typeotd = cItt.value;
         #else
         GS::UniString rawname = *cItt.key;
+        GS::Array<TypeOtd> typeotd = *cItt.value;
         #endif
         // Проверяем - есть ли считанное свойство в зоне для записи
-        if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname)) continue;
-        ParamValue paramtow = paramToRead.Get (otd.zone_guid).Get (rawname);
+        ParamValue paramtow = paramToRead.Get (zone_guid).Get (rawname);
         GS::UniString old_val = paramtow.val.uniStringValue;
         GS::UniString new_val = "";
         // Если такой тип отделки есть в словаре - записываем послойно материалы и площади
-        if (dct.ContainsKey (rawname)) {
+        OtdMaterialAreaDict dcta = {};
+        if (typeotd.GetSize () == 1) {
+            if (dct.ContainsKey (typeotd[0])) dcta = dct.Get (typeotd[0]);
+        } else {
+            // В одно свойство записывается несколько типов. Суммируем материалы.
+            for (auto& t : typeotd) {
+                if (!dct.ContainsKey (t)) continue;
+                const OtdMaterialAreaDict& d = dct.Get (t);
+                for (auto& m : d) {
+                    #if defined(AC_28) || defined(AC_29)
+                    const GS::UniString mat = m.key;
+                    const double area = m.value;
+                    #else
+                    const GS::UniString mat = *m.key;
+                    const double area = *m.value;
+                    #endif
+                    if (dcta.ContainsKey (mat)) {
+                        double area_sum = dcta.Get (mat) + area;
+                        dcta.Set (mat, area_sum);
+                    } else {
+                        dcta.Add (mat, area);
+                    }
+                }
+            }
+        }
+        if (!dcta.IsEmpty ()) {
             ColumnFormat c = {};
             if (columnFormat.ContainsKey (rawname)) c = columnFormat.Get (rawname);
-            OtdMaterialAreaDict& dcta = dct.Get (rawname);
+            // Сортировка по алфавиту
             std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_material = {};
             for (auto& cIt : dcta) {
                 #if defined(AC_28) || defined(AC_29)
@@ -671,25 +775,25 @@ void WriteOtdDataToRoom (const ColumnFormatDict& columnFormat, const OtdRoom& ot
         if (!old_val.IsEqual (new_val)) {
             paramtow.val.uniStringValue = new_val;
             paramtow.isValid = true;
-            ParamHelpers::AddParamValue2ParamDictElement (otd.zone_guid, paramtow, paramToWrite);
+            ParamHelpers::AddParamValue2ParamDictElement (zone_guid, paramtow, paramToWrite);
         }
     }
 }
 
-void WriteOtdDataToRoom_AddValue (OtdMaterialAreaDictByType& dct, const GS::UniString& rawname, const GS::UniString& mat, const double& area)
+void OtdData_AddValueToDict (OtdMaterialAreaDictByType& dct, const TypeOtd& type, const GS::UniString& mat, const double& area)
 {
     if (area < 0.000001) return;
-    if (!dct.ContainsKey (rawname)) {
+    if (!dct.ContainsKey (type)) {
         OtdMaterialAreaDict dcta = {};
         dcta.Add (mat, area);
-        dct.Add (rawname, dcta);
+        dct.Add (type, dcta);
         return;
     } else {
-        if (!dct.Get (rawname).ContainsKey (mat)) {
-            dct.Get (rawname).Add (mat, area);
+        if (!dct.Get (type).ContainsKey (mat)) {
+            dct.Get (type).Add (mat, area);
         } else {
-            double area_sum = dct.Get (rawname).Get (mat) + area;
-            dct.Get (rawname).Set (mat, area_sum);
+            double area_sum = dct.Get (type).Get (mat) + area;
+            dct.Get (type).Set (mat, area_sum);
         }
     }
 }
