@@ -592,7 +592,7 @@ void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& o
                 if (n < 1) {
                     OtdData_AddValueToDict (dct, t, mat, area);
                 } else {
-                    for (const GS::UniString mat_ : partstring) {
+                    for (const GS::UniString& mat_ : partstring) {
                         OtdData_AddValueToDict (dct, t, mat_, area);
                     }
                 }
@@ -614,7 +614,7 @@ void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& o
                 if (n < 1) {
                     OtdData_AddValueToDict (dct, t, mat, area);
                 } else {
-                    for (const GS::UniString mat_ : partstring) {
+                    for (const GS::UniString& mat_ : partstring) {
                         OtdData_AddValueToDict (dct, t, mat_, area);
                     }
                 }
