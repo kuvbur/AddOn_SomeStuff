@@ -1354,22 +1354,23 @@ void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, c
         if (!Class_IsElementFinClass (guid, finclassguids)) allslabs.Push (guid);
     }
     if (allslabs.IsEmpty ()) return;
-    GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions;
+    GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions = {};
     API_CollisionDetectionSettings colDetSettings = {};
     colDetSettings.volumeTolerance = 0.000000000001;
     colDetSettings.performSurfaceCheck = true;
     colDetSettings.surfaceTolerance = 0.000000000001;
-    if (ACAPI_Element_GetCollisions (zones, allslabs, collisions, colDetSettings) == NoError) {
-        for (const auto& pair : collisions.AsConst ()) {
-            if (!Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids)) {
-                if (!slabsinzone.ContainsKey (pair.first.collidedElemGuid)) {
-                    GS::Array<API_Guid> s;
-                    s.Push (pair.second.collidedElemGuid);
-                    slabsinzone.Add (pair.first.collidedElemGuid, s);
-                } else {
-                    slabsinzone.Get (pair.first.collidedElemGuid).Push (pair.second.collidedElemGuid);
-                }
-            }
+    err = ACAPI_Element_GetCollisions (zones, allslabs, collisions, colDetSettings);
+    if (err != NoError) {
+        return;
+    }
+    for (const auto& pair : collisions.AsConst ()) {
+        if (Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids)) continue;
+        if (!slabsinzone.ContainsKey (pair.first.collidedElemGuid)) {
+            GS::Array<API_Guid> s;
+            s.Push (pair.second.collidedElemGuid);
+            slabsinzone.Add (pair.first.collidedElemGuid, s);
+        } else {
+            slabsinzone.Get (pair.first.collidedElemGuid).Push (pair.second.collidedElemGuid);
         }
     }
 }
@@ -1379,7 +1380,7 @@ void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, c
 // -----------------------------------------------------------------------------
 void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
 {
-    GSErrCode err;
+    GSErrCode err = NoError;
     API_Element element = {};
     API_ElementMemo memo = {};
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
@@ -1394,19 +1395,18 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
     double zBottom = GetzPos (element.slab.level + element.slab.offsetFromTop - element.slab.thickness, element.header.floorInd, storyLevels);
     double zUp = zBottom + element.slab.thickness;
     for (API_Guid zoneGuid : zoneGuids) {
-        if (roomsinfo.ContainsKey (zoneGuid)) {
-            OtdRoom& roominfo = roomsinfo.Get (zoneGuid);
-            if (!roominfo.isValid) continue;
-            // Проверяем отметки
-            bool is_floor = (zBottom <= roominfo.zBottom && zUp >= roominfo.zBottom);
-            bool is_ceil = (zBottom <= roominfo.zBottom + roominfo.height);
-            if (is_floor) {
-                roominfo.floorslab.Push (elGuid);
-            } else {
-                if (is_ceil) roominfo.ceilslab.Push (elGuid);
-            }
-            flag_find = true;
+        if (!roomsinfo.ContainsKey (zoneGuid)) continue;
+        OtdRoom& roominfo = roomsinfo.Get (zoneGuid);
+        if (!roominfo.isValid) continue;
+        // Проверяем отметки
+        bool is_floor = (zBottom <= roominfo.zBottom && zUp >= roominfo.zBottom);
+        bool is_ceil = (zBottom <= roominfo.zBottom + roominfo.height);
+        if (is_floor) {
+            roominfo.floorslab.Push (elGuid);
+        } else {
+            if (is_ceil) roominfo.ceilslab.Push (elGuid);
         }
+        flag_find = true;
     }
     if (flag_find) Param_AddUnicGUIDByType (elGuid, API_SlabID, guidselementToRead);
 }
@@ -1455,7 +1455,7 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
 void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material, bool only_on_slab)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
-    GSErrCode err;
+    GSErrCode err = NoError;
     API_Element element = {};
     for (API_Guid& slabGuid : slabGuids) {
         API_ElementMemo memo = {};
@@ -2614,6 +2614,8 @@ void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadPara
                 op.height -= max_plaster_th;
             }
         }
+    } else {
+        op.base_reveal_width = 0;
     }
 }
 
@@ -2696,7 +2698,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
     }
     Point2D begC = { 0,0 }; Point2D endC = { 0, 0 };
     Sector roomedge = { begC, endC };
-    GS::Array<Sector> roomedges;
+    GS::Array<Sector> roomedges = {};
     for (Int32 j = 1; j <= zoneelement.zone.poly.nSubPolys; j++) {
         UInt32 begInd = (*zonememo.pends)[j - 1] + 1;
         UInt32 endInd = (*zonememo.pends)[j];
@@ -2711,7 +2713,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
         roomedge = { begC, endC };
         roomedges.Push (roomedge);
     }
-    GS::Array<Sector> edges;
+    GS::Array<Sector> edges = {};
     if (!rdges.columnedges.IsEmpty ()) {
         for (UInt32 j = 0; j < rdges.columnedges.GetSize (); j++) {
             Sector tedge = rdges.columnedges[j];
@@ -2754,8 +2756,8 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                 API_Guid guid = *cIt->key;
                 GS::Array<API_Guid> zoneGuids_ = *cIt->value;
                 #endif
-                UnicGuid zoneGuidsd;
-                GS::Array<API_Guid> zoneGuids;
+                UnicGuid zoneGuidsd = {};
+                GS::Array<API_Guid> zoneGuids = {};
                 for (API_Guid zoneGuid : zoneGuids_) {
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
                 }
@@ -2982,7 +2984,7 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
 void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
         OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
 {
-    OtdMaterial material;
+    OtdMaterial material = {};
     // Проверим существование свойств для записи, при необходимости - поменяем тип отделки
     switch (otdw.type) {
         case NoSet:
@@ -3082,7 +3084,7 @@ void SetMaterialFinish_ByComposite (OtdMaterial& material, GS::Array<ParamValueC
 void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
 {
     SetMaterialFinish_ByComposite (material, base_composite);
-    ParamValueComposite p;
+    ParamValueComposite p = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     p.inx = ACAPI_CreateAttributeIndex (material.material);
     #else
@@ -3269,10 +3271,6 @@ void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, UnicElementByType
     double dy = -edges.endC.y + edges.begC.y;
     double dr = sqrt (dx * dx + dy * dy);
     if (dr < min_dim) return;
-
-
-
-
     if (edges.favorite.type == API_ObjectID) {
         // горизонтальную часть откоса строим в этом случае аксессуаром пола/потолка
         if (edges.draw_type == API_BeamID) {
