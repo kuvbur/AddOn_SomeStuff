@@ -675,42 +675,38 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
     // Выбираем по-элементно параметры для чтения и записи, формируем словарь
     for (UInt32 i = 0; i < subelemGuids.GetSize (); i++) {
         API_Guid elemGuid = subelemGuids[i];
-        GS::Array <WriteData> writeSubs;
-        if (syncRules.ContainsKey (elemGuid)) writeSubs = syncRules.Get (elemGuid);
-        if (!writeSubs.IsEmpty ()) {
-
-            // Заполняем значения параметров чтения/записи из словаря
-            for (UInt32 j = 0; j < writeSubs.GetSize (); j++) {
-                WriteData writeSub = writeSubs.Get (j);
-                API_Guid elemGuidTo = writeSub.guidTo;
-                API_Guid elemGuidFrom = writeSub.guidFrom;
-
-                // Проверяем - есть ли вообще эти элементы в словаре параметров
-                if (paramToRead.ContainsKey (elemGuidTo) && paramToRead.ContainsKey (elemGuidFrom)) {
-                    GS::UniString rawNameFrom = writeSub.paramFrom.rawName;
-                    GS::UniString rawNameTo = writeSub.paramTo.rawName;
-                    ParamDictValue paramsTo = paramToRead.Get (elemGuidTo);
-                    ParamDictValue paramsFrom;
-                    if (elemGuidFrom == elemGuidTo) {
-                        paramsFrom = paramsTo;
-                    } else {
-                        paramsFrom = paramToRead.Get (elemGuidFrom);
-                    }
-
-                    // Проверяем наличие имён в словаре параметров
-                    if (paramsTo.ContainsKey (rawNameTo) && paramsFrom.ContainsKey (rawNameFrom)) {
-                        ParamValue paramFrom = paramsFrom.Get (rawNameFrom);
-                        ParamValue paramTo = paramsTo.Get (rawNameTo);
-                        FormatString formatstring = writeSub.formatstring;
-                        //Сопоставляем и записываем, если значения отличаются
-                        if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring)) {
-                            ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
-                            // Если это свойство и в него планировалась запись - сохраним GUID в словарь
-                            if (paramTo.definition.guid != APINULLGuid) {
-                                if (!property_write_guid.ContainsKey (paramTo.definition.guid)) property_write_guid.Add (paramTo.definition.guid, paramTo.rawName);
-                            }
-                        }
-                    }
+        if (!syncRules.ContainsKey (elemGuid)) continue;
+        GS::Array <WriteData> writeSubs = syncRules.Get (elemGuid);
+        if (writeSubs.IsEmpty ()) continue;
+        // Заполняем значения параметров чтения/записи из словаря
+        for (UInt32 j = 0; j < writeSubs.GetSize (); j++) {
+            WriteData writeSub = writeSubs.Get (j);
+            API_Guid elemGuidTo = writeSub.guidTo;
+            API_Guid elemGuidFrom = writeSub.guidFrom;
+            // Проверяем - есть ли вообще эти элементы в словаре параметров
+            if (!paramToRead.ContainsKey (elemGuidTo)) continue;
+            if (!paramToRead.ContainsKey (elemGuidFrom)) continue;
+            GS::UniString rawNameTo = writeSub.paramTo.rawName;
+            ParamDictValue paramsTo = paramToRead.Get (elemGuidTo);
+            if (!paramsTo.ContainsKey (rawNameTo)) continue;
+            GS::UniString rawNameFrom = writeSub.paramFrom.rawName;
+            ParamDictValue paramsFrom = {};
+            if (elemGuidFrom == elemGuidTo) {
+                paramsFrom = paramsTo;
+            } else {
+                paramsFrom = paramToRead.Get (elemGuidFrom);
+            }
+            if (!paramsFrom.ContainsKey (rawNameFrom)) continue;
+            // Проверяем наличие имён в словаре параметров
+            ParamValue paramFrom = paramsFrom.Get (rawNameFrom);
+            ParamValue paramTo = paramsTo.Get (rawNameTo);
+            FormatString formatstring = writeSub.formatstring;
+            //Сопоставляем и записываем, если значения отличаются
+            if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring, writeSub.ignorevals)) {
+                ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
+                // Если это свойство и в него планировалась запись - сохраним GUID в словарь
+                if (paramTo.definition.guid != APINULLGuid) {
+                    if (!property_write_guid.ContainsKey (paramTo.definition.guid)) property_write_guid.Add (paramTo.definition.guid, paramTo.rawName);
                 }
             }
         }
@@ -885,7 +881,7 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
             }
             if (SyncString (elementType_from, rulestring_one, syncdirection, param, ignorevals, stringformat, syncall, synccoord, syncclass)) {
                 hasRule = true;
-                WriteData writeOne;
+                WriteData writeOne = {};
                 writeOne.formatstring = stringformat;
                 writeOne.ignorevals = ignorevals;
                 if (param.fromCoord && param.rawName.Contains ("north_dir")) {

@@ -4,8 +4,12 @@
 #include "APIEnvir.h"
 #include "CommonFunction.hpp"
 #include "Helpers.hpp"
+#include    "ProfileAdditionalInfo.hpp"
+#include    "ProfileVectorImage.hpp"
+#include    "ProfileVectorImageOperations.hpp"
 #include "Roombook.hpp"
 #include "Sync.hpp"
+#include    "VectorImageIterator.hpp"
 
 namespace AutoFunc
 
@@ -1039,7 +1043,7 @@ void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS:
 // -----------------------------------------------------------------------------
 void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
 {
-    GSErrCode err;
+    GSErrCode err = NoError;
     API_Element element = {};
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
@@ -1047,13 +1051,36 @@ void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::
         msg_rep ("OtdWall_Create_FromWall err", "ACAPI_Element_Get", err, elGuid);
         return;
     }
+    double w_bottomOffset = element.wall.bottomOffset;
+    double w_height = element.wall.height;
+    // Проблема сложного профиля - он может начинаться ниже зоны и иметь выступающие части
+    //API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    //if (element.wall.modelElemStructureType == API_ProfileStructure) {
+    //    UInt64 mask = APIMemoMask_StretchedProfile;
+    //    err = ACAPI_Element_GetMemo (elGuid, &memo, mask);
+    //    if (err == NoError) {
+    //        if (memo.stretchedProfile != nullptr) {
+    //            ProfileVectorImage profileDescription = *memo.stretchedProfile;
+    //            ConstProfileVectorImageIterator profileDescriptionIt (profileDescription);
+    //            while (!profileDescriptionIt.IsEOI ()) {
+    //                switch (profileDescriptionIt->item_Typ) {
+    //                    case SyHatch:
+    //                        {
+    //                            const HatchObject& syHatch = profileDescriptionIt;
+    //                            Geometry::MultiPolygon2D result;
+    //                            if (syHatch.ToPolygon2D (result, HatchObject::VertexAndEdgeData::Omit) == NoError) {
+    //                            }
+    //                        }
+    //        }
+    //    }
+    //}
     Point2D wbegC = { element.wall.begC.x, element.wall.begC.y };
     Point2D wendC = { element.wall.endC.x, element.wall.endC.y };
     Sector walledge = { wbegC , wendC };
     double dx = -element.wall.endC.x + element.wall.begC.x;
     double dy = -element.wall.endC.y + element.wall.begC.y;
     double wallLength = sqrt (dx * dx + dy * dy);
-    double zBottom = GetzPos (element.wall.bottomOffset, element.header.floorInd, storyLevels);
+    double zBottom = GetzPos (w_bottomOffset, element.header.floorInd, storyLevels);
     if (wallLength < min_dim) {
         #if defined(TESTING)
         DBprnt ("OtdWall_Create_FromWall err", "walledge.GetLength ()<min_dim");
@@ -1103,10 +1130,10 @@ void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::
                 bool is_parallel = walldir.Get ().IsParallelWith (roomedgedir.Get ());
                 bool is_fliped = false;
                 if (is_parallel) is_fliped = !walldir.Get ().IsEqualWith (roomedgedir.Get ());
-                OtdWall wallotd;
+                OtdWall wallotd = {};
                 if (is_parallel) {
-                    Point2D begedge;
-                    Point2D endedge;
+                    Point2D begedge = {};
+                    Point2D endedge = {};
                     if (is_fliped) {
                         begedge = wallline.Get ().ProjectPoint (roomedge.c2);
                         endedge = wallline.Get ().ProjectPoint (roomedge.c1);
@@ -1124,14 +1151,14 @@ void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::
                     }
                 }
                 walledge = roomedge;
-                if (OtdWall_Add_One (elGuid, walledge, is_fliped, element.wall.height, zBottom, roominfo.floorInd, element.wall.thickness, wallotd)) {
+                if (OtdWall_Add_One (elGuid, walledge, is_fliped, w_height, zBottom, roominfo.floorInd, element.wall.thickness, wallotd)) {
                     roominfo.otdwall.Push (wallotd);
                     flag_find = true;
                 }
             }
         }
         if (!roominfo.wallPart.IsEmpty () && element.wall.zoneRel != APIZRel_None) {
-            for (API_WallPart& wpart : roominfo.wallPart) {
+            for (const API_WallPart& wpart : roominfo.wallPart) {
                 if (wpart.guid != elGuid)  continue;
                 UInt32 inxedge = wpart.roomEdge - 1;
                 if (inxedge > roominfo.edges.GetSize ()) {
@@ -1155,12 +1182,10 @@ void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::
                     #endif
                     continue;
                 }
-
                 bool is_parallel = walldir.Get ().IsParallelWith (roomedgedir.Get ());
                 bool is_fliped = false;
                 if (is_parallel) is_fliped = !walldir.Get ().IsEqualWith (roomedgedir.Get ());
-
-                OtdWall wallotd;
+                OtdWall wallotd = {};
                 if (is_parallel) {
                     Point2D begedge = wbegC;
                     Point2D endedge = wendC;
@@ -1193,7 +1218,7 @@ void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::
                 } else {
                     walledge = roomedge; // Торец стены
                 }
-                if (OtdWall_Add_One (elGuid, walledge, is_fliped, element.wall.height, zBottom, roominfo.floorInd, element.wall.thickness, wallotd)) {
+                if (OtdWall_Add_One (elGuid, walledge, is_fliped, w_height, zBottom, roominfo.floorInd, element.wall.thickness, wallotd)) {
                     roominfo.otdwall.Push (wallotd);
                     flag_find = true;
                 }
