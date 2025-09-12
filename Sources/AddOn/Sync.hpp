@@ -34,7 +34,8 @@
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
-struct SyncRule {
+struct SyncRule
+{
     GS::UniString paramNameFrom = "";
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
@@ -45,13 +46,14 @@ struct SyncRule {
     int syncdirection = 0;
 };
 
-struct WriteData {
+struct WriteData
+{
     API_Guid guidTo = APINULLGuid;
     API_Guid guidFrom = APINULLGuid;
-    ParamValue paramFrom;
-    ParamValue paramTo;
+    ParamValue paramFrom = {};
+    ParamValue paramTo = {};
     GS::Array<GS::UniString> ignorevals = {};
-    FormatString formatstring; //Формат строки (задаётся с помощью #mm или #0)
+    FormatString formatstring = {}; //Формат строки (задаётся с помощью #mm или #0)
     bool toSub = false;
     bool fromSub = false;
 };

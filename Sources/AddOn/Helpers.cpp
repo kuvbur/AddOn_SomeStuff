@@ -903,7 +903,7 @@ void ParamHelpers::AddParamValue2ParamDictElement (const ParamValue& param, Para
 // --------------------------------------------------------------------
 // Сопоставляет параметры
 // --------------------------------------------------------------------
-bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat)
+bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, GS::Array<GS::UniString>& ignorevals)
 {
     #ifdef TESTING
     if (!paramTo.isValid) {
@@ -947,6 +947,9 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
             ParamHelpers::ConvertByFormatString (paramTo);
             ParamHelpers::ConvertByFormatString (paramFrom);
         }
+        // Проверяем игнорируемый список
+
+
         //Сопоставляем и записываем, если значения отличаются
         if (paramFrom != paramTo) {
             paramTo.val = paramFrom.val; // Записываем только значения

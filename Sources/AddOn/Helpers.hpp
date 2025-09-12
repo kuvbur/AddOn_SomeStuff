@@ -265,7 +265,7 @@ void AddParamValue2ParamDictElement (const ParamValue& param, ParamDictElement& 
 // --------------------------------------------------------------------
 // Сопоставляет параметры
 // --------------------------------------------------------------------
-bool CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat);
+bool CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, GS::Array<GS::UniString>& ignorevals);
 
 // --------------------------------------------------------------------
 // Запись словаря ParamDictValue в словарь элементов ParamDictElement
