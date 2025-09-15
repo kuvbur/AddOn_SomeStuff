@@ -893,45 +893,6 @@ bool is_equal (double x, double y)
 }
 
 // --------------------------------------------------------------------
-// Содержит ли значения элементиз списка игнорируемых
-// --------------------------------------------------------------------
-bool CheckIgnoreVal (const std::string & ignoreval, const GS::UniString & val)
-{
-    GS::UniString unignoreval = GS::UniString (ignoreval.c_str (), GChCode);
-    return CheckIgnoreVal (unignoreval, val);
-}
-
-bool CheckIgnoreVal (const GS::UniString & ignoreval, const GS::UniString & val)
-{
-    if (ignoreval.IsEmpty ()) return false;
-    GS::UniString emp_1 = reinterpret_cast<const char*>("empty");
-    GS::UniString emp_2 = reinterpret_cast<const char*>(u8"пусто");
-    GS::UniString ignoreval_ = ignoreval.ToLowerCase ();
-    if (val.GetLength () < 1) {
-        if ((ignoreval_.Compare (emp_1) || ignoreval_.Compare (emp_2))) {
-            return true;
-        }
-    }
-    if (val == ignoreval) {
-        return true;
-    }
-    return false;
-}
-
-// --------------------------------------------------------------------
-// Содержит ли значения элементиз списка игнорируемых
-// --------------------------------------------------------------------
-bool CheckIgnoreVal (const GS::Array<GS::UniString>&ignorevals, const GS::UniString & val)
-{
-    if (ignorevals.GetSize () > 0) {
-        for (UInt32 i = 0; i < ignorevals.GetSize (); i++) {
-            if (CheckIgnoreVal (ignorevals[i], val)) return true;
-        }
-    }
-    return false;
-}
-
-// --------------------------------------------------------------------
 // Перевод строки в число
 // --------------------------------------------------------------------
 bool UniStringToDouble (const GS::UniString & var, double& x)

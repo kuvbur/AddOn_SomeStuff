@@ -40,7 +40,7 @@ struct SyncRule
     API_PropertyDefinition paramFrom = {};
     GS::UniString paramNameTo = "";
     API_PropertyDefinition paramTo = {};
-    GS::Array<GS::UniString> ignorevals = {};
+    SkipValues ignorevals = {};
     GS::UniString templatestring = "";
     int synctype = 0;
     int syncdirection = 0;
@@ -52,11 +52,15 @@ struct WriteData
     API_Guid guidFrom = APINULLGuid;
     ParamValue paramFrom = {};
     ParamValue paramTo = {};
-    GS::Array<GS::UniString> ignorevals = {};
+    SkipValues ignorevals = {};
     FormatString formatstring = {}; //Формат строки (задаётся с помощью #mm или #0)
     bool toSub = false;
     bool fromSub = false;
 };
+
+const GS::UniString ignorevals_emp = reinterpret_cast<const char*>("empty");
+const GS::UniString ignorevals_trim_emp = reinterpret_cast<const char*>("trim_empty");
+const GS::UniString ignorevals_def = reinterpret_cast<const char*>("def");
 
 // Словарь с параметрами для записи
 typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
@@ -142,7 +146,7 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname);
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString (const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat, bool syncall, bool synccoord, bool syncclass);
+bool SyncString (const API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, SkipValues& ignorevals, FormatString& stringformat, bool syncall, bool synccoord, bool syncclass);
 
 // -----------------------------------------------------------------------------
 // Связывает элементы, прописывая в основной элемент GUID привязанных элементов
