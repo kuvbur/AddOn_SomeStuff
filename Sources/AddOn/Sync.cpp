@@ -672,17 +672,16 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
 
 void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite, GS::HashTable<API_Guid, GS::UniString>& property_write_guid)
 {
+    UnicGuidByGuid reset_property = {};
     // Выбираем по-элементно параметры для чтения и записи, формируем словарь
-    for (UInt32 i = 0; i < subelemGuids.GetSize (); i++) {
-        API_Guid elemGuid = subelemGuids[i];
+    for (const API_Guid& elemGuid : subelemGuids) {
         if (!syncRules.ContainsKey (elemGuid)) continue;
         GS::Array <WriteData> writeSubs = syncRules.Get (elemGuid);
         if (writeSubs.IsEmpty ()) continue;
         // Заполняем значения параметров чтения/записи из словаря
-        for (UInt32 j = 0; j < writeSubs.GetSize (); j++) {
-            WriteData writeSub = writeSubs.Get (j);
-            API_Guid elemGuidTo = writeSub.guidTo;
-            API_Guid elemGuidFrom = writeSub.guidFrom;
+        for (const WriteData& writeSub : writeSubs) {
+            const API_Guid elemGuidTo = writeSub.guidTo;
+            const API_Guid elemGuidFrom = writeSub.guidFrom;
             // Проверяем - есть ли вообще эти элементы в словаре параметров
             if (!paramToRead.ContainsKey (elemGuidTo)) continue;
             if (!paramToRead.ContainsKey (elemGuidFrom)) continue;
@@ -702,15 +701,28 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
             ParamValue paramTo = paramsTo.Get (rawNameTo);
             FormatString formatstring = writeSub.formatstring;
             //Сопоставляем и записываем, если значения отличаются
-            if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring, writeSub.ignorevals)) {
+            bool is_ignore = false;
+            if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring, writeSub.ignorevals, is_ignore)) {
                 ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
                 // Если это свойство и в него планировалась запись - сохраним GUID в словарь
                 if (paramTo.definition.guid != APINULLGuid) {
                     if (!property_write_guid.ContainsKey (paramTo.definition.guid)) property_write_guid.Add (paramTo.definition.guid, paramTo.rawName);
                 }
             }
+            if (is_ignore && writeSub.ignorevals.reset_to_def && paramTo.definition.guid != APINULLGuid) {
+                if (reset_property.ContainsKey (elemGuid)) {
+                    if (!reset_property.Get (elemGuid).ContainsKey (paramTo.definition.guid)) {
+                        reset_property.Get (elemGuid).Add (paramTo.definition.guid, true);
+                    }
+                } else {
+                    UnicGuid u = {};
+                    u.Add (paramTo.definition.guid, true);
+                    reset_property.Add (elemGuid, u);
+                }
+            }
         }
     }
+    return;
 }
 
 // --------------------------------------------------------------------
@@ -827,15 +839,15 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
             ParamValue param;
             int syncdirection = SYNC_NO; // Направление синхронизации
             GS::UniString rawparamName = ""; //Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
-            GS::Array<GS::UniString> ignorevals; //Игнорируемые значения
-            FormatString stringformat;
+            SkipValues ignorevals = {}; //Игнорируемые значения
+            FormatString stringformat = {};
             GS::UniString rulestring_one = rulestring[i];
             API_Guid elemGuidfrom = elemGuid; // Элемент, из которого читаем данные
             API_Guid elemGuidto = elemGuid; // Элемент, в котороый записываем данные
             API_ElemTypeID elementType_from = elementType; // Тип элемента, из которого читаем данные
             // Копировать из другого элемента
             if (rulestring_one.Contains ("from_GUID{")) {
-                GS::Array<GS::UniString> params;
+                GS::Array<GS::UniString> params = {};
                 rulestring_one.ReplaceAll ("from_GUID", "");
                 UInt32 nparams = StringSplt (rulestring_one, ";", params);
                 if (nparams == 2) {
@@ -1071,7 +1083,7 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
 // -----------------------------------------------------------------------------
 // Парсит описание свойства
 // -----------------------------------------------------------------------------
-bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, GS::Array<GS::UniString>& ignorevals, FormatString& stringformat, bool syncall, bool synccoord, bool syncclass)
+bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_one, int& syncdirection, ParamValue& param, SkipValues& ignorevals, FormatString& stringformat, bool syncall, bool synccoord, bool syncclass)
 {
     syncdirection = SYNC_NO;
     // Выбор направления синхронизации
@@ -1538,13 +1550,26 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         // Обработка игнорируемых значений
         if (nparam > start_ignore) {
             for (UInt32 j = start_ignore; j < nparam; j++) {
-                GS::UniString ignoreval;
+                GS::UniString ignoreval = "";
                 if (params[j].Contains ('"')) {
                     ignoreval = params[j].GetSubstring ('"', '"', 0);
                 } else {
                     ignoreval = params[j];
                 }
-                ignorevals.Push (ignoreval);
+                if (ignoreval.IsEmpty ()) continue;
+                if (ignoreval.IsEqual (ignorevals_emp)) {
+                    ignorevals.skip_empty = true;
+                    continue;
+                }
+                if (ignoreval.IsEqual (ignorevals_trim_emp)) {
+                    ignorevals.skip_trim_empty = true;
+                    continue;
+                }
+                if (ignoreval.IsEqual (ignorevals_def)) {
+                    ignorevals.reset_to_def = true;
+                    continue;
+                }
+                ignorevals.ignorevals.Push (ignoreval.ToLowerCase ());
             }
         }
     }
@@ -1678,7 +1703,7 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                 if (flag_write) break;
             }
         }
-    }
+}
     return has_element;
 }
 
@@ -1954,7 +1979,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid&
             if (err != NoError) {
                 msg_rep ("SyncGetParentelement", "ACAPI_Element_GetPropertyValuesByGuid", err, subguid);
                 continue;
-            }
+        }
             for (const auto& prop : properties) {
                 #if defined(AC_22) || defined(AC_23)
                 if (!prop.isEvaluated) continue;
@@ -1983,15 +2008,15 @@ bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid&
                     }
                 }
             }
-        }
     }
+        }
     if (!find) {
         parentGuid.Clear ();
         errcode = 2;
     }
     return find;
     #endif
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -2004,7 +2029,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
     if (!SyncGetSyncGUIDProperty (guidArray, paramToRead, propertyParams, suffix)) {
         errcode = 1;
         return false;
-    }
+}
     for (auto& cIt : paramToRead) {
         #if defined(AC_28) || defined(AC_29)
         API_Guid subguid = cIt.key;

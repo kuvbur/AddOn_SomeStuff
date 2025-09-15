@@ -901,9 +901,44 @@ void ParamHelpers::AddParamValue2ParamDictElement (const ParamValue& param, Para
 }
 
 // --------------------------------------------------------------------
+// Содержит ли значения элемент из списка игнорируемых
+// --------------------------------------------------------------------
+bool ParamHelpers::CheckIgnoreVal (const SkipValues& ignorevals, const ParamValue& param)
+{
+    GS::UniString emp = param.val.uniStringValue;
+    emp.Trim ();
+    if (param.val.type != API_PropertyBooleanValueType) {
+        if (param.val.type == API_PropertyStringValueType) {
+            if (ignorevals.skip_empty && param.val.uniStringValue.IsEmpty ()) return true;
+            if (ignorevals.skip_trim_empty && emp.IsEmpty ()) return true;
+        } else {
+            if ((ignorevals.skip_empty || ignorevals.skip_trim_empty) && param.val.intValue == 0) return true;
+        }
+    }
+    if (ignorevals.ignorevals.IsEmpty ()) return false;
+    for (const auto& ign : ignorevals.ignorevals) {
+        if (emp.IsEqual (ign)) return true;
+        if (ign.BeginsWith ("*")) {
+            GS::UniString ig = ign;
+            ig.ReplaceAll ("*", "");
+            if (emp.EndsWith (ig)) return true;
+            continue;
+        }
+        if (ign.EndsWith ("*")) {
+            GS::UniString ig = ign;
+            ig.ReplaceAll ("*", "");
+            if (emp.BeginsWith (ig)) return true;
+            continue;
+        }
+    }
+    return false;
+}
+
+
+// --------------------------------------------------------------------
 // Сопоставляет параметры
 // --------------------------------------------------------------------
-bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, GS::Array<GS::UniString>& ignorevals)
+bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore)
 {
     #ifdef TESTING
     if (!paramTo.isValid) {
@@ -948,8 +983,10 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
             ParamHelpers::ConvertByFormatString (paramFrom);
         }
         // Проверяем игнорируемый список
-
-
+        if (ParamHelpers::CheckIgnoreVal (ignorevals, paramFrom)) {
+            is_ignore = true;
+            return false;
+        }
         //Сопоставляем и записываем, если значения отличаются
         if (paramFrom != paramTo) {
             paramTo.val = paramFrom.val; // Записываем только значения
@@ -2285,9 +2322,9 @@ GS::UniString PropertyHelpers::ToString (const API_Property& property, const For
             {
                 break;
             }
-    }
+                }
     return string;
-}
+            }
 
 ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs)
 {
@@ -2652,11 +2689,11 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
             if (property.definition.collectionType == API_PropertySingleCollectionType && property.value.singleVariant.variant.type == API_PropertyUndefinedValueType) {
                 property.value.singleVariant.variant.type = property.definition.valueType;
             }
-        }
-        #endif
     }
-    return flag_rec;
+        #endif
 }
+    return flag_rec;
+            }
 
 //--------------------------------------------------------------------------------------------------------------------------
 //Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
@@ -6323,7 +6360,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {
         value = property.definition.defaultValue.basicValue;
-    } else {
+} else {
         value = property.value;
     }
     #endif
@@ -6442,7 +6479,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     }
     pvalue.type = pvalue.val.type;
     return true;
-}
+    }
 
 void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const API_PropertyDefinition & definition)
 {
@@ -7333,7 +7370,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-            }
+    }
             if (element.column.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
@@ -7368,7 +7405,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-            }
+}
             if (element.beam.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
@@ -7431,7 +7468,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-    }
+}
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв

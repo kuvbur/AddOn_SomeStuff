@@ -91,6 +91,14 @@ struct OrientedSegments
 };
 
 
+struct SkipValues
+{
+    GS::Array<GS::UniString> ignorevals = {}; // Список значений
+    bool skip_empty = false; // Пропускать пустые значения
+    bool skip_trim_empty = false; // Пропускать значения, состоящие из пробелов
+    bool reset_to_def = false; // Сбрасывать свойство, если ничего не подошло
+};
+
 int IsDummyModeOn ();
 
 // -----------------------------------------------------------------------------
@@ -263,9 +271,14 @@ void AddParamValue2ParamDictElement (const API_Guid& elemGuid, const ParamValue&
 void AddParamValue2ParamDictElement (const ParamValue& param, ParamDictElement& paramToRead);
 
 // --------------------------------------------------------------------
+// Содержит ли значения элементиз списка игнорируемых
+// --------------------------------------------------------------------
+bool CheckIgnoreVal (const SkipValues& ignorevals, const ParamValue& param);
+
+// --------------------------------------------------------------------
 // Сопоставляет параметры
 // --------------------------------------------------------------------
-bool CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, GS::Array<GS::UniString>& ignorevals);
+bool CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore);
 
 // --------------------------------------------------------------------
 // Запись словаря ParamDictValue в словарь элементов ParamDictElement
