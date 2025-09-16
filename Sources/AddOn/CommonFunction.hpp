@@ -71,8 +71,7 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {
-    }
+    {}
     short  index;
     double level;
 };
@@ -181,6 +180,7 @@ struct ParamValue
     bool fromGDLArray = false;			 // Взять из массива
     bool toQRCode = false;			     // Результат вывести QR
     bool needPreRead = false;			 // Необходимо прочитать значения диапазонов из параметров элемента
+    bool needResetToDef = false;		// Сброс значения к значению по умолчанию
     GS::UniString rawName_row_start = "";// Имя параметра со значением начала диапазона чтения строк
     GS::UniString rawName_row_end = "";	 // Имя параметра со значением конца диапазона чтения строк
     GS::UniString rawName_col_start = "";// Имя параметра со значением начала диапазона чтения столбцов
