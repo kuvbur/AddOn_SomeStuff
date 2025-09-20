@@ -224,7 +224,7 @@ void SetArrayByRawname (ParamValue& pvalue);
 // Для колонны или объекта - центр колонны и отм. низа
 // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 // -----------------------------------------------------------------------------
-bool ReadCoords (const API_Element& element, ParamDictValue& params);
+bool ReadCoords (const API_Element& element, ParamDictValue& params, const ParamDictValue& propertyParams);
 
 // -----------------------------------------------------------------------------
 // Замена имен параметров на значения в выражении
@@ -426,6 +426,10 @@ bool hasAttribute (ParamDictValue& propertyParams);
 bool hasProperyDefinition (ParamDictValue& propertyParams);
 
 bool hasUnreadProperyDefinition (ParamDictElement& paramToRead);
+
+bool hasSurveyPoint (ParamDictElement& paramToRead);
+
+bool hasUnreadLocOrigin (ParamDictElement& paramToRead);
 
 bool hasUnreadCoord (ParamDictElement& paramToRead);
 

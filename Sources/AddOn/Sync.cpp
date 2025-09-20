@@ -24,7 +24,7 @@ void MonAll (SyncSettings& syncSettings)
     DBprnt ("MonAll start");
     #endif
     clock_t start, finish;
-    double  duration;
+    double  duration = 0;
     start = clock ();
     MonByType (API_ObjectID, syncSettings);
     MonByType (API_WindowID, syncSettings);
@@ -115,7 +115,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
     #endif
     clock_t start, finish;
-    double  duration;
+    double  duration = 0;
     start = clock ();
     int dummymode = IsDummyModeOn ();
     UnicGuid syncedelem = {};
@@ -318,6 +318,7 @@ bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     return needResync;
 }
 
+
 // -----------------------------------------------------------------------------
 // Запускает обработку выбранных, заданных в настройке
 // -----------------------------------------------------------------------------
@@ -327,7 +328,6 @@ void SyncSelected (const SyncSettings& syncSettings)
     GS::Array<API_Guid> guidArray = GetSelectedElements (false, true, syncSettings, false, false, false);
     if (guidArray.IsEmpty ()) return;
     ClassificationFunc::SystemDict systemdict = {};
-    ClassificationFunc::GetAllClassification (systemdict);
     ParamDictValue propertyParams = {};
     GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, guidArray, systemdict, propertyParams);
     if (!rereadelem.IsEmpty ()) {
@@ -364,7 +364,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
     #endif
     clock_t start, finish;
-    double  duration;
+    double  duration = 0;
     start = clock ();
     bool needResync = false;
     UnicGuid syncedelem = {};
@@ -422,7 +422,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
 void RunParamSelected (const SyncSettings& syncSettings)
 {
     clock_t start, finish;
-    double  duration;
+    double duration = 0;
     start = clock ();
     GS::UniString fmane = "Run parameter script";
     // Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
@@ -923,9 +923,9 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                 WriteData writeOne = {};
                 writeOne.formatstring = stringformat;
                 writeOne.ignorevals = ignorevals;
-                if (param.fromCoord && param.rawName.Contains ("north_dir")) {
-                    ParamDictValue paramDict;
-                    ParamHelpers::AddValueToParamDictValue (paramDict, "@info:glob_north_dir");
+                if (param.fromCoord && (param.rawName.Contains ("north_dir") || param.rawName.Contains ("_sp_"))) {
+                    ParamDictValue paramDict = {};
+                    ParamHelpers::AddValueToParamDictValue (paramDict, "@glob:glob_north_dir");
                     ParamHelpers::AddParamDictValue2ParamDictElement (elemGuid, paramDict, paramToRead);
                 }
 
@@ -1573,7 +1573,6 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.rawName.Append ("}");
             start_ignore = 2;
         }
-
         // Обработка игнорируемых значений
         if (nparam > start_ignore) {
             for (UInt32 j = start_ignore; j < nparam; j++) {
@@ -1627,7 +1626,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     #endif
     parentelementtype = GetElemTypeID (parentelement);
     clock_t start, finish;
-    double  duration;
+    double  duration = 0;
     start = clock ();
     // При работе на резрезах возможно попадание по виртуальному элементу, обработаем
     API_Elem_Head parentelementhead = {};
