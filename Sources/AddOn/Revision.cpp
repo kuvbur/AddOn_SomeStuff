@@ -9,13 +9,13 @@ namespace Revision
 void SetRevision (void)
 {
     GSErrCode err = NoError;
-    GS::HashTable<GS::UniString, API_Guid> layout_note_guid;
+    GS::HashTable<GS::UniString, API_Guid> layout_note_guid = {};
     if (!GetScheme (layout_note_guid)) {
         msg_rep ("SetRevision", "Check layout property - somestuff property not found", err, APINULLGuid, true);
         return;
     }
-    API_DatabaseInfo databasestart;
-    API_WindowInfo windowstart;
+    API_DatabaseInfo databasestart = {};
+    API_WindowInfo windowstart = {};
     GS::IntPtr	store = 1;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_StoreViewSettings (store);
@@ -81,7 +81,7 @@ void SetRevision (void)
 bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
 {
     GSErrCode err = NoError;
-    API_LayoutBook layoutScheme;
+    API_LayoutBook layoutScheme = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Navigator_GetLayoutBook (&layoutScheme);
     #else
@@ -106,8 +106,11 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
         if (name.Contains ("somestuff_layout_type")) {
             layout_note_guid.Add ("somestuff_layout_type", guid);
         }
+        if (name.Contains ("somestuff_layout_shifr")) {
+            layout_note_guid.Add ("somestuff_layout_shifr", guid);
+        }
     }
-    GS::HashTable<API_Guid, GS::UniString> customScheme;
+    GS::HashTable<API_Guid, GS::UniString> customScheme = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Revision_GetRVMChangeCustomScheme (&customScheme);
     #else
@@ -134,9 +137,9 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
 {
     GSErrCode err = NoError;
     // Получаем выпуски
-    NoteByChangeDict allchanges;
-    LayoutRevisionDict layoutRVI;
-    GS::Array<API_RVMDocumentRevision> api_revisions;
+    NoteByChangeDict allchanges = {};
+    LayoutRevisionDict layoutRVI = {};
+    GS::Array<API_RVMDocumentRevision> api_revisions = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Revision_GetRVMDocumentRevisions (&api_revisions);
     #else
