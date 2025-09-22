@@ -135,27 +135,29 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     DBprnt ("ElementEventHandlerProc start");
     #endif
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
+    #ifdef EXTNDVERSION
+    if (elementType == API_DimensionID ||
+        elementType == API_RadialDimensionID ||
+        elementType == API_LevelDimensionID ||
+        elementType == API_AngleDimensionID ||
+        elementType == API_TextID ||
+        elementType == API_LabelID) {
+        GSErrCode err = NoError;
+        if (elemType->elemHead.drwIndex < 13) {
+            GS::Array<API_Guid> elemList = {};
+            elemList.PushNew (elemType->elemHead.guid);
+            err = ACAPI_Element_Tool (elemList, APITool_BringToFront, nullptr);
+        }
+        return err;
+    }
+    #endif // PK_1
+    if (elementType == API_ZombieElemID) return NoError;
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) return NoError;
-    //API_ActTranPars actTranPars;
-    //#if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    //ACAPI_Notification_GetTranParams (&actTranPars);
-    //#else
-    //ACAPI_Notify_GetTranParams (&actTranPars);
-    //#endif
-    //API_EditCmdID acttype = actTranPars.typeID;
-    //if (acttype == APIEdit_Drag) {
-    //    if (is_equal (actTranPars.theDisp.x, 0) && is_equal (actTranPars.theDisp.y, 0) && is_equal (actTranPars.theDispZ, 0)) {
-    //        #if defined(TESTING)
-    //        DBprnt ("acttype == APIEdit_Drag 0");
-    //        #endif
-    //        return NoError;
-    //    }
-    //}
     ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
     ClassificationFunc::SystemDict systemdict = {};
-    if (!IsElementEditable (elemType->elemHead, syncSettings, true)) return NoError;
+    if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType)) return NoError;
     ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:no_attrib"); // Во время отслеживания не будем получать весь список слоёв
     bool needresync = false;
     switch (elemType->notifID) {
