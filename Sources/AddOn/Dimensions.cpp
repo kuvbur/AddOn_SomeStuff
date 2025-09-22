@@ -461,8 +461,8 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
 void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
 {
     (void) syncSettings;
-    DoneElemGuid doneelemguid;
-    DimRules dimrules;
+    DoneElemGuid doneelemguid = {};
+    DimRules dimrules = {};
     #if defined(TESTING)
     DBprnt ("DimRoundAll start");
     #endif
@@ -490,9 +490,6 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
     bool flag_chanel = false;
     ParamDictValue propertyParams = {};
     if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, dimrules, propertyParams, syncSettings, isUndo);
-
-    //if (!flag_chanel) flag_chanel = DimRoundByType(API_RadialDimensionID, doneelemguid, dimrules, propertyParams);
-    //if (!flag_chanel) flag_chanel = DimRoundByType(API_LevelDimensionID, doneelemguid, dimrules, propertyParams);
     #if defined(TESTING)
     DBprnt ("DimRoundAll end");
     #endif
@@ -506,21 +503,18 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
     GSErrCode err = NoError;
     GS::Array<API_Guid>	guidArray = {};
     err = ACAPI_Element_GetElemList (typeID, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
-    if (guidArray.GetSize () == 0 || err != NoError) return false;
-    if (err == NoError) {
-        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
-                err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams, syncSettings, isUndo);
-                if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
-            }
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            if (ACAPI_ProcessWindow_IsProcessCanceled ()) return true;
-            #else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
-            #endif
+    if (err != NoError) msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
+    if (guidArray.IsEmpty ()) return false;
+    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+        if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
+            err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams, syncSettings, isUndo);
+            if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
         }
-    } else {
-        msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        if (ACAPI_ProcessWindow_IsProcessCanceled ()) return true;
+        #else
+        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return true;
+        #endif
     }
     return false;
 }

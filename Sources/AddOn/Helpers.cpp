@@ -4376,7 +4376,7 @@ void ParamHelpers::GetAllGlobToParamDict (ParamDictValue & propertyParams)
     GS::UniString rawName = "";
     GS::UniString prefix = "{@glob:";
     GS::UniString suffix = "}";
-    ParamValue pvalue;
+    ParamValue pvalue = {};
     API_PlaceInfo placeInfo = {};
     GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -5038,7 +5038,7 @@ bool ParamHelpers::ReadGDL (const API_Element & element, const API_Elem_Head & e
     }
     ParamDictValue paramBydescription = {};
     ParamDictValue paramByName = {};
-    GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramnamearray;
+    GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramnamearray = {};
 
     // Если диапазоны массивов хранятся в параметра х - прочитаем сначала их
     ParamDictValue paramdiap = {};
