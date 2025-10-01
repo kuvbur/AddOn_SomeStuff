@@ -51,16 +51,23 @@ class ResourceCompiler (object):
             os.path.split(inputFilePath)[1])[0]
         nativeResourceFilePath = os.path.join(
             self.resourceObjectsPath, inputFileBaseName + nativeResourceFileExtenion)
-        result = subprocess.call([
+        colorChangeScriptPath = os.path.join(os.path.split(self.resConvPath)[0], 'SVGColorChange.py')
+        devkit_main_version = os.path.split(os.path.split(os.path.split(os.path.split(os.path.split(self.resConvPath)[0])[0])[0])[0])[1]
+        devkit_main_version = int(devkit_main_version.replace('APIDevKit-', ''))
+        call_params = [
             self.resConvPath,
-            '-m', 'r',                        # resource compile mode
-            '-T', platformSign,                # target platform
-            '-q', 'utf8', codepage,            # code page conversion
-            '-w', '2',                        # HiDPI image size list
-            '-p', imageResourcesFolder,        # image search path
+            '-m', 'r',                      # resource compile mode
+            '-T', platformSign,             # target platform
+            '-q', 'utf8', codepage,         # code page conversion
+            '-w', '2',                      # HiDPI image size list
+            '-p', imageResourcesFolder,     # image search path
             '-i', inputFilePath,            # input path
             '-o', nativeResourceFilePath    # output path
-        ])
+        ]
+        if devkit_main_version >= 29:
+             call_params.extend (['-py', sys.executable])        # python executable
+             call_params.extend (['-sc', colorChangeScriptPath]) # SVG color change script path for generating Dark Mode icons
+        result = subprocess.call (call_params)
         if result != 0:
             return False
         return True
@@ -183,13 +190,16 @@ class MacResourceCompiler (ResourceCompiler):
                 stringsFile = codecs.open(filePath, 'r', 'utf-16')
                 resultLocalizableStringsFile.write(stringsFile.read())
                 stringsFile.close()
-        icondark = os.path.join(os.path.dirname(
-            self.sourcesPath), 'MacDarkModeIcon')
-        for fileName in os.listdir(icondark):
-            filePath = os.path.join(icondark, fileName)
-            extension = os.path.splitext(fileName)[1].lower()
-            if extension == '.tif':
-                shutil.copy(filePath, resultResourcePath)
+        devkit_main_version = os.path.split(os.path.split(os.path.split(os.path.split(os.path.split(self.resConvPath)[0])[0])[0])[0])[1]
+        devkit_main_version = int(devkit_main_version.replace('APIDevKit-', ''))
+        if devkit_main_version<29:
+            icondark = os.path.join(os.path.dirname(
+                self.sourcesPath), 'MacDarkModeIcon')
+            for fileName in os.listdir(icondark):
+                filePath = os.path.join(icondark, fileName)
+                extension = os.path.splitext(fileName)[1].lower()
+                if extension == '.tif':
+                    shutil.copy(filePath, resultResourcePath)
         resultLocalizableStringsFile.close()
 
 
