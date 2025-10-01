@@ -17,6 +17,8 @@
 [Скачать последнюю версию](https://github.com/kuvbur/AddOn_SomeStuff/releases/latest)
 
 ### Совместимость с версиями:
+Archicad WIN / MAC 29
+
 Archicad WIN / MAC 28
 
 Archicad WIN / MAC 27
