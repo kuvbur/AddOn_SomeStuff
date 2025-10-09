@@ -2418,6 +2418,20 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
 {
     BNZeroMemory (&attribinx, sizeof (API_AttributeIndex));
     if (type == API_ZombieAttrID) return false;
+    GSErrCode err = NoError;
+    API_Attribute attrib;
+    BNZeroMemory (&attrib, sizeof (API_Attribute));
+    attrib.header.uniStringNamePtr = &name;
+    attrib.header.typeID = type;
+    attrib.header.guid = APINULLGuid;
+    err = ACAPI_Attribute_Search (&attrib.header);
+    attrib.header.uniStringNamePtr = nullptr;
+    if (err == NoError) {
+        attribinx = attrib.header.index;
+        return true;
+    } else {
+        msg_rep ("API_AttributeIndexFindByName", "ACAPI_Attribute_Search" + name, err, APINULLGuid);
+    }
     double inx = 0;
     if (UniStringToDouble (name, inx)) {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -2425,23 +2439,17 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
         #else
         attribinx = (Int32) inx;
         #endif
-        return true;
-    } else {
-        GSErrCode err = NoError;
-        API_Attribute attrib;
-        BNZeroMemory (&attrib, sizeof (API_Attribute));
-        attrib.header.uniStringNamePtr = &name;
         attrib.header.typeID = type;
-        attrib.header.guid = APINULLGuid;
-        err = ACAPI_Attribute_Search (&attrib.header);
-        attrib.header.uniStringNamePtr = nullptr;
+        attrib.header.index = attribinx;
+        err = ACAPI_Attribute_Get (&attrib);
         if (err != NoError) {
-            msg_rep ("API_AttributeIndexFindByName", "ACAPI_Attribute_Search - " + name, err, APINULLGuid);
+            msg_rep ("API_AttributeIndexFindByName", "ACAPI_Attribute_Search - UniStringToDouble" + name, err, APINULLGuid);
             return false;
         }
-        attribinx = attrib.header.index;
         return true;
     }
+    msg_rep ("API_AttributeIndexFindByName", "ACAPI_Attribute_Search - " + name, err, APINULLGuid);
+    return false;
 }
 
 GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array< API_FavoriteFolderHierarchy >*folders, GS::Array< GS::UniString >*names)

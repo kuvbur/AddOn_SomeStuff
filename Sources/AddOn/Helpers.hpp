@@ -519,6 +519,23 @@ void GetLocOriginToParamDict (ParamDictValue& propertyParams);
 // --------------------------------------------------------------------
 void GetAllInfoToParamDict (ParamDictValue& propertyParams);
 
+#if !defined(AC_27) && !defined(AC_28) && !defined(AC_29)
+inline GSErrCode ACAPI_Attribute_GetAttributesByType (API_AttrTypeID typeID, GS::Array<API_Attribute>& attributes)
+{
+    API_AttributeIndex count;
+    GSErrCode err = ACAPI_Attribute_GetNum (typeID, &count);
+    for (API_AttributeIndex i = 1; i <= count; ++i) {
+        API_Attribute attr = {};
+        attr.header.typeID = typeID;
+        attr.header.index = i;
+        if (ACAPI_Attribute_Get (&attr) == NoError) {
+            attributes.Push (attr);
+        }
+    }
+    return err;
+}
+#endif
+
 // --------------------------------------------------------------------
 // Получение списка аттрибутов (имён слоёв, материалов)
 // --------------------------------------------------------------------
