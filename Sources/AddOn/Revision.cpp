@@ -176,7 +176,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
                     continue;
                 }
             }
-            ChangeMarkerDict changes;
+            ChangeMarkerDict changes = {};
             API_DatabaseInfo dbInfo = {};
             dbInfo.typeID = APIWind_LayoutID;
             dbInfo.databaseUnId = revision.layoutInfo.dbId;
@@ -187,7 +187,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
             err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
             #endif
             if (err == NoError) {
-                GS::Array<API_RVMChange> layoutchange;
+                GS::Array<API_RVMChange> layoutchange = {};
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 err = ACAPI_Revision_GetRVMLayoutCurrentRevisionChanges (&(dbInfo.databaseUnId), &layoutchange);
                 #else
@@ -364,7 +364,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
 {
     /// Запись в свойства макета
     bool flag_write = false;
-    API_LayoutInfo	layoutInfo;
+    API_LayoutInfo	layoutInfo = {};
     BNZeroMemory (&layoutInfo, sizeof (API_LayoutInfo));
     GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -719,14 +719,14 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
     GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
     GSErrCode err = NoError;
     API_ElemTypeID elementType = API_ChangeMarkerID;
-    GS::Array<API_Guid>	guidArray;
+    GS::Array<API_Guid>	guidArray = {};
     err = ACAPI_Element_GetElemList (elementType, &guidArray);
     if (err != NoError) {
         msg_rep ("GetChangesMarker", "ACAPI_Element_GetElemList", err, APINULLGuid);
         return false;
     }
     if (guidArray.IsEmpty ()) return false;
-    GS::HashTable < GS::UniString, Changes> ChangeMarkerDict;
+    GS::HashTable < GS::UniString, Changes> ChangeMarkerDict = {};
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         API_Element element = {};
         BNZeroMemory (&element, sizeof (API_Element));
@@ -776,7 +776,7 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
 bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint)
 {
     GSErrCode err = NoError;
-    API_ElementMemo memo;
+    API_ElementMemo memo = {};
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_Polygon);
     if (err == NoError) {
@@ -794,7 +794,7 @@ bool GetMarkerPos (API_Guid& markerguid, API_Coord& startpoint)
 bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nuch, GS::UniString& nizm, GS::Int32& typeizm, GS::UniString& fam, GS::Int32& code)
 {
     GSErrCode err = NoError;
-    API_ElementMemo memo;
+    API_ElementMemo memo = {};
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_AddPars);
     bool find_nuch = false; bool find_izm = false; bool find_note = false; bool find_type = false; bool find_fam = false; bool find_code = false;
@@ -871,7 +871,7 @@ void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
 void ChangeMarkerText (API_Guid& markerguid, GS::UniString& nuch, GS::UniString& nizm)
 {
     GSErrCode err = NoError;
-    API_Element markerElement;
+    API_Element markerElement = {};
     BNZeroMemory (&markerElement, sizeof (API_Element));
     markerElement.header.guid = markerguid;
     if (markerguid == APINULLGuid) return;
