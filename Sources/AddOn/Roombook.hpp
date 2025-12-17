@@ -23,6 +23,8 @@ enum TypeOtd
     Ceil = 9,
 };
 
+typedef GS::HashTable<TypeOtd, UnicGuid> UnicGuidByTypeOtd;
+typedef GS::HashTable<API_Guid, UnicGuidByTypeOtd> UnicGuidByBase;
 
 const double min_dim = 0.0001; // Минимальный размер элемента
 const double otd_thickness = 0.001;
@@ -202,9 +204,9 @@ typedef GS::HashTable<GS::UniString, ColumnFormat> ColumnFormatDict;
 // -----------------------------------------------------------------------------
 void RoomBook ();
 
-GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ParamDictValue& propertyParams, bool& has_base_element);
+GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ClassificationFunc::ClassificationDict& finclass, ParamDictValue& propertyParams, bool& has_base_element);
 
-UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, ParamDictValue& propertyParams, bool& has_base_element);
+UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>& otd_elements, ParamDictValue& propertyParams, bool& has_base_element);
 
 void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat);
 
@@ -391,14 +393,16 @@ void Class_SetClass (const OtdOpening& op, const ClassificationFunc::Classificat
 
 void Class_SetClass (const OtdSlab& op, const ClassificationFunc::ClassificationDict& finclass);
 
-API_Guid Class_GetClassGuid (const TypeOtd type, const ClassificationFunc::ClassificationDict& finclass);
+API_Guid Class_GetClassGuid (const TypeOtd& type, const ClassificationFunc::ClassificationDict& finclass);
+
+TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::ClassificationDict& finclass);
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
 // -----------------------------------------------------------------------------
 void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFunc::ClassificationDict& findict, UnicGuid& finclassguids);
 
-bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids);
+bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids, API_Guid& classguid);
 
 void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& guid, API_ElemTypeID elemtype, UnicElementByType& elementToRead);
 

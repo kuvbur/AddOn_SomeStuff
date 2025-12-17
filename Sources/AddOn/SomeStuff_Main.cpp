@@ -135,22 +135,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     DBprnt ("ElementEventHandlerProc start");
     #endif
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
-    //#ifdef EXTNDVERSION
-    //if (elementType == API_DimensionID ||
-    //    elementType == API_RadialDimensionID ||
-    //    elementType == API_LevelDimensionID ||
-    //    elementType == API_AngleDimensionID ||
-    //    elementType == API_TextID ||
-    //    elementType == API_LabelID) {
-    //    GSErrCode err = NoError;
-    //    if (elemType->elemHead.drwIndex < 13) {
-    //        GS::Array<API_Guid> elemList = {};
-    //        elemList.PushNew (elemType->elemHead.guid);
-    //        err = ACAPI_Element_Tool (elemList, APITool_BringToFront, nullptr);
-    //    }
-    //    return err;
-    //}
-    //#endif // PK_1
     if (elementType == API_ZombieElemID) return NoError;
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) return NoError;

@@ -2982,7 +2982,7 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
     // Для каждого типа - свой способ получения данных. Поэтому разбиваем по типам и обрабатываем по-отдельности
     for (UInt32 i = 0; i < paramTypesList.GetSize (); i++) {
         GS::UniString paramType = paramTypesList[i];
-        ParamDictValue paramByType;
+        ParamDictValue paramByType = {};
         for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             ParamValue& param = cIt->value;
@@ -4614,12 +4614,6 @@ void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue& propertyPar
             if (err != NoError) msg_rep ("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
             if (err == NoError) {
                 for (UInt32 j = 0; j < definitions.GetSize (); j++) {
-                    if (definitions[j].availability.IsEmpty () && groups[i].groupType == API_PropertyCustomGroupType) {
-                        #if defined(TESTING)
-                        DBprnt ("AllPropertyDefinitionToParamDict skip " + definitions[j].name);
-                        #endif
-                        continue;
-                    }
                     // TODO Когда в проекте есть два и более свойств с описанием Sync_name возникает ошибка
                     if (definitions[j].description.Contains ("Sync_name")) {
                         for (UInt32 inx = 0; inx < 20; inx++) {
@@ -4982,7 +4976,7 @@ bool ParamHelpers::ReadID (const API_Elem_Head& elem_head, ParamDictValue& param
     if (err != NoError) {
         msg_rep ("ReadID - ID", "ACAPI_Database(APIDb_GetElementInfoStringID", err, elguid);
         return false;
-} else {
+    } else {
         param.isValid = true;
         param.val.type = API_PropertyStringValueType;
         param.type = API_PropertyStringValueType;
@@ -5200,7 +5194,7 @@ bool ParamHelpers::GDLParamByDescription (const API_Element& element, ParamDictV
     if (err != NoError) {
         msg_rep ("ParamHelpers::GDLParamByDescription", "ACAPI_LibPart_Get", err, element.header.guid);
         return false;
-}
+    }
     double aParam = 0.0;
     double bParam = 0.0;
     Int32 addParNum = 0;
@@ -6369,7 +6363,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
             default:
                 return false;
                 break;
-    }
+        }
         if (attrType != API_ZombieAttrID) {
             API_Attribute	attrib = {};
             attrib.header.typeID = attrType;
@@ -6391,7 +6385,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 if (err != APIERR_BADNAME) return false;
             }
         }
-}
+    }
     pvalue.boolValue = param_bool;
     pvalue.doubleValue = param_real;
     pvalue.rawDoubleValue = param_real;
@@ -6579,7 +6573,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {
         value = property.definition.defaultValue.basicValue;
-} else {
+    } else {
         value = property.value;
     }
     #endif
@@ -7471,17 +7465,17 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                     }
                                 }
                             }
-                    }
-                } else {
+                        }
+                    } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-        }
+                }
                 break;
-    }
+        }
         ++profileDescriptionIt1;
-}
+    }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
         short pen = -1;
         if (param_composite.ContainsKey (pen)) {
@@ -7589,7 +7583,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-    }
+            }
             if (element.column.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
@@ -7624,7 +7618,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-}
+            }
             if (element.beam.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
