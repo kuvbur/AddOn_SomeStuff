@@ -59,6 +59,8 @@ function (SetCompilerOptions target acVersion)
             -Wno-shorten-64-to-32
             -Wno-sign-compare
             -Wno-switch
+            -Wmissing-template-arg-list-after-template-kw
+            -Wexplicit-specialization-storage-class
         )
         if (${acVersion} LESS_EQUAL "24")
             target_compile_options (${target} PUBLIC -Wno-non-c-typedef-for-linkage)
@@ -216,14 +218,34 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         target_link_options (${addOnName} PUBLIC "${ResourceObjectsDir}/${addOnName}.res")
         target_link_options (${addOnName} PUBLIC /export:GetExportedFuncAddrs,@1 /export:SetImportedFuncAddrs,@2)
     else ()
+        file(READ "${devKitDir}/Frameworks/GSRoot.framework/Versions/A/Resources/Info.plist" plist_content NEWLINE_CONSUME)
+        string(REGEX REPLACE ".*GSBuildNum[^0-9]+([0-9]+).*" "\\1" gsBuildNum "${plist_content}")
+        string(REGEX REPLACE ".*LSMinimumSystemVersion[^0-9]+([0-9\.]+).*" "\\1" lsMinimumSystemVersion "${plist_content}")
+
+        set(MACOSX_BUNDLE_EXECUTABLE_NAME ${addOnName})
+        set(MACOSX_BUNDLE_INFO_STRING ${addOnName})
+        set(MACOSX_BUNDLE_LONG_VERSION_STRING ${copyright})
+        set(MACOSX_BUNDLE_BUNDLE_NAME ${addOnName})
+        set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${acVersion}.0.0.${gsBuildNum})
+        set(MACOSX_BUNDLE_BUNDLE_VERSION ${acVersion}.0.0.${gsBuildNum})
+        set(MINIMUM_SYSTEM_VERSION "${lsMinimumSystemVersion}")
+    
         configure_file(
                 "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.plist.in"
                 "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist"
                 @ONLY
             )
-        set_target_properties (${addOnName} PROPERTIES BUNDLE TRUE)
-        set_target_properties (${addOnName} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist")
-        set_target_properties (${addOnName} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>")
+
+        set_target_properties(${target} PROPERTIES
+            BUNDLE TRUE
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/AddOnInfo.plist"
+
+            # Align parameters for Xcode and in Info.plist to avoid warnings
+            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.kuvbur.${addOnNameIdentifier}
+            XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET ${lsMinimumSystemVersion}
+
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
+        )
     endif ()
 
     target_include_directories (${addOnName} PUBLIC
