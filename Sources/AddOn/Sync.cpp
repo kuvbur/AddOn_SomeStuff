@@ -1665,7 +1665,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     if (subguidArray.IsEmpty ()) return;
     ParamDictValue propertyParams;
     GSFlags flag = 0;
-    ParamDictElement paramToWrite;
+    ParamDictElement paramToWrite = {};
     SyncSetSubelementScope (parentelementhead, subguidArray, propertyParams, paramToWrite, "", true);
     if (!paramToWrite.IsEmpty ()) {
         err = ACAPI_CallUndoableCommand ("SetSubelement",

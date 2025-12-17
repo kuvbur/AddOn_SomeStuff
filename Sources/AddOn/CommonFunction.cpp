@@ -8,7 +8,6 @@
 #include <limits>
 #include <math.h>
 static const Int32 VersionId = 49;
-
 GS::UniString GetDBName (API_DatabaseInfo& databaseInfo)
 {
     GS::UniString рname = "";
@@ -2123,13 +2122,13 @@ FormatStringDict GetFotmatStringForMeasureType ()
 {
     FormatStringDict fdict = {};
     // Получаем данные об округлении и типе расчёта
-    API_CalcUnitPrefs unitPrefs1;
+    API_CalcUnitPrefs unitPrefs1 = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
     #else
     ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
     #endif
-    API_WorkingUnitPrefs unitPrefs;
+    API_WorkingUnitPrefs unitPrefs = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
     #else
@@ -2180,51 +2179,64 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
             format.stringformat.ReplaceAll (".", "");
         }
         ReplaceMeters (outstringformat);
-        if (outstringformat.Contains ("mm")) {
-            n_zero = 0;
-            koeff = 1000;
-            outstringformat.ReplaceAll ("mm", "");
-        }
-        if (outstringformat.Contains ("cm")) {
-            n_zero = 1;
-            koeff = 100;
-            outstringformat.ReplaceAll ("cm", "");
-        }
-        if (outstringformat.Contains ("dm")) {
-            n_zero = 2;
-            koeff = 10;
-            outstringformat.ReplaceAll ("dm", "");
-        }
-        if (outstringformat.Contains ("gm")) {
-            koeff = 1 / 100;
-            outstringformat.ReplaceAll ("gm", "");
-        }
-        if (outstringformat.Contains ("km")) {
-            koeff = 1 / 1000;
-            outstringformat.ReplaceAll ("km", "");
-        }
         if (outstringformat.Contains ("m")) {
-            koeff = 1;
-            n_zero = 3;
-            outstringformat.ReplaceAll ("m", "");
+            if (outstringformat.Contains ("mm")) {
+                n_zero = 0;
+                koeff = 1000;
+                outstringformat.ReplaceAll ("mm", "");
+            } else {
+                if (outstringformat.Contains ("cm")) {
+                    n_zero = 1;
+                    koeff = 100;
+                    outstringformat.ReplaceAll ("cm", "");
+                } else {
+                    if (outstringformat.Contains ("dm")) {
+                        n_zero = 2;
+                        koeff = 10;
+                        outstringformat.ReplaceAll ("dm", "");
+                    } else {
+                        if (outstringformat.Contains ("gm")) {
+                            koeff = 1 / 100;
+                            outstringformat.ReplaceAll ("gm", "");
+                        } else {
+                            if (outstringformat.Contains ("km")) {
+                                koeff = 1 / 1000;
+                                outstringformat.ReplaceAll ("km", "");
+                            } else {
+                                koeff = 1;
+                                n_zero = 3;
+                                outstringformat.ReplaceAll ("m", "");
+                            }
+                        }
+                    }
+                }
+            }
         }
-        if (outstringformat.Contains ("p")) {
-            delimetr = ".";
-            outstringformat.ReplaceAll ("p", "");
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains ("p")) {
+                delimetr = ".";
+                outstringformat.ReplaceAll ("p", "");
+            }
         }
-        if (outstringformat.Contains ("r")) {
-            needround = true;
-            outstringformat.ReplaceAll ("r", "");
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains ("r")) {
+                needround = true;
+                outstringformat.ReplaceAll ("r", "");
+            }
         }
-        if (outstringformat.Contains ("f")) {
-            forceRaw = true;
-            outstringformat.ReplaceAll ("f", "");
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains ("f")) {
+                forceRaw = true;
+                outstringformat.ReplaceAll ("f", "");
+            }
         }
         // Принудительный вывод заданного кол-ва нулей после запятой
-        if (outstringformat.Contains ("0")) {
-            outstringformat.ReplaceAll ("0", "");
-            outstringformat.Trim ();
-            if (!outstringformat.IsEmpty ()) trim_zero = false;
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains ("0")) {
+                outstringformat.ReplaceAll ("0", "");
+                outstringformat.Trim ();
+                if (!outstringformat.IsEmpty ()) trim_zero = false;
+            }
         }
         if (!outstringformat.IsEmpty ()) {
             n_zero = std::atoi (outstringformat.ToCStr ());

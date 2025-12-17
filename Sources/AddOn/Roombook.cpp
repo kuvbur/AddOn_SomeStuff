@@ -87,7 +87,7 @@ void RoomBook ()
     systemdict.Clear ();
     Stories storyLevels = GetStories (); // Уровни этажей в проекте
     GS::Array<API_Guid> deletelist = {}; // Массив устаревших элементов
-    GS::HashTable<API_Guid, UnicGuidByGuid> exsistot_byzone = {}; // Словарь существующих элементов
+    GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone = {}; // Словарь существующих элементов
     // Чтение данных о зоне, создание словаря с элементами для чтения
     OtdRooms roomsinfo = {}; // Информация о всех зонах
     UnicElementByType elementToRead = {}; // Список всех элементов в зоне
@@ -141,7 +141,8 @@ void RoomBook ()
                 GS::Array<API_Guid> zoneGuids = *cIt->value;
                 #endif
                 // Проверяем классификацию, исключаем отделочные элементы
-                if (Class_IsElementFinClass (guid, finclassguids))
+                API_Guid classguid;
+                if (Class_IsElementFinClass (guid, finclassguids, classguid))
                     continue;
                 switch (typeelem) {
                     case API_WindowID:
@@ -202,7 +203,7 @@ void RoomBook ()
     MatarialToFavoriteDict favdict = Favorite_GetDict ();
     // Ищём существующие элементы и определяем их привязку к базовым конструкциям
     bool has_base_element = false;
-    exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, propertyParams, has_base_element);
+    exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, propertyParams, has_base_element);
     // Заполняем данные для элементов
     funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
     GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
@@ -241,13 +242,25 @@ void RoomBook ()
             if (otdslab.type == Floor) otdslab.tip = otd.tip_pol;
             // Ищем существующие элементы по GUID базового элемента
             if (exsistot_byzone.ContainsKey (zoneGuid) && has_base_element) {
-                UnicGuidByGuid& exsistot_byparent = exsistot_byzone.Get (zoneGuid);
+                UnicGuidByBase& exsistot_byparent = exsistot_byzone.Get (zoneGuid);
                 if (exsistot_byparent.ContainsKey (otdslab.base_guid)) {
-                    UnicGuid& exsistot = exsistot_byparent.Get (otdslab.base_guid);
-                    GS::Optional<API_Guid> v = exsistot.FindValue (true);
-                    if (v.HasValue ()) {
-                        otdslab.otd_guid = v.Get ();
-                        exsistot.Delete (otdslab.otd_guid);
+                    UnicGuidByTypeOtd& exsistype = exsistot_byparent.Get (otdslab.base_guid);
+                    if (exsistype.ContainsKey (otdslab.type)) {
+                        UnicGuid& exsistot = exsistype.Get (otdslab.type);
+                        GS::Optional<API_Guid> v = exsistot.FindValue (true);
+                        if (v.HasValue ()) {
+                            otdslab.otd_guid = v.Get ();
+                            exsistot.Delete (otdslab.otd_guid);
+                        }
+                    } else {
+                        if (exsistype.ContainsKey (NoSet)) {
+                            UnicGuid& exsistot = exsistype.Get (NoSet);
+                            GS::Optional<API_Guid> v = exsistot.FindValue (true);
+                            if (v.HasValue ()) {
+                                otdslab.otd_guid = v.Get ();
+                                exsistot.Delete (otdslab.otd_guid);
+                            }
+                        }
                     }
                 }
             }
@@ -380,25 +393,32 @@ void RoomBook ()
         }
     }
     // Неиспользованные существующие элементы удаляем
-    for (GS::HashTable<API_Guid, UnicGuidByGuid>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs (); cIt_1 != NULL; ++cIt_1) {
+    for (GS::HashTable<API_Guid, UnicGuidByBase>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs (); cIt_1 != NULL; ++cIt_1) {
         #if defined(AC_28) || defined(AC_29)
-        UnicGuidByGuid byzone = cIt_1->value;
+        UnicGuidByBase byzone = cIt_1->value;
         #else
-        UnicGuidByGuid byzone = *cIt_1->value;
+        UnicGuidByBase byzone = *cIt_1->value;
         #endif
-        for (UnicGuidByGuid::PairIterator cIt_2 = byzone.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
+        for (UnicGuidByBase::PairIterator cIt_21 = byzone.EnumeratePairs (); cIt_21 != NULL; ++cIt_21) {
             #if defined(AC_28) || defined(AC_29)
-            UnicGuid byparent = cIt_2->value;
+            UnicGuidByTypeOtd bytype = cIt_21->value;
             #else
-            UnicGuid byparent = *cIt_2->value;
+            UnicGuidByTypeOtd bytype = *cIt_21->value;
             #endif
-            for (UnicGuid::PairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
+            for (UnicGuidByTypeOtd::PairIterator cIt_2 = bytype.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
                 #if defined(AC_28) || defined(AC_29)
-                API_Guid guid = cIt_3->key;
+                UnicGuid byparent = cIt_2->value;
                 #else
-                API_Guid guid = *cIt_3->key;
+                UnicGuid byparent = *cIt_2->value;
                 #endif
-                deletelist.Push (guid);
+                for (UnicGuid::PairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
+                    #if defined(AC_28) || defined(AC_29)
+                    API_Guid guid = cIt_3->key;
+                    #else
+                    API_Guid guid = *cIt_3->key;
+                    #endif
+                    deletelist.Push (guid);
+                }
             }
         }
     }
@@ -418,14 +438,14 @@ void RoomBook ()
     #endif
 }
 
-GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ParamDictValue& propertyParams, bool& has_base_element)
+GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ClassificationFunc::ClassificationDict& finclass, ParamDictValue& propertyParams, bool& has_base_element)
 {
     //Существующие элементы храним в словаре двойной вложенности
     // Первый уровень - ключ API_Guid зоны
     // Второй ключ - GUID базового элемента (к которому привязана отделка)
     //               для элементов без базовой конструкции (потолки, полы) там будет guid зоны
     // Далее уже идёт словарь с GUID существующих элементов отделки
-    GS::HashTable<API_Guid, UnicGuidByGuid> exsistot_byzone = {};
+    GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone = {};
     // Поиск существующих элементов отделки
     UnicGuidByGuid exsistotdelements = {}; // Словарь существующих отделочных элементов с разбивкой по зонам
     int errcode = 0;
@@ -440,7 +460,8 @@ GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_G
         UnicGuid guids = *cIt->value;
         API_Guid zoneguid = *cIt->key;
         #endif
-        GS::Array<API_Guid> otd_elements = {}; // Список всех элементов отделки
+        GS::HashTable<API_Guid, TypeOtd> otd_elements = {};
+        // Список всех элементов отделки
         for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
             #if defined(AC_28) || defined(AC_29)
             API_Guid guid = cItt->key;
@@ -449,29 +470,48 @@ GS::HashTable<API_Guid, UnicGuidByGuid> Otd_GetOtd_ByZone (const GS::Array<API_G
             API_Guid guid = *cItt->key;
             bool isvisible = *cItt->value;
             #endif
-            if (Class_IsElementFinClass (guid, finclassguids)) otd_elements.Push (guid);
+            API_Guid classguid;
+            if (Class_IsElementFinClass (guid, finclassguids, classguid)) {
+                TypeOtd type_otd = Class_GetOtdTypeByClass (classguid, finclass);
+                if (!otd_elements.ContainsKey (guid)) otd_elements.Add (guid, type_otd);
+            }
         }
         if (exsistot_byzone.ContainsKey (zoneguid)) continue;
-        UnicGuidByGuid exsistot_byparent = Otd_GetOtd_Parent (otd_elements, propertyParams, has_base_element);
+        UnicGuidByBase exsistot_byparent = Otd_GetOtd_Parent (otd_elements, propertyParams, has_base_element);
         exsistot_byzone.Add (zoneguid, exsistot_byparent);
     }
     return exsistot_byzone;
 }
 
-UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, ParamDictValue& propertyParams, bool& has_base_element)
+UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>& otd_elements, ParamDictValue& propertyParams, bool& has_base_element)
 {
     int errcode = 0;
-    UnicGuidByGuid exsistot_byparent = {};
+    UnicGuidByBase exsistot_byparent = {};
     UnicGuidByGuid parentdict = {}; // Для считывания элементов
-    if (!SyncGetSubelement (otd_elements, parentdict, propertyParams, "base element", errcode)) {
+    GS::Array<API_Guid> otd_els = {};
+    for (GS::HashTable<API_Guid, TypeOtd>::PairIterator cIt = otd_elements.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        API_Guid elems = cIt->key;
+        #else
+        API_Guid elems = *cIt->key;
+        #endif
+        otd_els.Push (elems);
+    }
+    if (!SyncGetSubelement (otd_els, parentdict, propertyParams, "base element", errcode)) {
         API_Guid parentguid = APINULLGuid;
-        for (const API_Guid& subguid : otd_elements) {
+        for (const API_Guid& subguid : otd_els) {
+            if (!otd_elements.ContainsKey (subguid)) continue;
+            TypeOtd t = otd_elements.Get (subguid);
             if (!exsistot_byparent.ContainsKey (parentguid)) {
-                UnicGuid subdict = {};
-                subdict.Add (subguid, true);
-                exsistot_byparent.Add (parentguid, subdict);
-            } else {
-                if (!exsistot_byparent.Get (parentguid).ContainsKey (subguid)) exsistot_byparent.Get (parentguid).Add (subguid, true);
+                UnicGuidByTypeOtd subdicttype = {};
+                exsistot_byparent.Add (parentguid, subdicttype);
+            }
+            if (!exsistot_byparent.Get (parentguid).ContainsKey (t)) {
+                UnicGuid subdicttype = {};
+                exsistot_byparent.Get (parentguid).Add (t, subdicttype);
+            }
+            if (!exsistot_byparent.Get (parentguid).Get (t).ContainsKey (subguid)) {
+                exsistot_byparent.Get (parentguid).Get (t).Add (subguid, true);
             }
         }
         return exsistot_byparent;
@@ -484,19 +524,26 @@ UnicGuidByGuid Otd_GetOtd_Parent (const GS::Array<API_Guid>& otd_elements, Param
         API_Guid subguid = *cIt->key;
         UnicGuid parentels = *cIt->value;
         #endif
+        if (!otd_elements.ContainsKey (subguid)) continue;
+        TypeOtd t = otd_elements.Get (subguid);
         for (UnicGuid::PairIterator cItt = parentels.EnumeratePairs (); cItt != NULL; ++cItt) {
             #if defined(AC_28) || defined(AC_29)
             API_Guid parentguid = cItt->key;
             #else
             API_Guid parentguid = *cItt->key;
             #endif
+
             if (!exsistot_byparent.ContainsKey (parentguid)) {
-                UnicGuid subdict = {};
-                subdict.Add (subguid, true);
-                exsistot_byparent.Add (parentguid, subdict);
+                UnicGuidByTypeOtd subdicttype = {};
+                exsistot_byparent.Add (parentguid, subdicttype);
+            }
+            if (!exsistot_byparent.Get (parentguid).ContainsKey (t)) {
+                UnicGuid subdicttype = {};
+                exsistot_byparent.Get (parentguid).Add (t, subdicttype);
+            }
+            if (!exsistot_byparent.Get (parentguid).Get (t).ContainsKey (subguid)) {
+                exsistot_byparent.Get (parentguid).Get (t).Add (subguid, true);
                 has_base_element = true;
-            } else {
-                if (!exsistot_byparent.Get (parentguid).ContainsKey (subguid)) exsistot_byparent.Get (parentguid).Add (subguid, true);
             }
         }
     }
@@ -1376,7 +1423,8 @@ void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, c
     }
     if (allslabs_.IsEmpty ()) return;
     for (auto guid : allslabs_) {
-        if (!Class_IsElementFinClass (guid, finclassguids)) allslabs.Push (guid);
+        API_Guid classguid;
+        if (!Class_IsElementFinClass (guid, finclassguids, classguid)) allslabs.Push (guid);
     }
     if (allslabs.IsEmpty ()) return;
     GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions = {};
@@ -1389,7 +1437,8 @@ void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, c
         return;
     }
     for (const auto& pair : collisions.AsConst ()) {
-        if (Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids)) continue;
+        API_Guid classguid;
+        if (Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids, classguid)) continue;
         if (!slabsinzone.ContainsKey (pair.first.collidedElemGuid)) {
             GS::Array<API_Guid> s;
             s.Push (pair.second.collidedElemGuid);
@@ -3999,7 +4048,7 @@ void Class_SetClass (const OtdSlab& op, const ClassificationFunc::Classification
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
-API_Guid Class_GetClassGuid (const TypeOtd type, const ClassificationFunc::ClassificationDict& finclass)
+API_Guid Class_GetClassGuid (const TypeOtd& type, const ClassificationFunc::ClassificationDict& finclass)
 {
     if (type == Column && finclass.ContainsKey (cls.column_class)) return finclass.Get (cls.column_class).item.guid;
     if ((type == Reveal_Main || type == Reveal_Up || type == Reveal_Down) && finclass.ContainsKey (cls.reveal_class)) return finclass.Get (cls.reveal_class).item.guid;
@@ -4010,6 +4059,31 @@ API_Guid Class_GetClassGuid (const TypeOtd type, const ClassificationFunc::Class
     if (finclass.ContainsKey (cls.all_class)) return finclass.Get (cls.all_class).item.guid;
     return APINULLGuid;
 }
+
+TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::ClassificationDict& finclass)
+{
+    for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationValues>::PairIterator cIt = finclass.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        GS::UniString name = cIt->key;
+        ClassificationFunc::ClassificationValues& cl = cIt->value;
+        #else
+        GS::UniString name = *cIt->key;
+        ClassificationFunc::ClassificationValues& cl = *cIt->value;
+        #endif
+        if (cl.item.guid != classguid) continue;
+        if (name == cls.ceil_class) {
+            return Ceil;
+        }
+        if (name == cls.floor_class) {
+            return Floor;
+        }
+        if (name == cls.all_class) {
+            return NoSet;
+        }
+    }
+    return NoSet;
+}
+
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
@@ -4175,13 +4249,15 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& prop
     }
 }
 
-bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids)
+
+bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids, API_Guid& classguid)
 {
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
     if (ACAPI_Element_GetClassificationItems (elGuid, systemItemPairs) == NoError) {
         if (!systemItemPairs.IsEmpty ()) {
             for (const auto& cl : systemItemPairs) {
                 if (finclassguids.ContainsKey (cl.second)) {
+                    classguid = cl.second;
                     return true;
                 }
             }
