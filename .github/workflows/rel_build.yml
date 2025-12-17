@@ -68,7 +68,11 @@ jobs:
 
       - name: Setup Xcode
         run: |
-          xcVersion=15.1
+          if [ ${{ matrix.ac-version }} -lt 29 ]; then
+            xcVersion=14.2
+          else
+            xcVersion=15.1
+          fi
           echo "Using Xcode version: ${xcVersion}"
           sudo xcode-select -s /Applications/Xcode_${xcVersion}.app
           
