@@ -59,6 +59,8 @@ function (SetCompilerOptions target acVersion)
             -Wno-shorten-64-to-32
             -Wno-sign-compare
             -Wno-switch
+            -Wno-missing-template-arg-list-after-template-kw
+            -Wno-explicit-specialization-storage-class
         )
         if (${acVersion} LESS_EQUAL "24")
             target_compile_options (${target} PUBLIC -Wno-non-c-typedef-for-linkage)
