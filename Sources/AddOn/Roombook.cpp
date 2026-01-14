@@ -1611,20 +1611,28 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
             }
         }
         if (zBottom <= poly.zBottom) {
-            OtdSlab otdslab;
-            otdslab.poly = slabpolygon;
-            otdslab.base_type = API_SlabID;
-            otdslab.base_guid = slabGuid;
-            if (type == Ceil) {
-                otdslab.zBottom = zBottom;
-            } else {
-                otdslab.zBottom = zUp;
+            Geometry::Polygon2D reducedroom;
+            Geometry::MultiPolygon2D resultPolys = slabpolygon.Intersect (roompolygon);
+            if (!resultPolys.IsEmpty ()) {
+                reducedroom = resultPolys.PopLargest ();
+                resultPolys.Clear ();
             }
-            otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
-            otdslab.floorInd = floorInd;
-            otdslab.type = type;
-            otdslab.material = poly.material;
-            otdslabs.Push (otdslab);
+            if (reducedroom.CalcArea () > 0.001) {
+                OtdSlab otdslab;
+                otdslab.poly = reducedroom;
+                otdslab.base_type = API_SlabID;
+                otdslab.base_guid = slabGuid;
+                if (type == Ceil) {
+                    otdslab.zBottom = zBottom;
+                } else {
+                    otdslab.zBottom = zUp;
+                }
+                otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
+                otdslab.floorInd = floorInd;
+                otdslab.type = type;
+                otdslab.material = poly.material;
+                otdslabs.Push (otdslab);
+            }
         }
         ACAPI_DisposeElemMemoHdls (&memo);
     }

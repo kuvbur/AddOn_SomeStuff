@@ -24,7 +24,15 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
     for (UIndex i = 0; i < systems.GetSize (); ++i) {
         GS::UniString systemname = systems[i].name.ToLowerCase ();
         systemname.Trim ();
-        if (!systemdict.ContainsKey (systemname)) {
+
+        GS::UniString systemname_full = systemname + " v" + systems[i].editionVersion.ToLowerCase ();
+        systemname_full.Trim ();
+
+        bool has_systemname = systemdict.ContainsKey (systemname);
+        bool has_systemname_full = systemdict.ContainsKey (systemname_full);
+        bool has_autoclassname = systemdict.ContainsKey (autoclassname);
+
+        if (!has_systemname || !has_systemname_full) {
             GS::Array<API_ClassificationItem> allItems = {};
             GS::Array<API_ClassificationItem> rootItems = {};
             ClassificationDict classifications = {};
@@ -41,8 +49,9 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
             if (!classifications.IsEmpty ()) {
                 API_ClassificationItem parent, item;
                 AddClassificationItem (item, parent, classifications, systems[i]);
-                systemdict.Add (systemname, classifications);
-                if (classifications.ContainsKey (autoclassname)) {
+                if (!has_systemname) systemdict.Add (systemname, classifications);
+                if (!has_systemname_full) systemdict.Add (systemname_full, classifications);
+                if (classifications.ContainsKey (autoclassname) && !has_autoclassname) {
                     ClassificationDict autoclassifications = {};
                     autoclassifications.Add (autoclassname, classifications.Get (autoclassname));
                     systemdict.Add (autoclassname, autoclassifications);
