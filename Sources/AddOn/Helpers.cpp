@@ -2081,6 +2081,8 @@ GS::UniString GetPropertyENGName (GS::UniString& name)
     if (name.IsEqual ("@property:ns")) return "@material:ns";
     if (name.IsEqual ("@property:layer_thickness")) return "@material:layer thickness";
     if (name.IsEqual ("@property:th")) return "@material:layer thickness";
+    if (name.IsEqual ("@property:layer_min_thickness")) return "@material:layer min thickness";
+    if (name.IsEqual ("@property:th_min")) return "@material:layer min thickness";
     if (name.IsEqual ("@property:bmat_inx")) return "@material:bmat_inx";
     if (name.IsEqual ("@property:cutfill_inx")) return "@material:cutfill_inx";
     if (name.IsEqual ("@property:some_stuff_th")) return "@property:buildingmaterialproperties/some_stuff_th";
@@ -3967,8 +3969,10 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         return;
     }
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
+
     bool can_read_fromMaterial = true;
     if (eltype != API_WallID &&
+       eltype != API_MeshID &&
        eltype != API_SlabID &&
        eltype != API_ColumnID &&
        eltype != API_BeamID &&
@@ -3999,6 +4003,9 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             // Когда нужно получить весь элемент
             if (param.fromElement || (param.fromGDLdescription && can_read_fromGDL) || param.fromCoord || (param.fromMorph && eltype == API_MorphID) || param.fromAttribDefinition) {
                 needGetElement = true;
+            }
+            if (param.fromQuantity && can_read_fromGDL) {
+                can_read_fromMaterial = true; // Включаем чтение материалов из GDL в случае, когда требуется спецификация всех материалов
             }
             if (can_read_fromMaterial && param.fromMaterial) {
                 needGetElement = true;
@@ -4112,6 +4119,9 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         if (paramType.IsEqual ("{@gdl:") && can_read_fromGDL) {
             needCompare = ParamHelpers::ReadGDL (element, elem_head, paramByType);
         }
+        if (paramType.IsEqual ("{@listdata:") && can_read_fromGDL) {
+            needCompare = ParamHelpers::ReadListData (elem_head, paramByType);
+        }
         #if !defined (AC_29)
         if (paramType.IsEqual ("{@ifc:")) {
             needCompare = ParamHelpers::ReadIFC (elemGuid, paramByType);
@@ -4143,9 +4153,6 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             #if defined (AC_28)
             needCompare = MEPv1::ReadMEP (elem_head, paramByType);
             #endif
-        }
-        if (paramType.IsEqual ("{@listdata:") && eltype == API_ObjectID) {
-            needCompare = ParamHelpers::ReadListData (elem_head, paramByType);
         }
         if (needCompare) {
             #if defined(TESTING)
@@ -6007,6 +6014,22 @@ bool ParamHelpers::ReadMaterial (const API_Element& element, ParamDictValue& par
                     params.Get (layer_thickness).val.type = API_PropertyRealValueType;
                     params.Get (layer_thickness).isValid = true;
                 }
+                layer_thickness = "{@material:layer min thickness}";
+                if (params.ContainsKey (layer_thickness)) {
+                    if (!is_equal (param_composite.composite[indx].fillThick_min, -1.0) && !is_equal (param_composite.composite[indx].fillThick_min, param_composite.composite[indx].fillThick)) {
+                        double fillThick = param_composite.composite[indx].fillThick_min;
+                        FormatString formatsting = params.Get (layer_thickness).val.formatstring;
+                        if (formatsting.isEmpty) {
+                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
+                            params.Get (layer_thickness).val.formatstring = formatsting;
+                        }
+                        params.Get (layer_thickness).val.doubleValue = fillThick;
+                        params.Get (layer_thickness).val.rawDoubleValue = fillThick;
+                        params.Get (layer_thickness).val.hasrawDouble = true;
+                        params.Get (layer_thickness).val.type = API_PropertyRealValueType;
+                        params.Get (layer_thickness).isValid = true;
+                    }
+                }
                 if (param_composite.composite_pen < 0) {
                     layer_thickness = "{@material:area}"; defult_formatstring = "2m";
                     if (params.ContainsKey (layer_thickness)) {
@@ -7076,7 +7099,7 @@ GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatStr
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
-bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, short& structype_ven, double& width, double& length)
+bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, const double& fillThick_min, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, short& structype_ven, double& width, double& length)
 {
     #if defined(TESTING)
     DBprnt ("        ComponentsBasicStructure\n");
@@ -7096,6 +7119,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     ParamValueComposite layer = {};
     layer.inx = constrinx;
     layer.fillThick = fillThick;
+    layer.fillThick_min = fillThick_min;
     layer.length = length;
     layer.width = width;
     layer.num = 1;
@@ -7105,11 +7129,12 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
+        if (params.ContainsKey (cIt->key)) params.Get (cIt->key).composite = param_composite.composite;
         #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
+        if (params.ContainsKey (*cIt->key)) params.Get (*cIt->key).composite = param_composite.composite;
         #endif
     }
-    ParamHelpers::CompareParamDictValue (paramlayers, params);
     return true;
 }
 
@@ -7191,11 +7216,12 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
     for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
+        if (params.ContainsKey (cIt->key)) params.Get (cIt->key).composite = param_composite.composite;
         #else
         paramlayers.Get (*cIt->key).composite = param_composite.composite;
+        if (params.ContainsKey (*cIt->key)) params.Get (*cIt->key).composite = param_composite.composite;
         #endif
     }
-    ParamHelpers::CompareParamDictValue (paramlayers, params);
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
 }
@@ -7368,7 +7394,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                         API_AttributeIndex	constrinxL = ACAPI_CreateAttributeIndex ((GS::Int32) syHatch.GetBuildMatIdx ().ToGSAttributeIndex ());
                         #endif
                         #else
-                        API_AttributeIndex	constrinxL = (API_AttributeIndex) syHatch.GetBuildMatIdx ();
+                        API_AttributeIndex constrinxL = (API_AttributeIndex) syHatch.GetBuildMatIdx ();
                         #endif
                         // Проходим по полигонам
                         for (UInt32 i = 0; i < result.GetSize (); i++) {
@@ -7544,6 +7570,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     API_ModelElemStructureType structtype = API_BasicStructure;
     API_AttributeIndex constrinx = {};
     double fillThick = 0, width = 0, length = 0;
+    double fillThick_min = 0;
     // Отделка колонн
     API_AttributeIndex constrinx_ven = {};
     double fillThick_ven = 0; short structype_ven = 0;
@@ -7552,6 +7579,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     // информация храница в разных местах - запишем всё в одни переменные
     API_ElemTypeID eltype = GetElemTypeID (elemhead);
     API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    GSErrCode err = NoError;
     switch (eltype) {
         #ifndef AC_22
         case API_ColumnSegmentID:
@@ -7586,7 +7614,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             }
             if (element.column.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
-                GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
+                err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
                 if (err == NoError && memo.columnSegments != nullptr) {
                     elemhead = memo.columnSegments[0].head;
                     structtype = memo.columnSegments[0].assemblySegmentData.modelElemStructureType;
@@ -7621,7 +7649,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             }
             if (element.beam.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
-                GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
+                err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
                 if (err == NoError && memo.beamSegments != nullptr) {
                     elemhead = memo.beamSegments[0].head;
                     structtype = memo.beamSegments[0].assemblySegmentData.modelElemStructureType;
@@ -7678,6 +7706,27 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             if (structtype == API_BasicStructure) constrinx = element.shell.shellBase.buildingMaterial;
             fillThick = element.shell.shellBase.thickness;
             break;
+        case API_MeshID:
+            constrinx = element.mesh.buildingMaterial;
+            fillThick = 0;
+            fillThick_min = element.mesh.skirtLevel;
+            BNZeroMemory (&memo, sizeof (API_ElementMemo));
+            err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_MeshPolyZ);
+            if (err == NoError && memo.meshPolyZ != nullptr) {
+                Int32 nMeshLevels = BMGetHandleSize ((GSHandle) memo.meshPolyZ) / sizeof (double);
+                for (Int32 i = 1; i < nMeshLevels; i++) {
+                    fillThick = fmax (fillThick, element.mesh.skirtLevel + (*memo.meshPolyZ)[i]);
+                    fillThick_min = fmin (fillThick_min, element.mesh.skirtLevel + (*memo.meshPolyZ)[i]);
+                }
+            } else {
+                fillThick = element.mesh.skirtLevel;
+                fillThick_min = element.mesh.skirtLevel;
+            }
+            break;
+        case API_MorphID:
+            constrinx = element.morph.buildingMaterial;
+            fillThick = 0;
+            break;
         default:
             return false;
             break;
@@ -7716,7 +7765,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
 
     // Получим индексы строительных материалов и толщины
     if (structtype == API_BasicStructure) {
-        hasData = ParamHelpers::ComponentsBasicStructure (constrinx, fillThick, constrinx_ven, fillThick_ven, params, paramlayers, paramsAdd, structype_ven, width, length);
+        hasData = ParamHelpers::ComponentsBasicStructure (constrinx, fillThick, constrinx_ven, fillThick_ven, fillThick_min, params, paramlayers, paramsAdd, structype_ven, width, length);
     }
     if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure (elemhead.guid, constrinx, params, paramlayers, paramsAdd, existsmaterial, width, length);
     #ifndef AC_23

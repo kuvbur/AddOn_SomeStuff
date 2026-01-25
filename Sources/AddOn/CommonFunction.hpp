@@ -128,7 +128,8 @@ struct ParamValueData
 struct ParamValueComposite
 {
     API_AttributeIndex inx = {};					// Индекс материала
-    double fillThick = 0.0;					// Толщина слой
+    double fillThick = 0.0;					// Толщина слоя
+    double fillThick_min = -1.0;			// Толщина слоя
     double rfromstart = 0.0;				//Удаление от начальной точки (для определения порядка следования)
     short structype = 0;	//Является ядром?
     int num = 0;							//Номер слоя
