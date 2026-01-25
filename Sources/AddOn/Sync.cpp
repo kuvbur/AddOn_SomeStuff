@@ -1367,6 +1367,8 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
            elementType != API_RoofID &&
            elementType != API_BeamSegmentID &&
            elementType != API_ColumnSegmentID &&
+           elementType != API_MeshID &&
+           elementType != API_MorphID &&
            elementType != API_ShellID) synctypefind = false;
     }
     if (param.fromMorph) {

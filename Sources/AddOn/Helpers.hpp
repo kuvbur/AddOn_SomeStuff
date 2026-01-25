@@ -606,11 +606,10 @@ void SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp);
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
 bool ReadMaterial (const API_Element& element, ParamDictValue& params, ParamDictValue& propertyParams);
-
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
-bool ComponentsBasicStructure (const API_AttributeIndex& constrinx, const double& fillThick, const API_AttributeIndex& constrinx_ven, const double& fillThick_ven, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, short& structype_ven, double& width, double& length);
+bool ComponentsBasicStructure (const API_AttributeIndex& constrinx, const double& fillThick, const API_AttributeIndex& constrinx_ven, const double& fillThick_ven, const double& fillThick_min, ParamDictValue& params, ParamDictValue& paramlayers, ParamDictValue& paramsAdd, short& structype_ven, double& width, double& length);
 
 void ComponentsGetUnic (GS::Array<ParamValueComposite>& composite);
 
