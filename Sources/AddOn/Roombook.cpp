@@ -834,6 +834,7 @@ void OtdData_WriteToRoom (const ColumnFormatDict& columnFormat, const API_Guid& 
 void OtdData_AddValueToDict (OtdMaterialAreaDictByType& dct, const TypeOtd& type, const GS::UniString& mat, const double& area)
 {
     if (area < 0.000001) return;
+    if (mat.Contains ("----")) return;
     if (!dct.ContainsKey (type)) {
         OtdMaterialAreaDict dcta = {};
         dcta.Add (mat, area);
@@ -3174,6 +3175,9 @@ void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& b
     #endif
     GS::UniString part = material.smaterial;
     if (part.Contains ("fin_ignore")) {
+        return;
+    }
+    if (part.Contains ("----")) {
         return;
     }
     part.Trim ();
