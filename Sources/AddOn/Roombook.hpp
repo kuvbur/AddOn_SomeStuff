@@ -67,7 +67,7 @@ struct GuidByZ
     double r = 0;
     double zBottom = 0;
     double zUp = 0;
-    API_Guid guid = APINULLGuid;
+    std::string guid;
 };
 
 struct MatarialToFavorite

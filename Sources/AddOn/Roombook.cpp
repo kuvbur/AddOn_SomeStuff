@@ -473,7 +473,30 @@ GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_G
             API_Guid classguid;
             if (Class_IsElementFinClass (guid, finclassguids, classguid)) {
                 TypeOtd type_otd = Class_GetOtdTypeByClass (classguid, finclass);
-                if (!otd_elements.ContainsKey (guid)) otd_elements.Add (guid, type_otd);
+                API_ElemTypeID type_subguid = GetElemTypeID (guid);
+                bool correct_type = true;
+                switch (type_otd) {
+                    case Wall_Main:
+                    case Wall_Up:
+                    case Wall_Down:
+                    case Column:
+                        correct_type = (type_subguid == API_WallID || type_subguid == API_ObjectID);
+                        break;
+                    case Reveal_Main:
+                    case Reveal_Up:
+                    case Reveal_Down:
+                        correct_type = (type_subguid == API_WallID || type_subguid == API_ObjectID || type_subguid == API_BeamID);
+                        break;
+                    case Floor:
+                        correct_type = (type_subguid == API_SlabID || type_subguid == API_ObjectID);
+                        break;
+                    case Ceil:
+                        correct_type = (type_subguid == API_SlabID || type_subguid == API_ObjectID);
+                        break;
+                    default:
+                        break;
+                }
+                if (!otd_elements.ContainsKey (guid) && correct_type) otd_elements.Add (guid, type_otd);
             }
         }
         if (exsistot_byzone.ContainsKey (zoneguid)) continue;
@@ -1530,13 +1553,14 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
 void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material, bool only_on_slab)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
+    double area = 0;
     GSErrCode err = NoError;
     API_Element element = {};
-    GS::Array<API_Guid> elems = {};
-
+    Geometry::Polygon2D reducedroom;
+    // Необходимо в первую очередь построить отделку верхних (в случае полов) или нижних (в случае потолков) граней перекрытий
+    // Сортируем массив элементов по расстоянию до нужной грани
+    std::vector<GuidByZ> elems;
     for (API_Guid& slabGuid : slabGuids) {
-
-
         BNZeroMemory (&element, sizeof (API_Element));
         element.header.guid = slabGuid;
         err = ACAPI_Element_Get (&element);
@@ -1551,12 +1575,23 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
         zBottom = std::round (zBottom * 1000) / 1000;
         zUp = std::round (zUp * 1000) / 1000;
         GuidByZ z;
-        z.guid = slabGuid;
+        z.guid = APIGuid2GSGuid (slabGuid).ToUniString ().ToCStr (0, MaxUSize, CC_Cyrillic).Get ();
+        if (type == Ceil) {
+            z.r = zBottom;
+        } else {
+            z.r = zUp;
+        }
         z.zBottom = zBottom;
         z.zUp = zUp;
+        elems.push_back (z);
     }
-
-    for (API_Guid& slabGuid : slabGuids) {
+    // Сортируем по расстоянию до начала зоны
+    std::sort (elems.begin (), elems.end (),
+    [](const GuidByZ& a, const GuidByZ& b) {
+        return a.r > b.r;
+    });
+    for (const auto& el : elems) {
+        API_Guid slabGuid = APIGuidFromString (el.guid.c_str ());
         API_ElementMemo memo = {};
         BNZeroMemory (&memo, sizeof (API_ElementMemo));
         err = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
@@ -1573,7 +1608,11 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
             ACAPI_DisposeElemMemoHdls (&memo);
             continue;
         }
-        Geometry::Polygon2D reducedroom;
+        area = slabpolygon.CalcArea ();
+        if (area < 0.001) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            continue;
+        }
         // Находим общую часть перекрытия и комнаты
         Geometry::MultiPolygon2D resultPolys = roompolygon.Intersect (slabpolygon);
         if (resultPolys.IsEmpty ()) {
@@ -1582,7 +1621,8 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
         }
         reducedroom = resultPolys.PopLargest ();
         resultPolys.Clear ();
-        if (reducedroom.CalcArea () < 0.001) {
+        area = reducedroom.CalcArea ();
+        if (area < 0.001) {
             ACAPI_DisposeElemMemoHdls (&memo);
             continue;
         }
@@ -1591,9 +1631,9 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
         otdslab.base_type = API_SlabID;
         otdslab.base_guid = slabGuid;
         if (type == Ceil) {
-            otdslab.zBottom = zBottom;
+            otdslab.zBottom = el.zBottom;
         } else {
-            otdslab.zBottom = zUp;
+            otdslab.zBottom = el.zUp;
         }
         otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
         otdslab.floorInd = floorInd;
@@ -1602,9 +1642,9 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
         otdslabs.Push (otdslab);
         // Удаляем отверстия и вычитаем из комнаты
         reducedroom.RemoveHoles ();
-        double dzBottom = poly.zBottom - zBottom;
-        double dzUp = poly.zBottom - zBottom;
-        if (poly.zBottom >= zBottom && poly.zBottom <= zUp) {
+        double dzBottom = poly.zBottom - el.zBottom;
+        double dzUp = poly.zBottom - el.zBottom;
+        if (poly.zBottom >= el.zBottom && poly.zBottom <= el.zUp) {
             // Добавляем отделочные стенки по контуру
             Geometry::Polygon2DData polygon2DData;
             Geometry::InitPolygon2DData (&polygon2DData);
@@ -1623,11 +1663,11 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
                 if (!(roompolygon.IsCoordOnEdge (begC, nullptr) && roompolygon.IsCoordOnEdge (endC, nullptr))) {
                     wallotd.base_guid = slabGuid;
                     if (type == Floor) {
-                        wallotd.height = zUp - poly.zBottom;
+                        wallotd.height = el.zUp - poly.zBottom;
                         wallotd.zBottom = poly.zBottom;
                     } else {
-                        wallotd.height = poly.zBottom - zBottom;
-                        wallotd.zBottom = zBottom;
+                        wallotd.height = poly.zBottom - el.zBottom;
+                        wallotd.zBottom = el.zBottom;
                     }
                     wallotd.endC = { begC.x, begC.y };
                     wallotd.begC = { endC.x, endC.y };
@@ -1635,7 +1675,7 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
                     wallotd.base_type = API_SlabID;
                     wallotd.type = type;
                     wallotd.floorInd = floorInd;
-                    otdwall.Push (wallotd);
+                    if (wallotd.height > 0.005) otdwall.Push (wallotd);
                 }
             }
             Geometry::FreePolygon2DData (&polygon2DData);
@@ -1643,97 +1683,15 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
         resultPolys = roompolygon.Substract (reducedroom);
         if (!resultPolys.IsEmpty ()) {
             roompolygon = resultPolys.PopLargest ();
+            area = roompolygon.CalcArea ();
             resultPolys.Clear ();
         } else {
             roompolygon.Clear ();
         }
         ACAPI_DisposeElemMemoHdls (&memo);
-
-
-
-        //if (poly.zBottom >= zBottom && poly.zBottom <= zUp) {
-        //    Geometry::Polygon2D reducedroom;
-        //    Geometry::Polygon2D wallpolygon;
-        //    Geometry::MultiPolygon2D resultPolys = roompolygon.Substract (slabpolygon);
-        //    if (!resultPolys.IsEmpty ()) {
-        //        reducedroom = resultPolys.PopLargest ();
-        //        resultPolys.Clear ();
-        //        resultPolys = slabpolygon.Intersect (roompolygon);
-        //        if (!resultPolys.IsEmpty ()) {
-        //            wallpolygon = resultPolys.PopLargest ();
-        //            // Добавляем отделочные стенки по контуру
-        //            Geometry::Polygon2DData polygon2DData;
-        //            Geometry::InitPolygon2DData (&polygon2DData);
-        //            Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, wallpolygon);
-        //            if (polygon2DData.contourEnds == nullptr) {
-        //                msg_rep ("Floor_Create_One - error", "polygon2DData.contourEnds == nullptr", NoError, slabGuid);
-        //                Geometry::FreePolygon2DData (&polygon2DData);
-        //                continue;
-        //            }
-        //            UInt32 begInd = (*polygon2DData.contourEnds)[0] + 1;
-        //            UInt32 endInd = (*polygon2DData.contourEnds)[1];
-        //            for (UInt32 k = begInd; k < endInd; k++) {
-        //                OtdWall wallotd;
-        //                Point2D begC = { (*polygon2DData.vertices)[k].x, (*polygon2DData.vertices)[k].y };
-        //                Point2D endC = { (*polygon2DData.vertices)[k + 1].x, (*polygon2DData.vertices)[k + 1].y };
-        //                if (!(roompolygon.IsCoordOnEdge (begC, nullptr) && roompolygon.IsCoordOnEdge (endC, nullptr))) {
-        //                    wallotd.base_guid = slabGuid;
-        //                    if (type == Floor) {
-        //                        wallotd.height = zUp - poly.zBottom;
-        //                        wallotd.zBottom = poly.zBottom;
-        //                    } else {
-        //                        wallotd.height = poly.zBottom - zBottom;
-        //                        wallotd.zBottom = zBottom;
-        //                    }
-        //                    wallotd.endC = { begC.x, begC.y };
-        //                    wallotd.begC = { endC.x, endC.y };
-        //                    wallotd.material = poly.material;
-        //                    wallotd.base_type = API_SlabID;
-        //                    wallotd.type = type;
-        //                    wallotd.floorInd = floorInd;
-        //                    otdwall.Push (wallotd);
-        //                }
-        //            }
-        //            Geometry::FreePolygon2DData (&polygon2DData);
-        //            slabpolygon = wallpolygon;
-        //        }
-        //        roompolygon = reducedroom;
-        //    }
-        //}
-        //if (zBottom <= poly.zBottom) {
-        //    Geometry::Polygon2D reducedroom;
-        //    Geometry::MultiPolygon2D resultPolys = roompolygon.Substract (slabpolygon_no_hole);
-        //    //if (resultPolys.IsEmpty ()) {
-        //    //    resultPolys = roompolygon.Intersect (slabpolygon);
-        //    //}
-        //    //if (resultPolys.IsEmpty ()) {
-        //    //    resultPolys = roompolygon.Substract (slabpolygon);
-        //    //}
-
-        //    if (!resultPolys.IsEmpty ()) {
-        //        reducedroom = resultPolys.PopLargest ();
-        //        resultPolys.Clear ();
-        //    }
-        //    if (reducedroom.CalcArea () > 0.001) {
-        //        OtdSlab otdslab;
-        //        otdslab.poly = reducedroom;
-        //        otdslab.base_type = API_SlabID;
-        //        otdslab.base_guid = slabGuid;
-        //        if (type == Ceil) {
-        //            otdslab.zBottom = zBottom;
-        //        } else {
-        //            otdslab.zBottom = zUp;
-        //        }
-        //        otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
-        //        otdslab.floorInd = floorInd;
-        //        otdslab.type = type;
-        //        otdslab.material = poly.material;
-        //        otdslabs.Push (otdslab);
-        //    }
-        //}
-
     }
-    if (!only_on_slab && roompolygon.CalcArea () > 0.0001) {
+    area = roompolygon.CalcArea ();
+    if (!only_on_slab && area > 0.0001) {
         OtdSlab otdslab = poly;
         otdslab.type = type;
         otdslab.zBottom = std::round (otdslab.zBottom * 1000) / 1000;
@@ -3895,6 +3853,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
             msg_rep ("Floor_Draw_Object", "ACAPI_Element_Get", err, otdslab.otd_guid);
             return;
         }
+        if (GetElemTypeID (slabelement) != API_SlabID) return;
         err = ACAPI_Element_GetMemo (slabelement.header.guid, &memo, APIMemoMask_Polygon);
         if (err != NoError) {
             msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
@@ -4180,14 +4139,26 @@ TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::
         ClassificationFunc::ClassificationValues& cl = *cIt->value;
         #endif
         if (cl.item.guid != classguid) continue;
+        if (name == cls.all_class) {
+            return NoSet;
+        }
+        if (name == cls.otdwall_class) {
+            return Wall_Main;
+        }
+        if (name == cls.otdwall_down_class) {
+            return Wall_Down;
+        }
         if (name == cls.ceil_class) {
             return Ceil;
         }
         if (name == cls.floor_class) {
             return Floor;
         }
-        if (name == cls.all_class) {
-            return NoSet;
+        if (name == cls.column_class) {
+            return Column;
+        }
+        if (name == cls.reveal_class) {
+            return Reveal_Main;
         }
     }
     return NoSet;
