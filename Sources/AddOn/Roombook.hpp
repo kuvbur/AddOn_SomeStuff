@@ -62,6 +62,14 @@ struct OtdMaterial
     GS::UniString rawname_bytype = ""; // Имя свойства для записи c разбивкой
 };
 
+struct GuidByZ
+{
+    double r = 0;
+    double zBottom = 0;
+    double zUp = 0;
+    API_Guid guid = APINULLGuid;
+};
+
 struct MatarialToFavorite
 {
     GS::UniString name = ""; // Имя избранного 
