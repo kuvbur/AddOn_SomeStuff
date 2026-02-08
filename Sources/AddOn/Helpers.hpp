@@ -592,6 +592,8 @@ bool GDLParamByName (const API_Element& element, const API_Elem_Head& elem_head,
 // -----------------------------------------------------------------------------
 bool ReadFormula (ParamDictValue& paramByType, ParamDictValue& params);
 
+bool ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniString& name, GS::UniString& unitcode, GS::UniString& suffix, double& qty);
+
 bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& params);
 
 void ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictValue& paramlayers);
@@ -601,6 +603,8 @@ bool ReadElementValues (const API_Element& element, ParamDictValue& params);
 GS::UniString GetUnitsPrefix (GS::UniString& unit);
 
 void SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp);
+
+void ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictValue& propertyParams, ParamDictValue& paramlayers, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, bool& needReadQuantities);
 
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
