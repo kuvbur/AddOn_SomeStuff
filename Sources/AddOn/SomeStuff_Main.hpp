@@ -42,11 +42,18 @@ static const Int32 AutoLay_CommandID = 17;
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
 static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param);
+
+static GSErrCode SelectionChangeHandlerProc (const API_Neig* selElemNeig);
 #else
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
 static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param);
+
+static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig* selElemNeig);
 #endif
+
+GSErrCode MemSelection (bool read);
+GS::Array<API_Neig>& GetSelectedElements ();
 
 void Do_ElementMonitor (bool& syncMon);
 

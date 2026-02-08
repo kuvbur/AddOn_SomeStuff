@@ -21,6 +21,12 @@
 #include	"Spec.hpp"
 
 
+GS::Array<API_Neig>& GetSelectedElements ()
+{
+    static GS::Array<API_Neig> selected_elements;
+    return selected_elements;
+}
+
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
@@ -52,7 +58,77 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
         AttachObserver (*(it->key), syncSettings);
         #endif
     }
+    ACAPI_KeepInMemory (true);
     return NoError;
+}
+#if defined(AC_28) || defined(AC_29)
+static GSErrCode SelectionChangeHandlerProc (const API_Neig * selElemNeig)
+#else
+static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig * selElemNeig)
+#endif
+{
+    #ifdef TESTING
+    DBprnt ("SelectionChangeHandlerProc");
+    #endif
+    ACAPI_KeepInMemory (true);
+    GSErrCode err = NoError;
+    //err = MemSelection (true);
+    return err;
+}
+
+GSErrCode MemSelection (bool read)
+{
+    #ifdef TESTING
+    DBprnt ("=== Selection");
+    #endif
+    GSErrCode err = NoError;
+    auto& selected_elements = GetSelectedElements ();
+    DBprnt (selected_elements.GetSize (), "    Start stored size");
+    if (read) {
+        #ifdef TESTING
+        DBprnt ("  === Read selection");
+        #endif
+        API_SelectionInfo selectionInfo;
+        GS::Array<API_Neig> selNeigs = {};
+        if (!selected_elements.IsEmpty ()) selected_elements.Clear ();
+        err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
+        BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
+        if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty || err != NoError) {
+            selected_elements.Clear ();
+            #ifdef TESTING
+            DBprnt ("    !!!!!EMPTY Clear");
+            #endif
+            return NoError;
+        }
+        for (const API_Neig& neig : selNeigs) {
+            selected_elements.PushNew (neig.guid);
+        }
+        DBprnt (selected_elements.GetSize (), "    Select add");
+    } else {
+        #ifdef TESTING
+        DBprnt ("  === Set selection");
+        #endif
+        if (!selected_elements.IsEmpty ()) {
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+            err = ACAPI_Selection_Select (selected_elements, true);
+            if (err == NoError) ACAPI_View_ZoomToSelected ();
+            #else
+            err = ACAPI_Element_Select (selected_elements, true);
+            if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
+            #endif
+            #ifdef TESTING
+            DBprnt (selected_elements.GetSize (), "    Select");
+            #endif
+        } else {
+            #ifdef TESTING
+            DBprnt (selected_elements.GetSize (), "    !!!!!EMPTY");
+            #endif
+        }
+    }
+    #ifdef TESTING
+    DBprnt (selected_elements.GetSize (), "    End stored size");
+    #endif
+    return err;
 }
 
 // -----------------------------------------------------------------------------
@@ -96,11 +172,13 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
             DimRoundAll (syncSettings, false);
+            //MemSelection (false);
             break;
         default:
             break;
     }
     (void) param;
+    ACAPI_KeepInMemory (true);
     return NoError;
 }	// ProjectEventHandlerProc
 
@@ -115,6 +193,7 @@ GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
     #else
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
+    ACAPI_KeepInMemory (true);
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
     #endif
@@ -129,7 +208,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     }
     if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
     if (elemType->elemHead.hotlinkGuid != APINULLGuid) return false;
-
     // Смотрим - что поменялось
     #if defined(TESTING)
     DBprnt ("ElementEventHandlerProc start");
@@ -423,6 +501,7 @@ GSErrCode __ACDLL_CALL RegisterInterface (void)
     #else
     err = ACAPI_Register_Menu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
     #endif
+    ACAPI_KeepInMemory (true);
     return err;
 }
 #if defined(AC_28) || defined(AC_29)
@@ -443,6 +522,7 @@ GSErrCode __ACENV_CALL Initialize (void)
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.syncMon);
     MonAll (syncSettings);
+    GSErrCode err = ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     #else
