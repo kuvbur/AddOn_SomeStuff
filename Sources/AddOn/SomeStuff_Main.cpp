@@ -522,10 +522,11 @@ GSErrCode __ACENV_CALL Initialize (void)
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.syncMon);
     MonAll (syncSettings);
-    GSErrCode err = ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    ACAPI_Notification_CatchSelectionChange (SelectionChangeHandlerProc);
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     #else
+    ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     #endif
     ACAPI_KeepInMemory (true);
