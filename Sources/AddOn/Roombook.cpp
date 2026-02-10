@@ -11,7 +11,7 @@
 #include "Roombook.hpp"
 #include "Sync.hpp"
 #include    "VectorImageIterator.hpp"
-namespace AutoFunc
+namespace Roombook
 
 {
 #if defined(AC_22) || defined(AC_23)
@@ -40,10 +40,10 @@ void RoomBook ()
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
     #endif
 
-    GS::Array<API_Guid> zones;
+    GS::Array<API_Guid> zones = {};
     GSErrCode            err;
     API_SelectionInfo    selectionInfo;
-    GS::Array<API_Neig>  selNeigs;
+    GS::Array<API_Neig>  selNeigs = {};
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
     if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
