@@ -439,7 +439,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                 case RoomBook_CommandID:
                     msg_rep ("RoomBook", "============== START ==============", NoError, APINULLGuid);
-                    AutoFunc::RoomBook ();
+                    Roombook::RoomBook ();
                     msg_rep ("RoomBook", "=============== END ===============", NoError, APINULLGuid);
                     break;
                     #ifndef AC_22

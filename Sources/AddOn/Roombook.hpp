@@ -4,7 +4,7 @@
 #define	ROOMBOOK_HPP
 
 #include    "Helpers.hpp"
-namespace AutoFunc
+namespace Roombook
 {
 #if defined(AC_22) || defined(AC_23)
 void RoomBook ();
