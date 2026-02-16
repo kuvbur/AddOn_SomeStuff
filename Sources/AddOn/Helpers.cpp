@@ -5837,11 +5837,28 @@ bool ParamHelpers::ReadElementValues (const API_Element& element, ParamDictValue
             case API_LampID:
                 ParamHelpers::ConvertBoolToParamValue (param, param.name, !element.lamp.useObjMaterials);
                 break;
+            case API_ZoneID:
+                ParamHelpers::ConvertBoolToParamValue (param, param.name, element.zone.oneMat);
+                break;
             default:
                 param.isValid = false;
                 break;
         }
         if (param.isValid) flag_find = true;
+    }
+    if (eltype == API_ZoneID) {
+        rawname = "{@element:zone manual poly}";
+        if (params.ContainsKey (rawname)) {
+            ParamValue& param = params.Get (rawname);
+            ParamHelpers::ConvertBoolToParamValue (param, param.name, element.zone.manual);
+            if (param.isValid) flag_find = true;
+        }
+        rawname = "{@element:zone by ref line}";
+        if (params.ContainsKey (rawname)) {
+            ParamValue& param = params.Get (rawname);
+            ParamHelpers::ConvertBoolToParamValue (param, param.name, element.zone.refLineFlag);
+            if (param.isValid) flag_find = true;
+        }
     }
     return flag_find;
 }
