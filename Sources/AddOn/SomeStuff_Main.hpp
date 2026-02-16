@@ -38,6 +38,122 @@ static const Int32 SetSub_CommandID = 14;
 static const Int32 RoomBook_CommandID = 15;
 static const Int32 Auto3D_CommandID = 16;
 static const Int32 AutoLay_CommandID = 17;
+
+void SelectElement (API_NotifyEventID notify);
+
+struct SelectionSingleton
+{
+    UnicGuid elementGuid;
+    int size;
+    API_DatabaseUnId db;
+    SelectionSingleton ()
+    {
+        elementGuid.Clear ();
+        size = 0;
+        #ifdef TESTING
+        DBprnt (size, "Selection === Init");
+        #endif
+    }
+
+    void SetDB (API_DatabaseUnId hbd)
+    {
+        #ifdef TESTING
+        DBprnt (size, "Selection === SetDB");
+        #endif
+        db = hbd;
+    }
+
+    API_DatabaseUnId GetDB ()
+    {
+        return db;
+    }
+
+    bool IsEmpty ()
+    {
+        return elementGuid.IsEmpty ();
+    }
+
+    bool Update ()
+    {
+        #ifdef TESTING
+        DBprnt (size, "Selection === Update start");
+        #endif
+        API_SelectionInfo selectionInfo;
+        GS::Array<API_Neig> selNeigs = {};
+        GSErrCode err = NoError;
+        err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
+        BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
+        if (err != NoError) return false;
+        if (selectionInfo.typeID == API_SelEmpty) return false;
+        for (const API_Neig& neig : selNeigs) {
+            API_Guid guid = neig.guid;
+            API_ElemTypeID typeID = Neig_To_ElemID (neig.neigID);
+            if (typeID == API_SectElemID) {
+                API_Guid elemGuid_;
+                GetParentGUIDSectElem (guid, elemGuid_, typeID);
+                guid = elemGuid_;
+            }
+            if (typeID == API_ZombieElemID) continue;
+            if (!elementGuid.ContainsKey (guid)) {
+                elementGuid.Add (neig.guid, false);
+            }
+        }
+        size = elementGuid.GetSize ();
+        #ifdef TESTING
+        DBprnt (size, "Selection === Update end");
+        #endif
+        return !elementGuid.IsEmpty ();
+    }
+
+    void Clear ()
+    {
+        elementGuid.Clear ();
+        size = 0;
+        #ifdef TESTING
+        DBprnt (size, "Selection === Clear end");
+        #endif
+    }
+
+    void Select ()
+    {
+        #ifdef TESTING
+        DBprnt (size, "Selection === Set start");
+        #endif
+        GSErrCode err = NoError;
+        if (elementGuid.IsEmpty ()) {
+            #ifdef TESTING
+            DBprnt (size, "Selection === !!!ERROR EMPTY");
+            #endif
+            return;
+        }
+        GS::Array<API_Neig> selectedNeigs = {};
+        for (UnicGuid::PairIterator cIt = elementGuid.EnumeratePairs (); cIt != NULL; ++cIt) {
+            API_Neig neig;
+            #if defined(AC_28) || defined(AC_29)
+            neig.guid = cIt->key;
+            #else
+            neig.guid = *cIt->key;
+            #endif
+            selectedNeigs.Push (neig);
+        }
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        err = ACAPI_Selection_Select (selectedNeigs, true);
+        if (err == NoError) ACAPI_View_ZoomToSelected ();
+        #else
+        err = ACAPI_Element_Select (selectedNeigs, true);
+        if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
+        #endif
+        #ifdef TESTING
+        DBprnt (size, "Selection === Set end");
+        #endif
+    }
+};
+
+SelectionSingleton& GetInstance ();
+
+extern SelectionSingleton& (*SELECTION)();
+
+
 #if defined(AC_28) || defined(AC_29)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
@@ -51,9 +167,6 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
 
 static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig* selElemNeig);
 #endif
-
-GSErrCode MemSelection (bool read);
-GS::Array<API_Neig>& GetSelectedElements ();
 
 void Do_ElementMonitor (bool& syncMon);
 
