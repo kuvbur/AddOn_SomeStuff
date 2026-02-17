@@ -160,11 +160,11 @@ static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param
     #else
 static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
 {
+    #endif
     #ifdef TESTING
     DBprnt ("ProjectEventHandlerProc");
     #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
-    #endif
     LoadSyncSettingsFromPreferences (syncSettings);
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
@@ -208,15 +208,13 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
 #if defined(AC_28) || defined(AC_29)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
-    LoadSyncSettingsFromPreferences (syncSettings);
     #else
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
+    #endif
     ACAPI_KeepInMemory (true);
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
-    #endif
     int dummymode = DUMMY_MODE_UNDEF;
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
@@ -361,9 +359,9 @@ void MenuSetState (SyncSettings & syncSettings)
 
 void SetPaletteMenuText (short paletteItemInd, Int32 & bisEng)
 {
-    API_MenuItemRef     itemRef;
+    API_MenuItemRef itemRef;
     BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
-    GS::UniString itemStr;
+    GS::UniString itemStr = "";
     itemStr = RSGetIndString (ID_ADDON_PROMT + bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = paletteItemInd;
