@@ -509,16 +509,6 @@ bool ConvertToParamValue (ParamValue& pvalue, const API_IFCProperty& property);
 
 void ConvertByFormatString (ParamValue& pvalue);
 
-// --------------------------------------------------------------------
-// Заполнение информации о локальном начале координат
-// --------------------------------------------------------------------
-void GetLocOriginToParamDict (ParamDictValue& propertyParams);
-
-// --------------------------------------------------------------------
-// Заполнение информации о проекте
-// --------------------------------------------------------------------
-void GetAllInfoToParamDict (ParamDictValue& propertyParams);
-
 #if !defined(AC_27) && !defined(AC_28) && !defined(AC_29)
 inline GSErrCode ACAPI_Attribute_GetAttributesByType (API_AttrTypeID typeID, GS::Array<API_Attribute>& attributes)
 {
@@ -535,16 +525,6 @@ inline GSErrCode ACAPI_Attribute_GetAttributesByType (API_AttrTypeID typeID, GS:
     return err;
 }
 #endif
-
-// --------------------------------------------------------------------
-// Получение списка аттрибутов (имён слоёв, материалов)
-// --------------------------------------------------------------------
-void GetAllAttributeToParamDict (ParamDictValue& propertyParams);
-
-// --------------------------------------------------------------------
-// Получение списка глобальных переменных о местоположении проекта, солнца
-// --------------------------------------------------------------------
-void GetAllGlobToParamDict (ParamDictValue& propertyParams);
 
 // --------------------------------------------------------------------
 // Получение массива описаний свойств с указанием GUID родительского объекта
