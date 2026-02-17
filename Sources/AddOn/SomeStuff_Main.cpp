@@ -41,52 +41,62 @@ void SelectElement (API_NotifyEventID notify)
     API_DatabaseUnId selDB = SELECTION ().GetDB ();
     API_DatabaseUnId currDB = homedatabaseInfo.databaseUnId;
     bool sameDB = (selDB == currDB);
-    bool emptySel = SELECTION ().IsEmpty ();
     #ifdef TESTING
     if (sameDB) {
-        DBprnt ("Selection === DB is same");
+        DBprnt ("Selection start === DB is same");
     } else {
-        DBprnt ("Selection === Different DB");
-    }
-    if (emptySel) {
-        DBprnt ("Selection === Empty Selection");
-    } else {
-        DBprnt ("Selection === Selection is not empty");
+        DBprnt ("Selection start === Different DB");
     }
     #endif
     switch (notify) {
         // Добавление выделения
         case APINotify_New:
             #ifdef TESTING
-            DBprnt ("Selection === APINotify_New");
+            DBprnt ("Selection       === APINotify_New");
             #endif
             // Очищаем выборку, если БД не менялась
-            if (sameDB) SELECTION ().Clear ();
-            // Если удалось обновить список - запомним БД
-            if (SELECTION ().Update ()) {
-                SELECTION ().SetDB (currDB);
+            if (sameDB) {
+                SELECTION ().Clear ();
+                SELECTION ().Update ();
             }
             break;
-            // Очистка выделения
+            // Очистка выделения при закрытии
         case APINotify_Close:
             #ifdef TESTING
-            DBprnt ("Selection === APINotify_Close");
+            DBprnt ("Selection       === APINotify_Close");
+            #endif
+            SELECTION ().Clear ();
+            break;
+            // Очистка выделения
+        case APINotify_NewAndReset:
+            #ifdef TESTING
+            DBprnt ("Selection       === APINotify_NewAndReset");
             #endif
             if (sameDB) SELECTION ().Clear ();
             break;
             // Смена окна
         case APINotify_ChangeWindow:
             #ifdef TESTING
-            DBprnt ("Selection === APINotify_ChangeWindow");
+            DBprnt ("Selection       === APINotify_ChangeWindow");
             #endif
-            if (!sameDB && !emptySel) {
+            if (!sameDB) {
                 SELECTION ().Select ();
+                SELECTION ().SetDB (currDB);
             }
             break;
         default:
             return;
             break;
     }
+    #ifdef TESTING
+    selDB = SELECTION ().GetDB ();
+    sameDB = (selDB == currDB);
+    if (sameDB) {
+        DBprnt ("Selection   end === DB is same");
+    } else {
+        DBprnt ("Selection   end === Different DB");
+    }
+    #endif
 }
 
 //-----------------------------------------------------------------------------
@@ -135,7 +145,7 @@ static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig * selEl
     if (selElemNeig->neigID != APINeig_None) {
         SelectElement (APINotify_New);
     } else {
-        SelectElement (APINotify_Close);
+        SelectElement (APINotify_NewAndReset);
     }
     ACAPI_KeepInMemory (true);
     return NoError;
