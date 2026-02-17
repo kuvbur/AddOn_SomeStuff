@@ -88,7 +88,12 @@ struct SelectionSingleton
         if (selectionInfo.typeID == API_SelEmpty) return false;
         for (const API_Neig& neig : selNeigs) {
             API_Neig n = neig;
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+            API_ElemType type = Neig_To_ElemID (neig.neigID);
+            API_ElemTypeID typeID = type.typeID;
+            #else
             API_ElemTypeID typeID = Neig_To_ElemID (neig.neigID);
+            #endif
             if (typeID == API_SectElemID) {
                 API_Guid elemGuid_;
                 GetParentGUIDSectElem (neig.guid, elemGuid_, typeID);
