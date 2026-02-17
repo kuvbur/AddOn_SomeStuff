@@ -3,6 +3,7 @@
 #include	"APIEnvir.h"
 #include	"Dimensions.hpp"
 #include	"MEPv1.hpp"
+#include	"Propertycache.hpp"
 #include	"ResetProperty.hpp"
 #include	"Sync.hpp"
 #include	<stdlib.h> /* atoi */
