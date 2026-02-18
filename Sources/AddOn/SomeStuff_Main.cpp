@@ -157,11 +157,8 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (elementType == API_ZombieElemID) return NoError;
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) return NoError;
-    ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
-    ClassificationFunc::SystemDict systemdict = {};
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType)) return NoError;
-    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:no_attrib"); // Во время отслеживания не будем получать весь список слоёв
     bool needresync = false;
     switch (elemType->notifID) {
         case APINotifyElement_New:
@@ -189,13 +186,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 syncSettings.logMon = true;
                 WriteSyncSettingsToPreferences (syncSettings);
             }
-            needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+            needresync = SyncElement (elemType->elemHead.guid, syncSettings, paramToWrite, dummymode);
             if (!paramToWrite.IsEmpty ()) {
                 GS::Array<API_Guid> rereadelem = {};
                 rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
                 if (needresync) {
                     paramToWrite.Clear ();
-                    needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                    needresync = SyncElement (elemType->elemHead.guid, syncSettings, paramToWrite, dummymode);
                     GS::Array<API_Guid> rereadelem_ = {};
                     rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
                     if (!rereadelem_.IsEmpty ()) rereadelem.Append (rereadelem_);
@@ -205,9 +202,8 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                     DBprnt ("ElementEventHandlerProc", "reread element");
                     #endif
                     for (UInt32 i = 0; i < rereadelem.GetSize (); i++) {
-                        propertyParams.Clear ();
                         paramToWrite.Clear ();
-                        needresync = SyncElement (rereadelem[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                        needresync = SyncElement (rereadelem[i], syncSettings, paramToWrite, dummymode);
                         ParamHelpers::ElementsWrite (paramToWrite);
                     }
                 }

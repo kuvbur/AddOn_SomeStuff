@@ -43,9 +43,9 @@ void GetSumElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Prope
 
 bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
 
-bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, SumRules& rules, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
+bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, SumRules& rules, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
 
-bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype);
+bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definition, SumRule& paramtype);
 
 void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
 

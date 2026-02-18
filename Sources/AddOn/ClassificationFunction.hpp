@@ -46,12 +46,14 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
 // -----------------------------------------------------------------------------
 // Поиск класса по ID в заданной классификации, возвращает Guid класса
 // -----------------------------------------------------------------------------
-API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS::UniString& classname);
+API_Guid FindClass (GS::UniString& systemname, GS::UniString& classname);
 
 // -----------------------------------------------------------------------------
 // Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
 // -----------------------------------------------------------------------------
-void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid);
+void SetAutoclass (const API_Guid elemGuid);
+
+bool ReadSystemDict ();
 }
 
 #endif

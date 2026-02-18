@@ -3,11 +3,11 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Helpers.hpp"
+#include	"Propertycache.hpp"
 #include	"ReNum.hpp"
 #include	"Sync.hpp"
 #include	<map>
 #include	<unordered_map>
-
 // -----------------------------------------------------------------------------------------------------------------------
 // 1. Получаем список объектов, в свойствах которых ищем
 //		Флаг включения нумерации в формате
@@ -85,9 +85,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         return NoError;
     });
     if (flag_write) {
-        ClassificationFunc::SystemDict systemdict;
-        ParamDictValue propertyParams;
-        SyncArray (syncSettings, guidArray, systemdict, propertyParams);
+        SyncArray (syncSettings, guidArray);
     }
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -189,10 +187,8 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
         #endif
         if (!hasDef) continue;
-        ParamDictValue propertyParams = {};
         ParamDictValue paramToRead = {};
-        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, definitions);
-        if (ReNum_GetElement (guidArray[i], propertyParams, paramToRead, rules, error_propertyname)) ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
+        if (ReNum_GetElement (guidArray[i], paramToRead, rules, error_propertyname)) ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
     }
     if (!error_propertyname.IsEmpty ()) {
         GS::UniString out = ":\n";
@@ -221,9 +217,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
         ACAPI_WriteReport (SpecEmptyListdString, true);
         return false;
     }
-    ParamDictValue propertyParams = {}; // Все свойства уже считаны, поэтому словарь просто пустой
-    ClassificationFunc::SystemDict systemdict = {};
-    ParamHelpers::ElementsRead (paramToReadelem, propertyParams, systemdict); // Читаем значения
+    ParamHelpers::ElementsRead (paramToReadelem); // Читаем значения
     bool has_error_ones = false;
     GS::UniString error_rule_name = "";
     GS::UniString ok_rule_name = "";
@@ -281,10 +275,12 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname)
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname)
 {
     bool hasRenum = false;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
+    if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
+    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
+    for (ParamDictValue::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;

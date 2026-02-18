@@ -11,6 +11,7 @@
 #include "TestFunc.hpp"
 #endif
 #include    "Helpers.hpp"
+#include	"Propertycache.hpp"
 #include    "Model3D/model.h"
 #include    "Model3D/MeshBody.hpp"
 #include    "VectorImageIterator.hpp"
@@ -1024,7 +1025,7 @@ void ParamHelpers::AddParamDictValue2ParamDictElement (const API_Guid& elemGuid,
         paramToRead.Add (elemGuid, param);
         return;
     }
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = param.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = param.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         GS::UniString rawName = cIt->key;
         #else
@@ -1189,7 +1190,7 @@ void ParamHelpers::AddStringValueToParamDictValue (ParamDictValue& params, const
 // Для колонны или объекта - центр колонны и отм. низа
 // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& params, const ParamDictValue& propertyParams)
+bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& params)
 {
     #if defined(TESTING)
     DBprnt ("      ReadCoords");
@@ -1213,17 +1214,17 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     double zw = 0; //Высота стены, в которой размещён проём
     double lox = 0; double loy = 0; double loz = 0;
     double offx = 0; double offy = 0;
-    GS::UniString locorig = "{@coord:locorigin_x}";
-    if (propertyParams.ContainsKey (locorig)) lox = propertyParams.Get (locorig).val.rawDoubleValue;
-    locorig = "{@coord:locorigin_y}";
-    if (propertyParams.ContainsKey (locorig)) loy = propertyParams.Get (locorig).val.rawDoubleValue;
-    locorig = "{@coord:locorigin_z}";
-    if (propertyParams.ContainsKey (locorig)) loz = propertyParams.Get (locorig).val.rawDoubleValue;
-    locorig = "{@coord:offsetorigin_x}";
-    if (propertyParams.ContainsKey (locorig)) offx = propertyParams.Get (locorig).val.rawDoubleValue;
-    locorig = "{@coord:offsetorigin_y}";
-    if (propertyParams.ContainsKey (locorig)) offy = propertyParams.Get (locorig).val.rawDoubleValue;
-
+    ParamValue cacheparam = {};
+    GS::UniString locorig = "{@glob:locorigin_x}";
+    if (GetParamValueFromCache (locorig, cacheparam)) lox = cacheparam.val.rawDoubleValue;
+    locorig = "{@glob:locorigin_y}";
+    if (GetParamValueFromCache (locorig, cacheparam)) loy = cacheparam.val.rawDoubleValue;
+    locorig = "{@glob:locorigin_z}";
+    if (GetParamValueFromCache (locorig, cacheparam)) loz = cacheparam.val.rawDoubleValue;
+    locorig = "{@glob:offsetorigin_x}";
+    if (GetParamValueFromCache (locorig, cacheparam)) offx = cacheparam.val.rawDoubleValue;
+    locorig = "{@glob:offsetorigin_y}";
+    if (GetParamValueFromCache (locorig, cacheparam)) offy = cacheparam.val.rawDoubleValue;
     if (is_equal (offx, 0) && is_equal (offy, 0)) {
         ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, "coord:", "has_distant_element", false);
     } else {
@@ -1243,10 +1244,10 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
     double axisRotationAngle = 0;
     GS::UniString angznorthtxt = "UNDEF"; GS::UniString angznorthtxteng = "UNDEF";
     GS::UniString globnorthkey = "{@glob:glob_north_dir}";
-    if (!propertyParams.ContainsKey (globnorthkey)) {
+    if (!GetParamValueFromCache (globnorthkey, cacheparam)) {
         skip_north = true;
     } else {
-        north = propertyParams.Get (globnorthkey).val.doubleValue;
+        north = cacheparam.val.doubleValue;
     }
     bool bsync_coord_correct = true;
     GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
@@ -1256,16 +1257,16 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& param
         }
     }
 
+    // TODO перенести в PropertyCache
     bool has_tm = false; // Есть прочитанная матрица трансформации
     API_Tranmat tm = {}; GS::UniString tmstr = "";
-    if (propertyParams.ContainsKey ("{@flag:has_survtm}")) {
-        for (UInt32 i = 0; i < 13; i++) {
-            tmstr = GS::UniString::Printf ("{@glob:tmx%d}", i);
-            if (!propertyParams.ContainsKey (tmstr)) continue;
-            tm.tmx[i] = propertyParams.Get (tmstr).val.rawDoubleValue;
-            has_tm = true;
-        }
+    for (UInt32 i = 0; i < 13; i++) {
+        tmstr = GS::UniString::Printf ("{@glob:tmx%d}", i);
+        if (!GetParamValueFromCache (tmstr, cacheparam)) continue;
+        tm.tmx[i] = cacheparam.val.rawDoubleValue;
+        has_tm = true;
     }
+
     API_ElemTypeID eltype = GetElemTypeID (element);
     API_Element owner = {}; BNZeroMemory (&owner, sizeof (API_Element));
     // Обработка навесной стены- случай особый, т.к. у неё может быть несколько сегментов
@@ -2986,7 +2987,7 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
     for (UInt32 i = 0; i < paramTypesList.GetSize (); i++) {
         GS::UniString paramType = paramTypesList[i];
         ParamDictValue paramByType = {};
-        for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             ParamValue& param = cIt->value;
             #else
@@ -3037,7 +3038,7 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
         ParamDictValue& params = *cIt->value;
         #endif
         if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+            for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
                 ParamValue& param = cIt->value;
                 #else
@@ -3051,7 +3052,7 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
     #if defined(TESTING)
     DBprnt ("InfoWrite start");
     #endif
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -3082,7 +3083,7 @@ bool ParamHelpers::WriteClassification (const API_Guid& elemGuid, ParamDictValue
     DBprnt ("    WriteClassification");
     #endif
     GSErrCode err = NoError;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -3636,7 +3637,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
     #endif
     // Если для свойств известно только определение, но не было получено свойство - самое время это сделать
     GS::Array<API_PropertyDefinition> propertyDefinitions;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -3669,7 +3670,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
         }
     }
 
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -3692,247 +3693,16 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
     }
 }
 
-bool ParamHelpers::hasUnreadProperyDefinition (ParamDictElement& paramToRead)
-{
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamDictValue& params = cIt->value;
-        #else
-        ParamDictValue& params = *cIt->value;
-        #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cIt->value;
-                #else
-                ParamValue& param = *cIt->value;
-                #endif
-                if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool ParamHelpers::hasSurveyPoint (ParamDictElement& paramToRead)
-{
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamDictValue& params = cIt->value;
-        #else
-        ParamDictValue& params = *cIt->value;
-        #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cIt->value;
-                #else
-                ParamValue& param = *cIt->value;
-                #endif
-                if (param.fromCoord) {
-                    if (param.rawName.Contains ("_sp_")) return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool ParamHelpers::hasUnreadLocOrigin (ParamDictElement& paramToRead)
-{
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamDictValue& params = cIt->value;
-        #else
-        ParamDictValue& params = *cIt->value;
-        #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cIt->value;
-                #else
-                ParamValue& param = *cIt->value;
-                #endif
-                if (param.fromCoord) {
-                    if (param.rawName.Contains ("_lo_")) return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool ParamHelpers::hasUnreadCoord (ParamDictElement& paramToRead)
-{
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamDictValue& params = cIt->value;
-        #else
-        ParamDictValue& params = *cIt->value;
-        #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cIt->value;
-                #else
-                ParamValue& param = *cIt->value;
-                #endif
-                if (param.fromCoord) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool ParamHelpers::hasUnreadAttribute (ParamDictElement& paramToRead)
-{
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamDictValue& params = cIt->value;
-        #else
-        ParamDictValue& params = *cIt->value;
-        #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cIt->value;
-                #else
-                ParamValue& param = *cIt->value;
-                #endif
-                if (param.fromAttribElement) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool ParamHelpers::hasUnreadInfo (ParamDictElement& paramToRead, ParamDictValue& propertyParams)
-{
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamDictValue& params = cIt->value;
-        #else
-        ParamDictValue& params = *cIt->value;
-        #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cIt->value;
-                #else
-                ParamValue& param = *cIt->value;
-                #endif
-                if (param.fromInfo) {
-                    // Проверим - есть ли уже считанный параметр
-                    if (propertyParams.ContainsKey (param.rawName)) {
-                        if (!propertyParams.Get (param.rawName).isValid) {
-                            return true; // Прочитан криво, перечитываем
-                        }
-                    } else {
-                        return true; // В списке общих параметров не найден, перечитаем
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
-bool ParamHelpers::hasGlob (ParamDictValue& propertyParams)
-{
-    if (propertyParams.IsEmpty ()) return false;
-    if (!propertyParams.ContainsKey ("{@flag:has_glob}")) return false;
-    return true;
-}
-
-bool ParamHelpers::hasInfo (ParamDictValue& propertyParams)
-{
-    if (propertyParams.IsEmpty ()) return false;
-    if (!propertyParams.ContainsKey ("{@flag:has_info}")) return false;
-    return true;
-}
-
-bool ParamHelpers::hasLocOrigin (ParamDictValue& propertyParams)
-{
-    if (propertyParams.IsEmpty ()) return false;
-    if (!propertyParams.ContainsKey ("{@flag:has_locorigin}")) return false;
-    return true;
-}
-
-bool ParamHelpers::hasAttribute (ParamDictValue& propertyParams)
-{
-    if (propertyParams.IsEmpty ()) return false;
-    if (!propertyParams.ContainsKey ("{@flag:has_attrib}")) return false;
-    return true;
-}
-
-bool ParamHelpers::hasProperyDefinition (ParamDictValue& propertyParams)
-{
-    if (propertyParams.IsEmpty ()) return false;
-    if (!propertyParams.ContainsKey ("{@flag:has_properydefinition}")) return false;
-    return true;
-}
-
-bool ParamHelpers::hasUnreadGlob (ParamDictElement& paramToRead, ParamDictValue& propertyParams)
-{
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamDictValue& params = cIt->value;
-        #else
-        ParamDictValue& params = *cIt->value;
-        #endif
-        if (!params.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cItt = params.EnumeratePairs (); cItt != NULL; ++cItt) {
-                #if defined(AC_28) || defined(AC_29)
-                ParamValue& param = cItt->value;
-                #else
-                ParamValue& param = *cItt->value;
-                #endif
-                if (param.fromGlob) {
-                    // Проверим - есть ли уже считанный параметр
-                    if (propertyParams.ContainsKey (param.rawName)) {
-                        if (!propertyParams.Get (param.rawName).isValid) {
-                            return true; // Прочитан криво, перечитываем
-                        }
-                    } else {
-                        return true; // В списке общих параметров не найден, перечитаем
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
 
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& propertyParams, ClassificationFunc::SystemDict& systemdict)
+void ParamHelpers::ElementsRead (ParamDictElement& paramToRead)
 {
     if (paramToRead.IsEmpty ()) return;
     #if defined(TESTING)
     DBprnt ("ElementsRead start");
     #endif
-    if (!ParamHelpers::hasInfo (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_info}")) {
-        if (ParamHelpers::hasUnreadInfo (paramToRead, propertyParams)) ParamHelpers::GetAllInfoToParamDict (propertyParams);
-    }
-    if (!ParamHelpers::hasGlob (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_glob}")) {
-        if (ParamHelpers::hasUnreadGlob (paramToRead, propertyParams)) ParamHelpers::GetAllGlobToParamDict (propertyParams);
-    }
-    if (!ParamHelpers::hasGlob (propertyParams)) {
-        if (ParamHelpers::hasSurveyPoint (paramToRead)) ParamHelpers::GetAllGlobToParamDict (propertyParams);
-    }
-    if (!ParamHelpers::hasProperyDefinition (propertyParams) && !propertyParams.ContainsKey ("{@flag:no_properydefinition}")) {
-        if (ParamHelpers::hasUnreadProperyDefinition (paramToRead)) ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-    }
-    if (!ParamHelpers::hasLocOrigin (propertyParams)) {
-        if (ParamHelpers::hasUnreadLocOrigin (paramToRead)) ParamHelpers::GetLocOriginToParamDict (propertyParams);
-    }
     // Выбираем по-элементно параметры для чтения
     for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
@@ -3943,8 +3713,8 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& 
         API_Guid elemGuid = *cIt->key;
         #endif
         if (!params.IsEmpty ()) {
-            if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, params); // Сопоставляем свойства
-            ParamHelpers::Read (elemGuid, params, propertyParams, systemdict);
+            //if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, params); // Сопоставляем свойства
+            ParamHelpers::Read (elemGuid, params);
         }
     }
     #if defined(TESTING)
@@ -3955,7 +3725,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictValue& 
 // --------------------------------------------------------------------
 // Заполнение словаря с параметрами
 // --------------------------------------------------------------------
-void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams, ClassificationFunc::SystemDict& systemdict)
+void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
 {
     if (params.IsEmpty ()) return;
     if (elemGuid == APINULLGuid) {
@@ -3986,14 +3756,13 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
     // Для некоторых типов элементов есть общая информация, которая может потребоваться
     // Пройдём по параметрам и посмотрим - что нам нужно заранее прочитать
     bool needGetElement = false;
-    bool needGetAllDefinitions = false;
 
     // Получаем список возможных префиксов
     GS::Array<GS::UniString> paramTypesList = {};
     GetParamTypeList (paramTypesList);
     bool hasListData = false;
     bool hasQuantity = false;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -4027,14 +3796,6 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                ) {
                 needGetElement = true;
             }
-            if (param.fromProperty && !param.fromPropertyDefinition && !param.fromAttribDefinition) {
-                if (!param.rawName.Contains ("{@property:sync_name")) {
-                    needGetAllDefinitions = true; // Нужно проверить соответсвие описаний имени свойства
-                    #if defined(TESTING)
-                    DBprnt ("Read err - needGetAllDefinitions", param.rawName);
-                    #endif
-                }
-            }
         }
     }
     if (hasQuantity && can_read_fromGDL) {
@@ -4046,9 +3807,6 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 if (params.Get ("{@listdata:some_stuff_th}").fromGuid == APINULLGuid) params.Get ("{@listdata:some_stuff_th}").fromGuid = elemGuid;
             }
         }
-    }
-    if (needGetAllDefinitions) {
-        AllPropertyDefinitionToParamDict (params, elemGuid);  // Проверим - для всех ли свойств подобраны определения
     }
     API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
     if (needGetElement) {
@@ -4067,7 +3825,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         if (paramType.IsEqual ("{@info:")) continue;
         ParamDictValue paramByType;
         // Для некоторых параметров выборка не требуется
-        for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             ParamValue& param = cIt->value;
             #else
@@ -4092,16 +3850,15 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             needCompare = ParamHelpers::ReadProperty (elemGuid, paramByType);
             // Среди прочитанных свойств могут быть свойства с классификацией. Поищем классификацию по имени
             if (needCompare) {
-                for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cItt = paramByType.EnumeratePairs (); cItt != NULL; ++cItt) {
+                for (ParamDictValue::PairIterator cItt = paramByType.EnumeratePairs (); cItt != NULL; ++cItt) {
                     #if defined(AC_28) || defined(AC_29)
                     ParamValue& parambt = cItt->value;
                     #else
                     ParamValue& parambt = *cItt->value;
                     #endif
-                    if (parambt.fromClassification) {
-                        if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
+                    if (parambt.fromClassification && ClassificationFunc::ReadSystemDict ()) {
                         GS::UniString systemname = parambt.val.uniStringValue.ToLowerCase ();
-                        API_Guid classguid = ClassificationFunc::FindClass (systemdict, parambt.name, systemname);
+                        API_Guid classguid = ClassificationFunc::FindClass (parambt.name, systemname);
                         if (classguid != APINULLGuid && parambt.val.guidval == APINULLGuid) {
                             paramByType.Get (parambt.rawName).val.guidval = classguid;
                         } else {
@@ -4119,7 +3876,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             if (params.ContainsKey (sync_coord_correctkey) && !paramByType.ContainsKey (sync_coord_correctkey)) {
                 paramByType.Add (sync_coord_correctkey, params.Get (sync_coord_correctkey));
             }
-            needCompare = ParamHelpers::ReadCoords (element, paramByType, propertyParams);
+            needCompare = ParamHelpers::ReadCoords (element, paramByType);
         }
         if (paramType.IsEqual ("{@gdl:") && can_read_fromGDL) {
             needCompare = ParamHelpers::ReadGDL (element, elem_head, paramByType);
@@ -4139,17 +3896,16 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             needCompare = ParamHelpers::ReadID (elem_head, paramByType);
         }
         if (paramType.IsEqual ("{@class:")) {
-            if (systemdict.IsEmpty ()) err = ClassificationFunc::GetAllClassification (systemdict);
-            needCompare = ParamHelpers::ReadClassification (elemGuid, systemdict, paramByType);
+            needCompare = ParamHelpers::ReadClassification (elemGuid, paramByType);
         }
         if (paramType.IsEqual ("{@material:") && can_read_fromMaterial) {
-            ParamHelpers::ReadMaterial (element, params, propertyParams);
+            ParamHelpers::ReadMaterial (element, params);
         }
         if (paramType.IsEqual ("{@formula:")) {
             needCompare = ParamHelpers::ReadFormula (paramByType, params);
         }
         if (paramType.IsEqual ("{@attrib:")) {
-            needCompare = ParamHelpers::ReadAttributeValues (elem_head, propertyParams, paramByType);
+            needCompare = ParamHelpers::ReadAttributeValues (elem_head, paramByType);
         }
         if (paramType.IsEqual ("{@element:")) {
             needCompare = ParamHelpers::ReadElementValues (element, paramByType);
@@ -4175,7 +3931,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
     #if defined(TESTING)
     DBprnt ("        ConvertByFormatString");
     #endif
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -4186,16 +3942,13 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         }
         if (param.fromPropertyDefinition && param.isValid) {
             if (param.definition.description.Contains ("Sync_to{Attribute:Layer}")) {
-                if (ParamHelpers::hasAttribute (propertyParams)) {
-                    GS::UniString key = "{@attrib:layer_name_" + param.val.uniStringValue.ToLowerCase () + "}";
-                    if (propertyParams.ContainsKey (key)) {
-                        param.val = propertyParams.Get (key).val;
-                        param.isValid = true;
-                    } else {
-                        param.isValid = false;
-                    }
+                GS::UniString key = "{@attrib:layer_name_" + param.val.uniStringValue.ToLowerCase () + "}";
+                ParamValue chacheval = {};
+                if (ParamHelpers::GetParamValueFromCache (key, chacheval)) {
+                    param.val = chacheval.val;
+                    param.isValid = true;
                 } else {
-                    param.val.intValue = 0;
+                    param.isValid = false;
                 }
                 param.fromAttribElement = true;
             }
@@ -4205,70 +3958,6 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             param.val.uniStringValue = qr;
         }
     }
-}
-
-
-// --------------------------------------------------------------------
-// Заполнение свойств для элемента
-// --------------------------------------------------------------------
-void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue& propertyParams, const API_Guid& elemGuid)
-{
-    #if defined(TESTING)
-    DBprnt ("AllPropertyDefinitionToParamDict GUID start");
-    #endif
-    if (elemGuid == APINULLGuid) {
-        if (!ParamHelpers::hasProperyDefinition (propertyParams)) {
-            ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-        }
-    } else {
-        GS::Array<API_PropertyDefinition> definitions = {};
-        GSErrCode err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_All, definitions);
-        if (err != NoError) {
-            msg_rep ("GetAllPropertyDefinitionToParamDict", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
-            return;
-        }
-        if (definitions.IsEmpty ()) return;
-        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, definitions);
-    }
-    #if defined(TESTING)
-    DBprnt ("  AllPropertyDefinitionToParamDict GUID end");
-    #endif
-}
-
-// --------------------------------------------------------------------
-// Перевод GS::Array<API_PropertyDefinition> в ParamDictValue
-// --------------------------------------------------------------------
-void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::Array<API_PropertyDefinition>& definitions)
-{
-    if (definitions.IsEmpty ()) return;
-    #if defined(TESTING)
-    DBprnt ("AllPropertyDefinitionToParamDict definition start");
-    #endif
-    UInt32 nparams = propertyParams.GetSize ();
-    bool needAddNew = (nparams == 0);
-    for (const auto& definition : definitions) {
-        ParamValue pvalue = {};
-        ParamHelpers::ConvertToParamValue (pvalue, definition);
-        bool changeExs = propertyParams.ContainsKey (pvalue.rawName);
-        if (needAddNew && !changeExs) {
-            propertyParams.Add (pvalue.rawName, pvalue);
-        } else {
-            if (changeExs) {
-                pvalue.fromGuid = propertyParams.Get (pvalue.rawName).fromGuid;
-                propertyParams.Get (pvalue.rawName) = pvalue;
-                nparams--;
-                if (nparams == 0) {
-                    #if defined(TESTING)
-                    DBprnt ("    AllPropertyDefinitionToParamDict definition return");
-                    #endif
-                    return;
-                }
-            }
-        }
-    }
-    #if defined(TESTING)
-    DBprnt ("  AllPropertyDefinitionToParamDict definition end");
-    #endif
 }
 
 // --------------------------------------------------------------------
@@ -4292,14 +3981,12 @@ bool ParamHelpers::SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition
 // --------------------------------------------------------------------
 // Получение словаря значений свойств с указанием GUID родительского объекта
 // --------------------------------------------------------------------
-bool ParamHelpers::SubGuid_GetParamValue (const API_Guid& elemGuid, ParamDictValue& propertyParams, const GS::Array<API_PropertyDefinition>& definitions, ParamDictValue& subproperty)
+bool ParamHelpers::SubGuid_GetParamValue (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, ParamDictValue& subproperty)
 {
     if (definitions.IsEmpty ()) return false;
     GS::Array<API_PropertyDefinition> subdefinitions = {};
     if (!SubGuid_GetDefinition (definitions, subdefinitions)) return false;
-    ParamHelpers::AllPropertyDefinitionToParamDict (subproperty, subdefinitions);
-    ClassificationFunc::SystemDict systemdict = {};
-    ParamHelpers::Read (elemGuid, subproperty, propertyParams, systemdict);
+    ParamHelpers::Read (elemGuid, subproperty);
     #if defined(TESTING)
     if (subproperty.IsEmpty ()) {
         DBprnt ("SubGuid_GetParamValue not found");
@@ -4307,11 +3994,9 @@ bool ParamHelpers::SubGuid_GetParamValue (const API_Guid& elemGuid, ParamDictVal
         DBprnt ("SubGuid_GetParamValue FOUND");
     }
     #endif
-    if (propertyParams.IsEmpty ()) {
-        propertyParams = subproperty;
-    } else {
-        ParamHelpers::CompareParamDictValue (subproperty, propertyParams, true);
-    }
+    if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
+    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
+    ParamHelpers::CompareParamDictValue (subproperty, propertyParams, true);
     return true;
 }
 
@@ -4382,7 +4067,7 @@ bool ParamHelpers::ReadProperty (const API_Guid& elemGuid, ParamDictValue& param
     #endif
     // Определения и свойста для элементов
     GS::Array<API_PropertyDefinition> propertyDefinitions = {};
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -4477,15 +4162,16 @@ bool ParamHelpers::ReadIFC (const API_Guid& elemGuid, ParamDictValue& params)
 // -----------------------------------------------------------------------------
 // Обработка данных о классификации
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadClassification (const API_Guid& elemGuid, const ClassificationFunc::SystemDict& systemdict, ParamDictValue& paramByType)
+bool ParamHelpers::ReadClassification (const API_Guid& elemGuid, ParamDictValue& paramByType)
 {
     #if defined(TESTING)
     DBprnt ("    ReadClassification");
     #endif
-    if (systemdict.IsEmpty ()) return false;
+    if (!ClassificationFunc::ReadSystemDict ()) return false;
+    ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
     GSErrCode err = NoError;
     GS::HashTable<GS::UniString, API_Guid> elementsystem = {};
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -4543,30 +4229,30 @@ bool ParamHelpers::ReadClassification (const API_Guid& elemGuid, const Classific
 // -----------------------------------------------------------------------------
 // Получение аттрибутов элемента
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadAttributeValues (const API_Elem_Head& elem_head, ParamDictValue& propertyParams, ParamDictValue& params)
+bool ParamHelpers::ReadAttributeValues (const API_Elem_Head& elem_head, ParamDictValue& params)
 {
     if (params.IsEmpty ()) return false;
     #if defined(TESTING)
     DBprnt ("    ReadAttributeValues");
     #endif
     if (!params.ContainsKey ("{@attrib:layer}")) return false;
-    if (!ParamHelpers::hasAttribute (propertyParams)) ParamHelpers::GetAllAttributeToParamDict (propertyParams);
     params.Get ("{@attrib:layer}").isValid = true;
     params.Get ("{@attrib:layer}").fromAttribElement = true;
-    if (ParamHelpers::hasAttribute (propertyParams)) {
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        GS::Int32 intValue = elem_head.layer.ToInt32_Deprecated ();
-        #else
-        GS::Int32 intValue = elem_head.layer;
-        #endif
-        GS::UniString name = "{@attrib:layer_inx_" + GS::UniString::Printf ("%d", intValue) + "}";
-        if (propertyParams.ContainsKey (name)) {
-            params.Get ("{@attrib:layer}").val = propertyParams.Get (name).val;
-            return true;
-        } else {
-            msg_rep ("ParamHelpers::ReadAttributeValues", "Layer not found - " + name, NoError, elem_head.guid);
-        }
+
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    GS::Int32 intValue = elem_head.layer.ToInt32_Deprecated ();
+    #else
+    GS::Int32 intValue = elem_head.layer;
+    #endif
+    GS::UniString cname = "{@attrib:layer_inx_" + GS::UniString::Printf ("%d", intValue) + "}";
+    ParamValue cacheparam;
+    if (GetParamValueFromCache (cname, cacheparam)) {
+        params.Get ("{@attrib:layer}").val = cacheparam.val;
+        return true;
+    } else {
+        msg_rep ("ParamHelpers::ReadAttributeValues", "Layer not found - " + cname, NoError, elem_head.guid);
     }
+
     API_Attribute attrib = {};
     GS::UniString name = "";
     BNZeroMemory (&attrib, sizeof (API_Attribute));
@@ -4645,7 +4331,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
 
     // Если диапазоны массивов хранятся в параметра х - прочитаем сначала их
     ParamDictValue paramdiap = {};
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -4680,7 +4366,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
     }
     if (!paramdiap.IsEmpty ()) {
         if (ParamHelpers::GDLParamByName (element, elem_head, paramdiap, paramnamearray)) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+            for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
                 ParamValue& param = cIt->value;
                 #else
@@ -4705,7 +4391,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
     }
 
     // Разбиваем по типам поиска - по описанию/по имени
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -4780,7 +4466,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
     }
     if (!paramByName.IsEmpty ()) flag_find_name = ParamHelpers::GDLParamByName (element, elem_head, paramByName, paramnamearray);
     if (flag_find_desc && flag_find_name) {
-        for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramBydescription.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDictValue::PairIterator cIt = paramBydescription.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             ParamValue& param_by_desc = cIt->value;
             #else
@@ -4976,7 +4662,7 @@ bool ParamHelpers::ReadFormula (ParamDictValue& paramByType, ParamDictValue& par
     DBprnt ("    ReadFormula");
     #endif
     bool flag_find = false;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         GS::UniString key = cIt->key;
@@ -5210,7 +4896,7 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
 // -----------------------------------------------------------------------------
 // Получение информации о элементе
 // -----------------------------------------------------------------------------
-void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, ParamDictValue& propertyParams, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictValue& paramlayers)
+void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictValue& paramlayers)
 {
     #if defined(TESTING)
     DBprnt ("        Quantities");
@@ -5240,7 +4926,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
     // В случае, если прежде не были считаны данные по слоям (Например, для объекта) - добавляем слои из прочитанного
     bool need_add_composite = false;
     GS::Array<ParamValueComposite> add_composite = {};
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -5326,7 +5012,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
         flag_find = true;
     }
     if (need_add_composite && !add_composite.IsEmpty ()) {
-        for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             ParamValue& param = cIt->value;
             #else
@@ -5337,9 +5023,9 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
         }
     }
     bool needReadQuantities = true;
-    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, propertyParams, paramlayers, params, existsmaterial, needReadQuantities);
+    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramlayers, params, existsmaterial, needReadQuantities);
     GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity_param = {};
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -5361,7 +5047,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
         }
         break;
     }
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -5584,7 +5270,7 @@ void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp
     }
 }
 
-void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictValue& propertyParams, ParamDictValue& paramlayers, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, bool& needReadQuantities)
+void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictValue& paramlayers, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, bool& needReadQuantities)
 {
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (paramsAdd.IsEmpty ()) return;
@@ -5593,8 +5279,10 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
         ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_units");
         ParamHelpers::AddValueToParamDictValue (paramsAdd, "@property:buildingmaterialproperties/some_stuff_kzap");
     }
+    if (!ParamHelpers::isPropertyDefinitionRead ()) return;
+    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
     ParamHelpers::CompareParamDictValue (propertyParams, paramsAdd);
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param_composite = cIt->value;
         #else
@@ -5611,7 +5299,7 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
             flag = true;
         }
         if (flag) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd.EnumeratePairs (); cIt != NULL; ++cIt) {
+            for (ParamDictValue::PairIterator cIt = paramsAdd.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
                 if (!params.ContainsKey (cIt->key)) {
                     params.Add (cIt->key, cIt->value);
@@ -5623,7 +5311,7 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
             }
         }
         if (!paramsAdd_1.IsEmpty ()) {
-            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
+            for (ParamDictValue::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
                 if (!params.ContainsKey (cIt->key)) {
                     params.Add (cIt->key, cIt->value);
@@ -5640,7 +5328,7 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & params, ParamDictValue & propertyParams)
+bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & params)
 {
     #if defined(TESTING)
     DBprnt ("    ReadMaterial");
@@ -5652,7 +5340,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
 
     bool needReadQuantities = false;
     ParamDictValue paramlayers = {};
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -5666,12 +5354,12 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
         if (param.fromQuantity) needReadQuantities = true;
     }
     if (paramlayers.IsEmpty ()) return true;
-    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, propertyParams, paramlayers, params, existsmaterial, needReadQuantities);
+    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramlayers, params, existsmaterial, needReadQuantities);
     bool flag_add = false;
-    if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, propertyParams, existsmaterial, paramlayers);
+    if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, existsmaterial, paramlayers);
 
     // Если есть строка-шаблон - заполним её
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param_composite = cIt->value;
@@ -6864,7 +6552,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     layer.structype = APICWallComp_Core;
     param_composite.composite.Push (layer);
     ParamHelpers::GetAttributeValues (constrinx, params, paramsAdd);
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
         if (params.ContainsKey (cIt->key)) params.Get (cIt->key).composite = param_composite.composite;
@@ -6951,7 +6639,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
             existsmaterial.Add (constrinxL, true);
         }
     }
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
         if (params.ContainsKey (cIt->key)) params.Get (cIt->key).composite = param_composite.composite;
@@ -6981,7 +6669,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
 
     // Получаем список перьев в параметрах
     bool needReadQuantities = false;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         GS::UniString rawName = cIt->key;
         #else
@@ -7253,7 +6941,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         }
     }
     if (hasData) {
-        for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             short pen = paramlayers.Get (cIt->key).composite_pen;
             #else
@@ -7477,7 +7165,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
     // Получим словарь исключительно с определениями состава
     ParamDictValue paramlayers = {};;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -7581,7 +7269,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     // Определения и свойста для элементов
     bool flag_find = false;
     GS::Array<API_PropertyDefinition> propertyDefinitions;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else

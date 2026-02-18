@@ -162,7 +162,7 @@ void TestFormula ()
 
     DBtest (ParamHelpers::ReadFormula (paramByType, params), "ReadFormula", true);
 
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
