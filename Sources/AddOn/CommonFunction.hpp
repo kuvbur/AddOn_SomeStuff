@@ -71,7 +71,8 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
@@ -225,7 +226,6 @@ GS::UniString TextToQRCode (GS::UniString& text, int error_lvl);
 
 GS::UniString TextToQRCode (GS::UniString& text);
 
-GS::UniString GetPropertyNameByGUID (const API_Guid& guid);
 
 void DBprnt (double a, GS::UniString reportString);
 
@@ -283,11 +283,6 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr);
 // -----------------------------------------------------------------------------
 bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr);
 #endif
-
-// -----------------------------------------------------------------------------
-// Получить полное имя свойства (включая имя группы)
-// -----------------------------------------------------------------------------
-GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::UniString& name);
 
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть

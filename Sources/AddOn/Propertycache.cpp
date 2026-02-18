@@ -14,38 +14,86 @@ PropertyCache& (*PROPERTYCACHE)() = GetCache;
 namespace ParamHelpers
 {
 
+void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
+{
+    ParamValue paramFrom;
+    if (!GetParamValueFromCache (rawname, paramFrom)) {
+        return;
+    }
+    paramFrom.fromGuid = pvalue.fromGuid;
+    paramFrom.toQRCode = pvalue.toQRCode;
+    pvalue = paramFrom;
+}
+
 bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 {
 
-    if (!isCacheContainsParamValue (rawname)) return false;
+    if (!isCacheContainsParamValue (rawname)) {
+        return false;
+    }
     pvalue = PROPERTYCACHE ().property.Get (rawname);
     return true;
 }
 
 bool isPropertyDefinitionRead ()
 {
-    if (!PROPERTYCACHE ().isPropertyDefinitionRead) PROPERTYCACHE ().ReadPropertyDefinition ();
+    if (!PROPERTYCACHE ().isPropertyDefinitionRead_full) {
+        PROPERTYCACHE ().ReadPropertyDefinition ();
+    }
     return PROPERTYCACHE ().isPropertyDefinition_OK;
 }
 
 bool isAttributeRead ()
 {
-    if (!PROPERTYCACHE ().isAttributeRead) PROPERTYCACHE ().ReadAttribute ();
+    if (!PROPERTYCACHE ().isAttributeRead) {
+        PROPERTYCACHE ().ReadAttribute ();
+    }
     return PROPERTYCACHE ().isAttribute_OK;
 }
 
+bool isCacheContainsGroup (const API_Guid& guid)
+{
+    if (PROPERTYCACHE ().isGroupPropertyRead && PROPERTYCACHE ().isGroupProperty_OK) {
+        if (PROPERTYCACHE ().propertygroups.ContainsKey (guid)) return true;
+    }
+    if (!PROPERTYCACHE ().isGroupPropertyRead_full) {
+        PROPERTYCACHE ().AddGroupProperty (guid);
+    }
+    return PROPERTYCACHE ().propertygroups.ContainsKey (guid);
+}
+
+
+bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
+{
+    if (!isCacheContainsGroup (guid)) return false;
+    group = PROPERTYCACHE ().propertygroups.Get (guid);
+    return true;
+}
 
 bool isCacheContainsParamValue (const GS::UniString& rawname)
 {
     if (rawname.BeginsWith ("{@property:")) {
-        if (!PROPERTYCACHE ().isPropertyDefinitionRead) PROPERTYCACHE ().ReadPropertyDefinition ();
+        // Проверяем с кэша, если в кэше есть, то не читаем из API, если нет, то читаем и добавляем в кэш
+        if (PROPERTYCACHE ().isPropertyDefinitionRead && PROPERTYCACHE ().isPropertyDefinition_OK) {
+            if (PROPERTYCACHE ().property.ContainsKey (rawname)) return true;
+        }
+        // Если кэш не был прочитан, то читаем его и проверяем наличие ключа
+        if (!PROPERTYCACHE ().isPropertyDefinitionRead_full) {
+            PROPERTYCACHE ().ReadPropertyDefinition ();
+        }
         if (!PROPERTYCACHE ().isPropertyDefinition_OK) {
             #if defined(TESTING)
             DBprnt ("ERROR isPropertyDefinition_OK " + rawname);
             #endif
             return false;
         }
-        return PROPERTYCACHE ().property.ContainsKey (rawname);
+        if (!PROPERTYCACHE ().property.ContainsKey (rawname)) {
+            #if defined(TESTING)
+            DBprnt ("ERROR PROPERTYCACHE ().property.ContainsKey (rawname) " + rawname);
+            #endif
+            return false;
+        }
+        return true;
     }
 
     if (rawname.BeginsWith ("{@glob:")) {
@@ -395,7 +443,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
         attrib.header.uniStringNamePtr = &attribname;
         err = ACAPI_Attribute_Get (&attrib);
         if (err == NoError) {
-            ParamValue pvalue;
+            ParamValue pvalue = {};
             GS::UniString rawName = "layer_name_" + attribname;
             ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
             propertyParams.Add (pvalue.rawName, pvalue);
@@ -422,104 +470,38 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     return true;
 }
 
+
 // --------------------------------------------------------------------
 // Получить все доступные свойства в формарте ParamDictValue
 // --------------------------------------------------------------------
 bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
 {
-    GS::Array<API_PropertyGroup> groups = {};
     #if defined(TESTING)
     DBprnt ("AllPropertyDefinitionToParamDict start");
     #endif
-    GSErrCode err = ACAPI_Property_GetPropertyGroups (groups);
-    if (err != NoError) {
-        msg_rep ("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
-        return false;
-    }
-    UInt32 nparams = propertyParams.GetSize ();
-    GS::UniString name = "";
-    GS::UniString rawName = "";
-    GS::UniString prefix = "{@property:";
+    if (!PROPERTYCACHE ().isGroupPropertyRead_full) PROPERTYCACHE ().ReadGroupProperty ();
+    if (!PROPERTYCACHE ().isGroupPropertyRead_full) return false;
+    GSErrCode err = NoError;
     // Созданим словарь с определением всех свойств
-    for (UInt32 i = 0; i < groups.GetSize (); i++) {
+    for (const auto& cIt : PROPERTYCACHE ().propertygroups) {
+        #if defined(AC_28) || defined(AC_29)
+        const API_PropertyGroup& group = cIt.value;
+        #else
+        const API_PropertyGroup& group = *cIt.value;
+        #endif
         bool filter = true;
         #if defined(AC_28) || defined(AC_29)
         GS::UniString strguid = APIGuidToString (groups[i].guid);
         filter = (strguid.IsEqual ("3CF63E55-AA52-4AB4-B1C3-0920B2F352BF") || strguid.IsEqual ("6EE946D2-E840-4909-8EF1-F016AE905C52") || strguid.IsEqual ("BF31D3E0-A2B1-4543-A3DA-C1191D059FD8"));
         //TODO Дописать Guid группы "GeneralElemProperties"
         #else
-        filter = (groups[i].name.Contains ("Material") || groups[i].name.IsEqual ("GeneralElemProperties"));
+        filter = (group.name.Contains ("Material") || group.name.IsEqual ("GeneralElemProperties"));
         #endif
-        if (groups[i].groupType == API_PropertyCustomGroupType || (groups[i].groupType == API_PropertyStaticBuiltInGroupType && filter)) {
+        if (group.groupType == API_PropertyCustomGroupType || (group.groupType == API_PropertyStaticBuiltInGroupType && filter)) {
             GS::Array<API_PropertyDefinition> definitions = {};
-            err = ACAPI_Property_GetPropertyDefinitions (groups[i].guid, definitions);
+            err = ACAPI_Property_GetPropertyDefinitions (group.guid, definitions);
             if (err != NoError) msg_rep ("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
-            if (err == NoError) {
-                for (UInt32 j = 0; j < definitions.GetSize (); j++) {
-                    // TODO Когда в проекте есть два и более свойств с описанием Sync_name возникает ошибка
-                    if (definitions[j].description.Contains ("Sync_name")) {
-                        for (UInt32 inx = 0; inx < 20; inx++) {
-                            GS::UniString strinx = GS::UniString::Printf ("%d", inx);
-                            rawName = "{@property:sync_name";
-                            rawName.Append (strinx);
-                            rawName.Append ("}");
-                            name = "sync_name";
-                            name.Append (strinx);
-                            if (!propertyParams.ContainsKey (rawName)) break;
-                        }
-                        definitions[j].name = name;
-                        ParamValue pvalue = {};
-                        pvalue.rawName = rawName;
-                        pvalue.name = groups[i].name;
-                        pvalue.name.Append ("/");
-                        pvalue.name.Append (definitions[j].name);
-                        ParamHelpers::ConvertToParamValue (pvalue, definitions[j]);
-                        propertyParams.Add (pvalue.rawName, pvalue);
-                    } else {
-                        #if defined(AC_28) || defined(AC_29)
-                        name = GetPropertyNameByGUID (definitions[j].guid);
-                        if (name.IsEmpty ()) {
-                            name = groups[i].name;
-                            name.Append ("/");
-                            name.Append (definitions[j].name);
-                        }
-                        #else
-                        name = groups[i].name;
-                        name.Append ("/");
-                        name.Append (definitions[j].name);
-                        #endif
-                        rawName = prefix;
-                        rawName.Append (name.ToLowerCase ());
-                        rawName.Append ("}");
-                        if (!propertyParams.ContainsKey (rawName)) {
-                            ParamValue pvalue;
-                            pvalue.rawName = rawName;
-                            pvalue.name = name;
-                            ParamHelpers::ConvertToParamValue (pvalue, definitions[j]);
-                            propertyParams.Add (pvalue.rawName, pvalue);
-                        } else {
-                            ParamValue pvalue = propertyParams.Get (rawName);
-                            FormatString fstring = pvalue.val.formatstring;
-                            if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
-                                pvalue.rawName = rawName;
-                                pvalue.name = name;
-                                ParamHelpers::ConvertToParamValue (pvalue, definitions[j]);
-                                if (!fstring.isEmpty) {
-                                    pvalue.val.formatstring = fstring;
-                                }
-                                propertyParams.Get (pvalue.rawName) = pvalue;
-                                nparams--;
-                                if (nparams == 0) {
-                                    #if defined(TESTING)
-                                    DBprnt ("    AllPropertyDefinitionToParamDict return");
-                                    #endif
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            if (err == NoError) GetArrayPropertyDefinitionToParamDict (propertyParams, definitions);
         }
     }
     #if defined(TESTING)
@@ -528,6 +510,133 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
     return true;
 }
 
-
+// --------------------------------------------------------------------
+// Перевод GS::Array<API_PropertyDefinition> в ParamDictValue
+// --------------------------------------------------------------------
+bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::Array<API_PropertyDefinition>& definitions)
+{
+    if (definitions.IsEmpty ()) return false;
+    #if defined(TESTING)
+    DBprnt ("GetArrayPropertyDefinitionToParamDict definition start");
+    #endif
+    GS::UniString name = "";
+    GS::UniString rawName = "";
+    GS::UniString prefix = "{@property:";
+    API_PropertyGroup group;
+    bool flag_add = false;
+    for (auto& definision : definitions) {
+        if (!ParamHelpers::GetGroupFromCache (definision.groupGuid, group)) continue;
+        if (definision.description.Contains ("Sync_name")) {
+            for (UInt32 inx = 0; inx < 20; inx++) {
+                GS::UniString strinx = GS::UniString::Printf ("%d", inx);
+                rawName = "{@property:sync_name";
+                rawName.Append (strinx);
+                rawName.Append ("}");
+                name = "sync_name";
+                name.Append (strinx);
+                if (!propertyParams.ContainsKey (rawName)) break;
+            }
+            definision.name = name;
+            ParamValue pvalue = {};
+            pvalue.rawName = rawName;
+            pvalue.name = group.name;
+            pvalue.name.Append ("/");
+            pvalue.name.Append (definision.name);
+            ParamHelpers::ConvertToParamValue (pvalue, definision);
+            propertyParams.Add (pvalue.rawName, pvalue);
+            flag_add = true;
+        } else {
+            #if defined(AC_28) || defined(AC_29)
+            name = GetPropertyNameByGUID (definision.guid);
+            if (name.IsEmpty ()) {
+                name = groups[i].name;
+                name.Append ("/");
+                name.Append (definision.name);
+            }
+            #else
+            name = group.name;
+            name.Append ("/");
+            name.Append (definision.name);
+            #endif
+            rawName = prefix;
+            rawName.Append (name.ToLowerCase ());
+            rawName.Append ("}");
+            if (!propertyParams.ContainsKey (rawName)) {
+                ParamValue pvalue;
+                pvalue.rawName = rawName;
+                pvalue.name = name;
+                ParamHelpers::ConvertToParamValue (pvalue, definision);
+                propertyParams.Add (pvalue.rawName, pvalue);
+                flag_add = true;
+            } else {
+                ParamValue pvalue = propertyParams.Get (rawName);
+                FormatString fstring = pvalue.val.formatstring;
+                if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
+                    pvalue.rawName = rawName;
+                    pvalue.name = name;
+                    ParamHelpers::ConvertToParamValue (pvalue, definision);
+                    if (!fstring.isEmpty) {
+                        pvalue.val.formatstring = fstring;
+                    }
+                    propertyParams.Get (pvalue.rawName) = pvalue;
+                    flag_add = true;
+                }
+            }
+        }
+    }
+    #if defined(TESTING)
+    DBprnt ("  AllPropertyDefinitionToParamDict definition end");
+    #endif
+    return flag_add;
+}
 }
 
+GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
+{
+    if (guid == APINULLGuid) return "";
+    GS::UniString strguid = APIGuidToString (guid);
+    if (strguid.IsEqual ("2E906CCE-9A42-4E49-AE45-193D0D709CC4")) return "BuildingMaterialProperties/Building Material CutFill";
+    if (strguid.IsEqual ("FAF74D9D-3CD4-4A03-9840-A39DB757DB1C")) return "BuildingMaterialProperties/Building Material Density";
+    if (strguid.IsEqual ("68947382-7220-449A-AE47-F6F8CB47DE49")) return "BuildingMaterialProperties/Building Material Description";
+    if (strguid.IsEqual ("902756A0-71D1-402B-B639-640BA5837A95")) return "BuildingMaterialProperties/Building Material ID";
+    if (strguid.IsEqual ("A01BCC22-D1FC-4CD8-AD34-95BBE73BDD5E")) return "BuildingMaterialProperties/Building Material Manufacturer";
+    if (strguid.IsEqual ("294C063C-98D8-42B5-B2C1-C27DE7CAB756")) return "BuildingMaterialProperties/Building Material Thermal Conductivity";
+    if (strguid.IsEqual ("F99C8A52-810A-4D01-A33A-AB5FDBA43A20")) return "BuildingMaterialProperties/Building Material Heat Capacity";
+    if (strguid.IsEqual ("A01BCC22-D1FC-4CD8-AD34-95BBE73BDD5E")) return "BuildingMaterialProperties/Building Material Manufacturer";
+    if (strguid.IsEqual ("A936C5CB-5126-4135-BD87-D2A46AEF5A07")) return "BuildingMaterialProperties/Building Material Name";
+    return "";
+}
+
+// -----------------------------------------------------------------------------
+// Получить полное имя свойства (включая имя группы)
+// -----------------------------------------------------------------------------
+GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::UniString& name)
+{
+    if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
+    GSErrCode error = NoError;
+    if (definision.name.Contains ("ync_name")) {
+        name = definision.name;
+    } else {
+        #if defined(AC_28) || defined(AC_29)
+        name = GetPropertyNameByGUID (definision.guid);
+        if (!name.IsEmpty ()) {
+            if (definision.name.Contains (CharENTER)) {
+                UInt32 n = definision.name.FindFirst (CharENTER);
+                UInt32 l = definision.name.GetLength ();
+                GS::UniString attribsiffix = definision.name.GetSuffix (l - n);
+                name = name + attribsiffix;
+            }
+            return NoError;
+        }
+        #endif
+        API_PropertyGroup group;
+        if (ParamHelpers::GetGroupFromCache (definision.groupGuid, group)) {
+            name = group.name;
+            name.Append ("/");
+            name.Append (definision.name);
+        } else {
+            msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
+        }
+    }
+    return error;
+}

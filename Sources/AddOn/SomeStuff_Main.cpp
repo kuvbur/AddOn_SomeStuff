@@ -99,6 +99,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
         case APINotify_NewAndReset:
         case APINotify_Open:
             Do_ElementMonitor (syncSettings.syncMon);
+            PROPERTYCACHE ();
             break;
         case APINotify_Close:
         case APINotify_Quit:
@@ -110,6 +111,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             ACAPI_Notify_InstallElementObserver (nullptr);
             #endif
             SelectElement (APINotify_Close);
+            PROPERTYCACHE ();
             break;
         case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
