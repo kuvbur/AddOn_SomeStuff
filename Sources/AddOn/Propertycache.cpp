@@ -3,16 +3,110 @@
 #include    "Helpers.hpp"
 #include	"Propertycache.hpp"
 
-PropertyCache& GetInstance ()
+PropertyCache& GetCache ()
 {
     static PropertyCache instance;
     return instance;
 }
 
-PropertyCache& (*PROPERTYCACHE)() = GetInstance;
+PropertyCache& (*PROPERTYCACHE)() = GetCache;
 
 namespace ParamHelpers
 {
+
+bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
+{
+
+    if (!isCacheContainsParamValue (rawname)) return false;
+    pvalue = PROPERTYCACHE ().property.Get (rawname);
+    return true;
+}
+
+bool isPropertyDefinitionRead ()
+{
+    if (!PROPERTYCACHE ().isPropertyDefinitionRead) PROPERTYCACHE ().ReadPropertyDefinition ();
+    return PROPERTYCACHE ().isPropertyDefinition_OK;
+}
+
+bool isAttributeRead ()
+{
+    if (!PROPERTYCACHE ().isAttributeRead) PROPERTYCACHE ().ReadAttribute ();
+    return PROPERTYCACHE ().isAttribute_OK;
+}
+
+
+bool isCacheContainsParamValue (const GS::UniString& rawname)
+{
+    if (rawname.BeginsWith ("{@property:")) {
+        if (!PROPERTYCACHE ().isPropertyDefinitionRead) PROPERTYCACHE ().ReadPropertyDefinition ();
+        if (!PROPERTYCACHE ().isPropertyDefinition_OK) {
+            #if defined(TESTING)
+            DBprnt ("ERROR isPropertyDefinition_OK " + rawname);
+            #endif
+            return false;
+        }
+        return PROPERTYCACHE ().property.ContainsKey (rawname);
+    }
+
+    if (rawname.BeginsWith ("{@glob:")) {
+        if (!PROPERTYCACHE ().isGetGeoLocationRead) PROPERTYCACHE ().ReadGetGeoLocation ();
+        if (!PROPERTYCACHE ().isGetGeoLocation_OK) {
+            #if defined(TESTING)
+            DBprnt ("ERROR isGetGeoLocation_OK " + rawname);
+            #endif
+        }
+        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
+
+        if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
+        if (!PROPERTYCACHE ().isSurveyPointTransformation_OK) {
+            #if defined(TESTING)
+            DBprnt ("ERROR isSurveyPointTransformation_OK " + rawname);
+            #endif
+        }
+        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
+
+        if (!PROPERTYCACHE ().isPlaceSetsRead) PROPERTYCACHE ().ReadPlaceSets ();
+        if (!PROPERTYCACHE ().isPlaceSets_OK) {
+            #if defined(TESTING)
+            DBprnt ("ERROR isPlaceSets_OK " + rawname);
+            #endif
+        }
+        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
+
+        if (!PROPERTYCACHE ().isLocOriginRead) PROPERTYCACHE ().ReadLocOrigin ();
+        if (!PROPERTYCACHE ().isLocOrigin_OK) {
+            #if defined(TESTING)
+            DBprnt ("ERROR isLocOrigin_OK " + rawname);
+            #endif
+        }
+        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
+
+    }
+
+    if (rawname.BeginsWith ("{@attrib:")) {
+        if (!PROPERTYCACHE ().isAttributeRead) PROPERTYCACHE ().ReadAttribute ();
+        if (!PROPERTYCACHE ().isAttribute_OK) {
+            #if defined(TESTING)
+            DBprnt ("ERROR isAttribute_OK " + rawname);
+            #endif
+            return false;
+        }
+        return PROPERTYCACHE ().attrib.ContainsKey (rawname);
+    }
+
+    if (rawname.BeginsWith ("{@info:")) {
+        if (!PROPERTYCACHE ().isInfoRead) PROPERTYCACHE ().ReadInfo ();
+        if (!PROPERTYCACHE ().isInfo_OK) {
+            #if defined(TESTING)
+            DBprnt ("ERROR isInfo_OK " + rawname);
+            #endif
+            return false;
+        }
+        return PROPERTYCACHE ().info.ContainsKey (rawname);
+    }
+    return false;
+}
+
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
 // --------------------------------------------------------------------
@@ -124,7 +218,7 @@ bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
 // --------------------------------------------------------------------
-bool GetAllGlobToParamDict (ParamDictValue& propertyParams)
+bool GetPlaceSetsToParamDict (ParamDictValue& propertyParams)
 {
     #if defined(TESTING)
     DBprnt ("GetAllGlobToParamDict start");
@@ -175,7 +269,6 @@ bool GetAllGlobToParamDict (ParamDictValue& propertyParams)
     return true;
 }
 
-
 // --------------------------------------------------------------------
 // Заполнение информации о локальном начале координат
 // --------------------------------------------------------------------
@@ -195,7 +288,7 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
     #endif
     if (err != NoError) {
         msg_rep ("GetLocOriginToParamDict", "APIDb_GetLocOrigoID", err, APINULLGuid);
-        return;
+        return false;
     }
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_ProjectSetting_GetOffset (&offset);
@@ -206,7 +299,7 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
         msg_rep ("GetLocOriginToParamDict", "APIDb_GetOffsetID", err, APINULLGuid);
         return false;
     }
-    GS::UniString prefix = "{@coord:";
+    GS::UniString prefix = "{@glob:";
     GS::UniString suffix = "}";
     ParamValue pvalue = {};
     pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
@@ -329,26 +422,19 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     return true;
 }
 
-
 // --------------------------------------------------------------------
 // Получить все доступные свойства в формарте ParamDictValue
 // --------------------------------------------------------------------
-void ParamHelpers::AllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
+bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
 {
     GS::Array<API_PropertyGroup> groups = {};
     #if defined(TESTING)
     DBprnt ("AllPropertyDefinitionToParamDict start");
     #endif
-    if (ParamHelpers::hasProperyDefinition (propertyParams)) {
-        #if defined(TESTING)
-        DBprnt ("  AllPropertyDefinitionToParamDict READ BEFORE end");
-        #endif
-        return;
-    }
     GSErrCode err = ACAPI_Property_GetPropertyGroups (groups);
     if (err != NoError) {
         msg_rep ("GetAllPropertyDefinitionToParamDict", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
-        return;
+        return false;
     }
     UInt32 nparams = propertyParams.GetSize ();
     GS::UniString name = "";

@@ -111,7 +111,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
 // --------------------------------------------------------------------
 // Выбирает из параметров групп имена свойств для дальнейшего чтения
 // --------------------------------------------------------------------
-void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
+void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
 
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 

@@ -44,8 +44,7 @@ public:
     std::string suffix = ""; // Суффикс
     GSCharCode chcode = GChCode;
     RenumPos ()
-    {
-    }
+    {}
 
     // TODO Добавить парсинг префикса и суффикса позиции
     RenumPos (const ParamValue& param)
@@ -223,7 +222,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
 
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition);
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname);
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname);
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos>& eleminpos);
 RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::string& delimetr, const std::string& criteria);
 bool ElementsSeparation (const RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error);

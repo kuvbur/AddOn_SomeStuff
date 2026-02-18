@@ -1,10 +1,10 @@
 //------------ kuvbur 2022 ------------
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
+#include	"Propertycache.hpp"
 #include	"Summ.hpp"
 #include	"Sync.hpp"
 #include	<map>
-
 typedef std::unordered_map <std::string, SortInx> SumCriteria;
 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -87,9 +87,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         return NoError;
     });
     if (flag_write) {
-        ClassificationFunc::SystemDict systemdict;
-        ParamDictValue propertyParams;
-        SyncArray (syncSettings, guidArray, systemdict, propertyParams);
+        SyncArray (syncSettings, guidArray);
     }
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -173,16 +171,12 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
         #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
         #endif
-        ParamDictValue propertyParams;
         ParamDictValue paramToRead;
-        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams, guidArray[i]);
-        if (!propertyParams.IsEmpty ()) {
-            if (Sum_GetElement (guidArray[i], propertyParams, paramToRead, rules, rule_definitions)) {
-                ClassificationFunc::SystemDict systemdict;
-                ParamHelpers::Read (guidArray[i], paramToRead, propertyParams, systemdict);
-                ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
-                hasSum = true;
-            }
+        if (Sum_GetElement (guidArray[i], paramToRead, rules, rule_definitions)) {
+            ClassificationFunc::SystemDict systemdict;
+            ParamHelpers::Read (guidArray[i], paramToRead);
+            ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramToRead, paramToReadelem);
+            hasSum = true;
         }
     }
 
@@ -203,10 +197,12 @@ bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictEleme
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, SumRules& rules, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
+bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, SumRules& rules, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
 {
     bool has_sum = false;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
+    if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
+    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
+    for (ParamDictValue::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -231,7 +227,7 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
         if (flag_hasrule) {
             if (!rules.ContainsKey (definition.guid)) {
                 SumRule paramtype = {};
-                if (Sum_Rule (elemGuid, definition, propertyParams, paramtype)) {
+                if (Sum_Rule (elemGuid, definition, paramtype)) {
                     paramtype.position = param.rawName;
                     rules.Add (definition.guid, paramtype);
                     flag_add = true;
@@ -264,7 +260,7 @@ bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, P
 // SumRule.delimetr - разделитель для текстовой суммы (конкатенации)
 // SumRule.ignore_val - игнорируемые значения
 // -----------------------------------------------------------------------------------------------------------------------
-bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definition, ParamDictValue& propertyParams, SumRule& paramtype)
+bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definition, SumRule& paramtype)
 {
     // По типу данных свойства определим тим суммирования
     // Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
@@ -282,16 +278,18 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
     partstring.Clear ();
     int nparam = StringSplt (paramName.ToLowerCase (), ";", partstring);
     if (nparam == 0) return false;
-    if (propertyParams.ContainsKey ("{@" + partstring[0] + "}")) {
-        paramtype.value = "{@" + partstring[0] + "}";
+    GS::UniString key = "{@" + partstring[0] + "}";
+    if (ParamHelpers::isCacheContainsParamValue (key)) {
+        paramtype.value = key;
     } else {
         msg_rep ("SumSelected", "Check that the property name is correct and must begin with Property. " + definition.name, NoError, elemGuid);
         return false;
     }
     // Ищём определение свойства-критерия
     if (nparam > 1) {
-        if (propertyParams.ContainsKey ("{@" + partstring[1] + "}")) {
-            paramtype.criteria = "{@" + partstring[1] + "}";
+        GS::UniString key = "{@" + partstring[1] + "}";
+        if (ParamHelpers::isCacheContainsParamValue (key)) {
+            paramtype.criteria = key;
         } else {
             if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
             if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
@@ -300,7 +298,8 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
     }
     // Ищём определение свойства-критерия
     if (nparam > 1) {
-        if (propertyParams.ContainsKey ("{@" + partstring[1] + "}")) {
+        GS::UniString key = "{@" + partstring[1] + "}";
+        if (ParamHelpers::isCacheContainsParamValue (key)) {
             paramtype.criteria = "{@" + partstring[1] + "}";
         } else {
             if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
@@ -308,11 +307,11 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
             if (paramtype.delimetr.empty () && (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum)) paramtype.delimetr = partstring[1].ToCStr ().Get ();
         }
     }
-
     // Если задан и разделитель - пропишем его
     if (nparam > 2) {
-        if (propertyParams.ContainsKey ("{@" + partstring[2] + "}")) {
-            paramtype.criteria = "{@" + partstring[2] + "}";
+        GS::UniString key = "{@" + partstring[2] + "}";
+        if (ParamHelpers::isCacheContainsParamValue (key)) {
+            paramtype.criteria = key;
         } else {
             if (partstring[2].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
             if (partstring[2].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
@@ -325,7 +324,6 @@ bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definitio
             }
         }
     }
-
     // Если заданы игнорируемые значения
     if (nparam > 3) {
         if (partstring[3].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
@@ -340,7 +338,6 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
 {
     SumCriteria criteriaList;
     GS::UniString delimetr = GS::UniString (rule.delimetr.c_str ());
-
     // Выбираем значения критериев
     for (UInt32 i = 0; i < rule.elemts.GetSize (); i++) {
         if (paramToReadelem.ContainsKey (rule.elemts[i])) {

@@ -2,19 +2,21 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Helpers.hpp"
+#include	"Propertycache.hpp"
 #include	"ResetProperty.hpp"
-
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
-bool ResetProperty (ParamDictValue& propertyParams)
+bool ResetProperty ()
 {
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     return false;
     #endif
+    if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
+    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
     GS::Array<API_PropertyDefinition> definitions_to_reset;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else

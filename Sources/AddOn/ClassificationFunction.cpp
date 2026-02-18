@@ -3,11 +3,12 @@
 #include	"APIEnvir.h"
 #include	"ClassificationFunction.hpp"
 #include	"Helpers.hpp"
-
+#include	"Propertycache.hpp"
 namespace ClassificationFunc
 {
 
 GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автокласса
+
 
 // -----------------------------------------------------------------------------
 // Получение словаря со всеми классами во всех системах классифкации
@@ -119,12 +120,23 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
     }
 }
 
+bool ReadSystemDict ()
+{
+    if (PROPERTYCACHE ().isClassification_OK) return true;
+    if (PROPERTYCACHE ().isClassificationRead) return false;
+    PROPERTYCACHE ().ReadClassification ();
+    if (PROPERTYCACHE ().isClassification_OK) return true;
+    if (PROPERTYCACHE ().isClassificationRead) return false;
+    return false;
+}
+
 // -----------------------------------------------------------------------------
 // Поиск класса по ID в заданной классификации, возвращает Guid класса
 // -----------------------------------------------------------------------------
-API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS::UniString& classname)
+API_Guid FindClass (GS::UniString& systemname, GS::UniString& classname)
 {
-    if (systemdict.IsEmpty ()) return APINULLGuid;
+    if (!ReadSystemDict ()) return APINULLGuid;
+    ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
     if (!systemdict.ContainsKey (systemname)) return APINULLGuid;
     API_Guid classgiud = APINULLGuid;
     if (systemdict.Get (systemname).ContainsKey (classname)) {
@@ -137,9 +149,10 @@ API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS:
 // -----------------------------------------------------------------------------
 // Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
 // -----------------------------------------------------------------------------
-void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid)
+void SetAutoclass (const API_Guid elemGuid)
 {
-    if (systemdict.IsEmpty ()) GetAllClassification (systemdict);
+    if (!ReadSystemDict ()) return;
+    ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
     if (!systemdict.ContainsKey (autoclassname)) return;
     if (!systemdict.Get (autoclassname).ContainsKey (autoclassname)) return;
     API_ClassificationItem item = systemdict.Get (autoclassname).Get (autoclassname).item;

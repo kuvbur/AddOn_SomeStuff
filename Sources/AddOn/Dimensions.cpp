@@ -2,7 +2,7 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Dimensions.hpp"
-
+#include	"Propertycache.hpp"
 
 #define DIM_NOCHANGE 0
 #define DIM_HIGHLIGHT_ON 1
@@ -169,7 +169,7 @@ bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings, bool isUndo)
+GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, const SyncSettings& syncSettings, bool isUndo)
 {
     if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace)) {
         return NoError;
@@ -296,7 +296,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
             bool is_wall = (elementType == API_WallID);
             bool flag_deletewall = is_wall && is_sameGUID && dimrule.flag_deletewall;
             API_NoteContentType contentType = (*memo.dimElems)[k].note.contentType;
-            if (!flag_deletewall && !dimrule.flag_reset && DimParse ((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule, propertyParams)) {
+            if (!flag_deletewall && !dimrule.flag_reset && DimParse ((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule)) {
                 if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
                 if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
                     flag_write = true;
@@ -374,7 +374,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, ParamDictV
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, const DimRule& dimrule, ParamDictValue& propertyParams)
+bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, const DimRule& dimrule)
 {
     flag_change = DIM_NOCHANGE;
     flag_highlight = DIM_NOCHANGE;
@@ -391,9 +391,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
     GS::UniString custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
     bool flag_expression = false; //В описании найдена формула
     if (!dimrule.expression.IsEmpty ()) {
-        ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
         ParamDictValue pdictvalue = dimrule.paramDict;
-
         // Добавляем в словарь округлённое значение
         if (pdictvalue.ContainsKey ("{@gdl:measuredvalue}")) {
             ParamValue pvalue;
@@ -402,8 +400,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
             pdictvalue.Get ("{@gdl:measuredvalue}").isValid = true;
         }
         if (elemGuid != APINULLGuid) {
-            ClassificationFunc::SystemDict systemdict;
-            ParamHelpers::Read (elemGuid, pdictvalue, propertyParams, systemdict);
+            ParamHelpers::Read (elemGuid, pdictvalue);
         }//Получим значения, если размер привязан к элементу
         GS::UniString expression = dimrule.expression;
 
@@ -419,7 +416,6 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
             custom_txt = expression;
         }
     }
-
     //Если указано округление до нуля - просто подсветим кривые размеры
     if (round_value < 1) {
         if (contentType == API_NoteContent_Custom) flag_change = DIM_CHANGE_OFF;
@@ -470,8 +466,7 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bo
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
-    ParamDictValue propertyParams = {};
-    DimAutoRound (elemGuid, dimrules, propertyParams, syncSettings, isUndo);
+    DimAutoRound (elemGuid, dimrules, syncSettings, isUndo);
 }
 
 // -----------------------------------------------------------------------------
@@ -488,8 +483,7 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
     if (!GetDimAutotext (autotext)) return;
     if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
-    ParamDictValue propertyParams = {};
-    if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, dimrules, propertyParams, syncSettings, isUndo);
+    if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, dimrules, syncSettings, isUndo);
     #if defined(TESTING)
     DBprnt ("DimRoundAll end");
     #endif
@@ -498,7 +492,7 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, ParamDictValue& propertyParams, const SyncSettings& syncSettings, bool isUndo)
+bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, const SyncSettings& syncSettings, bool isUndo)
 {
     GSErrCode err = NoError;
     GS::Array<API_Guid>	guidArray = {};
@@ -507,7 +501,7 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
     if (guidArray.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
-            err = DimAutoRound (guidArray.Get (i), dimrules, propertyParams, syncSettings, isUndo);
+            err = DimAutoRound (guidArray.Get (i), dimrules, syncSettings, isUndo);
             if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
         }
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)

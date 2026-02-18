@@ -391,8 +391,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     }
 
     // Теперь пройдём по прочитанным правилам и сформируем список параметров для чтения
-    ParamHelpers::AllPropertyDefinitionToParamDict (propertyParams);
-    GetParamToReadFromRule (rules, propertyParams, paramToRead, paramToWrite);
+    GetParamToReadFromRule (rules, paramToRead, paramToWrite);
     if (paramToRead.IsEmpty ()) {
         msg_rep ("Spec", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
         GS::UniString SpecRuleReadFoundString = RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
@@ -527,7 +526,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         return APIERR_GENERAL;
     }
     // Читаем данные из размещённых элементов
-    ParamHelpers::ElementsRead (paramToRead, propertyParams, systemdict);
+    ParamHelpers::ElementsRead (paramToRead);
     //Массив со словарями элементов для создания по правилам
     Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
     bool has_v2 = false;
@@ -761,7 +760,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         #endif
         guidArraysync.Push (elemGuid);
     }
-    SyncArray (syncSettings, guidArraysync, systemdict, propertyParams);
+    SyncArray (syncSettings, guidArraysync);
     finish = clock ();
     duration += (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
@@ -876,7 +875,7 @@ void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid
 // --------------------------------------------------------------------
 // Выбирает из параметров групп имена свойств для дальнейшего чтения
 // --------------------------------------------------------------------
-void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams, ParamDictElement& paramToRead, ParamDictValue& paramToWrite)
+void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictElement& paramToRead, ParamDictValue& paramToWrite)
 {
     for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
