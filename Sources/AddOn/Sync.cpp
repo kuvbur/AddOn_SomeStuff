@@ -570,11 +570,15 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     if (syncall) hassubguid = ParamHelpers::SubGuid_GetParamValue (elemGuid, definitions, subproperty);
     ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
     bool hasSub = false;
-    for (UInt32 i = 0; i < definitions.GetSize (); i++) {
+
+    for (auto& definition : definitions) {
         // Получаем список правил синхронизации из всех свойств
-        ParseSyncString (elemGuid, elementType, definitions[i], mainsyncRules, paramToRead, hasSub, syncall, synccoord, syncclass, subproperty); // Парсим описание свойства
+        ParseSyncString (elemGuid, elementType, definition, mainsyncRules, paramToRead, hasSub, syncall, synccoord, syncclass, subproperty); // Парсим описание свойства
     }
     if (mainsyncRules.IsEmpty ()) return false;
+    if (!(PROPERTYCACHE ().isPropertyDefinitionRead_full && PROPERTYCACHE ().isPropertyDefinition_OK)) {
+        PROPERTYCACHE ().AddPropertyDefinition (definitions);
+    }
     // Заполняем правила синхронизации с учётом субэлементов, попутно заполняем словарь параметров для чтения/записи
     WriteDict syncRules; // Словарь с правилами для каждого элемента
     SyncAddSubelement (subelemGuids, mainsyncRules, syncRules, paramToRead);

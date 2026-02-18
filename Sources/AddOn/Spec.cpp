@@ -1,11 +1,12 @@
 //------------ kuvbur 2022 ------------
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
-#include	"Spec.hpp"
-#include	"Sync.hpp"
+#include "ACAPinc.h"
+#include "APIEnvir.h"
+#include "Spec.hpp"
+#include "Sync.hpp"
 #ifdef TESTING
 #include "TestFunc.hpp"
 #endif
+#include "Propertycache.hpp"
 namespace Spec
 {
 // --------------------------------------------------------------------
