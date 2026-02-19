@@ -208,7 +208,11 @@ GS::UniString NameToRawName (const GS::UniString& name, FormatString& formatstri
 // Получение размеров Морфа
 // Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
-bool ReadMorphParam (const API_Element& element, ParamDictValue& pdictvalue);
+bool ReadMorphParam (const API_Element& element, ParamDictValue& pdictvaluemorph);
+
+GS::UniString GetRawnamePrefixByTypeInx (const short& inx);
+
+short GetTypeInxByRawnamePrefix (const GS::UniString& rawName);
 
 // -----------------------------------------------------------------------------
 // Задаёт источник получения информации по rawName
@@ -224,7 +228,7 @@ void SetArrayByRawname (ParamValue& pvalue);
 // Для колонны или объекта - центр колонны и отм. низа
 // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
 // -----------------------------------------------------------------------------
-bool ReadCoords (const API_Element& element, ParamDictValue& params);
+bool ReadCoords (const API_Element& element, ParamDictValue& pdictvaluecoord);
 
 // -----------------------------------------------------------------------------
 // Замена имен параметров на значения в выражении
@@ -293,27 +297,22 @@ bool AddProperty (ParamDictValue& params, GS::Array<API_Property>& properties);
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
-void AddBoolValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const bool val);
+void AddBoolValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const bool val, const bool addInNotEx = false);
 
 // -----------------------------------------------------------------------------
 // Добавление значения длины в словарь ParamDictValue
 // -----------------------------------------------------------------------------
-void AddLengthValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val);
+void AddLengthValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val, const bool addInNotEx = false);
 
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
-void AddDoubleValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val);
+void AddDoubleValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val, const bool addInNotEx = false);
 
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
-void AddStringValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString val);
-
-// -----------------------------------------------------------------------------
-// Список возможных префиксов типов параметров
-// -----------------------------------------------------------------------------
-void GetParamTypeList (GS::Array<GS::UniString>& paramTypesList);
+void AddStringValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString val, const bool addInNotEx = false);
 
 // -----------------------------------------------------------------------------
 // Конвертация значений ParamValue в свойства, находящиеся в нём

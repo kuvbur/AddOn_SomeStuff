@@ -27,12 +27,32 @@ void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 
 bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 {
-
-    if (!isCacheContainsParamValue (rawname)) {
+    short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
+    if (!isCacheContainsParamValue (inx, rawname)) {
         return false;
     }
-    pvalue = PROPERTYCACHE ().property.Get (rawname);
-    return true;
+    switch (inx) {
+        case PROPERTYTYPEINX:
+            pvalue = PROPERTYCACHE ().property.Get (rawname);
+            return true;
+            break;
+        case GLOBTYPEINX:
+            pvalue = PROPERTYCACHE ().glob.Get (rawname);
+            return true;
+            break;
+        case ATTRIBTYPEINX:
+            pvalue = PROPERTYCACHE ().attrib.Get (rawname);
+            return true;
+            break;
+        case INFOTYPEINX:
+            pvalue = PROPERTYCACHE ().info.Get (rawname);
+            return true;
+            break;
+        default:
+            return false;
+            break;
+    }
+    return false;
 }
 
 bool isPropertyDefinitionRead ()
@@ -72,85 +92,87 @@ bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
 
 bool isCacheContainsParamValue (const GS::UniString& rawname)
 {
-    if (rawname.BeginsWith ("{@property:")) {
-        // Проверяем с кэша, если в кэше есть, то не читаем из API, если нет, то читаем и добавляем в кэш
-        if (PROPERTYCACHE ().isPropertyDefinitionRead && PROPERTYCACHE ().isPropertyDefinition_OK) {
-            if (PROPERTYCACHE ().property.ContainsKey (rawname)) return true;
-        }
-        // Если кэш не был прочитан, то читаем его и проверяем наличие ключа
-        if (!PROPERTYCACHE ().isPropertyDefinitionRead_full) {
-            PROPERTYCACHE ().ReadPropertyDefinition ();
-        }
-        if (!PROPERTYCACHE ().isPropertyDefinition_OK) {
-            #if defined(TESTING)
-            DBprnt ("ERROR isPropertyDefinition_OK " + rawname);
-            #endif
+    short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
+    return isCacheContainsParamValue (inx, rawname);
+    return false;
+}
+
+bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
+{
+    switch (inx) {
+        case PROPERTYTYPEINX:
+            // Проверяем с кэша, если в кэше есть, то не читаем из API, если нет, то читаем и добавляем в кэш
+            if (PROPERTYCACHE ().isPropertyDefinitionRead && PROPERTYCACHE ().isPropertyDefinition_OK) {
+                if (PROPERTYCACHE ().property.ContainsKey (rawname)) return true;
+            }
+            // Если кэш не был прочитан, то читаем его и проверяем наличие ключа
+            if (!PROPERTYCACHE ().isPropertyDefinitionRead_full) {
+                PROPERTYCACHE ().ReadPropertyDefinition ();
+            }
+            if (!PROPERTYCACHE ().isPropertyDefinition_OK) {
+                #if defined(TESTING)
+                DBprnt ("ERROR isPropertyDefinition_OK " + rawname);
+                #endif
+                return false;
+            }
+            return PROPERTYCACHE ().property.ContainsKey (rawname);
+            break;
+        case GLOBTYPEINX:
+            if (!PROPERTYCACHE ().isGetGeoLocationRead) PROPERTYCACHE ().ReadGetGeoLocation ();
+            if (!PROPERTYCACHE ().isGetGeoLocation_OK) {
+                #if defined(TESTING)
+                DBprnt ("ERROR isGetGeoLocation_OK " + rawname);
+                #endif
+            }
+            if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
+
+            if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
+            if (!PROPERTYCACHE ().isSurveyPointTransformation_OK) {
+                #if defined(TESTING)
+                DBprnt ("ERROR isSurveyPointTransformation_OK " + rawname);
+                #endif
+            }
+            if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
+
+            if (!PROPERTYCACHE ().isPlaceSetsRead) PROPERTYCACHE ().ReadPlaceSets ();
+            if (!PROPERTYCACHE ().isPlaceSets_OK) {
+                #if defined(TESTING)
+                DBprnt ("ERROR isPlaceSets_OK " + rawname);
+                #endif
+            }
+            if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
+
+            if (!PROPERTYCACHE ().isLocOriginRead) PROPERTYCACHE ().ReadLocOrigin ();
+            if (!PROPERTYCACHE ().isLocOrigin_OK) {
+                #if defined(TESTING)
+                DBprnt ("ERROR isLocOrigin_OK " + rawname);
+                #endif
+            }
+            return PROPERTYCACHE ().glob.ContainsKey (rawname);
+            break;
+        case ATTRIBTYPEINX:
+            if (!PROPERTYCACHE ().isAttributeRead) PROPERTYCACHE ().ReadAttribute ();
+            if (!PROPERTYCACHE ().isAttribute_OK) {
+                #if defined(TESTING)
+                DBprnt ("ERROR isAttribute_OK " + rawname);
+                #endif
+                return false;
+            }
+            return PROPERTYCACHE ().attrib.ContainsKey (rawname);
+            break;
+        case INFOTYPEINX:
+            if (!PROPERTYCACHE ().isInfoRead) PROPERTYCACHE ().ReadInfo ();
+            if (!PROPERTYCACHE ().isInfo_OK) {
+                #if defined(TESTING)
+                DBprnt ("ERROR isInfo_OK " + rawname);
+                #endif
+                return false;
+            }
+            return PROPERTYCACHE ().info.ContainsKey (rawname);
+            break;
+        default:
             return false;
-        }
-        if (!PROPERTYCACHE ().property.ContainsKey (rawname)) {
-            #if defined(TESTING)
-            DBprnt ("ERROR PROPERTYCACHE ().property.ContainsKey (rawname) " + rawname);
-            #endif
-            return false;
-        }
-        return true;
-    }
-
-    if (rawname.BeginsWith ("{@glob:")) {
-        if (!PROPERTYCACHE ().isGetGeoLocationRead) PROPERTYCACHE ().ReadGetGeoLocation ();
-        if (!PROPERTYCACHE ().isGetGeoLocation_OK) {
-            #if defined(TESTING)
-            DBprnt ("ERROR isGetGeoLocation_OK " + rawname);
-            #endif
-        }
-        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-
-        if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
-        if (!PROPERTYCACHE ().isSurveyPointTransformation_OK) {
-            #if defined(TESTING)
-            DBprnt ("ERROR isSurveyPointTransformation_OK " + rawname);
-            #endif
-        }
-        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-
-        if (!PROPERTYCACHE ().isPlaceSetsRead) PROPERTYCACHE ().ReadPlaceSets ();
-        if (!PROPERTYCACHE ().isPlaceSets_OK) {
-            #if defined(TESTING)
-            DBprnt ("ERROR isPlaceSets_OK " + rawname);
-            #endif
-        }
-        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-
-        if (!PROPERTYCACHE ().isLocOriginRead) PROPERTYCACHE ().ReadLocOrigin ();
-        if (!PROPERTYCACHE ().isLocOrigin_OK) {
-            #if defined(TESTING)
-            DBprnt ("ERROR isLocOrigin_OK " + rawname);
-            #endif
-        }
-        if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-
-    }
-
-    if (rawname.BeginsWith ("{@attrib:")) {
-        if (!PROPERTYCACHE ().isAttributeRead) PROPERTYCACHE ().ReadAttribute ();
-        if (!PROPERTYCACHE ().isAttribute_OK) {
-            #if defined(TESTING)
-            DBprnt ("ERROR isAttribute_OK " + rawname);
-            #endif
-            return false;
-        }
-        return PROPERTYCACHE ().attrib.ContainsKey (rawname);
-    }
-
-    if (rawname.BeginsWith ("{@info:")) {
-        if (!PROPERTYCACHE ().isInfoRead) PROPERTYCACHE ().ReadInfo ();
-        if (!PROPERTYCACHE ().isInfo_OK) {
-            #if defined(TESTING)
-            DBprnt ("ERROR isInfo_OK " + rawname);
-            #endif
-            return false;
-        }
-        return PROPERTYCACHE ().info.ContainsKey (rawname);
+            break;
     }
     return false;
 }
@@ -168,7 +190,7 @@ bool GetGeoLocationToParamDict (ParamDictValue& propertyParams)
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = "{@glob:";
+    GS::UniString prefix = GLOBNAMEPREFIX;
     GS::UniString suffix = "}";
     ParamValue pvalue = {};
     GSErrCode err = NoError;
@@ -236,7 +258,7 @@ bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = "{@glob:";
+    GS::UniString prefix = GLOBNAMEPREFIX;
     GS::UniString suffix = "}";
     ParamValue pvalue = {};
     GSErrCode err = NoError;
@@ -273,7 +295,7 @@ bool GetPlaceSetsToParamDict (ParamDictValue& propertyParams)
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = "{@glob:";
+    GS::UniString prefix = GLOBNAMEPREFIX;
     GS::UniString suffix = "}";
     ParamValue pvalue = {};
     API_PlaceInfo placeInfo = {};
@@ -347,7 +369,7 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
         msg_rep ("GetLocOriginToParamDict", "APIDb_GetOffsetID", err, APINULLGuid);
         return false;
     }
-    GS::UniString prefix = "{@glob:";
+    GS::UniString prefix = GLOBNAMEPREFIX;
     GS::UniString suffix = "}";
     ParamValue pvalue = {};
     pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
@@ -404,7 +426,7 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
         return false;
     }
     GS::UniString rawName = "";
-    GS::UniString prefix = "{@info:";
+    GS::UniString prefix = INFONAMEPREFIX;
     GS::UniString suffix = "}";
     for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
         rawName = prefix;
@@ -521,7 +543,7 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = "{@property:";
+    GS::UniString prefix = PROPERTYNAMEPREFIX;
     API_PropertyGroup group;
     bool flag_add = false;
     for (auto& definision : definitions) {

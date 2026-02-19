@@ -19,6 +19,8 @@ bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group);
 
 bool isCacheContainsParamValue (const GS::UniString& rawname);
 
+bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname);
+
 bool GetGeoLocationToParamDict (ParamDictValue& propertyParams);
 
 bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams);

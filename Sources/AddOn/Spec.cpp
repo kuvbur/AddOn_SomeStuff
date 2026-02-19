@@ -1500,7 +1500,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
         if (err == NoError) {
             if (favorite.properties.HasValue ()) {
                 for (const auto& property : favorite.properties.Get ()) {
-                    GS::UniString fname = ""; GS::UniString rawName = "{@property:";
+                    GS::UniString fname = ""; GS::UniString rawName = PROPERTYNAMEPREFIX;
                     GetPropertyFullName (property.definition, fname);
                     rawName.Append (fname.ToLowerCase ());
                     rawName.Append ("}");
@@ -1513,7 +1513,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
                     for (GSIndex ii = 0; ii < nParams; ++ii) {
                         API_AddParType& actParam = (*favorite.memo.Get ().params)[ii];
                         GS::UniString fname = GS::UniString (actParam.name);
-                        GS::UniString rawName = "{@gdl:";
+                        GS::UniString rawName = GDLNAMEPREFIX;
                         rawName.Append (fname.ToLowerCase ());
                         rawName.Append ("}");
                         if (!paramdict.ContainsKey (rawName)) paramdict.Add (rawName, "");
@@ -1542,7 +1542,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
         for (GSIndex ii = 0; ii < nParams; ++ii) {
             API_AddParType& actParam = (*memo.params)[ii];
             GS::UniString fname = GS::UniString (actParam.name);
-            GS::UniString rawName = "{@gdl:";
+            GS::UniString rawName = GDLNAMEPREFIX;
             rawName.Append (fname.ToLowerCase ());
             rawName.Append ("}");
             if (!paramdict.ContainsKey (rawName)) paramdict.Add (rawName, "");
@@ -1560,7 +1560,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
         return err;
     }
     for (const auto& definition : definitions) {
-        GS::UniString fname = ""; GS::UniString rawName = "{@property:";
+        GS::UniString fname = ""; GS::UniString rawName = PROPERTYNAMEPREFIX;
         GetPropertyFullName (definition, fname);
         rawName.Append (fname.ToLowerCase ());
         rawName.Append ("}");
@@ -1757,7 +1757,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                     GS::UniString rawname = "";
                     bool flag_find = false;
                     if (actParam.typeMod == API_ParSimple) {
-                        rawname = "{@gdl:" + name.ToLowerCase () + "}";
+                        rawname = GDLNAMEPREFIX + name.ToLowerCase () + "}";
                         flag_find = param.ContainsKey (rawname);
                     }
                     if (actParam.typeMod == API_ParSimple && flag_find) {
