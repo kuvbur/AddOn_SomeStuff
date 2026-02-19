@@ -140,7 +140,7 @@ void TestFormula ()
         GS::UniString f = formula.Get (j).name;
         pvalue.name = f;
         pvalue.val.uniStringValue = f;
-        pvalue.rawName = "{@formula:" + f.ToLowerCase () + ";" + pvalue.val.uniStringValue + "}";
+        pvalue.rawName = FORMULANAMEPREFIX + f.ToLowerCase () + ";" + pvalue.val.uniStringValue + "}";
         GS::UniString templatestring = pvalue.val.uniStringValue;
         DBtest (ParamHelpers::ParseParamNameMaterial (templatestring, params, false), templatestring, true);
         pvalue.val.uniStringValue = templatestring;

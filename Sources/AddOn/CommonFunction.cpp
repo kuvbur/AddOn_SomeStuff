@@ -2526,7 +2526,7 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
     const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memo.params)[ii];
-        GS::UniString rawname = "{@gdl:" + GS::UniString (actParam.name).ToLowerCase () + "}";
+        GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + "}";
         if (!param.ContainsKey (rawname)) continue;
         Param pp = param.Get (rawname);
         if (actParam.typeMod == API_ParSimple) {

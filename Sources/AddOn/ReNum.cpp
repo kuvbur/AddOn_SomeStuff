@@ -330,7 +330,7 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, Ru
             } else {
                 rawNameposition = rawNameposition + paramName + "}";
             }
-            if (!rawNameposition.Contains ("property")) rawNameposition.ReplaceAll ("{", "{@gdl:");
+            if (!rawNameposition.Contains ("property")) rawNameposition.ReplaceAll ("{", GDLNAMEPREFIX);
             // Проверяем - есть ли у объекта такое свойство-правило
             if (propertyParams.ContainsKey (rawNameposition)) {
                 // В описании правила может быть указано имя свойства-критерия и, возможно, имя свойства-разбивки
@@ -352,8 +352,8 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, Ru
                     } else {
                         rawNamecriteria = rawNamecriteria + ruleparamName + "}";
                     }
-                    if (!rawNamecriteria.Contains ("property")) rawNamecriteria.ReplaceAll ("{", "{@gdl:");
-                    if (!rawNamedelimetr.IsEmpty () && !rawNamedelimetr.Contains ("property")) rawNamedelimetr.ReplaceAll ("{", "{@gdl:");
+                    if (!rawNamecriteria.Contains ("property")) rawNamecriteria.ReplaceAll ("{", GDLNAMEPREFIX);
+                    if (!rawNamedelimetr.IsEmpty () && !rawNamedelimetr.Contains ("property")) rawNamedelimetr.ReplaceAll ("{", GDLNAMEPREFIX);
 
                     // Если такие свойства есть - записываем правило
                     if (propertyParams.ContainsKey (rawNamecriteria) && (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ())) {

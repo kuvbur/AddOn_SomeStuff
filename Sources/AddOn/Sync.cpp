@@ -971,7 +971,7 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
     }
 
     if (name.Contains ("{id}") || name.Contains ("{ID}")) {
-        paramNamePrefix = "{@id:";
+        paramNamePrefix = IDNAMEPREFIX;
         synctypefind = true;
     }
     if (synctypefind == false) {
@@ -982,56 +982,56 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
                 name.ReplaceAll ("desc:", "");
                 name.ReplaceAll ("Desc:", "");
             }
-            paramNamePrefix = "{@gdl:";
+            paramNamePrefix = GDLNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Property:")) {
             name.ReplaceAll ("Property:", "");
-            paramNamePrefix = "{@property:";
+            paramNamePrefix = PROPERTYNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Morph:")) {
             name.ReplaceAll ("Morph:", "");
-            paramNamePrefix = "{@morph:";
+            paramNamePrefix = MORPHNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Coord:")) {
             name.ReplaceAll ("Coord:", "");
-            paramNamePrefix = "{@coord:";
+            paramNamePrefix = COORDNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Info:")) {
             name.ReplaceAll ("Info:", "");
-            paramNamePrefix = "{@info:";
+            paramNamePrefix = INFONAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("IFC:")) {
             name.ReplaceAll ("IFC:", "");
-            paramNamePrefix = "{@ifc:";
+            paramNamePrefix = IFCNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Glob:")) {
             name.ReplaceAll ("Glob:", "");
-            paramNamePrefix = "{@glob:";
+            paramNamePrefix = GLOBNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Class:")) {
             name.ReplaceAll ("Class:", "");
-            paramNamePrefix = "{@class:";
+            paramNamePrefix = CLASSNAMEPREFIX;
             synctypefind = true;
         }
     }
@@ -1039,28 +1039,28 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
         if (name.Contains ("Attribute:")) {
             synctypefind = true;
             name.ReplaceAll ("Attribute:", "");
-            paramNamePrefix = "{@attrib:";
+            paramNamePrefix = ATTRIBNAMEPREFIX;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Element:")) {
             synctypefind = true;
             name.ReplaceAll ("Element:", "");
-            paramNamePrefix = "{@element:";
+            paramNamePrefix = ELEMENTNAMEPREFIX;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("MEP:")) {
             synctypefind = true;
             name.ReplaceAll ("MEP:", "");
-            paramNamePrefix = "{@mep:";
+            paramNamePrefix = MEPNAMEPREFIX;
         }
     }
     if (synctypefind == false) {
         if (name.Contains ("Listdata:")) {
             synctypefind = true;
             name.ReplaceAll ("Listdata:", "");
-            paramNamePrefix = "{@listdata:";
+            paramNamePrefix = LISTDATANAMEPREFIX;
         }
     }
     if (synctypefind == false) return false;
@@ -1107,7 +1107,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     }
     if (synctypefind == false) {
         if (rulestring_one.Contains ("{id}") || rulestring_one.Contains ("{ID}")) {
-            paramNamePrefix = "{@id:";
+            paramNamePrefix = IDNAMEPREFIX;
             param.fromID = true;
             synctypefind = true;
         }
@@ -1121,7 +1121,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                 rulestring_one.ReplaceAll ("desc:", "");
                 rulestring_one.ReplaceAll ("Desc:", "");
             }
-            paramNamePrefix = "{@gdl:";
+            paramNamePrefix = GDLNAMEPREFIX;
             param.fromGDLparam = true;
             synctypefind = true;
         }
@@ -1133,7 +1133,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Attribute:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Attribute:", "");
-            paramNamePrefix = "{@attrib:";
+            paramNamePrefix = ATTRIBNAMEPREFIX;
             param.fromAttribElement = true;
             syncdirection = SYNC_TO;
         }
@@ -1145,7 +1145,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             rulestring_one.ReplaceAll ("{Layers;", "{Layers,20;");
             rulestring_one.ReplaceAll ("{Layers_inv;", "{Layers_inv,20;");
             rulestring_one.ReplaceAll ("{Layers_auto;", "{Layers_auto,20;");
-            paramNamePrefix = "{@material:";
+            paramNamePrefix = MATERIALNAMEPREFIX;
             GS::UniString templatestring = "";
             if (hasformula) {
                 if (rulestring_one.Contains ('"')) {
@@ -1212,7 +1212,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             rulestring_one.ReplaceAll (stringformat_raw, "");
             param.val.formatstring = stringformat;
             synctypefind = true;
-            paramNamePrefix = "{@formula:";
+            paramNamePrefix = FORMULANAMEPREFIX;
             param.val.hasFormula = true;
             syncdirection = SYNC_FROM;
         }
@@ -1221,7 +1221,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Morph:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Morph:", "");
-            paramNamePrefix = "{@morph:";
+            paramNamePrefix = MORPHNAMEPREFIX;
             param.fromMorph = true;
             syncdirection = SYNC_FROM;
         }
@@ -1230,7 +1230,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Coord:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Coord:", "");
-            paramNamePrefix = "{@coord:";
+            paramNamePrefix = COORDNAMEPREFIX;
             param.fromCoord = true;
             if (rulestring_one.Contains ("orth")) param.fromGlob = true;
             if (!rulestring_one.Contains ("symb_pos_") && !rulestring_one.Contains ("symb_rotangle")) syncdirection = SYNC_FROM;
@@ -1240,7 +1240,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Property:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Property:", "");
-            paramNamePrefix = "{@property:";
+            paramNamePrefix = PROPERTYNAMEPREFIX;
             param.fromProperty = true;
         }
     }
@@ -1248,7 +1248,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Info:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Info:", "");
-            paramNamePrefix = "{@info:";
+            paramNamePrefix = INFONAMEPREFIX;
             param.fromInfo = true;
         }
     }
@@ -1256,7 +1256,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("IFC:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("IFC:", "");
-            paramNamePrefix = "{@ifc:";
+            paramNamePrefix = IFCNAMEPREFIX;
             param.fromIFCProperty = true;
             syncdirection = SYNC_FROM;
         }
@@ -1265,7 +1265,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Glob:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Glob:", "");
-            paramNamePrefix = "{@glob:";
+            paramNamePrefix = GLOBNAMEPREFIX;
             param.fromGlob = true;
             syncdirection = SYNC_FROM;
         }
@@ -1274,7 +1274,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Class:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Class:", "");
-            paramNamePrefix = "{@class:";
+            paramNamePrefix = CLASSNAMEPREFIX;
             param.fromClassification = true;
         }
     }
@@ -1283,7 +1283,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Element:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Element:", "");
-            paramNamePrefix = "{@element:";
+            paramNamePrefix = ELEMENTNAMEPREFIX;
             param.fromElement = true;
             syncdirection = SYNC_FROM;
         }
@@ -1292,7 +1292,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("MEP:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("MEP:", "");
-            paramNamePrefix = "{@mep:";
+            paramNamePrefix = MEPNAMEPREFIX;
             param.fromMEP = true;
             syncdirection = SYNC_FROM;
         }
@@ -1301,7 +1301,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (rulestring_one.Contains ("Listdata:")) {
             synctypefind = true;
             rulestring_one.ReplaceAll ("Listdata:", "");
-            paramNamePrefix = "{@listdata:";
+            paramNamePrefix = LISTDATANAMEPREFIX;
             param.fromListData = true;
             syncdirection = SYNC_FROM;
         }

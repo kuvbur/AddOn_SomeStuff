@@ -52,6 +52,40 @@ static const Int32 MeterStringID = 17;
 static const Int32 CMeterStringID = 18;
 static const Int32 DMeterStringID = 19;
 
+static const GS::UniString IDNAMEPREFIX = "{@id:";
+static const short IDTYPEINX = 1;
+static const GS::UniString PROPERTYNAMEPREFIX = "{@property:";
+static const short PROPERTYTYPEINX = 2;
+static const GS::UniString COORDNAMEPREFIX = "{@coord:";
+static const short COORDTYPEINX = 3;
+static const GS::UniString GDLNAMEPREFIX = "{@gdl:";
+static const short GDLTYPEINX = 4;
+static const GS::UniString GDLDESCNAMEPREFIX = "{@description:";
+static const short GDLDESCTYPEINX = 5;
+static const GS::UniString INFONAMEPREFIX = "{@info:";
+static const short INFOTYPEINX = 6;
+static const GS::UniString IFCNAMEPREFIX = "{@ifc:";
+static const short IFCTYPEINX = 7;
+static const GS::UniString MORPHNAMEPREFIX = "{@morph:";
+static const short MORPHTYPEINX = 8;
+static const GS::UniString ATTRIBNAMEPREFIX = "{@attrib:";
+static const short ATTRIBTYPEINX = 9;
+static const GS::UniString LISTDATANAMEPREFIX = "{@listdata:";
+static const short LISTDATATYPEINX = 10;
+static const GS::UniString MATERIALNAMEPREFIX = "{@material:";
+static const short MATERIALTYPEINX = 11;
+static const GS::UniString GLOBNAMEPREFIX = "{@glob:";
+static const short GLOBTYPEINX = 12;
+static const GS::UniString CLASSNAMEPREFIX = "{@class:";
+static const short CLASSTYPEINX = 13;
+static const GS::UniString FORMULANAMEPREFIX = "{@formula:";
+static const short FORMULATYPEINX = 14;
+static const GS::UniString ELEMENTNAMEPREFIX = "{@element:";
+static const short ELEMENTTYPEINX = 15;
+static const GS::UniString MEPNAMEPREFIX = "{@mep:";
+static const short MEPTYPEINX = 16;
+
+
 static const GS::UniChar char_formula_start = '<';
 static const GS::UniChar char_formula_end = '>';
 static const GS::UniString str_formula_start = "<";
@@ -71,8 +105,7 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {
-    }
+    {}
     short  index;
     double level;
 };
@@ -161,6 +194,7 @@ struct ParamValue
     API_ModelElemStructureType composite_type = API_BasicStructure;
     API_ElemTypeID eltype = API_ZombieElemID;
     short composite_pen = 0;
+    short typeinx = 0;
     bool fromClassification = false;	 // Данные о классификаторе
     bool fromGDLparam = false;			 // Найден в гдл параметрах
     bool fromGDLdescription = false;	 // Найден по описанию в гдл параметрах

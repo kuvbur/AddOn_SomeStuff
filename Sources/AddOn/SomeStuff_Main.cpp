@@ -62,13 +62,14 @@ static GSErrCode SelectionChangeHandlerProc (const API_Neig * selElemNeig)
 static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig * selElemNeig)
 #endif
 {
+    return NoError;
     #ifdef TESTING
     DBprnt ("SelectionChangeHandler");
     #endif
     if (selElemNeig->neigID != APINeig_None) {
-        SelectElement (APINotify_New);
+        //SelectElement (APINotify_New);
     } else {
-        SelectElement (APINotify_NewAndReset);
+        //SelectElement (APINotify_NewAndReset);
     }
     ACAPI_KeepInMemory (true);
     return NoError;
@@ -110,13 +111,13 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             ACAPI_Notify_CatchNewElement (nullptr, nullptr);
             ACAPI_Notify_InstallElementObserver (nullptr);
             #endif
-            SelectElement (APINotify_Close);
+            //SelectElement (APINotify_Close);
             PROPERTYCACHE ();
             break;
         case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
-            SelectElement (APINotify_ChangeWindow);
+            //SelectElement (APINotify_ChangeWindow);
             DimRoundAll (syncSettings, false);
             break;
         default:
