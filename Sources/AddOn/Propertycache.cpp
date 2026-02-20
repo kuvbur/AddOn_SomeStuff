@@ -82,7 +82,6 @@ bool isCacheContainsGroup (const API_Guid& guid)
     return PROPERTYCACHE ().propertygroups.ContainsKey (guid);
 }
 
-
 bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
 {
     if (!isCacheContainsGroup (guid)) return false;
@@ -538,9 +537,6 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
 bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::Array<API_PropertyDefinition>& definitions)
 {
     if (definitions.IsEmpty ()) return false;
-    #if defined(TESTING)
-    DBprnt ("GetArrayPropertyDefinitionToParamDict definition start");
-    #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
     GS::UniString prefix = PROPERTYNAMEPREFIX;
@@ -591,24 +587,23 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
                 propertyParams.Add (pvalue.rawName, pvalue);
                 flag_add = true;
             } else {
-                ParamValue pvalue = propertyParams.Get (rawName);
-                FormatString fstring = pvalue.val.formatstring;
-                if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
-                    pvalue.rawName = rawName;
-                    pvalue.name = name;
-                    ParamHelpers::ConvertToParamValue (pvalue, definision);
-                    if (!fstring.isEmpty) {
-                        pvalue.val.formatstring = fstring;
+                if (propertyParams.Get (rawName).definition.guid != definision.guid) {
+                    ParamValue pvalue = propertyParams.Get (rawName);
+                    FormatString fstring = pvalue.val.formatstring;
+                    if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
+                        pvalue.rawName = rawName;
+                        pvalue.name = name;
+                        ParamHelpers::ConvertToParamValue (pvalue, definision);
+                        if (!fstring.isEmpty) {
+                            pvalue.val.formatstring = fstring;
+                        }
+                        propertyParams.Get (pvalue.rawName) = pvalue;
+                        flag_add = true;
                     }
-                    propertyParams.Get (pvalue.rawName) = pvalue;
-                    flag_add = true;
                 }
             }
         }
     }
-    #if defined(TESTING)
-    DBprnt ("  AllPropertyDefinitionToParamDict definition end");
-    #endif
     return flag_add;
 }
 }

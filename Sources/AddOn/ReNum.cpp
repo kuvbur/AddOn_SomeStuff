@@ -36,8 +36,10 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     clock_t start, finish;
     double  duration;
     start = clock ();
+
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true, false, false);
     if (guidArray.IsEmpty ()) return NoError;
+    PROPERTYCACHE ().Update ();
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions;
     if (guidArray.GetSize () == 1) {
         if (GetRenumRuleFromSelected (guidArray[0], rule_definitions)) GetElementForPropertyDefinition (rule_definitions, guidArray);
@@ -152,7 +154,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
     bool hasRule = !rule_definitions.IsEmpty ();
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
-    GS::HashTable<GS::UniString, bool> error_propertyname = {};
+    ParamDict error_propertyname = {};
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         GS::Array<API_PropertyDefinition>	definitions;
         GSErrCode err = ACAPI_Element_GetPropertyDefinitions (guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
@@ -275,7 +277,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname)
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, Rules& rules, ParamDict& error_propertyname)
 {
     bool hasRenum = false;
     if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
