@@ -135,6 +135,20 @@ struct PropertyCache
         isGroupPropertyRead_full = false;
     }
 
+    void Update ()
+    {
+        glob.Clear ();
+        ReadGetGeoLocation ();
+        ReadSurveyPointTransformation ();
+        ReadPlaceSets ();
+        ReadLocOrigin ();
+        ReadClassification ();
+        ReadGroupProperty ();
+        ReadPropertyDefinition ();
+        ReadAttribute ();
+        ReadInfo ();
+    }
+
     void ReadGetGeoLocation ()
     {
         #if defined(TESTING)
@@ -171,6 +185,7 @@ struct PropertyCache
 
     void ReadInfo ()
     {
+        info.Clear ();
         isInfoRead = true;
         isInfo_OK = ParamHelpers::GetAllInfoToParamDict (info);
         if (info.IsEmpty ()) isInfo_OK = false;
@@ -178,6 +193,7 @@ struct PropertyCache
 
     void ReadAttribute ()
     {
+        attrib.Clear ();
         isAttributeRead = true;
         isAttribute_OK = ParamHelpers::GetAllAttributeToParamDict (attrib);
         if (attrib.IsEmpty ()) isAttribute_OK = false;
@@ -188,6 +204,7 @@ struct PropertyCache
         #if defined(TESTING)
         DBprnt ("!!! ReadPropertyDefinition");
         #endif
+        property.Clear ();
         isPropertyDefinitionRead = true;
         isPropertyDefinitionRead_full = true;
         isPropertyDefinition_OK = ParamHelpers::GetAllPropertyDefinitionToParamDict (property);
@@ -196,6 +213,7 @@ struct PropertyCache
 
     void ReadClassification ()
     {
+        systemdict.Clear ();
         isClassificationRead = true;
         if (ClassificationFunc::GetAllClassification (systemdict) == NoError) isClassification_OK = true;
         if (systemdict.IsEmpty ()) isClassification_OK = false;
@@ -226,6 +244,7 @@ struct PropertyCache
 
     void ReadGroupProperty ()
     {
+        propertygroups.Clear ();
         isGroupPropertyRead = true;
         isGroupPropertyRead_full = true;
         GS::Array<API_PropertyGroup> groups = {};

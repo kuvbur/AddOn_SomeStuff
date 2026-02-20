@@ -98,6 +98,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     #if defined(TESTING)
     DBprnt ("SyncAndMonAll start");
     #endif
+    PROPERTYCACHE ().Update ();
     if (ResetProperty ()) return;
     GS::UniString funcname ("Sync All");
     bool flag_chanel = false;
@@ -601,7 +602,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
 {
     if (property_write_guid.IsEmpty ()) return false;
     if (paramToRead.IsEmpty ()) return false;
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictElement::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamDictValue& params = cIt->value;
         API_Guid elemGuid = cIt->key;
@@ -640,7 +641,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
 
 void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite, GS::HashTable<API_Guid, GS::UniString>& property_write_guid)
 {
-    GS::HashTable<API_Guid, GS::HashTable<GS::UniString, bool>> reset_property = {}; // Словарь со сбрасываемыми значениями
+    GS::HashTable<API_Guid, ParamDict> reset_property = {}; // Словарь со сбрасываемыми значениями
     // Выбираем по-элементно параметры для чтения и записи, формируем словарь
     for (const API_Guid& elemGuid : subelemGuids) {
         if (!syncRules.ContainsKey (elemGuid)) continue;
@@ -683,7 +684,7 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
                         reset_property.Get (elemGuid).Add (paramTo.rawName, true);
                     }
                 } else {
-                    GS::HashTable<GS::UniString, bool> u = {};
+                    ParamDict u = {};
                     u.Add (paramTo.rawName, true);
                     reset_property.Add (elemGuid, u);
                 }
@@ -692,16 +693,16 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
     }
     // Добавляем свойства для сброса
     if (reset_property.IsEmpty ()) return;
-    for (GS::HashTable<API_Guid, GS::HashTable<GS::UniString, bool>>::PairIterator cIt = reset_property.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (GS::HashTable<API_Guid, ParamDict>::PairIterator cIt = reset_property.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         const API_Guid elemGuid = cIt->key;
-        GS::HashTable<GS::UniString, bool>& r = cIt->value;
+        ParamDict& r = cIt->value;
         #else
         const API_Guid elemGuid = *cIt->key;
-        GS::HashTable<GS::UniString, bool>& r = *cIt->value;
+        ParamDict& r = *cIt->value;
         #endif
         if (!paramToRead.ContainsKey (elemGuid)) continue;
-        for (GS::HashTable<GS::UniString, bool>::PairIterator cIt = r.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDict::PairIterator cIt = r.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             const GS::UniString& rawName = cIt->key;
             #else
@@ -1108,6 +1109,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     if (synctypefind == false) {
         if (rulestring_one.Contains ("{id}") || rulestring_one.Contains ("{ID}")) {
             paramNamePrefix = IDNAMEPREFIX;
+            param.typeinx = IDTYPEINX;
             param.fromID = true;
             synctypefind = true;
         }
@@ -1122,6 +1124,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                 rulestring_one.ReplaceAll ("Desc:", "");
             }
             paramNamePrefix = GDLNAMEPREFIX;
+            param.typeinx = GDLTYPEINX;
             param.fromGDLparam = true;
             synctypefind = true;
         }
@@ -1134,6 +1137,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Attribute:", "");
             paramNamePrefix = ATTRIBNAMEPREFIX;
+            param.typeinx = ATTRIBTYPEINX;
             param.fromAttribElement = true;
             syncdirection = SYNC_TO;
         }
@@ -1146,6 +1150,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             rulestring_one.ReplaceAll ("{Layers_inv;", "{Layers_inv,20;");
             rulestring_one.ReplaceAll ("{Layers_auto;", "{Layers_auto,20;");
             paramNamePrefix = MATERIALNAMEPREFIX;
+            param.typeinx = MATERIALTYPEINX;
             GS::UniString templatestring = "";
             if (hasformula) {
                 if (rulestring_one.Contains ('"')) {
@@ -1213,6 +1218,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.val.formatstring = stringformat;
             synctypefind = true;
             paramNamePrefix = FORMULANAMEPREFIX;
+            param.typeinx = FORMULATYPEINX;
             param.val.hasFormula = true;
             syncdirection = SYNC_FROM;
         }
@@ -1222,6 +1228,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Morph:", "");
             paramNamePrefix = MORPHNAMEPREFIX;
+            param.typeinx = MORPHTYPEINX;
             param.fromMorph = true;
             syncdirection = SYNC_FROM;
         }
@@ -1231,6 +1238,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Coord:", "");
             paramNamePrefix = COORDNAMEPREFIX;
+            param.typeinx = COORDTYPEINX;
             param.fromCoord = true;
             if (rulestring_one.Contains ("orth")) param.fromGlob = true;
             if (!rulestring_one.Contains ("symb_pos_") && !rulestring_one.Contains ("symb_rotangle")) syncdirection = SYNC_FROM;
@@ -1241,6 +1249,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Property:", "");
             paramNamePrefix = PROPERTYNAMEPREFIX;
+            param.typeinx = PROPERTYTYPEINX;
             param.fromProperty = true;
         }
     }
@@ -1249,6 +1258,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Info:", "");
             paramNamePrefix = INFONAMEPREFIX;
+            param.typeinx = INFOTYPEINX;
             param.fromInfo = true;
         }
     }
@@ -1257,6 +1267,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("IFC:", "");
             paramNamePrefix = IFCNAMEPREFIX;
+            param.typeinx = IFCTYPEINX;
             param.fromIFCProperty = true;
             syncdirection = SYNC_FROM;
         }
@@ -1266,6 +1277,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Glob:", "");
             paramNamePrefix = GLOBNAMEPREFIX;
+            param.typeinx = GLOBTYPEINX;
             param.fromGlob = true;
             syncdirection = SYNC_FROM;
         }
@@ -1275,6 +1287,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Class:", "");
             paramNamePrefix = CLASSNAMEPREFIX;
+            param.typeinx = CLASSTYPEINX;
             param.fromClassification = true;
         }
     }
@@ -1284,6 +1297,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Element:", "");
             paramNamePrefix = ELEMENTNAMEPREFIX;
+            param.typeinx = ELEMENTTYPEINX;
             param.fromElement = true;
             syncdirection = SYNC_FROM;
         }
@@ -1293,6 +1307,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("MEP:", "");
             paramNamePrefix = MEPNAMEPREFIX;
+            param.typeinx = MEPTYPEINX;
             param.fromMEP = true;
             syncdirection = SYNC_FROM;
         }
@@ -1302,6 +1317,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
             rulestring_one.ReplaceAll ("Listdata:", "");
             paramNamePrefix = LISTDATANAMEPREFIX;
+            param.typeinx = LISTDATATYPEINX;
             param.fromListData = true;
             syncdirection = SYNC_FROM;
         }

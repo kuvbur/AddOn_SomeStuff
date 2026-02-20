@@ -38,7 +38,7 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabase
     }
     if (rules.IsEmpty ()) return false;
     bool has_element = false;
-    GS::HashTable<GS::UniString, bool> error_name = {};
+    ParamDict error_name = {};
     for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         SpecRule& rule = cIt->value;
@@ -356,7 +356,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     ParamDictElement paramOut = {}; // Словарь свойств для записи в расставленные элементы
     GS::Array<API_Guid> guidArraysync = {}; // Список элементов, которые требуется синхронизировать (расставленные элементы)
     UnicGuid error_element = {}; //Элементы с ошибками
-    GS::HashTable<GS::UniString, bool> error_name = {}; // Список имён, не найденных у избранного
+    ParamDict error_name = {}; // Список имён, не найденных у избранного
     GS::HashTable<GS::UniString, GS::HashTable<GS::UniString, GS::UniString>> paramdict_favorite = {}; // Словарь с именами параметров и описаниями свойств избранных элементов
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     bool showPercent = true;
@@ -390,7 +390,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             return APIERR_GENERAL;
         }
     }
-
+    PROPERTYCACHE ().Update ();
     // Теперь пройдём по прочитанным правилам и сформируем список параметров для чтения
     GetParamToReadFromRule (rules, paramToRead, paramToWrite);
     if (paramToRead.IsEmpty ()) {
@@ -753,7 +753,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         ACAPI_WriteReport (msg, true);
     }
 
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramOut.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictElement::PairIterator cIt = paramOut.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         API_Guid elemGuid = cIt->key;
         #else

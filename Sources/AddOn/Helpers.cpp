@@ -18,7 +18,6 @@
 #include    "ProfileVectorImageOperations.hpp"
 #include    "ProfileAdditionalInfo.hpp"
 #include    "ProfileVectorImage.hpp"
-
 static const GS::Array<short> paramTypesList = { IDTYPEINX,PROPERTYTYPEINX,COORDTYPEINX,GDLTYPEINX,INFOTYPEINX,IFCTYPEINX,MORPHTYPEINX,ATTRIBTYPEINX,LISTDATATYPEINX,MATERIALTYPEINX,GLOBTYPEINX,
 CLASSTYPEINX,FORMULATYPEINX,ELEMENTTYPEINX,MEPTYPEINX };
 
@@ -1187,6 +1186,18 @@ bool ParamHelpers::AddProperty (ParamDictValue& params, GS::Array<API_Property>&
             }
             if (ParamHelpers::ConvertToParamValue (pvalue, property)) {
                 if (hasname) {
+                    if (pvalue.fromClassification && ClassificationFunc::ReadSystemDict ()) {
+                        GS::UniString systemname = pvalue.val.uniStringValue.ToLowerCase ();
+                        API_Guid classguid = ClassificationFunc::FindClass (pvalue.name, systemname);
+                        if (classguid != APINULLGuid && pvalue.val.guidval == APINULLGuid) {
+                            pvalue.val.guidval = classguid;
+                        } else {
+                            #if defined(TESTING)
+                            if (pvalue.val.guidval != APINULLGuid) DBprnt ("Compare classification err - double class");
+                            if (classguid == APINULLGuid) DBprnt ("Compare classification err - empty class");
+                            #endif
+                        }
+                    }
                     params.Set (rawName, pvalue);
                     nparams--;
                     flag_find = true;
@@ -3024,47 +3035,43 @@ bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinit
     GSErrCode	err = NoError;
     short n = 0; GS::UniString flag_name = "";
     if (check) {
-        for (UInt32 i = 0; i < definitions.GetSize (); i++) {
-            if (!definitions[i].description.IsEmpty ()) {
-                if (definitions[i].description.Contains (property_flag_name)) {
-                    n++;
-                    flag_name.Append (definitions[i].name); flag_name.Append ("; ");
-                }
-            }
+        for (const auto& definition : definitions) {
+            if (definition.description.IsEmpty ()) continue;
+            if (!definition.description.Contains (property_flag_name)) continue;
+            n++;
+            flag_name.Append (definition.name); flag_name.Append ("; ");
         }
         if (n == 0) return false;
         if (n > 1) msg_rep ("There are several sync flags as an element. This can lead to errors.", flag_name, APIERR_GENERAL, elemGuid);
     }
-    for (UInt32 i = 0; i < definitions.GetSize (); i++) {
-        if (!definitions[i].description.IsEmpty ()) {
-            if (definitions[i].description.Contains (property_flag_name)) {
-                API_Property propertyflag = {};
-                err = ACAPI_Element_GetPropertyValue (elemGuid, definitions[i].guid, propertyflag);
-                if (err == NoError) {
-                    flagfind = true;
-                    #if defined(AC_22) || defined(AC_23)
-                    if (!propertyflag.isEvaluated) {
-                        return false;
-                    }
-                    if (propertyflag.isDefault && !propertyflag.isEvaluated) {
-                        return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
-                    } else {
-                        return propertyflag.value.singleVariant.variant.boolValue;
-                    }
-                    #else
-                    if (propertyflag.status == API_Property_NotAvailable) {
-                        return false;
-                    }
-                    if (propertyflag.isDefault && propertyflag.status == API_Property_NotEvaluated) {
-                        return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
-                    } else {
-                        return propertyflag.value.singleVariant.variant.boolValue;
-                    }
-                    #endif
-                } else {
-                    return false;
-                }
+    for (const auto& definition : definitions) {
+        if (definition.description.IsEmpty ()) continue;
+        if (!definition.description.Contains (property_flag_name)) continue;
+        API_Property propertyflag = {};
+        err = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
+        if (err == NoError) {
+            flagfind = true;
+            #if defined(AC_22) || defined(AC_23)
+            if (!propertyflag.isEvaluated) {
+                return false;
             }
+            if (propertyflag.isDefault && !propertyflag.isEvaluated) {
+                return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+            } else {
+                return propertyflag.value.singleVariant.variant.boolValue;
+            }
+            #else
+            if (propertyflag.status == API_Property_NotAvailable) {
+                return false;
+            }
+            if (propertyflag.isDefault && propertyflag.status == API_Property_NotEvaluated) {
+                return propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
+            } else {
+                return propertyflag.value.singleVariant.variant.boolValue;
+            }
+            #endif
+        } else {
+            return false;
         }
     }
     return false;
@@ -3120,7 +3127,7 @@ GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement& paramToWrite)
     #if defined(TESTING)
     DBprnt ("ElementsWrite start");
     #endif
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictElement::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamDictValue& params = cIt->value;
         API_Guid elemGuid = cIt->key;
@@ -3205,7 +3212,7 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
     double  duration;
     start = clock ();
     ParamDictValue paramsinfo;
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictElement::PairIterator cIt = paramToWrite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamDictValue& params = cIt->value;
         #else
@@ -3878,7 +3885,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead)
     DBprnt ("ElementsRead start");
     #endif
     // Выбираем по-элементно параметры для чтения
-    for (GS::HashTable<API_Guid, ParamDictValue>::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictElement::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamDictValue& params = cIt->value;
         API_Guid elemGuid = cIt->key;
@@ -3929,7 +3936,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
     bool needGetElement = false;
     bool hasListData = false;
     bool hasQuantity = false;
-    GS::HashTable<short, ParamDictValue> paramByTypes;
+    GS::HashTable<short, bool> hasparambytypes = {};
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -3968,15 +3975,9 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
                ) {
                 needGetElement = true;
             }
-        }
+            if (!hasparambytypes.ContainsKey (param.typeinx)) hasparambytypes.Add (param.typeinx, true);
+            if (param.val.hasFormula && !hasparambytypes.ContainsKey (FORMULATYPEINX)) hasparambytypes.Add (FORMULATYPEINX, true);
 
-
-        if (paramByTypes.ContainsKey (param.typeinx)) {
-            paramByTypes.Get (param.typeinx).Add (param.rawName, param);
-        } else {
-            ParamDictValue paramByType;
-            paramByType.Add (param.rawName, param);
-            paramByTypes.Add (param.typeinx, paramByType);
         }
     }
     if (hasQuantity && can_read_fromGDL) {
@@ -4000,56 +4001,38 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
     } else {
         UNUSED_VARIABLE (element);
     }
+    ParamDictValue paramByType = {};
     for (const short inx : paramTypesList) {
+        if (!hasparambytypes.ContainsKey (inx)) continue;
         if (inx == GDLTYPEINX && !can_read_fromGDL) continue;
         if (inx == LISTDATATYPEINX && !can_read_fromGDL) continue;
         if (inx == MORPHTYPEINX && eltype != API_MorphID) continue;
         if (inx == MATERIALTYPEINX && !can_read_fromMaterial) continue;
-        // Для некоторых параметров выборка не требуется
-        for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-            #if defined(AC_28) || defined(AC_29)
-            ParamValue& param = cIt->value;
-            #else
-            ParamValue& param = *cIt->value;
-            #endif
-            // Выбираем элементы с подходящим Guid
-            if (param.fromGuid == elemGuid) {
+        if (inx == PROPERTYTYPEINX || inx == GDLTYPEINX || inx == CLASSTYPEINX || inx == FORMULATYPEINX || inx == IFCTYPEINX) {
+            paramByType.Clear ();
+            // Для некоторых параметров выборка не требуется
+            for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+                #if defined(AC_28) || defined(AC_29)
+                ParamValue& param = cIt->value;
+                #else
+                ParamValue& param = *cIt->value;
+                #endif
+                // Выбираем элементы с подходящим Guid
+                if (param.fromGuid != elemGuid) continue;
                 // Для свойств с формулами основной признак - флаг, т.к. вычислению подлежат и свойства с составом конструкций.
-                if (param.val.hasFormula && paramType.IsEqual (FORMULANAMEPREFIX)) {
+                if (param.val.hasFormula && inx == FORMULATYPEINX) {
                     paramByType.Add (param.rawName, param);
                 } else {
-                    if (param.rawName.Contains (paramType)) paramByType.Add (param.rawName, param);
+                    if (param.typeinx == inx) paramByType.Add (param.rawName, param);
                 }
             }
+            if (paramByType.IsEmpty ()) continue;
         }
-        if (paramByType.IsEmpty ()) continue;
-
-        bool needCompare = false; // Флаг необходимости записи в словарь. Поднимается только при наличии результата на
+        bool needCompare = false; // Флаг необходимости записи в словарь.
         switch (inx) {
             case PROPERTYTYPEINX:
                 needCompare = ParamHelpers::ReadProperty (elemGuid, paramByType);
                 // Среди прочитанных свойств могут быть свойства с классификацией. Поищем классификацию по имени
-                if (needCompare) {
-                    for (ParamDictValue::PairIterator cItt = paramByType.EnumeratePairs (); cItt != NULL; ++cItt) {
-                        #if defined(AC_28) || defined(AC_29)
-                        ParamValue& parambt = cItt->value;
-                        #else
-                        ParamValue& parambt = *cItt->value;
-                        #endif
-                        if (parambt.fromClassification && ClassificationFunc::ReadSystemDict ()) {
-                            GS::UniString systemname = parambt.val.uniStringValue.ToLowerCase ();
-                            API_Guid classguid = ClassificationFunc::FindClass (parambt.name, systemname);
-                            if (classguid != APINULLGuid && parambt.val.guidval == APINULLGuid) {
-                                paramByType.Get (parambt.rawName).val.guidval = classguid;
-                            } else {
-                                #if defined(TESTING)
-                                if (parambt.val.guidval != APINULLGuid) DBprnt ("Compare classification err - double class");
-                                if (classguid == APINULLGuid) DBprnt ("Compare classification err - empty class");
-                                #endif
-                            }
-                        }
-                    }
-                }
                 break;
             case COORDTYPEINX:
                 ParamHelpers::ReadCoords (element, params);
@@ -4069,7 +4052,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
                 ParamHelpers::ReadMorphParam (element, params);
                 break;
             case IDTYPEINX:
-                needCompare = ParamHelpers::ReadID (elem_head, paramByType);
+                ParamHelpers::ReadID (elem_head, params);
                 break;
             case CLASSTYPEINX:
                 needCompare = ParamHelpers::ReadClassification (elemGuid, paramByType);
@@ -4088,68 +4071,17 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
                 break;
             case MEPTYPEINX:
                 #if defined (AC_28)
-                needCompare = MEPv1::ReadMEP (elem_head, paramByType);
+                MEPv1::ReadMEP (elem_head, params);
                 #endif
                 break;
             default:
                 break;
-        }
-
-        if (paramType.IsEqual (COORDNAMEPREFIX)) {
-            GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
-            if (params.ContainsKey (sync_coord_correctkey) && !paramByType.ContainsKey (sync_coord_correctkey)) {
-                paramByType.Add (sync_coord_correctkey, params.Get (sync_coord_correctkey));
-            }
-            needCompare = ParamHelpers::ReadCoords (element, paramByType);
-        }
-        if (paramType.IsEqual (GDLNAMEPREFIX) && can_read_fromGDL) {
-            needCompare = ParamHelpers::ReadGDL (element, elem_head, paramByType);
-        }
-        if (paramType.IsEqual (LISTDATANAMEPREFIX) && can_read_fromGDL) {
-            ParamHelpers::ReadListData (elem_head, params);
-        }
-        #if !defined (AC_29)
-        if (paramType.IsEqual (IFCNAMEPREFIX)) {
-            needCompare = ParamHelpers::ReadIFC (elemGuid, paramByType);
-        }
-        #endif
-        if (paramType.IsEqual (MORPHNAMEPREFIX) && eltype == API_MorphID) {
-            needCompare = ParamHelpers::ReadMorphParam (element, paramByType);
-        }
-        if (paramType.IsEqual (IDNAMEPREFIX)) {
-            needCompare = ParamHelpers::ReadID (elem_head, paramByType);
-        }
-        if (paramType.IsEqual (CLASSNAMEPREFIX)) {
-            needCompare = ParamHelpers::ReadClassification (elemGuid, paramByType);
-        }
-        if (paramType.IsEqual (MATERIALNAMEPREFIX) && can_read_fromMaterial) {
-            ParamHelpers::ReadMaterial (element, params);
-        }
-        if (paramType.IsEqual (FORMULANAMEPREFIX)) {
-            needCompare = ParamHelpers::ReadFormula (paramByType, params);
-        }
-        if (paramType.IsEqual (ATTRIBNAMEPREFIX)) {
-            needCompare = ParamHelpers::ReadAttributeValues (elem_head, paramByType);
-        }
-        if (paramType.IsEqual (ELEMENTNAMEPREFIX)) {
-            needCompare = ParamHelpers::ReadElementValues (element, paramByType);
-        }
-        if (paramType.IsEqual (MEPNAMEPREFIX)) {
-            #if defined (AC_28)
-            needCompare = MEPv1::ReadMEP (elem_head, paramByType);
-            #endif
         }
         if (needCompare) {
             #if defined(TESTING)
             DBprnt ("        CompareParamDictValue");
             #endif
             ParamHelpers::CompareParamDictValue (paramByType, params);
-        } else {
-            if (!paramType.IsEqual (MATERIALNAMEPREFIX) && !paramType.IsEqual (LISTDATANAMEPREFIX)) {
-                #if defined(TESTING)
-                DBprnt ("Read err", "not found" + paramType);
-                #endif
-            }
         }
     }
     #if defined(TESTING)
@@ -6405,7 +6337,6 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
             pvalue.name = systemname.ToLowerCase ();
         }
         pvalue.fromClassification = true;
-        pvalue.typeinx = CLASSTYPEINX;
         return;
     }
     if (description.Contains ("some_stuff_th")) {
