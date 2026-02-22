@@ -99,7 +99,41 @@ struct SkipValues
     bool reset_to_def = false; // Сбрасывать свойство, если ничего не подошло
 };
 
+struct DimRule
+{
+    short   pen_original = 0;
+    short   pen_rounded = 0;
+    UInt32  round_value = 0;
+    bool    flag_change = false;
+    bool    flag_deletewall = false;
+    bool    flag_reset = false;
+    bool    flag_custom = false;
+    bool    classic_round_mode = false; // Использовать вместо округления вверх обычное округление
+    GS::UniString expression = "";
+    GS::UniString layer = "";
+    ParamDictValue paramDict;
+};
+
+typedef GS::HashTable<GS::UniString, DimRule> DimRules; // Словарь с правилами округления размеров
+
 int IsDummyModeOn ();
+
+// -------------------------------------------------------------------------------
+// Функция для получения правил из массива элементов (по имени правила и наличию скобок в описании)
+// Если в массиве один элемент - будет произведён поиск по классификации
+// В этом случае в массив элементов будут добавлены элементы, у которых видны правила
+// -------------------------------------------------------------------------------
+bool GetRuleFromSelected (GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, const GS::UniString& name, bool check_bracket);
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Функция для выбора элементов, в которых видимо выбранное свойство
+// -----------------------------------------------------------------------------------------------------------------------
+void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray);
+
+// -----------------------------------------------------------------------------------------------------------------------
+// Функция получения словаря свойств, в описании которых есть name. Опционально проверяет наличие скобок { }
+// -----------------------------------------------------------------------------------------------------------------------
+bool GetRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, const GS::UniString& name, bool check_bracket);
 
 // -----------------------------------------------------------------------------
 // Добавление отслеживания (для разных версий)
@@ -292,7 +326,7 @@ void AddParamDictValue2ParamDictElement (const API_Guid& elemGuid, ParamDictValu
 // -----------------------------------------------------------------------------
 // Добавление массива свойств в словарь
 // -----------------------------------------------------------------------------
-bool AddProperty (ParamDictValue& params, GS::Array<API_Property>& properties);
+bool AddProperty (ParamDictValue& params, GS::Array<API_Property>& properties, const API_Guid& elemguid);
 
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
@@ -341,7 +375,7 @@ void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo
 // --------------------------------------------------------------------
 // Чтение значений свойств в ParamDictValue
 // --------------------------------------------------------------------
-bool ReadProperty (const API_Guid& elemGuid, ParamDictValue& params);
+bool ReadProperty (const API_Guid& elemGuid, ParamDictValue& params, const GS::Array<API_PropertyDefinition>& propertyDefinitions);
 
 // -----------------------------------------------------------------------------
 // Получение значения IFC свойств в ParamDictValue

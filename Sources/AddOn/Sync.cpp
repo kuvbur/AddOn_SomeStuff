@@ -44,7 +44,7 @@ void MonAll (SyncSettings& syncSettings)
     #if defined (AC_28)
     MonByType (API_ExternalElemID, syncSettings);
     #endif
-    if (HasDimAutotext ()) MonByType (API_DimensionID, syncSettings);
+    if (PROPERTYCACHE ().hasDimAutotext) MonByType (API_DimensionID, syncSettings);
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
@@ -98,7 +98,6 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     #if defined(TESTING)
     DBprnt ("SyncAndMonAll start");
     #endif
-    PROPERTYCACHE ().Update ();
     if (ResetProperty ()) return;
     GS::UniString funcname ("Sync All");
     bool flag_chanel = false;
@@ -547,6 +546,7 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
         msg_rep ("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
         return false;
     }
+    if (definitions.IsEmpty ()) return false;
     // Синхронизация данных
     // Проверяем - не отключена ли синхронизация у данного объекта
     if (dummymode == DUMMY_MODE_UNDEF) dummymode = IsDummyModeOn ();
@@ -634,7 +634,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
                 }
 
             }
-        }
+}
     }
     return false;
 }
@@ -716,7 +716,7 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
             paramTo.needResetToDef = true;
             paramTo.isValid = true;
             ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
-        }
+}
     }
     return;
 }
@@ -1713,9 +1713,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
-            }
         }
     }
+}
     return has_element;
 }
 
@@ -1865,7 +1865,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 }
             }
             selNeigs.PushNew (guid);
-        }
+}
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -1922,7 +1922,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -2019,7 +2019,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid&
                         }
                     }
                 }
-            }
+        }
         }
     }
     if (!find) {
@@ -2082,7 +2082,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
                     }
                 }
             }
-        }
+}
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
@@ -2113,7 +2113,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-    }
+}
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);

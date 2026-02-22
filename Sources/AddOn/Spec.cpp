@@ -348,8 +348,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     GS::UniString subtitle = ""; Int32 maxval = 1; short i = 1;
     ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
     ParamDictValue paramToWrite = {}; // Словарь с параметрами для записи (с нулевым GUID)
-    ParamDictValue propertyParams = {}; // Общий список свойств
-    ClassificationFunc::SystemDict systemdict = {}; // словарь с классификацией
     GS::Array<ElementDict> elements_new = {}; // Массив со словарём создаваемых элементов
     GS::Array<ElementDict> elements_mod = {}; // Массив со словарём модифицируемых элементов
     GS::Array<API_Guid> elements_delete = {}; // Массив удаляемых элементов
@@ -390,7 +388,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             return APIERR_GENERAL;
         }
     }
-    PROPERTYCACHE ().Update ();
     // Теперь пройдём по прочитанным правилам и сформируем список параметров для чтения
     GetParamToReadFromRule (rules, paramToRead, paramToWrite);
     if (paramToRead.IsEmpty ()) {
@@ -458,16 +455,23 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             const GS::UniString description = *cItt.value;
             #endif
             // Ищем у избранного свойство для записи имя правила
-            if (!propertyParams.ContainsKey (rawname)) continue;
             if (description.Contains ("spec_rule_name")) {
-                if (!paramToWrite.ContainsKey (rawname)) paramToWrite.Add (rawname, propertyParams.Get (rawname));
+                if (!paramToWrite.ContainsKey (rawname)) {
+                    ParamValue chpvalue;
+                    if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) continue;
+                    paramToWrite.Add (rawname, chpvalue);
+                }
                 rule.subguid_rulename = rawname;
             }
             // Ищем свойство, в которое нужно будет записать GUID
             if (!rule.subguid_paramrawname.IsEmpty ()) {
                 if (description.Contains (rule.subguid_paramrawname.ToLowerCase ()) &&
                     description.Contains ("sync_guid")) {
-                    if (!paramToWrite.ContainsKey (rawname)) paramToWrite.Add (rawname, propertyParams.Get (rawname));
+                    if (!paramToWrite.ContainsKey (rawname)) {
+                        ParamValue chpvalue;
+                        if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) continue;
+                        paramToWrite.Add (rawname, chpvalue);
+                    }
                     rule.subguid_paramrawname = rawname;
                     flag_find = true;
                 }
@@ -478,8 +482,9 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         if (!rule.delete_old) continue;
         if (rule.subguid_rulename.IsEmpty ()) continue;
         if (!flag_find) continue;
-        if (!propertyParams.ContainsKey (rule.subguid_rulename)) continue;
-        GS::Array<API_Guid> exsist_elements = GetElementByPropertyDescription (propertyParams.Get (rule.subguid_rulename).definition, rule.subguid_rulevalue.ToLowerCase ());
+        ParamValue subguid_pvalue;
+        if (!ParamHelpers::GetParamValueFromCache (rule.subguid_rulename, subguid_pvalue)) continue;
+        GS::Array<API_Guid> exsist_elements = GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
         if (!selected_elements.IsEmpty ()) {
             for (UInt32 i = 0; i < exsist_elements.GetSize (); i++) {
                 if (selected_elements.ContainsKey (exsist_elements[i])) rule.exsist_elements.Push (exsist_elements[i]);
@@ -596,7 +601,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         return APIERR_GENERAL;
     }
     #endif
-    if (!propertyParams.IsEmpty ()) ParamHelpers::CompareParamDictValue (propertyParams, paramToWrite);
     if (!elements_mod.IsEmpty ()) {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_UserInput_ClearElementHighlight ();
@@ -802,16 +806,16 @@ GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules)
             #else
             if (propertyflag.status == API_Property_NotAvailable) {
                 flagfindspec = true;
-            }
+        }
             if (propertyflag.isDefault && propertyflag.status == API_Property_NotEvaluated) {
                 flagfindspec = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
             } else {
                 flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
             }
             #endif
-        }
-        if (flagfindspec) AddRule (definitions[i], elemguid, rules);
     }
+        if (flagfindspec) AddRule (definitions[i], elemguid, rules);
+}
     return NoError;
 }
 
@@ -1846,4 +1850,4 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
     return NoError;
 }
 
-}
+    }

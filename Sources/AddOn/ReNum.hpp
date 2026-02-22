@@ -44,7 +44,8 @@ public:
     std::string suffix = ""; // Суффикс
     GSCharCode chcode = GChCode;
     RenumPos ()
-    {}
+    {
+    }
 
     // TODO Добавить парсинг префикса и суффикса позиции
     RenumPos (const ParamValue& param)
@@ -207,22 +208,11 @@ typedef std::map<std::string, RenumPosDict, doj::alphanum_less<std::string>> DRe
 typedef GS::HashTable<API_Guid, RenumRule> Rules; // Таблица правил
 GSErrCode ReNumSelected (SyncSettings& syncSettings);
 
-// -----------------------------------------------------------------------------------------------------------------------
-// В случае, если выбран только один элемент - обрабатываем ТОЛЬКО правила, видимые у него
-// Функция для сбора правил с элемента
-// -----------------------------------------------------------------------------------------------------------------------
-bool GetRenumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions);
-
-// -----------------------------------------------------------------------------------------------------------------------
-// Функция для выбора элементов, в которых видимо выбранное свойство
-// -----------------------------------------------------------------------------------------------------------------------
-void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray);
-
 bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
 
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition);
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname);
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname);
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos>& eleminpos);
 RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::string& delimetr, const std::string& criteria);
 bool ElementsSeparation (const RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error);

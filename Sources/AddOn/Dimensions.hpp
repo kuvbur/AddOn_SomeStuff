@@ -15,51 +15,12 @@
 #include	"SyncSettings.hpp"
 #include	"Helpers.hpp"
 
-struct DimRule
-{
-    short	pen_original = 0;
-    short	pen_rounded = 0;
-    UInt32	round_value = 0;
-    bool	flag_change = false;
-    bool	flag_deletewall = false;
-    bool	flag_reset = false;
-    bool	flag_custom = false;
-    bool	classic_round_mode = false; // Использовать вместо округления вверх обычное округление
-    GS::UniString expression = "";
-    GS::UniString layer = "";
-    ParamDictValue paramDict;
-};
-
 typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
-
-typedef GS::HashTable<GS::UniString, DimRule> DimRules;
-
-
-bool HasDimAutotext ();
-
-// -----------------------------------------------------------------------------
-// Чтение настроек из информации о проекте
-//	Имя свойства: "Addon_Dimenstions"
-// -----------------------------------------------------------------------------
-bool GetDimAutotext (GS::UniString& autotext);
-
-// -----------------------------------------------------------------------------
-// Чтение настроек из информации о проекте
-//	Имя свойства: "Addon_Dimenstions"
-//	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
-//					"Слой" - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
-// -----------------------------------------------------------------------------
-bool DimReadPref (DimRules& dimrules, GS::UniString& autotext);
-
-// -----------------------------------------------------------------------------
-// Обработка текста правила
-// -----------------------------------------------------------------------------
-bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression);
 
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, const SyncSettings& syncSettings, bool isUndo);
+GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo);
 
 // -----------------------------------------------------------------------------
 // Обрабатывает размер и решает - что с ним делать
@@ -78,6 +39,6 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo);
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, const SyncSettings& syncSettings, bool isUndo);
+bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, const SyncSettings& syncSettings, bool isUndo);
 
 #endif
