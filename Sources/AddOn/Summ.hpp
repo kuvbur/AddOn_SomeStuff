@@ -37,15 +37,14 @@ typedef GS::HashTable<API_Guid, SumRule> SumRules;
 
 GSErrCode SumSelected (SyncSettings& syncSettings);
 
-bool GetSumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions);
+bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem);
 
-void GetSumElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray);
+// ----------------------------------------------------------------------------
+// Функция распределяет элемент в таблицу с правилами нумерации
+// ----------------------------------------------------------------------------
+bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions, ParamDictElement& paramToRead, SumRules& rules);
 
-bool GetSumValuesOfElements (const GS::Array<API_Guid> guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
-
-bool Sum_GetElement (const API_Guid& elemGuid, ParamDictValue& paramToRead, SumRules& rules, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
-
-bool Sum_Rule (const API_Guid& elemGuid, const API_PropertyDefinition& definition, SumRule& paramtype);
+bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype);
 
 void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
 

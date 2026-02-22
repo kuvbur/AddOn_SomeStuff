@@ -4,6 +4,20 @@
 #define	PROPERTYCACHE_HPP
 #include    "Helpers.hpp"
 
+
+// -----------------------------------------------------------------------------
+// Чтение настроек из информации о проекте
+//	Имя свойства: "Addon_Dimenstions"
+//	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
+//					"Слой" - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
+// -----------------------------------------------------------------------------
+bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext);
+
+// -----------------------------------------------------------------------------
+// Обработка текста правила
+// -----------------------------------------------------------------------------
+bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression);
+
 namespace ParamHelpers
 {
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue);
@@ -62,7 +76,8 @@ struct PropertyCache
     ParamDictValue glob;
     ClassificationFunc::SystemDict systemdict;
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
-
+    DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
+    bool hasDimAutotext;
     bool isGetGeoLocation_OK; // Успешно прочитан
     bool isGetGeoLocationRead;    // Был запрошен
 
@@ -96,7 +111,7 @@ struct PropertyCache
     PropertyCache ()
     {
         #if defined(TESTING)
-        DBprnt ("!!! PropertyCache clear");
+        DBprnt ("=PropertyCache= clear");
         #endif
         property.Clear ();
         info.Clear ();
@@ -104,9 +119,10 @@ struct PropertyCache
         glob.Clear ();
         systemdict.Clear ();
         propertygroups.Clear ();
-
+        dimrules.Clear ();
         isGetGeoLocation_OK = false;
         isGetGeoLocationRead = false;
+        hasDimAutotext = false;
 
         isSurveyPointTransformation_OK = false;
         isSurveyPointTransformationRead = false;
@@ -137,6 +153,9 @@ struct PropertyCache
 
     void Update ()
     {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= Update start");
+        #endif
         glob.Clear ();
         ReadGetGeoLocation ();
         ReadSurveyPointTransformation ();
@@ -147,76 +166,129 @@ struct PropertyCache
         ReadPropertyDefinition ();
         ReadAttribute ();
         ReadInfo ();
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= Update end");
+        #endif
     }
 
     void ReadGetGeoLocation ()
     {
         #if defined(TESTING)
-        DBprnt ("!!! ReadGetGeoLocation");
+        DBprnt ("=PropertyCache= ReadGetGeoLocation");
         #endif
         isGetGeoLocationRead = true;
         isGetGeoLocation_OK = ParamHelpers::GetGeoLocationToParamDict (glob);
         if (glob.IsEmpty ()) isGetGeoLocation_OK = false;
+        #if defined(TESTING)
+        if (!isGetGeoLocation_OK) DBprnt ("=PropertyCache= ReadGetGeoLocation ERROR");
+        #endif
     }
 
     void ReadSurveyPointTransformation ()
     {
         #if defined(TESTING)
-        DBprnt ("!!! ReadSurveyPointTransformation");
+        DBprnt ("=PropertyCache= ReadSurveyPointTransformation");
         #endif
         isSurveyPointTransformationRead = true;
         isSurveyPointTransformation_OK = ParamHelpers::GetSurveyPointTransformationToParamDict (glob);
         if (glob.IsEmpty ()) isSurveyPointTransformation_OK = false;
+        #if defined(TESTING)
+        if (!isSurveyPointTransformation_OK) DBprnt ("=PropertyCache= ReadSurveyPointTransformation ERROR");
+        #endif
     }
 
     void ReadPlaceSets ()
     {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadPlaceSets");
+        #endif
         isPlaceSetsRead = true;
         isPlaceSets_OK = ParamHelpers::GetPlaceSetsToParamDict (glob);
         if (glob.IsEmpty ()) isPlaceSets_OK = false;
+        #if defined(TESTING)
+        if (!isPlaceSets_OK) DBprnt ("=PropertyCache= ReadPlaceSets ERROR");
+        #endif
     }
 
     void ReadLocOrigin ()
     {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadLocOrigin");
+        #endif
         isLocOriginRead = true;
         isLocOrigin_OK = ParamHelpers::GetLocOriginToParamDict (glob);
         if (glob.IsEmpty ()) isLocOrigin_OK = false;
+        #if defined(TESTING)
+        if (!isLocOrigin_OK) DBprnt ("=PropertyCache= ReadLocOrigin ERROR");
+        #endif
     }
 
     void ReadInfo ()
     {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadInfo");
+        #endif
         info.Clear ();
         isInfoRead = true;
         isInfo_OK = ParamHelpers::GetAllInfoToParamDict (info);
         if (info.IsEmpty ()) isInfo_OK = false;
+        hasDimAutotext = false;
+        if (isInfo_OK) {
+            dimrules.Clear ();
+            if (info.ContainsKey ("addon_dimension_autotext")) {
+                const GS::UniString autotext = "";
+                hasDimAutotext = DimReadPref (dimrules, autotext);
+                #if defined(TESTING)
+                DBprnt ("=PropertyCache= ReadInfo find dim rule " + autotext);
+                #endif
+            }
+        }
+        #if defined(TESTING)
+        if (!isInfo_OK) DBprnt ("=PropertyCache= ReadInfo ERROR");
+        #endif
     }
 
     void ReadAttribute ()
     {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadAttribute");
+        #endif
         attrib.Clear ();
         isAttributeRead = true;
         isAttribute_OK = ParamHelpers::GetAllAttributeToParamDict (attrib);
-        if (attrib.IsEmpty ()) isAttribute_OK = false;
+        if (attrib.IsEmpty ())  isAttribute_OK = false;
+        #if defined(TESTING)
+        if (!isAttribute_OK) DBprnt ("=PropertyCache= ReadAttribute ERROR");
+        #endif
     }
 
     void ReadPropertyDefinition ()
     {
         #if defined(TESTING)
-        DBprnt ("!!! ReadPropertyDefinition");
+        DBprnt ("=PropertyCache= ReadPropertyDefinition");
         #endif
         property.Clear ();
         isPropertyDefinitionRead = true;
         isPropertyDefinitionRead_full = true;
         isPropertyDefinition_OK = ParamHelpers::GetAllPropertyDefinitionToParamDict (property);
         if (property.IsEmpty ()) isPropertyDefinition_OK = false;
+        #if defined(TESTING)
+        if (!isPropertyDefinition_OK) DBprnt ("=PropertyCache= ReadPropertyDefinition ERROR");
+        #endif
     }
 
     void ReadClassification ()
     {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadClassification");
+        #endif
         systemdict.Clear ();
         isClassificationRead = true;
         if (ClassificationFunc::GetAllClassification (systemdict) == NoError) isClassification_OK = true;
         if (systemdict.IsEmpty ()) isClassification_OK = false;
+        #if defined(TESTING)
+        if (!isClassification_OK) DBprnt ("=PropertyCache= ReadClassification ERROR");
+        #endif
     }
 
     void AddPropertyDefinition (GS::Array<API_PropertyDefinition>& definitions)
@@ -244,6 +316,9 @@ struct PropertyCache
 
     void ReadGroupProperty ()
     {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadGroupProperty");
+        #endif
         propertygroups.Clear ();
         isGroupPropertyRead = true;
         isGroupPropertyRead_full = true;
@@ -260,6 +335,9 @@ struct PropertyCache
             }
         }
         if (propertygroups.IsEmpty ()) isGroupProperty_OK = false;
+        #if defined(TESTING)
+        if (!isGroupProperty_OK) DBprnt ("=PropertyCache= ReadGroupProperty ERROR");
+        #endif
     }
 };
 

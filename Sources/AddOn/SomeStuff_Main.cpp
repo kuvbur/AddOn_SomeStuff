@@ -100,7 +100,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
         case APINotify_NewAndReset:
         case APINotify_Open:
             Do_ElementMonitor (syncSettings.syncMon);
-            PROPERTYCACHE ();
+            PROPERTYCACHE ().Update ();
             break;
         case APINotify_Close:
         case APINotify_Quit:
@@ -112,13 +112,18 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             ACAPI_Notify_InstallElementObserver (nullptr);
             #endif
             //SelectElement (APINotify_Close);
-            PROPERTYCACHE ();
             break;
         case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
             //SelectElement (APINotify_ChangeWindow);
             DimRoundAll (syncSettings, false);
+            break;
+        case APINotify_ClassificationVisibilityChanged:
+        case APINotify_PropertyVisibilityChanged:
+        case APINotify_ClassificationItemChanged:
+        case APINotify_PropertyDefinitionChanged:
+            PROPERTYCACHE ().Update ();
             break;
         default:
             break;
@@ -323,12 +328,14 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     #ifndef EXTNDVERSION
                     syncSettings.syncMon = !syncSettings.syncMon;
                     #endif // PK_1
+                    PROPERTYCACHE ().Update ();
                     Do_ElementMonitor (syncSettings.syncMon);
                     MonAll (syncSettings);
                     break;
                 case SyncAll_CommandID:
                     msg_rep ("SyncAll", "============== START ==============", NoError, APINULLGuid);
                     syncSettings.syncAll = true;
+                    PROPERTYCACHE ().Update ();
                     SyncAndMonAll (syncSettings);
                     syncSettings.syncAll = false;
                     msg_rep ("SyncAll", "=============== END ===============", NoError, APINULLGuid);
@@ -379,6 +386,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                 case RoomBook_CommandID:
                     msg_rep ("RoomBook", "============== START ==============", NoError, APINULLGuid);
+                    PROPERTYCACHE ().Update ();
                     Roombook::RoomBook ();
                     msg_rep ("RoomBook", "=============== END ===============", NoError, APINULLGuid);
                     break;
@@ -466,7 +474,7 @@ GSErrCode __ACENV_CALL Initialize (void)
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     ACAPI_Notification_CatchSelectionChange (SelectionChangeHandlerProc);
     #else
-    ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
+    ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB | APINotify_ClassificationVisibilityChanged | APINotify_PropertyVisibilityChanged | APINotify_ClassificationItemChanged | APINotify_PropertyDefinitionChanged, ProjectEventHandlerProc);
     ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     #endif
     ACAPI_KeepInMemory (true);

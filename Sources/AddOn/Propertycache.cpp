@@ -49,9 +49,15 @@ bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
             return true;
             break;
         default:
+            #if defined(TESTING)
+            DBprnt ("ERROR GetParamValueFromCache " + rawname);
+            #endif
             return false;
             break;
     }
+    #if defined(TESTING)
+    DBprnt ("ERROR GetParamValueFromCache " + rawname);
+    #endif
     return false;
 }
 
@@ -114,6 +120,9 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
                 return false;
             }
+            #if defined(TESTING)
+            if (!PROPERTYCACHE ().property.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().property.ContainsKey " + rawname);
+            #endif
             return PROPERTYCACHE ().property.ContainsKey (rawname);
             break;
         case GLOBTYPEINX:
@@ -124,7 +133,6 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
             }
             if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-
             if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
             if (!PROPERTYCACHE ().isSurveyPointTransformation_OK) {
                 #if defined(TESTING)
@@ -132,7 +140,6 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
             }
             if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-
             if (!PROPERTYCACHE ().isPlaceSetsRead) PROPERTYCACHE ().ReadPlaceSets ();
             if (!PROPERTYCACHE ().isPlaceSets_OK) {
                 #if defined(TESTING)
@@ -140,13 +147,15 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
             }
             if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-
             if (!PROPERTYCACHE ().isLocOriginRead) PROPERTYCACHE ().ReadLocOrigin ();
             if (!PROPERTYCACHE ().isLocOrigin_OK) {
                 #if defined(TESTING)
                 DBprnt ("ERROR isLocOrigin_OK " + rawname);
                 #endif
             }
+            #if defined(TESTING)
+            if (!PROPERTYCACHE ().glob.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().glob.ContainsKey " + rawname);
+            #endif
             return PROPERTYCACHE ().glob.ContainsKey (rawname);
             break;
         case ATTRIBTYPEINX:
@@ -157,6 +166,9 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
                 return false;
             }
+            #if defined(TESTING)
+            if (!PROPERTYCACHE ().attrib.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().attrib.ContainsKey " + rawname);
+            #endif
             return PROPERTYCACHE ().attrib.ContainsKey (rawname);
             break;
         case INFOTYPEINX:
@@ -167,12 +179,21 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
                 return false;
             }
+            #if defined(TESTING)
+            if (!PROPERTYCACHE ().info.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().info.ContainsKey " + rawname);
+            #endif
             return PROPERTYCACHE ().info.ContainsKey (rawname);
             break;
         default:
+            #if defined(TESTING)
+            DBprnt ("ERROR isCacheContainsParamValue " + rawname);
+            #endif
             return false;
             break;
     }
+    #if defined(TESTING)
+    DBprnt ("ERROR isCacheContainsParamValue " + rawname);
+    #endif
     return false;
 }
 
@@ -428,9 +449,13 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
     GS::UniString prefix = INFONAMEPREFIX;
     GS::UniString suffix = "}";
     for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
-        rawName = prefix;
-        rawName.Append (autotexts[i][0].ToLowerCase ());
-        rawName.Append (suffix);
+        if (autotexts[i][0].Contains ("Addon_Dimens") && !autotexts[i][2].IsEmpty ()) {
+            rawName = "{@info:addon_dimension_autotext}";
+        } else {
+            rawName = prefix;
+            rawName.Append (autotexts[i][0].ToLowerCase ());
+            rawName.Append (suffix);
+        }
         if (!propertyParams.ContainsKey (rawName)) {
             ParamValue pvalue;
             pvalue.name = autotexts[i][1];
@@ -440,7 +465,6 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
             propertyParams.Add (rawName, pvalue);
         }
     }
-    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:has_info");
     #if defined(TESTING)
     DBprnt ("  GetAllInfoToParamDict end");
     #endif
@@ -656,4 +680,115 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
         }
     }
     return error;
+}
+
+// -----------------------------------------------------------------------------
+//	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
+//					"Слой" - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
+// -----------------------------------------------------------------------------
+bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
+{
+    bool hasexpression = false; // Нужно ли нам читать список свойств
+    if (autotext.Contains (";")) {
+        GS::Array<GS::UniString> partstring = {};
+        StringSplt (autotext, ";", partstring);
+        for (UInt32 k = 0; k < partstring.GetSize (); k++) {
+            DimRule dimrule = {};
+            if (DimParsePref (partstring[k], dimrule, hasexpression)) {
+                GS::UniString kstr;
+                if (dimrule.layer.IsEmpty ()) {
+                    kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
+                } else {
+                    kstr = dimrule.layer;
+                }
+                dimrules.Add (kstr, dimrule);
+            }
+        }
+    } else {
+        DimRule dimrule = {};
+        if (DimParsePref (autotext, dimrule, hasexpression)) {
+            GS::UniString kstr = "";
+            if (dimrule.layer.IsEmpty ()) {
+                kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
+            } else {
+                kstr = dimrule.layer;
+            }
+            dimrules.Add (kstr, dimrule);
+        }
+    }
+    return !dimrules.IsEmpty ();
+}
+
+// -----------------------------------------------------------------------------
+// Обработка текста правила
+// -----------------------------------------------------------------------------
+bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
+{
+    if (rawrule.IsEmpty ()) return false;
+    if (!rawrule.Contains ("-")) return false;
+    bool flag_find = false;
+    GS::Array<GS::UniString> partstring_1 = {};
+    if (StringSplt (rawrule, "-", partstring_1) == 2) {
+        //Проверяем - что указано в правиле: слой или номер пера
+        // Слой указываем в кавычках, в regexp формате
+        if (partstring_1[0].Contains ('"')) {
+            GS::UniString layer = partstring_1[0];
+            layer.ReplaceAll ('"', ' ');
+            layer.Trim ();
+            dimrule.layer = layer;
+        } else {
+            dimrule.pen_original = std::atoi (partstring_1[0].ToCStr ());
+        }
+        if (partstring_1[1].Contains ("DeleteWall")) {
+            dimrule.flag_change = true;
+            dimrule.flag_deletewall = true;
+            dimrule.pen_rounded = dimrule.pen_original;
+            flag_find = true;
+        }
+        if (partstring_1[1].Contains ("ResetText")) {
+            dimrule.flag_change = true;
+            dimrule.flag_reset = true;
+            dimrule.pen_rounded = dimrule.pen_original;
+            flag_find = true;
+        }
+        if (partstring_1[1].Contains ("CheckCustom")) {
+            dimrule.flag_change = false;
+            dimrule.flag_custom = true;
+            flag_find = true;
+        }
+        if (partstring_1[1].Contains ("lassic")) {
+            dimrule.classic_round_mode = true;
+        }
+        if (!partstring_1[1].Contains (",")) return flag_find;
+        GS::Array<GS::UniString> partstring_2 = {};
+        if (StringSplt (partstring_1[1], ",", partstring_2) > 1) {
+            if (!partstring_2[0].IsEmpty ()) {
+                dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
+                flag_find = true;
+            }
+            if (!partstring_2[1].IsEmpty ()) {
+                dimrule.pen_rounded = std::atoi (partstring_2[1].ToCStr ());
+                flag_find = true;
+            }
+            if (partstring_2.GetSize () < 3) return flag_find;
+            for (UInt32 k = 2; k < partstring_2.GetSize (); k++) {
+                if (partstring_2[k].IsEmpty ()) continue;
+                if (partstring_2[k].Contains ("{") && partstring_2[k].Contains ("}")) {
+                    ParamDictValue paramDict = {};
+                    GS::UniString expression = partstring_2[k];
+                    expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
+                    ParamHelpers::ParseParamName (expression, paramDict);
+                    dimrule.paramDict = paramDict;
+                    dimrule.expression = expression;
+                    if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
+                } else {
+                    if (k == 2) {
+                        dimrule.flag_change = (std::atoi (partstring_2[k].ToCStr ()) > 0);
+                        flag_find = true;
+                    }
+                }
+            }
+        }
+    }
+    return flag_find;
 }

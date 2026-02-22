@@ -7,7 +7,7 @@
 namespace ClassificationFunc
 {
 
-GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автокласса
+const GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автокласса
 
 
 // -----------------------------------------------------------------------------
@@ -15,6 +15,9 @@ GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автоклас
 // -----------------------------------------------------------------------------
 GSErrCode GetAllClassification (SystemDict& systemdict)
 {
+    #if defined(TESTING)
+    DBprnt ("GetAllClassification start");
+    #endif
     GSErrCode err = NoError;
     GS::Array<API_ClassificationSystem> systems = {};
     err = ACAPI_Classification_GetClassificationSystems (systems);
@@ -46,6 +49,7 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
                 }
             } else {
                 msg_rep ("ClassificationFunc::GetAllClassification", "ACAPI_Classification_GetClassificationSystemRootItems", err, systems[i].guid);
+                continue;
             }
             if (!classifications.IsEmpty ()) {
                 API_ClassificationItem parent, item;
@@ -60,6 +64,9 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
             }
         }
     }
+    #if defined(TESTING)
+    DBprnt ("GetAllClassification end");
+    #endif
     return err;
 }
 void GatherAllDescendantOfClassification (const API_ClassificationItem& item, ClassificationDict& classifications, const  API_ClassificationSystem& system)

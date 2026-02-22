@@ -11,166 +11,13 @@
 #define DIM_CHANGE_FORCE 2
 #define DIM_CHANGE_OFF 3
 
-bool HasDimAutotext ()
-{
-    GS::UniString autotext = "";
-    return GetDimAutotext (autotext);
-}
-
-// -----------------------------------------------------------------------------
-// Чтение настроек из информации о проекте
-//	Имя свойства: "Addon_Dimenstions"
-// -----------------------------------------------------------------------------
-bool GetDimAutotext (GS::UniString& autotext)
-{
-    #if defined(TESTING)
-    DBprnt ("DimReadPref start");
-    #endif
-    GS::Array<GS::ArrayFB<GS::UniString, 3> > autotexts = {};
-    API_AutotextType type = APIAutoText_Custom;
-    GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    err = ACAPI_AutoText_GetAutoTexts (&autotexts, type);
-    #else
-    err = ACAPI_Goodies (APIAny_GetAutoTextsID, &autotexts, (void*) (GS::IntPtr) type);
-    #endif
-    if (err != NoError) {
-        msg_rep ("GetDimAutotext", "ACAPI_Goodies", err, APINULLGuid);
-        return false;
-    }
-    for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
-        if (autotexts[i][0].Contains ("Addon_Dimens") && !autotexts[i][2].IsEmpty ()) {
-            autotext = autotexts[i][2];
-            #if defined(TESTING)
-            DBprnt ("DimReadPref found rule");
-            #endif
-            return true;
-        }
-    }
-    #if defined(TESTING)
-    DBprnt ("DimReadPref rules not found");
-    #endif
-    return false;
-}
-
-// -----------------------------------------------------------------------------
-//	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
-//					"Слой" - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
-// -----------------------------------------------------------------------------
-bool DimReadPref (DimRules& dimrules, GS::UniString& autotext)
-{
-    GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
-    API_AutotextType	type = APIAutoText_Custom;
-    bool hasexpression = false; // Нужно ли нам читать список свойств
-    if (autotext.Contains (";")) {
-        GS::Array<GS::UniString> partstring = {};
-        StringSplt (autotext, ";", partstring);
-        for (UInt32 k = 0; k < partstring.GetSize (); k++) {
-            DimRule dimrule = {};
-            if (DimParsePref (partstring[k], dimrule, hasexpression)) {
-                GS::UniString kstr;
-                if (dimrule.layer.IsEmpty ()) {
-                    kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
-                } else {
-                    kstr = dimrule.layer;
-                }
-                dimrules.Add (kstr, dimrule);
-            }
-        }
-    } else {
-        DimRule dimrule = {};
-        if (DimParsePref (autotext, dimrule, hasexpression)) {
-            GS::UniString kstr = "";
-            if (dimrule.layer.IsEmpty ()) {
-                kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
-            } else {
-                kstr = dimrule.layer;
-            }
-            dimrules.Add (kstr, dimrule);
-        }
-    }
-    return !dimrules.IsEmpty ();
-}
-
-// -----------------------------------------------------------------------------
-// Обработка текста правила
-// -----------------------------------------------------------------------------
-bool DimParsePref (GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
-{
-    if (rawrule.IsEmpty ()) return false;
-    if (!rawrule.Contains ("-")) return false;
-    bool flag_find = false;
-    GS::Array<GS::UniString> partstring_1 = {};
-    if (StringSplt (rawrule, "-", partstring_1) == 2) {
-        //Проверяем - что указано в правиле: слой или номер пера
-        // Слой указываем в кавычках, в regexp формате
-        if (partstring_1[0].Contains ('"')) {
-            GS::UniString layer = partstring_1[0];
-            layer.ReplaceAll ('"', ' ');
-            layer.Trim ();
-            dimrule.layer = layer;
-        } else {
-            dimrule.pen_original = std::atoi (partstring_1[0].ToCStr ());
-        }
-        if (partstring_1[1].Contains ("DeleteWall")) {
-            dimrule.flag_change = true;
-            dimrule.flag_deletewall = true;
-            dimrule.pen_rounded = dimrule.pen_original;
-            flag_find = true;
-        }
-        if (partstring_1[1].Contains ("ResetText")) {
-            dimrule.flag_change = true;
-            dimrule.flag_reset = true;
-            dimrule.pen_rounded = dimrule.pen_original;
-            flag_find = true;
-        }
-        if (partstring_1[1].Contains ("CheckCustom")) {
-            dimrule.flag_change = false;
-            dimrule.flag_custom = true;
-            flag_find = true;
-        }
-        if (partstring_1[1].Contains ("lassic")) {
-            dimrule.classic_round_mode = true;
-        }
-        if (!partstring_1[1].Contains (",")) return flag_find;
-        GS::Array<GS::UniString> partstring_2 = {};
-        if (StringSplt (partstring_1[1], ",", partstring_2) > 1) {
-            if (!partstring_2[0].IsEmpty ()) {
-                dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
-                flag_find = true;
-            }
-            if (!partstring_2[1].IsEmpty ()) {
-                dimrule.pen_rounded = std::atoi (partstring_2[1].ToCStr ());
-                flag_find = true;
-            }
-            if (partstring_2.GetSize () < 3) return flag_find;
-            for (UInt32 k = 2; k < partstring_2.GetSize (); k++) {
-                if (partstring_2[k].IsEmpty ()) continue;
-                if (partstring_2[k].Contains ("{") && partstring_2[k].Contains ("}")) {
-                    ParamDictValue paramDict = {};
-                    GS::UniString expression = partstring_2[k];
-                    expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
-                    ParamHelpers::ParseParamName (expression, paramDict);
-                    dimrule.paramDict = paramDict;
-                    dimrule.expression = expression;
-                    if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
-                } else {
-                    if (k == 2) {
-                        dimrule.flag_change = (std::atoi (partstring_2[k].ToCStr ()) > 0);
-                        flag_find = true;
-                    }
-                }
-            }
-        }
-    }
-    return flag_find;
-}
 
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, const SyncSettings& syncSettings, bool isUndo)
+GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
 {
+    if (!PROPERTYCACHE ().hasDimAutotext) return NoError;
     if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace)) {
         return NoError;
     }
@@ -217,6 +64,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, DimRules& dimrules, const Sync
     GS::UniString kstr = GS::UniString::Printf ("%d", pen_dimenstion);
     GS::Array<DimRule> rules = {}; //Массив найденных правил
 
+    const DimRules& dimrules = PROPERTYCACHE ().dimrules;
     if (pen_dimenstion > 0 && dimrules.ContainsKey (kstr)) {
         DimRule d = dimrules.Get (kstr);
         rules.Push (d);
@@ -457,16 +305,13 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
 void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
 {
     (void) syncSettings;
+    if (!PROPERTYCACHE ().hasDimAutotext) return;
     DoneElemGuid doneelemguid = {};
-    DimRules dimrules = {};
     #if defined(TESTING)
     DBprnt ("DimRoundAll start");
     #endif
-    GS::UniString autotext = "";
-    if (!GetDimAutotext (autotext)) return;
-    if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
-    DimAutoRound (elemGuid, dimrules, syncSettings, isUndo);
+    DimAutoRound (elemGuid, syncSettings, isUndo);
 }
 
 // -----------------------------------------------------------------------------
@@ -475,15 +320,12 @@ void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bo
 void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 {
     DoneElemGuid doneelemguid = {};
-    DimRules dimrules = {};
+    if (!PROPERTYCACHE ().hasDimAutotext) return;
     #if defined(TESTING)
     DBprnt ("DimRoundAll start");
     #endif
-    GS::UniString autotext = "";
-    if (!GetDimAutotext (autotext)) return;
-    if (!DimReadPref (dimrules, autotext)) return;
     bool flag_chanel = false;
-    if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, dimrules, syncSettings, isUndo);
+    if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, syncSettings, isUndo);
     #if defined(TESTING)
     DBprnt ("DimRoundAll end");
     #endif
@@ -492,7 +334,7 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, DimRules& dimrules, const SyncSettings& syncSettings, bool isUndo)
+bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, const SyncSettings& syncSettings, bool isUndo)
 {
     GSErrCode err = NoError;
     GS::Array<API_Guid>	guidArray = {};
@@ -501,7 +343,7 @@ bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, D
     if (guidArray.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
-            err = DimAutoRound (guidArray.Get (i), dimrules, syncSettings, isUndo);
+            err = DimAutoRound (guidArray.Get (i), syncSettings, isUndo);
             if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
         }
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
