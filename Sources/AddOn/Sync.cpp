@@ -208,6 +208,9 @@ void SyncAndMonAll (SyncSettings& syncSettings)
 // -----------------------------------------------------------------------------
 bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Int32& nPhase, ParamDictElement& paramToWrite, int dummymode, UnicGuid& syncedelem)
 {
+    #if defined(TESTING)
+    DBprnt ("    SyncByType start");
+    #endif
     GS::UniString subtitle = "";
     GSErrCode err = NoError;
     GS::Array<API_Guid>	guidArray = {};
@@ -221,9 +224,9 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     }
     #endif
     if (guidArray.IsEmpty ()) return false;
-    #ifdef TESTING
-    TestFunc::ResetSyncPropertyArray (guidArray);
-    #endif
+    //#ifdef TESTING
+    //TestFunc::ResetSyncPropertyArray (guidArray);
+    //#endif
     #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_ElemType elemType;
     elemType.typeID = elementType;
@@ -258,6 +261,9 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep ("SyncByType", subtitle + intString + time, NoError, APINULLGuid);
     return flag_chanel;
+    #if defined(TESTING)
+    DBprnt ("    SyncByType end");
+    #endif
 }
 
 // -----------------------------------------------------------------------------
@@ -271,6 +277,9 @@ bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
 
 bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictElement& paramToWrite, int dummymode, UnicGuid& syncedelem)
 {
+    #if defined(TESTING)
+    DBprnt ("      SyncElement start");
+    #endif
     API_ElemTypeID elementType;
     GSErrCode err = GetTypeByGUID (elemGuid, elementType);
     if (err != NoError) return false;
@@ -288,14 +297,16 @@ bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     }
     GS::Array<API_Guid> epm = {};
     if (!subelemGuids.IsEmpty () && SyncRelationsElement (elementType, syncSettings)) {
-        for (UInt32 i = 0; i < subelemGuids.GetSize (); ++i) {
-            API_Guid subelemGuid = subelemGuids[i];
-            if (subelemGuid != elemGuid_ && !syncedelem.ContainsKey (subelemGuid)) {
-                if (SyncData (subelemGuid, elemGuid_, syncSettings, epm, paramToWrite, dummymode)) needResync = true;
-                syncedelem.Add (subelemGuid, needResync);
-            }
+        for (const auto& subelemGuid : subelemGuids) {
+            if (subelemGuid == elemGuid_) continue;
+            if (syncedelem.ContainsKey (subelemGuid)) continue;
+            if (SyncData (subelemGuid, elemGuid_, syncSettings, epm, paramToWrite, dummymode)) needResync = true;
+            syncedelem.Add (subelemGuid, needResync);
         }
     }
+    #if defined(TESTING)
+    DBprnt ("      SyncElement end");
+    #endif
     return needResync;
 }
 
@@ -634,7 +645,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
                 }
 
             }
-}
+        }
     }
     return false;
 }
@@ -716,7 +727,7 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
             paramTo.needResetToDef = true;
             paramTo.isValid = true;
             ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
-}
+        }
     }
     return;
 }
@@ -1713,9 +1724,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
+            }
         }
     }
-}
     return has_element;
 }
 
@@ -1865,7 +1876,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 }
             }
             selNeigs.PushNew (guid);
-}
+        }
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -1922,7 +1933,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -2019,7 +2030,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid&
                         }
                     }
                 }
-        }
+            }
         }
     }
     if (!find) {
@@ -2082,7 +2093,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
                     }
                 }
             }
-}
+        }
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
@@ -2113,7 +2124,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-}
+    }
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);

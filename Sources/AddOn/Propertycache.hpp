@@ -153,6 +153,9 @@ struct PropertyCache
 
     void Update ()
     {
+        clock_t start, finish;
+        double  duration;
+        start = clock ();
         #if defined(TESTING)
         DBprnt ("=PropertyCache= Update start");
         #endif
@@ -169,6 +172,10 @@ struct PropertyCache
         #if defined(TESTING)
         DBprnt ("=PropertyCache= Update end");
         #endif
+        finish = clock ();
+        duration = (double) (finish - start) / CLOCKS_PER_SEC;
+        GS::UniString time = GS::UniString::Printf ("Property Cache updated in %.3f s", duration);
+        msg_rep ("=PropertyCache=", time, NoError, APINULLGuid);
     }
 
     void ReadGetGeoLocation ()
