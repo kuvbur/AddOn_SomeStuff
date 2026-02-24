@@ -1,9 +1,10 @@
 //------------ kuvbur 2022 ------------
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
-#include	"Revision.hpp"
-#include	<stdlib.h> /* atoi */
-#include	<time.h>
+#include "ACAPinc.h"
+#include "APIEnvir.h"
+#include "Propertycache.hpp"
+#include "Revision.hpp"
+#include <stdlib.h> /* atoi */
+#include <time.h>
 namespace Revision
 {
 void SetRevision (void)
@@ -380,12 +381,11 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         msg_rep ("ChangeLayoutProperty", "layoutInfo.customData == nullptr", err, APINULLGuid);
         return false;
     }
-    Int32 isEng_ = isEng ();
-    GS::UniString RVIString = RSGetIndString (ID_ADDON_STRINGS + isEng_, RVI_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString RVIString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RVI_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
     // Правильная сортировка по алфавиту
     std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {};
     for (auto ch : changes) {
@@ -664,11 +664,11 @@ bool CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
 
 void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid)
 {
-    Int32 isEng_ = isEng ();
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
+    Int32 isEng_ = ID_ADDON_STRINGS + isEng ();
+    GS::UniString izmString = RSGetIndString (isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
     // Обрабатываем изменения, не привязанные к маркерам
     for (auto c : layoutchange) {
         Change ch;

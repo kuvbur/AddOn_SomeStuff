@@ -272,11 +272,6 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
 void DBtest (double a, double b, GS::UniString reportString, bool asserton = false);
 
 // -----------------------------------------------------------------------------
-// Проверка языка Архикада. Для INT возвращает 1000
-// -----------------------------------------------------------------------------
-Int32 isEng ();
-
-// -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
 // -----------------------------------------------------------------------------
 void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid, bool show = false);
@@ -449,7 +444,7 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
 // -----------------------------------------------------------------------------
 GS::UniString GetFormatString (GS::UniString& paramName);
 
-bool IsValid (GS::UniString formatstring, Int32& iseng);
+bool IsValid (GS::UniString formatstring);
 
 // -----------------------------------------------------------------------------
 // Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
@@ -467,8 +462,6 @@ FormatString ParseFormatString (const GS::UniString& stringformat);
 GS::UniString NumToString (const double& var, const FormatString& stringformat);
 
 void ReplaceMeters (GS::UniString& formatstring);
-
-void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
 
 }
 

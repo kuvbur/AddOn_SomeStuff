@@ -619,6 +619,18 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
 }
 }
 
+// -----------------------------------------------------------------------------
+// Проверка языка Архикада. Для INT возвращает 1000
+// -----------------------------------------------------------------------------
+Int32 isEng ()
+{
+    #ifdef EXTNDVERSION
+    return 0;
+    #endif
+    if (!PROPERTYCACHE ().isEng_OK) PROPERTYCACHE ().ReadisEng ();
+    return PROPERTYCACHE ().isEng;
+}
+
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 {
     if (guid == APINULLGuid) return "";

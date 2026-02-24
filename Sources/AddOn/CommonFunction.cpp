@@ -1,6 +1,7 @@
 //------------ kuvbur 2022 ------------
 #include "APIEnvir.h"
 #include "CommonFunction.hpp"
+#include "Propertycache.hpp"
 #include "qrcodegen.hpp"
 #include <APIdefs_Environment.h>
 #include <bitset>
@@ -327,27 +328,6 @@ void DBtest (double a, double b, GS::UniString reportString, bool asserton)
     UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
     #endif
-}
-
-
-// -----------------------------------------------------------------------------
-// Проверка языка Архикада. Для INT возвращает 1000
-// -----------------------------------------------------------------------------
-Int32 isEng ()
-{
-    #ifdef EXTNDVERSION
-    return 0;
-    #endif
-    GSErrCode err = NoError;
-    API_ServerApplicationInfo AppInfo;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    err = ACAPI_AddOnIdentification_Application (&AppInfo);
-    #else
-    err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
-    #endif // AC_27
-    if (err != NoError) return 0;
-    if (!AppInfo.language.IsEqual ("RUS")) return 1000;
-    return 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -1998,9 +1978,8 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
 GS::UniString GetFormatString (GS::UniString& paramName)
 {
     GS::UniString formatstring = "";
-    Int32 iseng = isEng ();
     if (!paramName.Contains (".")) return formatstring;
-    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
+    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), MeterStringID, ACAPI_GetOwnResModule ());
     if (!paramName.Contains ('m') && !paramName.Contains (meterString)) return formatstring;
     GS::Array<GS::UniString> partstring;
     UInt32 n = StringSplt (paramName, ".", partstring);
@@ -2011,9 +1990,10 @@ GS::UniString GetFormatString (GS::UniString& paramName)
                 UIndex attribinx = formatstring.FindLast (CharENTER);
                 formatstring = formatstring.GetSubstring (0, attribinx);
             }
-            if (IsValid (formatstring, iseng)) {
+
+            if (IsValid (formatstring)) {
                 paramName.ReplaceAll ('.' + formatstring, "");
-                ReplaceMeters (formatstring, iseng);
+                ReplaceMeters (formatstring);
             } else {
                 formatstring = "";
             }
@@ -2025,9 +2005,9 @@ GS::UniString GetFormatString (GS::UniString& paramName)
     return formatstring;
 }
 
-bool IsValid (GS::UniString formatstring, Int32& iseng)
+bool IsValid (GS::UniString formatstring)
 {
-    ReplaceMeters (formatstring, iseng);
+    ReplaceMeters (formatstring);
     if (!formatstring.Contains ('m')) return false;
     formatstring.ReplaceAll ("m", ""); if (formatstring.IsEmpty ()) return true;
     formatstring.Trim ();
@@ -2050,20 +2030,13 @@ bool IsValid (GS::UniString formatstring, Int32& iseng)
 
 void ReplaceMeters (GS::UniString& formatstring)
 {
-    Int32 iseng = isEng ();
-    ReplaceMeters (formatstring, iseng);
-}
-
-void ReplaceMeters (GS::UniString& formatstring, Int32& iseng)
-{
-    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, MeterStringID, ACAPI_GetOwnResModule ());
+    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), MeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "m");
-    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, CMeterStringID, ACAPI_GetOwnResModule ());
+    meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), CMeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "d");
-    meterString = RSGetIndString (ID_ADDON_STRINGS + iseng, DMeterStringID, ACAPI_GetOwnResModule ());
+    meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), DMeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "c");
 }
-
 
 // -----------------------------------------------------------------------------
 // Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
