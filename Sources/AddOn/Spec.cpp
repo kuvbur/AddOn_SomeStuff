@@ -458,7 +458,12 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             if (description.Contains ("spec_rule_name")) {
                 if (!paramToWrite.ContainsKey (rawname)) {
                     ParamValue chpvalue;
-                    if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) continue;
+                    if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
+                        #if defined(TESTING)
+                        DBprnt ("ERROR SpecArray - GetParamValueFromCache spec_rule_name", rawname);
+                        #endif
+                        continue;
+                    }
                     paramToWrite.Add (rawname, chpvalue);
                 }
                 rule.subguid_rulename = rawname;
@@ -469,7 +474,12 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
                     description.Contains ("sync_guid")) {
                     if (!paramToWrite.ContainsKey (rawname)) {
                         ParamValue chpvalue;
-                        if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) continue;
+                        if (!ParamHelpers::GetParamValueFromCache (rawname, chpvalue)) {
+                            #if defined(TESTING)
+                            DBprnt ("ERROR SpecArray - GetParamValueFromCache sync_guid", rawname);
+                            #endif
+                            continue;
+                        }
                         paramToWrite.Add (rawname, chpvalue);
                     }
                     rule.subguid_paramrawname = rawname;
@@ -483,7 +493,12 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         if (rule.subguid_rulename.IsEmpty ()) continue;
         if (!flag_find) continue;
         ParamValue subguid_pvalue;
-        if (!ParamHelpers::GetParamValueFromCache (rule.subguid_rulename, subguid_pvalue)) continue;
+        if (!ParamHelpers::GetParamValueFromCache (rule.subguid_rulename, subguid_pvalue)) {
+            #if defined(TESTING)
+            DBprnt ("ERROR SpecArray - GetParamValueFromCache subguid_rulename", rule.subguid_rulename);
+            #endif
+            continue;
+        }
         GS::Array<API_Guid> exsist_elements = GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
         if (!selected_elements.IsEmpty ()) {
             for (UInt32 i = 0; i < exsist_elements.GetSize (); i++) {
@@ -806,16 +821,16 @@ GSErrCode GetRuleFromElement (const API_Guid& elemguid, SpecRuleDict& rules)
             #else
             if (propertyflag.status == API_Property_NotAvailable) {
                 flagfindspec = true;
-        }
+            }
             if (propertyflag.isDefault && propertyflag.status == API_Property_NotEvaluated) {
                 flagfindspec = propertyflag.definition.defaultValue.basicValue.singleVariant.variant.boolValue;
             } else {
                 flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
             }
             #endif
-    }
+        }
         if (flagfindspec) AddRule (definitions[i], elemguid, rules);
-}
+    }
     return NoError;
 }
 
@@ -1472,7 +1487,8 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
             }
             if (group.is_Valid) {
                 if (group.fromMaterial) {
-                    for (UInt32 n_layer = 0; n_layer < 20; n_layer++) {
+                    // Для материалов определим макимальное количество слоёв
+                    for (UInt32 n_layer = 0; n_layer < 30; n_layer++) {
                         group.n_layer = n_layer;
                         rule.groups.PushNew (group);
                     }
@@ -1535,6 +1551,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
     #ifdef AC_22
     element.header.variationID = APIVarId_Object;
     #endif
+    msg_rep ("Spec", "Read the default settings of the object", err, APINULLGuid);
     err = ACAPI_Element_GetDefaults (&element, &memo);
     if (err != NoError) {
         msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
@@ -1850,4 +1867,4 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
     return NoError;
 }
 
-    }
+}

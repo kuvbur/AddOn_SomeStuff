@@ -625,6 +625,9 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     if (err != NoError) msg = "!! ERROR !!" + msg;
     if (!show) msg = msg + " " + error_type;
     GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
+    #if defined(TESTING)
+    version = version + " =TESTING ON= ";
+    #endif
     msg = version + msg + "\n";
     ACAPI_WriteReport (msg, false);
     if (show) ACAPI_WriteReport (msg, show);

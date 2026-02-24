@@ -28,6 +28,9 @@ void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 {
     short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
+    if (!(inx == PROPERTYTYPEINX || inx == GLOBTYPEINX || inx == ATTRIBTYPEINX || inx == INFOTYPEINX)) {
+        return false;
+    }
     if (!isCacheContainsParamValue (inx, rawname)) {
         return false;
     }
@@ -49,15 +52,9 @@ bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
             return true;
             break;
         default:
-            #if defined(TESTING)
-            DBprnt ("ERROR GetParamValueFromCache " + rawname);
-            #endif
             return false;
             break;
     }
-    #if defined(TESTING)
-    DBprnt ("ERROR GetParamValueFromCache " + rawname);
-    #endif
     return false;
 }
 
@@ -90,7 +87,12 @@ bool isCacheContainsGroup (const API_Guid& guid)
 
 bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
 {
-    if (!isCacheContainsGroup (guid)) return false;
+    if (!isCacheContainsGroup (guid)) {
+        #if defined(TESTING)
+        DBprnt ("ERROR isCacheContainsGroup (guid) ");
+        #endif
+        return false;
+    }
     group = PROPERTYCACHE ().propertygroups.Get (guid);
     return true;
 }
@@ -98,6 +100,9 @@ bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
 bool isCacheContainsParamValue (const GS::UniString& rawname)
 {
     short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
+    if (!(inx == PROPERTYTYPEINX || inx == GLOBTYPEINX || inx == ATTRIBTYPEINX || inx == INFOTYPEINX)) {
+        return false;
+    }
     return isCacheContainsParamValue (inx, rawname);
     return false;
 }
@@ -120,9 +125,6 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
                 return false;
             }
-            #if defined(TESTING)
-            if (!PROPERTYCACHE ().property.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().property.ContainsKey " + rawname);
-            #endif
             return PROPERTYCACHE ().property.ContainsKey (rawname);
             break;
         case GLOBTYPEINX:
@@ -153,9 +155,6 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 DBprnt ("ERROR isLocOrigin_OK " + rawname);
                 #endif
             }
-            #if defined(TESTING)
-            if (!PROPERTYCACHE ().glob.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().glob.ContainsKey " + rawname);
-            #endif
             return PROPERTYCACHE ().glob.ContainsKey (rawname);
             break;
         case ATTRIBTYPEINX:
@@ -166,9 +165,6 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
                 return false;
             }
-            #if defined(TESTING)
-            if (!PROPERTYCACHE ().attrib.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().attrib.ContainsKey " + rawname);
-            #endif
             return PROPERTYCACHE ().attrib.ContainsKey (rawname);
             break;
         case INFOTYPEINX:
@@ -179,21 +175,12 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
                 #endif
                 return false;
             }
-            #if defined(TESTING)
-            if (!PROPERTYCACHE ().info.ContainsKey (rawname)) DBprnt ("ERROR PROPERTYCACHE ().info.ContainsKey " + rawname);
-            #endif
             return PROPERTYCACHE ().info.ContainsKey (rawname);
             break;
         default:
-            #if defined(TESTING)
-            DBprnt ("ERROR isCacheContainsParamValue " + rawname);
-            #endif
             return false;
             break;
     }
-    #if defined(TESTING)
-    DBprnt ("ERROR isCacheContainsParamValue " + rawname);
-    #endif
     return false;
 }
 
@@ -206,7 +193,7 @@ bool GetGeoLocationToParamDict (ParamDictValue& propertyParams)
     return false;
     #else
     #if defined(TESTING)
-    DBprnt ("GetGeoLocationToParamDict start");
+    DBprnt ("   GetGeoLocationToParamDict start");
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
@@ -260,7 +247,7 @@ bool GetGeoLocationToParamDict (ParamDictValue& propertyParams)
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.scale);
     #if defined(TESTING)
-    DBprnt ("  GetGeoLocationToParamDict end");
+    DBprnt ("   GetGeoLocationToParamDict end");
     #endif
     return true;
     #endif
@@ -274,7 +261,7 @@ bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
     return false;
     #else
     #if defined(TESTING)
-    DBprnt ("GetSurveyPointTransformationToParamDict start");
+    DBprnt ("   GetSurveyPointTransformationToParamDict start");
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
@@ -299,7 +286,7 @@ bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
         propertyParams.Add (rawName, pvalue);
     }
     #if defined(TESTING)
-    DBprnt ("  GetSurveyPointTransformationToParamDict end");
+    DBprnt ("   GetSurveyPointTransformationToParamDict end");
     #endif
     return true;
     #endif
@@ -311,7 +298,7 @@ bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
 bool GetPlaceSetsToParamDict (ParamDictValue& propertyParams)
 {
     #if defined(TESTING)
-    DBprnt ("GetAllGlobToParamDict start");
+    DBprnt ("   GetAllGlobToParamDict start");
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
@@ -354,7 +341,7 @@ bool GetPlaceSetsToParamDict (ParamDictValue& propertyParams)
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, round ((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
     propertyParams.Add (rawName, pvalue);
     #if defined(TESTING)
-    DBprnt ("  GetAllGlobToParamDict end");
+    DBprnt ("   GetAllGlobToParamDict end");
     #endif
     return true;
 }
@@ -365,7 +352,7 @@ bool GetPlaceSetsToParamDict (ParamDictValue& propertyParams)
 bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
 {
     #if defined(TESTING)
-    DBprnt ("GetLocOriginToParamDict start");
+    DBprnt ("   GetLocOriginToParamDict start");
     #endif
     //Пользовательское начало
     API_Coord3D locOrigin;
@@ -420,7 +407,7 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
     ParamHelpers::ConvertDoubleToParamValue (pvalue, "", offset.y);
     propertyParams.Add (pvalue.rawName, pvalue);
     #if defined(TESTING)
-    DBprnt ("  GetLocOriginToParamDict end");
+    DBprnt ("   GetLocOriginToParamDict end");
     #endif
     return true;
 }
@@ -431,7 +418,7 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
 bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
 {
     #if defined(TESTING)
-    DBprnt ("GetAllInfoToParamDict start");
+    DBprnt ("   GetAllInfoToParamDict start");
     #endif
     GS::Array<GS::ArrayFB<GS::UniString, 3> > autotexts = {};
     API_AutotextType type = APIAutoText_Custom;
@@ -466,7 +453,7 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
         }
     }
     #if defined(TESTING)
-    DBprnt ("  GetAllInfoToParamDict end");
+    DBprnt ("   GetAllInfoToParamDict end");
     #endif
     return true;
 }
@@ -477,7 +464,7 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
 bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
 {
     #if defined(TESTING)
-    DBprnt ("GetAllAttributeToParamDict start");
+    DBprnt ("   GetAllAttributeToParamDict start");
     #endif
     API_Attribute attrib = {};
     GSErrCode err = NoError;
@@ -510,7 +497,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
         }
     }
     #if defined(TESTING)
-    DBprnt ("  GetAllAttributeToParamDict end");
+    DBprnt ("   GetAllAttributeToParamDict end");
     #endif
     return true;
 }
@@ -522,7 +509,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
 bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
 {
     #if defined(TESTING)
-    DBprnt ("AllPropertyDefinitionToParamDict start");
+    DBprnt ("   GetAllPropertyDefinitionToParamDict start");
     #endif
     if (!PROPERTYCACHE ().isGroupPropertyRead_full) PROPERTYCACHE ().ReadGroupProperty ();
     if (!PROPERTYCACHE ().isGroupPropertyRead_full) return false;
@@ -550,7 +537,7 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
         }
     }
     #if defined(TESTING)
-    DBprnt ("  AllPropertyDefinitionToParamDict end");
+    DBprnt ("   GetAllPropertyDefinitionToParamDict end");
     #endif
     return true;
 }
