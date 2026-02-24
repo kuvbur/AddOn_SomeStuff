@@ -578,7 +578,7 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             #if defined(AC_28) || defined(AC_29)
             name = GetPropertyNameByGUID (definision.guid);
             if (name.IsEmpty ()) {
-                name = groups[i].name;
+                name = group.name;
                 name.Append ("/");
                 name.Append (definision.name);
             }
