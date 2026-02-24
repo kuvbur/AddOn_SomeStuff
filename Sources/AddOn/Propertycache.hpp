@@ -77,6 +77,9 @@ struct PropertyCache
     ClassificationFunc::SystemDict systemdict;
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
+    Int32 isEng;
+    bool isEng_OK;
+
     bool hasDimAutotext;
     bool isGetGeoLocation_OK; // Успешно прочитан
     bool isGetGeoLocationRead;    // Был запрошен
@@ -120,6 +123,8 @@ struct PropertyCache
         systemdict.Clear ();
         propertygroups.Clear ();
         dimrules.Clear ();
+        isEng = 0;
+        isEng_OK = false;
         isGetGeoLocation_OK = false;
         isGetGeoLocationRead = false;
         hasDimAutotext = false;
@@ -149,6 +154,25 @@ struct PropertyCache
         isGroupProperty_OK = false;
         isGroupPropertyRead = false;
         isGroupPropertyRead_full = false;
+    }
+
+    void ReadisEng ()
+    {
+        GSErrCode err = NoError;
+        API_ServerApplicationInfo AppInfo;
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        err = ACAPI_AddOnIdentification_Application (&AppInfo);
+        #else
+        err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
+        #endif // AC_27
+        if (err != NoError) {
+            msg_rep ("PropertyCache", "APIEnv_ApplicationID", err, APINULLGuid);
+            return;
+        }
+        isEng = 0;
+        isEng_OK = true;
+        msg_rep ("PropertyCache AppInfo.language is", AppInfo.language, err, APINULLGuid);
+        if (!AppInfo.language.IsEqual ("RUS")) isEng = 1000;
     }
 
     void Update ()
@@ -347,6 +371,11 @@ struct PropertyCache
         #endif
     }
 };
+
+// -----------------------------------------------------------------------------
+// Проверка языка Архикада. Для INT возвращает 1000
+// -----------------------------------------------------------------------------
+Int32 isEng ();
 
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid);
 

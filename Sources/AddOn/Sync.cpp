@@ -1761,7 +1761,6 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
         }
     }
     if (guidArray.IsEmpty ()) return;
-    Int32 bisEng = isEng ();
     GS::Array<API_Neig> selNeigs = {};
     UnicGuidByGuid parentGuid = {};
     ParamDictValue propertyParams = {};
@@ -1770,9 +1769,9 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
         if (SyncGetParentelement (guidArray, parentGuid, "", errcode)) {
             fmane = "Show Sub Element";
         } else {
-            GS::UniString SubElementHotFoundIdString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId, ACAPI_GetOwnResModule ());
+            GS::UniString SubElementHotFoundIdString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHotFoundId, ACAPI_GetOwnResModule ());
             if (errcode > 0) {
-                SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
+                SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
             }
             ACAPI_WriteReport (SubElementHotFoundIdString, true);
             return;
@@ -1882,27 +1881,27 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString errmsg = "";
 
     if (count_otherplan > 0) {
-        GS::UniString SubElementOtherPlanString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementOtherPlanId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementOtherPlanString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementOtherPlanId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_otherplan) + SubElementOtherPlanString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d on other floorplan", count_otherplan);
     }
 
     if (count_del > 0) {
-        GS::UniString SubElementNotExsistString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementNotExsistId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementNotExsistString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementNotExsistId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_del) + SubElementNotExsistString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d not exsist", count_del);
     }
     if (count_inv > 0) {
-        GS::UniString SubElementHiddenString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHiddenId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementHiddenString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHiddenId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_inv) + SubElementHiddenString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d on hidden layers/filters", count_inv);
     }
     if (!errmsg.IsEmpty ()) {
-        GS::UniString SubElementTotalString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementTotalId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementTotalString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementTotalId, ACAPI_GetOwnResModule ());
         errmsg = SubElementTotalString + GS::UniString::Printf (" %d, ", count_all) + "\n" + errmsg;
     }
     if (selNeigs.IsEmpty ()) {
-        GS::UniString SubElementNoSelectString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementNoSelectId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementNoSelectString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementNoSelectId, ACAPI_GetOwnResModule ());
         errmsg = SubElementNoSelectString + "\n" + errmsg;
         fmane = fmane + " Nothing to select - all hide!";
         finish = clock ();
@@ -1920,7 +1919,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     if (err == NoError && errmsg.IsEmpty ()) ACAPI_Automate (APIDo_ZoomToSelectedID);
     #endif
     if (!errmsg.IsEmpty ()) {
-        GS::UniString SubElementHalfString = RSGetIndString (ID_ADDON_STRINGS + bisEng, SubElementHalfId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementHalfString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHalfId, ACAPI_GetOwnResModule ());
         errmsg = SubElementHalfString + "\n" + errmsg;
         ACAPI_WriteReport (errmsg, true);
     }

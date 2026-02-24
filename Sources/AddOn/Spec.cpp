@@ -89,8 +89,7 @@ bool GetRuleFromDefaultElem (SpecRuleDict& rules, API_DatabaseInfo& homedatabase
     }
     if (has_element && !has_elementspec) {
         msg_rep ("Spec", "All elements is off", APIERR_GENERAL, APINULLGuid);
-        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
-        GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecFlagOff, ACAPI_GetOwnResModule ());
+        GS::UniString SpecRuleNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecFlagOff, ACAPI_GetOwnResModule ());
         if (!error_name.IsEmpty ()) {
             for (auto& cIt : error_name) {
                 #if defined(AC_28) || defined(AC_29)
@@ -342,7 +341,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     clock_t start, finish;
     double  duration;
     start = clock ();
-    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString funcname = "SpecAll";
     GS::Int32 nPhase = 4;
     GS::UniString subtitle = ""; Int32 maxval = 1; short i = 1;
@@ -378,7 +376,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         }
         if (!flagfindspec) {
             msg_rep ("Spec", "Rules not found", APIERR_GENERAL, APINULLGuid);
-            GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
+            GS::UniString SpecRuleNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecRuleNotFoundString, true);
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             ACAPI_ProcessWindow_CloseProcessWindow ();
@@ -392,7 +390,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     GetParamToReadFromRule (rules, paramToRead, paramToWrite);
     if (paramToRead.IsEmpty ()) {
         msg_rep ("Spec", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
-        GS::UniString SpecRuleReadFoundString = RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
+        GS::UniString SpecRuleReadFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecRuleReadFoundString, true);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
@@ -403,7 +401,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     }
     if (paramToWrite.IsEmpty ()) {
         msg_rep ("Spec", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
-        GS::UniString SpecWriteNotFoundString = RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
+        GS::UniString SpecWriteNotFoundString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecWriteNotFoundString, true);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
@@ -537,7 +535,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             out.Append (s); out.Append ("\n");
         }
         msg_rep ("Spec", "Can't find parameters in place element: " + out, err, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
+        GS::UniString SpecEmptyListdString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString + out, true);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
@@ -705,8 +703,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     #endif
     if (elements_new.IsEmpty () && elements_mod.IsEmpty () && elements_delete.IsEmpty ()) {
         msg_rep ("Spec", "Elements list empty", NoError, APINULLGuid);
-        GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
-        if (has_v2) SpecEmptyListdString += "\n" + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
+        GS::UniString SpecEmptyListdString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SpecEmptyListdId, ACAPI_GetOwnResModule ());
+        if (has_v2) SpecEmptyListdString += "\n" + RSGetIndString (ID_ADDON_STRINGS + isEng (), 67, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString, true);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
@@ -752,23 +750,23 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     if (has_v2) {
         GS::UniString msg = "";
         if (!elements_delete.IsEmpty ()) {
-            msg += RSGetIndString (iseng, 70, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", elements_delete.GetSize ());
+            msg += RSGetIndString (ID_ADDON_STRINGS + isEng (), 70, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", elements_delete.GetSize ());
         }
         if (!elements_new.IsEmpty ()) {
             UInt32 n_elem = 0;
             for (UInt32 i = 0; i < elements_new.GetSize (); i++) {
                 n_elem += elements_new[i].GetSize ();
             }
-            msg += RSGetIndString (iseng, 68, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", n_elem);
+            msg += RSGetIndString (ID_ADDON_STRINGS + isEng (), 68, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", n_elem);
         }
         if (!elements_mod.IsEmpty ()) {
             UInt32 n_elem = 0;
             for (UInt32 i = 0; i < elements_mod.GetSize (); i++) {
                 n_elem += elements_mod[i].GetSize ();
             }
-            msg += RSGetIndString (iseng, 69, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", n_elem);
+            msg += RSGetIndString (ID_ADDON_STRINGS + isEng (), 69, ACAPI_GetOwnResModule ()) + GS::UniString::Printf (" %d \n", n_elem);
         }
-        if (msg.IsEmpty ()) msg = RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
+        if (msg.IsEmpty ()) msg = RSGetIndString (ID_ADDON_STRINGS + isEng (), 67, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (msg, true);
     }
 
