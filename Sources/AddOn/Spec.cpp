@@ -345,6 +345,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     GS::Int32 nPhase = 4;
     GS::UniString subtitle = ""; Int32 maxval = 1; short i = 1;
     ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
+    ParamDictCompositeElement paramCompositeToRead = {}; // Прочитанные составы конструкции
+    bool needReturnComposite = true;
     ParamDictValue paramToWrite = {}; // Словарь с параметрами для записи (с нулевым GUID)
     GS::Array<ElementDict> elements_new = {}; // Массив со словарём создаваемых элементов
     GS::Array<ElementDict> elements_mod = {}; // Массив со словарём модифицируемых элементов
@@ -545,7 +547,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         return APIERR_GENERAL;
     }
     // Читаем данные из размещённых элементов
-    ParamHelpers::ElementsRead (paramToRead);
+    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, needReturnComposite);
     //Массив со словарями элементов для создания по правилам
     Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
     bool has_v2 = false;
@@ -558,7 +560,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         if (!rule.is_Valid) continue;
         ElementDict elements_n = {}; // Словарь создаваемых элементов для правила
         ElementDict elements_m = {};
-        n_elements += GetElementsForRule (rule, paramToRead, elements_n, elements_m, elements_delete, error_element);
+        n_elements += GetElementsForRule (rule, paramToRead, paramCompositeToRead, elements_n, elements_m, elements_delete, error_element);
         if (!elements_n.IsEmpty ()) elements_new.Push (elements_n);
         if (!elements_m.IsEmpty ()) elements_mod.Push (elements_m);
         if (rule.delete_old) has_v2 = true;
@@ -975,11 +977,14 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictElement& paramToRead,
     }
 }
 
-bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, GS::Int32 n_layer)
+bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, GS::Int32 n_layer, const  ParamDictCompositeElement& paramCompositeToRead)
 {
     if (!ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue)) return false;
     if (!pvalue.fromMaterial) return true;
-    GS::Int32 max_layers = pvalue.composite.GetSize ();
+    if (!paramCompositeToRead.ContainsKey (elemguid)) return false;
+    if (!paramCompositeToRead.Get (elemguid).ContainsKey (rawname)) return false;
+    ParamComposite pcelem = paramCompositeToRead.Get (elemguid).Get (rawname);
+    GS::Int32 max_layers = pcelem.composite.GetSize ();
     if (n_layer >= max_layers) {
         pvalue.val.uniStringValue = "";
         pvalue.val.doubleValue = 0;
@@ -989,8 +994,8 @@ bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, cons
         return true;
     }
     double x = 0;
-    pvalue.val.uniStringValue = pvalue.composite[n_layer].val;
-    pvalue.val.canCalculate = UniStringToDouble (pvalue.val.uniStringValue, x);
+    pvalue.val.uniStringValue = pcelem.composite[n_layer].val;
+    pvalue.val.canCalculate = UniStringToDouble (pcelem.templatestring, x);
     pvalue.val.doubleValue = x;
     pvalue.val.rawDoubleValue = x;
     pvalue.val.intValue = (GS::Int32) x;
@@ -1002,7 +1007,7 @@ bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, cons
     return true;
 }
 
-Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete, UnicGuid& error_element)
+Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, const ParamDictCompositeElement& paramCompositeToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete, UnicGuid& error_element)
 {
     ParamDict not_found_paramname = {};
     ParamDict not_found_unic = {};
@@ -1023,7 +1028,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
             bool flag = true;
             if (!group.flag_paramrawname.IsEmpty ()) {
                 ParamValue pvalue = {};
-                if (GetParamValue (elemguid, group.flag_paramrawname, paramToRead, pvalue, group.fromMaterial, group.n_layer)) {
+                if (GetParamValue (elemguid, group.flag_paramrawname, paramToRead, pvalue, group.fromMaterial, group.n_layer, paramCompositeToRead)) {
                     flag = pvalue.val.boolValue;
                 }
             }
@@ -1034,7 +1039,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
             // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
             for (const GS::UniString& rawname : group.unic_paramrawname) {
                 ParamValue pvalue = {};
-                if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer)) {
+                if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer, paramCompositeToRead)) {
                     hasunic = false;
                     bool is_error = !group.fromMaterial;
                     if (pvalue.fromGDLArray) is_error = pvalue.val.array_row_start == 1;
@@ -1058,7 +1063,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                     ParamHelpers::ConvertIntToParamValue (pvalue, rawname, 1);
                     element.out_sum_param.Push (pvalue);
                 } else {
-                    if (GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer)) {
+                    if (GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer, paramCompositeToRead)) {
                         element.out_sum_param.Push (pvalue);
                     } else {
                         bool is_error = !group.fromMaterial;
@@ -1086,7 +1091,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
                 GS::UniString key_out = "";
                 for (const GS::UniString& rawname : group.out_paramrawname) {
                     ParamValue pvalue = {};
-                    if (GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer)) {
+                    if (GetParamValue (elemguid, rawname, paramToRead, pvalue, group.fromMaterial, group.n_layer, paramCompositeToRead)) {
                         element.out_param.Push (pvalue);
                         key_out = key_out + "@" + ParamHelpers::ToString (pvalue, fstr);
                     } else {
@@ -1174,7 +1179,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
         // Принадлежность субэлемента к группе определим по ключу - сцепке значений уникальных параметров
         for (const GS::UniString& rawname : rule.out_paramrawname) {
             ParamValue pvalue = {};
-            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0)) hasunic = false;
+            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead)) hasunic = false;
             key_out = key_out + "@" + ParamHelpers::ToString (pvalue, fstr);
         }
         if (!hasunic) {
@@ -1210,7 +1215,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
             GS::UniString rawname = rule.out_paramrawname[i];
             ParamValue pvalue = {};
             ParamValue elvalue = el.out_param[i];
-            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0)) {
+            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead)) {
                 msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                 flag_change = true;
             }
@@ -1234,7 +1239,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
             GS::UniString rawname = rule.out_sum_paramrawname[i];
             ParamValue pvalue = {};
             ParamValue elvalue = el.out_sum_param[i];
-            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0)) {
+            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead)) {
                 msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                 flag_change = true;
             }
@@ -1257,7 +1262,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, E
         GS::UniString rawname = rule.subguid_paramrawname;
         if (!rawname.IsEmpty ()) {
             ParamValue pvalue = {};
-            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0)) {
+            if (!GetParamValue (elemguid, rawname, paramToRead, pvalue, false, 0, paramCompositeToRead)) {
                 msg_rep ("Spec", "Param not valid: " + rawname, NoError, APINULLGuid);
                 flag_change = true;
             }

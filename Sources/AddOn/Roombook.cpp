@@ -195,7 +195,9 @@ void RoomBook ()
     if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
     #endif
     // Читаем свойства всех элементов
-    ParamHelpers::ElementsRead (paramToRead);
+    ParamDictCompositeElement paramCompositeToRead = {};
+    bool needReturnComposite = true;
+    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, needReturnComposite);
     // Словарь избранного
     MatarialToFavoriteDict favdict = Favorite_GetDict ();
     // Ищём существующие элементы и определяем их привязку к базовым конструкциям
@@ -2586,7 +2588,7 @@ bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::A
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin)
+void Param_SetComposite (const ParamComposite& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin)
 {
     Int32 ncomp = base_composite.composite.GetSize ();
     if (ncomp == 0) return;
@@ -2672,17 +2674,17 @@ void Param_SetComposite (const ParamValue& base_composite, const bool& base_flip
                 last.val.Clear ();
                 if (otdcpmpoosite.IsEmpty ()) {
                     otdcpmpoosite.Push (last);
-                } else {
+            } else {
                     otdcpmpoosite.GetLast ().length = last.length;
                     otdcpmpoosite.GetLast ().pos = last.pos;
                 }
-            } else {
+        } else {
                 msg_rep ("RoomBook", "ACAPI_Attribute_Get material " + last.val, err, APINULLGuid);
             }
-        } else {
+    } else {
             msg_rep ("RoomBook", "ACAPI_Attribute_Get building material " + last.val, err, APINULLGuid);
         }
-    }
+}
     cpmpoosite.Clear ();
 }
 
@@ -2771,7 +2773,7 @@ static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
         DBprnt ("RoomRedProc err", "reducededges == nullptr");
         #endif
         return;
-    }
+}
     if (roomRed->nCoords < 4 || roomRed->coords == nullptr || roomRed->subPolys == nullptr) {
         #if defined(TESTING)
         DBprnt ("RoomRedProc err", "roomRed->coords == nullptr");
@@ -2898,7 +2900,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                 GS::Array<API_Guid> zoneGuids = {};
                 for (API_Guid zoneGuid : zoneGuids_) {
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
-                }
+            }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
                     #if defined(AC_28) || defined(AC_29)
                     API_Guid zoneGuid = cIt->key;
@@ -2909,10 +2911,10 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
             }
+                }
         }
-    }
     return;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
@@ -3318,7 +3320,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
         if (!deletelist.IsEmpty ()) {
             err = ACAPI_Element_Delete (deletelist);
             msg_rep ("RoomBook", GS::UniString::Printf ("Removed %d obsolete finishing elements", deletelist.GetSize ()), err, APINULLGuid);
-        } else {
+} else {
             msg_rep ("RoomBook", "Obsolete finishing elements not found", NoError, APINULLGuid);
         }
         for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -3398,9 +3400,9 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
             }
         }
         return NoError;
-    });
+});
     msg_rep ("RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Построение отделочных стен (общая)
@@ -3630,7 +3632,7 @@ void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& sto
     if (err != NoError) {
         msg_rep ("OtdWall_Draw_Object err", "ACAPI_Element_Create", err, APINULLGuid);
         return;
-    }
+}
     edges.otd_guid = wallobjelement.header.guid;
 }
 
@@ -3881,7 +3883,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         #else
         slabelement.slab.botMat.overridden = true;
         #endif
-    } else {
+} else {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         slabelement.slab.topMat.hasValue = true;
         #else
@@ -3927,7 +3929,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         otdslab.otd_guid = slabelement.header.guid;
     }
     return;
-}
+        }
 
 void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab)
 {
@@ -4142,7 +4144,7 @@ TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::
         if (cl.item.guid != classguid) continue;
         if (name == cls.all_class) {
             return NoSet;
-        }
+    }
         if (name == cls.otdwall_class) {
             return Wall_Main;
         }
@@ -4161,7 +4163,7 @@ TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::
         if (name == cls.reveal_class) {
             return Reveal_Main;
         }
-    }
+}
     return NoSet;
 }
 
@@ -4194,7 +4196,7 @@ void Class_FindFinClass (ClassificationFunc::ClassificationDict& findict, UnicGu
                 if (desc.Contains (cls.all_class)) {
                     findict.Add (cls.all_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
-                }
+    }
                 if (desc.Contains (cls.ceil_class)) {
                     findict.Add (cls.ceil_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
@@ -4219,7 +4221,7 @@ void Class_FindFinClass (ClassificationFunc::ClassificationDict& findict, UnicGu
                     findict.Add (cls.otdwall_down_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
-            }
+}
         }
     }
 }
@@ -4264,7 +4266,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
                 parentelementhead.guid = guid;
                 if (typeelem == API_ZoneID) {
                     suffix = "zone";
-                } else {
+            } else {
                     suffix = "base element";
                 }
                 if (SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false)) {
@@ -4279,9 +4281,9 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
                         }
                     }
                 }
-            }
         }
     }
+}
     if (!paramToWrite.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Write GUID base and GUID zone to %d finishing element(s)", paramToWrite.GetSize ());
         nPhase += 1;
@@ -4304,7 +4306,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
                 [&]() -> GSErrCode {
             ParamHelpers::ElementsWrite (paramToWrite);
             return NoError;
-        });
+    });
     }
     if (!syncguids.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
@@ -4326,7 +4328,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
             SyncArray (syncSettings, rereadelem);
         }
     }
-}
+            }
 
 
 bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids, API_Guid& classguid)
@@ -4450,11 +4452,13 @@ void Favorite_ReadComposite (const ParamValue& param_composite, MatarialToFavori
     if (!Favorite_GetByName (favdict.Get (fav_name).name, element)) return;
     if (!paramToRead_favorite.ContainsKey (param_composite.rawName)) return;
     paramToRead_favorite.Set (param_composite.rawName, param_composite);
-    if (!ParamHelpers::ReadMaterial (element, paramToRead_favorite)) return;
+    ParamDictComposite paramcomposite = {};
+    bool needReadQuantities = false;
+    if (!ParamHelpers::ReadMaterial (element, paramToRead_favorite, paramcomposite, needReadQuantities)) return;
     if (!paramToRead_favorite.Get (param_composite.rawName).isValid) return;
     GS::UniString fav_name_ = "";
     bool base_flipped = element.wall.flipped;
-    ParamValue& base_composite = paramToRead_favorite.Get (param_composite.rawName);
+    ParamComposite& base_composite = paramToRead_favorite.Get (param_composite.rawName);
     GS::Array<ParamValueComposite>& otdcpmpoosite = favdict.Get (fav_name).composite;
     Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name_, true);
     return;
@@ -4558,7 +4562,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
         element = favorite.element;
         UnhideUnlockElementLayer (element.header);
         return true;
-    }
+}
     return false;
     #endif
 }
@@ -4579,7 +4583,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
         UnhideUnlockElementLayer (element.header);
         memo = *favorite.memo;
         return true;
-    }
+}
     ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
     return false;
     #endif
@@ -4647,16 +4651,16 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, UnicGuid& fi
             bool find_cls = false;
             for (const API_Guid& classguid : param.definition.availability) {
                 if (finclassguids.ContainsKey (classguid)) find_cls = true;
-            }
+        }
             if (!find_cls) {
                 msg_rep ("RoomBook", "'Sync_GUID base element' property found, but not displayed in Finish Element classification.\nFloor/ceiling updates require this property to be visible. Existing elements will be replaced.", NoError, APINULLGuid);
             }
-        }
     }
+}
     if (!find) {
         msg_rep ("RoomBook", "Missing 'Sync_GUID base element' property. Floor/ceiling updates require this property. Existing elements will be replaced", NoError, APINULLGuid);
     }
     return true;
-}
+        }
 #endif
-}
+    }

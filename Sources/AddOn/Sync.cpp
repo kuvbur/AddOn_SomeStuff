@@ -13,7 +13,6 @@
 #endif
 #if defined (AC_28)
 #include <ACAPI/MEPAdapter.hpp>
-#include	"Propertycache.hpp"
 #endif
 Int32 nLib = 0;
 // -----------------------------------------------------------------------------
@@ -1619,7 +1618,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
         return;
-    }
+}
     #endif
     parentelementtype = GetElemTypeID (parentelement);
     clock_t start, finish;
