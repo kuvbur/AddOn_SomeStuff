@@ -272,13 +272,13 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite);
+void Param_GetForBase (ParamDictValue& paramDict, ParamComposite& param_composite);
 
 void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
 
-bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name);
+bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamComposite& param_composite, GS::UniString& fav_name);
 
-void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin);
+void Param_SetComposite (const ParamComposite& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin);
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон

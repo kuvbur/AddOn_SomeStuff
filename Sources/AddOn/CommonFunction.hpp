@@ -105,7 +105,8 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
@@ -132,11 +133,8 @@ typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 // Словарь уникальных API_Guid
 typedef GS::HashTable<API_Guid, bool> UnicGuid;
 typedef GS::HashTable<API_Guid, UnicGuid> UnicGuidByGuid;
+
 // Хранение данных параметра
-// type - API_VariantType (как у свойств)
-// name - имя для поиска
-// uniStringValue, intValue, boolValue, doubleValue - значения
-// canCalculate - можно ли использовать в математических вычислениях
 struct ParamValueData
 {
     // Собственно значения
@@ -179,6 +177,25 @@ struct ParamValueComposite
     GS::UniString pos = ""; // Позиция
 };
 
+// Для хранения данных о составе конструкции, так как в многослойной конструкции может быть несколько слоёв, а также для удобства передачи данных в функции записи в свойства и т.д.
+struct ParamComposite
+{
+    GS::UniString templatestring = "";
+    GS::Array<ParamValueComposite> composite = {};
+    API_ModelElemStructureType composite_type = API_BasicStructure;
+    bool isValid = false;					// Валидность (был считан без ошибок)
+    API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
+    API_ElemTypeID eltype = API_ZombieElemID; // Для определения по какому типу элемента читать состав конструкции
+    short composite_pen = 0;
+    bool hasFormula = false; // В поле tempstring содержится выражение, которое надо вычислить
+};
+
+// Словарь с заранее вычисленными данными в пределах обного элемента
+typedef GS::HashTable<GS::UniString, ParamComposite> ParamDictComposite;
+
+// Словарь с параметрами для элементов
+typedef GS::HashTable<API_Guid, ParamDictComposite> ParamDictCompositeElement;
+
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
 struct ParamValue
@@ -190,11 +207,10 @@ struct ParamValue
     bool isValid = false;					// Валидность (был считан без ошибок)
     API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
     API_Property property = {};				// Само свойство, для упрощения чтения/записи
-    GS::Array<ParamValueComposite> composite = {};
-    API_ModelElemStructureType composite_type = API_BasicStructure;
     API_ElemTypeID eltype = API_ZombieElemID;
     short composite_pen = 0;
-    short typeinx = 0;
+    short typeinx = 0;	                 // Тип параметра на основе его префикса ({@ifc: и т.д.)
+    bool hasParamComposite = false;	     // Есть ли соответсвующий параметр состава конструкции (ParamComposite)
     bool fromClassification = false;	 // Данные о классификаторе
     bool fromGDLparam = false;			 // Найден в гдл параметрах
     bool fromGDLdescription = false;	 // Найден по описанию в гдл параметрах
@@ -224,7 +240,7 @@ struct ParamValue
     API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
 };
 
-// Словарь с заранее вычисленными данными в пределах обного элемента
+// Словарь с заранее вычисленными данными в пределах одного элемента
 typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
 
 // Словарь с параметрами для вычисления

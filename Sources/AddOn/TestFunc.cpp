@@ -2,9 +2,9 @@
 #ifdef TESTING
 #include "ACAPinc.h"
 #include "APIEnvir.h"
-#include  "Helpers.hpp"
+#include "Helpers.hpp"
+#include "Propertycache.hpp"
 #include "TestFunc.hpp"
-
 namespace TestFunc
 {
 

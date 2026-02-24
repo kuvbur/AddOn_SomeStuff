@@ -4011,11 +4011,27 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
     }
 }
 
-
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
 void ParamHelpers::ElementsRead (ParamDictElement& paramToRead)
+{
+    ParamDictCompositeElement paramCompositeToRead = {};
+    bool needReturnComposite = false;
+    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, needReturnComposite);
+}
+
+void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
+{
+    ParamDictCompositeElement paramCompositeToRead = {};
+    bool needReturnComposite = false;
+    ParamHelpers::Read (elemGuid, params, paramCompositeToRead, needReturnComposite);
+}
+
+// --------------------------------------------------------------------
+// Заполнение словаря параметров для множества элементов
+// --------------------------------------------------------------------
+void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, bool& needReturnComposite)
 {
     if (paramToRead.IsEmpty ()) return;
     #if defined(TESTING)
@@ -4030,7 +4046,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead)
         ParamDictValue& params = *cIt->value;
         API_Guid elemGuid = *cIt->key;
         #endif
-        if (!params.IsEmpty ()) ParamHelpers::Read (elemGuid, params);
+        if (!params.IsEmpty ()) ParamHelpers::Read (elemGuid, params, paramCompositeToRead, needReturnComposite);
     }
     #if defined(TESTING)
     DBprnt ("ElementsRead end");
@@ -4040,7 +4056,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead)
 // --------------------------------------------------------------------
 // Заполнение словаря с параметрами
 // --------------------------------------------------------------------
-void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
+void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictCompositeElement& paramscomposite, bool& needReturnComposite)
 {
     if (params.IsEmpty ()) return;
     if (elemGuid == APINULLGuid) {
@@ -4055,7 +4071,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
         return;
     }
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
-
+    ParamDictComposite paramcomposite = {};
     bool can_read_fromMaterial = true;
     if (eltype != API_WallID &&
        eltype != API_MeshID &&
@@ -4193,7 +4209,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
                 #endif
                 break;
             case LISTDATATYPEINX:
-                ParamHelpers::ReadListData (elem_head, params);
+                ParamHelpers::ReadListData (elem_head, params, paramcomposite);
                 break;
             case IFCTYPEINX:
                 #if !defined (AC_29)
@@ -4215,7 +4231,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
                 #endif
                 break;
             case MATERIALTYPEINX:
-                ParamHelpers::ReadMaterial (element, params);
+                ParamHelpers::ReadMaterial (element, params, paramcomposite, hasQuantity);
                 break;
             case FORMULATYPEINX:
                 needCompare = ParamHelpers::ReadFormula (paramByType, params);
@@ -4276,6 +4292,14 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
             param.val.uniStringValue = qr;
         }
     }
+    if (!needReturnComposite) return;
+    if (paramcomposite.IsEmpty ()) return;
+    if (paramscomposite.ContainsKey (elemGuid)) {
+        #if defined(TESTING)
+        DBprnt ("Read err", "paramscomposite.ContainsKey (elemGuid)");
+        #endif
+    }
+    paramscomposite.Add (elemGuid, paramcomposite);
 }
 
 // --------------------------------------------------------------------
@@ -4304,10 +4328,6 @@ bool ParamHelpers::SubGuid_GetParamValue (const API_Guid& elemGuid, const GS::Ar
     if (definitions.IsEmpty ()) return false;
     GS::Array<API_PropertyDefinition> subdefinitions = {};
     if (!SubGuid_GetDefinition (definitions, subdefinitions)) return false;
-    if (!(PROPERTYCACHE ().isPropertyDefinitionRead_full && PROPERTYCACHE ().isPropertyDefinition_OK)) {
-        PROPERTYCACHE ().AddPropertyDefinition (subdefinitions);
-    }
-    ParamHelpers::Read (elemGuid, subproperty);
     #if defined(TESTING)
     if (subproperty.IsEmpty ()) {
         DBprnt ("SubGuid_GetParamValue not found");
@@ -4315,10 +4335,16 @@ bool ParamHelpers::SubGuid_GetParamValue (const API_Guid& elemGuid, const GS::Ar
         DBprnt ("SubGuid_GetParamValue FOUND");
     }
     #endif
-    if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
-    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
-    ParamHelpers::CompareParamDictValue (subproperty, propertyParams, true);
-    return true;
+    if (!(PROPERTYCACHE ().isPropertyDefinitionRead_full && PROPERTYCACHE ().isPropertyDefinition_OK)) {
+        PROPERTYCACHE ().AddPropertyDefinition (subdefinitions);
+    }
+    GS::Array<API_Property> properties = {};
+    GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, subdefinitions, properties);
+    if (error != NoError) {
+        msg_rep ("SubGuid_GetParamValue", "ACAPI_Element_GetPropertyValues", error, elemGuid);
+        return false;
+    }
+    return ParamHelpers::AddProperty (subproperty, properties, elemGuid);
 }
 
 // --------------------------------------------------------------------
@@ -5089,7 +5115,7 @@ bool ParamHelpers::ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniStrin
     return true;
 }
 
-bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue& params)
+bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue& params, ParamDictComposite& paramcomposite)
 {
     GSErrCode err = NoError;
     Int32 nComp = 0;
@@ -5222,7 +5248,7 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
 // -----------------------------------------------------------------------------
 // Получение информации о элементе
 // -----------------------------------------------------------------------------
-void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictValue& paramlayers)
+void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, ParamDictComposite& paramcomposite)
 {
     #if defined(TESTING)
     DBprnt ("        Quantities");
@@ -5252,14 +5278,20 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
     // В случае, если прежде не были считаны данные по слоям (Например, для объекта) - добавляем слои из прочитанного
     bool need_add_composite = false;
     GS::Array<ParamValueComposite> add_composite = {};
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
+        GS::UniString rawname = cIt->key;
         #else
         ParamValue& param = *cIt->value;
+        GS::UniString rawname = *cIt->key;
         #endif
+        if (!param.fromQuantity) continue;
         if (param.composite_pen > 0) continue;
-        if (param.composite.IsEmpty ()) {
+        if (paramcomposite.ContainsKey (rawname)) {
+            if (paramcomposite.Get (rawname).composite.IsEmpty ()) need_add_composite = true;
+            break;
+        } else {
             need_add_composite = true;
             break;
         }
@@ -5338,24 +5370,24 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
         flag_find = true;
     }
     if (need_add_composite && !add_composite.IsEmpty ()) {
-        for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
-            ParamValue& param = cIt->value;
+            ParamComposite& param = cIt->value;
             #else
-            ParamValue& param = *cIt->value;
+            ParamComposite& param = *cIt->value;
             #endif
             if (param.composite_pen > 0) continue;
             if (param.composite.IsEmpty ()) param.composite = add_composite;
         }
     }
     bool needReadQuantities = true;
-    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramlayers, params, existsmaterial, needReadQuantities);
+    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, existsmaterial, needReadQuantities);
     GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity_param = {};
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
-        ParamValue& param = cIt->value;
+        ParamComposite& param = cIt->value;
         #else
-        ParamValue& param = *cIt->value;
+        ParamComposite& param = *cIt->value;
         #endif
         if (param.composite_pen > 0) continue;
         for (auto& p : param.composite) {
@@ -5373,11 +5405,11 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
         }
         break;
     }
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
-        ParamValue& param = cIt->value;
+        ParamComposite& param = cIt->value;
         #else
-        ParamValue& param = *cIt->value;
+        ParamComposite& param = *cIt->value;
         #endif
         for (auto& p : param.composite) {
             if (!composites_quantity.ContainsKey (p.inx))continue;
@@ -5596,7 +5628,7 @@ void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp
     }
 }
 
-void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictValue& paramlayers, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, bool& needReadQuantities)
+void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictComposite& paramcomposite, ParamDictValue& params, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, bool& needReadQuantities)
 {
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (paramsAdd.IsEmpty ()) return;
@@ -5608,14 +5640,14 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
     if (!ParamHelpers::isPropertyDefinitionRead ()) return;
     ParamDictValue& propertyParams = PROPERTYCACHE ().property;
     ParamHelpers::CompareParamDictValue (propertyParams, paramsAdd);
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param_composite = cIt->value;
         #else
-        ParamValue& param_composite = *cIt->value;
+        ParamComposite& param_composite = *cIt->value;
         #endif
         ParamDictValue paramsAdd_1 = {};
-        if (!param_composite.val.uniStringValue.Contains ("{")) continue;
+        if (!param_composite.templatestring.Contains ("{")) continue;
         bool flag = false;
         for (const auto& p : param_composite.composite) {
             API_AttributeIndex constrinx = p.inx;
@@ -5654,49 +5686,34 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & params)
+bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & params, ParamDictComposite & paramcomposite, bool& needReadQuantities)
 {
     #if defined(TESTING)
     DBprnt ("    ReadMaterial");
     #endif
     // Получим состав элемента, добавив в словарь требуемые параметры
-    ParamDictValue paramsAdd = {};
-    GS::HashTable<API_AttributeIndex, bool> existsmaterial; // Словарь с уже прочитанными материалами
-    if (!ParamHelpers::Components (element, params, paramsAdd, existsmaterial)) return false;
+    ParamDictValue paramsAdd = {}; // Словарь для свойств, найденных в формулах в значениях свойств. Вот так-то.
+    GS::HashTable<API_AttributeIndex, bool> existsmaterial = {}; // Словарь с уже прочитанными материалами
+    if (!ParamHelpers::Components (element, params, paramsAdd, existsmaterial, paramcomposite, needReadQuantities)) return false;
+    if (paramcomposite.IsEmpty ()) return true;
 
-    bool needReadQuantities = false;
-    ParamDictValue paramlayers = {};
-    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        ParamValue& param = cIt->value;
-        #else
-        ParamValue& param = *cIt->value;
-        #endif
-        if (param.fromMaterial) {
-            if (param.rawName.Contains ("{@material:layers")) {
-                paramlayers.Add (param.rawName, param);
-            }
-        }
-        if (param.fromQuantity) needReadQuantities = true;
-    }
-    if (paramlayers.IsEmpty ()) return true;
-    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramlayers, params, existsmaterial, needReadQuantities);
+    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, existsmaterial, needReadQuantities);
     bool flag_add = false;
-    if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, existsmaterial, paramlayers);
+    if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, existsmaterial, paramcomposite);
 
     // Если есть строка-шаблон - заполним её
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
         #if defined(AC_28) || defined(AC_29)
-        ParamValue& param_composite = cIt->value;
+        ParamComposite& param_composite = cIt->value;
         GS::UniString rawName = cIt->key;
         #else
-        ParamValue& param_composite = *cIt->value;
+        ParamComposite& param_composite = *cIt->value;
         GS::UniString rawName = *cIt->key;
         #endif
         GS::UniString outstring = "";
         GS::UniString stringformat = "";
-        if (param_composite.val.uniStringValue.Contains ("{")) {
+        if (param_composite.templatestring.Contains ("{")) {
             bool inverse = rawName.Contains ("{@material:layers_inv");
             if (rawName.Contains ("{@material:layers_auto")) {
                 if (param_composite.composite_type != API_ProfileStructure) {
@@ -5704,16 +5721,16 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 }
             }
             bool ignore_sync = false;
-            if (param_composite.val.uniStringValue.Contains ("{@property:nosyncname}")) {
-                param_composite.val.uniStringValue.ReplaceAll ("{@property:nosyncname}", "");
+            if (param_composite.templatestring.Contains ("{@property:nosyncname}")) {
+                param_composite.templatestring.ReplaceAll ("{@property:nosyncname}", "");
                 ignore_sync = true;
             }
             if (param_composite.composite_pen == -2) ParamHelpers::ComponentsGetUnic (param_composite.composite);
             Int32 nlayers = param_composite.composite.GetSize ();
-            if (param_composite.val.hasFormula) {
+            if (param_composite.hasFormula) {
                 //Если есть формула - заменим повторим все участки, заключенные в <> по количеству слоёв
                 // Например, 1+<толщина> -> 1+<&2><&1><&0>
-                outstring = param_composite.val.uniStringValue;
+                outstring = param_composite.templatestring;
                 GS::UniString part = outstring.GetSubstring (char_formula_start, char_formula_end, 0);
                 stringformat = "";
                 FormatStringFunc::GetFormatStringFromFormula (outstring, part, stringformat);
@@ -5727,11 +5744,11 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             }
             Int32 ns = 0;
             for (Int32 i = 0; i < nlayers; ++i) {
-                GS::UniString templatestring = param_composite.val.uniStringValue;
+                GS::UniString templatestring = param_composite.templatestring;
                 // Для формул возьмём только часть в <>, только она повторяется для каждого слоя
-                if (param_composite.val.hasFormula) {
+                if (param_composite.hasFormula) {
                     if (!stringformat.IsEmpty ()) templatestring.ReplaceAll (str_formula_end + stringformat, str_formula_end);
-                    templatestring = param_composite.val.uniStringValue.GetSubstring (char_formula_start, char_formula_end, 0);
+                    templatestring = param_composite.templatestring.GetSubstring (char_formula_start, char_formula_end, 0);
                 }
                 Int32 indx = i;
                 if (inverse) indx = nlayers - i - 1;
@@ -5909,7 +5926,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     flag_add = true;
                     ReplaceSymbSpase (templatestring);
                     param_composite.composite[indx].val = templatestring;
-                    if (param_composite.val.hasFormula) {
+                    if (param_composite.hasFormula) {
                         outstring.ReplaceAll (GS::UniString::Printf ("&%d&", i), templatestring);
                     } else {
                         outstring.Append (templatestring);
@@ -5920,7 +5937,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             }
         }
         if (flag) {
-            if (params.Get (rawName).val.hasFormula) {
+            if (param_composite.hasFormula) {
                 if (outstring.Contains ("{")) ParamHelpers::ReplaceParamInExpression (params, outstring);
                 if (!stringformat.IsEmpty ()) {
                     GS::UniString expression = outstring.GetSubstring (char_formula_start, char_formula_end, 0);
@@ -5937,10 +5954,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 }
                 outstring = str_formula_start + outstring + str_formula_end;
             }
+            param_composite.templatestring = outstring;
             params.Get (rawName).val.uniStringValue = outstring;
             params.Get (rawName).isValid = true;
             params.Get (rawName).val.type = API_PropertyStringValueType;
-            params.Get (rawName).composite = param_composite.composite;
         }
     }
     return flag_add;
@@ -6856,12 +6873,12 @@ GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatStr
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
-bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, const double& fillThick_min, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, short& structype_ven, double& width, double& length)
+bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, const double& fillThick_min, ParamDictValue & params, ParamDictComposite & paramcomposite, ParamDictValue & paramsAdd, short& structype_ven, double& width, double& length)
 {
     #if defined(TESTING)
     DBprnt ("        ComponentsBasicStructure\n");
     #endif
-    ParamValue param_composite = {};
+    ParamComposite param_composite = {};
     if (fillThick_ven > 0.0001) {
         ParamValueComposite layer = {};
         layer.inx = constrinx_ven;
@@ -6883,13 +6900,11 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     layer.structype = APICWallComp_Core;
     param_composite.composite.Push (layer);
     ParamHelpers::GetAttributeValues (constrinx, params, paramsAdd);
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
-        paramlayers.Get (cIt->key).composite = param_composite.composite;
-        if (params.ContainsKey (cIt->key)) params.Get (cIt->key).composite = param_composite.composite;
+        paramcomposite.Get (cIt->key).composite = param_composite.composite;
         #else
-        paramlayers.Get (*cIt->key).composite = param_composite.composite;
-        if (params.ContainsKey (*cIt->key)) params.Get (*cIt->key).composite = param_composite.composite;
+        paramcomposite.Get (*cIt->key).composite = param_composite.composite;
         #endif
     }
     return true;
@@ -6929,7 +6944,7 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
 // --------------------------------------------------------------------
-bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, double& width, double& length)
+bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_AttributeIndex & constrinx, ParamDictValue & params, ParamDictComposite & paramcomposite, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, double& width, double& length)
 {
     #if defined(TESTING)
     DBprnt ("        ComponentsCompositeStructure");
@@ -6953,7 +6968,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         ACAPI_DisposeAttrDefsHdls (&defs);
         return false;
     }
-    ParamValue param_composite = {};
+    ParamComposite param_composite = {};
     for (short i = 0; i < attrib.compWall.nComps; i++) {
         API_AttributeIndex	constrinxL = (*defs.cwall_compItems)[i].buildingMaterial;
         double	fillThickL = (*defs.cwall_compItems)[i].fillThick;
@@ -6970,13 +6985,11 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
             existsmaterial.Add (constrinxL, true);
         }
     }
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         paramlayers.Get (cIt->key).composite = param_composite.composite;
-        if (params.ContainsKey (cIt->key)) params.Get (cIt->key).composite = param_composite.composite;
         #else
-        paramlayers.Get (*cIt->key).composite = param_composite.composite;
-        if (params.ContainsKey (*cIt->key)) params.Get (*cIt->key).composite = param_composite.composite;
+        paramcomposite.Get (*cIt->key).composite = param_composite.composite;
         #endif
     }
     ACAPI_DisposeAttrDefsHdls (&defs);
@@ -6987,7 +7000,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
 // Получение данных из сложного профиля
 // --------------------------------------------------------------------
 
-bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescription, ParamDictValue & params, ParamDictValue & paramlayers, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, double& width, double& length)
+bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescription, ParamDictValue & params, ParamDictComposite & paramcomposite, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, double& width, double& length, bool& needReadQuantities)
 {
     #if !defined(AC_22) && !defined(AC_23)
     #if defined(TESTING)
@@ -6996,27 +7009,25 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
     ConstProfileVectorImageIterator profileDescriptionIt (profileDescription);
     GS::HashTable<short, OrientedSegments> lines = {}; // Для хранения точки начала сечения и линии сечения
     GS::HashTable<short, GS::Array<Sector>> segment = {}; // Для хранения отрезков линий сечения и последующего объединения
-    GS::HashTable<short, ParamValue> param_composite = {};
+    GS::HashTable<short, ParamComposite> param_composite = {}; // Словарь составов для чтения
 
     // Получаем список перьев в параметрах
-    bool needReadQuantities = false;
-    for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         GS::UniString rawName = cIt->key;
+        ParamComposite& paramc = cIt->value;
         #else
         GS::UniString rawName = *cIt->key;
+        ParamComposite& paramc = *cIt->value;
         #endif
-        short pen = paramlayers.Get (rawName).composite_pen;
-        if (pen < 0) needReadQuantities = true;
+        short pen = paramc.composite_pen;
+        if (pen < 0 && !needReadQuantities) needReadQuantities = true;
         OrientedSegments s = {};
         GS::Array<Sector> segments = {};
         lines.Add (pen, s);
         segment.Add (pen, segments);
-        ParamValue p = {};
+        ParamComposite p = {};
         param_composite.Add (pen, p);
-        if (!needReadQuantities) {
-            if (paramlayers.Get (rawName).fromQuantity) needReadQuantities = true;
-        }
     }
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
@@ -7078,7 +7089,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         } else {
             lines.Add (6, d2);
         }
-        ParamValue p = {};
+        ParamComposite p = {};
         param_composite.Add (20, p);
         param_composite.Add (6, p);
     } else {
@@ -7272,28 +7283,28 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         }
     }
     if (hasData) {
-        for (ParamDictValue::PairIterator cIt = paramlayers.EnumeratePairs (); cIt != NULL; ++cIt) {
+        for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
-            short pen = paramlayers.Get (cIt->key).composite_pen;
+            short pen = paramcomposite.Get (cIt->key).composite_pen;
             #else
-            short pen = paramlayers.Get (*cIt->key).composite_pen;
+            short pen = paramcomposite.Get (*cIt->key).composite_pen;
             #endif
             if (param_composite.ContainsKey (pen)) {
                 if (pen < 0) {
                     #if defined(AC_28) || defined(AC_29)
-                    paramlayers.Get (cIt->key).composite = param_composite.Get (pen).composite;
+                    paramcomposite.Get (cIt->key).composite = param_composite.Get (pen).composite;
                     #else
-                    paramlayers.Get (*cIt->key).composite = param_composite.Get (pen).composite;
+                    paramcomposite.Get (*cIt->key).composite = param_composite.Get (pen).composite;
                     #endif
                 } else {
                     // Теперь нам надо отсортировать слои по параметру rfromstart
-                    std::map<double, ParamValueComposite> comps;
+                    std::map<double, ParamValueComposite> comps = {};
                     GS::Array<ParamValueComposite> param = param_composite.Get (pen).composite;
                     for (UInt32 i = 0; i < param.GetSize (); i++) {
                         ParamValueComposite comp = param.Get (i);
                         comps[comp.rfromstart] = comp;
                     }
-                    GS::Array<ParamValueComposite> paramout;
+                    GS::Array<ParamValueComposite> paramout = {};
                     for (std::map<double, ParamValueComposite>::iterator k = comps.begin (); k != comps.end (); ++k) {
                         paramout.Push (k->second);
                     }
@@ -7301,14 +7312,13 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                         paramout[i].num = i + 1;
                     }
                     #if defined(AC_28) || defined(AC_29)
-                    paramlayers.Get (cIt->key).composite = paramout;
+                    paramcomposite.Get (cIt->key).composite = paramout;
                     #else
-                    paramlayers.Get (*cIt->key).composite = paramout;
+                    paramcomposite.Get (*cIt->key).composite = paramout;
                     #endif
                 }
             }
         }
-        ParamHelpers::CompareParamDictValue (paramlayers, params);
     }
     return hasData;
     #else
@@ -7319,7 +7329,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
 // --------------------------------------------------------------------
-bool ParamHelpers::Components (const API_Element & element, ParamDictValue & params, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial)
+bool ParamHelpers::Components (const API_Element & element, ParamDictValue & params, ParamDictValue & paramsAdd, GS::HashTable<API_AttributeIndex, bool>&existsmaterial, ParamDictComposite & paramcomposite, bool& needReadQuantities)
 {
     #if defined(TESTING)
     DBprnt ("        Components");
@@ -7495,39 +7505,42 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
     // Получим словарь исключительно с определениями состава
-    ParamDictValue paramlayers = {};;
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
         ParamValue& param = *cIt->value;
         #endif
-        if (param.fromMaterial) {
-            if (param.rawName.Contains ("{@material:layers")) {
-                param.composite_type = structtype;
-                paramlayers.Add (param.rawName, param);
-            }
-        }
+        if (!param.fromMaterial) continue;
+        param.eltype = eltype;
+        if (!param.rawName.Contains ("{@material:layers")) continue;
+        if (paramcomposite.ContainsKey (param.rawName)) continue;
+        ParamComposite p = {};
+        p.eltype = eltype;
+        p.templatestring = param.val.uniStringValue;
+        p.composite_type = structtype;
+        p.composite_pen = param.composite_pen;
+        p.fromGuid = element.header.guid;
+        paramcomposite.Add (param.rawName, p);
     }
 
     // Если ничего нет - слои нам всё равно нужны
-    if (paramlayers.IsEmpty ()) {
-        ParamValue param_composite = {};
-        param_composite.fromGuid = element.header.guid;
-        param_composite.isValid = true;
-        param_composite.composite_pen = 20;
-        param_composite.composite_type = structtype;
-        param_composite.eltype = eltype;
-        paramlayers.Add ("{@material:layers,20}", param_composite);
+    if (paramcomposite.IsEmpty () && (structtype == API_BasicStructure || structtype == API_CompositeStructure)) {
+        ParamComposite p = {};
+        p.fromGuid = element.header.guid;
+        p.composite_pen = 20;
+        p.composite_type = structtype;
+        p.eltype = eltype;
+        paramcomposite.Add ("{@material:layers,20}", p);
     }
 
     bool hasData = false;
 
     // Получим индексы строительных материалов и толщины
     if (structtype == API_BasicStructure) {
-        hasData = ParamHelpers::ComponentsBasicStructure (constrinx, fillThick, constrinx_ven, fillThick_ven, fillThick_min, params, paramlayers, paramsAdd, structype_ven, width, length);
+        hasData = ParamHelpers::ComponentsBasicStructure (constrinx, fillThick, constrinx_ven, fillThick_ven, fillThick_min, params, paramcomposite, paramsAdd, structype_ven, width, length);
     }
-    if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure (elemhead.guid, constrinx, params, paramlayers, paramsAdd, existsmaterial, width, length);
+    if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure (elemhead.guid, constrinx, params, paramcomposite, paramsAdd, existsmaterial, width, length);
     #ifndef AC_23
     if (structtype == API_ProfileStructure) {
         API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
@@ -7544,7 +7557,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             return false;
         }
         ProfileVectorImage profileDescription = *memo.stretchedProfile;
-        hasData = ParamHelpers::ComponentsProfileStructure (profileDescription, params, paramlayers, paramsAdd, existsmaterial, width, length);
+        hasData = ParamHelpers::ComponentsProfileStructure (profileDescription, params, paramcomposite, paramsAdd, existsmaterial, width, length, needReadQuantities);
         ACAPI_DisposeElemMemoHdls (&memo);
     }
     #endif
