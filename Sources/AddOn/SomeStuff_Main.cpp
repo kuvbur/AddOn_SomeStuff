@@ -119,7 +119,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             //SelectElement (APINotify_ChangeWindow);
             DimRoundAll (syncSettings, false);
             break;
-            #if defined(AC_28) || defined(AC_29)
+            #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
         case APINotify_ClassificationVisibilityChanged:
         case APINotify_PropertyVisibilityChanged:
         case APINotify_ClassificationItemChanged:

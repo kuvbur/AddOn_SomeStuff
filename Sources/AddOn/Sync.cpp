@@ -2104,7 +2104,8 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
 bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictElement& paramToRead, const GS::UniString& suffix)
 {
     ParamDictValue paramDict = {};
-    for (auto& cItt : PROPERTYCACHE ().property) {
+    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
+    for (auto& cItt : propertyParams) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue param = cItt.value;
         #else

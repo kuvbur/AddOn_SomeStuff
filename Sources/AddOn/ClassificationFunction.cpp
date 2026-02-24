@@ -130,11 +130,8 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
 bool ReadSystemDict ()
 {
     if (PROPERTYCACHE ().isClassification_OK) return true;
-    if (PROPERTYCACHE ().isClassificationRead) return false;
-    PROPERTYCACHE ().ReadClassification ();
-    if (PROPERTYCACHE ().isClassification_OK) return true;
-    if (PROPERTYCACHE ().isClassificationRead) return false;
-    return false;
+    if (!PROPERTYCACHE ().isClassificationRead) PROPERTYCACHE ().ReadClassification ();
+    return PROPERTYCACHE ().isClassification_OK;
 }
 
 // -----------------------------------------------------------------------------
