@@ -119,12 +119,14 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             //SelectElement (APINotify_ChangeWindow);
             DimRoundAll (syncSettings, false);
             break;
+            #if defined(AC_28) || defined(AC_29)
         case APINotify_ClassificationVisibilityChanged:
         case APINotify_PropertyVisibilityChanged:
         case APINotify_ClassificationItemChanged:
         case APINotify_PropertyDefinitionChanged:
             PROPERTYCACHE ().Update ();
             break;
+            #endif
         default:
             break;
     }
@@ -320,6 +322,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     #endif
     #endif
     const Int32 AddOnMenuID = ID_ADDON_MENU;
+    PROPERTYCACHE ().Update ();
     switch (menuParams->menuItemRef.menuResID) {
         case AddOnMenuID:
             switch (menuParams->menuItemRef.itemIndex) {
@@ -328,14 +331,12 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     #ifndef EXTNDVERSION
                     syncSettings.syncMon = !syncSettings.syncMon;
                     #endif // PK_1
-                    PROPERTYCACHE ().Update ();
                     Do_ElementMonitor (syncSettings.syncMon);
                     MonAll (syncSettings);
                     break;
                 case SyncAll_CommandID:
                     msg_rep ("SyncAll", "============== START ==============", NoError, APINULLGuid);
                     syncSettings.syncAll = true;
-                    PROPERTYCACHE ().Update ();
                     SyncAndMonAll (syncSettings);
                     syncSettings.syncAll = false;
                     msg_rep ("SyncAll", "=============== END ===============", NoError, APINULLGuid);
@@ -386,7 +387,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     break;
                 case RoomBook_CommandID:
                     msg_rep ("RoomBook", "============== START ==============", NoError, APINULLGuid);
-                    PROPERTYCACHE ().Update ();
                     Roombook::RoomBook ();
                     msg_rep ("RoomBook", "=============== END ===============", NoError, APINULLGuid);
                     break;

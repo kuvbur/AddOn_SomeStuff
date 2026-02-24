@@ -3352,7 +3352,7 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
     GSErrCode err = NoError;
     for (GS::HashTable<GS::UniString, GS::UniString>::PairIterator cIt = paramsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
-        GS::UniString dbKey = *cIt->key;
+        GS::UniString dbKey = cIt->key;
         GS::UniString value = cIt->value;
         #else
         GS::UniString dbKey = *cIt->key;
@@ -4073,7 +4073,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
     bool needGetElement = false;
     bool hasListData = false;
     bool hasQuantity = false;
-    GS::HashTable<short, bool> hasparambytypes = {};
+    GS::HashTable<short, bool> hasparambytypes = {}; // Словарь наличия параметров для чтения по типу параметра
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -4082,9 +4082,11 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
         #endif
         if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
         if (param.fromGuid == elemGuid && param.fromGuid != APINULLGuid) {
-            ParamHelpers::SetParamValueFromCache (param.rawName, param);
             if (param.typeinx == 0) {
                 param.typeinx = ParamHelpers::GetTypeInxByRawnamePrefix (param.rawName);
+            }
+            if (param.typeinx == PROPERTYTYPEINX || param.typeinx == GLOBTYPEINX || param.typeinx == ATTRIBTYPEINX || param.typeinx == INFOTYPEINX) {
+                ParamHelpers::SetParamValueFromCache (param.rawName, param);
             }
             if (param.fromQuantity) hasQuantity = true;
             if (param.fromListData) hasListData = true;

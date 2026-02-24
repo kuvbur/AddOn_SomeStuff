@@ -523,7 +523,7 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
         #endif
         bool filter = true;
         #if defined(AC_28) || defined(AC_29)
-        GS::UniString strguid = APIGuidToString (groups[i].guid);
+        GS::UniString strguid = APIGuidToString (group.guid);
         filter = (strguid.IsEqual ("3CF63E55-AA52-4AB4-B1C3-0920B2F352BF") || strguid.IsEqual ("6EE946D2-E840-4909-8EF1-F016AE905C52") || strguid.IsEqual ("BF31D3E0-A2B1-4543-A3DA-C1191D059FD8"));
         //TODO Дописать Guid группы "GeneralElemProperties"
         #else

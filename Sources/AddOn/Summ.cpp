@@ -29,6 +29,7 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     GS::Int32 nPhase = 1;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     bool showPercent = true;
+    Int32 maxval = 6;
     ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
     #else
     ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
@@ -92,7 +93,8 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
     ParamDictElement paramToRead = {};
     GS::UniString subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ()); short i = 6;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    Int32 maxval = 2;
+    bool showPercent = true;
+    Int32 maxval = 6;
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -103,7 +105,6 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
     }
     subtitle = GS::UniString::Printf ("Calc rule from %d elements", guidArray.GetSize ());
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    Int32 maxval = 2;
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -114,7 +115,6 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
     }
     subtitle = GS::UniString::Printf ("Read data from %d elements", guidArray.GetSize ());
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    Int32 maxval = 2;
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -123,7 +123,6 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
 
     subtitle = GS::UniString::Printf ("Sum data from %d elements", paramToRead.GetSize ());
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    Int32 maxval = 2;
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
