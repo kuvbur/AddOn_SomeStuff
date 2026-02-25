@@ -155,7 +155,8 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     GS::Array<API_Guid> rereadelem = {};
     start = clock ();
     if (!paramToWrite.IsEmpty ()) {
-        GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSyncId, ACAPI_GetOwnResModule ());
+        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+        GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ()); short i = 1;
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -372,7 +373,8 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep ("SyncSelected - read", subtitle + intString + time, NoError, APINULLGuid);
     if (!paramToWrite.IsEmpty ()) {
-        GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSyncId, ACAPI_GetOwnResModule ());
+        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+        GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
             start = clock ();
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ()); short i = 1;
@@ -385,7 +387,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
             if (!rereadelem_.IsEmpty ()) rereadelem.Append (rereadelem_);
             finish = clock ();
             duration = (double) (finish - start) / CLOCKS_PER_SEC;
-            GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
+            GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
             msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
             return NoError;
         });
@@ -655,12 +657,12 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
     // Выбираем по-элементно параметры для чтения и записи, формируем словарь
     for (const API_Guid& elemGuid : subelemGuids) {
         if (!syncRules.ContainsKey (elemGuid)) continue;
-        GS::Array <WriteData> writeSubs = syncRules.Get (elemGuid);
+        const GS::Array <WriteData>& writeSubs = syncRules.Get (elemGuid);
         if (writeSubs.IsEmpty ()) continue;
         // Заполняем значения параметров чтения/записи из словаря
         for (const WriteData& writeSub : writeSubs) {
-            const API_Guid elemGuidTo = writeSub.guidTo;
-            const API_Guid elemGuidFrom = writeSub.guidFrom;
+            const API_Guid& elemGuidTo = writeSub.guidTo;
+            const API_Guid& elemGuidFrom = writeSub.guidFrom;
             // Проверяем - есть ли вообще эти элементы в словаре параметров
             if (!paramToRead.ContainsKey (elemGuidTo)) continue;
             if (!paramToRead.ContainsKey (elemGuidFrom)) continue;
@@ -743,26 +745,25 @@ void SyncAddSubelement (const GS::Array<API_Guid>& subelemGuids, const GS::Array
         }
 
         // Если есть субэлементы - обработаем их
-        if (!subelemGuids.IsEmpty ()) {
+        if (subelemGuids.IsEmpty ()) continue;
 
-            // Для записи из дочернего в родительский возьмём только один, первый элемент
-            if (mainsyncRules[i].fromSub) {
+        // Для записи из дочернего в родительский возьмём только один, первый элемент
+        if (mainsyncRules[i].fromSub) {
+            WriteData writeSub = mainsyncRules.Get (i);
+            API_Guid subelemGuid = subelemGuids.Get (0);
+            writeSub.fromSub = false;
+            writeSub.guidFrom = subelemGuid;
+            writeSub.paramFrom.fromGuid = subelemGuid;
+            SyncAddRule (writeSub, syncRules, paramToRead);
+        }
+        if (mainsyncRules[i].toSub) {
+            for (UInt32 j = 0; j < subelemGuids.GetSize (); j++) {
                 WriteData writeSub = mainsyncRules.Get (i);
-                API_Guid subelemGuid = subelemGuids.Get (0);
-                writeSub.fromSub = false;
-                writeSub.guidFrom = subelemGuid;
-                writeSub.paramFrom.fromGuid = subelemGuid;
+                API_Guid subelemGuid = subelemGuids.Get (j);
+                writeSub.toSub = false;
+                writeSub.guidTo = subelemGuid;
+                writeSub.paramTo.fromGuid = subelemGuid;
                 SyncAddRule (writeSub, syncRules, paramToRead);
-            }
-            if (mainsyncRules[i].toSub) {
-                for (UInt32 j = 0; j < subelemGuids.GetSize (); j++) {
-                    WriteData writeSub = mainsyncRules.Get (i);
-                    API_Guid subelemGuid = subelemGuids.Get (j);
-                    writeSub.toSub = false;
-                    writeSub.guidTo = subelemGuid;
-                    writeSub.paramTo.fromGuid = subelemGuid;
-                    SyncAddRule (writeSub, syncRules, paramToRead);
-                }
             }
         }
     }
@@ -860,8 +861,9 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                     GS::UniString rawname = "";
                     Name2Rawname (params[0], rawname);
                     if (subproperty.ContainsKey (rawname)) {
-                        if (subproperty.Get (rawname).isValid) {
-                            elemGuidfrom = APIGuidFromString (subproperty.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                        ParamValue& p = subproperty.Get (rawname);
+                        if (p.isValid) {
+                            elemGuidfrom = APIGuidFromString (p.val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             rulestring_one = "Sync_from{" + params[1];
                             elementType_from = GetElemTypeID (elemGuidfrom);
                         } else {
@@ -883,8 +885,9 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                     GS::UniString rawname = "";
                     Name2Rawname (params[0], rawname);
                     if (subproperty.ContainsKey (rawname)) {
-                        if (subproperty.Get (rawname).isValid) {
-                            elemGuidto = APIGuidFromString (subproperty.Get (rawname).val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
+                        ParamValue& p = subproperty.Get (rawname);
+                        if (p.isValid) {
+                            elemGuidto = APIGuidFromString (p.val.uniStringValue.ToCStr (0, MaxUSize, GChCode));
                             param.fromGuid = elemGuidto;
                             rulestring_one = "Sync_to{" + params[1];
                         } else {
@@ -1618,7 +1621,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
         return;
-}
+    }
     #endif
     parentelementtype = GetElemTypeID (parentelement);
     clock_t start, finish;
@@ -1768,9 +1771,10 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
         if (SyncGetParentelement (guidArray, parentGuid, "", errcode)) {
             fmane = "Show Sub Element";
         } else {
-            GS::UniString SubElementHotFoundIdString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHotFoundId, ACAPI_GetOwnResModule ());
+            const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+            GS::UniString SubElementHotFoundIdString = RSGetIndString (iseng, SubElementHotFoundId, ACAPI_GetOwnResModule ());
             if (errcode > 0) {
-                SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
+                SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (iseng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
             }
             ACAPI_WriteReport (SubElementHotFoundIdString, true);
             return;
@@ -1878,29 +1882,29 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
-
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     if (count_otherplan > 0) {
-        GS::UniString SubElementOtherPlanString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementOtherPlanId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementOtherPlanString = RSGetIndString (iseng, SubElementOtherPlanId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_otherplan) + SubElementOtherPlanString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d on other floorplan", count_otherplan);
     }
 
     if (count_del > 0) {
-        GS::UniString SubElementNotExsistString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementNotExsistId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementNotExsistString = RSGetIndString (iseng, SubElementNotExsistId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_del) + SubElementNotExsistString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d not exsist", count_del);
     }
     if (count_inv > 0) {
-        GS::UniString SubElementHiddenString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHiddenId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementHiddenString = RSGetIndString (iseng, SubElementHiddenId, ACAPI_GetOwnResModule ());
         errmsg = errmsg + GS::UniString::Printf (" %d ", count_inv) + SubElementHiddenString + "\n";
         fmane = fmane + GS::UniString::Printf (", %d on hidden layers/filters", count_inv);
     }
     if (!errmsg.IsEmpty ()) {
-        GS::UniString SubElementTotalString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementTotalId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementTotalString = RSGetIndString (iseng, SubElementTotalId, ACAPI_GetOwnResModule ());
         errmsg = SubElementTotalString + GS::UniString::Printf (" %d, ", count_all) + "\n" + errmsg;
     }
     if (selNeigs.IsEmpty ()) {
-        GS::UniString SubElementNoSelectString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementNoSelectId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementNoSelectString = RSGetIndString (iseng, SubElementNoSelectId, ACAPI_GetOwnResModule ());
         errmsg = SubElementNoSelectString + "\n" + errmsg;
         fmane = fmane + " Nothing to select - all hide!";
         finish = clock ();
@@ -1918,7 +1922,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     if (err == NoError && errmsg.IsEmpty ()) ACAPI_Automate (APIDo_ZoomToSelectedID);
     #endif
     if (!errmsg.IsEmpty ()) {
-        GS::UniString SubElementHalfString = RSGetIndString (ID_ADDON_STRINGS + isEng (), SubElementHalfId, ACAPI_GetOwnResModule ());
+        GS::UniString SubElementHalfString = RSGetIndString (iseng, SubElementHalfId, ACAPI_GetOwnResModule ());
         errmsg = SubElementHalfString + "\n" + errmsg;
         ACAPI_WriteReport (errmsg, true);
     }

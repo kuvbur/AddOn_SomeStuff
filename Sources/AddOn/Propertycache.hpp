@@ -259,6 +259,7 @@ struct PropertyCache
         #if defined(TESTING)
         DBprnt ("=PropertyCache= ReadInfo");
         #endif
+        GS::UniString autotextkey = "{@info:addon_dimension_autotext}";
         info.Clear ();
         isInfoRead = true;
         isInfo_OK = ParamHelpers::GetAllInfoToParamDict (info);
@@ -266,12 +267,15 @@ struct PropertyCache
         hasDimAutotext = false;
         if (isInfo_OK) {
             dimrules.Clear ();
-            if (info.ContainsKey ("addon_dimension_autotext")) {
-                const GS::UniString autotext = "";
+            if (info.ContainsKey (autotextkey)) {
+                GS::UniString autotext = info.Get (autotextkey).val.uniStringValue;
                 hasDimAutotext = DimReadPref (dimrules, autotext);
-                #if defined(TESTING)
-                DBprnt ("=PropertyCache= ReadInfo find dim rule " + autotext);
-                #endif
+                if (hasDimAutotext) {
+                    msg_rep ("=PropertyCache= find dim rule ", autotext, NoError, APINULLGuid);
+                    #if defined(TESTING)
+                    DBprnt ("=PropertyCache= ReadInfo find dim rule " + autotext);
+                    #endif
+                }
             }
         }
         #if defined(TESTING)

@@ -59,8 +59,8 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         #endif
         return NoError;
     }
-
-    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
     UInt32 qtywrite = paramToWriteelem.GetSize ();
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite); short i = 2;
@@ -677,16 +677,16 @@ short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition
     }
     if (paramflag.type == API_PropertyStringValueType) {
         GS::UniString flag = paramflag.val.uniStringValue.ToLowerCase ();
-
+        const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         // Исключаемые позиции
-        GS::UniString txtypenum = RSGetIndString (ID_ADDON_STRINGS + isEng (), RenumSkipID, ACAPI_GetOwnResModule ());
+        GS::UniString txtypenum = RSGetIndString (iseng, RenumSkipID, ACAPI_GetOwnResModule ());
         if (flag.Contains (txtypenum) || flag.Contains ("skip")) return RENUM_SKIP;
 
         // У нередактируемых элементов нет возможности поменять позицию - просто учтём её
         if (!isEditable) return RENUM_IGNORE;
 
         // Неизменные позиции
-        txtypenum = RSGetIndString (ID_ADDON_STRINGS + isEng (), RenumIgnoreID, ACAPI_GetOwnResModule ());
+        txtypenum = RSGetIndString (iseng, RenumIgnoreID, ACAPI_GetOwnResModule ());
         if (flag.Contains (txtypenum) || flag.Contains ("ignore")) return RENUM_IGNORE;
 
         // Пустые позиции (если строка пустая - значение ноль.)

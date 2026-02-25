@@ -381,11 +381,12 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         msg_rep ("ChangeLayoutProperty", "layoutInfo.customData == nullptr", err, APINULLGuid);
         return false;
     }
-    GS::UniString RVIString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RVI_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng (), Annul_StringID, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString RVIString = RSGetIndString (iseng, RVI_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString izmString = RSGetIndString (iseng, Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (iseng, Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (iseng, Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (iseng, Annul_StringID, ACAPI_GetOwnResModule ());
     // Правильная сортировка по алфавиту
     std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {};
     for (auto ch : changes) {
@@ -844,7 +845,8 @@ bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nu
 }
 void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
 {
-    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         for (auto ch : changes) {
             #if defined(AC_28) || defined(AC_29)

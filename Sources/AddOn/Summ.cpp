@@ -54,8 +54,8 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
     #endif
-
-    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSumId, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString undoString = RSGetIndString (iseng, UndoSumId, ACAPI_GetOwnResModule ());
     UInt32 qtywrite = 0;
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         bool suspGrp = false;

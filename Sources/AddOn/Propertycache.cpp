@@ -598,8 +598,8 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
                 propertyParams.Add (pvalue.rawName, pvalue);
                 flag_add = true;
             } else {
-                if (propertyParams.Get (rawName).definition.guid != definision.guid) {
-                    ParamValue pvalue = propertyParams.Get (rawName);
+                ParamValue& pvalue = propertyParams.Get (rawName);
+                if (pvalue.definition.guid != definision.guid) {
                     FormatString fstring = pvalue.val.formatstring;
                     if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
                         pvalue.rawName = rawName;
@@ -608,7 +608,6 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
                         if (!fstring.isEmpty) {
                             pvalue.val.formatstring = fstring;
                         }
-                        propertyParams.Get (pvalue.rawName) = pvalue;
                         flag_add = true;
                     }
                 }

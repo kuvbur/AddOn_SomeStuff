@@ -1979,7 +1979,8 @@ GS::UniString GetFormatString (GS::UniString& paramName)
 {
     GS::UniString formatstring = "";
     if (!paramName.Contains (".")) return formatstring;
-    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), MeterStringID, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString meterString = RSGetIndString (iseng, MeterStringID, ACAPI_GetOwnResModule ());
     if (!paramName.Contains ('m') && !paramName.Contains (meterString)) return formatstring;
     GS::Array<GS::UniString> partstring;
     UInt32 n = StringSplt (paramName, ".", partstring);
@@ -2030,11 +2031,12 @@ bool IsValid (GS::UniString formatstring)
 
 void ReplaceMeters (GS::UniString& formatstring)
 {
-    GS::UniString meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), MeterStringID, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString meterString = RSGetIndString (iseng, MeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "m");
-    meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), CMeterStringID, ACAPI_GetOwnResModule ());
+    meterString = RSGetIndString (iseng, CMeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "d");
-    meterString = RSGetIndString (ID_ADDON_STRINGS + isEng (), DMeterStringID, ACAPI_GetOwnResModule ());
+    meterString = RSGetIndString (iseng, DMeterStringID, ACAPI_GetOwnResModule ());
     formatstring.ReplaceAll (meterString, "c");
 }
 
