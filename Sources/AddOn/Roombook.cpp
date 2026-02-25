@@ -227,12 +227,12 @@ void RoomBook ()
         Param_SetToRooms (material_dict, otd, paramToRead, roomParams);
         if (!otd.isValid) continue;
         // Расчёт пола и потолка
-        Floor_Create_All (storyLevels, otd, guidselementToRead, paramToRead);
+        Floor_Create_All (storyLevels, otd);
         if (otd.otdwall.IsEmpty () && otd.otdslab.IsEmpty ()) continue;
         for (OtdSlab& otdslab : otd.otdslab) {
             bool base_flipped = false;
-            GS::UniString fav_name;
-            if (!Param_SetToBase (otdslab.base_guid, base_flipped, otdslab.base_composite, paramToRead, param_composite, fav_name)) otdslab.isValid = false;
+            GS::UniString fav_name = "";
+            if (!Param_SetToBase (otdslab.base_guid, base_flipped, otdslab.base_composite, paramToRead, paramCompositeToRead, param_composite, fav_name)) otdslab.isValid = false;
             if (!otdslab.isValid) continue;
             otdslab.favorite.name = fav_name;
             SetMaterialFinish (otdslab.material, otdslab.base_composite);
@@ -268,8 +268,8 @@ void RoomBook ()
         GS::Array<OtdWall> opw = {}; // Массив созданных стен
         for (OtdWall& otdw : otd.otdwall) {
             // Заполняем данные для отделочных стен (состав)
-            GS::UniString fav_name;
-            if (!Param_SetToBase (otdw.base_guid, otdw.base_flipped, otdw.base_composite, paramToRead, param_composite, fav_name)) otdw.isValid = false;
+            GS::UniString fav_name = "";
+            if (!Param_SetToBase (otdw.base_guid, otdw.base_flipped, otdw.base_composite, paramToRead, paramCompositeToRead, param_composite, fav_name)) otdw.isValid = false;
             if (!otdw.isValid) continue;
             otdw.favorite.name = fav_name;
             if (otdw.openings.IsEmpty ()) continue;
@@ -1437,16 +1437,16 @@ void OtdWall_Create_FromColumn (const Stories& storyLevels, API_Guid& elGuid, GS
 // -----------------------------------------------------------------------------
 void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones)
 {
-    GS::Array<API_Guid> allslabs_;
-    GS::Array<API_Guid> allslabs;
-    GSErrCode err;
+    GS::Array<API_Guid> allslabs_ = {};
+    GS::Array<API_Guid> allslabs = {};
+    GSErrCode err = NoError;
     err = ACAPI_Element_GetElemList (API_SlabID, &allslabs_, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation);
     if (err != NoError) {
         return;
     }
     if (allslabs_.IsEmpty ()) return;
     for (auto guid : allslabs_) {
-        API_Guid classguid;
+        API_Guid classguid = APINULLGuid;
         if (!Class_IsElementFinClass (guid, finclassguids, classguid)) allslabs.Push (guid);
     }
     if (allslabs.IsEmpty ()) return;
@@ -1460,10 +1460,10 @@ void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, c
         return;
     }
     for (const auto& pair : collisions.AsConst ()) {
-        API_Guid classguid;
+        API_Guid classguid = APINULLGuid;
         if (Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids, classguid)) continue;
         if (!slabsinzone.ContainsKey (pair.first.collidedElemGuid)) {
-            GS::Array<API_Guid> s;
+            GS::Array<API_Guid> s = {};
             s.Push (pair.second.collidedElemGuid);
             slabsinzone.Add (pair.first.collidedElemGuid, s);
         } else {
@@ -1511,7 +1511,7 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 // Обработка потолков и полов в зоне
 // -----------------------------------------------------------------------------
-void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead)
+void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo)
 {
     if (!roominfo.has_floor && !roominfo.has_ceil) {
         roominfo.poly.poly.Clear ();
@@ -1520,7 +1520,7 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
     if (roominfo.has_floor) {
         roominfo.poly.zBottom = roominfo.zBottom;
         if (!roominfo.floorslab.IsEmpty ()) {
-            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, paramToRead, Floor, roominfo.om_floor, roominfo.floor_by_slab);
+            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.floorslab, roominfo.otdslab, roominfo.otdwall, Floor, roominfo.om_floor, roominfo.floor_by_slab);
         } else {
             if (!roominfo.floor_by_slab) {
                 OtdSlab poly = roominfo.poly;
@@ -1535,7 +1535,7 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
         roominfo.poly.zBottom = roominfo.zBottom + roominfo.height_main + roominfo.height_down;
         roominfo.poly.material = roominfo.om_ceil;
         if (!roominfo.ceilslab.IsEmpty ()) {
-            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, paramToRead, Ceil, roominfo.om_ceil, roominfo.ceil_by_slab);
+            Floor_Create_One (storyLevels, roominfo.floorInd, roominfo.poly, roominfo.ceilslab, roominfo.otdslab, roominfo.otdwall, Ceil, roominfo.om_ceil, roominfo.ceil_by_slab);
         } else {
             if (!roominfo.ceil_by_slab) {
                 OtdSlab poly = roominfo.poly;
@@ -1549,7 +1549,7 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDBy
     roominfo.poly.poly.Clear ();
 }
 
-void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material, bool only_on_slab)
+void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, TypeOtd type, OtdMaterial& material, bool only_on_slab)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
     double area = 0;
@@ -2552,7 +2552,7 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name)
+bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, ParamValue& param_composite, GS::UniString& fav_name)
 {
     if (!paramToRead.ContainsKey (base_guid)) {
         #if defined(TESTING)
@@ -2566,13 +2566,24 @@ bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::A
     if (!baseparam.ContainsKey (param_composite.rawName)) {
         return true;
     }
+    if (!paramCompositeToRead.ContainsKey (base_guid)) {
+        #if defined(TESTING)
+        DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey(base_guid)");
+        #endif
+        return true;
+    }
+    if (!paramCompositeToRead.Get (base_guid).ContainsKey (param_composite.rawName)) {
+        #if defined(TESTING)
+        DBprnt ("Param_SetToBase err", "!paramToRead.ContainsKey(base_guid)");
+        #endif
+        return true;
+    }
     if (baseparam.ContainsKey ("{@flag:rawname_element_onoff}")) {
         if (baseparam.ContainsKey (baseparam.Get ("{@flag:rawname_element_onoff}").val.uniStringValue)) {
             ParamValue& is_fin = baseparam.Get (baseparam.Get ("{@flag:rawname_element_onoff}").val.uniStringValue);
             if (is_fin.isValid && !is_fin.val.boolValue) return false;
         }
     }
-    ParamValue& base_composite = baseparam.Get (param_composite.rawName);
     // Нужно ли добавлять финишную отделку?
     bool has_fin = true;
     if (baseparam.ContainsKey ("{@flag:rawname_hasfin_elem}")) {
@@ -2581,6 +2592,7 @@ bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::A
             if (is_fin.isValid && !is_fin.val.boolValue) has_fin = false;
         }
     }
+    const ParamComposite& base_composite = paramCompositeToRead.Get (base_guid).Get (param_composite.rawName);
     Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name, has_fin);
     return true;
 }
@@ -2674,17 +2686,17 @@ void Param_SetComposite (const ParamComposite& base_composite, const bool& base_
                 last.val.Clear ();
                 if (otdcpmpoosite.IsEmpty ()) {
                     otdcpmpoosite.Push (last);
-            } else {
+                } else {
                     otdcpmpoosite.GetLast ().length = last.length;
                     otdcpmpoosite.GetLast ().pos = last.pos;
                 }
-        } else {
+            } else {
                 msg_rep ("RoomBook", "ACAPI_Attribute_Get material " + last.val, err, APINULLGuid);
             }
-    } else {
+        } else {
             msg_rep ("RoomBook", "ACAPI_Attribute_Get building material " + last.val, err, APINULLGuid);
         }
-}
+    }
     cpmpoosite.Clear ();
 }
 
@@ -2773,7 +2785,7 @@ static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
         DBprnt ("RoomRedProc err", "reducededges == nullptr");
         #endif
         return;
-}
+    }
     if (roomRed->nCoords < 4 || roomRed->coords == nullptr || roomRed->subPolys == nullptr) {
         #if defined(TESTING)
         DBprnt ("RoomRedProc err", "roomRed->coords == nullptr");
@@ -2900,7 +2912,7 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                 GS::Array<API_Guid> zoneGuids = {};
                 for (API_Guid zoneGuid : zoneGuids_) {
                     if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
-            }
+                }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
                     #if defined(AC_28) || defined(AC_29)
                     API_Guid zoneGuid = cIt->key;
@@ -2911,10 +2923,10 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
                 }
                 elementToRead.Get (typeelem).Set (guid, zoneGuids);
             }
-                }
         }
-    return;
     }
+    return;
+}
 
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
@@ -3304,7 +3316,8 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
     #endif
     GS::UniString funcname = "Draw finishing element(s)";
     GSErrCode err = NoError;
-    GS::UniString UndoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), RoombookId, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString UndoString = RSGetIndString (iseng, RoombookId, ACAPI_GetOwnResModule ());
     #ifndef AC_22
     bool suspGrp = false;
     Int32 n_elem = 0;
@@ -3320,7 +3333,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
         if (!deletelist.IsEmpty ()) {
             err = ACAPI_Element_Delete (deletelist);
             msg_rep ("RoomBook", GS::UniString::Printf ("Removed %d obsolete finishing elements", deletelist.GetSize ()), err, APINULLGuid);
-} else {
+        } else {
             msg_rep ("RoomBook", "Obsolete finishing elements not found", NoError, APINULLGuid);
         }
         for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -3400,9 +3413,9 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
             }
         }
         return NoError;
-});
+    });
     msg_rep ("RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Построение отделочных стен (общая)
@@ -3632,7 +3645,7 @@ void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& sto
     if (err != NoError) {
         msg_rep ("OtdWall_Draw_Object err", "ACAPI_Element_Create", err, APINULLGuid);
         return;
-}
+    }
     edges.otd_guid = wallobjelement.header.guid;
 }
 
@@ -3883,7 +3896,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         #else
         slabelement.slab.botMat.overridden = true;
         #endif
-} else {
+    } else {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         slabelement.slab.topMat.hasValue = true;
         #else
@@ -3929,7 +3942,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
         otdslab.otd_guid = slabelement.header.guid;
     }
     return;
-        }
+}
 
 void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab)
 {
@@ -4144,7 +4157,7 @@ TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::
         if (cl.item.guid != classguid) continue;
         if (name == cls.all_class) {
             return NoSet;
-    }
+        }
         if (name == cls.otdwall_class) {
             return Wall_Main;
         }
@@ -4163,7 +4176,7 @@ TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::
         if (name == cls.reveal_class) {
             return Reveal_Main;
         }
-}
+    }
     return NoSet;
 }
 
@@ -4196,7 +4209,7 @@ void Class_FindFinClass (ClassificationFunc::ClassificationDict& findict, UnicGu
                 if (desc.Contains (cls.all_class)) {
                     findict.Add (cls.all_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
-    }
+                }
                 if (desc.Contains (cls.ceil_class)) {
                     findict.Add (cls.ceil_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
@@ -4221,7 +4234,7 @@ void Class_FindFinClass (ClassificationFunc::ClassificationDict& findict, UnicGu
                     findict.Add (cls.otdwall_down_class, clas);
                     if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
                 }
-}
+            }
         }
     }
 }
@@ -4266,7 +4279,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
                 parentelementhead.guid = guid;
                 if (typeelem == API_ZoneID) {
                     suffix = "zone";
-            } else {
+                } else {
                     suffix = "base element";
                 }
                 if (SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false)) {
@@ -4281,9 +4294,9 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
                         }
                     }
                 }
+            }
         }
     }
-}
     if (!paramToWrite.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Write GUID base and GUID zone to %d finishing element(s)", paramToWrite.GetSize ());
         nPhase += 1;
@@ -4306,7 +4319,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
                 [&]() -> GSErrCode {
             ParamHelpers::ElementsWrite (paramToWrite);
             return NoError;
-    });
+        });
     }
     if (!syncguids.IsEmpty ()) {
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
@@ -4328,7 +4341,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
             SyncArray (syncSettings, rereadelem);
         }
     }
-            }
+}
 
 
 bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids, API_Guid& classguid)
@@ -4456,11 +4469,11 @@ void Favorite_ReadComposite (const ParamValue& param_composite, MatarialToFavori
     bool needReadQuantities = false;
     if (!ParamHelpers::ReadMaterial (element, paramToRead_favorite, paramcomposite, needReadQuantities)) return;
     if (!paramToRead_favorite.Get (param_composite.rawName).isValid) return;
+    if (!paramcomposite.ContainsKey (param_composite.rawName)) return;
     GS::UniString fav_name_ = "";
-    bool base_flipped = element.wall.flipped;
-    ParamComposite& base_composite = paramToRead_favorite.Get (param_composite.rawName);
+    const ParamComposite& base_composite = paramcomposite.Get (param_composite.rawName);
     GS::Array<ParamValueComposite>& otdcpmpoosite = favdict.Get (fav_name).composite;
-    Param_SetComposite (base_composite, base_flipped, otdcpmpoosite, fav_name_, true);
+    Param_SetComposite (base_composite, element.wall.flipped, otdcpmpoosite, fav_name_, true);
     return;
 }
 
@@ -4562,7 +4575,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
         element = favorite.element;
         UnhideUnlockElementLayer (element.header);
         return true;
-}
+    }
     return false;
     #endif
 }
@@ -4583,7 +4596,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
         UnhideUnlockElementLayer (element.header);
         memo = *favorite.memo;
         return true;
-}
+    }
     ACAPI_DisposeElemMemoHdls (&favorite.memo.Get ());
     return false;
     #endif
@@ -4592,8 +4605,9 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
 bool Check (const ClassificationFunc::ClassificationDict& finclass, UnicGuid& finclassguids)
 {
     // Проверка наличия классов
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     if (finclass.IsEmpty ()) {
-        GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 50, ACAPI_GetOwnResModule ());
+        GS::UniString msgString = RSGetIndString (iseng, 50, ACAPI_GetOwnResModule ());
         msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
         ACAPI_WriteReport (msgString, true);
         return false;
@@ -4604,7 +4618,7 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, UnicGuid& fi
         if (!finclass.ContainsKey (cls.ceil_class)) msg = true;
         if (!finclass.ContainsKey (cls.otdwall_class)) msg = true;
         if (msg) {
-            GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 51, ACAPI_GetOwnResModule ());
+            GS::UniString msgString = RSGetIndString (iseng, 51, ACAPI_GetOwnResModule ());
             msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
             return false;
         }
@@ -4631,7 +4645,7 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, UnicGuid& fi
         bool msg = *cIt->value;
         #endif
         if (!msg) {
-            GS::UniString msgString = RSGetIndString (ID_ADDON_STRINGS + isEng (), 52, ACAPI_GetOwnResModule ());
+            GS::UniString msgString = RSGetIndString (iseng, 52, ACAPI_GetOwnResModule ());
             msg_rep ("RoomBook err", msgString, APIERR_GENERAL, APINULLGuid);
             ACAPI_WriteReport (msgString, true);
             return false;
@@ -4651,16 +4665,16 @@ bool Check (const ClassificationFunc::ClassificationDict& finclass, UnicGuid& fi
             bool find_cls = false;
             for (const API_Guid& classguid : param.definition.availability) {
                 if (finclassguids.ContainsKey (classguid)) find_cls = true;
-        }
+            }
             if (!find_cls) {
                 msg_rep ("RoomBook", "'Sync_GUID base element' property found, but not displayed in Finish Element classification.\nFloor/ceiling updates require this property to be visible. Existing elements will be replaced.", NoError, APINULLGuid);
             }
+        }
     }
-}
     if (!find) {
         msg_rep ("RoomBook", "Missing 'Sync_GUID base element' property. Floor/ceiling updates require this property. Existing elements will be replaced", NoError, APINULLGuid);
     }
     return true;
-        }
+}
 #endif
-    }
+}

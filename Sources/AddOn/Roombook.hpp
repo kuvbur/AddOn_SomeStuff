@@ -272,11 +272,11 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (ParamDictValue& paramDict, ParamComposite& param_composite);
+void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite);
 
 void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
 
-bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamComposite& param_composite, GS::UniString& fav_name);
+bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, ParamValue& param_composite, GS::UniString& fav_name);
 
 void Param_SetComposite (const ParamComposite& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin);
 
@@ -317,9 +317,9 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
 // -----------------------------------------------------------------------------
 void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
 
-void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
+void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo);
 
-void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material, bool only_on_slab);
+void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, TypeOtd type, OtdMaterial& material, bool only_on_slab);
 
 bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 

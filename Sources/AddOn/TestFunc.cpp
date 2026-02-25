@@ -98,12 +98,11 @@ void TestCalc ()
 void TestFormula ()
 {
     DBprnt ("TEST", "TestReadFormula");
-    ParamDictValue paramByType;
     ParamDictValue params;
     ParamValue pvalue;
     pvalue.val.hasFormula = true;
-    pvalue.isValid = true;
-    GS::Array<ParamValue> formula;
+    pvalue.isValid = false;
+    GS::Array<ParamValue> formula = {};
 
     pvalue.name = "<%ac_postWidth%*1000> * <%ac_postThickness%*1000>";
     pvalue.val.uniStringValue = "53 * 3";
@@ -135,7 +134,6 @@ void TestFormula ()
     pvalue.val.intValue = 1; pvalue.val.doubleValue = 0.150;
     formula.Push (pvalue);
 
-
     for (UInt32 j = 0; j < formula.GetSize (); j++) {
         GS::UniString f = formula.Get (j).name;
         pvalue.name = f;
@@ -145,9 +143,10 @@ void TestFormula ()
         DBtest (ParamHelpers::ParseParamNameMaterial (templatestring, params, false), templatestring, true);
         pvalue.val.uniStringValue = templatestring;
         formula[j].rawName = pvalue.rawName;
-        paramByType.Add (pvalue.rawName, pvalue);
+        params.Add (pvalue.rawName, pvalue);
     }
-
+    pvalue.val.hasFormula = false;
+    pvalue.isValid = true;
     DBtest (params.ContainsKey ("{@gdl:ac_postwidth}"), "{@gdl:ac_postwidth}", true);
     pvalue.name = ""; pvalue.rawName = "";
     ParamHelpers::ConvertDoubleToParamValue (pvalue, "ac_postWidth", 0.053);
@@ -160,9 +159,9 @@ void TestFormula ()
     DBtest (params.ContainsKey (pvalue.rawName), pvalue.rawName, true);
     params.Set (pvalue.rawName, pvalue);
 
-    DBtest (ParamHelpers::ReadFormula (paramByType, params), "ReadFormula", true);
+    DBtest (ParamHelpers::ReadFormula (params), "ReadFormula", true);
 
-    for (ParamDictValue::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -174,11 +173,11 @@ void TestFormula ()
     }
 
     for (UInt32 j = 0; j < formula.GetSize (); j++) {
-        ParamValue rezult = formula.Get (j);
-        DBtest (paramByType.ContainsKey (rezult.rawName), rezult.rawName, true);
-        ParamValue test = paramByType.Get (rezult.rawName);
+        ParamValue& rezult = formula.Get (j);
+        DBtest (params.ContainsKey (rezult.rawName), rezult.rawName, true);
+        ParamValue& test = params.Get (rezult.rawName);
         DBtest (test.val.formatstring.stringformat, rezult.val.formatstring.stringformat, "formatstring", true);
-        DBtest (test.isValid == rezult.isValid, "isValid", true);
+        DBtest (test.isValid == true, "isValid", true);
         DBtest (test.val.uniStringValue, rezult.val.uniStringValue, "uniStringValue", true);
         DBtest (test.val.intValue, rezult.val.intValue, "intValue", true);
         DBtest (test.val.doubleValue, rezult.val.doubleValue, "doubleValue", true);
@@ -334,7 +333,8 @@ void ResetSyncPropertyOne (const API_Guid& elemGuid)
     GS::Array<API_Property> propertywrite;
     ResetSyncPropertyOne (elemGuid, propertywrite);
     if (propertywrite.IsEmpty ()) return;
-    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoSyncId, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         err = ACAPI_Element_SetProperties (elemGuid, propertywrite);
         return NoError;
