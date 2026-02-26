@@ -576,7 +576,7 @@ bool ReadFormula (ParamDictValue& params);
 
 bool ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniString& name, GS::UniString& unitcode, GS::UniString& suffix, double& qty);
 
-bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& params, ParamDictComposite& paramcomposite);
+bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue);
 
 void ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, ParamDictComposite& paramcomposite);
 

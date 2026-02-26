@@ -374,8 +374,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     if (!guidArray.IsEmpty ()) {
         bool flagfindspec = false;
-        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            err = GetRuleFromElement (guidArray[i], rules);
+        for (const auto& guid : guidArray) {
+            err = GetRuleFromElement (guid, rules);
             if (err == NoError) flagfindspec = true;
         }
         if (!flagfindspec) {
@@ -448,7 +448,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         }
         if (!rule.is_Valid) continue;
         bool flag_find = false;
-        for (auto& cItt : paramdict_favorite.Get (rule.favorite_name)) {
+        GS::HashTable<GS::UniString, GS::UniString>& rule_favorite_name = paramdict_favorite.Get (rule.favorite_name);
+        for (const auto& cItt : rule_favorite_name) {
             #if defined(AC_28) || defined(AC_29)
             const GS::UniString rawname = cItt.key;
             const GS::UniString description = cItt.value;
@@ -503,8 +504,9 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         }
         GS::Array<API_Guid> exsist_elements = GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
         if (!selected_elements.IsEmpty ()) {
-            for (UInt32 i = 0; i < exsist_elements.GetSize (); i++) {
-                if (selected_elements.ContainsKey (exsist_elements[i])) rule.exsist_elements.Push (exsist_elements[i]);
+            for (const API_Guid& exsist_element : exsist_elements) {
+                if (!selected_elements.ContainsKey (exsist_elements[i])) continue;
+                rule.exsist_elements.Push (exsist_elements[i]);
             }
         } else {
             rule.exsist_elements = exsist_elements;
@@ -983,9 +985,32 @@ bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, cons
 {
     if (!ParamHelpers::GetParamValueForElements (elemguid, rawname, paramToRead, pvalue)) return false;
     if (!pvalue.fromMaterial) return true;
-    if (!paramCompositeToRead.ContainsKey (elemguid)) return false;
-    if (!paramCompositeToRead.Get (elemguid).ContainsKey (rawname)) return false;
-    ParamComposite pcelem = paramCompositeToRead.Get (elemguid).Get (rawname);
+    if (!paramCompositeToRead.ContainsKey (elemguid)) {
+        #if defined(TESTING)
+        DBprnt ("Spec err", "!paramCompositeToRead.ContainsKey (elemguid)");
+        #endif
+        return false;
+    }
+    const ParamDictComposite& pc = paramCompositeToRead.Get (elemguid);
+    if (!pc.ContainsKey (rawname)) {
+        #if defined(TESTING)
+        DBprnt ("Spec err", "!paramCompositeToRead.ContainsKey (rawname)");
+        #endif
+        return false;
+    }
+    const ParamComposite& pcelem = pc.Get (rawname);
+    if (pcelem.composite.IsEmpty ()) {
+        #if defined(TESTING)
+        DBprnt ("Spec err", "pcelem.composite.IsEmpty()");
+        #endif
+        return false;
+    }
+    if (pcelem.isValid) {
+        #if defined(TESTING)
+        DBprnt ("Spec err", "pcelem.isValid");
+        #endif
+        return false;
+    }
     GS::Int32 max_layers = pcelem.composite.GetSize ();
     if (n_layer >= max_layers) {
         pvalue.val.uniStringValue = "";
@@ -996,8 +1021,9 @@ bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, cons
         return true;
     }
     double x = 0;
-    pvalue.val.uniStringValue = pcelem.composite[n_layer].val;
-    pvalue.val.canCalculate = UniStringToDouble (pcelem.templatestring, x);
+    const GS::UniString& val = pcelem.composite[n_layer].val;
+    pvalue.val.canCalculate = UniStringToDouble (val, x);
+    pvalue.val.uniStringValue = val;
     pvalue.val.doubleValue = x;
     pvalue.val.rawDoubleValue = x;
     pvalue.val.intValue = (GS::Int32) x;

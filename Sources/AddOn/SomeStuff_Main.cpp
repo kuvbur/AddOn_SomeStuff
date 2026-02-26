@@ -119,14 +119,6 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             //SelectElement (APINotify_ChangeWindow);
             DimRoundAll (syncSettings, false);
             break;
-            #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
-        case APINotify_ClassificationVisibilityChanged:
-        case APINotify_PropertyVisibilityChanged:
-        case APINotify_ClassificationItemChanged:
-        case APINotify_PropertyDefinitionChanged:
-            PROPERTYCACHE ().Update ();
-            break;
-            #endif
         default:
             break;
     }
@@ -474,7 +466,7 @@ GSErrCode __ACENV_CALL Initialize (void)
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     ACAPI_Notification_CatchSelectionChange (SelectionChangeHandlerProc);
     #else
-    ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB | APINotify_ClassificationVisibilityChanged | APINotify_PropertyVisibilityChanged | APINotify_ClassificationItemChanged | APINotify_PropertyDefinitionChanged, ProjectEventHandlerProc);
+    ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
     ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     #endif
     ACAPI_KeepInMemory (true);
