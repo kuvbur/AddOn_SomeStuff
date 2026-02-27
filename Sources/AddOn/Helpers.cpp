@@ -120,11 +120,11 @@ bool GetRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_
         if (definition.description.IsEmpty ()) continue;
         if (!definition.description.Contains (name)) continue;
         if (check_bracket) {
-            if (!definition.description.Contains ("{")) {
+            if (!definition.description.Contains (BRACESTART)) {
                 msg_rep ("GetRuleFromSelected", definition.name + " Check the opening bracket, there should be {", APIERR_GENERAL, APINULLGuid);
                 continue;
             }
-            if (!definition.description.Contains ("}")) {
+            if (!definition.description.Contains (BRACEEND)) {
                 msg_rep ("GetRuleFromSelected", definition.name + " Check the closing bracket, there should be }", APIERR_GENERAL, APINULLGuid);
                 continue;
             }
@@ -311,7 +311,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
     if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
         if (assertIfNoSel) {
-            DGAlert (DG_ERROR, "Error", errorString, "", "Ok");
+            DGAlert (DG_ERROR, "Error", errorString, EMPTYSTRING, "Ok");
         }
     }
     if (err != NoError) {
@@ -878,13 +878,13 @@ GS::UniString ParamHelpers::GetRawnamePrefixByTypeInx (const short& inx)
             #if defined(TESTING)
             DBprnt (inx, "ERROR GetRawnamePrefixByTypeInx");
             #endif
-            return "";
+            return EMPTYSTRING;
             break;
     }
     #if defined(TESTING)
     DBprnt (inx, "ERROR GetRawnamePrefixByTypeInx");
     #endif
-    return "";
+    return EMPTYSTRING;
 }
 
 short ParamHelpers::GetTypeInxByRawnamePrefix (const GS::UniString& rawName)
@@ -998,10 +998,10 @@ void ParamHelpers::SetArrayByRawname (ParamValue& pvalue)
 {
     if (!pvalue.rawName.Contains ("@arr_")) return;
     GS::Array<GS::UniString> partstring = {};
-    UInt32 n = StringSplt (pvalue.rawName, "@arr_", partstring, "}");
+    UInt32 n = StringSplt (pvalue.rawName, "@arr_", partstring, BRACEEND);
     if (n == 0) return;
     GS::UniString arr = partstring.Get (0);
-    arr.ReplaceAll ("}", "");
+    arr.ReplaceAll (BRACEEND, EMPTYSTRING);
     partstring.Clear ();
     n = StringSplt (arr, "_", partstring);
     if (n == 0) return;
@@ -1036,10 +1036,10 @@ void ParamHelpers::SetArrayByRawname (ParamValue& pvalue)
 
 GS::UniString ParamHelpers::NameToRawName (const GS::UniString& name, FormatString& formatstring)
 {
-    if (name.IsEmpty ()) return "";
+    if (name.IsEmpty ()) return EMPTYSTRING;
     GS::UniString rawname_prefix = "";
     GS::UniString name_ = name.ToLowerCase ();
-    if (name_.Contains ("{") && name_.Contains ("{")) name_ = name_.GetSubstring ('{', '}', 0);
+    if (name_.Contains (BRACESTART) && name_.Contains (BRACESTART)) name_ = name_.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     // Ищём строку с указанием формата вывода (метры/миллиметры)
     GS::UniString stringformat = FormatStringFunc::GetFormatString (name_);
     formatstring = FormatStringFunc::ParseFormatString (stringformat);
@@ -1056,11 +1056,11 @@ GS::UniString ParamHelpers::NameToRawName (const GS::UniString& name, FormatStri
     }
     if (rawname_prefix.IsEmpty () && name_.IsEqual ("id")) rawname_prefix = "@id:";
     if (rawname_prefix.IsEmpty ()) rawname_prefix = "@gdl:";
-    if (!rawname_prefix.Contains ("@")) {
-        rawname_prefix = "@" + rawname_prefix;
+    if (!rawname_prefix.Contains (ATSIGN)) {
+        rawname_prefix = ATSIGN + rawname_prefix;
     }
-    name_.ReplaceAll ("\\/", "/");
-    GS::UniString rawName = "{" + rawname_prefix + name_ + "}";
+    name_.ReplaceAll (SLASHEKR, SLASH);
+    GS::UniString rawName = BRACESTART + rawname_prefix + name_ + BRACEEND;
     return rawName;
 }
 
@@ -1091,7 +1091,7 @@ bool ParamHelpers::needAdd (ParamDictValue& params, GS::UniString& rawName)
     bool addNew = false;
     if (rawName.Contains (CharENTER)) {
         UInt32 n = rawName.FindFirst (CharENTER);
-        GS::UniString rawName_ = rawName.GetSubstring (0, n) + "}";
+        GS::UniString rawName_ = rawName.GetSubstring (0, n) + BRACEEND;
         addNew = params.ContainsKey (rawName_);
     }
     return addNew;
@@ -1137,13 +1137,13 @@ bool ParamHelpers::CheckIgnoreVal (const SkipValues& ignorevals, const ParamValu
         if (emp.IsEqual (ign)) return true;
         if (ign.BeginsWith ("*")) {
             GS::UniString ig = ign;
-            ig.ReplaceAll ("*", "");
+            ig.ReplaceAll ("*", EMPTYSTRING);
             if (emp.EndsWith (ig)) return true;
             continue;
         }
         if (ign.EndsWith ("*")) {
             GS::UniString ig = ign;
-            ig.ReplaceAll ("*", "");
+            ig.ReplaceAll ("*", EMPTYSTRING);
             if (emp.BeginsWith (ig)) return true;
             continue;
         }
@@ -1340,7 +1340,7 @@ void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const A
     ParamValue pvalue = {};
     pvalue.rawName = rawName_prefix;
     pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append ("}");
+    pvalue.rawName.Append (BRACEEND);
     bool flag_set = false;
     if (params.ContainsKey (pvalue.rawName)) {
         flag_set = true;
@@ -1352,7 +1352,7 @@ void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const A
         }
     }
     pvalue.name = name.ToLowerCase ();
-    ParamHelpers::ConvertBoolToParamValue (pvalue, "", val);
+    ParamHelpers::ConvertBoolToParamValue (pvalue, EMPTYSTRING, val);
     if (flag_set) {
         ParamValue paramFrom = params.Get (pvalue.rawName);
         pvalue.fromGuid = paramFrom.fromGuid;
@@ -1372,7 +1372,7 @@ void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const
     ParamValue pvalue = {};
     pvalue.rawName = rawName_prefix;
     pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append ("}");
+    pvalue.rawName.Append (BRACEEND);
     bool flag_set = false;
     if (params.ContainsKey (pvalue.rawName)) {
         flag_set = true;
@@ -1384,8 +1384,8 @@ void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const
         }
     }
     pvalue.name = name.ToLowerCase ();
-    pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", val);
+    pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, val);
     if (flag_set) {
         ParamValue paramFrom = params.Get (pvalue.rawName);
         pvalue.fromGuid = paramFrom.fromGuid;
@@ -1406,7 +1406,7 @@ void ParamHelpers::AddDoubleValueToParamDictValue (ParamDictValue& params, const
     ParamValue pvalue = {};
     pvalue.rawName = rawName_prefix;
     pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append ("}");
+    pvalue.rawName.Append (BRACEEND);
     bool flag_set = false;
     if (params.ContainsKey (pvalue.rawName)) {
         flag_set = true;
@@ -1418,7 +1418,7 @@ void ParamHelpers::AddDoubleValueToParamDictValue (ParamDictValue& params, const
         }
     }
     pvalue.name = name.ToLowerCase ();
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", val);
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, val);
     if (flag_set) {
         ParamValue paramFrom = params.Get (pvalue.rawName);
         pvalue.fromGuid = paramFrom.fromGuid;
@@ -1437,7 +1437,7 @@ void ParamHelpers::AddStringValueToParamDictValue (ParamDictValue& params, const
     ParamValue pvalue = {};
     pvalue.rawName = rawName_prefix;
     pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append ("}");
+    pvalue.rawName.Append (BRACEEND);
     bool flag_set = false;
     if (params.ContainsKey (pvalue.rawName)) {
         flag_set = true;
@@ -1449,7 +1449,7 @@ void ParamHelpers::AddStringValueToParamDictValue (ParamDictValue& params, const
         }
     }
     pvalue.name = name.ToLowerCase ();
-    ParamHelpers::ConvertStringToParamValue (pvalue, "", val);
+    ParamHelpers::ConvertStringToParamValue (pvalue, EMPTYSTRING, val);
     ParamHelpers::SetParamValueSourseByName (pvalue);
     if (flag_set) {
         ParamValue paramFrom = params.Get (pvalue.rawName);
@@ -2417,14 +2417,14 @@ bool ParamHelpers::ParseParamNameMaterial (GS::UniString& expression, ParamDictV
 {
     GS::UniString part = "";
     bool flag_change = true;
-    while (expression.Count ('%') > 1 && flag_change) {
+    while (expression.Count (CHARPROC) > 1 && flag_change) {
         GS::UniString expression_old = expression;
-        part = expression.GetSubstring ('%', '%', 0);
+        part = expression.GetSubstring (CHARPROC, CHARPROC, 0);
         if (!part.IsEmpty ()) {
             if (fromMaterial) {
-                expression.ReplaceAll ('%' + part + '%', PROPERTYNAMEPREFIX + part.ToLowerCase () + '}');
+                expression.ReplaceAll (CHARPROC + part + CHARPROC, PROPERTYNAMEPREFIX + part.ToLowerCase () + CHARBRACEEND);
             } else {
-                expression.ReplaceAll ('%' + part + '%', "{" + part.ToLowerCase () + '}');
+                expression.ReplaceAll (CHARPROC + part + CHARPROC, BRACESTART + part.ToLowerCase () + CHARBRACEEND);
             }
         }
         if (expression_old.IsEqual (expression)) flag_change = false;
@@ -2438,12 +2438,12 @@ bool ParamHelpers::ParseParamNameMaterial (GS::UniString& expression, ParamDictV
 bool ParamHelpers::ParseParamName (GS::UniString& expression, ParamDictValue& paramDict)
 {
     GS::UniString tempstring = expression;
-    if (!tempstring.Contains ('{')) return false;
+    if (!tempstring.Contains (CHARBRACESTART)) return false;
     GS::UniString part = "";
     bool flag_change = true;
-    while (tempstring.Contains ('{') && tempstring.Contains ('}') && flag_change) {
+    while (tempstring.Contains (CHARBRACESTART) && tempstring.Contains (CHARBRACEEND) && flag_change) {
         GS::UniString expression_old = tempstring;
-        part = tempstring.GetSubstring ('{', '}', 0);
+        part = tempstring.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
         GS::UniString part_clean = part;
         // TODO Переписать всю эту хреноту - отделить парсинг от добавления в словарь
         FormatString formatstring;
@@ -2512,10 +2512,10 @@ bool ParamHelpers::ParseParamName (GS::UniString& expression, ParamDictValue& pa
             paramDict.Add (part_, pvalue);
         }
         if (!formatstring.isEmpty) {
-            part_.ReplaceAll ("}", "." + formatstring.stringformat + "}");
+            part_.ReplaceAll (BRACEEND, DOT + formatstring.stringformat + BRACEEND);
         }
-        expression.ReplaceAll ('{' + part + '}', part_);
-        tempstring.ReplaceAll ('{' + part + '}', "");
+        expression.ReplaceAll (CHARBRACESTART + part + CHARBRACEEND, part_);
+        tempstring.ReplaceAll (CHARBRACESTART + part + CHARBRACEEND, EMPTYSTRING);
         if (expression_old.IsEqual (tempstring)) {
             flag_change = false;
         }
@@ -2531,7 +2531,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
 {
     if (pdictvalue.IsEmpty ()) return false;
     if (expression.IsEmpty ()) return false;
-    if (!expression.Contains ('{')) return true;
+    if (!expression.Contains (CHARBRACESTART)) return true;
     bool flag_find = false;
     GS::UniString attribsuffix = "";
     GS::UniString attribsuffix_old = "";
@@ -2541,11 +2541,11 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
     GS::UniString val = "";
     GS::UniString findstring = "";
     bool flag_change = true;
-    while (expression.Contains ('{') && expression.Contains ('}') && flag_change) {
+    while (expression.Contains (CHARBRACESTART) && expression.Contains (CHARBRACEEND) && flag_change) {
         val.Clear ();
         GS::UniString expression_old = expression;
         // Выделяем часть, являющуюся шаблоном параметра
-        part = expression.GetSubstring ('{', '}', 0);
+        part = expression.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
         if (!part.IsEmpty ()) {
             part_clean = part;
             // Поищем в ней указание на номер аттрибута
@@ -2553,7 +2553,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
             if (part.Contains (CharENTER)) {
                 UIndex attribinx = part.FindLast (CharENTER);
                 USize partlen = part_clean.GetLength () - attribinx;
-                attribsuffix = part_clean.GetSubstring (attribinx, partlen) + '}';
+                attribsuffix = part_clean.GetSubstring (attribinx, partlen) + CHARBRACEEND;
                 part_clean = part_clean.GetSubstring (0, attribinx);
             }
             // Проверяем наличие строки формата
@@ -2562,9 +2562,9 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
             if (!stringformat.IsEmpty ()) formatstring = FormatStringFunc::ParseFormatString (stringformat);
             bool flag = false;
             if (!flag) {
-                partc = "{"; // Строка без формата
+                partc = BRACESTART; // Строка без формата
                 partc.Append (part_clean);
-                partc.Append ("}");
+                partc.Append (BRACEEND);
                 if (pdictvalue.ContainsKey (partc)) {
                     ParamValue pvalue = pdictvalue.Get (partc);
                     if (pvalue.isValid) {
@@ -2576,7 +2576,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
                 }
             }
             if (!flag && !attribsuffix.IsEmpty ()) {
-                partc = "{"; // Строка без формата
+                partc = BRACESTART; // Строка без формата
                 partc.Append (part_clean);
                 partc.Append (attribsuffix);
                 if (pdictvalue.ContainsKey (partc)) {
@@ -2594,7 +2594,7 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
                 }
             }
             if (!flag && !attribsuffix_old.IsEmpty ()) {
-                partc = "{"; // Строка без формата
+                partc = BRACESTART; // Строка без формата
                 partc.Append (part_clean);
                 partc.Append (attribsuffix_old);
                 if (pdictvalue.ContainsKey (partc)) {
@@ -2617,9 +2617,9 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
                 #endif
             }
         }
-        findstring = "{";
+        findstring = BRACESTART;
         findstring.Append (part);
-        findstring.Append ("}");
+        findstring.Append (BRACEEND);
         expression.ReplaceAll (findstring, val);
         if (expression_old.IsEqual (expression)) flag_change = false;
         if (!attribsuffix.IsEmpty ()) attribsuffix_old = attribsuffix;
@@ -2771,7 +2771,7 @@ ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs)
     }
     out.rawDoubleValue = lhsrawDoubleValue + rhsrawDoubleValue;
     out.uniStringValue = lhs.uniStringValue;
-    out.uniStringValue.Append (";");
+    out.uniStringValue.Append (SEMICOLON);
     out.uniStringValue.Append (rhs.uniStringValue);
     out.intValue = lhs.intValue + rhs.intValue;
     return out;
@@ -3808,7 +3808,7 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
         API_AddParType& actualParam = (*apiParams.params)[i];
         if (actualParam.typeMod != API_ParSimple) continue;
         GS::UniString name = actualParam.name;
-        GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + "}";
+        GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + BRACEEND;
         if (!params.ContainsKey (rawname)) continue;
 
         ParamValueData paramfrom = params.Get (rawname).val;
@@ -3996,7 +3996,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
     GS::UniString rawName = "";
     for (auto& property : properties) {
         GetPropertyFullName (property.definition, fname);
-        rawName = PROPERTYNAMEPREFIX + fname.ToLowerCase () + "}";
+        rawName = PROPERTYNAMEPREFIX + fname.ToLowerCase () + BRACEEND;
         if (!params.ContainsKey (rawName)) {
             #if defined(TESTING)
             DBprnt ("    WriteProperty err", "params.ContainsKey (rawName) " + rawName);
@@ -4275,7 +4275,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         }
         if (param.fromPropertyDefinition && param.isValid) {
             if (param.definition.description.Contains ("Sync_to{Attribute:Layer}")) {
-                GS::UniString key = "{@attrib:layer_name_" + param.val.uniStringValue.ToLowerCase () + "}";
+                GS::UniString key = "{@attrib:layer_name_" + param.val.uniStringValue.ToLowerCase () + BRACEEND;
                 ParamValue chacheval = {};
                 if (ParamHelpers::GetParamValueFromCache (key, chacheval)) {
                     param.val = chacheval.val;
@@ -4484,12 +4484,12 @@ bool ParamHelpers::ReadIFC (const API_Guid& elemGuid, ParamDictValue& params)
     for (UInt32 i = 0; i < properties.GetSize (); i++) {
         API_IFCProperty property = properties.Get (i);
         fname = properties.Get (i).head.propertySetName;
-        fname.Append ("/");
+        fname.Append (SLASH);
         fname.Append (properties.Get (i).head.propertyName);
 
         rawName = IFCNAMEPREFIX;
         rawName.Append (fname.ToLowerCase ());
-        rawName.Append ("}");
+        rawName.Append (BRACEEND);
         if (params.ContainsKey (rawName)) {
             ParamValue pvalue;
             if (ParamHelpers::ConvertToParamValue (pvalue, property)) {
@@ -4504,7 +4504,7 @@ bool ParamHelpers::ReadIFC (const API_Guid& elemGuid, ParamDictValue& params)
             fname = properties[i].head.propertyName;
             rawName = IFCNAMEPREFIX;
             rawName.Append (fname.ToLowerCase ());
-            rawName.Append ("}");
+            rawName.Append (BRACEEND);
             if (params.ContainsKey (rawName)) {
                 ParamValue pvalue = {};
                 if (ParamHelpers::ConvertToParamValue (pvalue, property)) {
@@ -4574,7 +4574,7 @@ bool ParamHelpers::ReadClassification (const API_Guid& elemGuid, ParamDictValue&
                 p.val.type = API_PropertyStringValueType;
                 flag_find = true;
             }
-            rawname = CLASSNAMEPREFIX + systemname + "}";
+            rawname = CLASSNAMEPREFIX + systemname + BRACEEND;
             if (paramByType.ContainsKey (rawname)) {
                 ParamValue& p = paramByType.Get (rawname);
                 p.isValid = true;
@@ -4614,7 +4614,7 @@ bool ParamHelpers::ReadAttributeValues (const API_Elem_Head& elem_head, ParamDic
     #else
     GS::Int32 intValue = elem_head.layer;
     #endif
-    GS::UniString cname = "{@attrib:layer_inx_" + GS::UniString::Printf ("%d", intValue) + "}";
+    GS::UniString cname = "{@attrib:layer_inx_" + GS::UniString::Printf ("%d", intValue) + BRACEEND;
     ParamValue cacheparam;
     if (GetParamValueFromCache (cname, cacheparam)) {
         p.val = cacheparam.val;
@@ -4809,7 +4809,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
                 }
             }
             if (param.val.array_format_out == ARRAY_UNDEF) param.val.array_format_out = ARRAY_SUM;
-            rawName = tparams[0] + "}";
+            rawName = tparams[0] + BRACEEND;
             if (!paramnamearray.ContainsKey (rawName)) {
                 GS::Array<GS::UniString> t = {};
                 paramnamearray.Add (rawName, t);
@@ -4908,12 +4908,12 @@ bool ParamHelpers::GDLParamByDescription (const API_Element& element, ParamDictV
     for (Int32 i = 0; i < addParNum; ++i) {
         API_AddParType& actualParam = (*addPars)[i];
         GS::UniString desc_name = actualParam.uDescname;
-        GS::UniString desc_rawname = GDLNAMEPREFIX + desc_name.ToLowerCase () + "}";
+        GS::UniString desc_rawname = GDLNAMEPREFIX + desc_name.ToLowerCase () + BRACEEND;
         if (!params.ContainsKey (desc_rawname)) continue;
 
         // Получаем имя параметра
         GS::UniString name = actualParam.name;
-        GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + "}";
+        GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + BRACEEND;
         ParamValue& pvalue = params.Get (desc_rawname);
         // Если в словаре для чтения по имени параметра такого параметра нет - добавим
         if (!find_params.ContainsKey (rawname)) {
@@ -4963,7 +4963,7 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
     for (Int32 i = 0; i < addParNum; ++i) {
         API_AddParType& actualParam = (*addPars)[i];
         GS::UniString name = actualParam.name;
-        GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + "}";
+        GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + BRACEEND;
         if (params.ContainsKey (rawname)) {
 
             // Проверим - нет ли подходящих параметров-массивов?
@@ -5063,9 +5063,9 @@ bool ParamHelpers::ReadFormula (ParamDictValue& params)
         // Если выражение можно вычислить ещё раз - запишем в чиловое значение результат, текст трогать не будем
         GS::UniString expression_ = "";
         if (!param.val.formatstring.isEmpty) {
-            expression_ = str_formula_start + expression + str_formula_end + '.' + param.val.formatstring.stringformat;
+            expression_ = STRFORMULASTART + expression + STRFORMULAEND + '.' + param.val.formatstring.stringformat;
         } else {
-            expression_ = str_formula_start + expression + str_formula_end;
+            expression_ = STRFORMULASTART + expression + STRFORMULAEND;
         }
         if (EvalExpression (expression_)) {
             ParamHelpers::ConvertStringToParamValue (pvalue, key, expression_);
@@ -5082,7 +5082,7 @@ bool ParamHelpers::ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniStrin
 {
     //short version = 0; if (name.Contains ("v4%%")) version = 2;
     //GS::Array<GS::UniString> partstring = {};
-    //UInt32 n = StringSplt_ (name, ";", partstring, false);
+    //UInt32 n = StringSplt_ (name, SEMICOLON, partstring, false);
     //if (n < 3) return pvalue;
     //GS::UniString subpos = partstring[0];
     //GS::UniString elemtype = partstring[1];
@@ -5093,8 +5093,8 @@ bool ParamHelpers::ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniStrin
     //GS::UniString ves = "";
     //GS::UniString qty = "";
     //GS::UniString spec_add_param = partstring[5 - version];
-    //spec_add_param.ReplaceAll ("v3%%", "");
-    //spec_add_param.ReplaceAll ("v4%%", "");
+    //spec_add_param.ReplaceAll ("v3%%", EMPTYSTRING);
+    //spec_add_param.ReplaceAll ("v4%%", EMPTYSTRING);
     //// Арматура
     //if (elemtype.IsEqual ("10")) {
     //    elemtype = reinterpret_cast<const char*>(u8"Арматура");
@@ -5192,7 +5192,7 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
         GS::UniString keycode = GS::UniString (tkeycode);
         if (name.Contains (key_th)) {
             GS::Array<GS::UniString> partstring = {};
-            UInt32 n = StringSplt_ (name, ";", partstring, false);
+            UInt32 n = StringSplt_ (name, SEMICOLON, partstring, false);
             if (n < 3) continue;
             GS::UniString attribsuffix = partstring[1];
             GS::UniString ttxt = partstring[2];
@@ -5320,9 +5320,9 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
     GS::UniString rawname_unit = "@property:buildingmaterialproperties/some_stuff_units";
     GS::UniString rawname_kzap = "@property:buildingmaterialproperties/some_stuff_kzap";
     GS::UniString units = ""; double kzap = 1;
-    ParamHelpers::AddValueToParamDictValue (params, rawname_th); rawname_th = "{" + rawname_th;
-    ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = "{" + rawname_unit;
-    ParamHelpers::AddValueToParamDictValue (params, rawname_kzap); rawname_kzap = "{" + rawname_kzap;
+    ParamHelpers::AddValueToParamDictValue (params, rawname_th); rawname_th = BRACESTART + rawname_th;
+    ParamHelpers::AddValueToParamDictValue (params, rawname_unit); rawname_unit = BRACESTART + rawname_unit;
+    ParamHelpers::AddValueToParamDictValue (params, rawname_kzap); rawname_kzap = BRACESTART + rawname_kzap;
     GS::UniString rawname_thlist = "{@listdata:some_stuff_th";
     bool flag_find = false;
     GS::HashTable<API_AttributeIndex, bool> existsmaterial = {};
@@ -5340,7 +5340,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
                 existsmaterial.Add (constrinx, true);
             }
             double th = 0; units = "";
-            GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + "}";
+            GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + BRACEEND;
             if (params.ContainsKey (rawname_unit + attribsuffix)) {
                 if (params.Get (rawname_unit + attribsuffix).isValid) {
                     units = params.Get (rawname_unit + attribsuffix).val.uniStringValue;
@@ -5544,13 +5544,13 @@ bool ParamHelpers::ReadElementValues (const API_Element& element, ParamDictValue
 GS::UniString ParamHelpers::GetUnitsPrefix (GS::UniString& unit)
 {
     if (unit.IsEmpty ()) {
-        return "";
+        return EMPTYSTRING;
     }
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString nameunits = RSGetIndString (iseng, 58, ACAPI_GetOwnResModule ());
     GS::UniString units = unit.ToLowerCase ();
     if (units.Contains (nameunits)) {
-        return "";
+        return EMPTYSTRING;
     }
     nameunits = RSGetIndString (iseng, 53, ACAPI_GetOwnResModule ());
     if (units.Contains (nameunits)) {
@@ -5572,7 +5572,7 @@ GS::UniString ParamHelpers::GetUnitsPrefix (GS::UniString& unit)
     if (units.Contains (nameunits)) {
         return "L";
     }
-    return "";
+    return EMPTYSTRING;
 }
 
 void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp)
@@ -5665,7 +5665,7 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
         ParamComposite& param_composite = *cIt->value;
         #endif
         ParamDictValue paramsAdd_1 = {};
-        if (!param_composite.templatestring.Contains ("{")) continue;
+        if (!param_composite.templatestring.Contains (BRACESTART)) continue;
         bool flag = false;
         for (const auto& p : param_composite.composite) {
             API_AttributeIndex constrinx = p.inx;
@@ -5731,7 +5731,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
         #endif
         GS::UniString outstring = "";
         GS::UniString stringformat = "";
-        if (param_composite.templatestring.Contains ("{")) {
+        if (param_composite.templatestring.Contains (BRACESTART)) {
             bool inverse = rawName.Contains ("{@material:layers_inv");
             if (rawName.Contains ("{@material:layers_auto")) {
                 if (param_composite.composite_type != API_ProfileStructure) {
@@ -5740,7 +5740,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
             }
             bool ignore_sync = false;
             if (param_composite.templatestring.Contains ("{@property:nosyncname}")) {
-                param_composite.templatestring.ReplaceAll ("{@property:nosyncname}", "");
+                param_composite.templatestring.ReplaceAll ("{@property:nosyncname}", EMPTYSTRING);
                 ignore_sync = true;
             }
             if (param_composite.composite_pen == -2) ParamHelpers::ComponentsGetUnic (param_composite.composite);
@@ -5749,7 +5749,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 //Если есть формула - заменим повторим все участки, заключенные в <> по количеству слоёв
                 // Например, 1+<толщина> -> 1+<&2><&1><&0>
                 outstring = param_composite.templatestring;
-                GS::UniString part = outstring.GetSubstring (char_formula_start, char_formula_end, 0);
+                GS::UniString part = outstring.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
                 stringformat = "";
                 FormatStringFunc::GetFormatStringFromFormula (outstring, part, stringformat);
                 for (Int32 i = 0; i < nlayers; ++i) {
@@ -5765,14 +5765,14 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 GS::UniString templatestring = param_composite.templatestring;
                 // Для формул возьмём только часть в <>, только она повторяется для каждого слоя
                 if (param_composite.hasFormula) {
-                    if (!stringformat.IsEmpty ()) templatestring.ReplaceAll (str_formula_end + stringformat, str_formula_end);
-                    templatestring = param_composite.templatestring.GetSubstring (char_formula_start, char_formula_end, 0);
+                    if (!stringformat.IsEmpty ()) templatestring.ReplaceAll (STRFORMULAEND + stringformat, STRFORMULAEND);
+                    templatestring = param_composite.templatestring.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
                 }
                 Int32 indx = i;
                 if (inverse) indx = nlayers - i - 1;
                 API_AttributeIndex constrinx = param_composite.composite[indx].inx;
                 // Если для материала было указано уникальное наименование - заменим его
-                GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + "}";
+                GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + BRACEEND;
 
                 if (!ignore_sync) {
                     for (UInt32 inx = 0; inx < 20; inx++) {
@@ -5788,7 +5788,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 }
                 // Если нужно заполнить толщину
                 GS::UniString layer_thickness = "{@material:layer thickness}";
-                GS::UniString defult_formatstring = "1mm";
+                GS::UniString defult_formatstring = DEFULTLEGHTFSTRING;
                 if (params.ContainsKey (layer_thickness)) {
                     double fillThick = param_composite.composite[indx].fillThick;
                     ParamValue& pp = params.Get (layer_thickness);
@@ -5923,7 +5923,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 GS::UniString n_txt = GS::UniString::Printf ("%d", i + 1);
                 templatestring.ReplaceAll ("{@material:n}", n_txt);
 
-                layer_thickness = "{@material:n}"; defult_formatstring = "0m";
+                layer_thickness = "{@material:n}"; defult_formatstring = DEFULTINTFSTRING;
                 if (params.ContainsKey (layer_thickness)) {
                     ParamValue& pp = params.Get (layer_thickness);
                     pp.val.uniStringValue = n_txt;
@@ -5938,7 +5938,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
 
                 n_txt = GS::UniString::Printf ("%d", ns + 1);
                 templatestring.ReplaceAll ("{@material:ns}", n_txt);
-                layer_thickness = "{@material:ns}"; defult_formatstring = "0m";
+                layer_thickness = "{@material:ns}"; defult_formatstring = DEFULTINTFSTRING;
                 if (params.ContainsKey (layer_thickness)) {
                     ParamValue& pp = params.Get (layer_thickness);
                     pp.val.uniStringValue = n_txt;
@@ -5950,7 +5950,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 } else {
                     ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", n_txt);
                 }
-                templatestring.ReplaceAll ("}", attribsuffix);
+                templatestring.ReplaceAll (BRACEEND, attribsuffix);
                 if (ParamHelpers::ReplaceParamInExpression (params, templatestring)) {
                     flag = true;
                     flag_add = true;
@@ -5968,21 +5968,21 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
         }
         if (flag) {
             if (param_composite.hasFormula) {
-                if (outstring.Contains ("{")) ParamHelpers::ReplaceParamInExpression (params, outstring);
+                if (outstring.Contains (BRACESTART)) ParamHelpers::ReplaceParamInExpression (params, outstring);
                 if (!stringformat.IsEmpty ()) {
-                    GS::UniString expression = outstring.GetSubstring (char_formula_start, char_formula_end, 0);
+                    GS::UniString expression = outstring.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
                     GS::UniString first_char = expression.GetSubstring (0, 1);
-                    expression = str_formula_start + expression + str_formula_end + stringformat;
+                    expression = STRFORMULASTART + expression + STRFORMULAEND + stringformat;
                     GS::UniString expression_clean = expression;
                     EvalExpression (expression);
                     expression = first_char + expression;
                     outstring.ReplaceAll (expression_clean, expression);
                 }
-                if (outstring.Contains (char_formula_start) && outstring.Contains (char_formula_end)) {
-                    outstring.ReplaceAll (str_formula_start, "");
-                    outstring.ReplaceAll (str_formula_end, "");
+                if (outstring.Contains (CHARFORMULASTART) && outstring.Contains (CHARFORMULAEND)) {
+                    outstring.ReplaceAll (STRFORMULASTART, EMPTYSTRING);
+                    outstring.ReplaceAll (STRFORMULAEND, EMPTYSTRING);
                 }
-                outstring = str_formula_start + outstring + str_formula_end;
+                outstring = STRFORMULASTART + outstring + STRFORMULAEND;
             }
             param_composite.templatestring = outstring;
             ParamValue& p = params.Get (rawName);
@@ -5998,7 +5998,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
 void ParamHelpers::Array2ParamValue (GS::Array<ParamValueData>&pvalue, ParamValueData & pvalrezult)
 {
     if (pvalue.IsEmpty ()) return;
-    GS::UniString delim = ";";
+    GS::UniString delim = SEMICOLON;
     int array_format_out = pvalrezult.array_format_out;
     GS::UniString param_string = "";
     double param_real = 0;
@@ -6127,7 +6127,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 param_string = GS::UniString::Printf ("%d", param_int);
                 pvalue.type = API_PropertyIntegerValueType;
                 pvalue.canCalculate = true;
-                pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
+                pvalue.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
                 break;
             case APIParT_Boolean:
                 if (param_bool) {
@@ -6139,7 +6139,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                     param_int = 0;
                     param_real = 0.0;
                 }
-                pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
+                pvalue.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
                 pvalue.canCalculate = true;
                 pvalue.type = API_PropertyBooleanValueType;
                 break;
@@ -6147,7 +6147,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 param_string = GS::UniString::Printf ("%.0f", param_real * 1000);
                 pvalue.canCalculate = true;
                 pvalue.type = API_PropertyRealValueType;
-                pvalue.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+                pvalue.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
                 break;
             case APIParT_Angle:
                 param_real = round ((preal * 180.0 / PI) * 100000.0) / 100000.0;
@@ -6203,7 +6203,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddPa
                 param_int = attrInx;
                 #endif
                 param_real = param_int / 1.0;
-                pvalue.formatstring = FormatStringFunc::ParseFormatString ("0m");
+                pvalue.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
             } else {
                 if (err != APIERR_BADNAME) return false;
             }
@@ -6318,7 +6318,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_AddParTyp
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
         pvalue.rawName.Append (GS::UniString (nthParameter.name).ToLowerCase ());
-        pvalue.rawName.Append ("}");
+        pvalue.rawName.Append (BRACEEND);
     }
     if (pvalue.name.IsEmpty ()) pvalue.name = nthParameter.name;
     pvalue.val = pval;
@@ -6340,7 +6340,7 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
         if (pvalue.rawName.IsEmpty ()) {
             pvalue.rawName = PROPERTYNAMEPREFIX;
             pvalue.rawName.Append (fname.ToLowerCase ());
-            pvalue.rawName.Append ("}");
+            pvalue.rawName.Append (BRACEEND);
         }
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
@@ -6352,25 +6352,25 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
     if (description.Contains ("some_stuff_th")) {
         // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
         GS::UniString inx = "";
-        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th" + inx + "}";
+        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th" + inx + BRACEEND;
         pvalue.name = "some_stuff_th";
-        pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+        pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
         return;
     }
     if (description.Contains ("some_stuff_units")) {
         // Единицы измерения
         GS::UniString inx = "";
-        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units" + inx + "}";
+        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units" + inx + BRACEEND;
         pvalue.name = "some_stuff_units";
         return;
     }
     if (description.Contains ("some_stuff_kzap")) {
         // Единицы измерения
         GS::UniString inx = "";
-        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, '}', 0);
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap" + inx + "}";
+        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
+        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap" + inx + BRACEEND;
         pvalue.name = "some_stuff_kzap";
         return;
     }
@@ -6383,7 +6383,7 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
 bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property & property)
 {
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) ParamHelpers::SetrawNameFromProperty (pvalue, property);
-    if (property.definition.description.Contains ("Sync_correct_flag")) pvalue.rawName = "{@property:sync_correct_flag}";
+    if (property.definition.description.Contains (SYNCCORRECTFLAG)) pvalue.rawName = "{@property:sync_correct_flag}";
     API_PropertyValue value = {};
     #if defined(AC_22) || defined(AC_23)
     pvalue.isValid = property.isEvaluated;
@@ -6424,7 +6424,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
             pvalue.val.type = API_PropertyIntegerValueType;
             pvalue.val.canCalculate = true;
-            pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+            pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
             pvalue.val.uniStringValue = PropertyHelpers::ToString (property, pvalue.val.formatstring);
             break;
         case API_PropertyRealValueType:
@@ -6481,7 +6481,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             }
             pvalue.val.type = API_PropertyBooleanValueType;
             pvalue.val.canCalculate = true;
-            pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+            pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
             pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
             pvalue.val.hasrawDouble = true;
             pvalue.val.uniStringValue = PropertyHelpers::ToString (property);
@@ -6525,7 +6525,7 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
         GS::Array<GS::UniString> params = {};
         UInt32 nparam = StringSplt (definition.description, "to{Class", params);
         if (nparam > 1) {
-            GS::UniString systemname = params.Get (1).GetSubstring (':', '}', 0);
+            GS::UniString systemname = params.Get (1).GetSubstring (':', CHARBRACEEND, 0);
             pvalue.name = systemname.ToLowerCase ();
         }
         pvalue.fromClassification = true;
@@ -6536,7 +6536,7 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
         pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th}";
         pvalue.name = "some_stuff_th";
         pvalue.fromAttribDefinition = true;
-        pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+        pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
         return;
     }
     if (description.Contains ("some_stuff_units")) {
@@ -6603,7 +6603,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyD
         if (pvalue.rawName.IsEmpty ()) {
             pvalue.rawName = PROPERTYNAMEPREFIX;
             pvalue.rawName.Append (fname.ToLowerCase ());
-            pvalue.rawName.Append ("}");
+            pvalue.rawName.Append (BRACEEND);
         }
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
@@ -6623,7 +6623,7 @@ bool ParamHelpers::ConvertStringToParamValue (ParamValue & pvalue, const GS::Uni
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
         pvalue.rawName.Append (paramName.ToLowerCase ());
-        pvalue.rawName.Append ("}");
+        pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
     pvalue.val.uniStringValue = strvalue;
@@ -6655,7 +6655,7 @@ bool ParamHelpers::ConvertBoolToParamValue (ParamValue & pvalue, const GS::UniSt
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
         pvalue.rawName.Append (paramName.ToLowerCase ());
-        pvalue.rawName.Append ("}");
+        pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
     pvalue.val.type = API_PropertyBooleanValueType;
@@ -6675,7 +6675,7 @@ bool ParamHelpers::ConvertBoolToParamValue (ParamValue & pvalue, const GS::UniSt
     pvalue.val.hasrawDouble = true;
     pvalue.val.canCalculate = true;
     pvalue.isValid = true;
-    if (pvalue.val.formatstring.isEmpty) pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+    if (pvalue.val.formatstring.isEmpty) pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
     return true;
 }
 
@@ -6688,7 +6688,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = ATTRIBNAMEPREFIX;
         pvalue.rawName.Append (paramName.ToLowerCase ());
-        pvalue.rawName.Append ("}");
+        pvalue.rawName.Append (BRACEEND);
     }
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     pvalue.val.intValue = attr.header.index.ToInt32_Deprecated ();
@@ -6716,7 +6716,7 @@ bool ParamHelpers::ConvertIntToParamValue (ParamValue & pvalue, const GS::UniStr
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
         pvalue.rawName.Append (paramName.ToLowerCase ());
-        pvalue.rawName.Append ("}");
+        pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
     pvalue.val.type = API_PropertyIntegerValueType;
@@ -6729,7 +6729,7 @@ bool ParamHelpers::ConvertIntToParamValue (ParamValue & pvalue, const GS::UniStr
     if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
     pvalue.val.uniStringValue = GS::UniString::Printf ("%d", intValue);
     pvalue.isValid = true;
-    if (pvalue.val.formatstring.isEmpty) pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+    if (pvalue.val.formatstring.isEmpty) pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
     return true;
 }
 
@@ -6742,7 +6742,7 @@ bool ParamHelpers::ConvertDoubleToParamValue (ParamValue & pvalue, const GS::Uni
     if (pvalue.rawName.IsEmpty ()) {
         pvalue.rawName = GDLNAMEPREFIX;
         pvalue.rawName.Append (paramName.ToLowerCase ());
-        pvalue.rawName.Append ("}");
+        pvalue.rawName.Append (BRACEEND);
         pvalue.typeinx = GDLTYPEINX;
     }
     pvalue.val.type = API_PropertyRealValueType;
@@ -6766,8 +6766,8 @@ bool ParamHelpers::ConvertDoubleToParamValue (ParamValue & pvalue, const GS::Uni
 bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProperty & property)
 {
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) {
-        GS::UniString fname = property.head.propertySetName + "/" + property.head.propertyName;
-        if (pvalue.rawName.IsEmpty ()) pvalue.rawName = IFCNAMEPREFIX + fname.ToLowerCase () + "}";
+        GS::UniString fname = property.head.propertySetName + SLASH + property.head.propertyName;
+        if (pvalue.rawName.IsEmpty ()) pvalue.rawName = IFCNAMEPREFIX + fname.ToLowerCase () + BRACEEND;
         if (pvalue.name.IsEmpty ()) pvalue.name = fname;
     }
     pvalue.isValid = true;
@@ -6810,7 +6810,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
                 pvalue.val.doubleValue = pvalue.val.intValue * 1.0;
                 if (pvalue.val.intValue > 0) pvalue.val.boolValue = true;
                 pvalue.val.uniStringValue = GS::UniString::Printf ("%d", pvalue.val.intValue);
-                pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+                pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
                 pvalue.val.rawDoubleValue = pvalue.val.doubleValue;
                 pvalue.val.hasrawDouble = true;
                 break;
@@ -6831,7 +6831,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_IFCProper
                 pvalue.val.hasrawDouble = true;
                 break;
             case API_IFCPropertyAnyValueLogicalType:
-                pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("0m");
+                pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTINTFSTRING);
                 pvalue.val.type = API_PropertyBooleanValueType;
                 if (property.singleValue.nominalValue.value.intValue == 0) pvalue.val.boolValue = false;
                 if (property.singleValue.nominalValue.value.intValue == 1) pvalue.isValid = false;
@@ -7620,7 +7620,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         ParamValue pvalue_bmat = {};
         pvalue_bmat.rawName = k;
         pvalue_bmat.name = "cutfill_inx";
-        pvalue_bmat.rawName.ReplaceAll ("}", CharENTER + attribsuffix + "}");
+        pvalue_bmat.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ParamHelpers::ConvertIntToParamValue (pvalue_bmat, pvalue_bmat.name, constrinx.ToInt32_Deprecated ());
         #else
@@ -7635,7 +7635,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         ParamValue pvalue_bmat = {};
         pvalue_bmat.rawName = k;
         pvalue_bmat.name = "bmat_inx";
-        pvalue_bmat.rawName.ReplaceAll ("}", CharENTER + attribsuffix + "}");
+        pvalue_bmat.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ParamHelpers::ConvertIntToParamValue (pvalue_bmat, pvalue_bmat.name, constrinx.ToInt32_Deprecated ());
         #else
@@ -7658,7 +7658,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         if (param.definition.name.Contains (CharENTER)) continue;
         // Поиск уже прочитанных свойств
         GS::UniString rawName = param.rawName;
-        rawName.ReplaceAll ("}", CharENTER + attribsuffix + "}");
+        rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
         if (params.ContainsKey (rawName)) {
             ParamValue& p = params.Get (rawName);
             if (p.isValid && p.definition.name.Contains (CharENTER)) {
@@ -7698,7 +7698,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     for (auto& property : properties) {
         property.definition.name = property.definition.name + CharENTER + attribsuffix;
         GS::UniString val = PropertyHelpers::ToString (property);
-        if (val.Count ("%") > 1 || (val.Contains ("{") && val.Contains ("}"))) {
+        if (val.Count ("%") > 1 || (val.Contains (BRACESTART) && val.Contains (BRACEEND))) {
             if (ParamHelpers::ParseParamNameMaterial (val, paramsAdd)) {
                 property.value.singleVariant.variant.uniStringValue = val;
                 property.isDefault = false;

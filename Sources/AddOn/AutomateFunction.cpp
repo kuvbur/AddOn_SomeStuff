@@ -609,9 +609,9 @@ void ProfileByLine ()
         }
         double koeff = 0.2;
         double depth = 0.01;
-        if (id.Contains ("@")) {
+        if (id.Contains (ATSIGN)) {
             GS::Array<GS::UniString> sr;
-            UInt32 nsr = StringSplt (id, "@", sr);
+            UInt32 nsr = StringSplt (id, ATSIGN, sr);
             if (nsr > 1) {
                 double x;
                 if (UniStringToDouble (sr[1], x)) {

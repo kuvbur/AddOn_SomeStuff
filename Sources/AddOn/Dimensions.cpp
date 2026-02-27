@@ -257,7 +257,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
 
             // Вычисляем значения
             flag_expression = true;
-            if (expression.Contains (str_formula_start) && expression.Contains (str_formula_end)) {
+            if (expression.Contains (STRFORMULASTART) && expression.Contains (STRFORMULAEND)) {
                 flag_expression = EvalExpression (expression);
             }
             ReplaceCR (expression);
