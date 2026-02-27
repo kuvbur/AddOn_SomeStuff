@@ -87,7 +87,7 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& def
         GS::UniString intString = GS::UniString::Printf (" %d", doneelemguid.GetSize ());
         msg_rep ("Reset property done - ", intString, NoError, APINULLGuid);
     } else {
-        msg_rep ("Reset property done", "", NoError, APINULLGuid);
+        msg_rep ("Reset property done", EMPTYSTRING, NoError, APINULLGuid);
     }
     return flag_reset;
 }

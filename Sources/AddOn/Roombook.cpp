@@ -23,7 +23,7 @@ void RoomBook ()
 }
 #else
 RoomEdges* reducededges = nullptr; // Указатель для обработки полигонов зоны
-ClassOtd cls;
+static const ClassOtd cls;
 GS::Int32 nPhase = 1;
 
 // -----------------------------------------------------------------------------
@@ -578,10 +578,10 @@ void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& ra
 {
     GS::UniString fontname = "GOST 2.304 type A";
     ColumnFormat c;
-    if (descripton.Contains ("{") && descripton.Contains ("}") && descripton.Contains (";")) {
-        descripton = descripton.GetSubstring ('{', '}', 0);
+    if (descripton.Contains (BRACESTART) && descripton.Contains (BRACEEND) && descripton.Contains (SEMICOLON)) {
+        descripton = descripton.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
         GS::Array<GS::UniString> partstring;
-        UInt32 n = StringSplt (descripton, ";", partstring);
+        UInt32 n = StringSplt (descripton, SEMICOLON, partstring);
         if (n > 0) {
             fontname = "Arial";
             if (!UniStringToDouble (partstring[0], c.width_mat)) c.width_mat = 50;
@@ -599,14 +599,14 @@ void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& ra
             GS::UniString space = partstring[4].ToLowerCase ();
             if (space.Contains ("nbs")) space = reinterpret_cast<const char*>(u8"\u2007");
             if (space.Contains ("ns")) space = reinterpret_cast<const char*>(u8"\u202F");
-            if (space.Contains ("s")) space = " ";
+            if (space.Contains ("s")) space = SPACESTRING;
             c.no_breake_space = space;
         }
         if (n > 5) {
             GS::UniString space = partstring[5].ToLowerCase ();
             if (space.Contains ("nbs")) space = reinterpret_cast<const char*>(u8"\u2007");
             if (space.Contains ("ns")) space = reinterpret_cast<const char*>(u8"\u202F");
-            if (space.Contains ("s")) space = " ";
+            if (space.Contains ("s")) space = SPACESTRING;
             c.narow_space = space;
         }
     }
@@ -619,7 +619,7 @@ void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& ra
     GS::UniString delim = "-";
     c.width_no_breake_space = GetTextWidth (c.font, c.fontsize, c.no_breake_space);
     if (c.width_no_breake_space < 0.001 || is_equal (c.width_no_breake_space, 0)) {
-        c.no_breake_space = " ";
+        c.no_breake_space = SPACESTRING;
         c.width_no_breake_space = GetTextWidth (c.font, c.fontsize, c.no_breake_space);
     }
     if (c.width_no_breake_space < 0.001) {
@@ -627,7 +627,7 @@ void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& ra
     }
     c.width_narow_space = GetTextWidth (c.font, c.fontsize, c.narow_space);
     if (c.width_narow_space < 0.001 || is_equal (c.width_narow_space, 0)) {
-        c.narow_space = " ";
+        c.narow_space = SPACESTRING;
         c.width_narow_space = GetTextWidth (c.font, c.fontsize, c.narow_space);
     }
     if (c.width_narow_space < 0.001) {
@@ -644,8 +644,8 @@ void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& ra
     c.delim_line = "";
     for (Int32 j = 0; j < addspace; j++) { c.delim_line.Append (delim); }
     c.width_mat = GetTextWidth (c.font, c.fontsize, c.delim_line) - c.width_area;
-    c.delim_line.Append (" ");
-    c.space_line.Append (" ");
+    c.delim_line.Append (SPACESTRING);
+    c.space_line.Append (SPACESTRING);
     columnFormat.Add (rawname, c);
 }
 
@@ -659,9 +659,9 @@ void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& o
         const double area = OtdWall_GetArea (otdw);
         for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
             GS::UniString mat = otdw.base_composite[j].val;
-            if (mat.Contains (";")) {
+            if (mat.Contains (SEMICOLON)) {
                 GS::Array<GS::UniString> partstring = {};
-                UInt32 n = StringSpltUnic (mat, ";", partstring);
+                UInt32 n = StringSpltUnic (mat, SEMICOLON, partstring);
                 if (n < 1) {
                     OtdData_AddValueToDict (dct, t, mat, area);
                 } else {
@@ -681,9 +681,9 @@ void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& o
         const double area = otdslab.poly.CalcArea ();
         for (UInt32 j = 0; j < otdslab.base_composite.GetSize (); j++) {
             GS::UniString mat = otdslab.base_composite[j].val;
-            if (mat.Contains (";")) {
+            if (mat.Contains (SEMICOLON)) {
                 GS::Array<GS::UniString> partstring = {};
-                UInt32 n = StringSpltUnic (mat, ";", partstring);
+                UInt32 n = StringSpltUnic (mat, SEMICOLON, partstring);
                 if (n < 1) {
                     OtdData_AddValueToDict (dct, t, mat, area);
                 } else {
@@ -815,9 +815,9 @@ void OtdData_WriteToRoom (const ColumnFormatDict& columnFormat, const API_Guid& 
                 if (!dcta.ContainsKey (mat)) continue;
                 double area = dcta.Get (mat);
                 mat.Trim ();
-                mat.ReplaceAll ("  ", " ");
-                mat.ReplaceAll ("0&#& ", "");
-                mat.ReplaceAll (" ", c.no_breake_space);
+                mat.ReplaceAll ("  ", SPACESTRING);
+                mat.ReplaceAll ("0&#& ", EMPTYSTRING);
+                mat.ReplaceAll (SPACESTRING, c.no_breake_space);
                 GS::UniString area_sring = GS::UniString::Printf ("%.2f", area);
                 double w_area = GetTextWidth (c.font, c.fontsize, area_sring);
                 if (w_area < c.width_area) {
@@ -831,7 +831,7 @@ void OtdData_WriteToRoom (const ColumnFormatDict& columnFormat, const API_Guid& 
                     w_area = GetTextWidth (c.font, c.fontsize, area_sring);
                 }
                 if (w_area - c.width_area > 0.1) area_sring = c.narow_space + area_sring;
-                area_sring.Append (" ");
+                area_sring.Append (SPACESTRING);
                 if (!new_val.IsEmpty ()) new_val.Append (c.delim_line);
                 GS::Array<GS::UniString> lines_mat = DelimTextLine (c.font, c.fontsize, c.width_mat, mat, c.no_breake_space, c.narow_space);
                 for (UInt32 j = 0; j < lines_mat.GetSize (); j++) {
@@ -1794,7 +1794,7 @@ void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite)
             if (rawName_onoff.IsEmpty ()) {
                 rawName_onoff = param.rawName;
             } else {
-                msg += param.definition.name + " ";
+                msg += param.definition.name + SPACESTRING;
             }
             continue;
         }
@@ -1802,7 +1802,7 @@ void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite)
             if (rawName_desc.IsEmpty ()) {
                 rawName_desc = param.rawName;
             } else {
-                msg += param.definition.name + " ";
+                msg += param.definition.name + SPACESTRING;
             }
             continue;
         }
@@ -1810,7 +1810,7 @@ void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite)
             if (rawName_fav.IsEmpty ()) {
                 rawName_fav = param.rawName;
             } else {
-                msg += param.definition.name + " ";
+                msg += param.definition.name + SPACESTRING;
             }
             continue;
         }
@@ -1818,7 +1818,7 @@ void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite)
             if (rawName_hasfin.IsEmpty ()) {
                 rawName_hasfin = param.rawName;
             } else {
-                msg += param.definition.name + " ";
+                msg += param.definition.name + SPACESTRING;
             }
             continue;
         }
@@ -1826,7 +1826,7 @@ void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite)
             if (param_hasfin_elem.rawName.IsEmpty ()) {
                 param_hasfin_elem = param;
             } else {
-                msg += param.definition.name + " ";
+                msg += param.definition.name + SPACESTRING;
             }
             continue;
         }
@@ -1835,7 +1835,7 @@ void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite)
             if (param_onoff_elem.rawName.IsEmpty ()) {
                 param_onoff_elem = param;
             } else {
-                msg += param.definition.name + " ";
+                msg += param.definition.name + SPACESTRING;
             }
             continue;
         }
@@ -2145,7 +2145,7 @@ void Param_Property_FindInParams (ReadParams& zoneparams)
         #endif
         GS::Array<GS::UniString> valid_rawnames = {}; // список проверенных имён параметров
         for (const GS::UniString& param_name : param.rawnames) {
-            if (param_name.Contains ("{@")) {
+            if (param_name.Contains (PVALPREFIX)) {
                 // Если это gdl парметр - добавляем
                 valid_rawnames.Push (param_name);
             } else {
@@ -2626,14 +2626,14 @@ void Param_SetComposite (const ParamComposite& base_composite, const bool& base_
         GS::UniString v = cpmpoosite[j].val;
         bool fin_add = true;
         if (v.Contains ("h[0]")) fin_add = false;
-        v.ReplaceAll ("h[1]", "");
-        v.ReplaceAll ("h[0]", "");
-        v.ReplaceAll ("h[]", "");
+        v.ReplaceAll ("h[1]", EMPTYSTRING);
+        v.ReplaceAll ("h[0]", EMPTYSTRING);
+        v.ReplaceAll ("h[]", EMPTYSTRING);
         if (v.Contains ("f[]")) {
             v = v.GetPrefix (v.GetLength () - 5);
             v = v.GetSuffix (v.GetLength () - 4);
         } else {
-            v.ReplaceAll ("f[", "@");
+            v.ReplaceAll ("f[", ATSIGN);
             GS::UniString fav_part = v.GetSubstring ('@', ']', 0);
             fav_part.Trim ();
             if (!fav_part.IsEmpty ()) {
@@ -2644,7 +2644,7 @@ void Param_SetComposite (const ParamComposite& base_composite, const bool& base_
                     fav_name.Append (fav_part);
                 }
             }
-            v.ReplaceAll ("l[1:", "@");
+            v.ReplaceAll ("l[1:", ATSIGN);
             v = v.GetSubstring ('@', ']', 0);
         }
         if (cpmpoosite[j].val.Contains ("l[1:")) {
@@ -3250,7 +3250,7 @@ void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& b
         return;
     }
     part.Trim ();
-    part.ReplaceAll ("  ", " ");
+    part.ReplaceAll ("  ", SPACESTRING);
     if (part.Contains ('@')) {
         part = '@' + part;
         part = part.GetSubstring ('@', '@', 0);
@@ -4482,7 +4482,7 @@ void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& materia
     API_ElemTypeID possibly_type = draw_type;
     GS::UniString fav_name = favorite.name;
     if (favdict.IsEmpty ()) return;
-    if (material.smaterial.Contains ("@")) {
+    if (material.smaterial.Contains (ATSIGN)) {
         GS::UniString part = material.smaterial.ToLowerCase () + '@';
         part = part.GetSubstring ('@', '@', 0);
         part.Trim ();

@@ -159,7 +159,7 @@ bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<A
                 GetPropertyFullName (definition, fname);
                 rawName = PROPERTYNAMEPREFIX;
                 rawName.Append (fname.ToLowerCase ());
-                rawName.Append ("}");
+                rawName.Append (BRACEEND);
                 paramtype.position = rawName;
                 rules.Add (definition.guid, paramtype);
             }
@@ -212,15 +212,15 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     if (!paramtype.sum_type) return false;
     GS::UniString paramName = definition.description;
     GS::Array<GS::UniString> partstring = {};
-    if (StringSplt (paramName.ToLowerCase (), "}", partstring, "sum") > 0) {
-        paramName = partstring[0] + "}";
+    if (StringSplt (paramName.ToLowerCase (), BRACEEND, partstring, "sum") > 0) {
+        paramName = partstring[0] + BRACEEND;
     }
-    paramName = paramName.GetSubstring ('{', '}', 0);
-    paramName.ReplaceAll ("\\/", "/");
+    paramName = paramName.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+    paramName.ReplaceAll (SLASHEKR, SLASH);
     partstring.Clear ();
-    int nparam = StringSplt (paramName.ToLowerCase (), ";", partstring);
+    int nparam = StringSplt (paramName.ToLowerCase (), SEMICOLON, partstring);
     if (nparam == 0) return false;
-    GS::UniString key = "{@" + partstring[0] + "}";
+    GS::UniString key = PVALPREFIX + partstring[0] + BRACEEND;
     if (ParamHelpers::isCacheContainsParamValue (key)) {
         paramtype.value = key;
     } else {
@@ -229,7 +229,7 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     }
     // Ищём определение свойства-критерия
     if (nparam > 1) {
-        GS::UniString key = "{@" + partstring[1] + "}";
+        GS::UniString key = PVALPREFIX + partstring[1] + BRACEEND;
         if (ParamHelpers::isCacheContainsParamValue (key)) {
             paramtype.criteria = key;
         } else {
@@ -240,9 +240,9 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     }
     // Ищём определение свойства-критерия
     if (nparam > 1) {
-        GS::UniString key = "{@" + partstring[1] + "}";
+        GS::UniString key = PVALPREFIX + partstring[1] + BRACEEND;
         if (ParamHelpers::isCacheContainsParamValue (key)) {
-            paramtype.criteria = "{@" + partstring[1] + "}";
+            paramtype.criteria = PVALPREFIX + partstring[1] + BRACEEND;
         } else {
             if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
             if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
@@ -251,7 +251,7 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     }
     // Если задан и разделитель - пропишем его
     if (nparam > 2) {
-        GS::UniString key = "{@" + partstring[2] + "}";
+        GS::UniString key = PVALPREFIX + partstring[2] + BRACEEND;
         if (ParamHelpers::isCacheContainsParamValue (key)) {
             paramtype.criteria = key;
         } else {

@@ -85,11 +85,56 @@ static const short ELEMENTTYPEINX = 15;
 static const GS::UniString MEPNAMEPREFIX = "{@mep:";
 static const short MEPTYPEINX = 16;
 
+static const GS::UniString DOT = ".";
+static const GS::UniString COMMA = ",";
+static const GS::UniString METERS = "m";
+static const GS::UniChar CHARMETERS = 'm';
+static const GS::UniString MMETERS = "mm";
+static const GS::UniString CMETERS = "cm";
+static const GS::UniString DMETERS = "dm";
+static const GS::UniString DSTRING = "d";
+static const GS::UniString CSTRING = "c";
+static const GS::UniString GSTRING = "g";
+static const GS::UniString KSTRING = "k";
+static const GS::UniString GMETERS = "gm";
+static const GS::UniString KMETERS = "km";
+static const GS::UniString DOTSET = "p";
+static const GS::UniString RDSET = "r";
+static const GS::UniString FSET = "f";
+static const GS::UniString EMPTYSTRING = "";
+static const GS::UniString ZEROSTRING = "0";
+static const GS::UniChar CHARZERO = '0';
+static const GS::UniString SPACESTRING = " ";
+static const GS::UniChar CHARFORMULASTART = '<';
+static const GS::UniChar CHARFORMULAEND = '>';
+static const GS::UniString STRFORMULASTART = "<";
+static const GS::UniString STRFORMULAEND = ">";
+static const GS::UniString BRACEEND = "}";
+static const GS::UniString BRACESTART = "{";
+static const GS::UniString SEMICOLON = ";";
+static const GS::UniChar CHARBRACEEND = '}';
+static const GS::UniChar CHARBRACESTART = '{';
+static const GS::UniChar CHARPROC = '%';
+static const GS::UniChar CHARDQUT = '"';
+static const GS::UniString PVALPREFIX = "{@";
+static const GS::UniString RENUMFLAG = "Renum_flag";
+static const GS::UniString RENUM = "Renum";
+static const GS::UniString PROPERTYSTRING = "property";
+static const GS::UniString LINEBRAKE = "\n";
+static const GS::UniString LINEBRAKER = "\r";
+static const GS::UniString TABSTRING = "\t";
+static const GS::UniString SLASHEKR = "\\/";
+static const GS::UniString SLASH = "/";
+static const GS::UniString ATSIGN = "@";
+static const GS::UniString SYNCFLAG = "Sync_flag";
+static const GS::UniString SYNCCORRECTFLAG = "Sync_correct_flag";
+static const GS::UniString SYNCCLASSFLAG = "Sync_class_flag";
 
-static const GS::UniChar char_formula_start = '<';
-static const GS::UniChar char_formula_end = '>';
-static const GS::UniString str_formula_start = "<";
-static const GS::UniString str_formula_end = ">";
+static const GS::UniString DEFULTREALFSTRING = ".3m";
+static const GS::UniString DEFULTLEGHTFSTRING = "1mm";
+static const GS::UniString DEFULTINTFSTRING = "0m";
+
+
 #define ELEMSTR_LEN 256
 // Типы операций по переводу значений массива гдл параметра в совйство
 #define ARRAY_UNDEF 0
@@ -105,8 +150,7 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {
-    }
+    {}
     short  index;
     double level;
 };

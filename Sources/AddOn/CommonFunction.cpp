@@ -55,7 +55,7 @@ GS::UniString GetDBName (API_DatabaseInfo& databaseInfo)
         default:
             break;
     }
-    рname = рname + " ";
+    рname = рname + SPACESTRING;
     рname = рname + databaseInfo.title;
     return рname;
 }
@@ -577,7 +577,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         }
     }
     if (elemGuid != APINULLGuid) {
-        error_type = "GUID element: " + APIGuid2GSGuid (elemGuid).ToUniString () + " " + error_type;
+        error_type = "GUID element: " + APIGuid2GSGuid (elemGuid).ToUniString () + SPACESTRING + error_type;
         API_Elem_Head elem_head = {}; BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
@@ -603,12 +603,12 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     }
     GS::UniString msg = modulename + ": " + reportString;
     if (err != NoError) msg = "!! ERROR !!" + msg;
-    if (!show) msg = msg + " " + error_type;
+    if (!show) msg = msg + SPACESTRING + error_type;
     GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
     #if defined(TESTING)
     version = version + " =TESTING ON= ";
     #endif
-    msg = version + msg + "\n";
+    msg = version + msg + LINEBRAKE;
     ACAPI_WriteReport (msg, false);
     if (show) ACAPI_WriteReport (msg, show);
     if (err != NoError) {
@@ -668,7 +668,7 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
     if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
         if (assertIfNoSel) {
-            DGAlert (DG_ERROR, "Error", errorString, "", "Ok");
+            DGAlert (DG_ERROR, "Error", errorString, EMPTYSTRING, "Ok");
         }
     }
     if (err != NoError) {
@@ -751,7 +751,7 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
     if (err != NoError) {
-        msg_rep ("GetTypeByGUID", "", err, elemGuid);
+        msg_rep ("GetTypeByGUID", EMPTYSTRING, err, elemGuid);
         return err;
     }
     elementType = GetElemTypeID (elem_head);
@@ -828,14 +828,14 @@ bool UniStringToDouble (const GS::UniString & var, double& x)
 {
     if (var.IsEmpty ()) return false;
     GS::UniString var_clear = var;
-    var_clear.ReplaceAll (" ", "");
-    var_clear.ReplaceAll (" ", "");
-    var_clear.ReplaceAll (",", ".");
+    var_clear.ReplaceAll (SPACESTRING, EMPTYSTRING);
+    var_clear.ReplaceAll (" ", EMPTYSTRING);
+    var_clear.ReplaceAll (COMMA, DOT);
     GSCharCode chcode = GetCharCode (var);
     std::string var_str = var_clear.ToCStr (0, MaxUSize, chcode).Get ();
     int n = sscanf (var_str.c_str (), "%lf", &x);
     if (n <= 0) {
-        var_clear.ReplaceAll (".", ",");
+        var_clear.ReplaceAll (DOT, COMMA);
         var_str = var_clear.ToCStr (0, MaxUSize, chcode).Get ();
         n = sscanf (var_str.c_str (), "%lf", &x);
     }
@@ -888,11 +888,11 @@ void ReplaceCR (GS::UniString & val, bool clear)
         if (!clear) {
             for (UInt32 i = 0; i < val.Count (p); i++) {
                 UIndex inx = val.FindFirst (p);
-                val.ReplaceFirst (p, "");
+                val.ReplaceFirst (p, EMPTYSTRING);
                 val.SetChar (inx, CharCR);
             }
         } else {
-            val.ReplaceAll (p, "");
+            val.ReplaceAll (p, EMPTYSTRING);
         }
     }
 }
@@ -999,7 +999,7 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         str.PushNew (var);
         return str;
     }
-    var.ReplaceAll (" ", no_breake_space);
+    var.ReplaceAll (SPACESTRING, no_breake_space);
     width_space = GetTextWidth (font, fontsize, narow_space);
     Int32 addspace = 1;
     if (width_in < width) {
@@ -1016,8 +1016,8 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
     }
     GS::Array<GS::UniString> parts;
     UInt32 npart = StringSplt (var, no_breake_space, parts);
-    if (npart == 1) npart = StringSplt (var, ",", parts);
-    if (npart == 1) npart = StringSplt (var, ".", parts);
+    if (npart == 1) npart = StringSplt (var, COMMA, parts);
+    if (npart == 1) npart = StringSplt (var, DOT, parts);
     if (npart == 1) npart = StringSplt (var, ")", parts);
     if (npart == 1) npart = StringSplt (var, ":", parts);
     if (npart == 1) npart = StringSplt (var, "-", parts);
@@ -1092,7 +1092,7 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
 bool EvalExpression (GS::UniString & unistring_expression)
 {
     if (unistring_expression.IsEmpty ()) return false;
-    if (!unistring_expression.Contains (char_formula_start) && !unistring_expression.Contains (char_formula_end)) return false;
+    if (!unistring_expression.Contains (CHARFORMULASTART) && !unistring_expression.Contains (CHARFORMULAEND)) return false;
     GS::UniString part = "";
     GS::UniString part_clean = "";
     GS::UniString stringformat = "";
@@ -1100,21 +1100,21 @@ bool EvalExpression (GS::UniString & unistring_expression)
     FormatString fstring;
     bool flag_change = true;
     // Определение правильного разделителя для расчётов
-    GS::UniString delim = ".";
-    GS::UniString baddelim = ",";
+    GS::UniString delim = DOT;
+    GS::UniString baddelim = COMMA;
     GS::UniString delim_test = GS::UniString::Printf ("%.3f", 3.1456);
     if (delim_test.Contains (baddelim)) {
         #if defined(TESTING)
         DBprnt ("EvalExpression", "delimetr change");
         #endif
-        baddelim = ".";
-        delim = ",";
+        baddelim = DOT;
+        delim = COMMA;
     }
     GS::UniString string_to_find = "";
     GSCharCode chcode = GetCharCode (unistring_expression);
-    while (unistring_expression.Contains (char_formula_start) && unistring_expression.Contains (char_formula_end) && flag_change) {
+    while (unistring_expression.Contains (CHARFORMULASTART) && unistring_expression.Contains (CHARFORMULAEND) && flag_change) {
         GS::UniString expression_old = unistring_expression;
-        part = unistring_expression.GetSubstring (char_formula_start, char_formula_end, 0);
+        part = unistring_expression.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
         // Ищем строку-формат
         stringformat.Clear ();
         fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
@@ -1136,9 +1136,9 @@ bool EvalExpression (GS::UniString & unistring_expression)
         }
         #endif
         string_to_find.Clear ();
-        string_to_find.Append (char_formula_start);
+        string_to_find.Append (CHARFORMULASTART);
         string_to_find.Append (part);
-        string_to_find.Append (char_formula_end);
+        string_to_find.Append (CHARFORMULAEND);
         string_to_find.Append (stringformat);
         unistring_expression.ReplaceAll (string_to_find, rezult_txt);
         if (expression_old.IsEqual (unistring_expression)) flag_change = false;
@@ -1927,43 +1927,44 @@ namespace FormatStringFunc
 {
 FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat)
 {
-    FormatString f = ParseFormatString (".3m");
-    if (!formula.Contains ('.')) return f;
+    FormatString f = ParseFormatString (DEFULTREALFSTRING);
+    if (!formula.Contains (DOT)) return f;
     GS::UniString texpression = formula;
     GS::UniString texpression_ = formula;
     FormatStringFunc::ReplaceMeters (texpression);
-    if (!texpression.Contains ('m')) return f;
+    if (!texpression.Contains (METERS)) return f;
     GS::UniString tpart = part;
-    texpression.ReplaceAll ("{", "");
-    texpression.ReplaceAll ("}", "");
-    texpression_.ReplaceAll ("{", "");
-    texpression_.ReplaceAll ("}", "");
-    tpart.ReplaceAll ("{", "");
-    tpart.ReplaceAll ("}", "");
+    texpression.ReplaceAll (BRACESTART, EMPTYSTRING);
+    texpression.ReplaceAll (BRACEEND, EMPTYSTRING);
+    texpression_.ReplaceAll (BRACESTART, EMPTYSTRING);
+    texpression_.ReplaceAll (BRACEEND, EMPTYSTRING);
+    tpart.ReplaceAll (BRACESTART, EMPTYSTRING);
+    tpart.ReplaceAll (BRACEEND, EMPTYSTRING);
     UInt32 n_start = texpression.FindFirst (tpart) + tpart.GetLength (); // Индекс начала поиска строки-формата
-    GS::UniString stringformat_ = texpression.GetSubstring (char_formula_end, 'm', n_start) + 'm'; // Предположительно, строка-формат
-    if (stringformat_.IsEmpty ()) stringformat_ = texpression.GetSubstring ('"', 'm', n_start) + 'm';
-    if (stringformat_.Contains ('.') && !stringformat_.Contains (' ')) {
+    GS::UniString stringformat_ = texpression.GetSubstring (CHARFORMULAEND, CHARMETERS, n_start) + METERS; // Предположительно, строка-формат
+    if (stringformat_.IsEmpty ()) stringformat_ = texpression.GetSubstring (CHARDQUT, CHARMETERS, n_start) + METERS;
+    if (stringformat_.Contains (DOT) && !stringformat_.Contains (SPACESTRING)) {
         // Проверим, не обрезали ли лишнюю m
         n_start = texpression.FindFirst (stringformat_) - 1;
         UInt32 n_end = n_start + stringformat_.GetLength ();
         if (n_end + 1 < texpression.GetLength ()) {
             GS::UniString endm = texpression.ToLowerCase ().GetSubstring (n_end + 1, 1);
-            if (endm.IsEqual ("m") || endm.IsEqual ("p") || endm.IsEqual ("r") || endm.IsEqual ("f")) {
+            if (endm.IsEqual (METERS) || endm.IsEqual (DOTSET) || endm.IsEqual (RDSET) || endm.IsEqual (FSET)) {
                 n_end = n_end + 1;
             }
         }
+
         stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
         #ifdef TESTING
-        DBtest (!stringformat.Contains ('"'), "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat, false);
-        DBtest (!stringformat.Contains (char_formula_end), "GetFormatStringFromFormula : stringformat.Contains(char_formula_end) " + stringformat, false);
-        DBtest (!stringformat.Contains ('%'), "GetFormatStringFromFormula : stringformat.Contains('%') " + stringformat, false);
-        DBtest (!stringformat.Contains ('}'), "GetFormatStringFromFormula : stringformat.Contains('}') " + stringformat, false);
+        DBtest (!stringformat.Contains (CHARDQUT), "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat, false);
+        DBtest (!stringformat.Contains (CHARFORMULAEND), "GetFormatStringFromFormula : stringformat.Contains(CHARFORMULAEND) " + stringformat, false);
+        DBtest (!stringformat.Contains (CHARPROC), "GetFormatStringFromFormula : stringformat.Contains(CHARPROC) " + stringformat, false);
+        DBtest (!stringformat.Contains (CHARBRACEEND), "GetFormatStringFromFormula : stringformat.Contains(CHARBRACEEND) " + stringformat, false);
         #endif
-        stringformat.Trim ('"');
-        stringformat.Trim (char_formula_end);
-        stringformat.Trim ('%');
-        stringformat.Trim ('}');
+        stringformat.Trim (CHARDQUT);
+        stringformat.Trim (CHARFORMULAEND);
+        stringformat.Trim (CHARPROC);
+        stringformat.Trim (CHARBRACEEND);
         stringformat.Trim ();
         f = FormatStringFunc::ParseFormatString (stringformat);
     }
@@ -1978,29 +1979,29 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
 GS::UniString GetFormatString (GS::UniString& paramName)
 {
     GS::UniString formatstring = "";
-    if (!paramName.Contains (".")) return formatstring;
+    if (!paramName.Contains (DOT)) return formatstring;
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString meterString = RSGetIndString (iseng, MeterStringID, ACAPI_GetOwnResModule ());
-    if (!paramName.Contains ('m') && !paramName.Contains (meterString)) return formatstring;
-    GS::Array<GS::UniString> partstring;
-    UInt32 n = StringSplt (paramName, ".", partstring);
+    if (!paramName.Contains (meterString) && !paramName.Contains (METERS)) return formatstring;
+    GS::Array<GS::UniString> partstring = {};
+    UInt32 n = StringSplt (paramName, DOT, partstring);
     if (n > 1) {
         formatstring = partstring[n - 1];
-        if (formatstring.Contains ('m') || formatstring.Contains (meterString)) {
+        if (formatstring.Contains (METERS) || formatstring.Contains (meterString)) {
             if (formatstring.Contains (CharENTER)) {
                 UIndex attribinx = formatstring.FindLast (CharENTER);
                 formatstring = formatstring.GetSubstring (0, attribinx);
             }
 
             if (IsValid (formatstring)) {
-                paramName.ReplaceAll ('.' + formatstring, "");
+                paramName.ReplaceAll (DOT + formatstring, EMPTYSTRING);
                 ReplaceMeters (formatstring);
             } else {
-                formatstring = "";
+                formatstring = EMPTYSTRING;
             }
         } else {
             // Если .м найдена не в последнем блоке - то это не строка-формат
-            formatstring = "";
+            formatstring = EMPTYSTRING;
         }
     }
     return formatstring;
@@ -2009,20 +2010,21 @@ GS::UniString GetFormatString (GS::UniString& paramName)
 bool IsValid (GS::UniString formatstring)
 {
     ReplaceMeters (formatstring);
-    if (!formatstring.Contains ('m')) return false;
-    formatstring.ReplaceAll ("m", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.Trim ();
-    formatstring.ReplaceAll (" ", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll (".", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll ("c", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll ("d", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll ("p", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll ("r", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll ("f", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll ("g", ""); if (formatstring.IsEmpty ()) return true;
-    formatstring.ReplaceAll ("k", ""); if (formatstring.IsEmpty ()) return true;
+    if (!formatstring.Contains (METERS)) return false;
+    formatstring.ReplaceAll (METERS, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (ZEROSTRING, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.Trim (); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (SPACESTRING, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (DOT, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (CSTRING, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (DSTRING, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (DOTSET, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (RDSET, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (FSET, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (GSTRING, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
+    formatstring.ReplaceAll (KSTRING, EMPTYSTRING); if (formatstring.IsEmpty ()) return true;
     for (UInt32 i = 0; i < 10; i++) {
-        formatstring.ReplaceAll (GS::UniString::Printf ("%d", i), "");
+        formatstring.ReplaceAll (GS::UniString::Printf ("%d", i), EMPTYSTRING);
         if (formatstring.IsEmpty ()) return true;
     }
     if (formatstring.IsEmpty ()) return true;
@@ -2031,13 +2033,14 @@ bool IsValid (GS::UniString formatstring)
 
 void ReplaceMeters (GS::UniString& formatstring)
 {
+    if (formatstring.IsEmpty ()) return;
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString meterString = RSGetIndString (iseng, MeterStringID, ACAPI_GetOwnResModule ());
-    formatstring.ReplaceAll (meterString, "m");
+    formatstring.ReplaceAll (meterString, METERS);
     meterString = RSGetIndString (iseng, CMeterStringID, ACAPI_GetOwnResModule ());
-    formatstring.ReplaceAll (meterString, "d");
+    formatstring.ReplaceAll (meterString, DSTRING);
     meterString = RSGetIndString (iseng, DMeterStringID, ACAPI_GetOwnResModule ());
-    formatstring.ReplaceAll (meterString, "c");
+    formatstring.ReplaceAll (meterString, CSTRING);
 }
 
 // -----------------------------------------------------------------------------
@@ -2093,44 +2096,44 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
     bool trim_zero = true; //Требуется образать нули после запятой
     bool needround = false; //Требуется округлить численное значение для вычислений
     bool forceRaw = false; // Использовать неокруглённое значение для записи
-    GS::UniString delimetr = ","; // Разделитель дробной части
+    bool delimetr_iscomma = true;
     FormatString format;
     format.stringformat = stringformat;
     format.isEmpty = true;
     if (!stringformat.IsEmpty ()) {
         GS::UniString outstringformat = stringformat;
-        if (stringformat.Contains (".")) {
-            outstringformat.ReplaceAll (".", "");
-            format.stringformat.ReplaceAll (".", "");
+        if (stringformat.Contains (DOT)) {
+            outstringformat.ReplaceAll (DOT, EMPTYSTRING);
+            format.stringformat.ReplaceAll (DOT, EMPTYSTRING);
         }
         ReplaceMeters (outstringformat);
-        if (outstringformat.Contains ("m")) {
-            if (outstringformat.Contains ("mm")) {
+        if (outstringformat.Contains (METERS)) {
+            if (outstringformat.Contains (MMETERS)) {
                 n_zero = 0;
                 koeff = 1000;
-                outstringformat.ReplaceAll ("mm", "");
+                outstringformat.ReplaceAll (MMETERS, EMPTYSTRING);
             } else {
-                if (outstringformat.Contains ("cm")) {
+                if (outstringformat.Contains (CMETERS)) {
                     n_zero = 1;
                     koeff = 100;
-                    outstringformat.ReplaceAll ("cm", "");
+                    outstringformat.ReplaceAll (CMETERS, EMPTYSTRING);
                 } else {
-                    if (outstringformat.Contains ("dm")) {
+                    if (outstringformat.Contains (DMETERS)) {
                         n_zero = 2;
                         koeff = 10;
-                        outstringformat.ReplaceAll ("dm", "");
+                        outstringformat.ReplaceAll (DMETERS, EMPTYSTRING);
                     } else {
-                        if (outstringformat.Contains ("gm")) {
+                        if (outstringformat.Contains (GMETERS)) {
                             koeff = 1 / 100;
-                            outstringformat.ReplaceAll ("gm", "");
+                            outstringformat.ReplaceAll (GMETERS, EMPTYSTRING);
                         } else {
-                            if (outstringformat.Contains ("km")) {
+                            if (outstringformat.Contains (KMETERS)) {
                                 koeff = 1 / 1000;
-                                outstringformat.ReplaceAll ("km", "");
+                                outstringformat.ReplaceAll (KMETERS, EMPTYSTRING);
                             } else {
                                 koeff = 1;
                                 n_zero = 3;
-                                outstringformat.ReplaceAll ("m", "");
+                                outstringformat.ReplaceAll (METERS, EMPTYSTRING);
                             }
                         }
                     }
@@ -2138,27 +2141,27 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
             }
         }
         if (!outstringformat.IsEmpty ()) {
-            if (outstringformat.Contains ("p")) {
-                delimetr = ".";
-                outstringformat.ReplaceAll ("p", "");
+            if (outstringformat.Contains (DOTSET)) {
+                delimetr_iscomma = false;
+                outstringformat.ReplaceAll (DOTSET, EMPTYSTRING);
             }
         }
         if (!outstringformat.IsEmpty ()) {
-            if (outstringformat.Contains ("r")) {
+            if (outstringformat.Contains (RDSET)) {
                 needround = true;
-                outstringformat.ReplaceAll ("r", "");
+                outstringformat.ReplaceAll (RDSET, EMPTYSTRING);
             }
         }
         if (!outstringformat.IsEmpty ()) {
-            if (outstringformat.Contains ("f")) {
+            if (outstringformat.Contains (FSET)) {
                 forceRaw = true;
-                outstringformat.ReplaceAll ("f", "");
+                outstringformat.ReplaceAll (FSET, EMPTYSTRING);
             }
         }
         // Принудительный вывод заданного кол-ва нулей после запятой
         if (!outstringformat.IsEmpty ()) {
-            if (outstringformat.Contains ("0")) {
-                outstringformat.ReplaceAll ("0", "");
+            if (outstringformat.Contains (ZEROSTRING)) {
+                outstringformat.ReplaceAll (ZEROSTRING, EMPTYSTRING);
                 outstringformat.Trim ();
                 if (!outstringformat.IsEmpty ()) trim_zero = false;
             }
@@ -2171,7 +2174,11 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
     }
     format.forceRaw = forceRaw;
     format.needRound = needround;
-    format.delimetr = delimetr;
+    if (delimetr_iscomma) {
+        format.delimetr = COMMA;
+    } else {
+        format.delimetr = DOT;
+    }
     format.n_zero = n_zero;
     format.krat = krat;
     format.koeff = koeff;
@@ -2186,7 +2193,7 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
 // TODO Придумать более изящную обработку округления
 GS::UniString NumToString (const double& var, const FormatString& stringformat)
 {
-    if (fabs (var) < 0.00000001) return "0";
+    if (fabs (var) < 0.00000001) return ZEROSTRING;
     GS::UniString out = "";
     Int32 n_zero = stringformat.n_zero;
     Int32 krat = stringformat.krat;
@@ -2197,16 +2204,16 @@ GS::UniString NumToString (const double& var, const FormatString& stringformat)
     outvar = round (outvar * pow (10, n_zero)) / pow (10, n_zero);
     if (krat > 0) outvar = ceil_mod ((GS::Int32) var, krat);
     out = GS::UniString::Printf ("%f", outvar);
-    out.ReplaceAll (".", delimetr);
-    out.ReplaceAll (",", delimetr);
-    out.TrimRight ('0');
+    out.ReplaceAll (DOT, delimetr);
+    out.ReplaceAll (COMMA, delimetr);
+    out.TrimRight (CHARZERO);
     if (trim_zero) {
         out.TrimRight (delimetr.GetChar (0));
     } else {
         Int32 addzero = n_zero - (out.GetLength () - out.FindFirst (delimetr.GetChar (0)) - 1);
         if (addzero > 0) {
             for (Int32 i = 0; i < addzero; i++) {
-                out.Append ("0");
+                out.Append (ZEROSTRING);
             }
         }
     }
@@ -2309,7 +2316,7 @@ void UnhideUnlockElementLayer (const API_Guid & elemGuid)
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
     if (err != NoError) {
-        msg_rep ("UnhideUnlockElementLayer", "", err, elemGuid);
+        msg_rep ("UnhideUnlockElementLayer", EMPTYSTRING, err, elemGuid);
         return;
     }
     UnhideUnlockElementLayer (elem_head);
@@ -2504,7 +2511,7 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
     const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memo.params)[ii];
-        GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + "}";
+        GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + BRACEEND;
         if (!param.ContainsKey (rawname)) continue;
         Param pp = param.Get (rawname);
         if (actParam.typeMod == API_ParSimple) {

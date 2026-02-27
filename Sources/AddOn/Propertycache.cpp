@@ -197,8 +197,6 @@ bool GetGeoLocationToParamDict (ParamDictValue& propertyParams)
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = GLOBNAMEPREFIX;
-    GS::UniString suffix = "}";
     ParamValue pvalue = {};
     GSErrCode err = NoError;
     API_GeoLocation apiGeoLocation = {};
@@ -211,39 +209,39 @@ bool GetGeoLocationToParamDict (ParamDictValue& propertyParams)
         msg_rep ("GetGeoLocationToParamDict", "APIEnv_GetPlaceSetsID", err, APINULLGuid);
         return false;
     }
-    name = "surveyPointPosition_x"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "surveyPointPosition_x"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.surveyPointPosition.x);
     propertyParams.Add (rawName, pvalue);
-    name = "surveyPointPosition_y"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "surveyPointPosition_y"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.surveyPointPosition.y);
     propertyParams.Add (rawName, pvalue);
-    name = "surveyPointPosition_z"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "surveyPointPosition_z"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.surveyPointPosition.z);
     propertyParams.Add (rawName, pvalue);
-    name = "eastings"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "eastings"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.eastings);
     propertyParams.Add (rawName, pvalue);
-    name = "northings"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "northings"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.northings);
     propertyParams.Add (rawName, pvalue);
-    name = "orthogonalHeight"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "orthogonalHeight"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.orthogonalHeight);
     propertyParams.Add (rawName, pvalue);
-    name = "xAxisAbscissa"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "xAxisAbscissa"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.xAxisAbscissa);
     propertyParams.Add (rawName, pvalue);
-    name = "xAxisOrdinate"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "xAxisOrdinate"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.xAxisOrdinate);
     propertyParams.Add (rawName, pvalue);
-    name = "scale"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "scale"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.scale);
     #if defined(TESTING)
@@ -265,8 +263,6 @@ bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = GLOBNAMEPREFIX;
-    GS::UniString suffix = "}";
     ParamValue pvalue = {};
     GSErrCode err = NoError;
     API_Tranmat tm = {};
@@ -280,7 +276,7 @@ bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
         return false;
     }
     for (UInt32 i = 0; i < 13; i++) {
-        name = "tmx" + GS::UniString::Printf ("%d", i); rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+        name = "tmx" + GS::UniString::Printf ("%d", i); rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
         pvalue.name = name; pvalue.rawName = rawName;
         ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, tm.tmx[i]);
         propertyParams.Add (rawName, pvalue);
@@ -302,8 +298,6 @@ bool GetPlaceSetsToParamDict (ParamDictValue& propertyParams)
     #endif
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = GLOBNAMEPREFIX;
-    GS::UniString suffix = "}";
     ParamValue pvalue = {};
     API_PlaceInfo placeInfo = {};
     GSErrCode err = NoError;
@@ -316,27 +310,27 @@ bool GetPlaceSetsToParamDict (ParamDictValue& propertyParams)
         msg_rep ("GetAllGlobToParamDict", "APIEnv_GetPlaceSetsID", err, APINULLGuid);
         return false;
     }
-    name = "GLOB_NORTH_DIR"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "GLOB_NORTH_DIR"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, round ((placeInfo.north * 180 / PI) * 1000.0) / 1000.0);
     propertyParams.Add (rawName, pvalue);
-    name = "GLOB_PROJECT_LONGITUDE"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "GLOB_PROJECT_LONGITUDE"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, placeInfo.longitude);
     propertyParams.Add (rawName, pvalue);
-    name = "GLOB_PROJECT_LATITUDE"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "GLOB_PROJECT_LATITUDE"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, placeInfo.latitude);
     propertyParams.Add (rawName, pvalue);
-    name = "GLOB_PROJECT_ALTITUDE"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "GLOB_PROJECT_ALTITUDE"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, placeInfo.altitude);
     propertyParams.Add (rawName, pvalue);
-    name = "GLOB_SUN_AZIMUTH"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "GLOB_SUN_AZIMUTH"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, round ((placeInfo.sunAngXY * 180 / PI) * 1000.0) / 1000.0);
     propertyParams.Add (rawName, pvalue);
-    name = "GLOB_SUN_ALTITUDE"; rawName = prefix; rawName.Append (name.ToLowerCase ()); rawName.Append (suffix);
+    name = "GLOB_SUN_ALTITUDE"; rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
     pvalue.name = name; pvalue.rawName = rawName;
     ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, round ((placeInfo.sunAngZ * 180 / PI) * 1000.0) / 1000.0);
     propertyParams.Add (rawName, pvalue);
@@ -376,35 +370,33 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
         msg_rep ("GetLocOriginToParamDict", "APIDb_GetOffsetID", err, APINULLGuid);
         return false;
     }
-    GS::UniString prefix = GLOBNAMEPREFIX;
-    GS::UniString suffix = "}";
     ParamValue pvalue = {};
-    pvalue.val.formatstring = FormatStringFunc::ParseFormatString ("1mm");
+    pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
     pvalue.fromCoord = true;
 
     pvalue.name = "locOrigin_x";
-    pvalue.rawName = prefix; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (suffix);
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", locOrigin.x + offset.x);
+    pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.x + offset.x);
     propertyParams.Add (pvalue.rawName, pvalue);
 
     pvalue.name = "locOrigin_y";
-    pvalue.rawName = prefix; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (suffix);
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", locOrigin.y + offset.y);
+    pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.y + offset.y);
     propertyParams.Add (pvalue.rawName, pvalue);
 
     pvalue.name = "locOrigin_z";
-    pvalue.rawName = prefix; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (suffix);
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", locOrigin.z);
+    pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.z);
     propertyParams.Add (pvalue.rawName, pvalue);
 
     pvalue.name = "offsetOrigin_x";
-    pvalue.rawName = prefix; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (suffix);
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", offset.x);
+    pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.x);
     propertyParams.Add (pvalue.rawName, pvalue);
 
     pvalue.name = "offsetOrigin_y";
-    pvalue.rawName = prefix; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (suffix);
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, "", offset.y);
+    pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
+    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.y);
     propertyParams.Add (pvalue.rawName, pvalue);
     #if defined(TESTING)
     DBprnt ("   GetLocOriginToParamDict end");
@@ -433,15 +425,13 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
         return false;
     }
     GS::UniString rawName = "";
-    GS::UniString prefix = INFONAMEPREFIX;
-    GS::UniString suffix = "}";
     for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
         if (autotexts[i][0].Contains ("Addon_Dimens") && !autotexts[i][2].IsEmpty ()) {
             rawName = "{@info:addon_dimension_autotext}";
         } else {
-            rawName = prefix;
+            rawName = INFONAMEPREFIX;
             rawName.Append (autotexts[i][0].ToLowerCase ());
-            rawName.Append (suffix);
+            rawName.Append (BRACEEND);
         }
         if (!propertyParams.ContainsKey (rawName)) {
             ParamValue pvalue;
@@ -550,7 +540,6 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
     if (definitions.IsEmpty ()) return false;
     GS::UniString name = "";
     GS::UniString rawName = "";
-    GS::UniString prefix = PROPERTYNAMEPREFIX;
     API_PropertyGroup group;
     bool flag_add = false;
     for (auto& definision : definitions) {
@@ -560,7 +549,7 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
                 GS::UniString strinx = GS::UniString::Printf ("%d", inx);
                 rawName = "{@property:sync_name";
                 rawName.Append (strinx);
-                rawName.Append ("}");
+                rawName.Append (BRACEEND);
                 name = "sync_name";
                 name.Append (strinx);
                 if (!propertyParams.ContainsKey (rawName)) break;
@@ -569,7 +558,7 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             ParamValue pvalue = {};
             pvalue.rawName = rawName;
             pvalue.name = group.name;
-            pvalue.name.Append ("/");
+            pvalue.name.Append (SLASH);
             pvalue.name.Append (definision.name);
             ParamHelpers::ConvertToParamValue (pvalue, definision);
             propertyParams.Add (pvalue.rawName, pvalue);
@@ -579,17 +568,17 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             name = GetPropertyNameByGUID (definision.guid);
             if (name.IsEmpty ()) {
                 name = group.name;
-                name.Append ("/");
+                name.Append (SLASH);
                 name.Append (definision.name);
             }
             #else
             name = group.name;
-            name.Append ("/");
+            name.Append (SLASH);
             name.Append (definision.name);
             #endif
-            rawName = prefix;
+            rawName = PROPERTYNAMEPREFIX;
             rawName.Append (name.ToLowerCase ());
-            rawName.Append ("}");
+            rawName.Append (BRACEEND);
             if (!propertyParams.ContainsKey (rawName)) {
                 ParamValue pvalue;
                 pvalue.rawName = rawName;
@@ -632,7 +621,7 @@ Int32 isEng ()
 
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 {
-    if (guid == APINULLGuid) return "";
+    if (guid == APINULLGuid) return EMPTYSTRING;
     GS::UniString strguid = APIGuidToString (guid);
     if (strguid.IsEqual ("2E906CCE-9A42-4E49-AE45-193D0D709CC4")) return "BuildingMaterialProperties/Building Material CutFill";
     if (strguid.IsEqual ("FAF74D9D-3CD4-4A03-9840-A39DB757DB1C")) return "BuildingMaterialProperties/Building Material Density";
@@ -643,7 +632,7 @@ GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
     if (strguid.IsEqual ("F99C8A52-810A-4D01-A33A-AB5FDBA43A20")) return "BuildingMaterialProperties/Building Material Heat Capacity";
     if (strguid.IsEqual ("A01BCC22-D1FC-4CD8-AD34-95BBE73BDD5E")) return "BuildingMaterialProperties/Building Material Manufacturer";
     if (strguid.IsEqual ("A936C5CB-5126-4135-BD87-D2A46AEF5A07")) return "BuildingMaterialProperties/Building Material Name";
-    return "";
+    return EMPTYSTRING;
 }
 
 // -----------------------------------------------------------------------------
@@ -671,7 +660,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
         API_PropertyGroup group;
         if (ParamHelpers::GetGroupFromCache (definision.groupGuid, group)) {
             name = group.name;
-            name.Append ("/");
+            name.Append (SLASH);
             name.Append (definision.name);
         } else {
             msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
@@ -687,9 +676,9 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
 bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
 {
     bool hasexpression = false; // Нужно ли нам читать список свойств
-    if (autotext.Contains (";")) {
+    if (autotext.Contains (SEMICOLON)) {
         GS::Array<GS::UniString> partstring = {};
-        StringSplt (autotext, ";", partstring);
+        StringSplt (autotext, SEMICOLON, partstring);
         for (UInt32 k = 0; k < partstring.GetSize (); k++) {
             DimRule dimrule = {};
             if (DimParsePref (partstring[k], dimrule, hasexpression)) {
@@ -729,9 +718,9 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
     if (StringSplt (rawrule, "-", partstring_1) == 2) {
         //Проверяем - что указано в правиле: слой или номер пера
         // Слой указываем в кавычках, в regexp формате
-        if (partstring_1[0].Contains ('"')) {
+        if (partstring_1[0].Contains (CHARDQUT)) {
             GS::UniString layer = partstring_1[0];
-            layer.ReplaceAll ('"', ' ');
+            layer.ReplaceAll (CHARDQUT, ' ');
             layer.Trim ();
             dimrule.layer = layer;
         } else {
@@ -757,9 +746,9 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
         if (partstring_1[1].Contains ("lassic")) {
             dimrule.classic_round_mode = true;
         }
-        if (!partstring_1[1].Contains (",")) return flag_find;
+        if (!partstring_1[1].Contains (COMMA)) return flag_find;
         GS::Array<GS::UniString> partstring_2 = {};
-        if (StringSplt (partstring_1[1], ",", partstring_2) > 1) {
+        if (StringSplt (partstring_1[1], COMMA, partstring_2) > 1) {
             if (!partstring_2[0].IsEmpty ()) {
                 dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
                 flag_find = true;
@@ -771,7 +760,7 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
             if (partstring_2.GetSize () < 3) return flag_find;
             for (UInt32 k = 2; k < partstring_2.GetSize (); k++) {
                 if (partstring_2[k].IsEmpty ()) continue;
-                if (partstring_2[k].Contains ("{") && partstring_2[k].Contains ("}")) {
+                if (partstring_2[k].Contains (BRACESTART) && partstring_2[k].Contains (BRACEEND)) {
                     ParamDictValue paramDict = {};
                     GS::UniString expression = partstring_2[k];
                     expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");

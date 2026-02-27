@@ -3,22 +3,40 @@
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
 #ifdef AC_25
-#include	"APICommon25.h"
+#include "APICommon25.h"
 #endif // AC_25
 #ifdef AC_26
-#include	"APICommon26.h"
+#include "APICommon26.h"
 #endif // AC_26
 #if defined(AC_27) || defined(AC_28)
-#include	"APICommon27.h"
+#include "APICommon27.h"
 #endif // AC_27
 #ifdef AC_28
-#include	"APICommon28.h"
+#include "APICommon28.h"
 #endif // AC_28
 
-#include	"DG.h"
-#include	"SyncSettings.hpp"
-#include	"Helpers.hpp"
+#include "DG.h"
+#include "SyncSettings.hpp"
+#include "Helpers.hpp"
 
+static const GS::UniString PROPERTYPREF = "Property:";
+static const GS::UniString MORPHPREF = "Morph:";
+static const GS::UniString COORDPREF = "Coord:";
+static const GS::UniString INFOPREF = "Info:";
+static const GS::UniString IFCPREF = "IFC:";
+static const GS::UniString GLOBPREF = "Glob:";
+static const GS::UniString CLASSPREF = "Class:";
+static const GS::UniString ATTRIBPREF = "Attribute:";
+static const GS::UniString ELEMENTPREF = "Element:";
+static const GS::UniString MEPPREF = "MEP:";
+static const GS::UniString LISTDATAPREF = "Listdata:";
+static const GS::UniString QRPREF = "QRCode:";
+static const GS::UniString MATERIALPREF = "Material:";
+static const GS::UniString FROMGUIDBR = "from_GUID{";
+static const GS::UniString FROMGUID = "from_GUID";
+static const GS::UniString TOGUIDBR = "to_GUID{";
+static const GS::UniString TOGUID = "to_GUID";
+static const GS::UniString SYNCPART = "Sync_";
 
 // Тип синхронизации
 #define SYNC_NO 0			// Не синхронизировать

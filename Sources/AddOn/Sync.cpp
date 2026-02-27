@@ -566,13 +566,13 @@ bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSet
     bool synccoord = true; bool flagfindcoord = true;
     bool syncclass = true; bool flagfindclass = true;
     if (dummymode == DUMMY_MODE_ON) {
-        syncall = GetElemStateReverse (elemGuid, definitions, "Sync_flag", flagfindall);
-        synccoord = GetElemStateReverse (elemGuid, definitions, "Sync_correct_flag", flagfindcoord);
-        syncclass = GetElemStateReverse (elemGuid, definitions, "Sync_class_flag", flagfindclass);
+        syncall = GetElemStateReverse (elemGuid, definitions, SYNCFLAG, flagfindall);
+        synccoord = GetElemStateReverse (elemGuid, definitions, SYNCCORRECTFLAG, flagfindcoord);
+        syncclass = GetElemStateReverse (elemGuid, definitions, SYNCCLASSFLAG, flagfindclass);
     } else {
-        syncall = GetElemState (elemGuid, definitions, "Sync_flag", flagfindall, false);
-        synccoord = GetElemState (elemGuid, definitions, "Sync_correct_flag", flagfindcoord, false);
-        syncclass = GetElemState (elemGuid, definitions, "Sync_class_flag", flagfindclass, false);
+        syncall = GetElemState (elemGuid, definitions, SYNCFLAG, flagfindall, false);
+        synccoord = GetElemState (elemGuid, definitions, SYNCCORRECTFLAG, flagfindcoord, false);
+        syncclass = GetElemState (elemGuid, definitions, SYNCCLASSFLAG, flagfindclass, false);
     }
     if (!syncall && !synccoord && !syncclass) return false; //Если оба свойства-флага ложь - выходим
     if (syncall && !flagfindcoord) synccoord = true; //Если флаг координат не найден - проверку всё равно делаем
@@ -634,7 +634,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
             for (const GS::UniString& expr : param.definition.defaultValue.propertyExpressions) {
                 if (!expr.Contains ("###Property:")) continue;
                 GS::Array<GS::UniString> partstring = {};
-                if (StringSplt (expr, "###", partstring, "Property:") > 0) {
+                if (StringSplt (expr, "###", partstring, PROPERTYPREF) > 0) {
                     for (const GS::UniString& part : partstring) {
                         GS::UniString h = part.GetSuffix (36);
                         API_Guid pguid = APIGuidFromString (h.ToCStr (0, MaxUSize, GChCode));
@@ -796,10 +796,10 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
     if (description_string.IsEmpty ()) {
         return false;
     }
-    if (description_string.Contains ("Sync_flag")) {
+    if (description_string.Contains (SYNCFLAG)) {
         return false;
     }
-    if (description_string.Contains ("Sync_correct_flag")) {
+    if (description_string.Contains (SYNCCORRECTFLAG)) {
         ParamDictValue paramDict = {};
         ParamValue paramdef = {}; //Свойство, из которого получено правило
         ParamHelpers::ConvertToParamValue (paramdef, definition);
@@ -817,11 +817,11 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
     }
     #endif
     bool hasRule = false;
-    if (description_string.Contains ("Sync_") && description_string.Contains ("{") && description_string.Contains ("}")) {
+    if (description_string.Contains (SYNCPART) && description_string.Contains (BRACESTART) && description_string.Contains (BRACEEND)) {
         if (description_string.Contains (" {")) {
-            description_string.ReplaceAll ("\n", "");
-            description_string.ReplaceAll ("\r", "");
-            description_string.ReplaceAll ("\t", "");
+            description_string.ReplaceAll (LINEBRAKE, EMPTYSTRING);
+            description_string.ReplaceAll (LINEBRAKER, EMPTYSTRING);
+            description_string.ReplaceAll (TABSTRING, EMPTYSTRING);
             description_string.ReplaceAll ("from {", "from{");
             description_string.ReplaceAll ("from  {", "from{");
             description_string.ReplaceAll ("to {", "to{");
@@ -830,13 +830,13 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
             description_string.ReplaceAll ("to_sub  {", "to_sub{");
             description_string.ReplaceAll ("from_sub {", "from_sub{");
             description_string.ReplaceAll ("from_sub  {", "from_sub{");
-            description_string.ReplaceAll ("from_GUID {", "from_GUID{");
-            description_string.ReplaceAll ("from_GUID  {", "from_GUID{");
-            description_string.ReplaceAll ("to_GUID {", "to_GUID{");
-            description_string.ReplaceAll ("to_GUID  {", "to_GUID{");
+            description_string.ReplaceAll ("from_GUID {", FROMGUIDBR);
+            description_string.ReplaceAll ("from_GUID  {", FROMGUIDBR);
+            description_string.ReplaceAll ("to_GUID {", TOGUIDBR);
+            description_string.ReplaceAll ("to_GUID  {", TOGUIDBR);
         }
         GS::Array<GS::UniString> rulestring = {};
-        UInt32 nrule = StringSplt (description_string, "Sync_", rulestring, "{"); // Проверяем количество правил
+        UInt32 nrule = StringSplt (description_string, SYNCPART, rulestring, BRACESTART); // Проверяем количество правил
         ParamValue paramdef = {}; //Свойство, из которого получено правило
         ParamHelpers::ConvertToParamValue (paramdef, definition);
         paramdef.fromGuid = elemGuid;
@@ -853,10 +853,10 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
             API_Guid elemGuidto = elemGuid; // Элемент, в котороый записываем данные
             API_ElemTypeID elementType_from = elementType; // Тип элемента, из которого читаем данные
             // Копировать из другого элемента
-            if (rulestring_one.Contains ("from_GUID{")) {
+            if (rulestring_one.Contains (FROMGUIDBR)) {
                 GS::Array<GS::UniString> params = {};
-                rulestring_one.ReplaceAll ("from_GUID", "");
-                UInt32 nparams = StringSplt (rulestring_one, ";", params);
+                rulestring_one.ReplaceAll (FROMGUID, EMPTYSTRING);
+                UInt32 nparams = StringSplt (rulestring_one, SEMICOLON, params);
                 if (nparams == 2) {
                     GS::UniString rawname = "";
                     Name2Rawname (params[0], rawname);
@@ -877,10 +877,10 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                 }
             }
             // Копировать в другой элемент
-            if (rulestring_one.Contains ("to_GUID{")) {
+            if (rulestring_one.Contains (TOGUIDBR)) {
                 GS::Array<GS::UniString> params = {};
-                rulestring_one.ReplaceAll ("to_GUID", "");
-                UInt32 nparams = StringSplt (rulestring_one, ";", params);
+                rulestring_one.ReplaceAll (TOGUID, EMPTYSTRING);
+                UInt32 nparams = StringSplt (rulestring_one, SEMICOLON, params);
                 if (nparams == 2) {
                     GS::UniString rawname = "";
                     Name2Rawname (params[0], rawname);
@@ -977,8 +977,8 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
 {
     if (name.IsEmpty ()) return false;
     GS::UniString paramNamePrefix = "";
-    if (!name.Contains ("}")) name = name + "}";
-    if (!name.Contains ("{")) name = name + "{";
+    if (!name.Contains (BRACEEND)) name = name + BRACEEND;
+    if (!name.Contains (BRACESTART)) name = name + BRACESTART;
     bool synctypefind = false;
     if (name.Contains ("symb_pos_x") || name.Contains ("symb_pos_y") || name.Contains ("symb_pos_z")) {
         name.ReplaceAll ("{symb_pos_", "{Coord:symb_pos_");
@@ -991,101 +991,101 @@ bool Name2Rawname (GS::UniString& name, GS::UniString& rawname)
     if (synctypefind == false) {
         if (!name.Contains (":") || name.Contains ("escription:") || name.Contains ("esc:")) {
             if (name.Contains ("escription:") || name.Contains ("esc:")) {
-                name.ReplaceAll ("description:", "");
-                name.ReplaceAll ("Description:", "");
-                name.ReplaceAll ("desc:", "");
-                name.ReplaceAll ("Desc:", "");
+                name.ReplaceAll ("description:", EMPTYSTRING);
+                name.ReplaceAll ("Description:", EMPTYSTRING);
+                name.ReplaceAll ("desc:", EMPTYSTRING);
+                name.ReplaceAll ("Desc:", EMPTYSTRING);
             }
             paramNamePrefix = GDLNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Property:")) {
-            name.ReplaceAll ("Property:", "");
+        if (name.Contains (PROPERTYPREF)) {
+            name.ReplaceAll (PROPERTYPREF, EMPTYSTRING);
             paramNamePrefix = PROPERTYNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Morph:")) {
-            name.ReplaceAll ("Morph:", "");
+        if (name.Contains (MORPHPREF)) {
+            name.ReplaceAll (MORPHPREF, EMPTYSTRING);
             paramNamePrefix = MORPHNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Coord:")) {
-            name.ReplaceAll ("Coord:", "");
+        if (name.Contains (COORDPREF)) {
+            name.ReplaceAll (COORDPREF, EMPTYSTRING);
             paramNamePrefix = COORDNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Info:")) {
-            name.ReplaceAll ("Info:", "");
+        if (name.Contains (INFOPREF)) {
+            name.ReplaceAll (INFOPREF, EMPTYSTRING);
             paramNamePrefix = INFONAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("IFC:")) {
-            name.ReplaceAll ("IFC:", "");
+        if (name.Contains (IFCPREF)) {
+            name.ReplaceAll (IFCPREF, EMPTYSTRING);
             paramNamePrefix = IFCNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Glob:")) {
-            name.ReplaceAll ("Glob:", "");
+        if (name.Contains (GLOBPREF)) {
+            name.ReplaceAll (GLOBPREF, EMPTYSTRING);
             paramNamePrefix = GLOBNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Class:")) {
-            name.ReplaceAll ("Class:", "");
+        if (name.Contains (CLASSPREF)) {
+            name.ReplaceAll (CLASSPREF, EMPTYSTRING);
             paramNamePrefix = CLASSNAMEPREFIX;
             synctypefind = true;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Attribute:")) {
+        if (name.Contains (ATTRIBPREF)) {
             synctypefind = true;
-            name.ReplaceAll ("Attribute:", "");
+            name.ReplaceAll (ATTRIBPREF, EMPTYSTRING);
             paramNamePrefix = ATTRIBNAMEPREFIX;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Element:")) {
+        if (name.Contains (ELEMENTPREF)) {
             synctypefind = true;
-            name.ReplaceAll ("Element:", "");
+            name.ReplaceAll (ELEMENTPREF, EMPTYSTRING);
             paramNamePrefix = ELEMENTNAMEPREFIX;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("MEP:")) {
+        if (name.Contains (MEPPREF)) {
             synctypefind = true;
-            name.ReplaceAll ("MEP:", "");
+            name.ReplaceAll (MEPPREF, EMPTYSTRING);
             paramNamePrefix = MEPNAMEPREFIX;
         }
     }
     if (synctypefind == false) {
-        if (name.Contains ("Listdata:")) {
+        if (name.Contains (LISTDATAPREF)) {
             synctypefind = true;
-            name.ReplaceAll ("Listdata:", "");
+            name.ReplaceAll (LISTDATAPREF, EMPTYSTRING);
             paramNamePrefix = LISTDATANAMEPREFIX;
         }
     }
     if (synctypefind == false) return false;
     GS::Array<GS::UniString> params;
-    GS::UniString tparamName = name.GetSubstring ('{', '}', 0);
-    UInt32 nparam = StringSplt (tparamName, ";", params);
+    GS::UniString tparamName = name.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+    UInt32 nparam = StringSplt (tparamName, SEMICOLON, params);
     if (nparam == 0) return false;
     GS::UniString paramName = params.Get (0);
     FormatStringFunc::GetFormatString (paramName);
-    paramName.ReplaceAll ("\\/", "/");
-    rawname = paramNamePrefix + paramName.ToLowerCase () + "}";
+    paramName.ReplaceAll (SLASHEKR, SLASH);
+    rawname = paramNamePrefix + paramName.ToLowerCase () + BRACEEND;
     return true;
 }
 
@@ -1114,9 +1114,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     if (rulestring_one.Contains ("symb_pos_x") || rulestring_one.Contains ("symb_pos_y") || rulestring_one.Contains ("symb_pos_z")) {
         rulestring_one.ReplaceAll ("{symb_pos_", "{Coord:symb_pos_");
     }
-    bool hasformula = rulestring_one.Contains (char_formula_start) && rulestring_one.Contains (char_formula_end);
-    if (rulestring_one.Contains ("QRCode:")) {
-        rulestring_one.ReplaceAll ("QRCode:", "");
+    bool hasformula = rulestring_one.Contains (CHARFORMULASTART) && rulestring_one.Contains (CHARFORMULAEND);
+    if (rulestring_one.Contains (QRPREF)) {
+        rulestring_one.ReplaceAll (QRPREF, EMPTYSTRING);
         param.toQRCode = true;
     }
     if (synctypefind == false) {
@@ -1131,10 +1131,10 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if ((!rulestring_one.Contains (":") || rulestring_one.Contains ("escription:") || rulestring_one.Contains ("esc:")) && !hasformula) {
             if (rulestring_one.Contains ("escription:") || rulestring_one.Contains ("esc:")) {
                 param.fromGDLdescription = true;
-                rulestring_one.ReplaceAll ("description:", "");
-                rulestring_one.ReplaceAll ("Description:", "");
-                rulestring_one.ReplaceAll ("desc:", "");
-                rulestring_one.ReplaceAll ("Desc:", "");
+                rulestring_one.ReplaceAll ("description:", EMPTYSTRING);
+                rulestring_one.ReplaceAll ("Description:", EMPTYSTRING);
+                rulestring_one.ReplaceAll ("desc:", EMPTYSTRING);
+                rulestring_one.ReplaceAll ("Desc:", EMPTYSTRING);
             }
             paramNamePrefix = GDLNAMEPREFIX;
             param.typeinx = GDLTYPEINX;
@@ -1146,9 +1146,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
 
     // TODO Дописать чтение состава многослойной конструкции по её имени
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Attribute:")) {
+        if (rulestring_one.Contains (ATTRIBPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Attribute:", "");
+            rulestring_one.ReplaceAll (ATTRIBPREF, EMPTYSTRING);
             paramNamePrefix = ATTRIBNAMEPREFIX;
             param.typeinx = ATTRIBTYPEINX;
             param.fromAttribElement = true;
@@ -1156,9 +1156,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Material:") && (rulestring_one.Contains ('"') || hasformula)) {
+        if (rulestring_one.Contains (MATERIALPREF) && (rulestring_one.Contains (CHARDQUT) || hasformula)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Material:", "");
+            rulestring_one.ReplaceAll (MATERIALPREF, EMPTYSTRING);
             rulestring_one.ReplaceAll ("{Layers;", "{Layers,20;");
             rulestring_one.ReplaceAll ("{Layers_inv;", "{Layers_inv,20;");
             rulestring_one.ReplaceAll ("{Layers_auto;", "{Layers_auto,20;");
@@ -1166,33 +1166,33 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.typeinx = MATERIALTYPEINX;
             GS::UniString templatestring = "";
             if (hasformula) {
-                if (rulestring_one.Contains ('"')) {
-                    templatestring = rulestring_one.GetSubstring ('"', '"', 0);
+                if (rulestring_one.Contains (CHARDQUT)) {
+                    templatestring = rulestring_one.GetSubstring (CHARDQUT, CHARDQUT, 0);
                     FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
                     stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                     param.val.uniStringValue = templatestring;
                 } else {
-                    templatestring = rulestring_one.GetSubstring (char_formula_start, char_formula_end, 0);
+                    templatestring = rulestring_one.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
                     FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
                     stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
-                    param.val.uniStringValue = str_formula_start;
+                    param.val.uniStringValue = STRFORMULASTART;
                     param.val.uniStringValue.Append (templatestring);
-                    param.val.uniStringValue.Append (str_formula_end);
+                    param.val.uniStringValue.Append (STRFORMULAEND);
                 }
-                rulestring_one.ReplaceAll (templatestring, "");
-                rulestring_one.ReplaceAll (stringformat_raw, "");
+                rulestring_one.ReplaceAll (templatestring, EMPTYSTRING);
+                rulestring_one.ReplaceAll (stringformat_raw, EMPTYSTRING);
                 param.val.hasFormula = true;
             } else {
-                templatestring = rulestring_one.GetSubstring ('"', '"', 0);
+                templatestring = rulestring_one.GetSubstring (CHARDQUT, CHARDQUT, 0);
                 param.val.uniStringValue = templatestring;
                 param.val.hasFormula = false;
-                rulestring_one.ReplaceAll (templatestring, "");
+                rulestring_one.ReplaceAll (templatestring, EMPTYSTRING);
             }
             param.val.formatstring = stringformat;
             param.fromMaterial = true;
             param.composite_pen = 20;
-            rulestring_one.ReplaceAll (" ", "");
-            if (rulestring_one.Contains (",") && rulestring_one.Contains (";")) {
+            rulestring_one.ReplaceAll (SPACESTRING, EMPTYSTRING);
+            if (rulestring_one.Contains (COMMA) && rulestring_one.Contains (SEMICOLON)) {
                 GS::UniString penstring = rulestring_one.GetSubstring (',', ';', 0);
                 if (penstring.Contains ("all")) {
                     param.composite_pen = -1;
@@ -1213,21 +1213,21 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     if (synctypefind == false) {
         if (hasformula) {
             GS::UniString templatestring = "";
-            if (rulestring_one.Contains ('"')) {
-                templatestring = rulestring_one.GetSubstring ('"', '"', 0);
+            if (rulestring_one.Contains (CHARDQUT)) {
+                templatestring = rulestring_one.GetSubstring (CHARDQUT, CHARDQUT, 0);
                 FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
                 stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
                 param.val.uniStringValue = templatestring;
             } else {
-                templatestring = rulestring_one.GetSubstring (char_formula_start, char_formula_end, 0);
+                templatestring = rulestring_one.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
                 FormatStringFunc::GetFormatStringFromFormula (rulestring_one, templatestring, stringformat_raw);
                 stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
-                param.val.uniStringValue = str_formula_start;
+                param.val.uniStringValue = STRFORMULASTART;
                 param.val.uniStringValue.Append (templatestring);
-                param.val.uniStringValue.Append (str_formula_end);
+                param.val.uniStringValue.Append (STRFORMULAEND);
             }
-            rulestring_one.ReplaceAll (templatestring, "");
-            rulestring_one.ReplaceAll (stringformat_raw, "");
+            rulestring_one.ReplaceAll (templatestring, EMPTYSTRING);
+            rulestring_one.ReplaceAll (stringformat_raw, EMPTYSTRING);
             param.val.formatstring = stringformat;
             synctypefind = true;
             paramNamePrefix = FORMULANAMEPREFIX;
@@ -1237,9 +1237,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Morph:")) {
+        if (rulestring_one.Contains (MORPHPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Morph:", "");
+            rulestring_one.ReplaceAll (MORPHPREF, EMPTYSTRING);
             paramNamePrefix = MORPHNAMEPREFIX;
             param.typeinx = MORPHTYPEINX;
             param.fromMorph = true;
@@ -1247,9 +1247,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Coord:")) {
+        if (rulestring_one.Contains (COORDPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Coord:", "");
+            rulestring_one.ReplaceAll (COORDPREF, EMPTYSTRING);
             paramNamePrefix = COORDNAMEPREFIX;
             param.typeinx = COORDTYPEINX;
             param.fromCoord = true;
@@ -1258,27 +1258,27 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Property:")) {
+        if (rulestring_one.Contains (PROPERTYPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Property:", "");
+            rulestring_one.ReplaceAll (PROPERTYPREF, EMPTYSTRING);
             paramNamePrefix = PROPERTYNAMEPREFIX;
             param.typeinx = PROPERTYTYPEINX;
             param.fromProperty = true;
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Info:")) {
+        if (rulestring_one.Contains (INFOPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Info:", "");
+            rulestring_one.ReplaceAll (INFOPREF, EMPTYSTRING);
             paramNamePrefix = INFONAMEPREFIX;
             param.typeinx = INFOTYPEINX;
             param.fromInfo = true;
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("IFC:")) {
+        if (rulestring_one.Contains (IFCPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("IFC:", "");
+            rulestring_one.ReplaceAll (IFCPREF, EMPTYSTRING);
             paramNamePrefix = IFCNAMEPREFIX;
             param.typeinx = IFCTYPEINX;
             param.fromIFCProperty = true;
@@ -1286,9 +1286,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Glob:")) {
+        if (rulestring_one.Contains (GLOBPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Glob:", "");
+            rulestring_one.ReplaceAll (GLOBPREF, EMPTYSTRING);
             paramNamePrefix = GLOBNAMEPREFIX;
             param.typeinx = GLOBTYPEINX;
             param.fromGlob = true;
@@ -1296,9 +1296,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Class:")) {
+        if (rulestring_one.Contains (CLASSPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Class:", "");
+            rulestring_one.ReplaceAll (CLASSPREF, EMPTYSTRING);
             paramNamePrefix = CLASSNAMEPREFIX;
             param.typeinx = CLASSTYPEINX;
             param.fromClassification = true;
@@ -1306,9 +1306,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     }
 
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Element:")) {
+        if (rulestring_one.Contains (ELEMENTPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Element:", "");
+            rulestring_one.ReplaceAll (ELEMENTPREF, EMPTYSTRING);
             paramNamePrefix = ELEMENTNAMEPREFIX;
             param.typeinx = ELEMENTTYPEINX;
             param.fromElement = true;
@@ -1316,9 +1316,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("MEP:")) {
+        if (rulestring_one.Contains (MEPPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("MEP:", "");
+            rulestring_one.ReplaceAll (MEPPREF, EMPTYSTRING);
             paramNamePrefix = MEPNAMEPREFIX;
             param.typeinx = MEPTYPEINX;
             param.fromMEP = true;
@@ -1326,9 +1326,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         }
     }
     if (synctypefind == false) {
-        if (rulestring_one.Contains ("Listdata:")) {
+        if (rulestring_one.Contains (LISTDATAPREF)) {
             synctypefind = true;
-            rulestring_one.ReplaceAll ("Listdata:", "");
+            rulestring_one.ReplaceAll (LISTDATAPREF, EMPTYSTRING);
             paramNamePrefix = LISTDATANAMEPREFIX;
             param.typeinx = LISTDATATYPEINX;
             param.fromListData = true;
@@ -1388,22 +1388,22 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     //Если тип свойства не нашли - выходим
     if (synctypefind == false) return false;
 
-    GS::UniString tparamName = rulestring_one.GetSubstring ('{', '}', 0);
+    GS::UniString tparamName = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     GS::Array<GS::UniString> params;
-    UInt32 nparam = StringSplt (tparamName, ";", params);
+    UInt32 nparam = StringSplt (tparamName, SEMICOLON, params);
 
     // Параметры не найдены - выходим
     if (nparam == 0) return false;
     GS::UniString paramName = params.Get (0);
-    paramName.ReplaceAll ("\\/", "/");
+    paramName.ReplaceAll (SLASHEKR, SLASH);
     if (param.fromMaterial || param.val.hasFormula) {
         param.rawName = paramNamePrefix;
         param.rawName.Append (paramName.ToLowerCase ());
-        param.rawName.Append (";");
+        param.rawName.Append (SEMICOLON);
         param.rawName.Append (param.val.uniStringValue);
-        param.rawName.Append (".");
+        param.rawName.Append (DOT);
         param.rawName.Append (stringformat.stringformat);
-        param.rawName.Append ("}");
+        param.rawName.Append (BRACEEND);
     } else {
         stringformat_raw = FormatStringFunc::GetFormatString (paramName);
         stringformat = FormatStringFunc::ParseFormatString (stringformat_raw);
@@ -1415,16 +1415,16 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         param.rawName.Append (param.name);
         if (nparam > 1) {
             param.val.uniStringValue = params.Get (1);
-            param.rawName.Append (";");
+            param.rawName.Append (SEMICOLON);
             param.rawName.Append (param.val.uniStringValue.ToLowerCase ());
         }
-        param.rawName.Append ("}");
+        param.rawName.Append (BRACEEND);
         start_ignore = 1 + nparam;
     }
     if (param.rawName.IsEmpty ()) {
         param.rawName = paramNamePrefix;
         param.rawName.Append (paramName.ToLowerCase ());
-        param.rawName.Append ("}");
+        param.rawName.Append (BRACEEND);
     }
     if (param.name.IsEmpty ()) param.name = paramName;
     if (nparam > 1) {
@@ -1433,23 +1433,23 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         GS::UniString arrtype = params[1].ToLowerCase ();
         bool hasArray = false;
         if (!hasArray && (arrtype.Contains ("uniq") || arrtype.Contains ("unic"))) {
-            arrtype.ReplaceAll ("uniq", "");
-            arrtype.ReplaceAll ("unic", "");
+            arrtype.ReplaceAll ("uniq", EMPTYSTRING);
+            arrtype.ReplaceAll ("unic", EMPTYSTRING);
             param.val.array_format_out = ARRAY_UNIC;
             hasArray = true;
         }
         if (!hasArray && arrtype.Contains ("sum")) {
-            arrtype.ReplaceAll ("sum", "");
+            arrtype.ReplaceAll ("sum", EMPTYSTRING);
             param.val.array_format_out = ARRAY_SUM;
             hasArray = true;
         }
         if (!hasArray && arrtype.Contains ("min")) {
-            arrtype.ReplaceAll ("min", "");
+            arrtype.ReplaceAll ("min", EMPTYSTRING);
             param.val.array_format_out = ARRAY_MIN;
             hasArray = true;
         }
         if (!hasArray && arrtype.Contains ("max")) {
-            arrtype.ReplaceAll ("max", "");
+            arrtype.ReplaceAll ("max", EMPTYSTRING);
             param.val.array_format_out = ARRAY_MAX;
             hasArray = true;
         }
@@ -1470,9 +1470,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                 if (nsr > 0) {
                     GS::UniString sr1 = sr.Get (0);
                     sr1.Trim ('(');
-                    if (sr1.Contains (",")) {
+                    if (sr1.Contains (COMMA)) {
                         GS::Array<GS::UniString> dim;
-                        UInt32 ndim = StringSplt (sr1, ",", dim);
+                        UInt32 ndim = StringSplt (sr1, COMMA, dim);
                         if (ndim > 0) {
                             GS::UniString dim0 = dim.Get (0);
                             if (UniStringToDouble (dim0, p)) {
@@ -1480,7 +1480,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             } else {
                                 rawName_row_start = paramNamePrefix;
                                 rawName_row_start.Append (dim0);
-                                rawName_row_start.Append ("}");
+                                rawName_row_start.Append (BRACEEND);
                             }
                         }
                         if (ndim > 1) {
@@ -1490,7 +1490,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             } else {
                                 rawName_row_end = paramNamePrefix;
                                 rawName_row_end.Append (dim1);
-                                rawName_row_end.Append ("}");
+                                rawName_row_end.Append (BRACEEND);
                             }
                         }
                     } else {
@@ -1500,7 +1500,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                         } else {
                             rawName_row_start = paramNamePrefix;
                             rawName_row_start.Append (sr1);
-                            rawName_row_start.Append ("}");
+                            rawName_row_start.Append (BRACEEND);
                             rawName_row_end = rawName_col_start;
                         }
                     }
@@ -1508,9 +1508,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                 if (nsr > 1) {
                     GS::UniString sr1 = sr.Get (1);
                     sr1.Trim ('(');
-                    if (sr1.Contains (",")) {
+                    if (sr1.Contains (COMMA)) {
                         GS::Array<GS::UniString> dim;
-                        UInt32 ndim = StringSplt (sr1, ",", dim);
+                        UInt32 ndim = StringSplt (sr1, COMMA, dim);
                         if (ndim > 0) {
                             GS::UniString dim0 = dim.Get (0);
                             if (UniStringToDouble (dim0, p)) {
@@ -1518,7 +1518,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             } else {
                                 rawName_col_start = paramNamePrefix;
                                 rawName_col_start.Append (dim0);
-                                rawName_col_start.Append ("}");
+                                rawName_col_start.Append (BRACEEND);
                             }
                         }
                         if (ndim > 1) {
@@ -1528,7 +1528,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                             } else {
                                 rawName_col_end = paramNamePrefix;
                                 rawName_col_end.Append (dim1);
-                                rawName_col_end.Append ("}");
+                                rawName_col_end.Append (BRACEEND);
                             }
                         }
                     } else {
@@ -1538,7 +1538,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
                         } else {
                             rawName_col_start = paramNamePrefix;
                             rawName_col_start.Append (sr1);
-                            rawName_col_start.Append ("}");
+                            rawName_col_start.Append (BRACEEND);
                             rawName_col_end = rawName_col_start;
                         }
                     }
@@ -1569,15 +1569,15 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.rawName.Append (rawName_col_start);
             param.rawName.Append ("_");
             param.rawName.Append (rawName_col_end);
-            param.rawName.Append ("}");
+            param.rawName.Append (BRACEEND);
             start_ignore = 2;
         }
         // Обработка игнорируемых значений
         if (nparam > start_ignore) {
             for (UInt32 j = start_ignore; j < nparam; j++) {
                 GS::UniString ignoreval = "";
-                if (params[j].Contains ('"')) {
-                    ignoreval = params[j].GetSubstring ('"', '"', 0);
+                if (params[j].Contains (CHARDQUT)) {
+                    ignoreval = params[j].GetSubstring (CHARDQUT, CHARDQUT, 0);
                 } else {
                     ignoreval = params[j];
                 }
@@ -1665,7 +1665,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     ParamDictValue propertyParams;
     GSFlags flag = 0;
     ParamDictElement paramToWrite = {};
-    SyncSetSubelementScope (parentelementhead, subguidArray, paramToWrite, "", true);
+    SyncSetSubelementScope (parentelementhead, subguidArray, paramToWrite, EMPTYSTRING, true);
     if (!paramToWrite.IsEmpty ()) {
         err = ACAPI_CallUndoableCommand ("SetSubelement",
                                          [&]() -> GSErrCode {
@@ -1767,14 +1767,14 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     UnicGuidByGuid parentGuid = {};
     ParamDictValue propertyParams = {};
     int errcode = 0;
-    if (!SyncGetSubelement (guidArray, parentGuid, "", errcode)) {
-        if (SyncGetParentelement (guidArray, parentGuid, "", errcode)) {
+    if (!SyncGetSubelement (guidArray, parentGuid, EMPTYSTRING, errcode)) {
+        if (SyncGetParentelement (guidArray, parentGuid, EMPTYSTRING, errcode)) {
             fmane = "Show Sub Element";
         } else {
             const Int32 iseng = ID_ADDON_STRINGS + isEng ();
             GS::UniString SubElementHotFoundIdString = RSGetIndString (iseng, SubElementHotFoundId, ACAPI_GetOwnResModule ());
             if (errcode > 0) {
-                SubElementHotFoundIdString = SubElementHotFoundIdString + "\n" + RSGetIndString (iseng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
+                SubElementHotFoundIdString = SubElementHotFoundIdString + LINEBRAKE + RSGetIndString (iseng, SubElementHotFoundId + errcode, ACAPI_GetOwnResModule ());
             }
             ACAPI_WriteReport (SubElementHotFoundIdString, true);
             return;
@@ -1885,27 +1885,27 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     if (count_otherplan > 0) {
         GS::UniString SubElementOtherPlanString = RSGetIndString (iseng, SubElementOtherPlanId, ACAPI_GetOwnResModule ());
-        errmsg = errmsg + GS::UniString::Printf (" %d ", count_otherplan) + SubElementOtherPlanString + "\n";
+        errmsg = errmsg + GS::UniString::Printf (" %d ", count_otherplan) + SubElementOtherPlanString + LINEBRAKE;
         fmane = fmane + GS::UniString::Printf (", %d on other floorplan", count_otherplan);
     }
 
     if (count_del > 0) {
         GS::UniString SubElementNotExsistString = RSGetIndString (iseng, SubElementNotExsistId, ACAPI_GetOwnResModule ());
-        errmsg = errmsg + GS::UniString::Printf (" %d ", count_del) + SubElementNotExsistString + "\n";
+        errmsg = errmsg + GS::UniString::Printf (" %d ", count_del) + SubElementNotExsistString + LINEBRAKE;
         fmane = fmane + GS::UniString::Printf (", %d not exsist", count_del);
     }
     if (count_inv > 0) {
         GS::UniString SubElementHiddenString = RSGetIndString (iseng, SubElementHiddenId, ACAPI_GetOwnResModule ());
-        errmsg = errmsg + GS::UniString::Printf (" %d ", count_inv) + SubElementHiddenString + "\n";
+        errmsg = errmsg + GS::UniString::Printf (" %d ", count_inv) + SubElementHiddenString + LINEBRAKE;
         fmane = fmane + GS::UniString::Printf (", %d on hidden layers/filters", count_inv);
     }
     if (!errmsg.IsEmpty ()) {
         GS::UniString SubElementTotalString = RSGetIndString (iseng, SubElementTotalId, ACAPI_GetOwnResModule ());
-        errmsg = SubElementTotalString + GS::UniString::Printf (" %d, ", count_all) + "\n" + errmsg;
+        errmsg = SubElementTotalString + GS::UniString::Printf (" %d, ", count_all) + LINEBRAKE + errmsg;
     }
     if (selNeigs.IsEmpty ()) {
         GS::UniString SubElementNoSelectString = RSGetIndString (iseng, SubElementNoSelectId, ACAPI_GetOwnResModule ());
-        errmsg = SubElementNoSelectString + "\n" + errmsg;
+        errmsg = SubElementNoSelectString + LINEBRAKE + errmsg;
         fmane = fmane + " Nothing to select - all hide!";
         finish = clock ();
         duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -1923,7 +1923,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     #endif
     if (!errmsg.IsEmpty ()) {
         GS::UniString SubElementHalfString = RSGetIndString (iseng, SubElementHalfId, ACAPI_GetOwnResModule ());
-        errmsg = SubElementHalfString + "\n" + errmsg;
+        errmsg = SubElementHalfString + LINEBRAKE + errmsg;
         ACAPI_WriteReport (errmsg, true);
     }
     #else
@@ -2014,7 +2014,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid&
                 if (prop.isDefault) continue;
                 if (prop.value.singleVariant.variant.uniStringValue.IsEmpty ()) continue;
                 GS::Array<GS::UniString> rulestring_param;
-                UInt32 nrule_param = StringSplt (prop.value.singleVariant.variant.uniStringValue, ";", rulestring_param);
+                UInt32 nrule_param = StringSplt (prop.value.singleVariant.variant.uniStringValue, SEMICOLON, rulestring_param);
                 if (nrule_param > 0) {
                     for (UInt32 i = 0; i < nrule_param; i++) {
                         API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
@@ -2071,7 +2071,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
             #endif
             if (param.isValid && !param.val.uniStringValue.IsEmpty ()) {
                 GS::Array<GS::UniString> rulestring_param = {};
-                UInt32 nrule_param = StringSplt (param.val.uniStringValue, ";", rulestring_param);
+                UInt32 nrule_param = StringSplt (param.val.uniStringValue, SEMICOLON, rulestring_param);
                 if (nrule_param > 0) {
                     for (UInt32 i = 0; i < nrule_param; i++) {
                         API_Guid guid = APIGuidFromString (rulestring_param[i].ToCStr (0, MaxUSize, GChCode));
