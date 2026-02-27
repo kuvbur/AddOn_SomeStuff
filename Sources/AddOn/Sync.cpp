@@ -280,29 +280,30 @@ bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     #if defined(TESTING)
     DBprnt ("      SyncElement start");
     #endif
+    if (syncedelem.ContainsKey (elemGuid)) return false; // Элемент уже был синхронизирован
     API_ElemTypeID elementType;
     GSErrCode err = GetTypeByGUID (elemGuid, elementType);
     if (err != NoError) return false;
     API_Guid elemGuid_ = elemGuid;
     if (elementType == API_SectElemID) {
         GetParentGUIDSectElem (elemGuid, elemGuid_, elementType);
+        if (syncedelem.ContainsKey (elemGuid_)) return false; // Элемент уже был синхронизирован
     }
     // Получаем список связанных элементов
     GS::Array<API_Guid> subelemGuids = {};
     GetRelationsElement (elemGuid_, elementType, syncSettings, subelemGuids, true, true);
-    bool needResync = false;
-    if (!syncedelem.ContainsKey (elemGuid_)) {
-        needResync = SyncData (elemGuid_, APINULLGuid, syncSettings, subelemGuids, paramToWrite, dummymode);
-        syncedelem.Add (elemGuid_, needResync);
-    }
+    bool needResync = SyncData (elemGuid_, syncSettings, subelemGuids, paramToWrite, dummymode);
+    syncedelem.Add (elemGuid_, needResync);
+
+    if (subelemGuids.IsEmpty ()) return needResync;
+    if (!SyncRelationsElement (elementType, syncSettings)) return needResync;
+
     GS::Array<API_Guid> epm = {};
-    if (!subelemGuids.IsEmpty () && SyncRelationsElement (elementType, syncSettings)) {
-        for (const auto& subelemGuid : subelemGuids) {
-            if (subelemGuid == elemGuid_) continue;
-            if (syncedelem.ContainsKey (subelemGuid)) continue;
-            if (SyncData (subelemGuid, elemGuid_, syncSettings, epm, paramToWrite, dummymode)) needResync = true;
-            syncedelem.Add (subelemGuid, needResync);
-        }
+    for (const auto& subelemGuid : subelemGuids) {
+        if (subelemGuid == elemGuid_) continue;
+        if (syncedelem.ContainsKey (subelemGuid)) continue;
+        if (SyncData (subelemGuid, syncSettings, epm, paramToWrite, dummymode)) needResync = true;
+        syncedelem.Add (subelemGuid, needResync);
     }
     #if defined(TESTING)
     DBprnt ("      SyncElement end");
@@ -535,7 +536,7 @@ bool SyncRelationsElement (const API_ElemTypeID& elementType, const SyncSettings
 // --------------------------------------------------------------------
 // Синхронизация данных элемента согласно указаниям в описании свойств
 // --------------------------------------------------------------------
-bool SyncData (const API_Guid& elemGuid, const API_Guid& rootGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictElement& paramToWrite, int dummymode)
+bool SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictElement& paramToWrite, int dummymode)
 {
     GSErrCode	err = NoError;
     API_ElemTypeID elementType;
@@ -782,6 +783,9 @@ void SyncAddRule (const WriteData& writeSub, WriteDict& syncRules, ParamDictElem
         rules.Push (writeSub);
         syncRules.Add (elemGuid, rules);
     }
+    if (elemGuid == APINULLGuid) {
+        int hh = 1;
+    }
     ParamHelpers::AddParamValue2ParamDictElement (writeSub.paramFrom, paramToRead);
     ParamHelpers::AddParamValue2ParamDictElement (writeSub.paramTo, paramToRead);
 }
@@ -929,7 +933,6 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                             ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_kzap");
                         }
                         ParamHelpers::AddParamDictValue2ParamDictElement (elemGuid, paramDict, paramToRead);
-                        hasSub = true; // Нужно будет прочитать все свойства
                     }
                 }
                 if (!param.fromMaterial && param.val.hasFormula) {
@@ -939,7 +942,6 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                     if (ParamHelpers::ParseParamNameMaterial (templatestring, paramDict, false)) {
                         param.val.uniStringValue = templatestring;
                         ParamHelpers::AddParamDictValue2ParamDictElement (elemGuid, paramDict, paramToRead);
-                        hasSub = true;
                     }
                 }
                 if (syncdirection == SYNC_TO || syncdirection == SYNC_TO_SUB) {
