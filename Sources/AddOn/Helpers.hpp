@@ -316,7 +316,7 @@ bool CheckIgnoreVal (const SkipValues& ignorevals, const ParamValue& param);
 // --------------------------------------------------------------------
 // Сопоставляет параметры
 // --------------------------------------------------------------------
-bool CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore);
+bool CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore, bool& is_eq);
 
 // --------------------------------------------------------------------
 // Запись словаря ParamDictValue в словарь элементов ParamDictElement
@@ -347,12 +347,6 @@ void AddDoubleValueToParamDictValue (ParamDictValue& params, const API_Guid& ele
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
 void AddStringValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString val, const bool addInNotEx = false);
-
-// -----------------------------------------------------------------------------
-// Конвертация значений ParamValue в свойства, находящиеся в нём
-// Возвращает true если значения отличались
-// -----------------------------------------------------------------------------
-//bool ConvertToProperty (ParamValue& pvalue);
 
 // -----------------------------------------------------------------------------
 // Синхронизация ParamValue и API_Property
@@ -401,7 +395,7 @@ bool ReadID (const API_Elem_Head& elem_head, ParamDictValue& params);
 // -----------------------------------------------------------------------------
 // Получить значение GDL параметра по его имени или описанию в ParamValue
 // -----------------------------------------------------------------------------
-bool ReadGDL (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params);
+bool ReadGDL (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params, ParamDictValue& allparams);
 
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов

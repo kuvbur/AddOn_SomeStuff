@@ -1155,18 +1155,21 @@ bool ParamHelpers::CheckIgnoreVal (const SkipValues& ignorevals, const ParamValu
 // --------------------------------------------------------------------
 // Сопоставляет параметры
 // --------------------------------------------------------------------
-bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore)
+bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore, bool& is_eq)
 {
     #ifdef TESTING
     if (!paramTo.isValid) {
-        DBtest (paramTo.isValid, paramTo.rawName + " paramTo.isValid");
+        if (!paramTo.fromProperty && !paramTo.fromPropertyDefinition) DBtest (paramTo.isValid, paramTo.rawName + " paramTo.isValid");
     } else {
-        if (!paramTo.val.hasrawDouble && paramTo.val.type != API_PropertyStringValueType) DBtest (paramTo.val.hasrawDouble, paramTo.rawName + " CompareParamValue::paramTo.val.hasrawDouble");
+        if (!paramTo.val.hasrawDouble && paramTo.val.type != API_PropertyStringValueType && !paramFrom.fromClassification) DBtest (paramTo.val.hasrawDouble, paramTo.rawName + " CompareParamValue::paramTo.val.hasrawDouble");
     }
     if (!paramFrom.isValid) {
         DBtest (paramFrom.isValid, paramFrom.rawName + " paramFrom.isValid");
     } else {
         if (!paramFrom.val.hasrawDouble && paramFrom.val.type != API_PropertyStringValueType) DBtest (paramFrom.val.hasrawDouble, paramFrom.rawName + " CompareParamValue::paramFrom.val.hasrawDouble");
+    }
+    if (paramFrom.fromClassification && paramTo.fromClassification && paramFrom.val.guidval != APINULLGuid) {
+        DBtest (paramFrom.val.guidval == APINULLGuid, paramFrom.rawName + " paramTo.fromClassification && paramFrom.val.guidval == APINULLGuid");
     }
     #endif
     if (!paramFrom.isValid) return false;
@@ -1209,6 +1212,8 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
             paramTo.val = paramFrom.val; // Записываем только значения
             paramTo.isValid = true;
             return true;
+        } else {
+            if (paramTo.isValid) is_eq = true;
         }
     }
     return false;
@@ -1220,6 +1225,12 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
 void ParamHelpers::AddParamValue2ParamDictElement (const API_Guid& elemGuid, const ParamValue& param, ParamDictElement& paramToRead)
 {
     const GS::UniString& rawName = param.rawName;
+    #if defined(TESTING)
+    if (elemGuid == APINULLGuid) {
+        DBprnt ("AddParamValue2ParamDictElement err", "elemGuid == APINULLGuid");
+    }
+    #endif
+
     if (paramToRead.ContainsKey (elemGuid)) {
         ParamDictValue& p = paramToRead.Get (elemGuid);
         if (!p.ContainsKey (rawName)) {
@@ -1359,7 +1370,7 @@ void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const A
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        params.Add (pvalue.rawName, pvalue);
+        if (!addInNotEx) params.Add (pvalue.rawName, pvalue);
     }
 }
 
@@ -1392,7 +1403,7 @@ void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        params.Add (pvalue.rawName, pvalue);
+        if (!addInNotEx) params.Add (pvalue.rawName, pvalue);
     }
 }
 
@@ -1425,7 +1436,7 @@ void ParamHelpers::AddDoubleValueToParamDictValue (ParamDictValue& params, const
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        params.Add (pvalue.rawName, pvalue);
+        if (!addInNotEx) params.Add (pvalue.rawName, pvalue);
     }
 }
 
@@ -1457,7 +1468,7 @@ void ParamHelpers::AddStringValueToParamDictValue (ParamDictValue& params, const
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        params.Add (pvalue.rawName, pvalue);
+        if (!addInNotEx) params.Add (pvalue.rawName, pvalue);
     }
 }
 
@@ -1504,9 +1515,9 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
     locorig = "{@glob:offsetorigin_y}";
     if (GetParamValueFromCache (locorig, cacheparam)) offy = cacheparam.val.rawDoubleValue;
     if (is_equal (offx, 0) && is_equal (offy, 0)) {
-        ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "has_distant_element", false);
+        ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "has_distant_element", false, true);
     } else {
-        ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "has_distant_element", true);
+        ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "has_distant_element", true, true);
     }
     double tolerance_coord = 0.001;
     double tolerance_coord_hard = 0.000001;
@@ -2149,7 +2160,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sy_correct", bsymb_pos_sy_correctusp, true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_ex_correct", bsymb_pos_ex_correctusp, true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_ey_correct", bsymb_pos_ey_correctusp, true);
-            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_correct", bsymb_pos_correctusp);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_correct", bsymb_pos_correctusp, true);
             bool bsymb_pos_sx_correctusp_hard = check_accuracy (sxsp, tolerance_coord_hard);
             bool bsymb_pos_sy_correctusp_hard = check_accuracy (sysp, tolerance_coord_hard);
             bool bsymb_pos_ex_correctusp_hard = check_accuracy (exsp, tolerance_coord_hard);
@@ -2226,7 +2237,6 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_correct", true, true);
         }
     }
-
     if (!skip_north) CoordNorthAngle (north, angz, angznorth, angznorthtxt, angznorthtxteng);
     ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "north_dir", angznorth, true);
     ParamHelpers::AddStringValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "north_dir_str", angznorthtxt, true);
@@ -2937,23 +2947,6 @@ bool operator== (const API_Property& lhs, const API_Property& rhs)
 }
 
 // -----------------------------------------------------------------------------
-// Конвертация значений ParamValue в свойства, находящиеся в нём
-// Возвращает true если значения отличались
-// -----------------------------------------------------------------------------
-//bool ParamHelpers::ConvertToProperty (ParamValue& pvalue)
-//{
-//    if (!pvalue.isValid) return false;
-//    if (!pvalue.fromPropertyDefinition) return false;
-//    API_Property property = pvalue.property;
-//    if (ParamHelpers::ConvertToProperty (pvalue, property)) {
-//        pvalue.property = property;
-//        return true;
-//    } else {
-//        return false;
-//    }
-//}
-
-// -----------------------------------------------------------------------------
 // Синхронизация ParamValue и API_Property
 // Возвращает true и подготовленное для записи свойство в случае отличий
 // -----------------------------------------------------------------------------
@@ -2994,7 +2987,7 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
     isEval = (property.status == API_Property_HasValue);
     #endif
     if (pvalue.needResetToDef) {
-        if (isDefult) return false;
+        if (property.isDefault) return false;
         property.isDefault = true;
         if (property.value.variantStatus != API_VariantStatusNormal) property.value.variantStatus = API_VariantStatusNormal;
         #if defined(AC_22) || defined(AC_23)
@@ -4074,7 +4067,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
     elem_head.guid = elemGuid;
     GSErrCode err = ACAPI_Element_GetHeader (&elem_head);
     if (err != NoError) {
-        msg_rep ("ParamDictRead", "ACAPI_Element_GetHeader", err, elem_head.guid);
+        msg_rep ("ParamDictRead", "ACAPI_Element_GetHeader", err, elemGuid);
         return;
     }
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
@@ -4094,6 +4087,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
     // Для некоторых типов элементов есть общая информация, которая может потребоваться
     // Пройдём по параметрам и посмотрим - что нам нужно заранее прочитать
     bool needGetElement = false;
+    bool needGetElementforGDL = false;
     bool hasListData = false;
     bool hasQuantity = false;
     GS::HashTable<short, bool> hasparambytypes = {}; // Словарь наличия параметров для чтения по типу параметра
@@ -4104,42 +4098,44 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         ParamValue& param = *cIt->value;
         #endif
         if (param.fromGuid == APINULLGuid) param.fromGuid = elemGuid;
-        if (param.fromGuid == elemGuid && param.fromGuid != APINULLGuid) {
-            if (param.typeinx == 0) {
-                param.typeinx = ParamHelpers::GetTypeInxByRawnamePrefix (param.rawName);
-            }
-            if (param.typeinx == PROPERTYTYPEINX || param.typeinx == GLOBTYPEINX || param.typeinx == ATTRIBTYPEINX || param.typeinx == INFOTYPEINX) {
-                ParamHelpers::SetParamValueFromCache (param.rawName, param);
-            }
-            if (param.fromQuantity) hasQuantity = true;
-            if (param.fromListData) hasListData = true;
-            // Когда нужно получить весь элемент
-            if (param.fromElement || (param.fromGDLdescription && can_read_fromGDL) || param.fromCoord || (param.fromMorph && eltype == API_MorphID) || param.fromAttribDefinition) needGetElement = true;
-            if (can_read_fromMaterial && param.fromMaterial) needGetElement = true;
-            if (eltype == API_CurtainWallPanelID || eltype == API_CurtainWallFrameID
-               || eltype == API_CurtainWallJunctionID
-               || eltype == API_CurtainWallAccessoryID
-               || eltype == API_RailingToprailID
-               || eltype == API_RailingHandrailID
-               || eltype == API_RailingRailID
-               || eltype == API_RailingPostID
-               || eltype == API_RailingInnerPostID
-               || eltype == API_RailingBalusterID
-               || eltype == API_RailingPanelID
-               || eltype == API_RailingNodeID
-               || eltype == API_RailingToprailEndID
-               || eltype == API_RailingHandrailEndID
-               || eltype == API_RailingRailEndID
-               || eltype == API_RailingToprailConnectionID
-               || eltype == API_RailingHandrailConnectionID
-               || eltype == API_RailingRailConnectionID
-               || eltype == API_RailingEndFinishID
-               ) {
-                needGetElement = true;
-            }
-            if (!hasparambytypes.ContainsKey (param.typeinx)) hasparambytypes.Add (param.typeinx, true);
-            if (param.val.hasFormula && !hasparambytypes.ContainsKey (FORMULATYPEINX)) hasparambytypes.Add (FORMULATYPEINX, true);
+        if (param.fromGuid == APINULLGuid) continue;
+        if (param.fromGuid != elemGuid) continue;
+
+        if (param.typeinx == 0) {
+            param.typeinx = ParamHelpers::GetTypeInxByRawnamePrefix (param.rawName);
         }
+        if (param.typeinx == PROPERTYTYPEINX || param.typeinx == GLOBTYPEINX || param.typeinx == ATTRIBTYPEINX || param.typeinx == INFOTYPEINX) {
+            ParamHelpers::SetParamValueFromCache (param.rawName, param);
+        }
+        if (param.fromQuantity) hasQuantity = true;
+        if (param.fromListData) hasListData = true;
+        // Когда нужно получить весь элемент
+        if (param.fromGDLdescription && can_read_fromGDL) needGetElementforGDL = true;
+        if (param.fromElement || param.fromCoord || (param.fromMorph && eltype == API_MorphID) || param.fromAttribDefinition) needGetElement = true;
+        if (can_read_fromMaterial && param.fromMaterial) needGetElement = true;
+        if (eltype == API_CurtainWallPanelID || eltype == API_CurtainWallFrameID
+           || eltype == API_CurtainWallJunctionID
+           || eltype == API_CurtainWallAccessoryID
+           || eltype == API_RailingToprailID
+           || eltype == API_RailingHandrailID
+           || eltype == API_RailingRailID
+           || eltype == API_RailingPostID
+           || eltype == API_RailingInnerPostID
+           || eltype == API_RailingBalusterID
+           || eltype == API_RailingPanelID
+           || eltype == API_RailingNodeID
+           || eltype == API_RailingToprailEndID
+           || eltype == API_RailingHandrailEndID
+           || eltype == API_RailingRailEndID
+           || eltype == API_RailingToprailConnectionID
+           || eltype == API_RailingHandrailConnectionID
+           || eltype == API_RailingRailConnectionID
+           || eltype == API_RailingEndFinishID
+           ) {
+            needGetElement = true;
+        }
+        if (!hasparambytypes.ContainsKey (param.typeinx)) hasparambytypes.Add (param.typeinx, true);
+        if (param.val.hasFormula && !hasparambytypes.ContainsKey (FORMULATYPEINX)) hasparambytypes.Add (FORMULATYPEINX, true);
     }
     if (hasQuantity && can_read_fromGDL) {
         can_read_fromMaterial = true;
@@ -4155,7 +4151,10 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         }
     }
     API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
-    if (needGetElement) {
+    if (needGetElementforGDL) {
+        if (hasparambytypes.ContainsKey (GDLTYPEINX)) needGetElementforGDL = false;
+    }
+    if (needGetElement || needGetElementforGDL) {
         element.header.guid = elemGuid;
         err = ACAPI_Element_Get (&element);
         if (err != NoError) {
@@ -4205,12 +4204,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 ParamHelpers::ReadCoords (element, params);
                 break;
             case GDLTYPEINX:
-                needCompare = ParamHelpers::ReadGDL (element, elem_head, paramByType);
-                #if defined(TESTING)
-                if (!needCompare) {
-                    DBprnt ("ParamHelpers::ReadGDL ERROR");
-                }
-                #endif
+                ParamHelpers::ReadGDL (element, elem_head, paramByType, params);
                 break;
             case LISTDATATYPEINX:
                 ParamHelpers::ReadListData (elem_head, params);
@@ -4685,7 +4679,7 @@ bool ParamHelpers::ReadID (const API_Elem_Head& elem_head, ParamDictValue& param
 // -----------------------------------------------------------------------------
 // Получить значение GDL параметра по его имени или описанию в ParamValue
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params)
+bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params, ParamDictValue& allparams)
 {
     if (params.IsEmpty ()) return false;
     #if defined(TESTING)
@@ -4858,7 +4852,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
             }
         }
     }
-    if (flag_find_name) ParamHelpers::CompareParamDictValue (paramByName, params);
+    if (flag_find_name) ParamHelpers::CompareParamDictValue (paramByName, allparams);
     return (flag_find_name);
 }
 

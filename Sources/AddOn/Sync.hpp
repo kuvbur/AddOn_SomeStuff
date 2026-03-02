@@ -37,6 +37,10 @@ static const GS::UniString FROMGUID = "from_GUID";
 static const GS::UniString TOGUIDBR = "to_GUID{";
 static const GS::UniString TOGUID = "to_GUID";
 static const GS::UniString SYNCPART = "Sync_";
+static const GS::UniString SYNCFROMSTRING = "from{";
+static const GS::UniString SYNCFROMSUBSTRING = "from_sub{";
+static const GS::UniString SYNCTOSTRING = "to{";
+static const GS::UniString SYNCTOSUBSTRING = "to_sub{";
 
 // Тип синхронизации
 #define SYNC_NO 0			// Не синхронизировать
@@ -147,7 +151,7 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
 // --------------------------------------------------------------------
 // Добавление подэлементов и их параметров в правила синхорнизации
 // --------------------------------------------------------------------
-void SyncAddSubelement (const GS::Array<API_Guid>& subelemGuids, const GS::Array <WriteData>& mainsyncRules, WriteDict& syncRules, ParamDictElement& paramToRead);
+void SyncAddSubelement (const GS::Array<API_Guid>& subelemGuids, GS::Array <WriteData>& mainsyncRules, WriteDict& syncRules, ParamDictElement& paramToRead);
 
 // --------------------------------------------------------------------
 // Запись правила в словарь правил WriteData, попутно заполняем словарь с параметрами элементов ParamDictElement
