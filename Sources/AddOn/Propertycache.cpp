@@ -619,6 +619,55 @@ Int32 isEng ()
     return PROPERTYCACHE ().isEng;
 }
 
+void AddUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
+{
+    if (libinx < 1) return;
+    if (!PROPERTYCACHE ().unreadedgdlparams.ContainsKey (libinx)) {
+        ParamDict p = {};
+        p.Add (rawname, true);
+        PROPERTYCACHE ().unreadedgdlparams.Add (libinx, p);
+        #if defined(TESTING)
+        DBprnt ("        Add skip GDL param", k);
+        #endif
+        return;
+    }
+    ParamDict& p = PROPERTYCACHE ().unreadedgdlparams.Get (libinx);
+    if (!p.ContainsKey (rawname)) {
+        #if defined(TESTING)
+        DBprnt ("        Add skip GDL param", k);
+        #endif
+        p.Add (rawname, true);
+    }
+}
+
+GS::UniString CountUnreadGDLParams ()
+{
+    GS::UniString out = "";
+    Int32 clib = 0;
+    Int32 cparam = 0;
+    if (PROPERTYCACHE ().unreadedgdlparams.IsEmpty ()) return out;
+    for (GS::HashTable<Int32, ParamDict>::PairIterator cIt = PROPERTYCACHE ().unreadedgdlparams.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        ParamDict& param = cIt->value;
+        #else
+        ParamDict& param = *cIt->value;
+        #endif
+        if (param.IsEmpty ()) continue;
+        clib += 1;
+        cparam += param.GetSize ();
+    }
+    out = GS::UniString::Printf (" Skip %d params in %d linpart ", cparam, clib);
+    return out;
+}
+
+bool IsUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
+{
+    if (libinx < 1) return false;
+    if (!PROPERTYCACHE ().unreadedgdlparams.ContainsKey (libinx)) return false;
+    ParamDict& p = PROPERTYCACHE ().unreadedgdlparams.Get (libinx);
+    return p.ContainsKey (rawname);
+}
+
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 {
     if (guid == APINULLGuid) return EMPTYSTRING;
