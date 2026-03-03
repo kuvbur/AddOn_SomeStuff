@@ -80,6 +80,8 @@ struct PropertyCache
     Int32 isEng;
     bool isEng_OK;
 
+    GS::HashTable <Int32, ParamDict> unreadedgdlparams;
+
     bool hasDimAutotext;
     bool isGetGeoLocation_OK; // Успешно прочитан
     bool isGetGeoLocationRead;    // Был запрошен
@@ -123,12 +125,12 @@ struct PropertyCache
         systemdict.Clear ();
         propertygroups.Clear ();
         dimrules.Clear ();
+        unreadedgdlparams.Clear ();
         isEng = 0;
         isEng_OK = false;
         isGetGeoLocation_OK = false;
         isGetGeoLocationRead = false;
         hasDimAutotext = false;
-
         isSurveyPointTransformation_OK = false;
         isSurveyPointTransformationRead = false;
 
@@ -184,6 +186,7 @@ struct PropertyCache
         DBprnt ("=PropertyCache= Update start");
         #endif
         glob.Clear ();
+        unreadedgdlparams.Clear ();
         ReadGetGeoLocation ();
         ReadSurveyPointTransformation ();
         ReadPlaceSets ();
@@ -380,6 +383,12 @@ struct PropertyCache
 // Проверка языка Архикада. Для INT возвращает 1000
 // -----------------------------------------------------------------------------
 Int32 isEng ();
+
+void AddUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname);
+
+GS::UniString CountUnreadGDLParams ();
+
+bool IsUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname);
 
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid);
 

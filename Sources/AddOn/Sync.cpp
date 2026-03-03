@@ -151,7 +151,8 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
-    msg_rep ("SyncAll - read", time, NoError, APINULLGuid);
+    GS::UniString paramch = CountUnreadGDLParams ();
+    msg_rep ("SyncAll - read", time + paramch, NoError, APINULLGuid);
     GS::Array<API_Guid> rereadelem = {};
     start = clock ();
     if (!paramToWrite.IsEmpty ()) {
@@ -180,11 +181,13 @@ void SyncAndMonAll (SyncSettings& syncSettings)
             finish = clock ();
             duration = (double) (finish - start) / CLOCKS_PER_SEC;
             GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
-            msg_rep ("SyncAll - write", time, NoError, APINULLGuid);
+            GS::UniString paramch = CountUnreadGDLParams ();
+            msg_rep ("SyncAll - write", time + paramch, NoError, APINULLGuid);
             return NoError;
         });
     } else {
-        msg_rep ("SyncAll - write", "No data to write", NoError, APINULLGuid);
+        GS::UniString paramch = CountUnreadGDLParams ();
+        msg_rep ("SyncAll - write", "No data to write " + paramch, NoError, APINULLGuid);
     }
     ParamHelpers::InfoWrite (paramToWrite);
     if (!rereadelem.IsEmpty ()) {
@@ -288,7 +291,7 @@ bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
     }
     // Получаем список связанных элементов
     GS::Array<API_Guid> subelemGuids = {};
-    GetRelationsElement (elemGuid_, elementType, syncSettings, subelemGuids, true, true);
+    GetRelationsElement (elemGuid_, elementType, syncSettings, subelemGuids, false, true);
     bool needResync = SyncData (elemGuid_, syncSettings, subelemGuids, paramToWrite, dummymode);
     syncedelem.Add (elemGuid_, needResync);
 
@@ -366,7 +369,8 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
-    msg_rep ("SyncSelected - read", subtitle + intString + time, NoError, APINULLGuid);
+    GS::UniString paramch = CountUnreadGDLParams ();
+    msg_rep ("SyncSelected - read", subtitle + intString + paramch + time, NoError, APINULLGuid);
     if (!paramToWrite.IsEmpty ()) {
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
@@ -921,6 +925,12 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                             if (elemGuidfrom == APINULLGuid) continue;
                             rulestring_one = "Sync_from{" + params[1];
                             elementType_from = GetElemTypeID (elemGuidfrom);
+                            if (elementType_from == API_ZombieElemID) {
+                                #if defined(TESTING)
+                                DBprnt ("ParseSyncString err", "elementType_from == API_ZombieElemID");
+                                #endif
+                                continue;
+                            }
                         } else {
                             #if defined(TESTING)
                             DBprnt ("ParseSyncString err", "p.isValid");
