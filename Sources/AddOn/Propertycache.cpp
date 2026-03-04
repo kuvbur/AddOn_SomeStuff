@@ -627,14 +627,14 @@ void AddUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
         p.Add (rawname, true);
         PROPERTYCACHE ().unreadedgdlparams.Add (libinx, p);
         #if defined(TESTING)
-        DBprnt ("        Add skip GDL param", k);
+        DBprnt ("        Add skip GDL param", rawname);
         #endif
         return;
     }
     ParamDict& p = PROPERTYCACHE ().unreadedgdlparams.Get (libinx);
     if (!p.ContainsKey (rawname)) {
         #if defined(TESTING)
-        DBprnt ("        Add skip GDL param", k);
+        DBprnt ("        Add skip GDL param", rawname);
         #endif
         p.Add (rawname, true);
     }
