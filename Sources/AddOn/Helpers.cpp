@@ -4862,7 +4862,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
     for (const auto& cIt : paramByName) {
         #if defined(AC_28) || defined(AC_29)
         const GS::UniString k = cIt.key;
-        ParamValue& p = *cIt.value;
+        ParamValue& p = cIt.value;
         #else
         const GS::UniString k = *cIt.key;
         ParamValue& p = *cIt.value;

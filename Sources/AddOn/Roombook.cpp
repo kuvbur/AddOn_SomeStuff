@@ -941,6 +941,21 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
         msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetMemo zone", err, zoneGuid);
         return false;
     }
+
+    //API_ElemInfo3D info3D = {};
+    //err = ACAPI_Element_Get3DInfo (zoneelement.header, &info3D);
+    //if (err == NoError) {
+    //    API_Component3D component;
+    //    BNClear (component);
+    //    component.header.typeID = API_BodyID;
+    //    component.header.index = info3D.fbody;
+    //    err = ACAPI_3D_GetComponent (&component);
+    //    if (err == NoError) {
+    //    }
+    //}
+
+
+
     GS::Array<Sector> walledges = {}; // Границы стен, не явяющихся границей зоны
     GS::Array<Sector> columnedges = {}; // Границы колонн, не явяющихся границей зоны
     GS::Array<Sector> restedges = {}; // Границы зоны
@@ -2772,7 +2787,7 @@ void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadPara
 }
 
 // -----------------------------------------------------------------------------
-// Полчение полигона зоны (в том числе стен, колонн)
+// Получение полигона зоны (в том числе стен, колонн)
 // -----------------------------------------------------------------------------
 #if defined(AC_27) || defined(AC_28) || defined(AC_29) 
 void RoomReductionPolyProc (const API_RoomReductionPolyType* roomRed)
