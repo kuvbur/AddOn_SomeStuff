@@ -222,13 +222,6 @@ GSErrCode ResetOneElemen (const API_Guid elemGuid, const GS::Array<API_PropertyD
         }
         if (!properties_to_reset.IsEmpty ()) {
             err = ACAPI_Element_SetProperties (elemGuid, properties_to_reset);
-
-            // Убрал резервирование - криво работает
-            //if (err != NoError) {
-            //	// попробуем разблокировать и повторить
-            //	if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
-            //}
-
             // Если не получилось - выведем ошибку.
             if (err != NoError) msg_rep ("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
         } else {
