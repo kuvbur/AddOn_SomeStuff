@@ -43,9 +43,9 @@ void RoomBook ()
     #endif
 
     GS::Array<API_Guid> zones = {};
-    GSErrCode            err;
-    API_SelectionInfo    selectionInfo;
-    GS::Array<API_Neig>  selNeigs = {};
+    GSErrCode err = NoError;
+    API_SelectionInfo selectionInfo;
+    GS::Array<API_Neig> selNeigs = {};
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
     if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
@@ -97,7 +97,7 @@ void RoomBook ()
     // Поиск перекрытий в зонах
     GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone = {};
     Floor_FindAll (slabsinzone, finclassguids, zones);
-    for (API_Guid zoneGuid : zones) {
+    for (const API_Guid& zoneGuid : zones) {
         nPhase += 1;
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
@@ -202,7 +202,8 @@ void RoomBook ()
     MatarialToFavoriteDict favdict = Favorite_GetDict ();
     // Ищём существующие элементы и определяем их привязку к базовым конструкциям
     bool has_base_element = false;
-    exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element);
+    UnicGuid reserv_elements = {}; // Словарь незарезервированных или скрытых элементов
+    exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
     // Заполняем данные для элементов
     funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
     GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
@@ -421,6 +422,50 @@ void RoomBook ()
             }
         }
     }
+    // Резервирование и открытие слоёв элементов отделки
+    if (!reserv_elements.IsEmpty ()) {
+        GS::Array<API_Guid> reserv = {};
+        GS::HashTable<API_Guid, short> conflicts = {};
+        for (UnicGuid::PairIterator cIt_3 = reserv_elements.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
+            #if defined(AC_28) || defined(AC_29)
+            API_Guid guid = cIt_3->key;
+            #else
+            API_Guid guid = *cIt_3->key;
+            #endif
+            UnhideUnlockElementLayer (guid);
+            reserv.Push (guid);
+        }
+        #if defined(AC_27) || defined(AC_28)
+        if (ACAPI_Teamwork_HasConnection () && !reserv.IsEmpty ()) {
+            #else
+        if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
+            #endif
+            #if defined(AC_27) || defined(AC_28)
+            err = ACAPI_Teamwork_ReserveElements (reserv, &conflicts, true);
+            #else
+            err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts, true);
+            #endif
+            if (err != NoError) {
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+                ACAPI_ProcessWindow_CloseProcessWindow ();
+                #else
+                ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+                #endif
+                msg_rep ("Roombook", "ACAPI_TeamworkControl_ReserveElements", err, APINULLGuid);
+                return;
+            }
+            if (!conflicts.IsEmpty ()) {
+                msg_rep ("Roombook", "Can't reserve elements", err, APINULLGuid, true);
+                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+                ACAPI_ProcessWindow_CloseProcessWindow ();
+                #else
+                ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+                #endif
+                return;
+            }
+        }
+    }
+
     UnicElementByType subelementByparent; // Словарь с созданными родительскими и дочерними элементами
     // Отросовка элементов отделки
     Draw_Elements (storyLevels, roomsinfo, subelementByparent, finclass, deletelist);
@@ -437,7 +482,7 @@ void RoomBook ()
     #endif
 }
 
-GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ClassificationFunc::ClassificationDict& finclass, bool& has_base_element)
+GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid>&zones, const UnicGuid & finclassguids, const ClassificationFunc::ClassificationDict & finclass, bool& has_base_element, UnicGuid & reserv_elements)
 {
     //Существующие элементы храним в словаре двойной вложенности
     // Первый уровень - ключ API_Guid зоны
@@ -496,6 +541,11 @@ GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_G
                         break;
                 }
                 if (!otd_elements.ContainsKey (guid) && correct_type) otd_elements.Add (guid, type_otd);
+                if (!reserv_elements.ContainsKey (guid)) {
+                    if (!ACAPI_Element_Filter (guid, APIFilt_InMyWorkspace)) {
+                        reserv_elements.Add (guid, true);
+                    }
+                }
             }
         }
         if (exsistot_byzone.ContainsKey (zoneguid)) continue;
@@ -505,7 +555,7 @@ GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_G
     return exsistot_byzone;
 }
 
-UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>& otd_elements, bool& has_base_element)
+UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>&otd_elements, bool& has_base_element)
 {
     int errcode = 0;
     UnicGuidByBase exsistot_byparent = {};
@@ -554,7 +604,6 @@ UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>& otd_elements
             #else
             API_Guid parentguid = *cItt->key;
             #endif
-
             if (!exsistot_byparent.ContainsKey (parentguid)) {
                 UnicGuidByTypeOtd subdicttype = {};
                 exsistot_byparent.Add (parentguid, subdicttype);
@@ -574,7 +623,7 @@ UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>& otd_elements
 
 
 // Настройки для форматирования текста в таблицу
-void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat)
+void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString & rawname, ColumnFormatDict & columnFormat)
 {
     GS::UniString fontname = "GOST 2.304 type A";
     ColumnFormat c;
@@ -649,7 +698,7 @@ void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& ra
     columnFormat.Add (rawname, c);
 }
 
-void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& otd, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead, OtdMaterialAreaDictByOtdType& dct_bytype)
+void OtdData_CalcForRoom (const ColumnFormatDict & columnFormat, const OtdRoom & otd, ParamDictElement & paramToWrite, const ParamDictElement & paramToRead, OtdMaterialAreaDictByOtdType & dct_bytype)
 {
     OtdMaterialAreaDictByType dct = {}; // Основной словарь
     // Разбивка по отделочным слоям, вычисление площадей и добавление их в словарь по типам отделки
@@ -734,7 +783,7 @@ void OtdData_CalcForRoom (const ColumnFormatDict& columnFormat, const OtdRoom& o
     }
 }
 
-void OtdData_WriteToRoom (const ColumnFormatDict& columnFormat, const API_Guid& zone_guid, ParamDictElement& paramToWrite, const ParamDictElement& paramToRead, const OtdMaterialAreaDictByType& dct, const GS::HashTable<TypeOtd, GS::UniString>& paramnamebytype)
+void OtdData_WriteToRoom (const ColumnFormatDict & columnFormat, const API_Guid & zone_guid, ParamDictElement & paramToWrite, const ParamDictElement & paramToRead, const OtdMaterialAreaDictByType & dct, const GS::HashTable<TypeOtd, GS::UniString>&paramnamebytype)
 {
     // Мы получили словарь по типам отделки
     // Проблема в том, что для разных типов имя свойство может быть одно
@@ -853,10 +902,10 @@ void OtdData_WriteToRoom (const ColumnFormatDict& columnFormat, const API_Guid& 
     }
 }
 
-void OtdData_AddValueToDict (OtdMaterialAreaDictByType& dct, const TypeOtd& type, const GS::UniString& mat, const double& area)
+void OtdData_AddValueToDict (OtdMaterialAreaDictByType & dct, const TypeOtd & type, const GS::UniString & mat, const double& area)
 {
     if (area < 0.000001) return;
-    if (mat.Contains ("----")) return;
+    if (mat.Contains (IGNORENAME)) return;
     if (!dct.ContainsKey (type)) {
         OtdMaterialAreaDict dcta = {};
         dcta.Add (mat, area);
@@ -875,7 +924,7 @@ void OtdData_AddValueToDict (OtdMaterialAreaDictByType& dct, const TypeOtd& type
 // -----------------------------------------------------------------------------
 // Получение площади отделочной стены с учётом отверстий
 // -----------------------------------------------------------------------------
-double OtdWall_GetArea (const OtdWall& otdw)
+double OtdWall_GetArea (const OtdWall & otdw)
 {
     double dx = -otdw.endC.x + otdw.begC.x;
     double dy = -otdw.endC.y + otdw.begC.y;
@@ -908,7 +957,7 @@ double OtdWall_GetArea (const OtdWall& otdw)
 // -----------------------------------------------------------------------------
 // Получение информации из зоны о полгионах и находящейся в ней элементах
 // -----------------------------------------------------------------------------
-bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& roominfo, UnicElementByType& elementToRead, GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone)
+bool CollectRoomInfo (const Stories & storyLevels, const API_Guid & zoneGuid, OtdRoom & roominfo, UnicElementByType & elementToRead, GS::HashTable<API_Guid, GS::Array<API_Guid>>&slabsinzone)
 {
     SyncSettings syncSettings;
     syncSettings.wallS = true;
@@ -941,21 +990,6 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
         msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetMemo zone", err, zoneGuid);
         return false;
     }
-
-    //API_ElemInfo3D info3D = {};
-    //err = ACAPI_Element_Get3DInfo (zoneelement.header, &info3D);
-    //if (err == NoError) {
-    //    API_Component3D component;
-    //    BNClear (component);
-    //    component.header.typeID = API_BodyID;
-    //    component.header.index = info3D.fbody;
-    //    err = ACAPI_3D_GetComponent (&component);
-    //    if (err == NoError) {
-    //    }
-    //}
-
-
-
     GS::Array<Sector> walledges = {}; // Границы стен, не явяющихся границей зоны
     GS::Array<Sector> columnedges = {}; // Границы колонн, не явяющихся границей зоны
     GS::Array<Sector> restedges = {}; // Границы зоны
@@ -1078,7 +1112,7 @@ bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& r
 // -----------------------------------------------------------------------------
 // Чтение данных о проёме
 // -----------------------------------------------------------------------------
-void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
+void Opening_Create_One (const Stories & storyLevels, const API_Guid & elGuid, GS::HashTable<API_Guid, GS::Array<OtdOpening>>&openinginwall, UnicGUIDByType & guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -1126,7 +1160,7 @@ void Opening_Create_One (const Stories& storyLevels, const API_Guid& elGuid, GS:
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для стен
 // -----------------------------------------------------------------------------
-void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>& openinginwall, UnicGUIDByType& guidselementToRead)
+void OtdWall_Create_FromWall (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, GS::HashTable<API_Guid, GS::Array<OtdOpening>>&openinginwall, UnicGUIDByType & guidselementToRead)
 {
     GSErrCode err = NoError;
     API_Element element = {};
@@ -1313,7 +1347,7 @@ void OtdWall_Create_FromWall (const Stories& storyLevels, API_Guid& elGuid, GS::
     }
 }
 
-void Opening_Add_One (const OtdOpening& op, const bool& is_fliped, const double& zBottom, const double& tBeg, const double& tEnd, const double& wallLength, OtdWall& wallotd)
+void Opening_Add_One (const OtdOpening & op, const bool& is_fliped, const double& zBottom, const double& tBeg, const double& tEnd, const double& wallLength, OtdWall & wallotd)
 {
     // Проверяем - находится ли этот проём на заданном участке стены
     if (op.objLoc <= tEnd + op.width / 2 && op.objLoc >= tBeg - op.width / 2) {
@@ -1342,7 +1376,7 @@ void Opening_Add_One (const OtdOpening& op, const bool& is_fliped, const double&
     }
 }
 
-bool OtdWall_Add_One (const API_Guid& wallguid, const Sector& walledge, const bool& is_fliped, const double& height, const double& zBottom, const short& floorInd, const double& thickness, OtdWall& wallotd)
+bool OtdWall_Add_One (const API_Guid & wallguid, const Sector & walledge, const bool& is_fliped, const double& height, const double& zBottom, const short& floorInd, const double& thickness, OtdWall & wallotd)
 {
     double walledgedx = -walledge.c1.x + walledge.c2.x;
     double walledgedy = -walledge.c1.y + walledge.c2.y;
@@ -1364,7 +1398,7 @@ bool OtdWall_Add_One (const API_Guid& wallguid, const Sector& walledge, const bo
 // -----------------------------------------------------------------------------
 // Создание стен-отделок для колонны
 // -----------------------------------------------------------------------------
-void OtdWall_Create_FromColumn (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
+void OtdWall_Create_FromColumn (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead)
 {
     GSErrCode err;
     API_Element element = {};
@@ -1450,7 +1484,7 @@ void OtdWall_Create_FromColumn (const Stories& storyLevels, API_Guid& elGuid, GS
 // -----------------------------------------------------------------------------
 // Находит все перекрытия, котрые пересекают зону и не являются элементами отделки
 // -----------------------------------------------------------------------------
-void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, const UnicGuid& finclassguids, const GS::Array<API_Guid>& zones)
+void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>&slabsinzone, const UnicGuid & finclassguids, const GS::Array<API_Guid>&zones)
 {
     GS::Array<API_Guid> allslabs_ = {};
     GS::Array<API_Guid> allslabs = {};
@@ -1490,7 +1524,7 @@ void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone, c
 // -----------------------------------------------------------------------------
 // Обработка полов и потолков
 // -----------------------------------------------------------------------------
-void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Array<API_Guid>& zoneGuids, OtdRooms& roomsinfo, UnicGUIDByType& guidselementToRead)
+void Floor_FindInOneRoom (const Stories & storyLevels, API_Guid & elGuid, GS::Array<API_Guid>&zoneGuids, OtdRooms & roomsinfo, UnicGUIDByType & guidselementToRead)
 {
     GSErrCode err = NoError;
     API_Element element = {};
@@ -1526,7 +1560,7 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 // Обработка потолков и полов в зоне
 // -----------------------------------------------------------------------------
-void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo)
+void Floor_Create_All (const Stories & storyLevels, OtdRoom & roominfo)
 {
     if (!roominfo.has_floor && !roominfo.has_ceil) {
         roominfo.poly.poly.Clear ();
@@ -1564,7 +1598,7 @@ void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo)
     roominfo.poly.poly.Clear ();
 }
 
-void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, TypeOtd type, OtdMaterial& material, bool only_on_slab)
+void Floor_Create_One (const Stories & storyLevels, const short& floorInd, OtdSlab & poly, GS::Array<API_Guid>&slabGuids, GS::Array<OtdSlab>&otdslabs, GS::Array<OtdWall>&otdwall, TypeOtd type, OtdMaterial & material, bool only_on_slab)
 {
     Geometry::Polygon2D roompolygon = poly.poly;
     double area = 0;
@@ -1716,7 +1750,7 @@ void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSla
     }
 }
 
-void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams)
+void Param_ToParamDict (ParamDictValue & paramDict, ReadParams & zoneparams)
 {
     if (zoneparams.IsEmpty ()) return;
     for (auto& p : zoneparams) {
@@ -1782,7 +1816,7 @@ ReadParams Param_GetForWindowParams ()
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite)
+void Param_GetForBase (ParamDictValue & paramDict, ParamValue & param_composite)
 {
     // Поиск свойств со включением слоя отделки и имени
     GS::UniString propdesc_onoff = "some_stuff_layer_onoff";
@@ -2145,7 +2179,7 @@ ReadParams Param_GetForRooms ()
     return zoneparams;
 }
 
-void Param_Property_FindInParams (ReadParams& zoneparams)
+void Param_Property_FindInParams (ReadParams & zoneparams)
 {
     if (zoneparams.IsEmpty ()) return;
     if (!ParamHelpers::isPropertyDefinitionRead ()) return;
@@ -2190,7 +2224,7 @@ void Param_Property_FindInParams (ReadParams& zoneparams)
     }
 }
 
-bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams)
+bool Param_Property_Read (const API_Guid & elGuid, ParamDictElement & paramToRead, ReadParams & zoneparams)
 {
     if (zoneparams.IsEmpty ()) return false;
     GS::UniString param_name = "";
@@ -2224,7 +2258,7 @@ bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead,
     return flag;
 }
 
-void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict, ParamValueData& val)
+void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>&material_dict, ParamValueData & val)
 {
     API_AttrTypeID type = API_MaterialID;
     if (val.type == API_PropertyStringValueType) {
@@ -2251,7 +2285,7 @@ void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict,
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в зону
 // -----------------------------------------------------------------------------
-void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams)
+void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, OtdRoom & roominfo, ParamDictElement & paramToRead, ReadParams readparams)
 {
     API_Guid base_guid = roominfo.zone_guid;
     if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
@@ -2567,7 +2601,7 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, O
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, ParamValue& param_composite, GS::UniString& fav_name)
+bool Param_SetToBase (const API_Guid & base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>&otdcpmpoosite, ParamDictElement & paramToRead, ParamDictCompositeElement & paramCompositeToRead, ParamValue & param_composite, GS::UniString & fav_name)
 {
     if (!paramToRead.ContainsKey (base_guid)) {
         #if defined(TESTING)
@@ -2615,7 +2649,7 @@ bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::A
 // -----------------------------------------------------------------------------
 // Запись прочитанных свойств в отделочные стены
 // -----------------------------------------------------------------------------
-void Param_SetComposite (const ParamComposite& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin)
+void Param_SetComposite (const ParamComposite & base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>&otdcpmpoosite, GS::UniString & fav_name, bool has_fin)
 {
     Int32 ncomp = base_composite.composite.GetSize ();
     if (ncomp == 0) return;
@@ -2718,7 +2752,7 @@ void Param_SetComposite (const ParamComposite& base_composite, const bool& base_
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
 // -----------------------------------------------------------------------------
-void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadParams readparams, const OtdWall& otdw)
+void Param_SetToWindows (OtdOpening & op, ParamDictElement & paramToRead, ReadParams readparams, const OtdWall & otdw)
 {
     API_Guid base_guid = op.base_guid;
     if (!paramToRead.ContainsKey (base_guid)) {
@@ -2790,9 +2824,9 @@ void Param_SetToWindows (OtdOpening& op, ParamDictElement& paramToRead, ReadPara
 // Получение полигона зоны (в том числе стен, колонн)
 // -----------------------------------------------------------------------------
 #if defined(AC_27) || defined(AC_28) || defined(AC_29) 
-void RoomReductionPolyProc (const API_RoomReductionPolyType* roomRed)
+void RoomReductionPolyProc (const API_RoomReductionPolyType * roomRed)
 #else
-static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
+static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType * roomRed)
 #endif
 {
     if (reducededges == nullptr) {
@@ -2847,7 +2881,7 @@ static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType* roomRed)
 // -----------------------------------------------------------------------------
 // Получение очищенного полигона зоны, включая стены, колонны
 // -----------------------------------------------------------------------------
-void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges)
+void Edges_GetFromRoom (const API_ElementMemo & zonememo, API_Element & zoneelement, GS::Array<Sector>&walledges, GS::Array<Sector>&columnedges, GS::Array<Sector>&restedges, GS::Array<Sector>&gableedges)
 {
     RoomEdges rdges;
     reducededges = &rdges;
@@ -2911,7 +2945,7 @@ void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelemen
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
 // -----------------------------------------------------------------------------
-void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>& typeinzone)
+void ClearZoneGUID (UnicElementByType & elementToRead, GS::Array<API_ElemTypeID>&typeinzone)
 {
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (elementToRead.ContainsKey (typeelem)) {
@@ -2946,8 +2980,8 @@ void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>&
 // -----------------------------------------------------------------------------
 // Создание стенок для откосов одного проёма
 // -----------------------------------------------------------------------------
-void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otdw, OtdOpening& op, const Geometry::Vector2<double>& walldir_perp, GS::Array<OtdWall>& opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
-        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
+void OpeningReveals_Create_One (GS::Array<OtdSlab>&otdslabs, const OtdWall & otdw, OtdOpening & op, const Geometry::Vector2<double>&walldir_perp, GS::Array<OtdWall>&opw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial & om_main, OtdMaterial & om_up, OtdMaterial & om_down,
+        OtdMaterial & om_reveals, OtdMaterial & om_column, OtdMaterial & om_floor, OtdMaterial & om_ceil, OtdMaterial & om_zone)
 {
     if (op.base_reveal_width < min_dim) return;
     bool is_upper_wall = false; // Проём заканчивается выше стены, построение верхнего откоса не требуется
@@ -3039,8 +3073,8 @@ void OpeningReveals_Create_One (GS::Array<OtdSlab>& otdslabs, const OtdWall& otd
 // -----------------------------------------------------------------------------
 // Разбивка созданных стен по высотам на основании информации из зоны
 // -----------------------------------------------------------------------------
-void OtdWall_Delim_All (GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
-        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
+void OtdWall_Delim_All (GS::Array<OtdWall>&opw, OtdWall & otdw, double& otd_zBottom, double& otd_height_down, double& otd_height_main, double& otd_height_up, double& otd_height, OtdMaterial & om_main, OtdMaterial & om_up, OtdMaterial & om_down,
+        OtdMaterial & om_reveals, OtdMaterial & om_column, OtdMaterial & om_floor, OtdMaterial & om_ceil, OtdMaterial & om_zone)
 {
     TypeOtd type = otdw.type;
     bool has_delim = false; // Найдена разбивка
@@ -3095,8 +3129,8 @@ void OtdWall_Delim_All (GS::Array<OtdWall>& opw, OtdWall& otdw, double& otd_zBot
 // Удаляет отверстия, не попадающие в диапазон
 // Подгоняет размер отверсий
 // -----------------------------------------------------------------------------
-bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, double zBottom, TypeOtd& type, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
-        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
+bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>&opw, double height, double zBottom, TypeOtd & type, OtdMaterial & om_main, OtdMaterial & om_up, OtdMaterial & om_down,
+        OtdMaterial & om_reveals, OtdMaterial & om_column, OtdMaterial & om_floor, OtdMaterial & om_ceil, OtdMaterial & om_zone)
 {
     if (height < min_dim || is_equal (height, 0)) {
         return false;
@@ -3148,8 +3182,8 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
     return true;
 }
 
-void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up, OtdMaterial& om_down,
-        OtdMaterial& om_reveals, OtdMaterial& om_column, OtdMaterial& om_floor, OtdMaterial& om_ceil, OtdMaterial& om_zone)
+void SetMaterialByType (OtdWall & otdw, OtdMaterial & om_main, OtdMaterial & om_up, OtdMaterial & om_down,
+        OtdMaterial & om_reveals, OtdMaterial & om_column, OtdMaterial & om_floor, OtdMaterial & om_ceil, OtdMaterial & om_zone)
 {
     OtdMaterial material = {};
     // Проверим существование свойств для записи, при необходимости - поменяем тип отделки
@@ -3238,7 +3272,7 @@ void SetMaterialByType (OtdWall& otdw, OtdMaterial& om_main, OtdMaterial& om_up,
 }
 
 
-void SetMaterialFinish_ByComposite (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
+void SetMaterialFinish_ByComposite (OtdMaterial & material, GS::Array<ParamValueComposite>&base_composite)
 {
     // Проверим последний слой - а нужна ли вообще отделка?
     if (base_composite.IsEmpty ()) return;
@@ -3248,7 +3282,7 @@ void SetMaterialFinish_ByComposite (OtdMaterial& material, GS::Array<ParamValueC
     material.material = (short) last.length;
 }
 
-void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& base_composite)
+void SetMaterialFinish (OtdMaterial & material, GS::Array<ParamValueComposite>&base_composite)
 {
     SetMaterialFinish_ByComposite (material, base_composite);
     ParamValueComposite p = {};
@@ -3261,7 +3295,7 @@ void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& b
     if (part.Contains ("fin_ignore")) {
         return;
     }
-    if (part.Contains ("----")) {
+    if (part.Contains (IGNORENAME)) {
         return;
     }
     part.Trim ();
@@ -3278,7 +3312,7 @@ void SetMaterialFinish (OtdMaterial& material, GS::Array<ParamValueComposite>& b
     base_composite.Push (p);
 }
 
-bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
+bool Edge_FindOnEdge (Sector & edge, GS::Array<Sector>&edges, Sector & findedge)
 {
     double dx; double dy; double dr;
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
@@ -3306,7 +3340,7 @@ bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge)
 // Проверка наличия отрезка в массиве отрезков.
 // В случае нахождение проверяется направление, при необходимости разворачивается
 // -----------------------------------------------------------------------------
-bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges)
+bool Edge_FindEdge (Sector & edge, GS::Array<Sector>&edges)
 {
     for (UInt32 i = 0; i < edges.GetSize (); i++) {
         if (edges[i].c1.IsNear (edge.c1, min_dim) && edges[i].c2.IsNear (edge.c2, min_dim)) {
@@ -3324,7 +3358,7 @@ bool Edge_FindEdge (Sector& edge, GS::Array<Sector>& edges)
 // -----------------------------------------------------------------------------
 // Создание элементов отделки
 // -----------------------------------------------------------------------------
-void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElementByType& subelementByparent, ClassificationFunc::ClassificationDict& finclass, GS::Array<API_Guid>& deletelist)
+void Draw_Elements (const Stories & storyLevels, OtdRooms & zoneelements, UnicElementByType & subelementByparent, ClassificationFunc::ClassificationDict & finclass, GS::Array<API_Guid>&deletelist)
 {
     #if defined(TESTING)
     DBprnt ("Draw_Elements", "start");
@@ -3435,7 +3469,7 @@ void Draw_Elements (const Stories& storyLevels, OtdRooms& zoneelements, UnicElem
 // -----------------------------------------------------------------------------
 // Построение отделочных стен (общая)
 // -----------------------------------------------------------------------------
-void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, UnicElementByType& subelementByparent)
+void OtdWall_Draw (const Stories & storyLevels, OtdWall & edges, UnicElementByType & subelementByparent)
 {
     if (edges.height < min_dim) return;
     double dx = -edges.endC.x + edges.begC.x;
@@ -3459,7 +3493,7 @@ void OtdWall_Draw (const Stories& storyLevels, OtdWall& edges, UnicElementByType
     Param_AddUnicElementByType (edges.base_guid, edges.otd_guid, API_WallID, subelementByparent); // Привязка отделочной стены к базовой
 }
 
-void OtdBeam_Draw_Beam (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges)
+void OtdBeam_Draw_Beam (const GS::UniString & favorite_name, const Stories & storyLevels, OtdWall & edges)
 {
     GSErrCode err = NoError;
     API_Element beamelement;
@@ -3501,7 +3535,7 @@ void OtdBeam_Draw_Beam (const GS::UniString& favorite_name, const Stories& story
     edges.otd_guid = beamelement.header.guid;
 }
 
-bool OtdBeam_GetDefult_Beam (const GS::UniString& favorite_name, API_Element& beamelement, API_ElementMemo& beammemo)
+bool OtdBeam_GetDefult_Beam (const GS::UniString & favorite_name, API_Element & beamelement, API_ElementMemo & beammemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&beamelement, sizeof (API_Element));
@@ -3518,7 +3552,7 @@ bool OtdBeam_GetDefult_Beam (const GS::UniString& favorite_name, API_Element& be
     return true;
 }
 
-void OtdBeam_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges)
+void OtdBeam_Draw_Object (const GS::UniString & favorite_name, const Stories & storyLevels, OtdWall & edges)
 {
     //API_Element beamelement;
     //API_ElementMemo beammemo;
@@ -3530,7 +3564,7 @@ void OtdBeam_Draw_Object (const GS::UniString& favorite_name, const Stories& sto
     //ACAPI_DisposeElemMemoHdls (&beammemo);
 }
 
-bool OtdBeam_GetDefult_Object (const GS::UniString& favorite_name, API_Element& beamelement, API_ElementMemo& beammemo)
+bool OtdBeam_GetDefult_Object (const GS::UniString & favorite_name, API_Element & beamelement, API_ElementMemo & beammemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&beammemo, sizeof (API_ElementMemo));
@@ -3556,7 +3590,7 @@ bool OtdBeam_GetDefult_Object (const GS::UniString& favorite_name, API_Element& 
 // -----------------------------------------------------------------------------
 // Построение отделочных стен аксессуаром
 // -----------------------------------------------------------------------------
-void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges)
+void OtdWall_Draw_Object (const GS::UniString & favorite_name, const Stories & storyLevels, OtdWall & edges)
 {
     GSErrCode err = NoError;
     API_Element wallobjelement;
@@ -3667,7 +3701,7 @@ void OtdWall_Draw_Object (const GS::UniString& favorite_name, const Stories& sto
 // -----------------------------------------------------------------------------
 // Получение из избранного аксессуара стены для простроения 
 // -----------------------------------------------------------------------------
-bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& wallobjelement, API_ElementMemo& wallobjmemo)
+bool OtdWall_GetDefult_Object (const GS::UniString & favorite_name, API_Element & wallobjelement, API_ElementMemo & wallobjmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&wallobjmemo, sizeof (API_ElementMemo));
@@ -3692,7 +3726,7 @@ bool OtdWall_GetDefult_Object (const GS::UniString& favorite_name, API_Element& 
 // -----------------------------------------------------------------------------
 // Построение отделочных стен стандартной стеной
 // -----------------------------------------------------------------------------
-void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& storyLevels, OtdWall& edges, UnicElementByType& subelementByparent)
+void OtdWall_Draw_Wall (const GS::UniString & favorite_name, const Stories & storyLevels, OtdWall & edges, UnicElementByType & subelementByparent)
 {
     GSErrCode err = NoError;
     API_Element wallelement;
@@ -3740,7 +3774,7 @@ void OtdWall_Draw_Wall (const GS::UniString& favorite_name, const Stories& story
 // -----------------------------------------------------------------------------
 // Получение из избранного стены для простроения 
 // -----------------------------------------------------------------------------
-bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wallelement)
+bool OtdWall_GetDefult_Wall (const GS::UniString & favorite_name, API_Element & wallelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&wallelement, sizeof (API_Element));
@@ -3769,7 +3803,7 @@ bool OtdWall_GetDefult_Wall (const GS::UniString& favorite_name, API_Element& wa
 // -----------------------------------------------------------------------------
 // Построение проёмов в отделочных стенах 
 // -----------------------------------------------------------------------------
-void Opening_Draw (API_Element& wallelement, OtdOpening& op, UnicElementByType& subelementByparent, const double& zBottom)
+void Opening_Draw (API_Element & wallelement, OtdOpening & op, UnicElementByType & subelementByparent, const double& zBottom)
 {
     GSErrCode err = NoError;
     API_Element windowelement;
@@ -3819,7 +3853,7 @@ void Opening_Draw (API_Element& wallelement, OtdOpening& op, UnicElementByType& 
 // -----------------------------------------------------------------------------
 // Получение настроек проёмов в отделочных стенах 
 // -----------------------------------------------------------------------------
-bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowelement, API_ElementMemo& windowmemo)
+bool Opening_GetDefult (const GS::UniString & favorite_name, API_Element & windowelement, API_ElementMemo & windowmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&windowmemo, sizeof (API_ElementMemo));
@@ -3839,7 +3873,7 @@ bool Opening_GetDefult (const GS::UniString& favorite_name, API_Element& windowe
 // -----------------------------------------------------------------------------
 // Построение потолка/пола (общая)
 // -----------------------------------------------------------------------------
-void Floor_Draw (const Stories& storyLevels, OtdSlab& otdslab, UnicElementByType& subelementByparent)
+void Floor_Draw (const Stories & storyLevels, OtdSlab & otdslab, UnicElementByType & subelementByparent)
 {
     // Провери тип существующего элемента
     API_ElemTypeID type = otdslab.favorite.type;
@@ -3868,7 +3902,7 @@ void Floor_Draw (const Stories& storyLevels, OtdSlab& otdslab, UnicElementByType
     Param_AddUnicElementByType (otdslab.base_guid, otdslab.otd_guid, API_SlabID, subelementByparent); // Привязка отделочного перекрытия к базовому
 }
 
-void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab)
+void Floor_Draw_Slab (const GS::UniString & favorite_name, const Stories & storyLevels, OtdSlab & otdslab)
 {
     GSErrCode err = NoError;
     if (otdslab.poly.CalcArea () < 0.0001) return;
@@ -3959,7 +3993,7 @@ void Floor_Draw_Slab (const GS::UniString& favorite_name, const Stories& storyLe
     return;
 }
 
-void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& storyLevels, OtdSlab& otdslab)
+void Floor_Draw_Object (const GS::UniString & favorite_name, const Stories & storyLevels, OtdSlab & otdslab)
 {
     GSErrCode err = NoError;
     API_Element slabobjelement = {};
@@ -4070,7 +4104,7 @@ void Floor_Draw_Object (const GS::UniString& favorite_name, const Stories& story
     }
 }
 
-bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& slabobjelement, API_ElementMemo& slabobjmemo)
+bool Floor_GetDefult_Object (const GS::UniString & favorite_name, API_Element & slabobjelement, API_ElementMemo & slabobjmemo)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&slabobjmemo, sizeof (API_ElementMemo));
@@ -4092,7 +4126,7 @@ bool Floor_GetDefult_Object (const GS::UniString& favorite_name, API_Element& sl
     return true;
 }
 
-bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slabelement)
+bool Floor_GetDefult_Slab (const GS::UniString & favorite_name, API_Element & slabelement)
 {
     GSErrCode err = NoError;
     BNZeroMemory (&slabelement, sizeof (API_Element));
@@ -4119,7 +4153,7 @@ bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slab
 // -----------------------------------------------------------------------------
 // Назначение класса стене
 // -----------------------------------------------------------------------------
-void Class_SetClass (const OtdWall& op, const ClassificationFunc::ClassificationDict& finclass)
+void Class_SetClass (const OtdWall & op, const ClassificationFunc::ClassificationDict & finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (op.type, finclass);
@@ -4129,7 +4163,7 @@ void Class_SetClass (const OtdWall& op, const ClassificationFunc::Classification
 // -----------------------------------------------------------------------------
 // Назначение класса проёму
 // -----------------------------------------------------------------------------
-void Class_SetClass (const OtdOpening& op, const ClassificationFunc::ClassificationDict& finclass)
+void Class_SetClass (const OtdOpening & op, const ClassificationFunc::ClassificationDict & finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (NoSet, finclass);
@@ -4140,14 +4174,14 @@ void Class_SetClass (const OtdOpening& op, const ClassificationFunc::Classificat
 // -----------------------------------------------------------------------------
 // Назначение класса полу/потолку
 // -----------------------------------------------------------------------------
-void Class_SetClass (const OtdSlab& op, const ClassificationFunc::ClassificationDict& finclass)
+void Class_SetClass (const OtdSlab & op, const ClassificationFunc::ClassificationDict & finclass)
 {
     if (op.otd_guid == APINULLGuid) return;
     API_Guid class_guid = Class_GetClassGuid (op.type, finclass);
     if (class_guid != APINULLGuid) ACAPI_Element_AddClassificationItem (op.otd_guid, class_guid);
 }
 
-API_Guid Class_GetClassGuid (const TypeOtd& type, const ClassificationFunc::ClassificationDict& finclass)
+API_Guid Class_GetClassGuid (const TypeOtd & type, const ClassificationFunc::ClassificationDict & finclass)
 {
     if (type == Column && finclass.ContainsKey (cls.column_class)) return finclass.Get (cls.column_class).item.guid;
     if ((type == Reveal_Main || type == Reveal_Up || type == Reveal_Down) && finclass.ContainsKey (cls.reveal_class)) return finclass.Get (cls.reveal_class).item.guid;
@@ -4159,15 +4193,15 @@ API_Guid Class_GetClassGuid (const TypeOtd& type, const ClassificationFunc::Clas
     return APINULLGuid;
 }
 
-TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::ClassificationDict& finclass)
+TypeOtd Class_GetOtdTypeByClass (const API_Guid & classguid, const ClassificationFunc::ClassificationDict & finclass)
 {
-    for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationValues>::PairIterator cIt = finclass.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationValues>::ConstPairIterator cIt = finclass.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         GS::UniString name = cIt->key;
-        ClassificationFunc::ClassificationValues& cl = cIt->value;
+        const ClassificationFunc::ClassificationValues& cl = cIt->value;
         #else
         GS::UniString name = *cIt->key;
-        ClassificationFunc::ClassificationValues& cl = *cIt->value;
+        const ClassificationFunc::ClassificationValues& cl = *cIt->value;
         #endif
         if (cl.item.guid != classguid) continue;
         if (name == cls.all_class) {
@@ -4199,7 +4233,7 @@ TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
 // -----------------------------------------------------------------------------
-void Class_FindFinClass (ClassificationFunc::ClassificationDict& findict, UnicGuid& finclassguids)
+void Class_FindFinClass (ClassificationFunc::ClassificationDict & findict, UnicGuid & finclassguids)
 {
     if (!ClassificationFunc::ReadSystemDict ()) return;
     ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
@@ -4257,10 +4291,10 @@ void Class_FindFinClass (ClassificationFunc::ClassificationDict& findict, UnicGu
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
-void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& paramToWrite)
+void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictElement & paramToWrite)
 {
     API_Elem_Head parentelementhead = {};
-    GS::Array<API_ElemTypeID> typeinzone;
+    GS::Array<API_ElemTypeID> typeinzone = {};
     UnicGuid syncguidsdict;
     // Типы родительских элементов
     typeinzone.Push (API_ZoneID);
@@ -4272,41 +4306,36 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
     GS::Array<API_Guid> syncguids;
     GS::UniString funcname = "Create link with base element";
     for (const API_ElemTypeID& typeelem : typeinzone) {
-        if (subelementByparent.ContainsKey (typeelem)) {
-            for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                API_Guid guid = cIt->key;
-                GS::Array<API_Guid> subguids = cIt->value;
-                #else
-                API_Guid guid = *cIt->key;
-                GS::Array<API_Guid> subguids = *cIt->value;
-                #endif
+        if (!subelementByparent.ContainsKey (typeelem)) continue;
+        for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
+            #if defined(AC_28) || defined(AC_29)
+            API_Guid guid = cIt->key;
+            GS::Array<API_Guid> subguids = cIt->value;
+            #else
+            API_Guid guid = *cIt->key;
+            GS::Array<API_Guid> subguids = *cIt->value;
+            #endif
 
-                nPhase += 1;
-                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-                ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-                if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
-                #else
-                ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-                if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
-                #endif
+            nPhase += 1;
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+            ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
+            if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
+            #else
+            ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
+            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
+            #endif
 
-                parentelementhead.guid = guid;
-                if (typeelem == API_ZoneID) {
-                    suffix = "zone";
-                } else {
-                    suffix = "base element";
-                }
-                if (SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false)) {
-                    //if (!syncguidsdict.ContainsKey (guid)) {
-                    //    syncguidsdict.Add (guid, true);
-                    //    syncguids.Push (guid);
-                    //}
-                    for (const auto& g : subguids) {
-                        if (!syncguidsdict.ContainsKey (g)) {
-                            syncguidsdict.Add (g, true);
-                            syncguids.Push (g);
-                        }
+            parentelementhead.guid = guid;
+            if (typeelem == API_ZoneID) {
+                suffix = "zone";
+            } else {
+                suffix = "base element";
+            }
+            if (SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false)) {
+                for (const auto& g : subguids) {
+                    if (!syncguidsdict.ContainsKey (g)) {
+                        syncguidsdict.Add (g, true);
+                        syncguids.Push (g);
                     }
                 }
             }
@@ -4359,7 +4388,7 @@ void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& pa
 }
 
 
-bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids, API_Guid& classguid)
+bool Class_IsElementFinClass (const API_Guid & elGuid, const UnicGuid & finclassguids, API_Guid & classguid)
 {
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
     if (ACAPI_Element_GetClassificationItems (elGuid, systemItemPairs) == NoError) {
@@ -4375,7 +4404,7 @@ bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassgu
     return false;
 }
 
-void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& guid, API_ElemTypeID elemtype, UnicElementByType& elementToRead)
+void Param_AddUnicElementByType (const API_Guid & parentguid, const API_Guid & guid, API_ElemTypeID elemtype, UnicElementByType & elementToRead)
 {
     if (parentguid == APINULLGuid) return;
     if (guid == APINULLGuid) return;
@@ -4394,7 +4423,7 @@ void Param_AddUnicElementByType (const API_Guid& parentguid, const API_Guid& gui
     }
 }
 
-void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, UnicGUIDByType& guidselementToRead)
+void Param_AddUnicGUIDByType (const API_Guid & elGuid, API_ElemTypeID elemtype, UnicGUIDByType & guidselementToRead)
 {
     if (elGuid == APINULLGuid) return;
     if (guidselementToRead.ContainsKey (elemtype)) {
@@ -4406,7 +4435,7 @@ void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, U
     }
 }
 
-API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name)
+API_ElemTypeID Favorite_GetType (const GS::UniString & favorite_name)
 {
     GSErrCode err = NoError;
     #ifdef AC_22
@@ -4471,7 +4500,7 @@ MatarialToFavoriteDict Favorite_GetDict ()
     return favdict;
 }
 
-void Favorite_ReadComposite (const ParamValue& param_composite, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, const GS::UniString& fav_name)
+void Favorite_ReadComposite (const ParamValue & param_composite, MatarialToFavoriteDict & favdict, ParamDictValue & paramToRead_favorite, const GS::UniString & fav_name)
 {
     if (!favdict.ContainsKey (fav_name)) return;
     if (favdict.Get (fav_name).is_composite_read) return;
@@ -4492,7 +4521,7 @@ void Favorite_ReadComposite (const ParamValue& param_composite, MatarialToFavori
     return;
 }
 
-void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, ParamValue& param_composite)
+void Favorite_FindName (MatarialToFavorite & favorite, const OtdMaterial & material, const TypeOtd & type, const API_ElemTypeID & draw_type, MatarialToFavoriteDict & favdict, ParamDictValue & paramToRead_favorite, ParamValue & param_composite)
 {
     API_ElemTypeID possibly_type = draw_type;
     GS::UniString fav_name = favorite.name;
@@ -4577,7 +4606,7 @@ void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& materia
     return;
 }
 
-bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element)
+bool Favorite_GetByName (const GS::UniString & favorite_name, API_Element & element)
 {
     GSErrCode err = NoError;
     #ifdef AC_22
@@ -4595,7 +4624,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     #endif
 }
 
-bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
+bool Favorite_GetByName (const GS::UniString & favorite_name, API_Element & element, API_ElementMemo & memo)
 {
     GSErrCode err = NoError;
     #ifdef AC_22
@@ -4617,7 +4646,7 @@ bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& elemen
     #endif
 }
 
-bool Check (const ClassificationFunc::ClassificationDict& finclass, UnicGuid& finclassguids)
+bool Check (const ClassificationFunc::ClassificationDict & finclass, UnicGuid & finclassguids)
 {
     // Проверка наличия классов
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();

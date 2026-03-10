@@ -4271,10 +4271,11 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         #else
         ParamValue& param = *cIt->value;
         #endif
-        if (param.isValid && param.val.canCalculate && !param.val.hasFormula) {
+        if (!param.isValid) continue;
+        if (param.val.canCalculate && !param.val.hasFormula) {
             ParamHelpers::ConvertByFormatString (param);
         }
-        if (param.fromPropertyDefinition && param.isValid) {
+        if (param.fromPropertyDefinition) {
             if (param.definition.description.Contains ("Sync_to{Attribute:Layer}")) {
                 GS::UniString key = "{@attrib:layer_name_" + param.val.uniStringValue.ToLowerCase () + BRACEEND;
                 ParamValue chacheval = {};
@@ -4287,7 +4288,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 param.fromAttribElement = true;
             }
         }
-        if (param.isValid && param.toQRCode) {
+        if (param.toQRCode) {
             GS::UniString qr = TextToQRCode (param.val.uniStringValue);
             param.val.uniStringValue = qr;
         }
@@ -5741,7 +5742,37 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
     ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, needReadQuantities);
     bool flag_add = false;
     if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, paramcomposite);
+    GS::UniString layers_inv = "{@material:layers_inv";
+    GS::UniString layers_auto = "{@material:layers_auto";
+    GS::UniString nosyncname = "{@property:nosyncname}";
 
+    GS::UniString layer_thickness = "{@material:layer thickness}";
+    bool has_layer_thickness = params.ContainsKey (layer_thickness);
+    GS::UniString layer_minthickness = "{@material:layer min thickness}";
+    bool has_layer_minthickness = params.ContainsKey (layer_minthickness);
+    GS::UniString area = "{@material:area}";
+    bool has_area = params.ContainsKey (area);
+    GS::UniString area_section = "{@material:area_section}";
+    bool has_area_section = params.ContainsKey (area_section);
+    GS::UniString width = "{@material:width}";
+    bool has_width = params.ContainsKey (width);
+    GS::UniString length = "{@material:length}";
+    bool has_length = params.ContainsKey (length);
+    GS::UniString volume = "{@material:volume}";
+    bool has_volume = params.ContainsKey (volume);
+    GS::UniString qty = "{@material:qty}";
+    bool has_qty = params.ContainsKey (qty);
+    GS::UniString unit_prefix = "{@material:unit_prefix}";
+    bool has_unit_prefix = params.ContainsKey (unit_prefix);
+    GS::UniString unit = "{@material:unit}";
+    GS::UniString n_ = "{@material:n}";
+    bool has_n = params.ContainsKey (n_);
+    if (!has_n) ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "n", "");
+    has_n = params.ContainsKey (n_);
+    GS::UniString ns_ = "{@material:ns}";
+    bool has_ns = params.ContainsKey (ns_);
+    if (!has_ns) ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", "");
+    has_ns = params.ContainsKey (ns_);
     // Если есть строка-шаблон - заполним её
     for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
@@ -5755,16 +5786,25 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
         GS::UniString outstring = "";
         GS::UniString stringformat = "";
         if (param_composite.templatestring.Contains (BRACESTART)) {
-            bool inverse = rawName.Contains ("{@material:layers_inv");
-            if (rawName.Contains ("{@material:layers_auto")) {
+            bool inverse = rawName.Contains (layers_inv);
+            if (rawName.Contains (layers_auto)) {
                 if (param_composite.composite_type != API_ProfileStructure) {
                     if (param_composite.eltype == API_WallID) inverse = true;
                 }
             }
+            // Если строка-шаблон содержит указание nosyncname - то применять спецтекст не нужно
             bool ignore_sync = false;
-            if (param_composite.templatestring.Contains ("{@property:nosyncname}")) {
-                param_composite.templatestring.ReplaceAll ("{@property:nosyncname}", EMPTYSTRING);
+            if (param_composite.templatestring.Contains (nosyncname)) {
+                param_composite.templatestring.ReplaceAll (nosyncname, EMPTYSTRING);
                 ignore_sync = true;
+            } else {
+                if (param_composite.templatestring.IsEqual (qty)) {
+                    ignore_sync = true;
+                } else {
+                    if (param_composite.templatestring.IsEqual (unit)) {
+                        ignore_sync = true;
+                    }
+                }
             }
             if (param_composite.composite_pen == -2) ParamHelpers::ComponentsGetUnic (param_composite.composite);
             Int32 nlayers = param_composite.composite.GetSize ();
@@ -5810,9 +5850,8 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     }
                 }
                 // Если нужно заполнить толщину
-                GS::UniString layer_thickness = "{@material:layer thickness}";
                 GS::UniString defult_formatstring = DEFULTLEGHTFSTRING;
-                if (params.ContainsKey (layer_thickness)) {
+                if (has_layer_thickness) {
                     double fillThick = param_composite.composite[indx].fillThick;
                     ParamValue& pp = params.Get (layer_thickness);
                     FormatString formatsting = pp.val.formatstring;
@@ -5826,11 +5865,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     pp.val.type = API_PropertyRealValueType;
                     pp.isValid = true;
                 }
-                layer_thickness = "{@material:layer min thickness}";
-                if (params.ContainsKey (layer_thickness)) {
+                if (has_layer_minthickness) {
                     if (!is_equal (param_composite.composite[indx].fillThick_min, -1.0) && !is_equal (param_composite.composite[indx].fillThick_min, param_composite.composite[indx].fillThick)) {
                         double fillThick = param_composite.composite[indx].fillThick_min;
-                        ParamValue& pp = params.Get (layer_thickness);
+                        ParamValue& pp = params.Get (layer_minthickness);
                         FormatString formatsting = pp.val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5844,10 +5882,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     }
                 }
                 if (param_composite.composite_pen < 0) {
-                    layer_thickness = "{@material:area}"; defult_formatstring = "2m";
-                    if (params.ContainsKey (layer_thickness)) {
+                    if (has_area) {
+                        defult_formatstring = "2m";
                         double val = param_composite.composite[indx].area;
-                        ParamValue& pp = params.Get (layer_thickness);
+                        ParamValue& pp = params.Get (area);
                         FormatString formatsting = pp.val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5859,10 +5897,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         pp.val.type = API_PropertyRealValueType;
                         pp.isValid = true;
                     }
-                    layer_thickness = "{@material:area_section}"; defult_formatstring = "2m";
-                    if (params.ContainsKey (layer_thickness)) {
+                    if (has_area_section) {
+                        defult_formatstring = "2m";
                         double val = param_composite.composite[indx].area_fill;
-                        ParamValue& pp = params.Get (layer_thickness);
+                        ParamValue& pp = params.Get (area_section);
                         FormatString formatsting = pp.val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5874,10 +5912,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         pp.val.type = API_PropertyRealValueType;
                         pp.isValid = true;
                     }
-                    layer_thickness = "{@material:width}"; defult_formatstring = "0mm";
-                    if (params.ContainsKey (layer_thickness)) {
+                    if (has_width) {
+                        defult_formatstring = "0mm";
                         double val = param_composite.composite[indx].width;
-                        ParamValue& pp = params.Get (layer_thickness);
+                        ParamValue& pp = params.Get (width);
                         FormatString formatsting = pp.val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5889,10 +5927,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         pp.val.type = API_PropertyRealValueType;
                         pp.isValid = true;
                     }
-                    layer_thickness = "{@material:length}"; defult_formatstring = "0mm";
-                    if (params.ContainsKey (layer_thickness)) {
+                    if (has_length) {
+                        defult_formatstring = "0mm";
                         double val = param_composite.composite[indx].length;
-                        ParamValue& pp = params.Get (layer_thickness);
+                        ParamValue& pp = params.Get (length);
                         FormatString formatsting = pp.val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5904,10 +5942,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         pp.val.type = API_PropertyRealValueType;
                         pp.isValid = true;
                     }
-                    layer_thickness = "{@material:volume}"; defult_formatstring = "2m";
-                    if (params.ContainsKey (layer_thickness)) {
+                    if (has_volume) {
+                        defult_formatstring = "2m";
                         double val = param_composite.composite[indx].volume;
-                        ParamValue& pp = params.Get (layer_thickness);
+                        ParamValue& pp = params.Get (volume);
                         FormatString formatsting = pp.val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5919,10 +5957,10 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         pp.val.type = API_PropertyRealValueType;
                         pp.isValid = true;
                     }
-                    layer_thickness = "{@material:qty}"; defult_formatstring = "2m";
-                    if (params.ContainsKey (layer_thickness)) {
+                    if (has_qty) {
+                        defult_formatstring = "2m";
                         double val = param_composite.composite[indx].qty;
-                        ParamValue& pp = params.Get (layer_thickness);
+                        ParamValue& pp = params.Get (qty);
                         FormatString formatsting = pp.val.formatstring;
                         if (formatsting.isEmpty) {
                             formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
@@ -5934,9 +5972,9 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                         pp.val.type = API_PropertyRealValueType;
                         pp.isValid = true;
                     }
-                    layer_thickness = "{@material:unit_prefix}"; defult_formatstring = "2m";
-                    if (params.ContainsKey (layer_thickness)) {
-                        ParamValue& pp = params.Get (layer_thickness);
+                    if (has_unit_prefix) {
+                        defult_formatstring = "2m";
+                        ParamValue& pp = params.Get (unit_prefix);
                         GS::UniString val = ParamHelpers::GetUnitsPrefix (param_composite.composite[indx].unit);
                         pp.val.uniStringValue = val;
                         pp.val.type = API_PropertyStringValueType;
@@ -5944,34 +5982,28 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     }
                 }
                 GS::UniString n_txt = GS::UniString::Printf ("%d", i + 1);
-                templatestring.ReplaceAll ("{@material:n}", n_txt);
-
-                layer_thickness = "{@material:n}"; defult_formatstring = DEFULTINTFSTRING;
-                if (params.ContainsKey (layer_thickness)) {
-                    ParamValue& pp = params.Get (layer_thickness);
+                templatestring.ReplaceAll (n_, n_txt);
+                if (has_n) {
+                    defult_formatstring = DEFULTINTFSTRING;
+                    ParamValue& pp = params.Get (n_);
                     pp.val.uniStringValue = n_txt;
                     pp.val.intValue = i + 1;
                     pp.val.doubleValue = i + 1;
                     pp.val.rawDoubleValue = i + 1;
                     pp.val.type = API_PropertyStringValueType;
                     pp.isValid = true;
-                } else {
-                    ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "n", n_txt);
                 }
-
                 n_txt = GS::UniString::Printf ("%d", ns + 1);
-                templatestring.ReplaceAll ("{@material:ns}", n_txt);
-                layer_thickness = "{@material:ns}"; defult_formatstring = DEFULTINTFSTRING;
-                if (params.ContainsKey (layer_thickness)) {
-                    ParamValue& pp = params.Get (layer_thickness);
+                templatestring.ReplaceAll (ns_, n_txt);
+                if (has_ns) {
+                    defult_formatstring = DEFULTINTFSTRING;
+                    ParamValue& pp = params.Get (ns_);
                     pp.val.uniStringValue = n_txt;
                     pp.val.intValue = i + 1;
                     pp.val.doubleValue = i + 1;
                     pp.val.rawDoubleValue = i + 1;
                     pp.val.type = API_PropertyStringValueType;
                     pp.isValid = true;
-                } else {
-                    ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", n_txt);
                 }
                 templatestring.ReplaceAll (BRACEEND, attribsuffix);
                 if (ParamHelpers::ReplaceParamInExpression (params, templatestring)) {
