@@ -1,13 +1,29 @@
 //------------ kuvbur 2022 ------------
 #ifndef AC_22
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
-#include	"Helpers.hpp"
-#include	"Propertycache.hpp"
-#include	"ReNum.hpp"
-#include	"Sync.hpp"
-#include	<map>
-#include	<unordered_map>
+#include "ACAPinc.h"
+#include "CommonFunction.hpp"
+#include "Helpers.hpp"
+#include "Propertycache.hpp"
+#include "ReNum.hpp"
+#include "ResourceIds.hpp"
+#include "Sync.hpp"
+#include "SyncSettings.hpp"
+#include <API_Guid.hpp>
+#include <APIdefs_Elements.h>
+#include <APIdefs_Environment.h>
+#include <APIdefs_ErrorCodes.h>
+#include <APIdefs_Interface.h>
+#include <APIdefs_Properties.h>
+#include <Array.hpp>
+#include <CH.hpp>
+#include <ctime>
+#include <Definitions.hpp>
+#include <HashTable.hpp>
+#include <map>
+#include <RS.hpp>
+#include <string>
+#include <UniString.hpp>
+#include <unordered_map>
 // -----------------------------------------------------------------------------------------------------------------------
 // 1. Получаем список объектов, в свойствах которых ищем
 //		Флаг включения нумерации в формате
@@ -144,7 +160,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
         #endif
         if (!hasDef) continue;
-        ReNum_GetElement (guidArray[i], paramToReadelem, rules, error_propertyname);
+        ReNum_GetElement (guidArray[i], paramToReadelem, rules, error_propertyname, definitions);
     }
     if (!error_propertyname.IsEmpty ()) {
         GS::UniString out = ":\n";
@@ -231,19 +247,14 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // -----------------------------------------------------------------------------------------------------------------------
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, Rules& rules, ParamDict& error_propertyname)
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, Rules& rules, ParamDict& error_propertyname, const GS::Array<API_PropertyDefinition>& definitions)
 {
     bool hasRenum = false;
     if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
     ParamDictValue& propertyParams = PROPERTYCACHE ().property;
-    for (ParamDictValue::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
+
+    for (const API_PropertyDefinition& definition : definitions) {
         bool flag = false;
-        #if defined(AC_28) || defined(AC_29)
-        ParamValue& param = cIt->value;
-        #else
-        ParamValue& param = *cIt->value;
-        #endif
-        API_PropertyDefinition& definition = param.definition;
         if (!definition.description.Contains (RENUMFLAG)) continue;
         if (!definition.description.Contains (BRACESTART)) {
             msg_rep ("ReNumSelected", definition.name + " Renum_flag: check the opening bracket, there should be {", APIERR_GENERAL, APINULLGuid);
@@ -316,7 +327,12 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
                         rulecritetia.state = true;
                         rulecritetia.oldalgoritm = false;
                         rulecritetia.position = rawNameposition;
-                        rulecritetia.flag = param.rawName;
+                        GS::UniString fname = "";
+                        GS::UniString rawName = PROPERTYNAMEPREFIX;
+                        GetPropertyFullName (definition, fname);
+                        rawName.Append (fname.ToLowerCase ());
+                        rawName.Append (BRACEEND);
+                        rulecritetia.flag = rawName;
                         rulecritetia.criteria = rawNamecriteria;
                         rulecritetia.delimetr = rawNamedelimetr;
                         rulecritetia.guid = definition.guid;
