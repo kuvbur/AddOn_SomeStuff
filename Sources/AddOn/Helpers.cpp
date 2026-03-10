@@ -885,22 +885,22 @@ GS::UniString ParamHelpers::GetRawnamePrefixByTypeInx (const short& inx)
 
 short ParamHelpers::GetTypeInxByRawnamePrefix (const GS::UniString& rawName)
 {
-    if (rawName.Contains (PROPERTYNAMEPREFIX)) return PROPERTYTYPEINX;
-    if (rawName.Contains (GDLNAMEPREFIX)) return GDLTYPEINX;
-    if (rawName.Contains (GDLDESCNAMEPREFIX)) return GDLDESCTYPEINX;
-    if (rawName.Contains (COORDNAMEPREFIX)) return COORDTYPEINX;
-    if (rawName.Contains (GLOBNAMEPREFIX)) return GLOBTYPEINX;
-    if (rawName.Contains (INFONAMEPREFIX)) return INFOTYPEINX;
-    if (rawName.Contains (MEPNAMEPREFIX)) return MEPTYPEINX;
-    if (rawName.Contains (FORMULANAMEPREFIX)) return FORMULATYPEINX;
-    if (rawName.Contains (IDNAMEPREFIX)) return IDTYPEINX;
-    if (rawName.Contains (IFCNAMEPREFIX)) return IFCTYPEINX;
-    if (rawName.Contains (MORPHNAMEPREFIX)) return MORPHTYPEINX;
-    if (rawName.Contains (ATTRIBNAMEPREFIX)) return ATTRIBTYPEINX;
-    if (rawName.Contains (LISTDATANAMEPREFIX)) return LISTDATATYPEINX;
-    if (rawName.Contains (MATERIALNAMEPREFIX)) return MATERIALTYPEINX;
-    if (rawName.Contains (CLASSNAMEPREFIX)) return CLASSTYPEINX;
-    if (rawName.Contains (ELEMENTNAMEPREFIX)) return ELEMENTTYPEINX;
+    if (rawName.BeginsWith (PROPERTYNAMEPREFIX)) return PROPERTYTYPEINX;
+    if (rawName.BeginsWith (GDLNAMEPREFIX)) return GDLTYPEINX;
+    if (rawName.BeginsWith (GDLDESCNAMEPREFIX)) return GDLDESCTYPEINX;
+    if (rawName.BeginsWith (COORDNAMEPREFIX)) return COORDTYPEINX;
+    if (rawName.BeginsWith (GLOBNAMEPREFIX)) return GLOBTYPEINX;
+    if (rawName.BeginsWith (INFONAMEPREFIX)) return INFOTYPEINX;
+    if (rawName.BeginsWith (MEPNAMEPREFIX)) return MEPTYPEINX;
+    if (rawName.BeginsWith (FORMULANAMEPREFIX)) return FORMULATYPEINX;
+    if (rawName.BeginsWith (IDNAMEPREFIX)) return IDTYPEINX;
+    if (rawName.BeginsWith (IFCNAMEPREFIX)) return IFCTYPEINX;
+    if (rawName.BeginsWith (MORPHNAMEPREFIX)) return MORPHTYPEINX;
+    if (rawName.BeginsWith (ATTRIBNAMEPREFIX)) return ATTRIBTYPEINX;
+    if (rawName.BeginsWith (LISTDATANAMEPREFIX)) return LISTDATATYPEINX;
+    if (rawName.BeginsWith (MATERIALNAMEPREFIX)) return MATERIALTYPEINX;
+    if (rawName.BeginsWith (CLASSNAMEPREFIX)) return CLASSTYPEINX;
+    if (rawName.BeginsWith (ELEMENTNAMEPREFIX)) return ELEMENTTYPEINX;
     #if defined(TESTING)
     DBprnt ("ERROR GetTypeInxByRawnamePrefix " + rawName);
     #endif
@@ -935,7 +935,7 @@ void ParamHelpers::SetParamValueSourseByName (ParamValue& pvalue)
     switch (inx) {
         case PROPERTYTYPEINX:
             pvalue.fromPropertyDefinition = true;
-            if (pvalue.rawName.Contains ("{@property:buildingmaterialproperties/")) pvalue.fromAttribDefinition = true;
+            if (pvalue.rawName.BeginsWith ("{@property:buildingmaterialproperties/")) pvalue.fromAttribDefinition = true;
             break;
         case GDLTYPEINX:
             pvalue.fromGDLparam = true;
