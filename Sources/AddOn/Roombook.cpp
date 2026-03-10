@@ -435,15 +435,15 @@ void RoomBook ()
             UnhideUnlockElementLayer (guid);
             reserv.Push (guid);
         }
-        #if defined(AC_27) || defined(AC_28)
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         if (ACAPI_Teamwork_HasConnection () && !reserv.IsEmpty ()) {
             #else
         if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
             #endif
-            #if defined(AC_27) || defined(AC_28)
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Teamwork_ReserveElements (reserv, &conflicts, true);
             #else
-            err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts, true);
+            err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts);
             #endif
             if (err != NoError) {
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
