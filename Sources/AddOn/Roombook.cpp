@@ -424,7 +424,11 @@ void RoomBook ()
     }
     // Резервирование и открытие слоёв элементов отделки
     if (!reserv_elements.IsEmpty ()) {
+        #if defined(AC_24) || defined(AC_23)
+        GS::PagedArray<API_Guid> reserv = {};
+        #else
         GS::Array<API_Guid> reserv = {};
+        #endif
         GS::HashTable<API_Guid, short> conflicts = {};
         for (UnicGuid::PairIterator cIt_3 = reserv_elements.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
             #if defined(AC_28) || defined(AC_29)
