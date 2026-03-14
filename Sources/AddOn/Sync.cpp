@@ -145,7 +145,7 @@ void SyncAndMonAll (SyncSettings& syncSettings)
     if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_CurtainWallID, syncSettings, nPhase, paramToWrite, dummymode, syncedelem);
     nPhase = nPhase + 1;
     if (!flag_chanel && syncSettings.cwallS) flag_chanel = SyncByType (API_RailingID, syncSettings, nPhase, paramToWrite, dummymode, syncedelem);
-    #if defined (AC_28)
+    #if defined (AC_28) || defined (AC_29)
     if (!flag_chanel && syncSettings.objS) flag_chanel = SyncByType (API_ExternalElemID, syncSettings, nPhase, paramToWrite, dummymode, syncedelem);
     #endif
     finish = clock ();
@@ -221,7 +221,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     double  duration = 0;
     start = clock ();
     ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
-    #if defined (AC_28)
+    #if defined (AC_28) || defined (AC_29)
     if (elementType == API_ExternalElemID) {
         guidArray = ACAPI::MEP::CollectAllMEPElements ();
     }

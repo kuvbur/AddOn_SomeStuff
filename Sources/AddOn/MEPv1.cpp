@@ -235,6 +235,66 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
 {
     bool flag = false;
     GS::UniString rawName = "";
+    ParamValue pvalue; // Для записи систем
+    bool hassystemname = paramByType.ContainsKey ("{@mep:system name}");
+    bool hassystemgroupname = paramByType.ContainsKey ("{@mep:system group name}");
+
+
+
+    if (hassystemname || (hassystemgroupname && ParamHelpers::isMEPRead ())) {
+        std::vector<UniqueID> elementIds = { Adapter::UniqueID (elem_head.guid) };
+        ACAPI::Result<std::vector<std::vector<UniqueID>>> systems = PhysicalSystem::FindSystemIdsFromElementIds (elementIds, nullptr);
+        if (systems.IsOk ()) {
+            if (!systems->empty () && !systems->at (0).empty ()) {
+                for (const auto& systemId : systems.Unwrap ()[0]) {
+                    ACAPI::Result<PhysicalSystem> system = PhysicalSystem::Get (systemId);
+                    if (system.IsErr ()) {
+                        ACAPI_WriteReport (system.UnwrapErr ().text.c_str (), false);
+                        continue;
+                    }
+                    if (hassystemname) {
+                        ParamValue& pval = paramByType.Get ("{@mep:system name}");
+                        GS::UniString uniStringValue = system->GetName ();
+                        if (pval.isValid && !pval.val.uniStringValue.IsEmpty ()) {
+                            ParamHelpers::ConvertStringToParamValue (pvalue, EMPTYSTRING, uniStringValue);
+                            if (!pvalue.val.uniStringValue.IsEmpty ()) {
+                                pval.val.uniStringValue.Append (SEMICOLON);
+                                pval.val.uniStringValue.Append (pvalue.val.uniStringValue);
+                            }
+                        } else {
+                            ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, uniStringValue);
+                        }
+                    }
+                    if (hassystemgroupname && ParamHelpers::isMEPRead ()) {
+                        GS::Guid systemguid = systemId.GetGuid ();
+                        if (PROPERTYCACHE ().mepdict.ContainsKey (systemguid)) {
+                            MEPDict systemgroups = PROPERTYCACHE ().mepdict.Get (systemguid);
+                            for (const auto& cIt : systemgroups) {
+                                const GS::Guid& systemgroupguid = cIt.key;
+                                const ACAPI::Result<ACAPI::MEP::SystemGroup> systemGroup { ACAPI::MEP::SystemGroup::Get (Adapter::UniqueID (systemgroupguid)) };
+                                if (systemGroup.IsErr ()) continue;
+                                ParamValue& pval = paramByType.Get ("{@mep:system group name}");
+                                GS::UniString uniStringValue = systemGroup->GetName ();
+                                if (pval.isValid && !pval.val.uniStringValue.IsEmpty ()) {
+                                    ParamHelpers::ConvertStringToParamValue (pvalue, EMPTYSTRING, uniStringValue);
+                                    if (!pvalue.val.uniStringValue.IsEmpty ()) {
+                                        pval.val.uniStringValue.Append (SEMICOLON);
+                                        pval.val.uniStringValue.Append (pvalue.val.uniStringValue);
+                                    }
+                                } else {
+                                    ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, uniStringValue);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                ACAPI_WriteReport (systems.UnwrapErr ().text.c_str (), false);
+            }
+        }
+    }
+
+
     if (IsVentilation (elem_head.type.classID)) {
         // Общая таблица воздуховодов
         rawName = "{@mep:reference set name}";
@@ -321,9 +381,9 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             if (!ReadBendData (elem_head.guid, flag, paramByType, shape, tableID, diametr, radius)) return flag;
             if (!ReadDuctBendPreferenceTable (flag, paramByType, shape, tableID, diametr, radius)) return flag;
             return flag;
-        }
-        return flag;
     }
+        return flag;
+}
     if (IsPiping (elem_head.type.classID)) {
         rawName = "{@mep:reference set name}";
         if (paramByType.ContainsKey (rawName)) {
@@ -364,7 +424,7 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             if (!ReadBendData (elem_head.guid, flag, paramByType, shape, tableID, diametr, radius)) return flag;
             if (!ReadPipeBendPreferenceTable (flag, paramByType, shape, tableID, diametr, radius)) return flag;
             return flag;
-        }
+    }
         if (IsTransition (elem_head.type.classID)) {
             ACAPI::MEP::ConnectorShape shape = ConnectorShape::Rectangular;
             ACAPI::MEP::UniqueID tableID = Adapter::UniqueID (APINULLGuid);
@@ -383,7 +443,7 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             return flag;
         }
         return flag;
-    }
+}
     if (IsCableCarrier (elem_head.type.classID)) {
         return flag;
     }
@@ -451,7 +511,7 @@ bool ReadTransitionData (const API_Guid & guid, bool& flag, ParamDictValue & par
     return false;
     #endif // MEPAPI_VERSION
     return true;
-}
+    }
 
 bool ReadRoutingElementData (const ACAPI::MEP::UniqueID & elementID, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::UniqueID & branchtableID)
 {
@@ -786,8 +846,8 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                     }
                 }
             }
-        }
     }
+}
     return true;
 }
 
@@ -855,7 +915,7 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                 }
             }
         }
-    }
+}
     return true;
 }
 

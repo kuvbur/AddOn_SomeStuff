@@ -6,6 +6,7 @@
 #include "CommonFunction.hpp"
 #include "Definitions.hpp"
 #include "Helpers.hpp"
+#include "Propertycache.hpp"
 // ACAPI
 
 #include "ACAPI/Result.hpp"
@@ -28,6 +29,8 @@
 #if defined (AC_29)
 #include "ACAPI/MEPElbow.hpp"
 #include "ACAPI/MEPElbowDefault.hpp"
+#include "ACAPI/MEPSystemGroup.hpp"
+#include "ACAPI/MEPPhysicalSystem.hpp"
 #else
 #include "ACAPI/MEPBend.hpp"
 #include "ACAPI/MEPBendDefault.hpp"

@@ -1,7 +1,7 @@
 //------------ kuvbur 2026 ------------
-#include	"ACAPinc.h"
-#include    "Helpers.hpp"
-#include	"Propertycache.hpp"
+#include "ACAPinc.h"
+#include "Helpers.hpp"
+#include "Propertycache.hpp"
 
 PropertyCache& GetCache ()
 {
@@ -73,6 +73,16 @@ bool isAttributeRead ()
     }
     return PROPERTYCACHE ().isAttribute_OK;
 }
+
+#if defined (AC_29)
+bool isMEPRead ()
+{
+    if (!PROPERTYCACHE ().isMEPRead_full) {
+        PROPERTYCACHE ().ReadMEP ();
+    }
+    return PROPERTYCACHE ().isMEP_OK;
+}
+#endif
 
 bool isCacheContainsGroup (const API_Guid& guid)
 {
@@ -183,7 +193,32 @@ bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
     }
     return false;
 }
+#if defined (AC_29)
+bool GetMEPSystemGroup (MEPDicts& mepdict)
+{
+    const ACAPI::Result<std::vector<ACAPI::MEP::UniqueID>> systemGroupIDs { ACAPI::MEP::GetSystemGroupIDs () };
+    if (systemGroupIDs.IsErr ()) return false;
 
+    for (const ACAPI::MEP::UniqueID& systemGroupID : systemGroupIDs.Unwrap ()) {
+        const ACAPI::Result<ACAPI::MEP::SystemGroup> systemGroup { ACAPI::MEP::SystemGroup::Get (systemGroupID) };
+        if (systemGroup.IsErr ()) continue;
+        const std::vector<ACAPI::MEP::UniqueID> systemIDs = systemGroup.Unwrap ().GetSystemIDs ();
+        GS::Guid systemGroupguid = systemGroupID.GetGuid ();
+        for (const ACAPI::MEP::UniqueID& systemID : systemIDs) {
+            GS::Guid systemguid = systemID.GetGuid ();
+            if (!mepdict.ContainsKey (systemguid)) {
+                MEPDict p;
+                mepdict.Add (systemguid, p);
+            }
+            MEPDict& p = mepdict.Get (systemguid);
+            if (!p.ContainsKey (systemGroupguid)) {
+                p.Add (systemGroupguid, true);
+            }
+        }
+    }
+    return !mepdict.IsEmpty ();
+}
+#endif
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
 // --------------------------------------------------------------------

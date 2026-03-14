@@ -2,8 +2,19 @@
 #pragma once
 #if !defined (PROPERTYCACHE_HPP)
 #define	PROPERTYCACHE_HPP
-#include    "Helpers.hpp"
+#include "Helpers.hpp"
 
+#if defined (AC_29)
+#include "ACAPI/MEPSystemGroup.hpp"
+#include "ACAPI/MEPPhysicalSystem.hpp"
+#include "ACAPI/MEPUniqueID.hpp"
+#include <ACAPI/MEPEnums.hpp>
+#include "ACAPI/Result.hpp"
+#include "ACAPI/MEPAdapter.hpp"
+#endif
+
+typedef GS::HashTable <GS::Guid, bool> MEPDict;
+typedef GS::HashTable <GS::Guid, MEPDict> MEPDicts;
 
 // -----------------------------------------------------------------------------
 // Чтение настроек из информации о проекте
@@ -34,6 +45,12 @@ bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group);
 bool isCacheContainsParamValue (const GS::UniString& rawname);
 
 bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname);
+
+#if defined (AC_29)
+bool isMEPRead ();
+
+bool GetMEPSystemGroup (MEPDicts& mepdict);
+#endif
 
 bool GetGeoLocationToParamDict (ParamDictValue& propertyParams);
 
@@ -113,6 +130,11 @@ struct PropertyCache
     bool isGroupPropertyRead;    // Был запрошен
     bool isGroupPropertyRead_full;    // Был прочитан полностью
 
+    #if defined (AC_29)
+    MEPDicts mepdict;
+    bool isMEP_OK; // Успешно прочитан
+    bool isMEPRead_full;    // Был запрошен
+    #endif
     PropertyCache ()
     {
         #if defined(TESTING)
@@ -156,7 +178,20 @@ struct PropertyCache
         isGroupProperty_OK = false;
         isGroupPropertyRead = false;
         isGroupPropertyRead_full = false;
+
+        #if defined (AC_29)
+        mepdict.Clear ();
+        isMEP_OK = false;
+        isMEPRead_full = false;
+        #endif
     }
+    #if defined (AC_29)
+    void ReadMEP ()
+    {
+        isMEPRead_full = true;
+        isMEP_OK = ParamHelpers::GetMEPSystemGroup (mepdict);
+    }
+    #endif
 
     void ReadisEng ()
     {
@@ -196,6 +231,9 @@ struct PropertyCache
         ReadPropertyDefinition ();
         ReadAttribute ();
         ReadInfo ();
+        #if defined (AC_29)
+        ReadMEP ();
+        #endif
         #if defined(TESTING)
         DBprnt ("=PropertyCache= Update end");
         #endif
