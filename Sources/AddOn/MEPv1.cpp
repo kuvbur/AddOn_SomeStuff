@@ -1,5 +1,5 @@
 //------------ kuvbur 2022 ------------
-#if defined(AC_27) || defined(AC_28)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"MEPv1.hpp"
@@ -37,22 +37,35 @@ API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid& routingElemClassI
         #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
         #endif
+        #if defined (AC_29)
+        return ACAPI::MEP::VentilationElbowID;
+    #else
         return ACAPI::MEP::VentilationBendID;
+    #endif
+
 
     #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
         #endif
+        #if defined (AC_29)
+        return ACAPI::MEP::PipingElbowID;
+    #else
         return ACAPI::MEP::PipingBendID;
+    #endif
+
 
     #if defined (AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
         #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
         #endif
+        #if defined (AC_29)
+        return ACAPI::MEP::CableCarrierElbowID;
+    #else
         return ACAPI::MEP::CableCarrierBendID;
-
+    #endif
     return APINULLGuid;
 }
 
@@ -116,7 +129,11 @@ void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& sube
             }
             API_Guid rguid = GSGuid2APIGuid (routingNodeIds[inx_segment].GetGuid ());
             subelemGuid.Push (rguid);
+            #if defined (AC_29)
+            std::vector<ACAPI::MEP::UniqueID> bendsIds = routingNode->GetElbowIds ();
+            #else
             std::vector<ACAPI::MEP::UniqueID> bendsIds = routingNode->GetBendIds ();
+            #endif
             std::vector<ACAPI::MEP::UniqueID> transitionsIds = routingNode->GetTransitionIds ();
             if (!bendsIds.empty ()) {
                 for (UInt32 inx_rigid = 0; inx_rigid < bendsIds.size (); ++inx_rigid) {
@@ -187,8 +204,13 @@ void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
     if (IsTransition (elem_head.type.classID)) {
         return;
     }
+    #if defined (AC_29)
+    if (IsElbow (elem_head.type.classID)) {
+        ACAPI::Result<Elbow> bendElement = Elbow::Get (Adapter::UniqueID (elemGuid));
+        #else
     if (IsBend (elem_head.type.classID)) {
         ACAPI::Result<Bend> bendElement = Bend::Get (Adapter::UniqueID (elemGuid));
+        #endif
         if (bendElement.IsErr ()) return;
         ACAPI::MEP::UniqueID nodeId = bendElement->GetRoutingNodeId ();
         ACAPI::Result<RoutingNode> nodeElement = RoutingNode::Get (nodeId);
@@ -209,7 +231,7 @@ void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
     }
 }
 #if defined (AC_28) || defined(AC_29)
-bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
+bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
 {
     bool flag = false;
     GS::UniString rawName = "";
@@ -287,7 +309,11 @@ bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
             if (!ReadDuctSegmentPreferenceTable (flag, paramByType, shape, tableID, refid)) return flag;
             return flag;
         }
+        #if defined (AC_29)
+        if (IsElbow (elem_head.type.classID)) {
+            #else
         if (IsBend (elem_head.type.classID)) {
+            #endif
             ACAPI::MEP::UniqueID segmentId = Adapter::UniqueID (APINULLGuid);
             ACAPI::MEP::ConnectorShape shape = ConnectorShape::Rectangular;
             ACAPI::MEP::UniqueID tableID = Adapter::UniqueID (APINULLGuid);
@@ -326,7 +352,11 @@ bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
             if (!ReadPipeSegmentPreferenceTable (flag, paramByType, shape, tableID, refid)) return flag;
             return flag;
         }
+        #if defined (AC_29)
+        if (IsElbow (elem_head.type.classID)) {
+            #else
         if (IsBend (elem_head.type.classID)) {
+            #endif
             ACAPI::MEP::UniqueID segmentId = Adapter::UniqueID (APINULLGuid);
             ACAPI::MEP::ConnectorShape shape = ConnectorShape::Rectangular;
             ACAPI::MEP::UniqueID tableID = Adapter::UniqueID (APINULLGuid);
@@ -360,7 +390,7 @@ bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType)
     return flag;
 }
 
-bool ReadTransitionData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& transtableID, double& bdiametr, double& ediametr)
+bool ReadTransitionData (const API_Guid & guid, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & transtableID, double& bdiametr, double& ediametr)
 {
     GS::UniString rawName = "";
     rawName = "{@mep:test}";
@@ -423,7 +453,7 @@ bool ReadTransitionData (const API_Guid& guid, bool& flag, ParamDictValue& param
     return true;
 }
 
-bool ReadRoutingElementData (const ACAPI::MEP::UniqueID& elementID, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::UniqueID& branchtableID)
+bool ReadRoutingElementData (const ACAPI::MEP::UniqueID & elementID, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::UniqueID & branchtableID)
 {
     GS::UniString rawName = "";
     rawName = "{@mep:test}";
@@ -482,7 +512,7 @@ bool ReadRoutingElementData (const ACAPI::MEP::UniqueID& elementID, bool& flag, 
     return true;
 }
 
-bool ReadBendData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& bendtableID, double& diametr, double& radius)
+bool ReadBendData (const API_Guid & guid, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & bendtableID, double& diametr, double& radius)
 {
     GS::UniString rawName = "";
     rawName = "{@mep:test}";
@@ -491,7 +521,11 @@ bool ReadBendData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType
         ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, "IsBend");
         flag = true;
     }
+    #if defined (AC_29)
+    ACAPI::Result<Elbow> element = Elbow::Get (Adapter::UniqueID (guid));
+    #else
     ACAPI::Result<Bend> element = Bend::Get (Adapter::UniqueID (guid));
+    #endif
     if (element.IsErr ()) {
         ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
         return false;
@@ -549,7 +583,7 @@ bool ReadBendData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType
     return true;
 }
 
-bool ReadRigidSegmentData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::UniqueID& segmentId)
+bool ReadRigidSegmentData (const API_Guid & guid, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::UniqueID & segmentId)
 {
     GS::UniString rawName = "";
     rawName = "{@mep:test}";
@@ -596,7 +630,7 @@ bool ReadRigidSegmentData (const API_Guid& guid, bool& flag, ParamDictValue& par
     return true;
 }
 
-bool ReadRoutingSegmentData (const ACAPI::MEP::UniqueID& segmentId, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid)
+bool ReadRoutingSegmentData (const ACAPI::MEP::UniqueID & segmentId, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, uint32_t & refid)
 {
     GS::UniString rawName = "";
     rawName = "{@mep:test}";
@@ -675,7 +709,7 @@ bool ReadRoutingSegmentData (const ACAPI::MEP::UniqueID& segmentId, bool& flag, 
     return true;
 }
 
-bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid)
+bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, uint32_t & refid)
 {
     GS::UniString rawName = "";
     if (shape == ACAPI::MEP::ConnectorShape::Rectangular) {
@@ -703,11 +737,19 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
             ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, table->GetName ());
             flag = true;
         }
+        #if defined (AC_29)
+        if (table->IsRowValidByKey (refid).IsOk ()) {
+            #else
         if (table->IsRowValidByReferenceId (refid).IsOk ()) {
+            #endif
             rawName = "{@mep:description}";
             if (paramByType.ContainsKey (rawName)) {
                 ParamValue& pval = paramByType.Get (rawName);
+                #if defined (AC_29)
+                ACAPI::Result<GS::UniString> val = table->GetDescriptionByKey (refid);
+                #else
                 ACAPI::Result<GS::UniString> val = table->GetDescriptionByReferenceId (refid);
+                #endif
                 if (val.IsOk ()) {
                     ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                     flag = true;
@@ -718,7 +760,11 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
             }
             rawName = "{@mep:diametr}";
             if (paramByType.ContainsKey (rawName)) {
+                #if defined (AC_29)
+                ACAPI::Result<double> val = table->GetDiameterByKey (refid);
+                #else
                 ACAPI::Result<double> val = table->GetDiameterByReferenceId (refid);
+                #endif
                 if (val.IsOk ()) {
                     ParamValue& pval = paramByType.Get (rawName);
                     ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
@@ -729,7 +775,11 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
             if (paramByType.ContainsKey (rawName)) {
                 ParamValue& pval = paramByType.Get (rawName);
                 if (!pval.isValid) {
+                    #if defined (AC_29)
+                    ACAPI::Result<double> val = table->GetWallThicknessByKey (refid);
+                    #else
                     ACAPI::Result<double> val = table->GetWallThicknessByReferenceId (refid);
+                    #endif
                     if (val.IsOk ()) {
                         ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                         flag = true;
@@ -741,7 +791,7 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
     return true;
 }
 
-bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, uint32_t& refid)
+bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, uint32_t & refid)
 {
     GS::UniString rawName = "";
     if (shape != ACAPI::MEP::ConnectorShape::Circular) return false;
@@ -756,11 +806,19 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
         ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, table->GetName ());
         flag = true;
     }
+    #if defined (AC_29)
+    if (table->IsRowValidByKey (refid).IsOk ()) {
+        #else
     if (table->IsRowValidByReferenceId (refid).IsOk ()) {
+        #endif
         rawName = "{@mep:description}";
         if (paramByType.ContainsKey (rawName)) {
             ParamValue& pval = paramByType.Get (rawName);
+            #if defined (AC_29)
+            ACAPI::Result<GS::UniString> val = table->GetDescriptionByKey (refid);
+            #else
             ACAPI::Result<GS::UniString> val = table->GetDescriptionByReferenceId (refid);
+            #endif
             if (val.IsOk ()) {
                 ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
@@ -771,7 +829,11 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
         }
         rawName = "{@mep:diametr}";
         if (paramByType.ContainsKey (rawName)) {
+            #if defined (AC_29)
+            ACAPI::Result<double> val = table->GetDiameterByKey (refid);
+            #else
             ACAPI::Result<double> val = table->GetDiameterByReferenceId (refid);
+            #endif
             if (val.IsOk ()) {
                 ParamValue& pval = paramByType.Get (rawName);
                 ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
@@ -782,7 +844,11 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
         if (paramByType.ContainsKey (rawName)) {
             ParamValue& pval = paramByType.Get (rawName);
             if (!pval.isValid) {
+                #if defined (AC_29)
+                ACAPI::Result<double> val = table->GetWallThicknessByKey (refid);
+                #else
                 ACAPI::Result<double> val = table->GetWallThicknessByReferenceId (refid);
+                #endif
                 if (val.IsOk ()) {
                     ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                     flag = true;
@@ -793,7 +859,7 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue& paramByType, AC
     return true;
 }
 
-bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, double& diametr, double& radius)
+bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, double& diametr, double& radius)
 {
     GS::UniString rawName = "";
     if (shape != ACAPI::MEP::ConnectorShape::Circular) return false;
@@ -810,6 +876,9 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI
         flag = true;
     }
     uint32_t refid = 0;
+    #if defined (AC_29)
+    DuctElbowPreferenceTable::Key key;
+    #endif
     bool flag_find = false;
     for (uint32_t i = 0; i < table->GetSize (); ++i) {
         ACAPI::Result<double> d = table->GetDiameter (i);
@@ -823,16 +892,33 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI
             refid = rf.Unwrap ();
             flag_find = true;
         }
+        #if defined (AC_29)
+        ACAPI::Result<double> ang = table->GetAngle (i);
+        if (ang.IsOk ()) {
+            key = { *rf, *ang };
+            refid = rf.Unwrap ();
+            flag_find = true;
+        }
+        #endif
         break;
     }
     if (!flag_find) return false;
+    #if defined (AC_29)
+    ACAPI::Result<bool> b = table->IsRowValidByKey (key);
+    #else
     ACAPI::Result<bool> b = table->IsRowValidByReferenceId (refid);
+    #endif
+
     if (b.IsErr ()) return false;
     if (!b.Unwrap ()) return false;
     rawName = "{@mep:description}";
     if (paramByType.ContainsKey (rawName)) {
         ParamValue& pval = paramByType.Get (rawName);
+        #if defined (AC_29)
+        ACAPI::Result<GS::UniString> val = table->GetDescriptionByKey (key);
+        #else
         ACAPI::Result<GS::UniString> val = table->GetDescriptionByReferenceId (refid);
+        #endif
         if (val.IsOk ()) {
             ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, val.Unwrap ());
             flag = true;
@@ -843,7 +929,11 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI
     }
     rawName = "{@mep:diametr}";
     if (paramByType.ContainsKey (rawName)) {
+        #if defined (AC_29)
+        ACAPI::Result<double> val = table->GetDiameterByKey (key);
+        #else
         ACAPI::Result<double> val = table->GetDiameterByReferenceId (refid);
+        #endif
         if (val.IsOk ()) {
             ParamValue& pval = paramByType.Get (rawName);
             ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
@@ -854,7 +944,11 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI
     if (paramByType.ContainsKey (rawName)) {
         ParamValue& pval = paramByType.Get (rawName);
         if (!pval.isValid) {
+            #if defined (AC_29)
+            ACAPI::Result<double> val = table->GetRadiusByKey (key);
+            #else
             ACAPI::Result<double> val = table->GetRadiusByReferenceId (refid);
+            #endif
             if (val.IsOk ()) {
                 ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
@@ -864,7 +958,7 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI
     return true;
 }
 
-bool ReadPipeBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, double& diametr, double& radius)
+bool ReadPipeBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, double& diametr, double& radius)
 {
     GS::UniString rawName = "";
     if (shape != ACAPI::MEP::ConnectorShape::Circular) return false;
@@ -896,6 +990,7 @@ bool ReadPipeBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI
         break;
     }
     if (!flag_find) return false;
+    #if !defined (AC_29)
     ACAPI::Result<bool> b = table->IsRowValidByReferenceId (refid);
     if (b.IsErr ()) return false;
     if (!b.Unwrap ()) return false;
@@ -931,10 +1026,11 @@ bool ReadPipeBendPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI
             }
         }
     }
+    #endif
     return true;
 }
 
-bool ReadTransitionPreferenceTable (bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& tableID, double& bdiametr, double& ediametr)
+bool ReadTransitionPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, double& bdiametr, double& ediametr)
 {
     #ifdef MEPAPI_VERSION
     GS::UniString rawName = "";
