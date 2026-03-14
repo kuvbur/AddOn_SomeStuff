@@ -235,19 +235,17 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
 {
     bool flag = false;
     GS::UniString rawName = "";
+    #if defined(AC_29)
     ParamValue pvalue; // Для записи систем
     bool hassystemname = paramByType.ContainsKey ("{@mep:system name}");
     bool hassystemgroupname = paramByType.ContainsKey ("{@mep:system group name}");
-
-
-
     if (hassystemname || (hassystemgroupname && ParamHelpers::isMEPRead ())) {
-        std::vector<UniqueID> elementIds = { Adapter::UniqueID (elem_head.guid) };
-        ACAPI::Result<std::vector<std::vector<UniqueID>>> systems = PhysicalSystem::FindSystemIdsFromElementIds (elementIds, nullptr);
+        std::vector<ACAPI::MEP::UniqueID> elementIds = { Adapter::UniqueID (elem_head.guid) };
+        ACAPI::Result<std::vector<std::vector<ACAPI::MEP::UniqueID>>> systems = ACAPI::MEP::PhysicalSystem::FindSystemIdsFromElementIds (elementIds, nullptr);
         if (systems.IsOk ()) {
             if (!systems->empty () && !systems->at (0).empty ()) {
                 for (const auto& systemId : systems.Unwrap ()[0]) {
-                    ACAPI::Result<PhysicalSystem> system = PhysicalSystem::Get (systemId);
+                    ACAPI::Result<ACAPI::MEP::PhysicalSystem> system = ACAPI::MEP::PhysicalSystem::Get (systemId);
                     if (system.IsErr ()) {
                         ACAPI_WriteReport (system.UnwrapErr ().text.c_str (), false);
                         continue;
@@ -293,8 +291,7 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             }
         }
     }
-
-
+    #endif
     if (IsVentilation (elem_head.type.classID)) {
         // Общая таблица воздуховодов
         rawName = "{@mep:reference set name}";
@@ -381,9 +378,9 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             if (!ReadBendData (elem_head.guid, flag, paramByType, shape, tableID, diametr, radius)) return flag;
             if (!ReadDuctBendPreferenceTable (flag, paramByType, shape, tableID, diametr, radius)) return flag;
             return flag;
-    }
+        }
         return flag;
-}
+    }
     if (IsPiping (elem_head.type.classID)) {
         rawName = "{@mep:reference set name}";
         if (paramByType.ContainsKey (rawName)) {
@@ -424,7 +421,7 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             if (!ReadBendData (elem_head.guid, flag, paramByType, shape, tableID, diametr, radius)) return flag;
             if (!ReadPipeBendPreferenceTable (flag, paramByType, shape, tableID, diametr, radius)) return flag;
             return flag;
-    }
+        }
         if (IsTransition (elem_head.type.classID)) {
             ACAPI::MEP::ConnectorShape shape = ConnectorShape::Rectangular;
             ACAPI::MEP::UniqueID tableID = Adapter::UniqueID (APINULLGuid);
@@ -443,7 +440,7 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             return flag;
         }
         return flag;
-}
+    }
     if (IsCableCarrier (elem_head.type.classID)) {
         return flag;
     }
@@ -511,7 +508,7 @@ bool ReadTransitionData (const API_Guid & guid, bool& flag, ParamDictValue & par
     return false;
     #endif // MEPAPI_VERSION
     return true;
-    }
+}
 
 bool ReadRoutingElementData (const ACAPI::MEP::UniqueID & elementID, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::UniqueID & branchtableID)
 {
@@ -589,7 +586,7 @@ bool ReadBendData (const API_Guid & guid, bool& flag, ParamDictValue & paramByTy
     if (element.IsErr ()) {
         ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
         return false;
-    }
+}
     diametr = element->GetWidth ();
     radius = element->GetRadius ();
     rawName = "{@mep:bend factor radius}";
@@ -813,11 +810,11 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                 if (val.IsOk ()) {
                     ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                     flag = true;
-                } else {
+            } else {
                     ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, EMPTYSTRING);
                     flag = true;
                 }
-            }
+        }
             rawName = "{@mep:diametr}";
             if (paramByType.ContainsKey (rawName)) {
                 #if defined (AC_29)
@@ -829,8 +826,8 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                     ParamValue& pval = paramByType.Get (rawName);
                     ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                     flag = true;
-                }
             }
+    }
             rawName = "{@mep:wall thickness}";
             if (paramByType.ContainsKey (rawName)) {
                 ParamValue& pval = paramByType.Get (rawName);
@@ -843,11 +840,11 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                     if (val.IsOk ()) {
                         ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                         flag = true;
-                    }
                 }
             }
-    }
 }
+        }
+    }
     return true;
 }
 
@@ -882,11 +879,11 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
             if (val.IsOk ()) {
                 ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
-            } else {
+        } else {
                 ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, EMPTYSTRING);
                 flag = true;
             }
-        }
+    }
         rawName = "{@mep:diametr}";
         if (paramByType.ContainsKey (rawName)) {
             #if defined (AC_29)
@@ -898,8 +895,8 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                 ParamValue& pval = paramByType.Get (rawName);
                 ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
-            }
         }
+}
         rawName = "{@mep:wall thickness}";
         if (paramByType.ContainsKey (rawName)) {
             ParamValue& pval = paramByType.Get (rawName);
@@ -912,10 +909,10 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                 if (val.IsOk ()) {
                     ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                     flag = true;
-                }
             }
         }
-}
+        }
+    }
     return true;
 }
 
@@ -982,11 +979,11 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAP
         if (val.IsOk ()) {
             ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, val.Unwrap ());
             flag = true;
-        } else {
+    } else {
             ParamHelpers::ConvertStringToParamValue (pval, EMPTYSTRING, EMPTYSTRING);
             flag = true;
         }
-    }
+}
     rawName = "{@mep:diametr}";
     if (paramByType.ContainsKey (rawName)) {
         #if defined (AC_29)
@@ -998,7 +995,7 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAP
             ParamValue& pval = paramByType.Get (rawName);
             ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
             flag = true;
-        }
+    }
     }
     rawName = "{@mep:bend radius}";
     if (paramByType.ContainsKey (rawName)) {
@@ -1012,8 +1009,8 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAP
             if (val.IsOk ()) {
                 ParamHelpers::ConvertDoubleToParamValue (pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
-            }
         }
+    }
     }
     return true;
 }

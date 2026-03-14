@@ -2,18 +2,9 @@
 #pragma once
 #ifndef DIM_HPP
 #define	DIM_HPP
-#ifdef AC_25
-#include	"APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include	"APICommon26.h"
-#endif // AC_26
-#if defined(AC_27)
-#include	"APICommon27.h"
-#endif // AC_27
-#include	"DG.h"
-#include	"SyncSettings.hpp"
-#include	"Helpers.hpp"
+#include "DG.h"
+#include "Helpers.hpp"
+#include "SyncSettings.hpp"
 
 typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
 

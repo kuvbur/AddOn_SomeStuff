@@ -3,29 +3,25 @@
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#include "ACAPI/MEPAdapter.hpp"
+#include "ACAPI/MEPElement.hpp"
+#include "ACAPI/MEPModifiableElement.hpp"
+#include "ACAPI/MEPPipingPort.hpp"
+#include "ACAPI/MEPPort.hpp"
+#include "ACAPI/MEPRigidSegment.hpp"
+#include "ACAPI/MEPRigidSegmentDefault.hpp"
+#include "ACAPI/MEPRoutingElement.hpp"
+#include "ACAPI/MEPRoutingElementDefault.hpp"
+#include "ACAPI/MEPRoutingNode.hpp"
+#include "ACAPI/MEPRoutingNodeDefault.hpp"
+#include "ACAPI/MEPRoutingSegment.hpp"
+#include "ACAPI/MEPRoutingSegmentDefault.hpp"
+#include "ACAPI/MEPVentilationPort.hpp"
+#include "ACAPI/Result.hpp"
 #include "CommonFunction.hpp"
 #include "Definitions.hpp"
 #include "Helpers.hpp"
 #include "Propertycache.hpp"
-// ACAPI
-
-#include "ACAPI/Result.hpp"
-
-// MEPAPI
-#include "ACAPI/MEPAdapter.hpp"
-#include "ACAPI/MEPElement.hpp"
-#include "ACAPI/MEPModifiableElement.hpp"
-#include "ACAPI/MEPPort.hpp"
-#include "ACAPI/MEPVentilationPort.hpp"
-#include "ACAPI/MEPPipingPort.hpp"
-#include "ACAPI/MEPRoutingElement.hpp"
-#include "ACAPI/MEPRoutingElementDefault.hpp"
-#include "ACAPI/MEPRoutingSegment.hpp"
-#include "ACAPI/MEPRoutingSegmentDefault.hpp"
-#include "ACAPI/MEPRigidSegment.hpp"
-#include "ACAPI/MEPRigidSegmentDefault.hpp"
-#include "ACAPI/MEPRoutingNode.hpp"
-#include "ACAPI/MEPRoutingNodeDefault.hpp"
 #if defined (AC_29)
 #include "ACAPI/MEPElbow.hpp"
 #include "ACAPI/MEPElbowDefault.hpp"
