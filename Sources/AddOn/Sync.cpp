@@ -541,7 +541,7 @@ bool SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     GS::Array <WriteData> mainsyncRules = {};
     ParamDictValue subproperty = {};
     ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
-    GS::HashTable<API_Guid, GS::UniString> property_write_guid = {}; // Словарь GUID свойств, в которые могла быть осуществлена запись
+    UnicGuidString property_write_guid = {}; // Словарь GUID свойств, в которые могла быть осуществлена запись
     WriteDict syncRules = {}; // Словарь с правилами для каждого элемента
     API_ElemTypeID elementType;
     if (!IsElementEditable (elemGuid, syncSettings, true, elementType)) return false;
@@ -609,7 +609,7 @@ bool SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::A
     return SyncNeedResync (paramToRead, property_write_guid);
 }
 
-bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::UniString> property_write_guid)
+bool SyncNeedResync (ParamDictElement& paramToRead, UnicGuidString property_write_guid)
 {
     if (property_write_guid.IsEmpty ()) return false;
     if (paramToRead.IsEmpty ()) return false;
@@ -650,7 +650,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::
     return false;
 }
 
-void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite, GS::HashTable<API_Guid, GS::UniString>& property_write_guid)
+void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite, UnicGuidString& property_write_guid)
 {
     GS::HashTable<API_Guid, ParamDict> reset_property = {}; // Словарь со сбрасываемыми значениями
     bool has_ignore = false;

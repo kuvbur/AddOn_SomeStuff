@@ -1,7 +1,7 @@
 //------------ kuvbur 2026 ------------
-#include	"ACAPinc.h"
-#include    "Helpers.hpp"
-#include	"Selection.hpp"
+#include "ACAPinc.h"
+#include "Helpers.hpp"
+#include "Selection.hpp"
 
 SelectionSingleton& GetInstance ()
 {

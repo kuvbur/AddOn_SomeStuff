@@ -92,6 +92,7 @@ struct PropertyCache
     ParamDictValue attrib;
     ParamDictValue glob;
     ClassificationFunc::SystemDict systemdict;
+    UnicGuidByGuidString reversesystemdict;
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
     Int32 isEng;
@@ -145,6 +146,7 @@ struct PropertyCache
         attrib.Clear ();
         glob.Clear ();
         systemdict.Clear ();
+        reversesystemdict.Clear ();
         propertygroups.Clear ();
         dimrules.Clear ();
         unreadedgdlparams.Clear ();
@@ -359,9 +361,45 @@ struct PropertyCache
         DBprnt ("=PropertyCache= ReadClassification");
         #endif
         systemdict.Clear ();
+        reversesystemdict.Clear ();
         isClassificationRead = true;
         if (ClassificationFunc::GetAllClassification (systemdict) == NoError) isClassification_OK = true;
         if (systemdict.IsEmpty ()) isClassification_OK = false;
+        if (isClassification_OK) {
+            for (ClassificationFunc::SystemDict::PairIterator cIt = systemdict.EnumeratePairs (); cIt != NULL; ++cIt) {
+                #if defined(AC_28) || defined(AC_29)
+                ClassificationFunc::ClassificationDict& cd = cIt->value;
+                GS::UniString systemname = cIt->key;
+                #else
+                ClassificationFunc::ClassificationDict& cd = *cIt->value;
+                GS::UniString systemname = *cIt->key;
+                #endif
+                if (!cd.ContainsKey ("@system@")) continue;
+                API_Guid& systemguid = cd.Get ("@system@").system.guid;
+                if (!reversesystemdict.ContainsKey (systemguid)) {
+                    UnicGuidString d = {};
+                    d.Add (APINULLGuid, systemname);
+                    reversesystemdict.Add (systemguid, d);
+                } else {
+                    continue;
+                }
+                for (ClassificationFunc::ClassificationDict::PairIterator cItt = cd.EnumeratePairs (); cItt != NULL; ++cItt) {
+                    #if defined(AC_28) || defined(AC_29)
+                    ClassificationFunc::ClassificationValues& cl = cItt->value;
+                    GS::UniString classname = cItt->key;
+                    #else
+                    ClassificationFunc::ClassificationValues& cl = *cItt->value;
+                    GS::UniString classname = *cItt->key;
+                    #endif
+                    API_Guid& classguid = cl.item.guid;
+
+                    UnicGuidString& d = reversesystemdict.Get (systemguid);
+                    if (!d.ContainsKey (classguid)) {
+                        d.Add (classguid, classname);
+                    }
+                }
+            }
+        }
         #if defined(TESTING)
         if (!isClassification_OK) DBprnt ("=PropertyCache= ReadClassification ERROR");
         #endif

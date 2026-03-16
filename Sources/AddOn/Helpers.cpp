@@ -7698,6 +7698,33 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         ParamHelpers::AddParamValue2ParamDict (params.Get (k).fromGuid, pvalue_bmat, params);
     }
 
+    GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs = {};
+    API_ClassificationItem cl = {};
+
+    bool isClassRead = false;
+    bool isClassReadOk = false;
+
+    k = "{@property:material class name}";
+    if (params.ContainsKey (k)) {
+        ParamValue pvalue = {};
+        pvalue.rawName = k;
+        pvalue.name = "material class name";
+        pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
+        if (!isClassRead) {
+            error = ACAPI_Attribute_GetClassificationItems (attrib.header, systemItemPairs);
+            if (error != NoError) {
+                msg_rep ("materialString::GetAttributeValues", "ACAPI_Attribute_Get", error, APINULLGuid);
+            } else {
+                isClassReadOk = true;
+            }
+            isClassRead = true;
+        }
+        if (isClassReadOk) {
+            cl = ClassificationFunc::FindClass (systemItemPairs[0]);
+            pvalue.fromMaterial = true;
+            ParamHelpers::AddParamValue2ParamDict (params.Get (k).fromGuid, pvalue, params);
+        }
+    }
     // Определения и свойста для элементов
     bool flag_find = false;
     GS::Array<API_PropertyDefinition> propertyDefinitions;
