@@ -137,7 +137,7 @@ bool ReadSystemDict ()
 // -----------------------------------------------------------------------------
 // Поиск класса по ID в заданной классификации, возвращает Guid класса
 // -----------------------------------------------------------------------------
-API_Guid FindClass (GS::UniString& systemname, GS::UniString& classname)
+API_Guid FindClass (const GS::UniString& systemname, const  GS::UniString& classname)
 {
     if (!ReadSystemDict ()) return APINULLGuid;
     ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
@@ -150,7 +150,7 @@ API_Guid FindClass (GS::UniString& systemname, GS::UniString& classname)
     return classgiud;
 }
 
-GS::UniString GetSystemName (API_Guid& systemguid)
+GS::UniString GetSystemName (const API_Guid& systemguid)
 {
     GS::UniString systemname = "";
     if (!ReadSystemDict ()) return systemname;
@@ -163,7 +163,7 @@ GS::UniString GetSystemName (API_Guid& systemguid)
 }
 
 
-API_ClassificationItem FindClass (GS::Pair<API_Guid, API_Guid>& classitem)
+API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid>& classitem)
 {
     GS::UniString systemname = GetSystemName (classitem.first);
     GS::UniString classname = "";
