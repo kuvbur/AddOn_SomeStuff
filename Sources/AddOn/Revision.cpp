@@ -111,7 +111,7 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
             layout_note_guid.Add ("somestuff_layout_shifr", guid);
         }
     }
-    GS::HashTable<API_Guid, GS::UniString> customScheme = {};
+    UnicGuidString customScheme = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Revision_GetRVMChangeCustomScheme (&customScheme);
     #else

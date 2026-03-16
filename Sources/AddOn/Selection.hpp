@@ -2,16 +2,15 @@
 #pragma once
 #if !defined (SELECTION_HPP)
 #define	SELECTION_HPP
-#include    "Helpers.hpp"
+#include "Helpers.hpp"
+
 void SelectElement (API_NotifyEventID notify);
 
-struct SelectionSingleton
-{
+struct SelectionSingleton {
     GS::Array<API_Neig> elements;
     int size;
     API_DatabaseUnId db;
-    SelectionSingleton ()
-    {
+    SelectionSingleton () {
         elements.Clear ();
         size = 0;
         #ifdef TESTING
@@ -19,26 +18,22 @@ struct SelectionSingleton
         #endif
     }
 
-    void SetDB (API_DatabaseUnId& hbd)
-    {
+    void SetDB (API_DatabaseUnId& hbd) {
         #ifdef TESTING
         DBprnt (size, "Selection       === SetDB");
         #endif
         db = hbd;
     }
 
-    API_DatabaseUnId GetDB ()
-    {
+    API_DatabaseUnId GetDB () {
         return db;
     }
 
-    bool IsEmpty ()
-    {
+    bool IsEmpty () {
         return elements.IsEmpty ();
     }
 
-    bool Update ()
-    {
+    bool Update () {
         #ifdef TESTING
         DBprnt (size, "Selection       === Update start");
         #endif
@@ -47,10 +42,10 @@ struct SelectionSingleton
         GSErrCode err = NoError;
         err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, false);
         BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
-        if (err != NoError) msg_rep ("Selection", "ACAPI_Selection_Get", err, APINULLGuid);
-        if (err != NoError) return false;
-        if (selectionInfo.typeID == API_SelEmpty) return false;
-        for (const API_Neig& neig : selNeigs) {
+        if(err != NoError) msg_rep ("Selection", "ACAPI_Selection_Get", err, APINULLGuid);
+        if(err != NoError) return false;
+        if(selectionInfo.typeID == API_SelEmpty) return false;
+        for(const API_Neig& neig : selNeigs) {
             API_Neig n = neig;
             #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
             API_ElemType type = Neig_To_ElemID (neig.neigID);
@@ -58,12 +53,12 @@ struct SelectionSingleton
             #else
             API_ElemTypeID typeID = Neig_To_ElemID (neig.neigID);
             #endif
-            if (typeID == API_SectElemID) {
+            if(typeID == API_SectElemID) {
                 API_Guid elemGuid_;
                 GetParentGUIDSectElem (neig.guid, elemGuid_, typeID);
                 n.guid = elemGuid_;
             }
-            switch (typeID) {
+            switch(typeID) {
                 case API_WallID:                    n.neigID = APINeig_Wall;                n.inIndex = 1;    break;
                 case API_ColumnID:                    n.neigID = APINeig_Colu;                n.inIndex = 0;    break;
                 case API_BeamID:                    n.neigID = APINeig_Beam;                n.inIndex = 1;    break;
@@ -113,7 +108,7 @@ struct SelectionSingleton
                 default:
                     typeID = API_ZombieElemID;
             }
-            if (typeID != API_ZombieElemID) {
+            if(typeID != API_ZombieElemID) {
                 elements.Push (n);
             }
         }
@@ -124,8 +119,7 @@ struct SelectionSingleton
         return !elements.IsEmpty ();
     }
 
-    void Clear ()
-    {
+    void Clear () {
         elements.Clear ();
         size = 0;
         #ifdef TESTING
@@ -133,19 +127,18 @@ struct SelectionSingleton
         #endif
     }
 
-    void Select ()
-    {
+    void Select () {
         #ifdef TESTING
         DBprnt (size, "Selection       === Set start");
         #endif
         GSErrCode err = NoError;
-        if (elements.IsEmpty ()) {
+        if(elements.IsEmpty ()) {
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_Selection_DeselectAll ();
             #else
             err = ACAPI_Element_DeselectAll ();
             #endif
-            if (err != NoError) msg_rep ("Selection", "ACAPI_Element_DeselectAll", err, APINULLGuid);
+            if(err != NoError) msg_rep ("Selection", "ACAPI_Element_DeselectAll", err, APINULLGuid);
             #ifdef TESTING
             DBprnt (size, "Selection       === Deselect");
             #endif
@@ -156,7 +149,7 @@ struct SelectionSingleton
         #else
         err = ACAPI_Element_Select (elements, true);
         #endif
-        if (err != NoError) msg_rep ("Selection", "ACAPI_Element_Select", err, APINULLGuid);
+        if(err != NoError) msg_rep ("Selection", "ACAPI_Element_Select", err, APINULLGuid);
         #ifdef TESTING
         DBprnt (size, "Selection       === Set end");
         #endif

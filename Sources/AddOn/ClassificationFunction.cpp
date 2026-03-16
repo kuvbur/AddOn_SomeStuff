@@ -150,6 +150,37 @@ API_Guid FindClass (GS::UniString& systemname, GS::UniString& classname)
     return classgiud;
 }
 
+GS::UniString GetSystemName (API_Guid& systemguid)
+{
+    GS::UniString systemname = "";
+    if (!ReadSystemDict ()) return systemname;
+    UnicGuidByGuidString& systemdict = PROPERTYCACHE ().reversesystemdict;
+    if (!systemdict.ContainsKey (systemguid)) return systemname;
+    UnicGuidString& g = systemdict.Get (systemguid);
+    if (!g.ContainsKey (APINULLGuid)) return systemname;
+    systemname = g.Get (APINULLGuid);
+    return systemname;
+}
+
+
+API_ClassificationItem FindClass (GS::Pair<API_Guid, API_Guid>& classitem)
+{
+    GS::UniString systemname = GetSystemName (classitem.first);
+    GS::UniString classname = "";
+    API_ClassificationItem cl;
+    if (systemname.IsEmpty ()) return cl;
+    UnicGuidByGuidString& systemdict = PROPERTYCACHE ().reversesystemdict;
+    if (!systemdict.ContainsKey (classitem.first)) return cl;
+    UnicGuidString& g = systemdict.Get (classitem.first);
+    if (!g.ContainsKey (classitem.second)) return cl;
+    classname = g.Get (classitem.second);
+    if (!PROPERTYCACHE ().systemdict.ContainsKey (systemname)) return cl;
+    ClassificationDict& syst = PROPERTYCACHE ().systemdict.Get (systemname);
+    if (!syst.ContainsKey (classname)) return cl;
+    cl = syst.Get (classname).item;
+    return cl;
+}
+
 // -----------------------------------------------------------------------------
 // Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
 // -----------------------------------------------------------------------------

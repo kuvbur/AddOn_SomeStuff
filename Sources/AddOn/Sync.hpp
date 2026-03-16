@@ -2,19 +2,6 @@
 #pragma once
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
-#ifdef AC_25
-#include "APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include "APICommon26.h"
-#endif // AC_26
-#if defined(AC_27) || defined(AC_28)
-#include "APICommon27.h"
-#endif // AC_27
-#ifdef AC_28
-#include "APICommon28.h"
-#endif // AC_28
-
 #include "DG.h"
 #include "SyncSettings.hpp"
 #include "Helpers.hpp"
@@ -144,9 +131,9 @@ bool SyncRelationsElement (const API_ElemTypeID& elementType, const SyncSettings
 // --------------------------------------------------------------------
 bool SyncData (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuids, ParamDictElement& paramToWrite, int dummymode);
 
-bool SyncNeedResync (ParamDictElement& paramToRead, GS::HashTable<API_Guid, GS::UniString> property_write_guid);
+bool SyncNeedResync (ParamDictElement& paramToRead, UnicGuidString property_write_guid);
 
-void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite, GS::HashTable<API_Guid, GS::UniString>& property_write_guid);
+void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subelemGuids, const ParamDictElement& paramToRead, ParamDictElement& paramToWrite, UnicGuidString& property_write_guid);
 
 // --------------------------------------------------------------------
 // Добавление подэлементов и их параметров в правила синхорнизации

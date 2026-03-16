@@ -178,6 +178,10 @@ typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 typedef GS::HashTable<API_Guid, bool> UnicGuid;
 typedef GS::HashTable<API_Guid, UnicGuid> UnicGuidByGuid;
 
+// Словарь описаний API_Guid
+typedef GS::HashTable<API_Guid, GS::UniString> UnicGuidString;
+typedef GS::HashTable<API_Guid, UnicGuidString> UnicGuidByGuidString;
+
 // Хранение данных параметра
 struct ParamValueData
 {
