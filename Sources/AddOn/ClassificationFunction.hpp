@@ -46,9 +46,9 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
 // -----------------------------------------------------------------------------
 // Поиск класса по ID в заданной классификации, возвращает Guid класса
 // -----------------------------------------------------------------------------
-API_Guid FindClass (GS::UniString& systemname, GS::UniString& classname);
-GS::UniString GetSystemName (API_Guid& systemguid);
-API_ClassificationItem FindClass (GS::Pair<API_Guid, API_Guid>& classitem);
+API_Guid FindClass (const GS::UniString& systemname, const  GS::UniString& classname);
+GS::UniString GetSystemName (const API_Guid& systemguid);
+API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid>& classitem);
 // -----------------------------------------------------------------------------
 // Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
 // -----------------------------------------------------------------------------

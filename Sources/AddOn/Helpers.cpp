@@ -7704,36 +7704,108 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     bool isClassRead = false;
     bool isClassReadOk = false;
 
-    k = "{@property:material class name}";
-    if (params.ContainsKey (k)) {
-        ParamValue pvalue = {};
-        pvalue.rawName = k;
-        pvalue.name = "material class name";
-        pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
-        if (!isClassRead) {
-            error = ACAPI_Attribute_GetClassificationItems (attrib.header, systemItemPairs);
-            if (error != NoError) {
-                msg_rep ("materialString::GetAttributeValues", "ACAPI_Attribute_Get", error, APINULLGuid);
-            } else {
-                isClassReadOk = true;
-            }
-            isClassRead = true;
+    GS::UniString clname = "{@property:material class name";
+    GS::UniString clId = "{@property:material class id";
+    GS::UniString cldesc = "{@property:material class description";
+    bool hasId = params.ContainsKey (clId + BRACEEND);
+    bool hasName = params.ContainsKey (clname + BRACEEND);
+    bool hasDesc = params.ContainsKey (cldesc + BRACEEND);
+    if (hasId || hasName || hasDesc) {
+        error = ACAPI_Attribute_GetClassificationItems (attrib.header, systemItemPairs);
+        if (error != NoError) {
+            msg_rep ("materialString::GetAttributeValues", "ACAPI_Attribute_GetClassificationItems", error, APINULLGuid);
+        } else {
+            isClassReadOk = true;
         }
-        if (isClassReadOk) {
-            cl = ClassificationFunc::FindClass (systemItemPairs[0]);
+        isClassRead = true;
+    }
+    if (isClassReadOk) {
+        cl = ClassificationFunc::FindClass (systemItemPairs[0]);
+        if (hasId && !cl.id.IsEmpty ()) {
+            ParamValue pvalue = params.Get (clId + BRACEEND);
+            ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.rawName, cl.id);
+            pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
             pvalue.fromMaterial = true;
-            ParamHelpers::AddParamValue2ParamDict (params.Get (k).fromGuid, pvalue, params);
+            pvalue.fromAttribDefinition = false;
+            ParamHelpers::AddParamValue2ParamDict (pvalue.fromGuid, pvalue, params);
+        }
+        if (hasName && !cl.name.IsEmpty ()) {
+            ParamValue pvalue = params.Get (clname + BRACEEND);
+            ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.rawName, cl.name);
+            pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
+            pvalue.fromMaterial = true;
+            pvalue.fromAttribDefinition = false;
+            ParamHelpers::AddParamValue2ParamDict (pvalue.fromGuid, pvalue, params);
+        }
+        if (hasDesc && !cl.description.IsEmpty ()) {
+            ParamValue pvalue = params.Get (cldesc + BRACEEND);
+            ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.rawName, cl.description);
+            pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
+            pvalue.fromMaterial = true;
+            pvalue.fromAttribDefinition = false;
+            ParamHelpers::AddParamValue2ParamDict (pvalue.fromGuid, pvalue, params);
         }
     }
     // Определения и свойста для элементов
     bool flag_find = false;
-    GS::Array<API_PropertyDefinition> propertyDefinitions;
+    GS::Array<API_PropertyDefinition> propertyDefinitions = {};
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
         ParamValue& param = *cIt->value;
         #endif
+        if (param.rawName.Contains (SEMICOLON)) {
+            if (param.rawName.Contains (CharENTER)) continue;
+            bool hasId = param.rawName.Contains (clId);
+            bool hasName = param.rawName.Contains (clname);
+            bool hasDesc = param.rawName.Contains (cldesc);
+            if (hasId || hasName || hasDesc) {
+                if (!isClassRead) {
+                    error = ACAPI_Attribute_GetClassificationItems (attrib.header, systemItemPairs);
+                    if (error != NoError) {
+                        msg_rep ("materialString::GetAttributeValues", "ACAPI_Attribute_GetClassificationItems", error, APINULLGuid);
+                    } else {
+                        isClassReadOk = true;
+                    }
+                    isClassRead = true;
+                }
+                if (isClassReadOk) {
+                    ParamValue pvalue = params.Get (param.rawName);
+                    pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
+                    GS::Pair<API_Guid, API_Guid> classitem = systemItemPairs[0];
+                    GS::UniString systemnameindes = param.rawName.Split (SEMICOLON)[1];
+                    systemnameindes.ReplaceAll (BRACEEND, EMPTYSTRING);
+                    systemnameindes.Trim ();
+                    systemnameindes.ToLowerCase ();
+                    for (const auto& s : systemItemPairs) {
+                        GS::UniString systemname = ClassificationFunc::GetSystemName (s.first);
+                        systemname.ToLowerCase ();
+                        if (systemnameindes == systemname) {
+                            classitem = s;
+                            break;
+                        }
+                    }
+                    cl = ClassificationFunc::FindClass (classitem);
+                    if (hasId && !cl.id.IsEmpty ()) {
+                        ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.rawName, cl.id);
+                        ParamHelpers::AddParamValue2ParamDict (pvalue.fromGuid, pvalue, params);
+                    }
+                    if (hasName && !cl.name.IsEmpty ()) {
+                        ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.rawName, cl.name);
+                        ParamHelpers::AddParamValue2ParamDict (pvalue.fromGuid, pvalue, params);
+                    }
+                    if (hasDesc && !cl.description.IsEmpty ()) {
+                        ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.rawName, cl.description);
+                        ParamHelpers::AddParamValue2ParamDict (pvalue.fromGuid, pvalue, params);
+                    }
+                    pvalue.fromMaterial = true;
+                    pvalue.fromAttribDefinition = false;
+                    flag_find = true;
+                }
+                continue;
+            }
+        }
         if (!param.fromAttribDefinition) continue;
         if (param.definition.name.Contains (CharENTER)) continue;
         // Поиск уже прочитанных свойств
@@ -7745,7 +7817,6 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                 continue;
             }
         }
-
         // Если в списке есть штриховка или покрытие - получим их имена.
         if (param.rawName.Contains ("buildingmaterialproperties/building material cutfill")) {
             GS::UniString namet = "";
