@@ -7774,7 +7774,14 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                     ParamValue pvalue = params.Get (param.rawName);
                     pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
                     GS::Pair<API_Guid, API_Guid> classitem = systemItemPairs[0];
-                    GS::UniString systemnameindes = param.rawName.Split (SEMICOLON)[1];
+                    GS::UniString systemnameindes = "";
+                    GS::Array<GS::UniString> sr = {};
+                    UInt32 nsr = StringSplt (param.rawName, SEMICOLON, sr);
+                    if (nsr > 1) {
+                        systemnameindes = sr[1];
+                    } else {
+                        continue;
+                    }
                     systemnameindes.ReplaceAll (BRACEEND, EMPTYSTRING);
                     systemnameindes.Trim ();
                     systemnameindes.ToLowerCase ();
