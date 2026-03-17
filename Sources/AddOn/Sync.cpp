@@ -1448,7 +1448,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
         if (elementType != API_ObjectID) synctypefind = false;
     }
     if (param.fromMaterial) {
-        if (elementType != API_WallID &&
+        if (!(elementType == API_ObjectID && param.fromQuantity) && elementType != API_WallID &&
            elementType != API_SlabID &&
            elementType != API_ColumnID &&
            elementType != API_BeamID &&
