@@ -6,7 +6,10 @@
 
 namespace Spec_libpart
 {
-
+struct Element
+{
+    Element ()
+    {}
+};
 }
-
 #endif

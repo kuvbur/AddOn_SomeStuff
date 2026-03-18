@@ -5295,12 +5295,13 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
 // -----------------------------------------------------------------------------
 // Получение информации о элементе
 // -----------------------------------------------------------------------------
-void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, ParamDictComposite& paramcomposite)
+void ParamHelpers::ReadQuantities (const API_Elem_Head& elemhead, ParamDictValue& params, ParamDictComposite& paramcomposite)
 {
     #if defined(TESTING)
     DBprnt ("      ReadQuantities");
     #endif
     API_ElementQuantity quantity = {};
+    const API_ElemTypeID eltype = GetElemTypeID (elemhead);
     API_QuantityPar paramq = {}; BNZeroMemory (&paramq, sizeof (API_QuantityPar));
     paramq.minOpeningSize = EPS;
     GSErrCode err = NoError;
@@ -5316,10 +5317,10 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
     quantities[0].composites = &composites;
     quantities[0].elemPartQuantities = &elemPartQuantities;
     quantities[0].elemPartComposites = &elemPartComposites;
-    GS::Array<API_Guid> elemGuids = {}; elemGuids.Push (elemGuid);
+    GS::Array<API_Guid> elemGuids = {}; elemGuids.Push (elemhead.guid);
     err = ACAPI_Element_GetMoreQuantities (&elemGuids, &paramq, &quantities, &mask);
     if (err != NoError) {
-        msg_rep ("ReadQuantities", "ACAPI_Element_GetMoreQuantities", err, elemGuid);
+        msg_rep ("ReadQuantities", "ACAPI_Element_GetMoreQuantities", err, elemhead.guid);
         return;
     }
     // В случае, если прежде не были считаны данные по слоям (Например, для объекта) - добавляем слои из прочитанного
@@ -5498,7 +5499,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
                 msg += " <-> ";
                 msg += GS::UniString::Printf ("%f", pll.fillThick);
                 msg += GS::UniString::Printf (" attrib inx: %d", pdd.inx);
-                msg_rep ("Warning : Layer thickness", "Different thickness in property and model : " + msg, APIERR_GENERAL, elemGuid);
+                msg_rep ("Warning : Layer thickness", "Different thickness in property and model : " + msg, APIERR_GENERAL, elemhead.guid);
             }
             if (is_equal (pdd.fillThick, 0)) pdd.fillThick = pll.fillThick;
             if (pll.fillThick_min > 0) pdd.fillThick_min = pll.fillThick_min;
@@ -5541,7 +5542,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
     }
     #if defined(TESTING)
     DBprnt ("ReadQuantities err", "long way");
-    msg_rep ("Warning : ReadQuantities", "Old method", APIERR_GENERAL, elemGuid);
+    msg_rep ("Warning : ReadQuantities", "Old method", APIERR_GENERAL, elemhead.guid);
     #endif
     // Если была необходимость добавления списка слоёв в общий словарь
     if (need_add_composite && !add_composite.IsEmpty ()) {
@@ -5632,7 +5633,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
                     msg += " <-> ";
                     msg += GS::UniString::Printf ("%f", p.fillThick);
                     msg += GS::UniString::Printf (" attrib inx: %d", p.inx);
-                    msg_rep ("Warning : Layer thickness", "Different thickness in property and model : " + msg, APIERR_GENERAL, elemGuid);
+                    msg_rep ("Warning : Layer thickness", "Different thickness in property and model : " + msg, APIERR_GENERAL, elemhead.guid);
                 }
             }
             double proc = 0;
@@ -5901,7 +5902,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
 
     ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, needReadQuantities);
     bool flag_add = false;
-    if (needReadQuantities) ParamHelpers::ReadQuantities (element.header.guid, params, paramcomposite);
+    if (needReadQuantities) ParamHelpers::ReadQuantities (element.header, params, paramcomposite);
     GS::UniString layers_inv = "{@material:layers_inv";
     GS::UniString layers_auto = "{@material:layers_auto";
     GS::UniString nosyncname = "{@property:nosyncname}";
@@ -5933,6 +5934,7 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
     bool has_ns = params.ContainsKey (ns_);
     if (!has_ns) ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", "");
     has_ns = params.ContainsKey (ns_);
+    API_ElemTypeID eltype = GetElemTypeID (element.header);
     // Если есть строка-шаблон - заполним её
     for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         bool flag = false;
@@ -5996,7 +5998,6 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 API_AttributeIndex constrinx = param_composite.composite[indx].inx;
                 // Если для материала было указано уникальное наименование - заменим его
                 GS::UniString attribsuffix = CharENTER + GS::UniString::Printf ("%d", constrinx) + BRACEEND;
-
                 if (!ignore_sync) {
                     for (UInt32 inx = 0; inx < 20; inx++) {
                         GS::UniString syncname = "{@property:sync_name" + GS::UniString::Printf ("%d", inx) + attribsuffix;
@@ -7737,6 +7738,8 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         case API_MorphID:
             constrinx = element.morph.buildingMaterial;
             fillThick = 0;
+            structtype = API_CompositeStructure;
+            if (!needReadQuantities) return false;
             break;
         case API_ObjectID:
             structtype = API_CompositeStructure;
@@ -7767,6 +7770,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         p.composite_pen = param.composite_pen;
         p.fromGuid = element.header.guid;
         p.hasFormula = param.val.hasFormula;
+        p.fromQuantity = param.fromQuantity;
         paramcomposite.Add (param.rawName, p);
     }
 

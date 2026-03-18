@@ -236,6 +236,7 @@ struct ParamComposite
     API_ElemTypeID eltype = API_ZombieElemID; // Для определения по какому типу элемента читать состав конструкции
     short composite_pen = 0;
     bool hasFormula = false; // В поле tempstring содержится выражение, которое надо вычислить
+    bool fromQuantity = false;
 };
 
 // Словарь с заранее вычисленными данными в пределах обного элемента

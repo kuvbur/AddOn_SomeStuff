@@ -572,7 +572,7 @@ bool ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniString& name, GS::U
 
 bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue);
 
-void ReadQuantities (const API_Guid& elemGuid, ParamDictValue& params, ParamDictComposite& paramcomposite);
+void ReadQuantities (const API_Elem_Head& elemhead, ParamDictValue& params, ParamDictComposite& paramcomposite);
 
 bool ReadElementValues (const API_Element& element, ParamDictValue& params);
 
