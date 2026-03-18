@@ -580,7 +580,7 @@ GS::UniString GetUnitsPrefix (GS::UniString& unit);
 
 void SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp);
 
-void ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictComposite& paramcomposite, ParamDictValue& params, bool& needReadQuantities);
+void ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictComposite& paramcomposite, ParamDictValue& params, bool needReadQuantities);
 
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции

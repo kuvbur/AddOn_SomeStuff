@@ -1364,7 +1364,7 @@ void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const A
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        if (addInNotEx) {
+        if (!addInNotEx) {
             params.Add (pvalue.rawName, pvalue);
         }
     }
@@ -1399,7 +1399,7 @@ void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        if (addInNotEx) {
+        if (!addInNotEx) {
             params.Add (pvalue.rawName, pvalue);
         }
     }
@@ -1434,7 +1434,7 @@ void ParamHelpers::AddDoubleValueToParamDictValue (ParamDictValue& params, const
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        if (addInNotEx) {
+        if (!addInNotEx) {
             params.Add (pvalue.rawName, pvalue);
         }
     }
@@ -1468,7 +1468,7 @@ void ParamHelpers::AddStringValueToParamDictValue (ParamDictValue& params, const
         pvalue.toQRCode = paramFrom.toQRCode;
         params.Set (pvalue.rawName, pvalue);
     } else {
-        if (addInNotEx) {
+        if (!addInNotEx) {
             params.Add (pvalue.rawName, pvalue);
         }
     }
@@ -1930,7 +1930,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sx", swspx, true);
             ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sy", swspy, true);
         } else {
-            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "windoor_in_wall", true);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "windoor_in_wall", true, true);
         }
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_x", x, true);
         ParamHelpers::AddLengthValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_y", y, true);
@@ -2178,7 +2178,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sy_correct_hard", bsymb_pos_sy_correctusp_hard, true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_ex_correct_hard", bsymb_pos_ex_correctusp_hard, true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_ey_correct_hard", bsymb_pos_ey_correctusp_hard, true);
-            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_correct_hard", bsymb_pos_correctusp_hard);
+            ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_correct_hard", bsymb_pos_correctusp_hard, true);
 
         } else {
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "l_correct", true, true);
@@ -5228,7 +5228,7 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
             GS::UniString ttxt = partstring[2];
             double t = 0;
             if (!UniStringToDouble (ttxt, t)) continue;
-            ParamHelpers::AddLengthValueToParamDictValue (pdictvalue, elem_head.guid, LISTDATANAMEPREFIX, attribsuffix, t / 1000.0, true);
+            ParamHelpers::AddLengthValueToParamDictValue (pdictvalue, elem_head.guid, LISTDATANAMEPREFIX, attribsuffix, t / 1000.0);
             continue;
         }
     }
@@ -5414,21 +5414,12 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
             if (params.ContainsKey (rawname_thlist + attribsuffix)) {
                 if (params.Get (rawname_thlist + attribsuffix).isValid) {
                     th = params.Get (rawname_thlist + attribsuffix).val.doubleValue;
-                } else {
-                    if (params.ContainsKey (rawname_th + attribsuffix)) {
-                        if (params.Get (rawname_th + attribsuffix).isValid) {
-                            th = params.Get (rawname_th + attribsuffix).val.doubleValue;
-                        } else {
-                            th = 0;
-                        }
-                    }
                 }
-            } else {
+            }
+            if (is_equal (th, 0)) {
                 if (params.ContainsKey (rawname_th + attribsuffix)) {
                     if (params.Get (rawname_th + attribsuffix).isValid) {
                         th = params.Get (rawname_th + attribsuffix).val.doubleValue;
-                    } else {
-                        th = 0;
                     }
                 }
             }
@@ -5450,7 +5441,7 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
     }
     // Дочитываем параметры, найденный в свойствах
     bool needReadQuantities = true;
-    ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, needReadQuantities);
+
     // Получаем список всех компонент из предыдущих функций
     GS::Array<ParamValueComposite> all_composite = {}; // Состав конструкции, считанный из компонент
     for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -5542,9 +5533,12 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
             if (param.composite_pen > 0) continue;
             param.composite = add_composite;
         }
+        if (!paramsAdd.IsEmpty ()) {
+            ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, true);
+            paramsAdd.Clear ();
+        }
         return;
     }
-
     #if defined(TESTING)
     DBprnt ("ReadQuantities err", "long way");
     msg_rep ("Warning : ReadQuantities", "Old method", APIERR_GENERAL, elemGuid);
@@ -5560,6 +5554,10 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
             if (param.composite_pen > 0) continue;
             if (param.composite.IsEmpty ()) param.composite = add_composite;
         }
+    }
+    if (!paramsAdd.IsEmpty ()) {
+        ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, true);
+        paramsAdd.Clear ();
     }
     // Создаём словарь компонент, считанных из предыдущих функций. Складываем толщины и площади сечений
     GS::HashTable<API_AttributeIndex, ParamValueComposite> composites_quantity_param = {}; // Словарь с компонентами, прочитанный прежде (сложный профиль и т.д.)
@@ -5584,8 +5582,6 @@ void ParamHelpers::ReadQuantities (const API_Guid& elemGuid, ParamDictValue& par
             } else {
                 composites_quantity_param.Add (p.inx, p);
             }
-
-
         }
         break; // Достаточно считать только один композит, т.к. считываем только композиты со всеми слоями
     }
@@ -5833,7 +5829,7 @@ void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp
     }
 }
 
-void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictComposite& paramcomposite, ParamDictValue& params, bool& needReadQuantities)
+void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictComposite& paramcomposite, ParamDictValue& params, bool needReadQuantities)
 {
     // В свойствах могли быть ссылки на другие свойста. Проверим, распарсим
     if (paramsAdd.IsEmpty ()) return;
