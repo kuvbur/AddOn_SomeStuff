@@ -196,8 +196,8 @@ void RoomBook ()
     #endif
     // Читаем свойства всех элементов
     ParamDictCompositeElement paramCompositeToRead = {};
-    bool needReturnComposite = true;
-    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, needReturnComposite);
+    ListData::LibElements paramListDataToRead = {};
+    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
     // Словарь избранного
     MatarialToFavoriteDict favdict = Favorite_GetDict ();
     // Ищём существующие элементы и определяем их привязку к базовым конструкциям

@@ -5,6 +5,7 @@
 #include "basicgeometry.h"
 #include "ClassificationFunction.hpp"
 #include "CommonFunction.hpp"
+#include "Spec_libpart.hpp"
 #include "StringConversion.hpp"
 #include "SyncSettings.hpp"
 
@@ -115,6 +116,7 @@ struct DimRule
 };
 
 typedef GS::HashTable<GS::UniString, DimRule> DimRules; // Словарь с правилами округления размеров
+
 
 int IsDummyModeOn ();
 
@@ -453,12 +455,12 @@ void Read (const API_Guid& elemGuid, ParamDictValue& params);
 // Заполнение словаря параметров для множества элементов
 // При необходимости возвращает словарь для сложного элемента ParamDictCompositeElement
 // --------------------------------------------------------------------
-void ElementsRead (ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, bool& needReturnComposite);
+void ElementsRead (ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, ListData::LibElements& paramListDataToRead, bool needReturnComposite, bool needListData);
 
 // --------------------------------------------------------------------
 // Заполнение словаря с параметрами
 // --------------------------------------------------------------------
-void Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictCompositeElement& paramscomposite, bool& needReturnComposite);
+void Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictComposite& paramcomposite, ListData::LibElement& paramListData, bool needReturnComposite, bool needListData);
 
 void Array2ParamValue (GS::Array<ParamValueData>& pvalue, ParamValueData& pvalrezult);
 bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::UniString& pstring, const double& preal);
@@ -570,7 +572,7 @@ bool ReadFormula (ParamDictValue& params);
 
 bool ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniString& name, GS::UniString& unitcode, GS::UniString& suffix, double& qty);
 
-bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue);
+bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue, ListData::LibElement& paramListDataToRead, bool needListData);
 
 void ReadQuantities (const API_Elem_Head& elemhead, ParamDictValue& params, ParamDictComposite& paramcomposite);
 
