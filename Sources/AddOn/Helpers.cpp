@@ -18,6 +18,7 @@
 #include    "ProfileVectorImageOperations.hpp"
 #include    "ProfileAdditionalInfo.hpp"
 #include    "ProfileVectorImage.hpp"
+
 static const GS::Array<short> paramTypesList = { IDTYPEINX,PROPERTYTYPEINX,COORDTYPEINX,GDLTYPEINX,INFOTYPEINX,IFCTYPEINX,MORPHTYPEINX,ATTRIBTYPEINX,LISTDATATYPEINX,MATERIALTYPEINX,GLOBTYPEINX,
 CLASSTYPEINX,FORMULATYPEINX,ELEMENTTYPEINX,MEPTYPEINX };
 
@@ -4019,21 +4020,22 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
 void ParamHelpers::ElementsRead (ParamDictElement& paramToRead)
 {
     ParamDictCompositeElement paramCompositeToRead = {};
-    bool needReturnComposite = false;
-    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, needReturnComposite);
+    ListData::LibElements paramListDataToRead = {};
+    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, false, false);
 }
 
 void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params)
 {
-    ParamDictCompositeElement paramCompositeToRead = {};
-    bool needReturnComposite = false;
-    ParamHelpers::Read (elemGuid, params, paramCompositeToRead, needReturnComposite);
+    ParamDictComposite paramCompositeToRead = {};
+    ListData::LibElement paramListDataToRead = {};
+    ParamHelpers::Read (elemGuid, params, paramCompositeToRead, paramListDataToRead, false, false);
 }
+
 
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
-void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, bool& needReturnComposite)
+void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, ListData::LibElements& paramListDataToRead, bool needReturnComposite, bool needListData)
 {
     if (paramToRead.IsEmpty ()) return;
     #if defined(TESTING)
@@ -4048,7 +4050,26 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictComposi
         ParamDictValue& params = *cIt->value;
         API_Guid elemGuid = *cIt->key;
         #endif
-        if (!params.IsEmpty ()) ParamHelpers::Read (elemGuid, params, paramCompositeToRead, needReturnComposite);
+        if (!params.IsEmpty ()) {
+            API_Guid elemGuid_comp = elemGuid;
+            if (!needReturnComposite) elemGuid_comp = APINULLGuid;
+            if (!paramCompositeToRead.ContainsKey (elemGuid_comp)) {
+                ParamDictComposite p = {};
+                paramCompositeToRead.Add (elemGuid_comp, p);
+            }
+            ParamDictComposite& paramcomposite = paramCompositeToRead.Get (elemGuid_comp);
+            if (!paramcomposite.IsEmpty ()) paramcomposite.Clear ();
+
+            API_Guid elemGuid_list = elemGuid;
+            if (!needListData) elemGuid_list = APINULLGuid;
+            if (!paramListDataToRead.ContainsKey (elemGuid_list)) {
+                ListData::LibElement p = {};
+                paramListDataToRead.Add (elemGuid_list, p);
+            }
+            ListData::LibElement& paramListData = paramListDataToRead.Get (elemGuid_list);
+            if (!paramListData.IsEmpty ()) paramListData.Clear ();
+            ParamHelpers::Read (elemGuid, params, paramcomposite, paramListData, needReturnComposite, needListData);
+        }
     }
     #if defined(TESTING)
     DBprnt ("ElementsRead end");
@@ -4058,7 +4079,7 @@ void ParamHelpers::ElementsRead (ParamDictElement& paramToRead, ParamDictComposi
 // --------------------------------------------------------------------
 // Заполнение словаря с параметрами
 // --------------------------------------------------------------------
-void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictCompositeElement& paramscomposite, bool& needReturnComposite)
+void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictComposite& paramcomposite, ListData::LibElement& paramListData, bool needReturnComposite, bool needListData)
 {
     if (params.IsEmpty ()) return;
     if (elemGuid == APINULLGuid) {
@@ -4073,7 +4094,6 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         return;
     }
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
-    ParamDictComposite paramcomposite = {};
     bool can_read_fromMaterial = true;
     if (eltype != API_WallID &&
        eltype != API_MeshID &&
@@ -4151,6 +4171,10 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             if (!hasparambytypes.ContainsKey (LISTDATATYPEINX)) hasparambytypes.Add (LISTDATATYPEINX, true);
         }
     }
+    if (needListData && can_read_fromGDL) {
+        hasListData = true;
+        if (!hasparambytypes.ContainsKey (LISTDATATYPEINX)) hasparambytypes.Add (LISTDATATYPEINX, true);
+    }
     API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
     if (needGetElement) {
         element.header.guid = elemGuid;
@@ -4220,7 +4244,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 ParamHelpers::ReadGDL (element, elem_head, paramByType, params);
                 break;
             case LISTDATATYPEINX:
-                ParamHelpers::ReadListData (elem_head, params);
+                ParamHelpers::ReadListData (elem_head, params, paramListData, needListData);
                 break;
             case IFCTYPEINX:
                 #if !defined (AC_29)
@@ -4299,14 +4323,6 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             param.val.uniStringValue = qr;
         }
     }
-    if (!needReturnComposite) return;
-    if (paramcomposite.IsEmpty ()) return;
-    if (paramscomposite.ContainsKey (elemGuid)) {
-        #if defined(TESTING)
-        DBprnt ("Read err", "paramscomposite.ContainsKey (elemGuid)");
-        #endif
-    }
-    paramscomposite.Add (elemGuid, paramcomposite);
 }
 
 // --------------------------------------------------------------------
@@ -5168,7 +5184,7 @@ bool ParamHelpers::ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniStrin
     return true;
 }
 
-bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue)
+bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue, ListData::LibElement& paramListDataToRead, bool needListData)
 {
     #if defined(TESTING)
     DBprnt ("      ReadListData");
@@ -5230,8 +5246,11 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
             if (!UniStringToDouble (ttxt, t)) continue;
             ParamHelpers::AddLengthValueToParamDictValue (pdictvalue, elem_head.guid, LISTDATANAMEPREFIX, attribsuffix, t / 1000.0);
             continue;
+        } else {
+            if (!needListData) continue;
         }
     }
+    if (!needListData) return !pdictvalue.IsEmpty ();
     BMKillHandle ((GSHandle*) &descRefs);
     nComp = 0;
     #if defined(AC_22) || defined(AC_23) || defined(AC_24)
@@ -5284,9 +5303,8 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
         char tunitcode[API_DBCodeLen];
         CHTruncate (listdata.component.unitcode, tunitcode, API_DBCodeLen);
         GS::UniString unitcode = GS::UniString (tunitcode);
-        GS::UniString suffix = GS::UniString::Printf ("@arr_%d_%d_%d_%d_%d", i + 1, i + 1, 1, 1, ARRAY_UNIC);
         double qty = listdata.component.quantity;
-        ParamHelpers::ListData2ParamValue (pdictvalue, name, unitcode, suffix, qty);
+        ListData::Add (paramListDataToRead, name, unitcode, qty);
     }
     BMKillHandle ((GSHandle*) &compRefs);
     return !pdictvalue.IsEmpty ();

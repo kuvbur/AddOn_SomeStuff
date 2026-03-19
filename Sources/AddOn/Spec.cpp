@@ -347,7 +347,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     GS::UniString subtitle = ""; Int32 maxval = 1; short i = 1;
     ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
     ParamDictCompositeElement paramCompositeToRead = {}; // Прочитанные составы конструкции
-    bool needReturnComposite = true;
+    ListData::LibElements paramListDataToRead = {}; // Прочитанные данные объектов
     ParamDictValue paramToWrite = {}; // Словарь с параметрами для записи (с нулевым GUID)
     GS::Array<ElementDict> elements_new = {}; // Массив со словарём создаваемых элементов
     GS::Array<ElementDict> elements_mod = {}; // Массив со словарём модифицируемых элементов
@@ -551,7 +551,7 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         return APIERR_GENERAL;
     }
     // Читаем данные из размещённых элементов
-    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, needReturnComposite);
+    ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, true);
     //Массив со словарями элементов для создания по правилам
     Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
     bool has_v2 = false;
