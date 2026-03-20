@@ -28,7 +28,9 @@ struct GroupSpec
     GS::Array<GS::UniString> sum_paramrawname = {}; // Массив имён параметров, которые требуется просуммировать
     GS::UniString flag_paramrawname = "";           // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
     bool is_Valid = true;
-    bool fromMaterial = false;
+    bool fromMaterial = false; // Чтение из компонент
+    bool fromKM = false; // Чтение проката
+    bool fromKZH = false; // Чтение арматуры
     GS::Int32 n_layer = 0;
 };
 
@@ -49,6 +51,8 @@ struct SpecRule
     bool delete_old = false;
     bool stop_on_error = true;
     bool only_visible = true;
+    bool isKM = false; // Правило для КМ (техничка)
+    bool isKZH = false; // Правило для КЖ (ведомость расхода стали)
 };
 
 struct Element

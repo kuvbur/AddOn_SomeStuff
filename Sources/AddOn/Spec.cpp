@@ -1341,13 +1341,33 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     // Получаем критерий
     SpecRule rule = {};
     GS::Array<GS::UniString> partstring = {};
-    if (description.Contains ("pec_rule_v2")) {
+    GS::UniString ldescription = description.ToLowerCase ();
+    if (ldescription.Contains ("pec_rule_v2")) {
         rule.delete_old = true;
+    } else {
+        if (ldescription.Contains ("pec_rule_v3")) {
+            rule.delete_old = true;
+            rule.stop_on_error = false;
+            rule.only_visible = false;
+        } else {
+            if (ldescription.Contains ("pec_rule_km")) {
+                rule.isKM = true;
+            } else {
+                if (ldescription.Contains ("pec_rule_km")) {
+                    rule.isKZH = true;
+                }
+            }
+        }
     }
-    if (description.Contains ("pec_rule_v3")) {
-        rule.delete_old = true;
+    if (rule.isKM) {
+        rule.delete_old = false;
         rule.stop_on_error = false;
-        rule.only_visible = false;
+        rule.only_visible = true;
+    }
+    if (rule.isKZH) {
+        rule.delete_old = false;
+        rule.stop_on_error = false;
+        rule.only_visible = true;
     }
     if (StringSplt (description, BRACEEND, partstring, "pec_rule") > 0) {
         description = partstring[0] + BRACEEND;
