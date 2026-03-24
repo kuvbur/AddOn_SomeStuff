@@ -7,7 +7,7 @@ namespace ListData
 GS::UniString GetSubposKey (const GS::UniString& subpos)
 {
     GS::UniString key = "";
-    key.Append (subpos); key.Append ("_");
+    key.Append (subpos); key.Append (ATSIGN);
     key.ReplaceAll (SPACESTRING, EMPTYSTRING);
     key.SetToLowerCase ();
     return key;
@@ -28,10 +28,24 @@ GS::UniString GetKey (const Subpos& p)
 GS::UniString GetKey (const Mat& m)
 {
     GS::UniString key = "";
-    key.Append (m.pos); key.Append ("_");
-    key.Append (m.tip_konstr); key.Append ("_");
-    key.Append (m.obozn); key.Append ("_");
-    key.Append (m.units); key.Append ("_");
+    key.Append (m.pos); key.Append (ATSIGN);
+    key.Append (m.tip_konstr); key.Append (ATSIGN);
+    key.Append (m.obozn); key.Append (ATSIGN);
+    key.Append (m.units); key.Append (ATSIGN);
+    key.ReplaceAll (SPACESTRING, EMPTYSTRING);
+    key.SetToLowerCase ();
+    return key;
+}
+
+
+GS::UniString GetKey (const Arm& p)
+{
+    GS::UniString key = "";  //Контрольная сумма
+    key.Append (p.pos); key.Append (ATSIGN);
+    key.Append (p.klass); key.Append (ATSIGN);
+    key.Append (p.units); key.Append (ATSIGN);
+    key.Append (GS::UniString::Printf ("%f_", p.dlin));
+    key.Append (GS::UniString::Printf ("%d_", p.diam));
     key.ReplaceAll (SPACESTRING, EMPTYSTRING);
     key.SetToLowerCase ();
     return key;
@@ -40,11 +54,12 @@ GS::UniString GetKey (const Mat& m)
 GS::UniString GetKey (const Prokat& p)
 {
     GS::UniString key = "";  //Контрольная сумма
-    key.Append (p.pos); key.Append ("_");
-    key.Append (p.tip_konstr); key.Append ("_");
-    key.Append (p.obozn); key.Append ("_");
-    key.Append (p.tip_profile); key.Append ("_");
-    key.Append (p.units); key.Append ("_");
+    key.Append (p.pos); key.Append (ATSIGN);
+    key.Append (p.tip_konstr); key.Append (ATSIGN);
+    key.Append (p.obozn); key.Append (ATSIGN);
+    key.Append (p.tip_profile); key.Append (ATSIGN);
+    key.Append (p.units); key.Append (ATSIGN);
+    key.Append (GS::UniString::Printf ("%f_", p.dlin));
     key.ReplaceAll (SPACESTRING, EMPTYSTRING);
     key.SetToLowerCase ();
     return key;
@@ -97,6 +112,39 @@ void AddMat (LibElement& paramListDataToRead, const GS::Array<GS::UniString>& pa
     }
 }
 
+
+void AddArm (LibElement& paramListDataToRead, const GS::Array<GS::UniString>& partstring, GS::UniString& unitcode, double& qty, const short& version)
+{
+    Arm p = {};
+
+    GS::UniString subpos = "";
+    if (version == 3) {
+        bool flag_add = true;
+        GS::UniString subpos = partstring[0];
+        p.pos = partstring[2];
+        p.klass = partstring[4];
+        if (!UniStringToDouble (partstring[6], p.diam)) return;
+        if (!UniStringToDouble (partstring[7], p.dlin)) return;
+        if (partstring[8] == "1") p.isPm = true;
+        p.ves = qty;
+    }
+    if (version == 4) {
+        return;
+    }
+    GS::UniString subposkey = GetSubposKey (subpos);
+    if (!paramListDataToRead.subpos.ContainsKey (subposkey)) {
+        paramListDataToRead.subpos.Add (subposkey, {});
+    }
+    Subpos& s = paramListDataToRead.subpos.Get (subposkey);
+    GS::UniString key = GetKey (p);
+    if (s.arm.ContainsKey (key)) {
+        Arm& m = s.arm.Get (key);
+        m.qty += p.qty;
+    } else {
+        s.arm.Add (key, p);
+    }
+}
+
 void AddProkat (LibElement& paramListDataToRead, const GS::Array<GS::UniString>& partstring, GS::UniString& unitcode, double& qty, const short& version)
 {
     Prokat p = {};
@@ -112,7 +160,7 @@ void AddProkat (LibElement& paramListDataToRead, const GS::Array<GS::UniString>&
         p.obozn = partstring[10];
         p.tip_profile = partstring[11];
         if (!UniStringToDouble (partstring[9], p.qty)) return;
-        if (!UniStringToDouble (partstring[12], p.dlin_prof)) return;
+        if (!UniStringToDouble (partstring[12], p.dlin)) return;
         if (!UniStringToDouble (partstring[14], p.ves_t)) return;
         p.ves = qty;
     }
@@ -128,12 +176,11 @@ void AddProkat (LibElement& paramListDataToRead, const GS::Array<GS::UniString>&
     if (s.prokat.ContainsKey (key)) {
         Prokat& m = s.prokat.Get (key);
         m.qty += p.qty;
-        m.dlin_prof += p.dlin_prof;
-
     } else {
         s.prokat.Add (key, p);
     }
 }
+
 
 void Add (LibElement& paramListDataToRead, GS::UniString& name, GS::UniString& unitcode, double& qty)
 {
@@ -147,7 +194,7 @@ void Add (LibElement& paramListDataToRead, GS::UniString& name, GS::UniString& u
     GS::UniString tip_el = "";
     if (version == 3 || version == 4) tip_el = partstring[1];
     if (tip_el.IsEmpty () || tip_el.GetLength () != 2) return;
-    if (tip_el == "10") {}
+    if (tip_el == "10") AddArm (paramListDataToRead, partstring, unitcode, qty, version);
     if (tip_el == "20") AddProkat (paramListDataToRead, partstring, unitcode, qty, version);
     if (tip_el == "30") AddMat (paramListDataToRead, partstring, unitcode, qty, version);
     if (tip_el == "40") {}
