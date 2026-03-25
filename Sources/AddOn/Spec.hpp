@@ -29,8 +29,7 @@ struct GroupSpec
     GS::UniString flag_paramrawname = "";           // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
     bool is_Valid = true;
     bool fromMaterial = false; // Чтение из компонент
-    bool fromKM = false; // Чтение проката
-    bool fromKZH = false; // Чтение арматуры
+    bool fromLibData = false; // Чтение ведомостей
     GS::Int32 n_layer = 0;
 };
 

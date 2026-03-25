@@ -26,6 +26,7 @@ struct Arm
     bool isGnut = false; // Гнутый стержень
     bool isPm = false; // в п.м.
     GS::UniString units = "";  // Ед. измерения
+    GS::UniString key = "";  // Уникальный код
 }; // Арматура
 
 struct Prokat
@@ -40,7 +41,8 @@ struct Prokat
     double dlin = 0; // Длина
     double ves_t = 0; // Вес погонный
     double ves = 0; // Вес
-    GS::UniString units = "";  // Ед. измерения
+    bool isPm = false; // в п.м.
+    GS::UniString key = "";  // Уникальный код
 }; // Стальной профиль
 
 struct Mat
@@ -52,6 +54,7 @@ struct Mat
     double qty = 0; // Количество
     double ves = 0;  // Вес
     GS::UniString units = "";  // Ед. измерения
+    GS::UniString key = "";  // Уникальный код
 }; // Материал
 
 struct Subpos
@@ -65,6 +68,7 @@ struct Subpos
     double qty = 0; // Количество
     double ves = 0; // Масса ед.
     GS::UniString units = "";  // Ед. измерения
+    GS::UniString key = "";  // Уникальный код
     bool IsEmpty ()
     {
         if (!prokat.IsEmpty ()) return false;
@@ -92,6 +96,7 @@ struct LibElement
     double qty = 0; // Количество
     double ves = 0; // Масса ед.
     GS::UniString units = "";  // Ед. измерения
+    GS::UniString key = "";  // Уникальный код
     bool IsEmpty ()
     {
         if (!subpos.IsEmpty ()) return false;
