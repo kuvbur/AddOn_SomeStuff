@@ -859,11 +859,14 @@ void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid
     description.ReplaceAll ("; ", SEMICOLON);
     description.ReplaceAll ("gm (", "gm(");
     description.ReplaceAll (" gm(", "gm(");
+    description.ReplaceAll ("gl (", "gl(");
+    description.ReplaceAll (" gl(", "gl(");
     description.ReplaceAll ("g (", "g(");
     description.ReplaceAll ("s (", "s(");
     description.ReplaceAll (" g(", "g(");
     description.ReplaceAll (" s(", "s(");
     description.ReplaceAll ("g(", "g@@");
+    description.ReplaceAll ("gl(", "g@@libdata@");
     description.ReplaceAll ("s(", "s@@");
     description.ReplaceAll (")s", "@@s");
     description.ReplaceAll (")g", "@@g");
@@ -1325,6 +1328,15 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
     return n_elements;
 }
 
+bool hasLibData (const GS::UniString& description)
+{
+    if (description.Contains ("%prokat.")) return true;
+    if (description.Contains ("%mat.")) return true;
+    if (description.Contains ("%arm.")) return true;
+    if (description.Contains ("%subpos.")) return true;
+    return false;
+}
+
 // --------------------------------------------------------------------
 // Разбивает строку на части. Будем постепенно заменять на пустоту обработанные части
 // Критерий - значение, по которому будет сгруппированы элементы
@@ -1382,19 +1394,23 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     rule.favorite_name = criteria;
     GS::Array<GS::UniString> paramss = {};
     // Разбивка на группы и итог
-    GS::Array<GS::UniString> rulestring_summ = {};
+    GS::Array<GS::UniString> rulestring_summ = {}; // Массив из имени избранного, групп g() и s()
     if (StringSplt (description, "s@@", rulestring_summ) < 2) {
         rule.is_Valid = false;
         return rule;
     }
     // Параметры для записи
     // До точки с запятой - уникальные параметры , после - параметры для суммы
-    GS::Array<GS::UniString> rulestring_write = {};
+    GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
     UInt32 nrule_write = StringSplt (rulestring_summ[1], SEMICOLON, rulestring_write);
     if (nrule_write != 2) {
         rule.is_Valid = false;
         return rule;
     }
+    // Обработка группы s()
+    // s (Pn1, Pn2, Pn3; Qn1, Qn2) =>
+    // Pn1, Pn2, Pn3 - имена параметров для записи свойств для передачи (P1,P2,P3) part == 0
+    // Qn1, Qn2 - имена параметров для записи количества Q1,Q2, part == 1
     for (UInt32 part = 0; part < nrule_write; part++) {
         GS::Array<GS::UniString> rulestring_param = {};
         UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param);
@@ -1420,67 +1436,94 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
             }
         }
     }
-    // Параметры для чтения
-    // До точки с запятой - уникальные параметры , после - параметры для суммы
-    GS::Array<GS::UniString> rulestring_group = {};
+    // Разбивка на группы
+    GS::Array<GS::UniString> rulestring_group = {}; // Массив с строками групп
     UInt32 nrule_group = StringSplt (rulestring_summ[0], "g@@", rulestring_group);
     if (nrule_group < 1) {
         rule.is_Valid = false;
         return rule;
     }
-    for (UInt32 igroup = 0; igroup < nrule_group; igroup++) {
+
+    for (GS::UniString& rulestring_one_group : rulestring_group) {
         GS::Array<GS::UniString> rulestring_read = {};
-        bool fromMaterial = false;
-        if (rulestring_group[igroup].Contains ("Material_all@")) {
-            rulestring_group[igroup].ReplaceAll ("Material_all@", EMPTYSTRING);
-            fromMaterial = true;
+        GroupSpec group = {};
+        // Проверка типа группы
+        if (rulestring_one_group.Contains (ATSIGN)) {
+            // Чтение материалов
+            if (rulestring_one_group.Contains ("Material_all@")) {
+                rulestring_one_group.ReplaceAll ("Material_all@", EMPTYSTRING);
+                group.fromMaterial = true;
+            } else {
+                // Чтение данных ведомостей
+                if (rulestring_one_group.Contains ("libdata@")) {
+                    rulestring_one_group.ReplaceAll ("libdata@", EMPTYSTRING);
+                    group.fromLibData = true;
+                }
+            }
         }
-        UInt32 nrule_read = StringSplt (rulestring_group[igroup], SEMICOLON, rulestring_read);
+        // Разбивка группы на параметры
+        UInt32 nrule_read = StringSplt (rulestring_one_group, SEMICOLON, rulestring_read);
         if (nrule_read <= 1) {
             rule.is_Valid = false;
             return rule;
         }
-        GroupSpec group = {};
-        group.fromMaterial = fromMaterial;
-        Int32 min_row = 0;
+        // g(U1,U2,U3; P1,P2,P3; F1; Q1,Q2) =>
+        // U1,U2,U3 - уникальные параметры, part = 0
+        // P1,P2,P3 - параметры для чтения, part == 1
+        // F1 - флаг, part == 2
+        // Q1,Q2 - количество, part == 3
+        Int32 min_row = 0; // Количество строк, указанных для параметра-массива
         for (UInt32 part = 0; part < nrule_read; part++) {
             GS::Array<GS::UniString> rulestring_param = {};
             UInt32 nrule_param = StringSplt (rulestring_read[part], COMMA, rulestring_param);
-            if (nrule_param > 0) {
-                for (UInt32 i = 0; i < nrule_param; i++) {
-                    GS::UniString name = rulestring_param[i];
-                    name.Trim ('@');
-                    if (!fromMaterial) name.Trim (CHARPROC);
-                    name.Trim (CHARBRACESTART);
-                    name.Trim (CHARBRACEEND);
-                    name.Trim ();
-                    if (part == 1 && name.IsEqual ("-")) {
-                        name = "";
-                    } else {
-                        if (!name.IsEmpty ()) {
-                            if (name.Contains ("[") && name.Contains ("]")) {
-                                GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
-                                double doubleValue = 0;
-                                Int32 n_row = 10;
-                                if (UniStringToDouble (n_row_txt, doubleValue)) {
-                                    n_row = (GS::Int32) doubleValue;
-                                }
-                                if (min_row == 0) min_row = n_row;
-                                min_row = n_row < min_row ? n_row : min_row;
-                            }
-                            GS::UniString rawName = "";
-                            if (fromMaterial && name.Contains ("%")) {
-                                rawName = "{@material:layers_auto,all;" + name + BRACEEND;
-                            } else {
-                                FormatString formatstring;
-                                rawName = ParamHelpers::NameToRawName (name, formatstring);
-                            }
-                            if (part == 0) group.unic_paramrawname.Push (rawName);
-                            if (part == 1) group.out_paramrawname.Push (rawName);
-                            if (part == 2) group.flag_paramrawname = rawName;
-                            if (part == 3) group.sum_paramrawname.Push (rawName);
-                        }
+            if (nrule_param < 1) continue;
+            for (GS::UniString& name : rulestring_param) {
+                name.Trim ('@');
+                if (!group.fromMaterial && !group.fromLibData) name.Trim (CHARPROC);
+                name.Trim (CHARBRACESTART);
+                name.Trim (CHARBRACEEND);
+                name.Trim ();
+                if (part == 1 && name.IsEqual ("-")) {
+                    name = "";
+                    continue;
+                }
+                if (name.IsEmpty ()) continue;
+                if (name.Contains ("[") && name.Contains ("]")) {
+                    GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
+                    double doubleValue = 0;
+                    Int32 n_row = 10;
+                    if (UniStringToDouble (n_row_txt, doubleValue)) {
+                        n_row = (GS::Int32) doubleValue;
                     }
+                    if (min_row == 0) min_row = n_row;
+                    min_row = n_row < min_row ? n_row : min_row;
+                }
+                GS::UniString rawName = "";
+                if (group.fromMaterial && name.Contains ("%")) {
+                    rawName = MATERIALNAMEPREFIX + "layers_auto,all;" + name + BRACEEND;
+                } else {
+                    if (group.fromLibData) {
+                        rawName = LISTDATANAMEPREFIX + name + BRACEEND;
+                    } else {
+                        FormatString formatstring;
+                        rawName = ParamHelpers::NameToRawName (name, formatstring);
+                    }
+                }
+                switch (part) {
+                    case 0:
+                        group.unic_paramrawname.Push (rawName);
+                        break;
+                    case 1:
+                        group.out_paramrawname.Push (rawName);
+                        break;
+                    case 2:
+                        group.flag_paramrawname = rawName;
+                        break;
+                    case 3:
+                        group.sum_paramrawname.Push (rawName);
+                        break;
+                    default:
+                        break;
                 }
             }
         }
