@@ -916,7 +916,12 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictElement& paramToRead,
         }
         ParamDict params = {}; // Словарь с уникальными параметрами читаемых элементов
         for (const GroupSpec& group : rule.groups) {
-            GS::UniString rawname = group.flag_paramrawname;
+            // Для материалов и компонент читаем только 0 группу - остальные одинаковые
+            if ((group.fromLibData || group.fromMaterial) && group.n_layer > 0) {
+                continue;
+            }
+
+            const GS::UniString& rawname = group.flag_paramrawname;
             if (!params.ContainsKey (rawname)) params.Add (rawname, true);
             if (!group.is_Valid) {
                 continue;
@@ -932,33 +937,34 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictElement& paramToRead,
             }
         }
         ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента
-        for (auto& cItt : params) {
+        for (const auto& cItt : params) {
             #if defined(AC_28) || defined(AC_29)
-            GS::UniString rawname = cItt.key;
+            const GS::UniString rawname = cItt.key;
             #else
-            GS::UniString rawname = *cItt.key;
+            const GS::UniString rawname = *cItt.key;
             #endif
-            if (rawname.Contains ("{@material:layers_auto,all;")) {
-                GS::UniString t = rawname;
-                t.ReplaceAll ("{@material:layers_auto,all;", BRACESTART);
-                t = t.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
-                ParamHelpers::ParseParamNameMaterial (t, paramDict);
-                ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_th");
-                ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_units");
-                ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_kzap");
-                for (UInt32 inx = 0; inx < 20; inx++) {
-                    ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
-                }
-                ParamValue param = {};
-                param.rawName = rawname;
-                param.val.uniStringValue = t;
-                param.composite_pen = -2;
-                param.fromQuantity = true;
-                param.fromMaterial = true;
-                ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param, paramDict);
-            } else {
+            if (!rawname.Contains ("{@material:layers_auto,all;")) {
                 ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
+                continue;
             }
+            // Добавление материалов
+            GS::UniString t = rawname;
+            t.ReplaceAll ("{@material:layers_auto,all;", BRACESTART);
+            t = t.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+            ParamHelpers::ParseParamNameMaterial (t, paramDict);
+            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_th");
+            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_units");
+            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_kzap");
+            for (UInt32 inx = 0; inx < 20; inx++) {
+                ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
+            }
+            ParamValue param = {};
+            param.rawName = rawname;
+            param.val.uniStringValue = t;
+            param.composite_pen = -2;
+            param.fromQuantity = true;
+            param.fromMaterial = true;
+            ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param, paramDict);
         }
         // Добавляем параметры для каждого элемента
         for (const API_Guid elemguid : rule.elements) {
@@ -973,11 +979,11 @@ void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictElement& paramToRead,
             if (!paramswrite.ContainsKey (rawname)) paramswrite.Add (rawname, true);
         }
         // Добавляем параметры для каждого элемента
-        for (auto& cItt : paramswrite) {
+        for (const auto& cItt : paramswrite) {
             #if defined(AC_28) || defined(AC_29)
-            GS::UniString rawname = cItt.key;
+            const GS::UniString rawname = cItt.key;
             #else
-            GS::UniString rawname = *cItt.key;
+            const GS::UniString rawname = *cItt.key;
             #endif
             ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
         }
@@ -1046,15 +1052,15 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
     FormatString fstr = FormatStringFunc::ParseFormatString (".2m");
     GS::HashTable<GS::UniString, GS::UniString> out_param = {}; // Ключ - уникальные значения, значение - выходящие параметры
     for (const API_Guid& elemguid : rule.elements) {
+        if (rule.only_visible) {
+            if (!ACAPI_Element_Filter (elemguid, APIFilt_OnVisLayer)) continue;
+            if (!ACAPI_Element_Filter (elemguid, APIFilt_IsVisibleByRenovation)) continue;
+            if (!ACAPI_Element_Filter (elemguid, APIFilt_IsInStructureDisplay)) continue;
+        }
         for (const GroupSpec& group : rule.groups) {
             Element element = {};
             GS::UniString key = "";
             if (!group.is_Valid) continue;
-            if (rule.only_visible) {
-                if (!ACAPI_Element_Filter (elemguid, APIFilt_OnVisLayer)) continue;
-                if (!ACAPI_Element_Filter (elemguid, APIFilt_IsVisibleByRenovation)) continue;
-                if (!ACAPI_Element_Filter (elemguid, APIFilt_IsInStructureDisplay)) continue;
-            }
             // Проверяем значение флага, если он не найден - всё равно добавляем
             bool flag = true;
             if (!group.flag_paramrawname.IsEmpty ()) {
@@ -1503,7 +1509,11 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
                     rawName = MATERIALNAMEPREFIX + "layers_auto,all;" + name + BRACEEND;
                 } else {
                     if (group.fromLibData) {
-                        rawName = LISTDATANAMEPREFIX + name + BRACEEND;
+                        name.ReplaceAll ("prokat.", "listdata:prokat.");
+                        name.ReplaceAll ("mat.", "listdata:mat.");
+                        name.ReplaceAll ("arm.", "listdata:arm.");
+                        name.ReplaceAll ("subpos.", "listdata:subpos.");
+                        rawName = FORMULANAMEPREFIX + name + BRACEEND;
                     } else {
                         FormatString formatstring;
                         rawName = ParamHelpers::NameToRawName (name, formatstring);
@@ -1582,13 +1592,21 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
             }
             if (group.is_Valid) {
                 if (group.fromMaterial) {
-                    // Для материалов определим макимальное количество слоёв
-                    for (UInt32 n_layer = 0; n_layer < 30; n_layer++) {
+                    // Создаём необходимое количество групп
+                    for (UInt32 n_layer = 0; n_layer < max_group_mat; n_layer++) {
                         group.n_layer = n_layer;
                         rule.groups.PushNew (group);
                     }
                 } else {
-                    rule.groups.Push (group);
+                    if (group.fromLibData) {
+                        // Создаём необходимое количество групп
+                        for (UInt32 n_layer = 0; n_layer < max_group_lib; n_layer++) {
+                            group.n_layer = n_layer;
+                            rule.groups.PushNew (group);
+                        }
+                    } else {
+                        rule.groups.Push (group);
+                    }
                 }
             }
         }
