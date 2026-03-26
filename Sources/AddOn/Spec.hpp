@@ -21,6 +21,10 @@
 
 namespace Spec
 {
+
+const GS::Int32 max_group_mat = 50; //Максимальное количество материалов у одного элемента
+const GS::Int32 max_group_lib = 100; //Максимальное количество компонент у одного элемента
+
 struct GroupSpec
 {
     GS::Array<GS::UniString> unic_paramrawname = {}; // Массив имён уникальных параметров
