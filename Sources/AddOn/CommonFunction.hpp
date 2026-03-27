@@ -114,6 +114,7 @@ static const GS::UniString BRACESTART = "{";
 static const GS::UniString SEMICOLON = ";";
 static const GS::UniChar CHARBRACEEND = '}';
 static const GS::UniChar CHARBRACESTART = '{';
+static const GS::UniString STRINGPROC = "%";
 static const GS::UniChar CHARPROC = '%';
 static const GS::UniChar CHARDQUT = '"';
 static const GS::UniString PVALPREFIX = "{@";

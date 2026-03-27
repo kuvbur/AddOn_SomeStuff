@@ -2423,10 +2423,7 @@ GS::UniString GetPropertyENGName (GS::UniString& name)
     return name;
 }
 
-// -----------------------------------------------------------------------------
-// Извлекает из строки все имена свойств или параметров, заключенные в знаки %
-// -----------------------------------------------------------------------------
-bool ParamHelpers::ParseParamNameMaterial (GS::UniString& expression, ParamDictValue& paramDict, bool fromMaterial)
+void ParamHelpers::ReplaceProcToBrace (GS::UniString& expression, bool fromMaterial)
 {
     GS::UniString part = "";
     bool flag_change = true;
@@ -2442,6 +2439,14 @@ bool ParamHelpers::ParseParamNameMaterial (GS::UniString& expression, ParamDictV
         }
         if (expression_old.IsEqual (expression)) flag_change = false;
     }
+}
+
+// -----------------------------------------------------------------------------
+// Извлекает из строки все имена свойств или параметров, заключенные в знаки %
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ParseParamNameMaterial (GS::UniString& expression, ParamDictValue& paramDict, bool fromMaterial)
+{
+    ParamHelpers::ReplaceProcToBrace (expression, fromMaterial);
     return ParamHelpers::ParseParamName (expression, paramDict);
 }
 
@@ -2639,6 +2644,8 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
     }
     return flag_find;
 }
+
+
 
 
 bool ParamHelpers::GetParamValueForElements (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue)
@@ -5063,6 +5070,24 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
     }
     ACAPI_DisposeAddParHdl (&addPars);
     return flagFind;
+}
+
+bool hasLibData (const GS::UniString& description)
+{
+    if (description.Contains (STRINGPROC)) {
+        if (description.Contains ("%prokat.")) return true;
+        if (description.Contains ("%mat.")) return true;
+        if (description.Contains ("%arm.")) return true;
+        if (description.Contains ("%subpos.")) return true;
+    } else {
+        if (description.Contains (LISTDATANAMEPREFIX)) {
+            if (description.Contains ("{@listdata:prokat.")) return true;
+            if (description.Contains ("{@listdata:mat.")) return true;
+            if (description.Contains ("{@listdata:arm.")) return true;
+            if (description.Contains ("{@listdata:subpos.")) return true;
+        }
+    }
+    return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -8040,7 +8065,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     for (auto& property : properties) {
         property.definition.name = property.definition.name + CharENTER + attribsuffix;
         GS::UniString val = PropertyHelpers::ToString (property);
-        if (val.Count ("%") > 1 || (val.Contains (BRACESTART) && val.Contains (BRACEEND))) {
+        if (val.Count (STRINGPROC) > 1 || (val.Contains (BRACESTART) && val.Contains (BRACEEND))) {
             if (ParamHelpers::ParseParamNameMaterial (val, paramsAdd)) {
                 property.value.singleVariant.variant.uniStringValue = val;
                 property.isDefault = false;

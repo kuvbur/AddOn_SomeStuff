@@ -243,6 +243,12 @@ void Add (LibElement& paramListDataToRead, GS::UniString& name, GS::UniString& u
     return;
 }
 
-
+bool AddLibdataToParamValueDict (const API_Guid& elemguid, const LibElements& paramListDataToRead, ParamDictValue& params)
+{
+    if (!paramListDataToRead.ContainsKey (elemguid)) return false;
+    const LibElement& p = paramListDataToRead.Get (elemguid);
+    if (p.subpos.IsEmpty ()) return false;
+    return false;
+}
 
 }
