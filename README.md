@@ -1,7 +1,5 @@
 # AddOn_SomeStuff
-![Статус сборки](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/rel_build.yml/badge.svg?branch=master)
-
-![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/all_ENG.PNG)
+![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/all_ENG.PNG)
 
 ### [Справка и описание](https://github.com/kuvbur/AddOn_SomeStuff/wiki)
 
@@ -17,18 +15,18 @@
 [Скачать последнюю версию](https://github.com/kuvbur/AddOn_SomeStuff/releases/latest)
 
 ### Совместимость с версиями:
-Archicad WIN / MAC 29
+![Статус сборки 25-29+](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/build_25+.yml/badge.svg?branch=master) Archicad WIN / MAC 29
 
-Archicad WIN / MAC 28
+![Статус сборки 25-29+](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/build_25+.yml/badge.svg?branch=master) Archicad WIN / MAC 28
 
-Archicad WIN / MAC 27
+![Статус сборки 25-29+](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/build_25+.yml/badge.svg?branch=master) Archicad WIN / MAC 27
 
-Archicad WIN / MAC 26
+![Статус сборки 25-29+](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/build_25+.yml/badge.svg?branch=master) Archicad WIN / MAC 26
 
-Archicad WIN / MAC 25
+![Статус сборки 25-29+](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/build_25+.yml/badge.svg?branch=master) Archicad WIN / MAC 25
 
-Archicad WIN 24
+![Статус сборки 23-24](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/build_23-24.yml/badge.svg?branch=master) Archicad WIN 24
 
-Archicad WIN 23 (ограниченный режим)
+![Статус сборки 23-24](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/build_23-24.yml/badge.svg?branch=master) Archicad WIN 23 (ограниченный режим) 
 
 Archicad WIN 22 (ограниченный режим)
