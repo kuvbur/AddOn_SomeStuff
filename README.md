@@ -1,7 +1,7 @@
 # AddOn_SomeStuff
 ![Статус сборки](https://github.com/kuvbur/AddOn_SomeStuff/actions/workflows/rel_build.yml/badge.svg?branch=master)
 
-![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/all_ENG.PNG)
+![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/all_ENG.PNG)
 
 ### [Справка и описание](https://github.com/kuvbur/AddOn_SomeStuff/wiki)
 
