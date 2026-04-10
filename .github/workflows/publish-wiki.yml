@@ -21,6 +21,6 @@ jobs:
           cp wiki/int/*.md wiki-build/
 
       - name: Publish wiki
-        uses: spenserblack/actions-wiki@v1
+        uses: Andrew-Chen-Wang/github-wiki-action@v4
         with:
           path: wiki-build
