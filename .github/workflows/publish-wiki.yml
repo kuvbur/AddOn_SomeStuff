@@ -1,18 +1,27 @@
-name: Publish wiki
 on:
   push:
     branches: [main]
     paths:
-      - wiki/**
-      - .github/workflows/publish-wiki.yml
-concurrency:
-  group: publish-wiki
-  cancel-in-progress: true
+      - 'wiki/**'
+
 permissions:
   contents: write
+
 jobs:
-  publish-wiki:
+  deploy-wiki:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: Andrew-Chen-Wang/github-wiki-action@v4
+      - uses: actions/checkout@v4
+
+      - name: Prepare wiki content
+        run: |
+          rm -rf wiki-build
+          mkdir -p wiki-build
+          cp wiki/*.md wiki-build/
+          cp wiki/ru/*.md wiki-build/
+          cp wiki/int/*.md wiki-build/
+
+      - name: Publish wiki
+        uses: spenserblack/actions-wiki@v1
+        with:
+          path: wiki-build
