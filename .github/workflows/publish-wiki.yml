@@ -2,6 +2,8 @@ name: Update Wiki from folder
 on:
   workflow_dispatch:
   push:
+    branches:
+      - master
     paths:
       - 'wiki/**'
 
