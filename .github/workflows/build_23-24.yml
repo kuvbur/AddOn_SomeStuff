@@ -1,7 +1,12 @@
-name: Add-On Build AC22-24
+name: Add-On Build AC23-24
 on:
-  push
-
+  push:
+    paths:
+        - 'Sources/**'
+        - 'Tools/**'
+        - 'CMakeLists.txt'
+        - 'config.json'
+      
 defaults:
   run:
     shell: bash
