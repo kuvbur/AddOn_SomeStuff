@@ -21,9 +21,9 @@ Output only the translated Markdown; nothing else.
 SOURCE_DIR = "wiki/ru"
 TARGET_DIR = "wiki/en"
 
-BASE_URL = "https://api.deepseek.com/v1"
+BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 API_KEY = os.getenv("DEEPSEEK_API_KEY")
-MODEL = "deepseek-chat"
+MODEL = "openai/gpt-3.5-turbo"
 
 if not API_KEY:
     raise RuntimeError("DEEPSEEK_API_KEY must be set (via env)")
@@ -44,11 +44,7 @@ def translate_text(text: str) -> str:
     }
 
     with httpx.Client(timeout=30.0) as client:
-        resp = client.post(
-            f"{BASE_URL}/chat/completions",
-            headers=headers,
-            json=payload,
-        )
+        resp = client.post(BASE_URL, headers=headers, json=payload)
 
         if resp.status_code != 200:
             raise RuntimeError(f"LLM API error: {resp.status_code}\n{resp.text}")
