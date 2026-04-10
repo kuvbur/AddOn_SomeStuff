@@ -25,7 +25,7 @@ jobs:
           mkdir -p wiki-build
           cp wiki/*.md wiki-build/
           cp wiki/ru/*.md wiki-build/
-          cp wiki/int/*.md wiki-build/
+          cp wiki/en/*.md wiki-build/
 
       - name: Publish wiki
         uses: Andrew-Chen-Wang/github-wiki-action@v4
