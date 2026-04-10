@@ -13,6 +13,7 @@
 #include "APICommon27.h"
 #endif // AC_26
 
+
 namespace TestFunc {
     void Test ();
     void TestGetTextLineLength (GS::UniString& var);
