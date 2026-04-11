@@ -1,6 +1,6 @@
-> 🇷🇺 [Русский](#-somestuff--дополнение-для-archicad) | 🇬🇧 [English](#-somestuff--archicad-add-on)
+> ## 🇬🇧 **English** · 🇷🇺 [Русский](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Home)
 
-# 🇬🇧 SomeStuff — Archicad Add-on
+# SomeStuff — Archicad Add-on
 
 SomeStuff solves specialized automation tasks in Archicad: synchronizing properties with GDL parameters, element numbering, construction analysis, drawing layout automation, and more.
 
