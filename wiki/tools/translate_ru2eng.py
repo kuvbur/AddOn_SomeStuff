@@ -203,7 +203,7 @@ def translate_md_file_split(src_path: str, rel_path: str, image_dict):
     dst_path = os.path.join(TARGET_DIR, rel_path)
     if '-ru.md' in dst_path:
         dst_path = dst_path.replace("-ru.md", "-en.md")
-    elif '.md' in dst_path:
+    elif '.md' in dst_path and not '_Sidebar.md' in dst_path:
         dst_path = dst_path.replace(".md", "-en.md")
     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 
