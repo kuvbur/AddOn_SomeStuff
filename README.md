@@ -1,4 +1,4 @@
-# AddOn SomeStuff
+# [AddOn SomeStuff](#addon-somestuff) 
 
 [![Latest Release](https://img.shields.io/github/v/release/kuvbur/AddOn_SomeStuff)](https://github.com/kuvbur/AddOn_SomeStuff/releases/latest)
 [Telegramm](https://t.me/archicad_somestuff)
@@ -6,9 +6,7 @@
 
 **🇷🇺 [Русский](#-русский) · 🇬🇧 [English](#-english)**
 
-## English
-
-An add-on for design automation in Archicad.
+[An add-on for design automation in Archicad](#english)
 
 The core workflow is built around properties: commands written in property descriptions instruct the add-on to populate those properties with data that Archicad cannot expose natively — GDL object parameters, element coordinates, composite structure layer compositions, and more.
 
@@ -70,13 +68,13 @@ Release notifications on Telegram: [@archicad_somestuff](https://t.me/archicad_s
 
 ---
 
-[⬆ Наверх](#addon-somestuff) ·
+[⬆ Наверх](#-addon-somestuff) ·
 
 ---
 
 ## Русский
 
-Аддон для автоматизации проектирования в Archicad.
+[Аддон для автоматизации проектирования в Archicad](#русский)
 
 Основная работа ведётся со свойствами: на основе команд в описании свойств в них записываются данные, недоступные для вывода штатными средствами — параметры GDL-объектов, координаты элементов, состав композитных конструкций и другое.
 
@@ -148,8 +146,6 @@ Release notifications on Telegram: [@archicad_somestuff](https://t.me/archicad_s
 Оповещения о новых версиях в Telegram: [@archicad_somestuff](https://t.me/archicad_somestuff)
 
 ---
-
-[⬆ Back to top](#addon-somestuff) 
 
 ---
 
