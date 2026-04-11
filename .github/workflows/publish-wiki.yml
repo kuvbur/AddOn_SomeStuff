@@ -7,8 +7,6 @@ on:
     paths:
       - 'wiki/ru/**'
       - 'wiki/en/**'
-      - 'wiki/_Sidebar.md'
-      - 'Home.md'
        
 permissions:
   contents: write
@@ -23,9 +21,9 @@ jobs:
         run: |
           rm -rf wiki-build
           mkdir -p wiki-build
-          cp wiki/*.md wiki-build/
+          mkdir -p wiki-build/en
           cp wiki/ru/*.md wiki-build/
-          cp wiki/en/*.md wiki-build/
+          cp wiki/en/*.md wiki-build/en
 
       - name: Publish wiki
         uses: Andrew-Chen-Wang/github-wiki-action@v4
