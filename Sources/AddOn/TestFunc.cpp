@@ -159,7 +159,7 @@ void TestFormula ()
     DBtest (params.ContainsKey (pvalue.rawName), pvalue.rawName, true);
     params.Set (pvalue.rawName, pvalue);
 
-    DBtest (ParamHelpers::ReadFormula (params), "ReadFormula", true);
+    DBtest (ParamHelpers::ReadFormula (params, false), "ReadFormula", true);
 
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
