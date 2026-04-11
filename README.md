@@ -4,9 +4,13 @@
 [Telegramm](https://t.me/archicad_somestuff)
 ---
 
-**🇷🇺 [Русский](#-русский) · 🇬🇧 [English](#-english)**
+**[Русский](#-русский) · [English](#-english)**
 
-[An add-on for design automation in Archicad](#english)
+---
+
+## English
+
+An add-on for design automation in Archicad
 
 The core workflow is built around properties: commands written in property descriptions instruct the add-on to populate those properties with data that Archicad cannot expose natively — GDL object parameters, element coordinates, composite structure layer compositions, and more.
 
