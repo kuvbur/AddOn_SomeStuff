@@ -1,8 +1,10 @@
+## Работа с размерами (округление, и т.д)
+
 **Из-за бага в архикаде НЕ производится обработка размеров, привязанных к профильным колоннам или отверстиям!**
 
 Обрабатываются все линейные зарезервированные видимые и не заблокированные размеры на текущем виде, попадающие под правила, указанные в поле `Addon_Dimensions` информации о проекте. Записывать правила с разделителем ;
 
-![dim_rule.PNG](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/dim_rule.PNG)
+![dim_rule.PNG](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/dim_rule-ru.PNG)
 
 Проверка и обработка всех размеров на текущем виде происходит:
 
@@ -27,7 +29,7 @@
 
 `ПЕРО_РАЗМЕРА` это перо линии размера
 
-![dim_pen.PNG](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/dim_pen.PNG)
+![dim_pen.PNG](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/dim_pen-ru.PNG)
 
 Округление производится в большую сторону. _v1.77_ Для классического округления добавить в конец правила `СlassicRound`, например `".КЖ" - 5, 20, 0, СlassicRound`
 

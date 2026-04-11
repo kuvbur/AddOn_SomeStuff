@@ -1,3 +1,5 @@
+# Работа с тестовыми версиями аддона
+
 Если есть желание и возможность присоединится к тестированию новых версий аддона, необходимо сделать следующее:
 
 - Зарегистрироваться на GITHUB. Регистрация бесплатная, без регистрации не получится скачать промежуточные сборки.
@@ -5,18 +7,18 @@
 - Найти самую верхнюю строку с надписью `Add-On Build` и перейти в неё.
 - Скачать нужный пакет и установить обычным способом.
 
-![Пример 1](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/test1.PNG)
-![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/test2.PNG)
-![Пример 3](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/test3.PNG)
+![Пример 1](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/test1-ru.PNG)
+![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/test2-ru.PNG)
+![Пример 3](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/test3-ru.PNG)
 
 # Изменённые функции для тестирования в версии 1.77 (на 10.07.2025)
 
 **Новые функции**
 
-- [Подсчёт ведомости отделки и построение элементов отделки](https://github.com/kuvbur/AddOn_SomeStuff/wiki/%D0%92%D0%B5%D0%B4%D0%BE%D0%BC%D0%BE%D1%81%D1%82%D1%8C-%D0%BE%D1%82%D0%B4%D0%B5%D0%BB%D0%BA%D0%B8)
-- [Вывод объёмов компонент в выноску](https://github.com/kuvbur/AddOn_SomeStuff/wiki/%D0%92%D1%8B%D0%B2%D0%BE%D0%B4-%D1%81%D0%BE%D1%81%D1%82%D0%B0%D0%B2%D0%B0-%D0%BA%D0%BE%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BA%D1%86%D0%B8%D0%B8#v177-%D0%B2%D1%8B%D0%B2%D0%BE%D0%B4-%D0%BA%D0%BE%D0%BB%D0%B8%D1%87%D0%B5%D1%81%D1%82%D0%B2%D0%B0-%D0%BA%D0%BE%D0%BC%D0%BF%D0%BE%D0%BD%D0%B5%D0%BD%D1%82-%D0%B2-%D1%81%D0%B2%D0%BE%D0%B9%D1%81%D1%82%D0%B2%D0%BE)
-- [Вывод информации МЕР элементов](https://github.com/kuvbur/AddOn_SomeStuff/wiki/%D0%A1%D0%BF%D0%B8%D1%81%D0%BE%D0%BA-%D0%B2%D0%BE%D0%B7%D0%BC%D0%BE%D0%B6%D0%BD%D1%8B%D1%85-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4-%D0%B2-%D0%BE%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D1%8F%D1%85-%D1%81%D0%B2%D0%BE%D0%B9%D1%81%D1%82%D0%B2#v177-%D0%BF%D0%BE%D0%BB%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%B5-%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D0%B8-%D0%BC%D0%B5%D1%80-%D1%8D%D0%BB%D0%B5%D0%BC%D0%B5%D0%BD%D1%82%D0%BE%D0%B2)
-- [Построение 3д документов вдоль морфа-линии или ограждения](https://github.com/kuvbur/AddOn_SomeStuff/wiki/%D0%9F%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B8%D1%82%D1%8C-%D0%BF%D1%80%D0%BE%D1%84%D0%B8%D0%BB%D1%8C-%D0%BF%D0%BE-%D0%BB%D0%B8%D0%BD%D0%B8%D0%B8)
+- [Подсчёт ведомости отделки и построение элементов отделки](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Finishing-ru)
+- [Вывод объёмов компонент в выноску](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Construction-Composition-ru)
+- [Вывод информации МЕР элементов](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Property-Commands-List-ru)
+- [Построение 3д документов вдоль морфа-линии или ограждения](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Build-Profile-Line-ru)
 - Выравнивание чертежей на макетах по хотспотам
 - Добавлено классическое округление в размеры (добавить в правило округления `ClassicRound `) #133
 - Добавлен поиск по имени атрибута при записи в GDL параметр #134

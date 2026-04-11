@@ -25,12 +25,11 @@
 4. Свойство-флаг имеет значение ИСТИНА.
 5. Свойства, с которыми должен работать аддон, видны в параметрах элемента.
 6. Убедиться, что включена обработка соответствующего типа элемента
-   ![Включение типов](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/sync_type.png)
+   ![Включение типов](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/sync_type-ru.PNG)
 7. Проверить синтаксис описания свойства, в которое копируется значение параметра (свойство, в описании которого указано Sync_from). Скобки должны быть фигурными. Пробелов перед скобками быть не должно (`Sync_from{` а не `Sync_from {`). Можно скопировать описание [отсюда](https://github.com/kuvbur/AddOn_SomeStuff/wiki/%D0%A1%D0%BF%D0%B8%D1%81%D0%BE%D0%BA-%D0%B2%D0%BE%D0%B7%D0%BC%D0%BE%D0%B6%D0%BD%D1%8B%D1%85-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4-%D0%B2-%D0%BE%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D1%8F%D1%85-%D1%81%D0%B2%D0%BE%D0%B9%D1%81%D1%82%D0%B2), подставив нужный параметр.
 8. Если отключено слежение (кнопка Отслеживать не активна) - аддон запускается вручную. Необходимо выделить элементы и нажать Синхронизировать выделенное.
 9. Посмотреть в Отчёт в панели навигатора - аддон выводит туда основную информацию о выполненных операциях.
-   ![Отчёт INT](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/report_int.PNG)
-   ![Отчёт RUS](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/report_rus.PNG)
+   ![Отчёт](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/report-ru.PNG)
 
 ### Может ли из-за аддона замедляться работа Архикада?
 

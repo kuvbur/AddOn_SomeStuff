@@ -1,3 +1,5 @@
+## Синхронизация GDL параметров и свойств
+
 Дополнение копирует значения параметра или свойства в свойство, в **описании** которого содержится `Sync_from{ИМЯ_ПАРАМЕТРА}` или `Sync_to{ИМЯ_ПАРАМЕТРА}`.
 
 - `Sync_from{ИМЯ_ПАРАМЕТРА}` - копирует значения ИЗ параметра В свойство с таким описанием
@@ -28,16 +30,16 @@ _Применимо для библиотечных элементов, окон
    - `Ctrl+Shift+Щ` или  
      [Файл > Библиотеки и объекты > Открыть объект](https://helpcenter.graphisoft.com/ru/user-guide/67251/)
    - Для запароленных объектов используйте Дамп библиотечных элементов выбранного. Он выведет в отчёт список всех параметров.
-     ![Дамп](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/dump.PNG)
-3. Нажмите кнопку [Параметры](https://helpcenterint-wpengine.netdna-ssl.com/ru/wp-content/uploads/sites/6/archicad-22/130_userinterfacedialogboxes/SearchObjectParameters.png)
+     ![Дамп](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/dump-ru.PNG)
+3. Нажмите кнопку [Параметры](https://helpcenterint-wpengine.netdna-ssl.com/ru/wp-content/uploads/sites/6/archicad-22/130_userinterfacedialogboxes/SearchObjectParameters-ru.PNG)
 4. Найдите параметр в столбце **Имя**, скопируйте его обозначение из столбца **Переменная**
 5. В менеджере свойств:
    - В **описании** целевого свойства укажите `Sync_from{скопированное_обозначение}`  
-     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add3.PNG)
+     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add3-ru.PNG)
    - Создайте свойство-флаг с описанием `Sync_flag` (тип: критерий соответствия). Следите за
-     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add2.PNG)
+     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add2-ru.PNG)
 6. Сделайте свойства доступными в нужных вам классах
-   ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add5.PNG)
+   ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add5-ru.PNG)
 7. Запустите нужную команду
 
 > Тип данных автоматически преобразуется (число ↔ строка)
@@ -50,9 +52,9 @@ _Применимо для всех типов элементов:_
 
 1. В менеджере свойств:
    - В **описании** целевого свойства укажите `Sync_from{Property:ИМЯ_ГРУППЫ/ИМЯ_СВОЙСТВА}`
-     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add4.PNG)
+     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add4-ru.PNG)
    - Создайте свойство-флаг с описанием `Sync_flag`  
-     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add2.PNG)
+     ![Пример](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add2-ru.PNG)
 2. Запустите нужную команду
 
 > Для поиска свойств используйте формат `Property:Группа/Свойство`.

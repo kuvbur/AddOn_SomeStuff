@@ -10,7 +10,7 @@
 1. В разделе [Releases](https://github.com/kuvbur/AddOn_SomeStuff/releases) качаем последнюю версию дополнения нужной версии с суффиксом MAC
 2. После скачивания и распаковки архива :
    - Откройте Терминал
-   - Перейдите в папку с аддоном:
+   - Перейдите в папку с аддоном
    - Снимите атрибуты карантина:
      ```bash
      xattr -cr SomeStuff.bundle
@@ -33,4 +33,4 @@
 3. В правой части окна создать новое меню или табло команд либо открыть существующее
 4. В левой части выбрать Все команды по теме, перейти в список Расширения->SomeStuff
 5. Добавить нужные команды
-   ![Добавление команд аддона в меню](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add_menu.PNG)
+   ![Добавление команд аддона в меню](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/add_menu-ru.PNG)

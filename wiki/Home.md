@@ -1,8 +1,8 @@
 Welcome to the AddOn_SomeStuff wiki!
-[FAQ](https://github.com/kuvbur/AddOn_SomeStuff/wiki/FAQ)
+[FAQ](https://github.com/kuvbur/AddOn_SomeStuff/wiki/FAQ-ru)
 
-![Пример 1](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/all.PNG)
-![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/all_ENG.PNG)
+![Пример 1](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/all-ru.PNG)
+![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/all-en.PNG)
 
 ### Why this addon?
 
