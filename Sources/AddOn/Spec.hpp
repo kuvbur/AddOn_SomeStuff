@@ -21,10 +21,6 @@
 
 namespace Spec
 {
-
-const GS::Int32 max_group_mat = 50; //Максимальное количество материалов у одного элемента
-const GS::Int32 max_group_lib = 100; //Максимальное количество компонент у одного элемента
-const GS::UniString rawnameLibData = LISTDATANAMEPREFIX + "all" + BRACEEND;
 struct GroupSpec
 {
     GS::Array<GS::UniString> unic_paramrawname = {}; // Массив имён уникальных параметров
@@ -111,7 +107,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description);
 
 GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::HashTable<GS::UniString, GS::UniString>& paramdict);
 
-bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, GS::Int32 n_layer, const ParamDictCompositeElement& paramCompositeToRead, const ListData::LibElements& paramListDataToRead);
+bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, const GS::Int32& n_layer, const ParamDictCompositeElement& paramCompositeToRead, const ListData::LibElements& paramListDataToRead);
 
 Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, const ParamDictCompositeElement& paramCompositeToRead, const ListData::LibElements& paramListDataToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete, UnicGuid& error_element);
 

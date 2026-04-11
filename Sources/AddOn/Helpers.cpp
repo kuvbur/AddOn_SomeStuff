@@ -4276,7 +4276,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 ParamHelpers::ReadMaterial (element, params, paramcomposite, hasQuantity);
                 break;
             case FORMULATYPEINX:
-                ParamHelpers::ReadFormula (params);
+                ParamHelpers::ReadFormula (params, false);
                 break;
             case ATTRIBTYPEINX:
                 ParamHelpers::ReadAttributeValues (elem_head, params);
@@ -4329,6 +4329,9 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
             GS::UniString qr = TextToQRCode (param.val.uniStringValue);
             param.val.uniStringValue = qr;
         }
+    }
+    if (needListData) {
+        paramListData.keys = ListData::GetAllKeys (paramListData);
     }
 }
 
@@ -5075,12 +5078,14 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
 bool hasLibData (const GS::UniString& description)
 {
     if (description.Contains (STRINGPROC)) {
+        if (description.Contains ("%elem.")) return true;
         if (description.Contains ("%prokat.")) return true;
         if (description.Contains ("%mat.")) return true;
         if (description.Contains ("%arm.")) return true;
         if (description.Contains ("%subpos.")) return true;
     } else {
         if (description.Contains (LISTDATANAMEPREFIX)) {
+            if (description.Contains ("{@listdata:elem.")) return true;
             if (description.Contains ("{@listdata:prokat.")) return true;
             if (description.Contains ("{@listdata:mat.")) return true;
             if (description.Contains ("{@listdata:arm.")) return true;
@@ -5093,7 +5098,7 @@ bool hasLibData (const GS::UniString& description)
 // -----------------------------------------------------------------------------
 // Обработка свойств с формулами
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadFormula (ParamDictValue& params)
+bool ParamHelpers::ReadFormula (ParamDictValue& params, bool hasListData)
 {
     #if defined(TESTING)
     DBprnt ("      ReadFormula");
@@ -5109,6 +5114,9 @@ bool ParamHelpers::ReadFormula (ParamDictValue& params)
         #endif
         if (!param.val.hasFormula) continue;
         GS::UniString expression = param.val.uniStringValue;
+        if (!hasListData) {
+            if (hasLibData (expression)) continue;
+        }
         FormatString f = param.val.formatstring;
         if (!param.val.formatstring.isEmpty) expression = expression + '.' + param.val.formatstring.stringformat;
         if (!ParamHelpers::ReplaceParamInExpression (params, expression)) {
@@ -5146,69 +5154,6 @@ bool ParamHelpers::ReadFormula (ParamDictValue& params)
     return flag_find;
 }
 
-bool ParamHelpers::ListData2ParamValue (ParamDictValue& pdictvalue, GS::UniString& name, GS::UniString& unitcode, GS::UniString& suffix, double& qty)
-{
-    //short version = 0; if (name.Contains ("v4%%")) version = 2;
-    //GS::Array<GS::UniString> partstring = {};
-    //UInt32 n = StringSplt_ (name, SEMICOLON, partstring, false);
-    //if (n < 3) return pvalue;
-    //GS::UniString subpos = partstring[0];
-    //GS::UniString elemtype = partstring[1];
-    //GS::UniString pos = partstring[2];
-    //GS::UniString naen = "";
-    //GS::UniString obozn = "";
-    //GS::UniString unit = "";
-    //GS::UniString ves = "";
-    //GS::UniString qty = "";
-    //GS::UniString spec_add_param = partstring[5 - version];
-    //spec_add_param.ReplaceAll ("v3%%", EMPTYSTRING);
-    //spec_add_param.ReplaceAll ("v4%%", EMPTYSTRING);
-    //// Арматура
-    //if (elemtype.IsEqual ("10")) {
-    //    elemtype = reinterpret_cast<const char*>(u8"Арматура");
-    //    unit = partstring[10];
-    //    ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "arm_class" + suffix, partstring[6 - version]);
-    //    ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "arm_l" + suffix, partstring[8 - version]);
-    //    ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "arm_d" + suffix, partstring[7 - version]);
-    //}
-    //// Прокат
-    //if (elemtype.IsEqual ("20")) {
-    //    elemtype = reinterpret_cast<const char*>(u8"Прокат");
-    //}
-    //// Материал
-    //if (elemtype.IsEqual ("30")) {
-    //    elemtype = reinterpret_cast<const char*>(u8"Материалы");
-    //    obozn = partstring[6 - version];
-    //    naen = partstring[7 - version];
-    //}
-    //// Изделие
-    //if (elemtype.IsEqual ("40")) {
-    //    elemtype = reinterpret_cast<const char*>(u8"Изделия");
-    //    obozn = partstring[6 - version];
-    //    naen = partstring[7 - version];
-    //    ves = partstring[8 - version];
-    //    qty = partstring[9 - version];
-    //    unit = partstring[10 - version];
-    //}
-    //// Сборка
-    //if (elemtype.IsEqual ("45")) {
-    //    elemtype = reinterpret_cast<const char*>(u8"Сборочные единицы");
-    //}
-    //ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "subpos" + suffix, subpos);
-    //ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "pos" + suffix, pos);
-    //ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "naen" + suffix, naen);
-    //ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "obozn" + suffix, obozn);
-    //ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "elemtype" + suffix, elemtype);
-    //ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "subpos" + suffix, subpos);
-    //if (qty.IsEmpty ()) {
-    //    ParamHelpers::AddDoubleValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "qty" + suffix, listdata.component.quantity);
-    //} else {
-    //    ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "qty" + suffix, qty);
-    //}
-    //ParamHelpers::AddStringValueToParamDictValue (pdictvalue, elem_head.guid, "listdata:", "unit" + suffix, unit);
-    return true;
-}
-
 bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue, ListData::LibElement& paramListDataToRead, bool needListData)
 {
     #if defined(TESTING)
@@ -5227,6 +5172,9 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
         msg_rep ("ReadListData", "ACAPI_Element_GetDescriptors", err, elem_head.guid);
         return false;
     }
+    #if defined(TESTING)
+    DBprnt ("          Read Descriptors");
+    #endif
     GS::UniString key_th = "some_stuff_th";
     for (Int32 i = 0; i < nComp; i++) {
         if ((*descRefs)[i].status == APIDBRef_Deleted) continue;
@@ -5276,6 +5224,9 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
         }
     }
     if (!needListData) return !pdictvalue.IsEmpty ();
+    #if defined(TESTING)
+    DBprnt ("          Read Components");
+    #endif
     BMKillHandle ((GSHandle*) &descRefs);
     nComp = 0;
     #if defined(AC_22) || defined(AC_23) || defined(AC_24)

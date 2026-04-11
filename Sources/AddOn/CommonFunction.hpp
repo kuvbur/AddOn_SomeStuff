@@ -105,6 +105,7 @@ static const GS::UniString EMPTYSTRING = "";
 static const GS::UniString ZEROSTRING = "0";
 static const GS::UniChar CHARZERO = '0';
 static const GS::UniString SPACESTRING = " ";
+static const GS::UniString MINUSSTRING = "-";
 static const GS::UniChar CHARFORMULASTART = '<';
 static const GS::UniChar CHARFORMULAEND = '>';
 static const GS::UniString STRFORMULASTART = "<";
@@ -146,12 +147,16 @@ static const GS::UniString DEFULTINTFSTRING = "0m";
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
 
+const GS::Int32 max_group_mat = 50; //Максимальное количество материалов у одного элемента
+const GS::Int32 max_group_lib = 100; //Максимальное количество компонент у одного элемента
+
 struct Story
 {
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
