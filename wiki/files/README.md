@@ -11,4 +11,4 @@
 
 ### Как скачать файл
 
-![Как скачать файл](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/down_file.PNG)
+![Как скачать файл](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/down_file-ru.PNG)

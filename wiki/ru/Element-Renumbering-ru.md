@@ -1,3 +1,5 @@
+## Нумерация элементов
+
 [Файл с примером для АС25](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/files/%D0%9D%D1%83%D0%BC%D0%B5%D1%80%D0%B0%D1%86%D0%B8%D1%8F_25.pln)
 
 Элементам с одинаковым значением свойства-критерия присваиваются одинаковые номера (позиции).
@@ -40,8 +42,8 @@ _v1.74+_ Если выделен только один элемент - буду
 `Имя свойства с правилом` задаётся в формате Property:_имя группы_/_имя свойства_
 Тип данных свойства-флага: Критерий соответствия (ИСТИНА/ЛОЖЬ), _v1.6_ либо набор параметров со значениями Добавить, Перенумеровать, Исключить
 
-![Пример 1](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_flag_1.PNG)
-![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_flag_allnull.PNG)
+![Пример 1](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_flag_1-ru.PNG)
+![Пример 2](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_flag_allnull-ru.PNG)
 
 **Свойство для позиции в одном из форматов**
 | Формат | Описание | Версия |
@@ -57,12 +59,12 @@ _v1.74+_ Если выделен только один элемент - буду
 2. **Свойство-разбивки** - отделяет одну группу нумерации от другой. Для каждой группы нумерация самостоятельная.
 3. Библиотечные параметры должны быть доступны через API Archicad
 
-![Пример 3](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_pos.PNG)
-![Пример 4](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_pos_delim.PNG)
+![Пример 3](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_pos-ru.PNG)
+![Пример 4](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_pos_delim-ru.PNG)
 
 Для записи получившейся позиции в ID нужно добавить в описание свойства с позицией `Sync_to{ID}`
 
-![Пример 5](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_pos_id.PNG)
+![Пример 5](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/renum_pos_id-ru.PNG)
 
 ## Возможные ошибки
 
