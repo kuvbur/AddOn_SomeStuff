@@ -1,7 +1,7 @@
 # AddOn SomeStuff
 
 [![Latest Release](https://img.shields.io/github/v/release/kuvbur/AddOn_SomeStuff)](https://github.com/kuvbur/AddOn_SomeStuff/releases/latest)
-
+[Telegramm](https://t.me/archicad_somestuff)
 ---
 
 **🇷🇺 [Русский](#-русский) · 🇬🇧 [English](#-english)**
