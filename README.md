@@ -4,7 +4,7 @@
 [Telegramm](https://t.me/archicad_somestuff)
 ---
 
-**[Русский](#русский) · [English](#english)**
+**[Русский](#русский) · [English](#english) · [llm friendly MD](https://github.com/kuvbur/AddOn_SomeStuff/wiki/SomeStuff-AI-Context-ru.md)**
 
 ---
 
