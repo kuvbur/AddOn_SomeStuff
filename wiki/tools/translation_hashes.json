@@ -107,7 +107,7 @@
       "index": 2
     },
     {
-      "hash": "c6b095d9084e4558157cdf50761737a9d5a335d051f13320309a96d479d1c237",
+      "hash": "1349c8231e67901d085995416bedf8aa654a3e44852139081d205ec1c0a758d2",
       "index": 3
     },
     {
@@ -157,11 +157,11 @@
   ],
   "wiki/ru/FAQ-ru.md": [
     {
-      "hash": "2d0d7d59aa3e9b2fd4fd4b103b2c8c19bfa0931e7f0a72deaf8681f8d2fc0a39",
+      "hash": "91e20f3101f92e3821c0cc3171babacaca6f437c899b8974b3d0be624ca28edc",
       "index": 0
     },
     {
-      "hash": "fada88a04e23b0c390227dc0e6d28c0116906af4f02738485e29c43b9141c8e1",
+      "hash": "5007d20ec13071c47fc0709e70d6ab51b4ba3623b65d728b316cbae5bcbcc116",
       "index": 1
     },
     {
@@ -247,10 +247,92 @@
     {
       "hash": "c02222d485f2559b1ba9bf979929890ef4e6823c5d957ad844a0d15b8e7c8aae",
       "index": 4
+    }
+  ],
+  "wiki/ru/Home.md": [
+    {
+      "hash": "bc3f208c8973b5c1153708aa7495bc6261db9d0fb6f0ba08b8d70f2b9e479ec9",
+      "index": 0
     },
     {
-      "hash": "3dfd5aea2482b1f69b255920e127a76a1f8beb63111dab1d99de1b2488c7a661",
+      "hash": "8c6ca0dcbaeb583cef202700f4931188c1a510cfa9a02fb195f0f4d3577806c4",
+      "index": 1
+    },
+    {
+      "hash": "ee5c4079b3dc1427328a54fd71f3951df5cfd89be6de2404370fb120d92ed094",
+      "index": 2
+    },
+    {
+      "hash": "41347a2e10df21d03de71f364ba89fd547b5248df5247222bdedf568ada28a64",
+      "index": 3
+    },
+    {
+      "hash": "e29436342b60a82e7200fd1d014f37ebc8c7a424a660a5e309f410e41808c4a2",
+      "index": 4
+    },
+    {
+      "hash": "6bc7675e70ece87143b9e9c38a86f0f348b542fd3521c0aff7d583cd5e08bc20",
       "index": 5
+    },
+    {
+      "hash": "9c8dbc23b8125dd27d567cc033ee494338fe5844f4da147123706e6870c677c0",
+      "index": 6
+    },
+    {
+      "hash": "333e9cbe3b45843e62a01c2b4ab0830e93940577b81c420a65b12c132ca7a27f",
+      "index": 7
+    },
+    {
+      "hash": "2d70ce68f22135c37ae6887ec54b22a6b90377a0789669bad76939b528be13d6",
+      "index": 8
+    },
+    {
+      "hash": "e52d1cc39ecbd1d7a7f8b148d749575b50a6ea04efc521d505b3d189b7a57103",
+      "index": 9
+    },
+    {
+      "hash": "20ad011668f9ea912d59f58cd339ef4cdd6b056cbdd0686d3a9f4c9c19496970",
+      "index": 10
+    },
+    {
+      "hash": "7da76b68a927a79be326995374549549ad3c66c81402f29bb500cdd78947baa7",
+      "index": 11
+    },
+    {
+      "hash": "2c6f4c4c1015f0333b3eda61f4bb98ba098288ae48845b28553a67b8f559a1d1",
+      "index": 12
+    },
+    {
+      "hash": "62d1933afff926b2d3d3e886a21885387a1f37b8423e4cd049e03512024ed36a",
+      "index": 13
+    },
+    {
+      "hash": "a956169783bc88f88ac5e315e64ffe6b65b80728f675ef60a587f2a4202b980f",
+      "index": 14
+    },
+    {
+      "hash": "0cdcdd2e56cf66c36b01834bb58d91ebc9c0f1f4ac42a9e8aec2cb40fe128af9",
+      "index": 15
+    },
+    {
+      "hash": "8dbaaea3b33049c703c31fb4cc1a2106f5b45873821992487255b7c79a9a28ec",
+      "index": 16
+    },
+    {
+      "hash": "65a1dde5199a12674be064da12be5f038a2b951eba437c519e7eccbb84e93a3a",
+      "index": 17
+    },
+    {
+      "hash": "28e0ef570ca35e4d016a94d18cce8e187fd97235af0f6cb2d50f33403e783015",
+      "index": 18
+    },
+    {
+      "hash": "1adde5822d790749c4d2ff384d09852db45c9088eb2220405ecd35cc47bd3f53",
+      "index": 19
+    },
+    {
+      "hash": "fd830885ac347a16247d429705a298eb7c02985c704538b63facbcd27ef30673",
+      "index": 20
     }
   ],
   "wiki/ru/Install-ru.md": [
@@ -289,11 +371,11 @@
       "index": 0
     },
     {
-      "hash": "589edd392e2b5e240dfa6178e8e0a9ddf78d96b2909e9c3ade8577a2dffb86e3",
+      "hash": "dce1681851013b0125d9ed487479e33dfa8e44fc167a1bdb3fc81e84a182fdc3",
       "index": 1
     },
     {
-      "hash": "f14fc7fd62f1f15c0d98ab779ad38c84003286b61e95c9c26dec1f0909eeee4f",
+      "hash": "229d0f155428896b43b94a7b3964a56a5be70a895f4703dfe7fc39c85fd33a20",
       "index": 2
     },
     {
@@ -317,35 +399,35 @@
       "index": 7
     },
     {
-      "hash": "7b6ee7b68842aa40fec32550e157e3eec6d272b956fdc21aadec580b40520021",
+      "hash": "45b1feccc88b62f81420d3c31c1bee220c7088b8ed7291d0459a5f72383f2bd1",
       "index": 8
     },
     {
-      "hash": "5d97870edf1df22e59d2283400455f91ed52425328e265eee318a4dc30d565c3",
+      "hash": "a388f1ab80e7c667c237f61e40c67d1dba29e3fc025ca8076a6d2c29222a2b85",
       "index": 9
     },
     {
-      "hash": "f6718f495b7571037bb5688dac49fc37af3c89211d158f9904a6f723a1790fc9",
+      "hash": "373e300225a4e84721a457c45248f943fe261696d24900f19cc3a5d9ae18de5d",
       "index": 10
     },
     {
-      "hash": "9ba54ed832892172fffd23320eae017cd4b6be477881d40be7ac964a0e4605e1",
+      "hash": "b2b2e841022587477c11f635b07b21f1292c1903adac90a1524c4d078763668f",
       "index": 11
     },
     {
-      "hash": "1a312b73691790ca26b767edd9b27b34be73ae0ea5b5a16cd1708797372f4b5c",
+      "hash": "6c1f9db5bd0f3dfb77ae49780f8f64fcb38278a0588323ba558b17b8d52dbbce",
       "index": 12
     },
     {
-      "hash": "3f2f9c2ad75fb487498c489cb7a5c9ee6ed4cde70adca3ad39698f927effae80",
+      "hash": "07bd7d8aaa75fdecd1dcf865eff16431b889955fcfd85943e0cf4f1e0b5c5085",
       "index": 13
     },
     {
-      "hash": "13a400bfeb486c9ed50d2fe429ebd0ff2a9cf3663c0bec7bbfa9b558cf9d8438",
+      "hash": "0d445198a418cffd15da832c745943564fdadb701fe544fb2fa1acb63852b051",
       "index": 14
     },
     {
-      "hash": "76864b8d186194cb5a7ca02bea43205b7e992e9ab00465157fe0335a52b9d6fd",
+      "hash": "7c08895ed7511e4040799f710a31bc7e68f8e064d7f9377b8a0cbc59b6aca957",
       "index": 15
     },
     {
@@ -353,15 +435,15 @@
       "index": 16
     },
     {
-      "hash": "92bf4c19880443da9422edd8b331735663b207fb0211f9252e1e338db5ca7aae",
+      "hash": "82bc42df61605c2218b8f97f11363d6d846797553a8bec9641113c0e22aa8cc0",
       "index": 17
     },
     {
-      "hash": "d785ad1747e55fd03ab851b4141532d1a52c8f02a13a1522eb4efbfa1abb0cfa",
+      "hash": "8f64231becb8cd47c83b1d6971a222102e6a0c4b3d2f946a54c363346c4f7166",
       "index": 18
     },
     {
-      "hash": "7ca6704876072503d54e9cffd8b7e16d2685d82ad539012ed7c1c53e167af997",
+      "hash": "e338be24e19f4e9d88bd4dd0c3aaa6539297d8a8e01890b7d5d0e0526cdab706",
       "index": 19
     }
   ],
@@ -375,6 +457,144 @@
     {
       "hash": "b3f9e798a27a176b7578611429144024dcfef942d62ae9ed8725e625722d822d",
       "index": 0
+    }
+  ],
+  "wiki/ru/SomeStuff-AI-Context-ru.md": [
+    {
+      "hash": "5ef6f767a74163a839088519d255516462c963a094e73d53b8ae98caed4308f5",
+      "index": 0
+    },
+    {
+      "hash": "a590007fd220845c07c8b5a08a51de22087af10f1c17f666846632bd931f2029",
+      "index": 1
+    },
+    {
+      "hash": "60a2d4d3f533fadd460f74c2175a5d1413f244c4679a7bf826a4b01fa54fa798",
+      "index": 2
+    },
+    {
+      "hash": "2109eacdd373a80141a3c46dc5b72c6a0369ca6cbba940c41382c1f9fddc2ca6",
+      "index": 3
+    },
+    {
+      "hash": "d3597430a9e541286b6c891314e5488c6411f79b6063bef7f49cab22164740a2",
+      "index": 4
+    },
+    {
+      "hash": "ae4c4d95f95eaaaadf338e9b09113dd27cdc556ed949def3d23799ffc792c692",
+      "index": 5
+    },
+    {
+      "hash": "a6fde5ecffc378a8b0a8dab15c70d161a4b93bd4331c55c6d371d784dced2e03",
+      "index": 6
+    },
+    {
+      "hash": "a91377f58eccec3402ff13b021ba92bb298f09330af09597b116e3c567e290ec",
+      "index": 7
+    },
+    {
+      "hash": "d4d93648ef3743563f901651daad8bc3dad1f397bdf32f3de12ff16ad3c75e1b",
+      "index": 8
+    },
+    {
+      "hash": "e86bc08ba120dc9f625cf214fc14049c676319dbc286e9008db2d2e76337f4a6",
+      "index": 9
+    },
+    {
+      "hash": "ed28f994820be1e531b703f2882b9a5a9d2dd10865d8c0bd7a54dc7cb2d0c91d",
+      "index": 10
+    },
+    {
+      "hash": "34a96b2069824e98af3ae10057277246e990d402a78927e1f926e800ff6e39e5",
+      "index": 11
+    },
+    {
+      "hash": "8dbe7e63f8e4c9a15608d65911298e8edbb4cf5148dc92e3f0da4c3b6464c818",
+      "index": 12
+    },
+    {
+      "hash": "0f347e78568658cd0ea73e15defc1c47b11d518a8e44f1b69e8905622bbd3b30",
+      "index": 13
+    },
+    {
+      "hash": "d489e817ff9e90215539e56450cd86fae92310c025c09a4a87fad34b4fa92072",
+      "index": 14
+    },
+    {
+      "hash": "47eec89674afb9f1a23a53cc8cca5ec9e205fcb38258859ba54565f9609711d6",
+      "index": 15
+    },
+    {
+      "hash": "f567cdbd579400b31bac12bd9079d8475fabf35e470a929429c74caf6bc796c0",
+      "index": 16
+    },
+    {
+      "hash": "3c2f4b0a51f9b091c53fd4c38b9b68f3e8cb08885e59773e2085ebb7f343447a",
+      "index": 17
+    },
+    {
+      "hash": "2cdee86ebbd01af5c095909eab00fe08f168b403fb53df36a4a150e56cfffb50",
+      "index": 18
+    },
+    {
+      "hash": "4f98e2492968de0fe6065a7a5da54a9a3dbfceab1e185b81d533d8a411545a96",
+      "index": 19
+    },
+    {
+      "hash": "893e4242cba40f25f10ce10d03ccaac13060f9246fcae62a83187c9d2ca8352a",
+      "index": 20
+    },
+    {
+      "hash": "f678464e1b37f4b092ec297874fe0e9008d4bd6cd6c4a6c17cbcc5ea649a7956",
+      "index": 21
+    },
+    {
+      "hash": "8796a151eed8063fcab832a10b3e52bc482c5776e1fb1746c77a8971a6d51d02",
+      "index": 22
+    },
+    {
+      "hash": "8dc9fd8c7527a9af5fb29b254e749b8e033491764064265c4c40cc744d05be8f",
+      "index": 23
+    },
+    {
+      "hash": "e723060e878afa39a41b1f825679e12c4d6c88ac76660df6dedf71002756df39",
+      "index": 24
+    },
+    {
+      "hash": "5d063cdde84f51c83387ca87c87001323b31f52ed3374221d84c9ede2299f68f",
+      "index": 25
+    },
+    {
+      "hash": "d6667eb1aa79754e6d8454aac16b0d374e6be66223d398d445efad9b5b8200f5",
+      "index": 26
+    },
+    {
+      "hash": "45e1a5ba4a68e5612007e6a7faeb4da16272cc80627046338cad3893a16ad5fc",
+      "index": 27
+    },
+    {
+      "hash": "bee453867adb386718a6c8201d6b95fa588aab38e2c8f876efeb10b01b3450fc",
+      "index": 28
+    },
+    {
+      "hash": "e79f3ceda9dab3edba2a94fb973bb8fe189361e2df96a1b3494274a60d3c6faf",
+      "index": 29
+    },
+    {
+      "hash": "6ef73d93234fa1a909739017b2bf194827dbeaf36555a9f44677d788540b9c29",
+      "index": 30
+    },
+    {
+      "hash": "6c661e8fdf60df744e14d3131e0d5b0ab8873ac0bdec0b94654957f29a4b6e89",
+      "index": 31
+    },
+    {
+      "hash": "c5807f49700d235e918689b3e95af0a6e66cf9e326e6b93c0efc90cf9c9d2d78",
+      "index": 32
+    },
+    {
+      "hash": "8f6fba40e540b636e5f768efc0edfb3ea3465ec21eb6c79834a710e4494fc498",
+      "index": 33
     }
   ],
   "wiki/ru/Testing-Help-ru.md": [

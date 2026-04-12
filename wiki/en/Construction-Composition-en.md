@@ -21,7 +21,7 @@ _**`"%Description% - %Thickness.2mm%mm. "`**_
 
 To output thickness, specify `%Thickness%` or `%layer_thickness%` in the template.
 
-To output the layer number, use `%n%`. When changing the order via Layers_inv or Layers_auto, the numbering changes accordingly. \_v1.77+* To skip layers, you can use `%ns%`, which numbers only non-empty strings.
+To output the layer number, use `%n%`. When changing the order via Layers_inv or Layers_auto, the numbering changes accordingly. \_v1.77+\* To skip layers, you can use `%ns%`, which numbers only non-empty strings.
 
 Any property can be used in the template string - both system and user-defined (including properties from project information).
 
@@ -32,7 +32,7 @@ _v1.72_ By default, the property is assumed to be for the element. If you need t
 `Sync_from{Material:Layers,LAYER_NUMBER; " TEMPLATE_STRING "}`
 ![Profile composition output](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/material_layers-ru.PNG)
 
-## [Rounding of Thicknesses and Other Numerical Properties](https://github.com/kuvbur/AddOn_SomeStuff/wiki/%D0%9E%D0%BA%D1%80%D1%83%D0%B3%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5-%D1%82%D0%BE%D0%BB%D1%89%D0%B8%D0%BD-%D0%B8-%D0%BE%D1%81%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D1%85-%D1%87%D0%B8%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D1%8B%D1%85-%D1%81%D0%B2%D0%BE%D0%B9%D1%81%D1%82%D0%B2)
+## [Rounding Thicknesses and Other Numerical Properties](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Rounding-Thicknesses-Properties-en)
 
 ## Line Wrapping (Setting Fixed Text Length for Each Layer)
 

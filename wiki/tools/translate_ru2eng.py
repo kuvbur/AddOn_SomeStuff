@@ -17,6 +17,8 @@ Translate Russian Markdown documentation to formal, precise English technical la
 ## TRANSLATE ONLY:
 - Plain text in paragraphs, list items, table cells
 - Use consistent terminology: "wall" → "Wall", "элемент" → "Element", "параметр" → "Parameter"
+- Apply official ArchiCAD terms above consistently
+- Maintain technical precision for Somestuff add-on context
 
 ## OUTPUT RULES:
 - Return ONLY the translated Markdown
