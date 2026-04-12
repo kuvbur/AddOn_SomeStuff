@@ -16,6 +16,7 @@
 | [FAQ](https://github.com/kuvbur/AddOn_SomeStuff/wiki/FAQ-ru)                                           | Зачем аддон, что делать если ничего не работает, влияние на производительность |
 | [Список всех команд свойств](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Property-Commands-List-ru) | Полный справочник: `Sync_from`, `Sync_to`, флаги, формулы, МЕР-команды         |
 | [Тестовые версии](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Testing-Help-ru)                      | Как скачать сборку из Actions и присоединиться к тестированию                  |
+| [Сжатая справка для LLM](https://github.com/kuvbur/AddOn_SomeStuff/wiki/SomeStuff-AI-Context-ru.md)    | Используйте для подключения к ИИ для ответа на вопросы                         |
 
 ---
 
