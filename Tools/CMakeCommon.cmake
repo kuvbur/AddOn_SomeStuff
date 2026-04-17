@@ -1,3 +1,5 @@
+set (CMAKE_VS_GLOBALS UseMultiToolTask=true EnforceProcessCountAcrossBuilds=true)
+
 function (SetGlobalCompilerDefinitions acVersion)
 
     if (WIN32)
@@ -6,7 +8,9 @@ function (SetGlobalCompilerDefinitions acVersion)
     else ()
         add_definitions (-Dmacintosh=1)
         if (${acVersion} GREATER_EQUAL 26)
-            set (CMAKE_OSX_ARCHITECTURES "x86_64;arm64" PARENT_SCOPE CACHE STRING "" FORCE)
+            set (CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "" FORCE)
+        else()
+            set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "" FORCE)
         endif ()
     endif ()
     add_definitions (-DACExtension)
@@ -60,7 +64,7 @@ function (SetCompilerOptions target acVersion)
             -Wno-sign-compare
             -Wno-switch
             -Wno-missing-template-arg-list-after-template-kw
-            -Wno-explicit-specialization-storage-class
+            -Wno-unknown-warning-option
         )
         if (${acVersion} LESS_EQUAL "24")
             target_compile_options (${target} PUBLIC -Wno-non-c-typedef-for-linkage)
@@ -219,8 +223,10 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         target_link_options (${addOnName} PUBLIC /export:GetExportedFuncAddrs,@1 /export:SetImportedFuncAddrs,@2)
     else ()
         file(READ "${devKitDir}/Frameworks/GSRoot.framework/Versions/A/Resources/Info.plist" plist_content NEWLINE_CONSUME)
-        string(REGEX REPLACE ".*GSBuildNum[^0-9]+([0-9]+).*" "\\1" gsBuildNum "${plist_content}")
-        string(REGEX REPLACE ".*LSMinimumSystemVersion[^0-9]+([0-9\.]+).*" "\\1" lsMinimumSystemVersion "${plist_content}")
+        string (REGEX MATCH "GSBuildNum[^0-9]+([0-9]+)" unused "${plist_content}")
+        set (gsBuildNum "${CMAKE_MATCH_1}")
+        string (REGEX MATCH "LSMinimumSystemVersion[^0-9]+([0-9.]+)" unused "${plist_content}")
+        set (lsMinimumSystemVersion "${CMAKE_MATCH_1}")
 
         set(MACOSX_BUNDLE_EXECUTABLE_NAME ${addOnName})
         set(MACOSX_BUNDLE_INFO_STRING ${addOnName})
@@ -236,11 +242,10 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
                 @ONLY
             )
 
-        set_target_properties(${target} PROPERTIES
+        set_target_properties(${addOnName} PROPERTIES
             BUNDLE TRUE
-            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/AddOnInfo.plist"
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist"
 
-            # Align parameters for Xcode and in Info.plist to avoid warnings
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.kuvbur.${addOnNameIdentifier}
             XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET ${lsMinimumSystemVersion}
 
@@ -248,6 +253,11 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         )
     endif ()
 
+    target_precompile_headers(
+        "${addOnName}" PRIVATE
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.hpp"
+    )
+    
     target_include_directories (${addOnName} PUBLIC
         ${addOnSourcesFolder}
         ${devKitDir}/Inc
