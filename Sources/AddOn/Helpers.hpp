@@ -652,12 +652,6 @@ bool operator==(const API_PropertyDefinition& lhs, const API_PropertyDefinition&
 
 bool operator==(const API_Property& lhs, const API_Property& rhs);
 
-template <typename T>
-bool operator!=(const T& lhs, const T& rhs)
-{
-    return !(lhs == rhs);
-}
-
 //--------------------------------------------------------------------------------------------------------------------------
 // Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
