@@ -1,7 +1,4 @@
-# AddOn SomeStuff
-
-[![Latest Release](https://img.shields.io/github/v/release/kuvbur/AddOn_SomeStuff)](https://github.com/kuvbur/AddOn_SomeStuff/releases/latest)
-[Telegramm](https://t.me/archicad_somestuff)
+# AddOn SomeStuff [![Latest Release](https://img.shields.io/github/v/release/kuvbur/AddOn_SomeStuff)](https://github.com/kuvbur/AddOn_SomeStuff/releases/latest)
 ---
 
 **[Русский](#русский) · [English](#english)**
@@ -130,7 +127,7 @@ Full instructions for Windows and macOS are in the [Wiki (EN): Install](https://
 - [Список команд RU](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Property-Commands-List-ru)
 - [Wiki RU — полная справка](https://github.com/kuvbur/AddOn_SomeStuff/wiki)
 - [Примеры файлов](https://github.com/kuvbur/AddOn_SomeStuff/tree/master/wiki/files)
-
+- [Telegram канал](https://t.me/archicad_somestuff)
 ---
 
 ### Видеообзоры
