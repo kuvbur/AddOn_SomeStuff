@@ -1,0 +1,57 @@
+name: Translate wiki
+
+on:
+  workflow_dispatch:
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install httpx
+
+      - name: Translate Markdown files
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPLSEEK_API_KEY }}
+        run: |
+          python wiki/tools/translate_ru2eng.py
+
+      - name: Commit translated files to PR branch
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet wiki/en/; then
+            echo "PR_COMMITTED=false" >> $GITHUB_ENV
+            echo "No changes in wiki/en, nothing to commit."
+          else
+            git add wiki/en/
+            git commit -m "feat: update translated docs (via DeepSeek LLM)"
+            echo "PR_COMMITTED=true" >> $GITHUB_ENV
+          fi
+
+      - name: Create Pull Request with translations
+        if: env.PR_COMMITTED == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: wiki/translations
+          title: "Update translated docs (en)"
+          body: |
+            Auto‑generated translations via DeepSeek LLM.
+            Source: `${{ inputs.source_dir }}` → `${{ inputs.target_dir }}`.
+          add-paths: wiki/en/
+          base: ${{ github.ref }}
+          delete-branch: false
