@@ -630,6 +630,8 @@ ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs);
 
 bool operator==(const ParamValue& lhs, const ParamValue& rhs);
 
+bool operator != (const ParamValue& lhs, const ParamValue& rhs);
+
 bool operator==(const API_Variant& lhs, const API_Variant& rhs);
 
 bool operator==(const API_SingleVariant& lhs, const API_SingleVariant& rhs);
