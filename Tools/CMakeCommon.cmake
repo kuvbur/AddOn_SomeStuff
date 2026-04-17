@@ -254,8 +254,8 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         )
     endif ()
 
-message(STATUS "TARGET = '${_target}'")
-
+message(STATUS "TARGET = '${target}'")
+message(STATUS "hpp = '${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.hpp")
     target_precompile_headers(
         "${target}" PRIVATE
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.hpp"
