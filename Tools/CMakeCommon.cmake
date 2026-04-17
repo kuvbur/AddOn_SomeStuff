@@ -64,6 +64,7 @@ function (SetCompilerOptions target acVersion)
             -Wno-sign-compare
             -Wno-switch
             -Wno-missing-template-arg-list-after-template-kw
+            -Wno-ambiguous-operators
             -Wno-unknown-warning-option
         )
         if (${acVersion} LESS_EQUAL "24")
