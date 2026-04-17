@@ -1,0 +1,31 @@
+name: Update Wiki from folder
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - 'wiki/ru/**'
+      - 'wiki/en/**'
+       
+permissions:
+  contents: write
+
+jobs:
+  deploy-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare wiki content
+        run: |
+          rm -rf wiki-build
+          mkdir -p wiki-build
+          mkdir -p wiki-build/en
+          cp wiki/ru/*.md wiki-build/
+          cp wiki/en/*.md wiki-build/en
+
+      - name: Publish wiki
+        uses: Andrew-Chen-Wang/github-wiki-action@v4
+        with:
+          path: wiki-build
