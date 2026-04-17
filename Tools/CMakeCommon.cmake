@@ -244,7 +244,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
 
         set_target_properties(${addOnName} PROPERTIES
             BUNDLE TRUE
-            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/AddOnInfo.plist"
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/${addOnResourcesFolder}/RFIX.mac/Info.plist"
 
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.kuvbur.${addOnNameIdentifier}
             XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET ${lsMinimumSystemVersion}
