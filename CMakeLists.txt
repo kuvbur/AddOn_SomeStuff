@@ -13,6 +13,7 @@ set (AC_API_DEVKIT_DIR ${API_DEVKIT_DIR} CACHE PATH "API DevKit directory.")
 set (AC_ADDON_NAME "SomeStuff" CACHE STRING "Add-On name.")
 set (AC_ADDON_LANGUAGE "INT" CACHE STRING "Add-On language code.")
 
+
 DetectACVersion (${AC_API_DEVKIT_DIR} ACVersion)
 message (STATUS "Archicad Version: ${ACVersion}")
 
