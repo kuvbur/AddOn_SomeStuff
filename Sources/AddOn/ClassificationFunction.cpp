@@ -3,17 +3,21 @@
 #include	"APIEnvir.h"
 #include	"ClassificationFunction.hpp"
 #include	"Helpers.hpp"
-
+#include	"Propertycache.hpp"
 namespace ClassificationFunc
 {
 
-GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автокласса
+const GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автокласса
+
 
 // -----------------------------------------------------------------------------
 // Получение словаря со всеми классами во всех системах классифкации
 // -----------------------------------------------------------------------------
 GSErrCode GetAllClassification (SystemDict& systemdict)
 {
+    #if defined(TESTING)
+    DBprnt ("GetAllClassification start");
+    #endif
     GSErrCode err = NoError;
     GS::Array<API_ClassificationSystem> systems = {};
     err = ACAPI_Classification_GetClassificationSystems (systems);
@@ -45,6 +49,7 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
                 }
             } else {
                 msg_rep ("ClassificationFunc::GetAllClassification", "ACAPI_Classification_GetClassificationSystemRootItems", err, systems[i].guid);
+                continue;
             }
             if (!classifications.IsEmpty ()) {
                 API_ClassificationItem parent, item;
@@ -59,6 +64,9 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
             }
         }
     }
+    #if defined(TESTING)
+    DBprnt ("GetAllClassification end");
+    #endif
     return err;
 }
 void GatherAllDescendantOfClassification (const API_ClassificationItem& item, ClassificationDict& classifications, const  API_ClassificationSystem& system)
@@ -119,12 +127,20 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
     }
 }
 
+bool ReadSystemDict ()
+{
+    if (PROPERTYCACHE ().isClassification_OK) return true;
+    if (!PROPERTYCACHE ().isClassificationRead) PROPERTYCACHE ().ReadClassification ();
+    return PROPERTYCACHE ().isClassification_OK;
+}
+
 // -----------------------------------------------------------------------------
 // Поиск класса по ID в заданной классификации, возвращает Guid класса
 // -----------------------------------------------------------------------------
-API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS::UniString& classname)
+API_Guid FindClass (const GS::UniString& systemname, const  GS::UniString& classname)
 {
-    if (systemdict.IsEmpty ()) return APINULLGuid;
+    if (!ReadSystemDict ()) return APINULLGuid;
+    ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
     if (!systemdict.ContainsKey (systemname)) return APINULLGuid;
     API_Guid classgiud = APINULLGuid;
     if (systemdict.Get (systemname).ContainsKey (classname)) {
@@ -134,12 +150,44 @@ API_Guid FindClass (const SystemDict& systemdict, GS::UniString& systemname, GS:
     return classgiud;
 }
 
+GS::UniString GetSystemName (const API_Guid& systemguid)
+{
+    GS::UniString systemname = "";
+    if (!ReadSystemDict ()) return systemname;
+    UnicGuidByGuidString& systemdict = PROPERTYCACHE ().reversesystemdict;
+    if (!systemdict.ContainsKey (systemguid)) return systemname;
+    UnicGuidString& g = systemdict.Get (systemguid);
+    if (!g.ContainsKey (APINULLGuid)) return systemname;
+    systemname = g.Get (APINULLGuid);
+    return systemname;
+}
+
+
+API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid>& classitem)
+{
+    GS::UniString systemname = GetSystemName (classitem.first);
+    GS::UniString classname = "";
+    API_ClassificationItem cl;
+    if (systemname.IsEmpty ()) return cl;
+    UnicGuidByGuidString& systemdict = PROPERTYCACHE ().reversesystemdict;
+    if (!systemdict.ContainsKey (classitem.first)) return cl;
+    UnicGuidString& g = systemdict.Get (classitem.first);
+    if (!g.ContainsKey (classitem.second)) return cl;
+    classname = g.Get (classitem.second);
+    if (!PROPERTYCACHE ().systemdict.ContainsKey (systemname)) return cl;
+    ClassificationDict& syst = PROPERTYCACHE ().systemdict.Get (systemname);
+    if (!syst.ContainsKey (classname)) return cl;
+    cl = syst.Get (classname).item;
+    return cl;
+}
+
 // -----------------------------------------------------------------------------
 // Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
 // -----------------------------------------------------------------------------
-void SetAutoclass (SystemDict& systemdict, const API_Guid elemGuid)
+void SetAutoclass (const API_Guid elemGuid)
 {
-    if (systemdict.IsEmpty ()) GetAllClassification (systemdict);
+    if (!ReadSystemDict ()) return;
+    ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
     if (!systemdict.ContainsKey (autoclassname)) return;
     if (!systemdict.Get (autoclassname).ContainsKey (autoclassname)) return;
     API_ClassificationItem item = systemdict.Get (autoclassname).Get (autoclassname).item;

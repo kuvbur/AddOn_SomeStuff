@@ -2,19 +2,21 @@
 #include	"ACAPinc.h"
 #include	"APIEnvir.h"
 #include	"Helpers.hpp"
+#include	"Propertycache.hpp"
 #include	"ResetProperty.hpp"
-
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
-bool ResetProperty (ParamDictValue& propertyParams)
+bool ResetProperty ()
 {
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     return false;
     #endif
+    if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
+    ParamDictValue& propertyParams = PROPERTYCACHE ().property;
     GS::Array<API_PropertyDefinition> definitions_to_reset;
-    for (GS::HashTable<GS::UniString, ParamValue>::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
+    for (ParamDictValue::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
         #else
@@ -85,7 +87,7 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& def
         GS::UniString intString = GS::UniString::Printf (" %d", doneelemguid.GetSize ());
         msg_rep ("Reset property done - ", intString, NoError, APINULLGuid);
     } else {
-        msg_rep ("Reset property done", "", NoError, APINULLGuid);
+        msg_rep ("Reset property done", EMPTYSTRING, NoError, APINULLGuid);
     }
     return flag_reset;
 }
@@ -220,13 +222,6 @@ GSErrCode ResetOneElemen (const API_Guid elemGuid, const GS::Array<API_PropertyD
         }
         if (!properties_to_reset.IsEmpty ()) {
             err = ACAPI_Element_SetProperties (elemGuid, properties_to_reset);
-
-            // Убрал резервирование - криво работает
-            //if (err != NoError) {
-            //	// попробуем разблокировать и повторить
-            //	if (ReserveElement(elemGuid, err)) err = ACAPI_Element_SetProperties(elemGuid, properties_to_reset);
-            //}
-
             // Если не получилось - выведем ошибку.
             if (err != NoError) msg_rep ("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
         } else {

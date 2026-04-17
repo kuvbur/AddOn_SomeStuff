@@ -1,9 +1,10 @@
 //------------ kuvbur 2022 ------------
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
-#include	"Revision.hpp"
-#include	<stdlib.h> /* atoi */
-#include	<time.h>
+#include "ACAPinc.h"
+#include "APIEnvir.h"
+#include "Propertycache.hpp"
+#include "Revision.hpp"
+#include <stdlib.h> /* atoi */
+#include <time.h>
 namespace Revision
 {
 void SetRevision (void)
@@ -110,7 +111,7 @@ bool GetScheme (GS::HashTable< GS::UniString, API_Guid>& layout_note_guid)
             layout_note_guid.Add ("somestuff_layout_shifr", guid);
         }
     }
-    GS::HashTable<API_Guid, GS::UniString> customScheme = {};
+    UnicGuidString customScheme = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Revision_GetRVMChangeCustomScheme (&customScheme);
     #else
@@ -208,7 +209,7 @@ void GetAllChangesMarker (GS::HashTable< GS::UniString, API_Guid>& layout_note_g
             msg_rep ("GetChangesMarker", "APIDb_GetRVMDocumentRevisionChangesID", err, revision.guid);
         }
     }
-    if (has_change_error) msg_rep ("", "Check Marker reservation", APIERR_GENERAL, APINULLGuid, true);
+    if (has_change_error) msg_rep (EMPTYSTRING, "Check Marker reservation", APIERR_GENERAL, APINULLGuid, true);
     if (layoutRVI.IsEmpty () || allchanges.IsEmpty ()) return;
     for (auto ch : allchanges) {
         #if defined(AC_28) || defined(AC_29)
@@ -380,12 +381,12 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         msg_rep ("ChangeLayoutProperty", "layoutInfo.customData == nullptr", err, APINULLGuid);
         return false;
     }
-    Int32 isEng_ = isEng ();
-    GS::UniString RVIString = RSGetIndString (ID_ADDON_STRINGS + isEng_, RVI_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString RVIString = RSGetIndString (iseng, RVI_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString izmString = RSGetIndString (iseng, Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (iseng, Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (iseng, Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (iseng, Annul_StringID, ACAPI_GetOwnResModule ());
     // Правильная сортировка по алфавиту
     std::map<std::string, GS::UniString, doj::alphanum_less<std::string> > abc_changes = {};
     for (auto ch : changes) {
@@ -428,7 +429,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
     if (layout_note_guid.ContainsKey (prop_name)) {
         API_Guid prop_guid = layout_note_guid.Get (prop_name);
         flag_write = true;
-        if (layoutInfo.customData->ContainsKey (prop_guid)) layoutInfo.customData->Set (prop_guid, "");
+        if (layoutInfo.customData->ContainsKey (prop_guid)) layoutInfo.customData->Set (prop_guid, EMPTYSTRING);
     }
     UInt32 n_izm = 1;
     GS::UniString note = "";
@@ -440,12 +441,12 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         if (layout_note_guid.ContainsKey (prop_name)) {
             API_Guid prop_guid = layout_note_guid.Get (prop_name);
             GS::UniString str = change.changeId;
-            str = str + "@" + GS::UniString::Printf ("%d", change.nuch);
-            if (change.typeizm == TypeIzm) str = str + "@" + izmString;
-            if (change.typeizm == TypeZam) str = str + "@" + zamString;
-            if (change.typeizm == TypeNov) str = str + "@" + novString;
-            if (change.typeizm == TypeAnnul) str = str + "@" + annulString;
-            if (!change.fam.IsEmpty ()) str = str + "@" + change.fam;
+            str = str + ATSIGN + GS::UniString::Printf ("%d", change.nuch);
+            if (change.typeizm == TypeIzm) str = str + ATSIGN + izmString;
+            if (change.typeizm == TypeZam) str = str + ATSIGN + zamString;
+            if (change.typeizm == TypeNov) str = str + ATSIGN + novString;
+            if (change.typeizm == TypeAnnul) str = str + ATSIGN + annulString;
+            if (!change.fam.IsEmpty ()) str = str + ATSIGN + change.fam;
             flag_write = true;
             if (layoutInfo.customData->ContainsKey (prop_guid)) {
                 layoutInfo.customData->Set (prop_guid, str);
@@ -495,7 +496,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
         if (layout_note_guid.ContainsKey (prop_name) && !change.note.IsEmpty ()) {
             API_Guid prop_guid = layout_note_guid.Get (prop_name);
             GS::UniString str = change.note;
-            str.ReplaceAll ("@", "");
+            str.ReplaceAll (ATSIGN, EMPTYSTRING);
             flag_write = true;
             if (layoutInfo.customData->ContainsKey (prop_guid)) {
                 layoutInfo.customData->Set (prop_guid, str);
@@ -618,10 +619,10 @@ bool CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
                 hasmarker = true;
                 if (change.arr[i].typeizm == TypeIzm) hasmarkerIzm = true;
                 if (typeizm_marker != TypeNone && change.arr[i].typeizm != TypeNone && change.arr[i].typeizm != typeizm_marker) {
-                    msg_rep ("GetChangesMarker", "Different type : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, false);
+                    msg_rep ("GetChangesMarker", "Different type : " + change.arr[i].changeId + " sheet ID " + subsetName + SLASH + layoutid, APIERR_GENERAL, APINULLGuid, false);
                 }
                 if (change.arr[i].fam.GetLength () > 3 && fam_marker.GetLength () > 3 && !fam_marker.IsEqual (change.arr[i].fam)) {
-                    msg_rep ("GetChangesMarker", "Different surname : " + fam_marker + "<->" + change.arr[i].fam + " on " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, false);
+                    msg_rep ("GetChangesMarker", "Different surname : " + fam_marker + "<->" + change.arr[i].fam + " on " + change.arr[i].changeId + " sheet ID " + subsetName + SLASH + layoutid, APIERR_GENERAL, APINULLGuid, false);
                     has_error = true;
                 }
                 if (change.arr[i].fam.GetLength () > 3) fam_marker = change.arr[i].fam;
@@ -629,15 +630,15 @@ bool CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
                 if (ACAPI_Element_Filter (change.arr[i].markerguid, APIFilt_InMyWorkspace)) {
                     if (ACAPI_Element_Filter (change.arr[i].markerguid, APIFilt_HasAccessRight)) {
                         if (!ACAPI_Element_Filter (change.arr[i].markerguid, APIFilt_IsEditable)) {
-                            msg_rep ("GetChangesMarker", "Marker not editable : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, false);
+                            msg_rep ("GetChangesMarker", "Marker not editable : " + change.arr[i].changeId + " sheet ID " + subsetName + SLASH + layoutid, APIERR_GENERAL, APINULLGuid, false);
                             has_error = true;
                         }
                     } else {
-                        msg_rep ("GetChangesMarker", "Marker has not access right : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, false);
+                        msg_rep ("GetChangesMarker", "Marker has not access right : " + change.arr[i].changeId + " sheet ID " + subsetName + SLASH + layoutid, APIERR_GENERAL, APINULLGuid, false);
                         has_error = true;
                     }
                 } else {
-                    msg_rep ("GetChangesMarker", "Marker not in on workspace : " + change.arr[i].changeId + " sheet ID " + subsetName + "/" + layoutid, APIERR_GENERAL, APINULLGuid, false);
+                    msg_rep ("GetChangesMarker", "Marker not in on workspace : " + change.arr[i].changeId + " sheet ID " + subsetName + SLASH + layoutid, APIERR_GENERAL, APINULLGuid, false);
                     has_error = true;
                 }
             }
@@ -664,31 +665,31 @@ bool CheckChanges (ChangeMarkerDict& changes, GS::UniString& subsetName, GS::Uni
 
 void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict& changes, GS::HashTable<GS::UniString, API_Guid>& layout_note_guid)
 {
-    Int32 isEng_ = isEng ();
-    GS::UniString izmString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString zamString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString novString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
-    GS::UniString annulString = RSGetIndString (ID_ADDON_STRINGS + isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
+    Int32 isEng_ = ID_ADDON_STRINGS + isEng ();
+    GS::UniString izmString = RSGetIndString (isEng_, Izm_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString zamString = RSGetIndString (isEng_, Zam_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString novString = RSGetIndString (isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
+    GS::UniString annulString = RSGetIndString (isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
     // Обрабатываем изменения, не привязанные к маркерам
     for (auto c : layoutchange) {
         Change ch;
         GS::UniString nizm = "";
         GS::UniString changeId = c.id;
         changeId.Trim ();
-        changeId.ReplaceAll ("  ", " ");
+        changeId.ReplaceAll ("  ", SPACESTRING);
         GS::Array<GS::UniString> partstring;
-        UInt32 n = StringSplt (changeId, " ", partstring);
+        UInt32 n = StringSplt (changeId, SPACESTRING, partstring);
         ch.changeId = changeId;
         if (n > 3) {
             if (ch.typeizm == TypeNone && partstring[2].Contains (izmString)) ch.typeizm = TypeIzm;
             if (ch.typeizm == TypeNone && partstring[2].Contains (zamString)) ch.typeizm = TypeZam;
             if (ch.typeizm == TypeNone && partstring[2].Contains (novString)) ch.typeizm = TypeNov;
             if (ch.typeizm == TypeNone && partstring[2].Contains (annulString)) ch.typeizm = TypeAnnul;
-            ch.changeId = partstring[0] + " " + partstring[1] + " " + partstring[3];
+            ch.changeId = partstring[0] + SPACESTRING + partstring[1] + SPACESTRING + partstring[3];
             nizm = partstring[3];
             nizm.Trim ();
         }
-        if (ch.typeizm != TypeNone && !nizm.IsEqual ("0")) {
+        if (ch.typeizm != TypeNone && !nizm.IsEqual (ZEROSTRING)) {
             if (layout_note_guid.ContainsKey ("somestuff_code_change")) {
                 API_Guid guid = layout_note_guid.Get ("somestuff_code_change");
                 if (c.customData.ContainsKey (guid)) {
@@ -739,17 +740,17 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                 Change ch;
                 GS::UniString changeId = element.changeMarker.changeId;
                 changeId.Trim ();
-                changeId.ReplaceAll ("  ", " ");
+                changeId.ReplaceAll ("  ", SPACESTRING);
                 GS::Array<GS::UniString> partstring;
-                UInt32 n = StringSplt (changeId, " ", partstring);
+                UInt32 n = StringSplt (changeId, SPACESTRING, partstring);
                 ch.changeId = changeId;
                 if (n > 3) {
                     if (typeizm > TypeNone && typeizm <= TypeAnnul) ch.typeizm = typeizm;
-                    ch.changeId = partstring[0] + " " + partstring[1] + " " + partstring[3];
+                    ch.changeId = partstring[0] + SPACESTRING + partstring[1] + SPACESTRING + partstring[3];
                     nizm = partstring[3];
                     nizm.Trim ();
                 }
-                if (!nizm.IsEqual ("0")) {
+                if (!nizm.IsEqual (ZEROSTRING)) {
                     ch.markerguid = element.changeMarker.markerGuid;
                     ch.changeName = element.changeMarker.changeName;
                     ch.startpoint = startpoint;
@@ -844,7 +845,8 @@ bool GetMarkerText (API_Guid& markerguid, GS::UniString& note, GS::UniString& nu
 }
 void ChangeMarkerTextOnLayout (ChangeMarkerDict& changes)
 {
-    GS::UniString undoString = RSGetIndString (ID_ADDON_STRINGS + isEng (), UndoReNumId, ACAPI_GetOwnResModule ());
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
     ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
         for (auto ch : changes) {
             #if defined(AC_28) || defined(AC_29)

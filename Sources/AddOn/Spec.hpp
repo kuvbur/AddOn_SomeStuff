@@ -28,7 +28,8 @@ struct GroupSpec
     GS::Array<GS::UniString> sum_paramrawname = {}; // Массив имён параметров, которые требуется просуммировать
     GS::UniString flag_paramrawname = "";           // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
     bool is_Valid = true;
-    bool fromMaterial = false;
+    bool fromMaterial = false; // Чтение из компонент
+    bool fromLibData = false; // Чтение ведомостей
     GS::Int32 n_layer = 0;
 };
 
@@ -49,6 +50,8 @@ struct SpecRule
     bool delete_old = false;
     bool stop_on_error = true;
     bool only_visible = true;
+    bool isKM = false; // Правило для КМ (техничка)
+    bool isKZH = false; // Правило для КЖ (ведомость расхода стали)
 };
 
 struct Element
@@ -104,14 +107,14 @@ SpecRule GetRuleFromDescription (GS::UniString& description);
 
 GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::HashTable<GS::UniString, GS::UniString>& paramdict);
 
-bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, GS::Int32 n_layer);
+bool GetParamValue (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue, bool fromMaterial, const GS::Int32& n_layer, const ParamDictCompositeElement& paramCompositeToRead, const ListData::LibElements& paramListDataToRead);
 
-Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete, UnicGuid& error_element);
+Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, const ParamDictCompositeElement& paramCompositeToRead, const ListData::LibElements& paramListDataToRead, ElementDict& elements, ElementDict& elements_mod, GS::Array<API_Guid>& elements_delete, UnicGuid& error_element);
 
 // --------------------------------------------------------------------
 // Выбирает из параметров групп имена свойств для дальнейшего чтения
 // --------------------------------------------------------------------
-void GetParamToReadFromRule (SpecRuleDict& rules, ParamDictValue& propertyParams, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
+void GetParamToReadFromRule (SpecRule& rules, ParamDictElement& paramToRead, ParamDictValue& paramToWrite);
 
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 

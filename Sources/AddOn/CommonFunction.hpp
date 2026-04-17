@@ -52,10 +52,91 @@ static const Int32 MeterStringID = 17;
 static const Int32 CMeterStringID = 18;
 static const Int32 DMeterStringID = 19;
 
-static const GS::UniChar char_formula_start = '<';
-static const GS::UniChar char_formula_end = '>';
-static const GS::UniString str_formula_start = "<";
-static const GS::UniString str_formula_end = ">";
+static const GS::UniString IDNAMEPREFIX = "{@id:";
+static const short IDTYPEINX = 1;
+static const GS::UniString PROPERTYNAMEPREFIX = "{@property:";
+static const short PROPERTYTYPEINX = 2;
+static const GS::UniString COORDNAMEPREFIX = "{@coord:";
+static const short COORDTYPEINX = 3;
+static const GS::UniString GDLNAMEPREFIX = "{@gdl:";
+static const short GDLTYPEINX = 4;
+static const GS::UniString GDLDESCNAMEPREFIX = "{@description:";
+static const short GDLDESCTYPEINX = 5;
+static const GS::UniString INFONAMEPREFIX = "{@info:";
+static const short INFOTYPEINX = 6;
+static const GS::UniString IFCNAMEPREFIX = "{@ifc:";
+static const short IFCTYPEINX = 7;
+static const GS::UniString MORPHNAMEPREFIX = "{@morph:";
+static const short MORPHTYPEINX = 8;
+static const GS::UniString ATTRIBNAMEPREFIX = "{@attrib:";
+static const short ATTRIBTYPEINX = 9;
+static const GS::UniString LISTDATANAMEPREFIX = "{@listdata:";
+static const short LISTDATATYPEINX = 10;
+static const GS::UniString MATERIALNAMEPREFIX = "{@material:";
+static const short MATERIALTYPEINX = 11;
+static const GS::UniString GLOBNAMEPREFIX = "{@glob:";
+static const short GLOBTYPEINX = 12;
+static const GS::UniString CLASSNAMEPREFIX = "{@class:";
+static const short CLASSTYPEINX = 13;
+static const GS::UniString FORMULANAMEPREFIX = "{@formula:";
+static const short FORMULATYPEINX = 14;
+static const GS::UniString ELEMENTNAMEPREFIX = "{@element:";
+static const short ELEMENTTYPEINX = 15;
+static const GS::UniString MEPNAMEPREFIX = "{@mep:";
+static const short MEPTYPEINX = 16;
+
+static const GS::UniString DOT = ".";
+static const GS::UniString COMMA = ",";
+static const GS::UniString METERS = "m";
+static const GS::UniChar CHARMETERS = 'm';
+static const GS::UniString MMETERS = "mm";
+static const GS::UniString CMETERS = "cm";
+static const GS::UniString DMETERS = "dm";
+static const GS::UniString DSTRING = "d";
+static const GS::UniString CSTRING = "c";
+static const GS::UniString GSTRING = "g";
+static const GS::UniString KSTRING = "k";
+static const GS::UniString GMETERS = "gm";
+static const GS::UniString KMETERS = "km";
+static const GS::UniString DOTSET = "p";
+static const GS::UniString RDSET = "r";
+static const GS::UniString FSET = "f";
+static const GS::UniString EMPTYSTRING = "";
+static const GS::UniString ZEROSTRING = "0";
+static const GS::UniChar CHARZERO = '0';
+static const GS::UniString SPACESTRING = " ";
+static const GS::UniString MINUSSTRING = "-";
+static const GS::UniChar CHARFORMULASTART = '<';
+static const GS::UniChar CHARFORMULAEND = '>';
+static const GS::UniString STRFORMULASTART = "<";
+static const GS::UniString STRFORMULAEND = ">";
+static const GS::UniString BRACEEND = "}";
+static const GS::UniString BRACESTART = "{";
+static const GS::UniString SEMICOLON = ";";
+static const GS::UniChar CHARBRACEEND = '}';
+static const GS::UniChar CHARBRACESTART = '{';
+static const GS::UniString STRINGPROC = "%";
+static const GS::UniChar CHARPROC = '%';
+static const GS::UniChar CHARDQUT = '"';
+static const GS::UniString PVALPREFIX = "{@";
+static const GS::UniString RENUMFLAG = "Renum_flag";
+static const GS::UniString RENUM = "Renum";
+static const GS::UniString PROPERTYSTRING = "property";
+static const GS::UniString LINEBRAKE = "\n";
+static const GS::UniString LINEBRAKER = "\r";
+static const GS::UniString TABSTRING = "\t";
+static const GS::UniString SLASHEKR = "\\/";
+static const GS::UniString SLASH = "/";
+static const GS::UniString ATSIGN = "@";
+static const GS::UniString SYNCFLAG = "Sync_flag";
+static const GS::UniString SYNCCORRECTFLAG = "Sync_correct_flag";
+static const GS::UniString SYNCCLASSFLAG = "Sync_class_flag";
+
+static const GS::UniString DEFULTREALFSTRING = ".3m";
+static const GS::UniString DEFULTLEGHTFSTRING = "1mm";
+static const GS::UniString DEFULTINTFSTRING = "0m";
+
+
 #define ELEMSTR_LEN 256
 // Типы операций по переводу значений массива гдл параметра в совйство
 #define ARRAY_UNDEF 0
@@ -66,12 +147,16 @@ static const GS::UniString str_formula_end = ">";
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
 
+const GS::Int32 max_group_mat = 50; //Максимальное количество материалов у одного элемента
+const GS::Int32 max_group_lib = 100; //Максимальное количество компонент у одного элемента
+
 struct Story
 {
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
@@ -98,11 +183,12 @@ typedef GS::HashTable<API_PropertyMeasureType, FormatString> FormatStringDict;
 // Словарь уникальных API_Guid
 typedef GS::HashTable<API_Guid, bool> UnicGuid;
 typedef GS::HashTable<API_Guid, UnicGuid> UnicGuidByGuid;
+
+// Словарь описаний API_Guid
+typedef GS::HashTable<API_Guid, GS::UniString> UnicGuidString;
+typedef GS::HashTable<API_Guid, UnicGuidString> UnicGuidByGuidString;
+
 // Хранение данных параметра
-// type - API_VariantType (как у свойств)
-// name - имя для поиска
-// uniStringValue, intValue, boolValue, doubleValue - значения
-// canCalculate - можно ли использовать в математических вычислениях
 struct ParamValueData
 {
     // Собственно значения
@@ -145,6 +231,26 @@ struct ParamValueComposite
     GS::UniString pos = ""; // Позиция
 };
 
+// Для хранения данных о составе конструкции, так как в многослойной конструкции может быть несколько слоёв, а также для удобства передачи данных в функции записи в свойства и т.д.
+struct ParamComposite
+{
+    GS::UniString templatestring = "";
+    GS::Array<ParamValueComposite> composite = {};
+    API_ModelElemStructureType composite_type = API_BasicStructure;
+    bool isValid = false;					// Валидность (был считан без ошибок)
+    API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
+    API_ElemTypeID eltype = API_ZombieElemID; // Для определения по какому типу элемента читать состав конструкции
+    short composite_pen = 0;
+    bool hasFormula = false; // В поле tempstring содержится выражение, которое надо вычислить
+    bool fromQuantity = false;
+};
+
+// Словарь с заранее вычисленными данными в пределах обного элемента
+typedef GS::HashTable<GS::UniString, ParamComposite> ParamDictComposite;
+
+// Словарь с параметрами для элементов
+typedef GS::HashTable<API_Guid, ParamDictComposite> ParamDictCompositeElement;
+
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
 struct ParamValue
@@ -156,10 +262,10 @@ struct ParamValue
     bool isValid = false;					// Валидность (был считан без ошибок)
     API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
     API_Property property = {};				// Само свойство, для упрощения чтения/записи
-    GS::Array<ParamValueComposite> composite = {};
-    API_ModelElemStructureType composite_type = API_BasicStructure;
     API_ElemTypeID eltype = API_ZombieElemID;
     short composite_pen = 0;
+    short typeinx = 0;	                 // Тип параметра на основе его префикса ({@ifc: и т.д.)
+    bool hasParamComposite = false;	     // Есть ли соответсвующий параметр состава конструкции (ParamComposite)
     bool fromClassification = false;	 // Данные о классификаторе
     bool fromGDLparam = false;			 // Найден в гдл параметрах
     bool fromGDLdescription = false;	 // Найден по описанию в гдл параметрах
@@ -189,7 +295,7 @@ struct ParamValue
     API_Guid fromGuid = APINULLGuid;	 // Из какого элемента прочитан
 };
 
-// Словарь с заранее вычисленными данными в пределах обного элемента
+// Словарь с заранее вычисленными данными в пределах одного элемента
 typedef GS::HashTable<GS::UniString, ParamValue> ParamDictValue;
 
 // Словарь с параметрами для вычисления
@@ -225,7 +331,6 @@ GS::UniString TextToQRCode (GS::UniString& text, int error_lvl);
 
 GS::UniString TextToQRCode (GS::UniString& text);
 
-GS::UniString GetPropertyNameByGUID (const API_Guid& guid);
 
 void DBprnt (double a, GS::UniString reportString);
 
@@ -236,11 +341,6 @@ void DBtest (bool usl, GS::UniString reportString, bool asserton = false);
 void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton = false);
 
 void DBtest (double a, double b, GS::UniString reportString, bool asserton = false);
-
-// -----------------------------------------------------------------------------
-// Проверка языка Архикада. Для INT возвращает 1000
-// -----------------------------------------------------------------------------
-Int32 isEng ();
 
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
@@ -283,11 +383,6 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr);
 // -----------------------------------------------------------------------------
 bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr);
 #endif
-
-// -----------------------------------------------------------------------------
-// Получить полное имя свойства (включая имя группы)
-// -----------------------------------------------------------------------------
-GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::UniString& name);
 
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
@@ -420,7 +515,7 @@ FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS
 // -----------------------------------------------------------------------------
 GS::UniString GetFormatString (GS::UniString& paramName);
 
-bool IsValid (GS::UniString formatstring, Int32& iseng);
+bool IsValid (GS::UniString formatstring);
 
 // -----------------------------------------------------------------------------
 // Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
@@ -438,8 +533,6 @@ FormatString ParseFormatString (const GS::UniString& stringformat);
 GS::UniString NumToString (const double& var, const FormatString& stringformat);
 
 void ReplaceMeters (GS::UniString& formatstring);
-
-void ReplaceMeters (GS::UniString& formatstring, Int32& iseng);
 
 }
 

@@ -19,13 +19,8 @@
 #include	"Summ.hpp"
 #include	"Dimensions.hpp"
 #include	"Spec.hpp"
-
-
-GS::Array<API_Neig>& GetSelectedElements ()
-{
-    static GS::Array<API_Neig> selected_elements;
-    return selected_elements;
-}
+#include	"Propertycache.hpp"
+#include	"Selection.hpp"
 
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
@@ -67,68 +62,17 @@ static GSErrCode SelectionChangeHandlerProc (const API_Neig * selElemNeig)
 static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig * selElemNeig)
 #endif
 {
+    return NoError;
     #ifdef TESTING
-    DBprnt ("SelectionChangeHandlerProc");
+    DBprnt ("SelectionChangeHandler");
     #endif
-    ACAPI_KeepInMemory (true);
-    GSErrCode err = NoError;
-    //err = MemSelection (true);
-    return err;
-}
-
-GSErrCode MemSelection (bool read)
-{
-    #ifdef TESTING
-    DBprnt ("=== Selection");
-    #endif
-    GSErrCode err = NoError;
-    auto& selected_elements = GetSelectedElements ();
-    DBprnt (selected_elements.GetSize (), "    Start stored size");
-    if (read) {
-        #ifdef TESTING
-        DBprnt ("  === Read selection");
-        #endif
-        API_SelectionInfo selectionInfo;
-        GS::Array<API_Neig> selNeigs = {};
-        if (!selected_elements.IsEmpty ()) selected_elements.Clear ();
-        err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
-        BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
-        if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty || err != NoError) {
-            selected_elements.Clear ();
-            #ifdef TESTING
-            DBprnt ("    !!!!!EMPTY Clear");
-            #endif
-            return NoError;
-        }
-        for (const API_Neig& neig : selNeigs) {
-            selected_elements.PushNew (neig.guid);
-        }
-        DBprnt (selected_elements.GetSize (), "    Select add");
+    if (selElemNeig->neigID != APINeig_None) {
+        //SelectElement (APINotify_New);
     } else {
-        #ifdef TESTING
-        DBprnt ("  === Set selection");
-        #endif
-        if (!selected_elements.IsEmpty ()) {
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            err = ACAPI_Selection_Select (selected_elements, true);
-            if (err == NoError) ACAPI_View_ZoomToSelected ();
-            #else
-            err = ACAPI_Element_Select (selected_elements, true);
-            if (err == NoError) ACAPI_Automate (APIDo_ZoomToSelectedID);
-            #endif
-            #ifdef TESTING
-            DBprnt (selected_elements.GetSize (), "    Select");
-            #endif
-        } else {
-            #ifdef TESTING
-            DBprnt (selected_elements.GetSize (), "    !!!!!EMPTY");
-            #endif
-        }
+        //SelectElement (APINotify_NewAndReset);
     }
-    #ifdef TESTING
-    DBprnt (selected_elements.GetSize (), "    End stored size");
-    #endif
-    return err;
+    ACAPI_KeepInMemory (true);
+    return NoError;
 }
 
 // -----------------------------------------------------------------------------
@@ -137,26 +81,26 @@ GSErrCode MemSelection (bool read)
 #if defined(AC_28) || defined(AC_29)
 static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
 {
-    DBprnt ("ProjectEventHandlerProc");
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
     #else
 static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param)
 {
+    #endif
     #ifdef TESTING
     DBprnt ("ProjectEventHandlerProc");
     #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
-    #endif
     LoadSyncSettingsFromPreferences (syncSettings);
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
     #endif // PK_1
     MenuSetState (syncSettings);
+    GSErrCode err = NoError;
     switch (notifID) {
         case APINotify_New:
         case APINotify_NewAndReset:
         case APINotify_Open:
             Do_ElementMonitor (syncSettings.syncMon);
+            PROPERTYCACHE ().Update ();
             break;
         case APINotify_Close:
         case APINotify_Quit:
@@ -167,12 +111,13 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             ACAPI_Notify_CatchNewElement (nullptr, nullptr);
             ACAPI_Notify_InstallElementObserver (nullptr);
             #endif
+            //SelectElement (APINotify_Close);
             break;
         case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
+            //SelectElement (APINotify_ChangeWindow);
             DimRoundAll (syncSettings, false);
-            //MemSelection (false);
             break;
         default:
             break;
@@ -188,15 +133,13 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
 #if defined(AC_28) || defined(AC_29)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
-    LoadSyncSettingsFromPreferences (syncSettings);
     #else
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
+    #endif
     ACAPI_KeepInMemory (true);
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
-    #endif
     int dummymode = DUMMY_MODE_UNDEF;
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
@@ -216,11 +159,8 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (elementType == API_ZombieElemID) return NoError;
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) return NoError;
-    ParamDictValue propertyParams = {};
     ParamDictElement paramToWrite = {};
-    ClassificationFunc::SystemDict systemdict = {};
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType)) return NoError;
-    ParamHelpers::AddValueToParamDictValue (propertyParams, "flag:no_attrib"); // Во время отслеживания не будем получать весь список слоёв
     bool needresync = false;
     switch (elemType->notifID) {
         case APINotifyElement_New:
@@ -248,13 +188,13 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 syncSettings.logMon = true;
                 WriteSyncSettingsToPreferences (syncSettings);
             }
-            needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+            needresync = SyncElement (elemType->elemHead.guid, syncSettings, paramToWrite, dummymode);
             if (!paramToWrite.IsEmpty ()) {
                 GS::Array<API_Guid> rereadelem = {};
                 rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
                 if (needresync) {
                     paramToWrite.Clear ();
-                    needresync = SyncElement (elemType->elemHead.guid, syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                    needresync = SyncElement (elemType->elemHead.guid, syncSettings, paramToWrite, dummymode);
                     GS::Array<API_Guid> rereadelem_ = {};
                     rereadelem_ = ParamHelpers::ElementsWrite (paramToWrite);
                     if (!rereadelem_.IsEmpty ()) rereadelem.Append (rereadelem_);
@@ -264,9 +204,8 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                     DBprnt ("ElementEventHandlerProc", "reread element");
                     #endif
                     for (UInt32 i = 0; i < rereadelem.GetSize (); i++) {
-                        propertyParams.Clear ();
                         paramToWrite.Clear ();
-                        needresync = SyncElement (rereadelem[i], syncSettings, propertyParams, paramToWrite, dummymode, systemdict);
+                        needresync = SyncElement (rereadelem[i], syncSettings, paramToWrite, dummymode);
                         ParamHelpers::ElementsWrite (paramToWrite);
                     }
                 }
@@ -341,9 +280,9 @@ void MenuSetState (SyncSettings & syncSettings)
 
 void SetPaletteMenuText (short paletteItemInd, Int32 & bisEng)
 {
-    API_MenuItemRef     itemRef;
+    API_MenuItemRef itemRef;
     BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
-    GS::UniString itemStr;
+    GS::UniString itemStr = "";
     itemStr = RSGetIndString (ID_ADDON_PROMT + bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = paletteItemInd;
@@ -375,6 +314,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     #endif
     #endif
     const Int32 AddOnMenuID = ID_ADDON_MENU;
+    PROPERTYCACHE ().Update ();
     switch (menuParams->menuItemRef.menuResID) {
         case AddOnMenuID:
             switch (menuParams->menuItemRef.itemIndex) {
@@ -432,7 +372,9 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     SyncShowSubelement (syncSettings);
                     break;
                 case SetRevision_CommandID:
+                    msg_rep ("Revision", "============== START ==============", NoError, APINULLGuid);
                     Revision::SetRevision ();
+                    msg_rep ("Revision", "=============== END ===============", NoError, APINULLGuid);
                     break;
                 case SetSub_CommandID:
                     SyncSetSubelement (syncSettings);
@@ -523,11 +465,11 @@ GSErrCode __ACENV_CALL Initialize (void)
     Do_ElementMonitor (syncSettings.syncMon);
     MonAll (syncSettings);
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    ACAPI_Notification_CatchSelectionChange (SelectionChangeHandlerProc);
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
+    ACAPI_Notification_CatchSelectionChange (SelectionChangeHandlerProc);
     #else
-    ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
+    ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     #endif
     ACAPI_KeepInMemory (true);
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
