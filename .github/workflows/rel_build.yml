@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ac-version: [25, 26, 27, 28, 29]
-    runs-on: macos-14
+        ac-version: [25, 29]
+    runs-on: ${{ matrix.ac-version < 26 && 'macos-14' || 'macos-latest' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,13 +26,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
-
-      - name: Setup Xcode
-        run: |
-          xcVersion=15.1
-          echo "Using Xcode version: ${xcVersion}"
-          sudo xcode-select -s /Applications/Xcode_${xcVersion}.app
-
+          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
