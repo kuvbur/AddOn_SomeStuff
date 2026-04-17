@@ -1,0 +1,610 @@
+{
+  "wiki/ru/Automatic-Element-Classification-ru.md": [
+    {
+      "hash": "7b9519ed4d0aad362e7da6de01fe4d22aa934256597ef504629ed05a130733fb",
+      "index": 0
+    },
+    {
+      "hash": "a6225ea238d6e1c20e4fbff9dd2ad6487d520248a29e08a985fd8ea3d539c828",
+      "index": 1
+    },
+    {
+      "hash": "21fcb2ae95e395acdc37d431381d6ef96f7faf0c8cfb224cf23b29ac7d74e064",
+      "index": 2
+    },
+    {
+      "hash": "7ccf01cc8c140f348ed8acd0dcdb06bb18fb7fc70404a057197d38b13d8786c0",
+      "index": 3
+    },
+    {
+      "hash": "0310c1b89c197b55b2c0ba41a53e098c843ea7fe8beac156ac335bf9ab575631",
+      "index": 4
+    },
+    {
+      "hash": "2accf1d7f798c46b898c2a3d82807ae077d67df058af5ca0bed4f4715ddfa42d",
+      "index": 5
+    }
+  ],
+  "wiki/ru/Breakdown-Composites-Create-Elements-ru.md": [
+    {
+      "hash": "5fada6a4397c7498ed027c6376220c634b90c33a663b0ae8939b0af2d3fcb1a8",
+      "index": 0
+    },
+    {
+      "hash": "f2affebc4cb268d666189cb571f67170db34f2fbcfc668fb076313823e1f3bd2",
+      "index": 1
+    },
+    {
+      "hash": "219a6971f22744d39727d5788ee092036ed6c82f0397f0d990cfbfd9c37c51aa",
+      "index": 2
+    },
+    {
+      "hash": "be61c3f45db874fca8fa660e8504aa53777035bfec017498ad796fb38261ae2e",
+      "index": 3
+    },
+    {
+      "hash": "13620f2e4ccf15140eab876cb203a2712f99a517b353f56960fefe923c4da3ac",
+      "index": 4
+    },
+    {
+      "hash": "02ff4f61a26620257363cd8f4c398324c641e62d46981f83b26624afe49ff404",
+      "index": 5
+    },
+    {
+      "hash": "d3fb6c617b9d2f0bbbde03cd95448fe26826ef3a2de8fe0c8f9d867f989af5ce",
+      "index": 6
+    },
+    {
+      "hash": "308c09033e845acfc7690830695ab1a6319daa4eba40c67e19c64e7a19f0cc51",
+      "index": 7
+    },
+    {
+      "hash": "58d8e80ecfe29a869de89d588ce0e4fc3d37285c2100d64358cd513c2ad80b2e",
+      "index": 8
+    },
+    {
+      "hash": "2e6298e4fae6c1bdb286d1a85d6e6afe5339211b32ba4ae8df7ae32c261d125a",
+      "index": 9
+    },
+    {
+      "hash": "f24f7c2caf09afc5e31560f6a2a3fb8b657453bd4948b63911fe314ac7c9ca8c",
+      "index": 10
+    },
+    {
+      "hash": "5ab7f3c456789aa74f3d9c5d17f6f71b8b9d2b52d8a018e1121a49dfc3772fd1",
+      "index": 11
+    },
+    {
+      "hash": "069988ffc0aaaafd28ea3cc4bed5875c2775e8169a09380ac06c252a56f48d08",
+      "index": 12
+    },
+    {
+      "hash": "2c38aba323a95869d53e82608d0c6da4b0a26ab51b6c345a3936a734117d4db9",
+      "index": 13
+    },
+    {
+      "hash": "70871b70d53eb58d0c12e292e83f25bb5f40d3e364a39933929d05120deaccbc",
+      "index": 14
+    }
+  ],
+  "wiki/ru/Build-Profile-Line-ru.md": [
+    {
+      "hash": "170ca7da10bdacbb02ebc2e13eb36e7246adf6fd71f2da577b00125891c96196",
+      "index": 0
+    }
+  ],
+  "wiki/ru/Construction-Composition-ru.md": [
+    {
+      "hash": "d5dcdb32913c64d5eedd122c759b4a043786ec3ea9de0aa2e7502c0ced627636",
+      "index": 0
+    },
+    {
+      "hash": "7206a2f9cab322cdd5cbc813f877e0234113775848985d107910a6b15ac29aae",
+      "index": 1
+    },
+    {
+      "hash": "b6a2f490cccb93e354c2b9a623299e75c3a6330d176a55226e99c9bed54712d6",
+      "index": 2
+    },
+    {
+      "hash": "1349c8231e67901d085995416bedf8aa654a3e44852139081d205ec1c0a758d2",
+      "index": 3
+    },
+    {
+      "hash": "4d1ba2b52ec9b087b66bcd71d9d1fffb16d806e2a2490cc3caabd874f430ccee",
+      "index": 4
+    },
+    {
+      "hash": "4592d672e89a014ec3cd1664744c06a5f0bc9fdcce6b654518a383a7966e305d",
+      "index": 5
+    },
+    {
+      "hash": "f1fa86dddca38f1ea5e0e056f421d00d3427e0f9127cc14a661da3f82ea9d4d2",
+      "index": 6
+    },
+    {
+      "hash": "afe2ef63351ec8a0f62dafb7d1a25ca7e844fab9957f63a04ff61c5358319ce1",
+      "index": 7
+    },
+    {
+      "hash": "09830f0e18d35e2a997b6d96b2ae7e3797050f70f4656f7f2bf1c1c773be7f8e",
+      "index": 8
+    },
+    {
+      "hash": "f4a5c1a5b0ba286fbb37ee4cced705a04166f71f8dc6693c4f79934b18ccec29",
+      "index": 9
+    },
+    {
+      "hash": "a1d667028a849e599d9f28c0d6a253980872f685d2152c8e10a57e19e96aa43a",
+      "index": 10
+    }
+  ],
+  "wiki/ru/Dimension-Functions-ru.md": [
+    {
+      "hash": "6d27b99c045e6930e98b3cc57f5d50b9182a8a0e59dc038dc0e1520902e5f193",
+      "index": 0
+    }
+  ],
+  "wiki/ru/Element-Renumbering-ru.md": [
+    {
+      "hash": "712daeeca2b836517f682376383903c3559b56fff34174eeab47ca4511c963ea",
+      "index": 0
+    },
+    {
+      "hash": "ef14f5bf4168d3a2c878a80c69ede25c5ee1283fa9a76cadbbcdc64ab15c4f9d",
+      "index": 1
+    }
+  ],
+  "wiki/ru/FAQ-ru.md": [
+    {
+      "hash": "91e20f3101f92e3821c0cc3171babacaca6f437c899b8974b3d0be624ca28edc",
+      "index": 0
+    },
+    {
+      "hash": "5007d20ec13071c47fc0709e70d6ab51b4ba3623b65d728b316cbae5bcbcc116",
+      "index": 1
+    },
+    {
+      "hash": "c9fa15d3d7383c5053d544a28fe3e342b1bbe322db850866c57e16330769e045",
+      "index": 2
+    }
+  ],
+  "wiki/ru/Finishing-ru.md": [
+    {
+      "hash": "fcfa1b74ab0373a05f56f5864c9a722776698b6ba8673910a800b270d114c9a5",
+      "index": 0
+    },
+    {
+      "hash": "bbc0a2c1d371440413d9b0909a02a8ca863da2aa9a36f7b366f8858aac39a5bb",
+      "index": 1
+    },
+    {
+      "hash": "e5e35c70b05ff075e5818d2c3c179a72ff96a107e07635c6af4e087bf2b6c852",
+      "index": 2
+    },
+    {
+      "hash": "f4b9fae036a2a1714b0328ecc98251a8ea43eda45c20a6f71bd20bf835c51908",
+      "index": 3
+    },
+    {
+      "hash": "eca2f70c7a431d45af44aacaa452f805903787dbda0d3a672d07c4e2f40384f5",
+      "index": 4
+    },
+    {
+      "hash": "36ba0e1b03547e74ad3c41c7df1cb3a2ffb36a36d8454f5c95b73c618ee3f7e9",
+      "index": 5
+    },
+    {
+      "hash": "43722b7836b71b6bb59f7c60b5f4bf0afefcc02cd475385450fb82126f59d2ee",
+      "index": 6
+    },
+    {
+      "hash": "bfd0d93b9d404f1720880f3146fd14c6bc11f3600090cc5e60af19b7880bbcad",
+      "index": 7
+    },
+    {
+      "hash": "6c25edcaef430802ada482759e8254e195952af906f8aea788fc68cce6e34524",
+      "index": 8
+    },
+    {
+      "hash": "9de1df6bbf5bed81918958941e21d1b398d688bc2dbce4f0a830adb7ae1b261e",
+      "index": 9
+    },
+    {
+      "hash": "07cc4e84fbe43ceb8e19a938829d301ba3ec091daf51ccdf3dfe609c23010ef6",
+      "index": 10
+    },
+    {
+      "hash": "3af4fabf99b555c511fb1f23737a75b6510fd6ac178a1619c041db90195eab82",
+      "index": 11
+    },
+    {
+      "hash": "f205378cc2d85ee0421a61bd34c5ead326977e011669adc8389e9796ca0c77be",
+      "index": 12
+    },
+    {
+      "hash": "7919351b9a7b8916b3c67f0ff021e252dc61ab37a464988e07263cb3c42bfc78",
+      "index": 13
+    }
+  ],
+  "wiki/ru/GDLParameter2Property-ru.md": [
+    {
+      "hash": "c526b27931ac782b2e3a58d11038f6f258b2099f9bf72cf0e781ac4f28dc75a6",
+      "index": 0
+    },
+    {
+      "hash": "b33f830eea816172c4af8a92e13714c298fc7c7d78d5b51f279900bddff69d55",
+      "index": 1
+    },
+    {
+      "hash": "ceee4cd59d6dea440218650a8595feb5a5da89216d37cae77ce6341fd1cdc2b8",
+      "index": 2
+    },
+    {
+      "hash": "0b26a19b01742d7fb6930d27a62d1c07c040916121a160fb411355718b315bca",
+      "index": 3
+    },
+    {
+      "hash": "c02222d485f2559b1ba9bf979929890ef4e6823c5d957ad844a0d15b8e7c8aae",
+      "index": 4
+    }
+  ],
+  "wiki/ru/Home.md": [
+    {
+      "hash": "bc3f208c8973b5c1153708aa7495bc6261db9d0fb6f0ba08b8d70f2b9e479ec9",
+      "index": 0
+    },
+    {
+      "hash": "8c6ca0dcbaeb583cef202700f4931188c1a510cfa9a02fb195f0f4d3577806c4",
+      "index": 1
+    },
+    {
+      "hash": "ee5c4079b3dc1427328a54fd71f3951df5cfd89be6de2404370fb120d92ed094",
+      "index": 2
+    },
+    {
+      "hash": "41347a2e10df21d03de71f364ba89fd547b5248df5247222bdedf568ada28a64",
+      "index": 3
+    },
+    {
+      "hash": "e29436342b60a82e7200fd1d014f37ebc8c7a424a660a5e309f410e41808c4a2",
+      "index": 4
+    },
+    {
+      "hash": "6bc7675e70ece87143b9e9c38a86f0f348b542fd3521c0aff7d583cd5e08bc20",
+      "index": 5
+    },
+    {
+      "hash": "9c8dbc23b8125dd27d567cc033ee494338fe5844f4da147123706e6870c677c0",
+      "index": 6
+    },
+    {
+      "hash": "333e9cbe3b45843e62a01c2b4ab0830e93940577b81c420a65b12c132ca7a27f",
+      "index": 7
+    },
+    {
+      "hash": "2d70ce68f22135c37ae6887ec54b22a6b90377a0789669bad76939b528be13d6",
+      "index": 8
+    },
+    {
+      "hash": "e52d1cc39ecbd1d7a7f8b148d749575b50a6ea04efc521d505b3d189b7a57103",
+      "index": 9
+    },
+    {
+      "hash": "20ad011668f9ea912d59f58cd339ef4cdd6b056cbdd0686d3a9f4c9c19496970",
+      "index": 10
+    },
+    {
+      "hash": "7da76b68a927a79be326995374549549ad3c66c81402f29bb500cdd78947baa7",
+      "index": 11
+    },
+    {
+      "hash": "2c6f4c4c1015f0333b3eda61f4bb98ba098288ae48845b28553a67b8f559a1d1",
+      "index": 12
+    },
+    {
+      "hash": "62d1933afff926b2d3d3e886a21885387a1f37b8423e4cd049e03512024ed36a",
+      "index": 13
+    },
+    {
+      "hash": "a956169783bc88f88ac5e315e64ffe6b65b80728f675ef60a587f2a4202b980f",
+      "index": 14
+    },
+    {
+      "hash": "0cdcdd2e56cf66c36b01834bb58d91ebc9c0f1f4ac42a9e8aec2cb40fe128af9",
+      "index": 15
+    },
+    {
+      "hash": "8dbaaea3b33049c703c31fb4cc1a2106f5b45873821992487255b7c79a9a28ec",
+      "index": 16
+    },
+    {
+      "hash": "65a1dde5199a12674be064da12be5f038a2b951eba437c519e7eccbb84e93a3a",
+      "index": 17
+    },
+    {
+      "hash": "28e0ef570ca35e4d016a94d18cce8e187fd97235af0f6cb2d50f33403e783015",
+      "index": 18
+    },
+    {
+      "hash": "1adde5822d790749c4d2ff384d09852db45c9088eb2220405ecd35cc47bd3f53",
+      "index": 19
+    },
+    {
+      "hash": "fd830885ac347a16247d429705a298eb7c02985c704538b63facbcd27ef30673",
+      "index": 20
+    }
+  ],
+  "wiki/ru/Install-ru.md": [
+    {
+      "hash": "e0b30b68947c1c4d12dd967b169f5eaaed998cdfa71f0a323a77f90df9aca2e2",
+      "index": 0
+    },
+    {
+      "hash": "7c7cafc9010c97453a8fc59bb61e1ec8868ddb0b7583b14693647198e40ae314",
+      "index": 1
+    },
+    {
+      "hash": "206ddc85af5ade89ceea33c16ba4b4d5c5b3fc8cfb590e06589b51e1f5f8b044",
+      "index": 2
+    }
+  ],
+  "wiki/ru/Layout-Changes-ru.md": [
+    {
+      "hash": "317560c43f3c878d5c063420a9c59301fce61b7826ddd9925f3b106342c3e6f7",
+      "index": 0
+    }
+  ],
+  "wiki/ru/LinkPropertyByGUID-ru.md": [
+    {
+      "hash": "8d574695f9e08f46ae295f8dd25ae122e15ab07932bd26c9a9ff74d8c4884c07",
+      "index": 0
+    },
+    {
+      "hash": "07d67f14df106da198cdacff6fa1118b5af15162c4a774999c525081da529f6e",
+      "index": 1
+    }
+  ],
+  "wiki/ru/Property-Commands-List-ru.md": [
+    {
+      "hash": "18fafe7bff6a75cfc5aeb6e66356f469d355cb6428e7301ed038bd6b589e7195",
+      "index": 0
+    },
+    {
+      "hash": "dce1681851013b0125d9ed487479e33dfa8e44fc167a1bdb3fc81e84a182fdc3",
+      "index": 1
+    },
+    {
+      "hash": "229d0f155428896b43b94a7b3964a56a5be70a895f4703dfe7fc39c85fd33a20",
+      "index": 2
+    },
+    {
+      "hash": "e31c1fc08924f0e97bb997df7117275cb3a1640267409555ad5e5565e0a81b70",
+      "index": 3
+    },
+    {
+      "hash": "e286c52c00815d607510ffa28fb2f8532eb45c98dce0d182b5f3c9cfc3a73271",
+      "index": 4
+    },
+    {
+      "hash": "434fa2405903d717a5a3035955c766bb096513101e7b4709a5a7893854491dc3",
+      "index": 5
+    },
+    {
+      "hash": "48bb16cc059ae252c423ed4003965d47957eb35bbbe516c8f3cd118e20b733e6",
+      "index": 6
+    },
+    {
+      "hash": "8c1fae3335b3a346788be155a0ba55bcae327fc821419ca30b94c64ee61a5127",
+      "index": 7
+    },
+    {
+      "hash": "45b1feccc88b62f81420d3c31c1bee220c7088b8ed7291d0459a5f72383f2bd1",
+      "index": 8
+    },
+    {
+      "hash": "a388f1ab80e7c667c237f61e40c67d1dba29e3fc025ca8076a6d2c29222a2b85",
+      "index": 9
+    },
+    {
+      "hash": "373e300225a4e84721a457c45248f943fe261696d24900f19cc3a5d9ae18de5d",
+      "index": 10
+    },
+    {
+      "hash": "b2b2e841022587477c11f635b07b21f1292c1903adac90a1524c4d078763668f",
+      "index": 11
+    },
+    {
+      "hash": "6c1f9db5bd0f3dfb77ae49780f8f64fcb38278a0588323ba558b17b8d52dbbce",
+      "index": 12
+    },
+    {
+      "hash": "07bd7d8aaa75fdecd1dcf865eff16431b889955fcfd85943e0cf4f1e0b5c5085",
+      "index": 13
+    },
+    {
+      "hash": "0d445198a418cffd15da832c745943564fdadb701fe544fb2fa1acb63852b051",
+      "index": 14
+    },
+    {
+      "hash": "7c08895ed7511e4040799f710a31bc7e68f8e064d7f9377b8a0cbc59b6aca957",
+      "index": 15
+    },
+    {
+      "hash": "ce5908bb5f5d38cf2170bde6d1846adcd0b2df388e9c59d4debc0f9a9cc938cb",
+      "index": 16
+    },
+    {
+      "hash": "82bc42df61605c2218b8f97f11363d6d846797553a8bec9641113c0e22aa8cc0",
+      "index": 17
+    },
+    {
+      "hash": "8f64231becb8cd47c83b1d6971a222102e6a0c4b3d2f946a54c363346c4f7166",
+      "index": 18
+    },
+    {
+      "hash": "e338be24e19f4e9d88bd4dd0c3aaa6539297d8a8e01890b7d5d0e0526cdab706",
+      "index": 19
+    }
+  ],
+  "wiki/ru/QR-Code-Output-ru.md": [
+    {
+      "hash": "db27f026b3d8bdd8154a0d1b56f8057bebe9c9fa59faf86496de91a4638a338f",
+      "index": 0
+    }
+  ],
+  "wiki/ru/Rounding-Thicknesses-Properties-ru.md": [
+    {
+      "hash": "b3f9e798a27a176b7578611429144024dcfef942d62ae9ed8725e625722d822d",
+      "index": 0
+    }
+  ],
+  "wiki/ru/SomeStuff-AI-Context-ru.md": [
+    {
+      "hash": "5ef6f767a74163a839088519d255516462c963a094e73d53b8ae98caed4308f5",
+      "index": 0
+    },
+    {
+      "hash": "a590007fd220845c07c8b5a08a51de22087af10f1c17f666846632bd931f2029",
+      "index": 1
+    },
+    {
+      "hash": "60a2d4d3f533fadd460f74c2175a5d1413f244c4679a7bf826a4b01fa54fa798",
+      "index": 2
+    },
+    {
+      "hash": "2109eacdd373a80141a3c46dc5b72c6a0369ca6cbba940c41382c1f9fddc2ca6",
+      "index": 3
+    },
+    {
+      "hash": "d3597430a9e541286b6c891314e5488c6411f79b6063bef7f49cab22164740a2",
+      "index": 4
+    },
+    {
+      "hash": "ae4c4d95f95eaaaadf338e9b09113dd27cdc556ed949def3d23799ffc792c692",
+      "index": 5
+    },
+    {
+      "hash": "a6fde5ecffc378a8b0a8dab15c70d161a4b93bd4331c55c6d371d784dced2e03",
+      "index": 6
+    },
+    {
+      "hash": "a91377f58eccec3402ff13b021ba92bb298f09330af09597b116e3c567e290ec",
+      "index": 7
+    },
+    {
+      "hash": "d4d93648ef3743563f901651daad8bc3dad1f397bdf32f3de12ff16ad3c75e1b",
+      "index": 8
+    },
+    {
+      "hash": "e86bc08ba120dc9f625cf214fc14049c676319dbc286e9008db2d2e76337f4a6",
+      "index": 9
+    },
+    {
+      "hash": "ed28f994820be1e531b703f2882b9a5a9d2dd10865d8c0bd7a54dc7cb2d0c91d",
+      "index": 10
+    },
+    {
+      "hash": "34a96b2069824e98af3ae10057277246e990d402a78927e1f926e800ff6e39e5",
+      "index": 11
+    },
+    {
+      "hash": "8dbe7e63f8e4c9a15608d65911298e8edbb4cf5148dc92e3f0da4c3b6464c818",
+      "index": 12
+    },
+    {
+      "hash": "0f347e78568658cd0ea73e15defc1c47b11d518a8e44f1b69e8905622bbd3b30",
+      "index": 13
+    },
+    {
+      "hash": "d489e817ff9e90215539e56450cd86fae92310c025c09a4a87fad34b4fa92072",
+      "index": 14
+    },
+    {
+      "hash": "47eec89674afb9f1a23a53cc8cca5ec9e205fcb38258859ba54565f9609711d6",
+      "index": 15
+    },
+    {
+      "hash": "f567cdbd579400b31bac12bd9079d8475fabf35e470a929429c74caf6bc796c0",
+      "index": 16
+    },
+    {
+      "hash": "3c2f4b0a51f9b091c53fd4c38b9b68f3e8cb08885e59773e2085ebb7f343447a",
+      "index": 17
+    },
+    {
+      "hash": "2cdee86ebbd01af5c095909eab00fe08f168b403fb53df36a4a150e56cfffb50",
+      "index": 18
+    },
+    {
+      "hash": "4f98e2492968de0fe6065a7a5da54a9a3dbfceab1e185b81d533d8a411545a96",
+      "index": 19
+    },
+    {
+      "hash": "893e4242cba40f25f10ce10d03ccaac13060f9246fcae62a83187c9d2ca8352a",
+      "index": 20
+    },
+    {
+      "hash": "f678464e1b37f4b092ec297874fe0e9008d4bd6cd6c4a6c17cbcc5ea649a7956",
+      "index": 21
+    },
+    {
+      "hash": "8796a151eed8063fcab832a10b3e52bc482c5776e1fb1746c77a8971a6d51d02",
+      "index": 22
+    },
+    {
+      "hash": "8dc9fd8c7527a9af5fb29b254e749b8e033491764064265c4c40cc744d05be8f",
+      "index": 23
+    },
+    {
+      "hash": "e723060e878afa39a41b1f825679e12c4d6c88ac76660df6dedf71002756df39",
+      "index": 24
+    },
+    {
+      "hash": "5d063cdde84f51c83387ca87c87001323b31f52ed3374221d84c9ede2299f68f",
+      "index": 25
+    },
+    {
+      "hash": "d6667eb1aa79754e6d8454aac16b0d374e6be66223d398d445efad9b5b8200f5",
+      "index": 26
+    },
+    {
+      "hash": "45e1a5ba4a68e5612007e6a7faeb4da16272cc80627046338cad3893a16ad5fc",
+      "index": 27
+    },
+    {
+      "hash": "bee453867adb386718a6c8201d6b95fa588aab38e2c8f876efeb10b01b3450fc",
+      "index": 28
+    },
+    {
+      "hash": "e79f3ceda9dab3edba2a94fb973bb8fe189361e2df96a1b3494274a60d3c6faf",
+      "index": 29
+    },
+    {
+      "hash": "6ef73d93234fa1a909739017b2bf194827dbeaf36555a9f44677d788540b9c29",
+      "index": 30
+    },
+    {
+      "hash": "6c661e8fdf60df744e14d3131e0d5b0ab8873ac0bdec0b94654957f29a4b6e89",
+      "index": 31
+    },
+    {
+      "hash": "c5807f49700d235e918689b3e95af0a6e66cf9e326e6b93c0efc90cf9c9d2d78",
+      "index": 32
+    },
+    {
+      "hash": "8f6fba40e540b636e5f768efc0edfb3ea3465ec21eb6c79834a710e4494fc498",
+      "index": 33
+    }
+  ],
+  "wiki/ru/Testing-Help-ru.md": [
+    {
+      "hash": "527ba5f5ea1ea05a2562ae156cfe578755b1c886d74d140dd404f01eedd70318",
+      "index": 0
+    },
+    {
+      "hash": "cf759131b1bd3d2767bfcd5a1a2ef5a4b9800cfc169312459462eef0b9f378b4",
+      "index": 1
+    }
+  ]
+}
