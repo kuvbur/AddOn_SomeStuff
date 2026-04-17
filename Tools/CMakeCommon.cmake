@@ -254,6 +254,11 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         )
     endif ()
 
+    target_precompile_headers(
+        "${target}" PRIVATE
+        "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.hpp"
+    )
+
     target_include_directories (${addOnName} PUBLIC
         ${addOnSourcesFolder}
         ${devKitDir}/Inc
