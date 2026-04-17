@@ -242,11 +242,10 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
                 @ONLY
             )
 
-        set_target_properties(${target} PROPERTIES
+        set_target_properties(${addOnName} PROPERTIES
             BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/AddOnInfo.plist"
 
-            # Align parameters for Xcode and in Info.plist to avoid warnings
             XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER com.kuvbur.${addOnNameIdentifier}
             XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET ${lsMinimumSystemVersion}
 
@@ -254,13 +253,11 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         )
     endif ()
 
-message(STATUS "TARGET = '${target}'")
-message(STATUS "hpp = '${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.hpp")
     target_precompile_headers(
-        "${target}" PRIVATE
+        "${addOnName}" PRIVATE
         "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/AddOn.hpp"
     )
-
+    
     target_include_directories (${addOnName} PUBLIC
         ${addOnSourcesFolder}
         ${devKitDir}/Inc
