@@ -16,18 +16,13 @@ public:
     {
         CloseButtonId = 1,
         OkButtonId = 2,
-        AllButtonId = 3,
-        checkBoxID = 4,
-        ListBoxId = 5
+        ListBoxId = 3
     };
 
 private:
-    short dialogResId = 32590;
     DG::Button closeButton;
     DG::Button okButton;
-    DG::CheckBox checkBox;
     DG::SingleSelListBox ListBox;
-    DG::Button allButton;
 
     GS::Array<GS::UniString>& rulelist;
     GS::Array<bool>& enableRules;
@@ -37,12 +32,15 @@ public:
     virtual void ButtonClicked (const DG::ButtonClickEvent& ev) override;
     virtual void PanelClosed (const DG::PanelCloseEvent& ev) override;
     virtual void PanelOpened (const DG::PanelOpenEvent& ev) override;
-
+    virtual void PanelResized (const DG::PanelResizeEvent& ev);
+    virtual void ListBoxClicked (const DG::ListBoxClickEvent& ev);
+    //virtual void ListBoxSelectionChanged (const DG::ListBoxSelectionEvent& ev);
     RuleSelectDialog (GS::Array<GS::UniString>& rulelist, GS::Array<bool>& enableRules);
     ~RuleSelectDialog ();
 
     void SetTabData (short item);
     void InitListBox ();
+    void SetIcon (short dwListItem);
 };
 
 #endif

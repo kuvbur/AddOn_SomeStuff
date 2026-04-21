@@ -330,20 +330,16 @@
 /* [  75] */ 	"Error in the numbering rule\nCheck the report"
 }
 
-'GDLG'  32590  Modal | grow         0    0  610  350  "Demo Example Dialog" {
-/* [  1] */ Button				  400  280  70   24	   LargePlain  "Отмена"
-/* [  2] */ Button				    0    0  100   20	   LargePlain  "Выбранные"
-/* [  3] */ Button				  300  280  70   24	   LargePlain  "ВСЕ"
-/* [  4] */ CheckBox				0    0  150  18		SmallPlain "Check Box"
-/* [  5] */ SingleSelList		   30   30  500  230	LargePlain  PartialItems  23 HasHeader 25
+'GDLG'  32590  Modal | grow         0    0  500  300  "Demo Example Dialog" {
+/* [  1] */ Button				  20  255  70   25	   LargePlain  "Отмена"
+/* [  2] */ Button				    205    255  70   25	   LargeBold  "ОК"
+/* [  3] */ MultiSelList		   20   20  460  235	LargePlain  PartialItems VScroll 25 HasHeader 30
 }
 
 'DLGH'  32590  DLG_32590_AttributeList_Example_Dialog {
 1	""							Button_0
 2	""							Button_1
-3	""							Button_2
-4	""							CheckBox_0
-5	""							SingleSelList_0
+3	""							MultiSelList_0
 }
 
 'GICN' 32500 "Sync" {
