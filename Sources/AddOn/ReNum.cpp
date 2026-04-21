@@ -121,10 +121,10 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
     ParamDict error_propertyname = {};
-
-    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+    int n_elem = 0;
+    for (const auto guid : guidArray) {
         GS::Array<API_PropertyDefinition> definitions = {};
-        GSErrCode err = ACAPI_Element_GetPropertyDefinitions (guidArray[i], API_PropertyDefinitionFilter_UserDefined, definitions);
+        GSErrCode err = ACAPI_Element_GetPropertyDefinitions (guid, API_PropertyDefinitionFilter_UserDefined, definitions);
         if (err != NoError) {
             msg_rep ("GetRenumElements", "ACAPI_Element_GetPropertyDefinitions", err, APINULLGuid);
             continue;
@@ -152,7 +152,8 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
         Int32 maxval = guidArray.GetSize ();
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
         #else
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+        n_elem += 1;
+        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &n_elem);
         #endif
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return false;
@@ -160,7 +161,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return false;
         #endif
         if (!hasDef) continue;
-        ReNum_GetElement (guidArray[i], paramToReadelem, rules, error_propertyname, definitions);
+        ReNum_GetElement (guid, paramToReadelem, rules, error_propertyname, definitions);
     }
     if (!error_propertyname.IsEmpty ()) {
         GS::UniString out = ":\n";
