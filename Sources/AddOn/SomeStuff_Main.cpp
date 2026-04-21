@@ -21,7 +21,7 @@
 #include	"Spec.hpp"
 #include	"Propertycache.hpp"
 #include	"Selection.hpp"
-
+#include "DG4rule.hpp"
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
@@ -315,6 +315,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     #endif
     const Int32 AddOnMenuID = ID_ADDON_MENU;
     PROPERTYCACHE ().Update ();
+    TestDG ();
     switch (menuParams->menuItemRef.menuResID) {
         case AddOnMenuID:
             switch (menuParams->menuItemRef.itemIndex) {

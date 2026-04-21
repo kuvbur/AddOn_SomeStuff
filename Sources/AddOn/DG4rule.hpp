@@ -4,29 +4,47 @@
 #define	DG4RULE_HPP
 #include "DGModule.hpp"
 
-// --- AttributeListDialog -----------------------------------------------------
-
-class TestListDialog : public DG::ModalDialog,
+class RuleSelectDialog : public DG::ModalDialog,
     public DG::PanelObserver,
     public DG::ListBoxObserver,
-    public DG::ButtonItemObserver
+    public DG::ButtonItemObserver,
+    public DG::CheckItemObserver,
+    public DG::CompoundItemObserver
 {
-private:
+public:
+    enum DialogResourceID
+    {
+        CloseButtonId = 1,
+        OkButtonId = 2,
+        AllButtonId = 3,
+        checkBoxID = 4,
+        ListBoxId = 5
+    };
 
-    DG::Button					okButton;
-    DG::SingleSelListBox		ListBox;
-    DG::PopUp					PopupEdit;
+private:
+    short dialogResId = 32590;
+    DG::Button closeButton;
+    DG::Button okButton;
+    DG::CheckBox checkBox;
+    DG::SingleSelListBox ListBox;
+    DG::Button allButton;
+
+    GS::Array<GS::UniString>& rulelist;
+    GS::Array<bool>& enableRules;
 
 public:
 
-    void ButtonClicked (const DG::ButtonClickEvent& ev) override;
-    void PanelResized (const DG::PanelResizeEvent& ev) override;
-    void SetTabData (short dialId, short item);
-    void TestInitListBox (short dialId);
+    virtual void ButtonClicked (const DG::ButtonClickEvent& ev) override;
+    virtual void PanelClosed (const DG::PanelCloseEvent& ev) override;
+    virtual void PanelOpened (const DG::PanelOpenEvent& ev) override;
 
-    TestListDialog ();
-    ~TestListDialog ();
+    RuleSelectDialog (GS::Array<GS::UniString>& rulelist, GS::Array<bool>& enableRules);
+    ~RuleSelectDialog ();
+
+    void SetTabData (short item);
+    void InitListBox ();
 };
 
-
 #endif
+
+void TestDG ();
