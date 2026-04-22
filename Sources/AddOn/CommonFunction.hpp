@@ -113,6 +113,7 @@ static const GS::UniString STRFORMULAEND = ">";
 static const GS::UniString BRACEEND = "}";
 static const GS::UniString BRACESTART = "{";
 static const GS::UniString SEMICOLON = ";";
+static const GS::UniChar CHARBSEMICOLON = ';';
 static const GS::UniChar CHARBRACEEND = '}';
 static const GS::UniChar CHARBRACESTART = '{';
 static const GS::UniString STRINGPROC = "%";

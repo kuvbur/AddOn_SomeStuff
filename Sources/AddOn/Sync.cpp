@@ -1284,7 +1284,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.composite_pen = 20;
             rulestring_one.ReplaceAll (SPACESTRING, EMPTYSTRING);
             if (rulestring_one.Contains (COMMA) && rulestring_one.Contains (SEMICOLON)) {
-                GS::UniString penstring = rulestring_one.GetSubstring (',', ';', 0);
+                GS::UniString penstring = rulestring_one.GetSubstring (',', CHARBSEMICOLON, 0);
                 if (penstring.Contains ("all")) {
                     param.composite_pen = -1;
                     param.fromQuantity = true;
