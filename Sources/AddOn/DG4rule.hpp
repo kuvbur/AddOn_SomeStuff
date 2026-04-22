@@ -4,6 +4,16 @@
 #define	DG4RULE_HPP
 #include "DGModule.hpp"
 
+
+struct RuleSelectData
+{
+    GS::HashTable<GS::UniString, bool> rules;
+    GS::HashTable<GS::UniString, GS::UniString> qty_elements;
+    GS::UniString msg = "Test";
+    GS::UniString title = "Test";
+    bool is_warn = false;
+};
+
 class RuleSelectDialog : public DG::ModalDialog,
     public DG::PanelObserver,
     public DG::ListBoxObserver,
@@ -24,25 +34,26 @@ private:
     DG::Button okButton;
     DG::SingleSelListBox ListBox;
 
-    GS::Array<GS::UniString>& rulelist;
-    GS::Array<bool>& enableRules;
+    RuleSelectData& rulelist;
+    short ChekboxTab = 1;
+    short NameTab = 2;
+    short QtyTab = 3;
 
+    short ChekboxTab_w = 30;
+    short QtyTab_w = 30;
+
+    short itemCount = QtyTab;
 public:
 
     virtual void ButtonClicked (const DG::ButtonClickEvent& ev) override;
-    virtual void PanelClosed (const DG::PanelCloseEvent& ev) override;
-    virtual void PanelOpened (const DG::PanelOpenEvent& ev) override;
-    virtual void PanelResized (const DG::PanelResizeEvent& ev);
-    virtual void ListBoxClicked (const DG::ListBoxClickEvent& ev);
-    //virtual void ListBoxSelectionChanged (const DG::ListBoxSelectionEvent& ev);
-    RuleSelectDialog (GS::Array<GS::UniString>& rulelist, GS::Array<bool>& enableRules);
+    virtual void PanelResized (const DG::PanelResizeEvent& ev) override;
+    virtual void ListBoxClicked (const DG::ListBoxClickEvent& ev) override;
+    RuleSelectDialog (RuleSelectData& rulelist);
     ~RuleSelectDialog ();
-
-    void SetTabData (short item);
+    void SetSize ();
     void InitListBox ();
     void SetIcon (short dwListItem);
 };
 
 #endif
 
-void TestDG ();

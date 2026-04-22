@@ -2,6 +2,7 @@
 #ifndef AC_22
 #include "ACAPinc.h"
 #include "CommonFunction.hpp"
+#include "DG4rule.hpp"
 #include "Helpers.hpp"
 #include "Propertycache.hpp"
 #include "ReNum.hpp"
@@ -54,6 +55,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     start = clock ();
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true, false, false);
     if (guidArray.IsEmpty ()) return NoError;
+    bool rule_from_one = (guidArray.GetSize () == 1);
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
     if (!GetRuleFromSelected (guidArray, rule_definitions, RENUMFLAG, false)) {
         msg_rep ("SumSelected", "No Num rule found. Check that the description of the user property contains Renum_flag", NoError, APINULLGuid);
@@ -66,7 +68,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     }
 
     ParamDictElement paramToWriteelem = {};
-    if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions)) {
+    if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions, rule_from_one)) {
         msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
@@ -112,7 +114,40 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     return NoError;
 }
 
-bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions)
+bool RenumDG (Rules& renum_rules, bool& rule_from_one)
+{
+    RuleSelectData rules = {};
+    for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = renum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        const RenumRule& rule = cIt->value;
+        #else
+        const RenumRule& rule = *cIt->value;
+        #endif
+        if (!rule.state) continue;
+        if (rules.rules.ContainsKey (rule.rule_name)) continue;
+        if (rules.qty_elements.ContainsKey (rule.rule_name)) continue;
+        rules.rules.Add (rule.rule_name, true);
+        rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elemts.GetSize ()));
+    }
+    rules.is_warn = rule_from_one;
+    RuleSelectDialog dialog (rules);
+    if (!dialog.Invoke ()) return false;
+    bool has_true_state = false;
+    for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = renum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        RenumRule& rule = cIt->value;
+        #else
+        RenumRule& rule = *cIt->value;
+        #endif
+        if (!rule.state) continue;
+        if (!rules.rules.ContainsKey (rule.rule_name)) continue;
+        rule.state = rules.rules.Get (rule.rule_name);
+        if (rule.state) has_true_state = true;
+    }
+    return has_true_state;
+}
+
+bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions, bool& rule_from_one)
 {
     // Получаем список правил суммирования
     Rules rules = {};
@@ -188,6 +223,11 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
         if (rules.IsEmpty ()) msg_rep ("ReNumSelected", "Rules not found", NoError, APINULLGuid);
         GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 75, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString, true);
+        return false;
+    }
+
+    if (!RenumDG (rules, rule_from_one)) {
+        msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
         return false;
     }
     ParamHelpers::ElementsRead (paramToReadelem); // Читаем значения
@@ -337,6 +377,14 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
                         rulecritetia.criteria = rawNamecriteria;
                         rulecritetia.delimetr = rawNamedelimetr;
                         rulecritetia.guid = definition.guid;
+                        rulecritetia.rule_name = definition.description;
+                        GS::Array<GS::UniString> partstring = {};
+                        if (StringSplt (rulecritetia.rule_name, BRACEEND, partstring, "enum_flag") > 0) {
+                            rulecritetia.rule_name = partstring[0] + BRACEEND;
+                        }
+                        rulecritetia.rule_name = rulecritetia.rule_name.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+                        rulecritetia.rule_name.ReplaceAll ("Property:", SPACESTRING);
+                        rulecritetia.rule_name.Trim ();
                         flag = true;
                     } else {
                         if (!propertyParams.ContainsKey (rawNamecriteria) && !error_propertyname.ContainsKey (rawNamecriteria)) error_propertyname.Add (rawNamecriteria, false);

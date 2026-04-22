@@ -2,24 +2,8 @@
 #if !defined(RENUM_HPP)
 #pragma once
 #define RENUM_HPP
-#ifdef AC_25
-#include "APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include "APICommon26.h"
-#endif // AC_26
-#ifdef AC_27
-#include	"APICommon27.h"
-#endif // AC_27
-#ifdef AC_28
-#include "APICommon28.h"
-#endif // AC_28
-#ifdef AC_29
-#include	"APICommon29.h"
-#endif // AC_29
-#include "DG.h"
-#include "Helpers.hpp"
 #include "alphanum.h"
+#include "Helpers.hpp"
 // Типы нумерации (см. RenumElement.state)
 #define RENUM_SKIP -1  // Исключить из обработки
 #define RENUM_IGNORE 0 // Не менять позмцию, но добавлять похожие элементы
@@ -190,6 +174,7 @@ struct RenumRule
     int nullcount = 0;             // Количество нулей, если задано жёское количество
     GS::Array<API_Guid> elemts;	   // Массив элементов
     API_Guid guid = APINULLGuid;   // GUID свойства с правилом
+    GS::UniString rule_name = "";  // Имя свойства-правила для отображения во всплывающем окне
 };
 
 typedef std::map<std::string, RenumElem, doj::alphanum_less<std::string>> Values; // Словарь элементов по критериям
@@ -207,7 +192,9 @@ typedef std::map<std::string, RenumPosDict, doj::alphanum_less<std::string>> DRe
 typedef GS::HashTable<API_Guid, RenumRule> Rules; // Таблица правил
 GSErrCode ReNumSelected (SyncSettings& syncSettings);
 
-bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
+bool RenumDG (Rules& renum_rules, bool& rule_from_one);
+
+bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions, bool& rule_from_one);
 
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition);
