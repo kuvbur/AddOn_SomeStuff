@@ -3,19 +3,38 @@
 #include "APIdefs.h"
 #include "APIEnvir.h"
 #include "DG4rule.hpp"
-
-short ruledialogResId = 32590;
+#include "Propertycache.hpp"
+#include "ResourceIds.hpp"
 
 RuleSelectDialog::RuleSelectDialog (RuleSelectData& rulelist) :
-    DG::ModalDialog (ACAPI_GetOwnResModule (), ruledialogResId, ACAPI_GetOwnResModule ()),
+    DG::ModalDialog (ACAPI_GetOwnResModule (), ID_ADDON_RULE_DLG, ACAPI_GetOwnResModule ()),
     closeButton (GetReference (), CloseButtonId),
     okButton (GetReference (), OkButtonId),
     ListBox (GetReference (), ListBoxId),
+    TextBox (GetReference (), TextId),
     rulelist (rulelist)
 {
-    DGSetDialogTitle (ruledialogResId, rulelist.title);
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString text = RSGetIndString (iseng, rulelist.titleResID, ACAPI_GetOwnResModule ());
+    GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, 49, ACAPI_GetOwnResModule ());
+    DGSetDialogTitle (ID_ADDON_RULE_DLG, version + " " + text);
+    text = RSGetIndString (iseng, 76, ACAPI_GetOwnResModule ());
+    DGSetItemText (ID_ADDON_RULE_DLG, OkButtonId, text);
+    text = RSGetIndString (iseng, 77, ACAPI_GetOwnResModule ());
+    DGSetItemText (ID_ADDON_RULE_DLG, CloseButtonId, text);
     const DG::Icon& icon = DG::Icon (SysResModule, rulelist.is_warn ? DG_WARNING_ICON : DG_INFORMATION_ICON);
-    DGSetDialogIcon (ruledialogResId, icon);
+    DGSetDialogIcon (ID_ADDON_RULE_DLG, icon);
+    if (rulelist.is_warn) {
+        text = RSGetIndString (iseng, 80, ACAPI_GetOwnResModule ());
+        TextBox.SetText (text);
+        TextBox.SetTextColor (Gfx::Color::Red);
+    } else {
+        TextBox.Hide ();
+        short lx = ListBox.GetPosition ().GetY () - TextBox.GetHeight () + 5;
+        short lh = ListBox.GetHeight () + TextBox.GetHeight ();
+        ListBox.SetPosition (ListBox.GetPosition ().GetX (), lx);
+        ListBox.SetHeight (lh);
+    }
     okButton.Attach (*this);
     closeButton.Attach (*this);
     Attach (*this);
@@ -35,7 +54,7 @@ void RuleSelectDialog::SetSize ()
 {
     short width = ListBox.GetItemWidth ();
     short NameTab_w = width - ChekboxTab_w - QtyTab_w;
-
+    if (rulelist.is_warn) TextBox.SetWidth (width);
     ListBox.SetHeaderItemSize (NameTab, NameTab_w);
 
     short pos = 0;
@@ -53,10 +72,13 @@ void RuleSelectDialog::InitListBox ()
     ListBox.SetHeaderSynchronState (true);
     ListBox.SetHeaderPushableButtons (false);
 
-    ListBox.SetHeaderItemText (ChekboxTab, "");
-    ListBox.SetHeaderItemText (NameTab, "Rule name");
-    ListBox.SetHeaderItemText (QtyTab, "Qty");
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString text = RSGetIndString (iseng, 78, ACAPI_GetOwnResModule ());
+    ListBox.SetHeaderItemText (NameTab, text);
+    text = RSGetIndString (iseng, 79, ACAPI_GetOwnResModule ());
+    ListBox.SetHeaderItemText (QtyTab, text);
 
+    ListBox.SetHeaderItemText (ChekboxTab, "");
     ListBox.SetHeaderItemSize (ChekboxTab, ChekboxTab_w);
     ListBox.SetHeaderItemSizeableFlag (ChekboxTab, false);
 
@@ -84,7 +106,8 @@ void RuleSelectDialog::InitListBox ()
         ListBox.SetTabItemText (DG::ListBox::BottomItem, NameTab, rname);
         if (!rulelist.qty_elements.ContainsKey (rname)) continue;
         ListBox.SetTabItemText (DG::ListBox::BottomItem, QtyTab, rulelist.qty_elements.Get (rname));
-    }
+        if (rulelist.is_warn) ListBox.SetTabItemColor (DG::ListBox::BottomItem, QtyTab, Gfx::Color::Red);
+}
 }
 
 void RuleSelectDialog::SetIcon (short dwListItem)

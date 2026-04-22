@@ -130,6 +130,7 @@ bool RenumDG (Rules& renum_rules, bool& rule_from_one)
         rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elemts.GetSize ()));
     }
     rules.is_warn = rule_from_one;
+    rules.titleResID = UndoReNumId;
     RuleSelectDialog dialog (rules);
     if (!dialog.Invoke ()) return false;
     bool has_true_state = false;
@@ -384,6 +385,8 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
                         }
                         rulecritetia.rule_name = rulecritetia.rule_name.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
                         rulecritetia.rule_name.ReplaceAll ("Property:", SPACESTRING);
+                        rulecritetia.rule_name = CHARBSEMICOLON + rulecritetia.rule_name + CHARBSEMICOLON;
+                        rulecritetia.rule_name = rulecritetia.rule_name.GetSubstring (CHARBSEMICOLON, CHARBSEMICOLON, 0);
                         rulecritetia.rule_name.Trim ();
                         flag = true;
                     } else {

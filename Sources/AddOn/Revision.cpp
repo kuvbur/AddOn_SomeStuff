@@ -559,7 +559,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
     prop_name = "somestuff_note";
     if (layout_note_guid.ContainsKey (prop_name) && !note.IsEmpty ()) {
         note.Trim ();
-        note.Trim (';');
+        note.Trim (CHARBSEMICOLON);
         API_Guid prop_guid = layout_note_guid.Get (prop_name);
         flag_write = true;
         if (layoutInfo.customData->ContainsKey (prop_guid)) {

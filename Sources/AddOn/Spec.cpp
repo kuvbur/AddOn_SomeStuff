@@ -1429,7 +1429,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     if (StringSplt (description, BRACEEND, partstring, "pec_rule") > 0) {
         description = partstring[0] + BRACEEND;
     }
-    GS::UniString criteria = description.GetSubstring (CHARBRACESTART, ';', 0);
+    GS::UniString criteria = description.GetSubstring (CHARBRACESTART, CHARBSEMICOLON, 0);
     description.ReplaceAll (BRACESTART + criteria + SEMICOLON, BRACESTART);
     description = description.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     description.Trim (')');
