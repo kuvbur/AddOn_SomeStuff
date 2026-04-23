@@ -31,7 +31,11 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
 
 namespace ParamHelpers
 {
+
+GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName);
+
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue);
+
 bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue);
 
 bool isPropertyDefinitionRead ();
@@ -233,6 +237,7 @@ struct PropertyCache
         ReadPropertyDefinition ();
         ReadAttribute ();
         ReadInfo ();
+        ReadFile ();
         #if defined (AC_29)
         ReadMEP ();
         #endif
@@ -256,6 +261,12 @@ struct PropertyCache
         #if defined(TESTING)
         if (!isGetGeoLocation_OK) DBprnt ("=PropertyCache= ReadGetGeoLocation ERROR");
         #endif
+    }
+
+    void ReadFile ()
+    {
+        GS::UniString fileName = "test.txt";
+        ParamHelpers::ReadLibraryFile (fileName);
     }
 
     void ReadSurveyPointTransformation ()

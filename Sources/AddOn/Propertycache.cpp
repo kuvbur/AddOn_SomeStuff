@@ -1,5 +1,6 @@
 //------------ kuvbur 2026 ------------
 #include "ACAPinc.h"
+#include "File.hpp"
 #include "Helpers.hpp"
 #include "Propertycache.hpp"
 
@@ -13,6 +14,50 @@ PropertyCache& (*PROPERTYCACHE)() = GetCache;
 
 namespace ParamHelpers
 {
+
+GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName)
+{
+    std::string lineStr;
+    GS::UniString s;
+    API_LibPart settingsText = {};
+    GS::UniString locPath = "";
+    GSErrCode err = NoError;
+    // Поиск файла
+    GS::ucscpy (settingsText.file_UName, fileName.ToUStr (0, GS::Min (fileName.GetLength (), (USize) API_UniLongNameLen)).Get ());
+    err = ACAPI_LibPart_Search (&settingsText, false, false);
+    if (err != NoError || settingsText.location == nullptr) {
+        msg_rep ("ReadLibraryFile", "Cant find file " + fileName, err, APINULLGuid);
+        return {};
+    }
+    // Открытие файла
+    settingsText.location->ToPath (&locPath);
+    IO::Location fileLoc (locPath);
+    IO::File file (fileLoc);
+
+    UInt64	fSize = 0;
+    file.GetDataLength (&fSize);
+    char* buff = new char[fSize];
+    if (buff == nullptr) {
+        msg_rep ("ReadLibraryFile", "buff == nullptr" + fileName, err, APINULLGuid);
+        return{};
+    }
+
+    err = file.Open (IO::File::ReadMode);
+
+    if (err != NoError) {
+        msg_rep ("ReadLibraryFile", "Cant read file " + fileName, err, APINULLGuid);
+        delete[] buff;
+        return {};
+    }
+    file.ReadBin (buff, (USize) fSize);
+    file.Close ();
+    std::istringstream stream (std::string (buff, fSize));
+    while (std::getline (stream, lineStr)) {
+        s = GS::UniString (lineStr.c_str ());
+    }
+    delete[] buff;
+    return {};
+}
 
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 {
