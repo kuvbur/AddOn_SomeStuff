@@ -30,7 +30,9 @@ struct SumRule
     std::string delimetr = "; ";
     std::string ignore_val = "";
     short sum_type = 0;
-    GS::Array <API_Guid> elemts;
+    GS::Array <API_Guid> elemts = {};
+    GS::UniString rule_name = "";  // Имя свойства-правила для отображения во всплывающем окне
+    bool state = true;
 };
 
 typedef GS::HashTable<API_Guid, SumRule> SumRules;

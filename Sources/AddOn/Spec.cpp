@@ -7,6 +7,8 @@
 #include "TestFunc.hpp"
 #endif
 #include "Propertycache.hpp"
+#include "DG4rule.hpp"
+
 namespace Spec
 {
 // --------------------------------------------------------------------
@@ -337,6 +339,41 @@ void SpecFilter (GS::Array<API_Guid>& guidArray, API_DatabaseInfo& homedatabaseI
     }
 }
 
+bool SpecDG (SpecRuleDict& spec_rules, bool& rule_from_one)
+{
+    RuleSelectData rules = {};
+    for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = spec_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        const SpecRule& rule = cIt->value;
+        #else
+        const SpecRule& rule = *cIt->value;
+        #endif
+        if (!rule.is_Valid) continue;
+        if (rules.rules.ContainsKey (rule.rule_name)) continue;
+        if (rules.qty_elements.ContainsKey (rule.rule_name)) continue;
+        rules.rules.Add (rule.rule_name, true);
+        rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elements.GetSize ()));
+    }
+    rules.is_warn = rule_from_one;
+    rules.titleResID = UndoSumId;
+    RuleSelectDialog dialog (rules);
+    if (!dialog.Invoke ()) return false;
+    bool has_true_state = false;
+    for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = spec_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        SpecRule& rule = cIt->value;
+        #else
+        SpecRule& rule = *cIt->value;
+        #endif
+        if (!rule.is_Valid) continue;
+        if (!rules.rules.ContainsKey (rule.rule_name)) continue;
+        rule.is_Valid = rules.rules.Get (rule.rule_name);
+        if (rule.is_Valid) has_true_state = true;
+    }
+    return has_true_state;
+}
+
+
 GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guidArray, SpecRuleDict& rules, const UnicGuid& selected_elements)
 {
     clock_t start, finish;
@@ -562,6 +599,11 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         return APIERR_GENERAL;
     }
     // Читаем данные из размещённых элементов
+    bool rule_from_one = false;
+    if (!SpecDG (rules, rule_from_one)) {
+        msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
+        return false;
+    }
     ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, true);
     //Массив со словарями элементов для создания по правилам
     Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
@@ -894,11 +936,12 @@ void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid
         // Добавление группы и элемента
         SpecRule rule = GetRuleFromDescription (description);
         if (rule.is_Valid) {
-            GS::UniString fname;
+            GS::UniString fname = "";
             GetPropertyFullName (definition, fname);
             rule.subguid_paramrawname = fname;
             rule.subguid_rulevalue = fname;
             rule.rule_definitions = definition;
+            rule.rule_name = fname;
             if (elemguid != APINULLGuid) rule.elements.Push (elemguid);
         }
         rules.Add (key, rule); //Добавляем в любом случае, чтоб потом дважды не обрабатывать
@@ -915,7 +958,6 @@ void AddRule (const API_PropertyDefinition& definition, const API_Guid& elemguid
 // --------------------------------------------------------------------
 void GetParamToReadFromRule (SpecRule& rule, ParamDictElement& paramToRead, ParamDictValue& paramToWrite)
 {
-
     ParamDict params = {}; // Словарь с уникальными параметрами читаемых элементов
     for (const GroupSpec& group : rule.groups) {
         // Для материалов и компонент читаем только 0 группу - остальные одинаковые
@@ -978,30 +1020,30 @@ void GetParamToReadFromRule (SpecRule& rule, ParamDictElement& paramToRead, Para
                 ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param, paramDict);
             }
         }
-        // Добавляем параметры для каждого элемента
-        if (!paramDict.IsEmpty ()) {
-            for (const API_Guid elemguid : rule.elements) {
-                ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
-            }
+    }
+    // Добавляем параметры для каждого элемента
+    if (!paramDict.IsEmpty ()) {
+        for (const API_Guid elemguid : rule.elements) {
+            ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
         }
-        // Добавляем параметры для записи
-        ParamDict paramswrite = {}; // Словарь с уникальными параметрами записываемых элементов
-        for (const GS::UniString& rawname : rule.out_sum_paramrawname) {
-            if (!paramswrite.ContainsKey (rawname)) paramswrite.Add (rawname, true);
-        }
-        for (const GS::UniString& rawname : rule.out_paramrawname) {
-            if (!paramswrite.ContainsKey (rawname)) paramswrite.Add (rawname, true);
-        }
-        // Добавляем параметры для каждого элемента
-        if (!paramswrite.IsEmpty ()) {
-            for (const auto& cItt : paramswrite) {
-                #if defined(AC_28) || defined(AC_29)
-                const GS::UniString rawname = cItt.key;
-                #else
-                const GS::UniString rawname = *cItt.key;
-                #endif
-                ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
-            }
+    }
+    // Добавляем параметры для записи
+    ParamDict paramswrite = {}; // Словарь с уникальными параметрами записываемых элементов
+    for (const GS::UniString& rawname : rule.out_sum_paramrawname) {
+        if (!paramswrite.ContainsKey (rawname)) paramswrite.Add (rawname, true);
+    }
+    for (const GS::UniString& rawname : rule.out_paramrawname) {
+        if (!paramswrite.ContainsKey (rawname)) paramswrite.Add (rawname, true);
+    }
+    // Добавляем параметры для каждого элемента
+    if (!paramswrite.IsEmpty ()) {
+        for (const auto& cItt : paramswrite) {
+            #if defined(AC_28) || defined(AC_29)
+            const GS::UniString rawname = cItt.key;
+            #else
+            const GS::UniString rawname = *cItt.key;
+            #endif
+            ParamHelpers::AddValueToParamDictValue (paramToWrite, rawname);
         }
     }
 }

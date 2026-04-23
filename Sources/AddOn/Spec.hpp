@@ -36,6 +36,7 @@ struct GroupSpec
 
 struct SpecRule
 {
+    GS::UniString rule_name = ""; // Имя свойства-правила для отображения во всплывающем окне
     GS::Array<GroupSpec> groups = {};                   // Массив с группами подэлементов 
     GS::Array<GS::UniString> out_paramrawname = {};     // Массив имён параметров новых элементов
     GS::Array<GS::UniString> out_sum_paramrawname = {}; // Массив имён параметров сумм новых элементов

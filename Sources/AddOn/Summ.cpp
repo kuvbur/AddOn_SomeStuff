@@ -1,10 +1,12 @@
 //------------ kuvbur 2022 ------------
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
-#include	"Propertycache.hpp"
-#include	"Summ.hpp"
-#include	"Sync.hpp"
-#include	<map>
+#include "ACAPinc.h"
+#include "APIEnvir.h"
+#include "DG4rule.hpp"
+#include "Propertycache.hpp"
+#include "Summ.hpp"
+#include "Sync.hpp"
+#include <map>
+
 typedef std::unordered_map <std::string, SortInx> SumCriteria;
 
 // -----------------------------------------------------------------------------------------------------------------------
@@ -86,6 +88,40 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     return NoError;
 }
 
+bool SumDG (SumRules& sum_rules, bool& rule_from_one)
+{
+    RuleSelectData rules = {};
+    for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = sum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        const SumRule& rule = cIt->value;
+        #else
+        const SumRule& rule = *cIt->value;
+        #endif
+        if (!rule.state) continue;
+        if (rules.rules.ContainsKey (rule.rule_name)) continue;
+        if (rules.qty_elements.ContainsKey (rule.rule_name)) continue;
+        rules.rules.Add (rule.rule_name, true);
+        rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elemts.GetSize ()));
+    }
+    rules.is_warn = rule_from_one;
+    rules.titleResID = UndoSumId;
+    RuleSelectDialog dialog (rules);
+    if (!dialog.Invoke ()) return false;
+    bool has_true_state = false;
+    for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = sum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        SumRule& rule = cIt->value;
+        #else
+        SumRule& rule = *cIt->value;
+        #endif
+        if (!rule.state) continue;
+        if (!rules.rules.ContainsKey (rule.rule_name)) continue;
+        rule.state = rules.rules.Get (rule.rule_name);
+        if (rule.state) has_true_state = true;
+    }
+    return has_true_state;
+}
+
 bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem)
 {
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
@@ -99,6 +135,7 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
     #endif
+    bool rule_from_one = (guidArray.GetSize () == 1);
     if (!GetRuleFromSelected (guidArray, rule_definitions, "Sum", true)) {
         msg_rep ("SumSelected", "No sum rule found. Check that the description of the user property contains Sum and the name of the property", NoError, APINULLGuid);
         return false;
@@ -113,6 +150,10 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
         msg_rep ("SumSelected", "No data to read. Check that the properties specified in the rule exist and have values", NoError, APINULLGuid);
         return false;
     }
+    if (!SumDG (rules, rule_from_one)) {
+        msg_rep ("SumSelected", "Execution interrupted by user", NoError, APINULLGuid);
+        return false;
+    }
     subtitle = GS::UniString::Printf ("Read data from %d elements", guidArray.GetSize ());
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -120,7 +161,6 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
     #endif
     ParamHelpers::ElementsRead (paramToRead);
-
     subtitle = GS::UniString::Printf ("Sum data from %d elements", paramToRead.GetSize ());
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -134,6 +174,7 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
         #else
         const SumRule& rule = *cIt->value;
         #endif
+        if (!rule.state) continue;
         if (rule.elemts.IsEmpty ()) continue;
         Sum_OneRule (rule, paramToRead, paramToWriteelem);
     }
@@ -157,6 +198,7 @@ bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<A
                 GS::UniString fname = "";
                 GS::UniString rawName = "";
                 GetPropertyFullName (definition, fname);
+                paramtype.rule_name = fname;
                 rawName = PROPERTYNAMEPREFIX;
                 rawName.Append (fname.ToLowerCase ());
                 rawName.Append (BRACEEND);
