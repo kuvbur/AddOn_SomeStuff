@@ -3,8 +3,8 @@
 #if !defined (SYNC_HPP)
 #define	SYNC_HPP
 #include "DG.h"
-#include "SyncSettings.hpp"
 #include "Helpers.hpp"
+#include "SyncSettings.hpp"
 
 static const GS::UniString PROPERTYPREF = "Property:";
 static const GS::UniString MORPHPREF = "Morph:";
@@ -16,6 +16,7 @@ static const GS::UniString CLASSPREF = "Class:";
 static const GS::UniString ATTRIBPREF = "Attribute:";
 static const GS::UniString ELEMENTPREF = "Element:";
 static const GS::UniString MEPPREF = "MEP:";
+static const GS::UniString FILEPREF = "File:";
 static const GS::UniString LISTDATAPREF = "Listdata:";
 static const GS::UniString QRPREF = "QRCode:";
 static const GS::UniString MATERIALPREF = "Material:";

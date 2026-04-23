@@ -15,7 +15,7 @@ PropertyCache& (*PROPERTYCACHE)() = GetCache;
 namespace ParamHelpers
 {
 
-GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName)
+bool ReadLibraryFile (const GS::UniString& fileName)
 {
     std::string lineStr;
     GS::UniString s;
@@ -24,10 +24,14 @@ GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName)
     GSErrCode err = NoError;
     // Поиск файла
     GS::ucscpy (settingsText.file_UName, fileName.ToUStr (0, GS::Min (fileName.GetLength (), (USize) API_UniLongNameLen)).Get ());
+    #if defined(AC_27) || defined (AC_28) || defined(AC_29)
+    err = ACAPI_LibraryPart_Search (&settingsText, false, false);
+    #else
     err = ACAPI_LibPart_Search (&settingsText, false, false);
+    #endif
     if (err != NoError || settingsText.location == nullptr) {
         msg_rep ("ReadLibraryFile", "Cant find file " + fileName, err, APINULLGuid);
-        return {};
+        return false;
     }
     // Открытие файла
     settingsText.location->ToPath (&locPath);
@@ -39,7 +43,7 @@ GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName)
     char* buff = new char[fSize];
     if (buff == nullptr) {
         msg_rep ("ReadLibraryFile", "buff == nullptr" + fileName, err, APINULLGuid);
-        return{};
+        return false;
     }
 
     err = file.Open (IO::File::ReadMode);
@@ -47,7 +51,7 @@ GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName)
     if (err != NoError) {
         msg_rep ("ReadLibraryFile", "Cant read file " + fileName, err, APINULLGuid);
         delete[] buff;
-        return {};
+        return false;
     }
     file.ReadBin (buff, (USize) fSize);
     file.Close ();
@@ -56,7 +60,7 @@ GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName)
         s = GS::UniString (lineStr.c_str ());
     }
     delete[] buff;
-    return {};
+    return true;
 }
 
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)

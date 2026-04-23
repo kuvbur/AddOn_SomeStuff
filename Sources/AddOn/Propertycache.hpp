@@ -32,7 +32,7 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
 namespace ParamHelpers
 {
 
-GS::Array<GS::UniString> ReadLibraryFile (const GS::UniString& fileName);
+bool ReadLibraryFile (const GS::UniString& fileName);
 
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue);
 
@@ -95,6 +95,7 @@ struct PropertyCache
     ParamDictValue info;
     ParamDictValue attrib;
     ParamDictValue glob;
+    ParamDict file; // Прочитанные файлы
     ClassificationFunc::SystemDict systemdict;
     UnicGuidByGuidString reversesystemdict;
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
@@ -237,7 +238,6 @@ struct PropertyCache
         ReadPropertyDefinition ();
         ReadAttribute ();
         ReadInfo ();
-        ReadFile ();
         #if defined (AC_29)
         ReadMEP ();
         #endif
@@ -263,10 +263,18 @@ struct PropertyCache
         #endif
     }
 
-    void ReadFile ()
+    bool AddFile (GS::UniString& fileName)
     {
-        GS::UniString fileName = "test.txt";
-        ParamHelpers::ReadLibraryFile (fileName);
+        if (file.ContainsKey (fileName)) return file.Get (fileName);
+        bool flag = ParamHelpers::ReadLibraryFile (fileName);
+        file.Add (fileName, flag);
+        if (!flag) {
+            #if defined(TESTING)
+            DBprnt ("=PropertyCache= AddFile error read file " + fileName);
+            #endif
+            return false;
+        }
+        return true;
     }
 
     void ReadSurveyPointTransformation ()
@@ -364,6 +372,28 @@ struct PropertyCache
         #if defined(TESTING)
         if (!isPropertyDefinition_OK) DBprnt ("=PropertyCache= ReadPropertyDefinition ERROR");
         #endif
+    }
+
+    void ReadFileFromDefinition ()
+    {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadFileFromDefinition");
+        #endif
+        file.Clear ();
+        if (!isPropertyDefinition_OK) return;
+        for (const auto& cIt : property) {
+            #if defined(AC_28) || defined(AC_29)
+            const ParamValue& param = cIt.value;
+            #else
+            const ParamValue& param = *cIt.value;
+            #endif
+            GS::UniString fname = param.definition.description;
+            if (fname.IsEmpty ()) continue;
+            if (!fname.Contains (CHARDQUT)) continue;
+            if (!fname.Contains ("Sync_from")) continue;
+            if (!fname.Contains (FILENAMEPREFIX)) continue;
+            AddFile (fname);
+        }
     }
 
     void ReadClassification ()
