@@ -84,6 +84,8 @@ static const GS::UniString ELEMENTNAMEPREFIX = "{@element:";
 static const short ELEMENTTYPEINX = 15;
 static const GS::UniString MEPNAMEPREFIX = "{@mep:";
 static const short MEPTYPEINX = 16;
+static const GS::UniString FILENAMEPREFIX = "{@file:";
+static const short FILETYPEINX = 17;
 
 static const GS::UniString DOT = ".";
 static const GS::UniString COMMA = ",";
@@ -284,6 +286,7 @@ struct ParamValue
     bool fromQuantity = false;	         // Взять инфо о количестве
     bool fromElement = false;	         // Взять из информации об элементе (замена материала и т.д.)
     bool fromMEP = false;	             // Взять из информации МЕР
+    bool fromFile = false;	             // Взять из txt файла
     bool fromListData = false;	         // Взять из GDL команды COMPONENT
     bool fromGDLArray = false;			 // Взять из массива
     bool toQRCode = false;			     // Результат вывести QR

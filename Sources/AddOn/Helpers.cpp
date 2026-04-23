@@ -869,6 +869,9 @@ GS::UniString ParamHelpers::GetRawnamePrefixByTypeInx (const short& inx)
         case ELEMENTTYPEINX:
             return ELEMENTNAMEPREFIX;
             break;
+        case FILETYPEINX:
+            return FILENAMEPREFIX;
+            break;
         default:
             #if defined(TESTING)
             DBprnt (inx, "ERROR GetRawnamePrefixByTypeInx");
@@ -900,6 +903,7 @@ short ParamHelpers::GetTypeInxByRawnamePrefix (const GS::UniString& rawName)
     if (rawName.BeginsWith (MATERIALNAMEPREFIX)) return MATERIALTYPEINX;
     if (rawName.BeginsWith (CLASSNAMEPREFIX)) return CLASSTYPEINX;
     if (rawName.BeginsWith (ELEMENTNAMEPREFIX)) return ELEMENTTYPEINX;
+    if (rawName.BeginsWith (FILENAMEPREFIX)) return FILETYPEINX;
     #if defined(TESTING)
     DBprnt ("ERROR GetTypeInxByRawnamePrefix " + rawName);
     #endif
@@ -981,6 +985,9 @@ void ParamHelpers::SetParamValueSourseByName (ParamValue& pvalue)
             break;
         case ELEMENTTYPEINX:
             pvalue.fromElement = true;
+            break;
+        case FILETYPEINX:
+            pvalue.fromFile = true;
             break;
         default:
             break;
@@ -2521,6 +2528,9 @@ bool ParamHelpers::ParseParamName (GS::UniString& expression, ParamDictValue& pa
                     break;
                 case ELEMENTTYPEINX:
                     pvalue.fromElement = true;
+                    break;
+                case FILETYPEINX:
+                    pvalue.fromFile = true;
                     break;
                 default:
                     break;
@@ -5726,6 +5736,15 @@ bool ParamHelpers::ReadElementValues (const API_Element& element, ParamDictValue
     return flag_find;
 }
 
+
+// -----------------------------------------------------------------------------
+// Обработка свойств с поиском в файлах
+// -----------------------------------------------------------------------------
+bool ParamHelpers::ReadFile (ParamDictValue& params)
+{
+    return true;
+}
+
 GS::UniString ParamHelpers::GetUnitsPrefix (GS::UniString& unit)
 {
     if (unit.IsEmpty ()) {
@@ -5870,8 +5889,8 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
                     params.Add (*cIt->key, *cIt->value);
                     #endif
                 }
-            }
         }
+}
         if (!paramsAdd_1.IsEmpty ()) {
             for (ParamDictValue::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
@@ -5882,10 +5901,10 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
                     params.Add (*cIt->key, *cIt->value);
                     #endif
                 }
+        }
             }
         }
-    }
-}
+                }
 
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
@@ -6922,7 +6941,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     pvalue.isValid = true;
     pvalue.fromAttribElement = true;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
@@ -7157,7 +7176,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         ParamComposite& c = *cIt->value;
         #endif
         c.composite = param_composite.composite;
-    }
+}
     return true;
 }
 
@@ -7186,11 +7205,11 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
         ParamValueComposite c = *cIt->value;
         #endif
         p.Push (c);
-    }
+}
     composite.Clear ();
     composite = p;
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
@@ -7243,7 +7262,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         ParamComposite& c = *cIt->value;
         #endif
         c.composite = param_composite.composite;
-    }
+}
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
 }
@@ -7280,7 +7299,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         segment.Add (pen, segments);
         ParamComposite p = {};
         param_composite.Add (pen, p);
-    }
+}
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
     #endif
@@ -7383,7 +7402,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-        }
+            }
     }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
@@ -7510,18 +7529,18 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
-                            }
                         }
-                    } else {
+                }
+        } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-                }
-                break;
-        }
-        ++profileDescriptionIt1;
     }
+                break;
+}
+        ++profileDescriptionIt1;
+            }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
         short pen = -1;
         if (param_composite.ContainsKey (pen)) {
@@ -7563,13 +7582,13 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 }
                 ct.composite = paramout;
             }
-        }
     }
+            }
     return hasData;
     #else
     return false;
     #endif
-}
+        }
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -7773,7 +7792,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         p.hasFormula = param.val.hasFormula;
         p.fromQuantity = param.fromQuantity;
         paramcomposite.Add (param.rawName, p);
-    }
+}
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramcomposite.IsEmpty () && (structtype == API_BasicStructure || structtype == API_CompositeStructure)) {
@@ -7815,7 +7834,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-}
+            }
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -8011,7 +8030,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         }
         API_PropertyDefinition definition = param.definition;
         if (!definition.name.Contains (CharENTER) && definition.guid != APINULLGuid) propertyDefinitions.Push (definition);
-    }
+}
     #ifndef AC_22
     if (propertyDefinitions.IsEmpty ()) return flag_find;
     GS::Array<API_Property> properties = {};
@@ -8033,4 +8052,4 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     return (ParamHelpers::AddProperty (params, properties, APINULLGuid) || flag_find);
     #endif
     return flag_find;
-}
+        }
