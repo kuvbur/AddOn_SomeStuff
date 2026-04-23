@@ -3014,10 +3014,10 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
             if (property.definition.collectionType == API_PropertySingleCollectionType && property.value.singleVariant.variant.type == API_PropertyUndefinedValueType) {
                 property.value.singleVariant.variant.type = property.definition.valueType;
             }
-    }
+        }
         #endif
         return true;
-}
+    }
     double dval = pvalue.val.doubleValue;
     if (pvalue.val.formatstring.forceRaw && pvalue.val.hasrawDouble) dval = pvalue.val.rawDoubleValue;
 
@@ -3137,7 +3137,7 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
             if (property.definition.collectionType == API_PropertySingleCollectionType && property.value.singleVariant.variant.type == API_PropertyUndefinedValueType) {
                 property.value.singleVariant.variant.type = property.definition.valueType;
             }
-    }
+        }
         #endif
     }
     return flag_rec;
@@ -6612,7 +6612,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
     pvalue.isValid = (property.status == API_Property_HasValue);
     if (property.isDefault && property.status == API_Property_NotEvaluated) {
         value = property.definition.defaultValue.basicValue;
-} else {
+    } else {
         value = property.value;
     }
     #endif
@@ -6747,28 +6747,6 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
         pvalue.fromClassification = true;
         return;
     }
-    if (description.Contains ("some_stuff_th")) {
-        // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th}";
-        pvalue.name = "some_stuff_th";
-        pvalue.fromAttribDefinition = true;
-        pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
-        return;
-    }
-    if (description.Contains ("some_stuff_units")) {
-        // Единицы измерения
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units}";
-        pvalue.name = "some_stuff_units";
-        pvalue.fromAttribDefinition = true;
-        return;
-    }
-    if (description.Contains ("some_stuff_kzap")) {
-        // Единицы измерения
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap}";
-        pvalue.name = "some_stuff_kzap";
-        pvalue.fromAttribDefinition = true;
-        return;
-    }
     if (description.Contains ("sync_name")) {
         if (!pvalue.rawName.Contains ("{@property:sync_name")) {
             pvalue.rawName = "{@property:sync_name0}";
@@ -6777,7 +6755,6 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
         pvalue.fromAttribDefinition = true;
         return;
     }
-
     if (pvalue.rawName.Contains ("buildingmaterial")) {
         pvalue.fromAttribDefinition = true;
         return;
@@ -6790,21 +6767,45 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
         pvalue.fromAttribDefinition = true;
         return;
     }
-    if (description.Contains ("some_stuff_layer_onoff")) {
-        pvalue.fromAttribDefinition = true;
-        return;
-    }
-    if (description.Contains ("some_stuff_layer_has_finish")) {
-        pvalue.fromAttribDefinition = true;
-        return;
-    }
-    if (description.Contains ("some_stuff_layer_description")) {
-        pvalue.fromAttribDefinition = true;
-        return;
-    }
-    if (description.Contains ("some_stuff_layer_favorite_name")) {
-        pvalue.fromAttribDefinition = true;
-        return;
+    if (description.Contains ("some_stuff")) {
+        if (description.Contains ("some_stuff_th")) {
+            // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
+            pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th}";
+            pvalue.name = "some_stuff_th";
+            pvalue.fromAttribDefinition = true;
+            pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
+            return;
+        }
+        if (description.Contains ("some_stuff_units")) {
+            // Единицы измерения
+            pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units}";
+            pvalue.name = "some_stuff_units";
+            pvalue.fromAttribDefinition = true;
+            return;
+        }
+        if (description.Contains ("some_stuff_layer_onoff")) {
+            pvalue.fromAttribDefinition = true;
+            return;
+        }
+        if (description.Contains ("some_stuff_layer_has_finish")) {
+            pvalue.fromAttribDefinition = true;
+            return;
+        }
+        if (description.Contains ("some_stuff_layer_description")) {
+            pvalue.fromAttribDefinition = true;
+            return;
+        }
+        if (description.Contains ("some_stuff_layer_favorite_name")) {
+            pvalue.fromAttribDefinition = true;
+            return;
+        }
+        if (description.Contains ("some_stuff_kzap")) {
+            // Единицы измерения
+            pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap}";
+            pvalue.name = "some_stuff_kzap";
+            pvalue.fromAttribDefinition = true;
+            return;
+        }
     }
 }
 
@@ -7623,7 +7624,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-    }
+            }
             if (element.column.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
@@ -7658,7 +7659,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-}
+            }
             if (element.beam.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
@@ -7748,7 +7749,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-}
+    }
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв

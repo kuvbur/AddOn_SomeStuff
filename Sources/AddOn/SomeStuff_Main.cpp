@@ -20,7 +20,7 @@
 #include	"Dimensions.hpp"
 #include	"Spec.hpp"
 #include	"Propertycache.hpp"
-#include	"Selection.hpp"
+
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
 //-----------------------------------------------------------------------------
@@ -51,24 +51,6 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
         #else
         AttachObserver (*(it->key), syncSettings);
         #endif
-    }
-    ACAPI_KeepInMemory (true);
-    return NoError;
-}
-#if defined(AC_28) || defined(AC_29)
-static GSErrCode SelectionChangeHandlerProc (const API_Neig * selElemNeig)
-#else
-static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig * selElemNeig)
-#endif
-{
-    return NoError;
-    #ifdef TESTING
-    DBprnt ("SelectionChangeHandler");
-    #endif
-    if (selElemNeig->neigID != APINeig_None) {
-        //SelectElement (APINotify_New);
-    } else {
-        //SelectElement (APINotify_NewAndReset);
     }
     ACAPI_KeepInMemory (true);
     return NoError;
@@ -465,10 +447,8 @@ GSErrCode __ACENV_CALL Initialize (void)
     MonAll (syncSettings);
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
-    ACAPI_Notification_CatchSelectionChange (SelectionChangeHandlerProc);
     #else
     ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit | APINotify_ChangeProjectDB, ProjectEventHandlerProc);
-    ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
     #endif
     ACAPI_KeepInMemory (true);
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
