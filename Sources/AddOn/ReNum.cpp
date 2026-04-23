@@ -58,7 +58,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     bool rule_from_one = (guidArray.GetSize () == 1);
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
     if (!GetRuleFromSelected (guidArray, rule_definitions, RENUMFLAG, false)) {
-        msg_rep ("SumSelected", "No Num rule found. Check that the description of the user property contains Renum_flag", NoError, APINULLGuid);
+        msg_rep ("ReNumSelected", "No Num rule found. Check that the description of the user property contains Renum_flag", NoError, APINULLGuid);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
         #else

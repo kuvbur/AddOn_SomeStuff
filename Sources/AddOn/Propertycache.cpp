@@ -598,42 +598,42 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             ParamHelpers::ConvertToParamValue (pvalue, definision);
             propertyParams.Add (pvalue.rawName, pvalue);
             flag_add = true;
-        } else {
-            #if defined(AC_28) || defined(AC_29)
-            name = GetPropertyNameByGUID (definision.guid);
-            if (name.IsEmpty ()) {
-                name = group.name;
-                name.Append (SLASH);
-                name.Append (definision.name);
-            }
-            #else
+            continue;
+        }
+        #if defined(AC_28) || defined(AC_29)
+        name = GetPropertyNameByGUID (definision.guid);
+        if (name.IsEmpty ()) {
             name = group.name;
             name.Append (SLASH);
             name.Append (definision.name);
-            #endif
-            rawName = PROPERTYNAMEPREFIX;
-            rawName.Append (name.ToLowerCase ());
-            rawName.Append (BRACEEND);
-            if (!propertyParams.ContainsKey (rawName)) {
-                ParamValue pvalue;
-                pvalue.rawName = rawName;
-                pvalue.name = name;
-                ParamHelpers::ConvertToParamValue (pvalue, definision);
-                propertyParams.Add (pvalue.rawName, pvalue);
-                flag_add = true;
-            } else {
-                ParamValue& pvalue = propertyParams.Get (rawName);
-                if (pvalue.definition.guid != definision.guid) {
-                    FormatString fstring = pvalue.val.formatstring;
-                    if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
-                        pvalue.rawName = rawName;
-                        pvalue.name = name;
-                        ParamHelpers::ConvertToParamValue (pvalue, definision);
-                        if (!fstring.isEmpty) {
-                            pvalue.val.formatstring = fstring;
-                        }
-                        flag_add = true;
+        }
+        #else
+        name = group.name;
+        name.Append (SLASH);
+        name.Append (definision.name);
+        #endif
+        rawName = PROPERTYNAMEPREFIX;
+        rawName.Append (name.ToLowerCase ());
+        rawName.Append (BRACEEND);
+        if (!propertyParams.ContainsKey (rawName)) {
+            ParamValue pvalue;
+            pvalue.rawName = rawName;
+            pvalue.name = name;
+            ParamHelpers::ConvertToParamValue (pvalue, definision);
+            propertyParams.Add (pvalue.rawName, pvalue);
+            flag_add = true;
+        } else {
+            ParamValue& pvalue = propertyParams.Get (rawName);
+            if (pvalue.definition.guid != definision.guid) {
+                FormatString fstring = pvalue.val.formatstring;
+                if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
+                    pvalue.rawName = rawName;
+                    pvalue.name = name;
+                    ParamHelpers::ConvertToParamValue (pvalue, definision);
+                    if (!fstring.isEmpty) {
+                        pvalue.val.formatstring = fstring;
                     }
+                    flag_add = true;
                 }
             }
         }
