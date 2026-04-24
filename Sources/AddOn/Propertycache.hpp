@@ -32,7 +32,7 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
 namespace ParamHelpers
 {
 
-bool ReadLibraryFile (const GS::UniString& fileName);
+bool ReadLibraryFile (const GS::UniString& fileName, GS::Array<GS::Array<GS::UniString>>& data);
 
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue);
 
@@ -96,6 +96,7 @@ struct PropertyCache
     ParamDictValue attrib;
     ParamDictValue glob;
     ParamDict file; // Прочитанные файлы
+    GS::HashTable <GS::UniString, GS::Array<GS::Array<GS::UniString>>> filedata; // Данные в файлах
     ClassificationFunc::SystemDict systemdict;
     UnicGuidByGuidString reversesystemdict;
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
@@ -155,6 +156,8 @@ struct PropertyCache
         propertygroups.Clear ();
         dimrules.Clear ();
         unreadedgdlparams.Clear ();
+        file.Clear ();
+        filedata.Clear ();
         isEng = 0;
         isEng_OK = false;
         isGetGeoLocation_OK = false;
@@ -238,6 +241,7 @@ struct PropertyCache
         ReadPropertyDefinition ();
         ReadAttribute ();
         ReadInfo ();
+        ReadFileFromDefinition ();
         #if defined (AC_29)
         ReadMEP ();
         #endif
@@ -266,14 +270,23 @@ struct PropertyCache
     bool AddFile (GS::UniString& fileName)
     {
         if (file.ContainsKey (fileName)) return file.Get (fileName);
-        bool flag = ParamHelpers::ReadLibraryFile (fileName);
+        GS::Array<GS::Array<GS::UniString>> data = {};
+        bool flag = ParamHelpers::ReadLibraryFile (fileName, data);
         file.Add (fileName, flag);
         if (!flag) {
             #if defined(TESTING)
-            DBprnt ("=PropertyCache= AddFile error read file " + fileName);
+            DBprnt ("=PropertyCache= AddFile read file ERROR " + fileName);
             #endif
             return false;
         }
+        if (filedata.ContainsKey (fileName)) {
+            filedata.Set (fileName, data);
+        } else {
+            filedata.Add (fileName, data);
+        }
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= AddFile file " + fileName);
+        #endif
         return true;
     }
 
@@ -379,7 +392,6 @@ struct PropertyCache
         #if defined(TESTING)
         DBprnt ("=PropertyCache= ReadFileFromDefinition");
         #endif
-        file.Clear ();
         if (!isPropertyDefinition_OK) return;
         for (const auto& cIt : property) {
             #if defined(AC_28) || defined(AC_29)
@@ -391,8 +403,14 @@ struct PropertyCache
             if (fname.IsEmpty ()) continue;
             if (!fname.Contains (CHARDQUT)) continue;
             if (!fname.Contains ("Sync_from")) continue;
-            if (!fname.Contains (FILENAMEPREFIX)) continue;
-            AddFile (fname);
+            if (!fname.Contains ("File:")) continue;
+            GS::Array<GS::UniString> params = {};
+            if (StringSplt (fname, COMMA, params, "\"") > 0) {
+                fname = fname.GetSubstring (CHARDQUT, CHARDQUT, 0);
+                if (file.ContainsKey (fname)) file.Delete (fname);
+                if (!fname.Contains (".txt") && !fname.Contains (".csv")) fname.Append (".txt");
+                AddFile (fname);
+            }
         }
     }
 

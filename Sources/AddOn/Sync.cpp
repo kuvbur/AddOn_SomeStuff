@@ -187,8 +187,8 @@ void SyncAndMonAll (SyncSettings& syncSettings)
             GS::UniString paramch = CountUnreadGDLParams ();
             msg_rep ("SyncAll - write", time + paramch, NoError, APINULLGuid);
             return NoError;
-    });
-} else {
+        });
+    } else {
         GS::UniString paramch = CountUnreadGDLParams ();
         msg_rep ("SyncAll - write", "No data to write " + paramch, NoError, APINULLGuid);
     }
@@ -227,7 +227,7 @@ bool SyncByType (const API_ElemTypeID& elementType, const SyncSettings& syncSett
     #if defined (AC_28) || defined (AC_29)
     if (elementType == API_ExternalElemID) {
         guidArray = ACAPI::MEP::CollectAllMEPElements ();
-}
+    }
     #endif
     if (guidArray.IsEmpty ()) return false;
     //#ifdef TESTING
@@ -320,8 +320,6 @@ void SyncSelected (const SyncSettings& syncSettings)
     GS::UniString fmane = "Sync Selected";
     GS::Array<API_Guid> guidArray = GetSelectedElements (false, true, syncSettings, false, false, false);
     if (guidArray.IsEmpty ()) return;
-    ClassificationFunc::SystemDict systemdict = {};
-    ParamDictValue propertyParams = {};
     GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, guidArray);
     if (!rereadelem.IsEmpty ()) {
         #if defined(TESTING)
@@ -367,7 +365,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
         #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return rereadelem;
         #endif
-}
+    }
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
@@ -392,7 +390,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
             GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
             msg_rep ("SyncSelected - write", time, NoError, APINULLGuid);
             return NoError;
-    });
+        });
     } else {
         msg_rep ("SyncSelected - write", "No data to write", NoError, APINULLGuid);
     }
@@ -403,7 +401,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings& syncSettings, GS::Array<API_G
     ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
     #endif
     return rereadelem;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметров выбранных элементов
@@ -451,7 +449,7 @@ void RunParamSelected (const SyncSettings& syncSettings)
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Запуск скрипта параметра элемента
@@ -487,7 +485,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
         #endif
         if (err != NoError) return;
-}
+    }
     API_Element element, mask;
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, renovationStatus);
@@ -506,7 +504,7 @@ void RunParam (const API_Guid& elemGuid, const SyncSettings& syncSettings)
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
     }
-    }
+}
 
 // --------------------------------------------------------------------
 // Поиск и синхронизация свойств связанных элементов
@@ -648,7 +646,7 @@ bool SyncNeedResync (ParamDictElement& paramToRead, UnicGuidString property_writ
                 }
 
             }
-}
+        }
     }
     return false;
 }
@@ -764,7 +762,7 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
             paramTo.needResetToDef = true;
             paramTo.isValid = true;
             ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
-}
+        }
     }
     return;
 }
@@ -1001,6 +999,16 @@ bool ParseSyncString (const API_Guid& elemGuid, const API_ElemTypeID& elementTyp
                     ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
                 }
             }
+            // Если требуется чтение из файла - добавим параметры для подбора
+            if (param.fromFile) {
+                ParamDictValue paramDict = {};
+                if (!param.val.uniStringValue.Contains (CHARDQUT)) ParamHelpers::ParseParamNameMaterial (param.val.uniStringValue, paramDict);
+                if (!param.rawName_col_end.IsEmpty ()) ParamHelpers::ParseParamNameMaterial (param.rawName_col_end, paramDict);
+                if (!param.rawName_col_start.IsEmpty ()) ParamHelpers::ParseParamNameMaterial (param.rawName_col_start, paramDict);
+                if (!param.rawName_row_end.IsEmpty ()) ParamHelpers::ParseParamNameMaterial (param.rawName_row_end, paramDict);
+                if (!param.rawName_row_start.IsEmpty ()) ParamHelpers::ParseParamNameMaterial (param.rawName_row_start, paramDict);
+                ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
+            }
             // Вытаскиваем параметры для материалов, если такие есть
             if (param.fromMaterial) {
                 ParamDictValue paramDict = {};
@@ -1228,6 +1236,95 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             synctypefind = true;
         }
     }
+
+    if (synctypefind == false) {
+        if (rulestring_one.Contains (FILEPREF)) {
+            synctypefind = true;
+            rulestring_one.ReplaceAll (FILEPREF, EMPTYSTRING);
+            paramNamePrefix = FILENAMEPREFIX;
+            param.typeinx = FILETYPEINX;
+            param.fromFile = true;
+            syncdirection = SYNC_FROM;
+            GS::Array<GS::UniString> params = {};
+            GS::UniString rule = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+            param.rawName = paramNamePrefix;
+            param.rawName.Append (rule.ToLowerCase ());
+            param.name = rule;
+            param.rawName.Append (BRACEEND);
+            if (StringSplt (rule, SEMICOLON, params) > 1) {
+                GS::UniString type = params[0].ToLowerCase ();
+                if (type.Contains ("lookup") || type.Contains ("lokup")) param.val.array_format_out = FILE_LOOKUP;
+                GS::Array<GS::UniString> params_2 = {};
+                UInt32 nparam = StringSplt_ (params[1], COMMA, params_2, false);
+                if (nparam > 2) {
+                    param.val.uniStringValue = params_2[0]; // имя файла
+                    if (!param.val.uniStringValue.Contains (CHARDQUT)) {
+                        if (!param.val.uniStringValue.Contains (CHARBRACESTART)) param.val.uniStringValue = CHARBRACESTART + param.val.uniStringValue;
+                        if (!param.val.uniStringValue.Contains (CHARBRACEEND)) param.val.uniStringValue = param.val.uniStringValue + CHARBRACEEND;
+                    }
+                    short col_out = std::atoi (params_2[1].ToCStr ()); // номер столбца для вывода
+                    if (col_out > 0) {
+                        param.composite_pen = col_out;
+                    } else {
+                        syncdirection = SYNC_NO;
+                    }
+                    // имя свойства для поиска (1)
+                    param.rawName_col_end = params_2[2];
+                    if (!param.rawName_col_end.Contains (CHARBRACESTART)) param.rawName_col_end = CHARBRACESTART + param.rawName_col_end;
+                    if (!param.rawName_col_end.Contains (CHARBRACEEND)) param.rawName_col_end = param.rawName_col_end + CHARBRACEEND;
+                    rulestring_one.ReplaceAll (params_2[0], EMPTYSTRING);
+                    rulestring_one.ReplaceAll (params_2[1], EMPTYSTRING);
+                    rulestring_one.ReplaceAll (params_2[2], EMPTYSTRING);
+                    if (nparam > 3) {
+                        short col_find = std::atoi (params_2[3].ToCStr ());
+                        if (col_find > 0) param.val.array_column_end = col_find;
+                        if (param.val.array_column_end == 0) param.val.array_column_end = 1;
+                        rulestring_one.ReplaceAll (params_2[3], EMPTYSTRING);
+
+                    }
+                    if (nparam > 5) {
+                        short col_find = std::atoi (params_2[5].ToCStr ());
+                        if (col_find > 0 && !params_2[4].IsEmpty ()) {
+                            param.rawName_col_start = params_2[4];
+                            if (!param.rawName_col_start.Contains (CHARBRACESTART)) param.rawName_col_start = CHARBRACESTART + param.rawName_col_start;
+                            if (!param.rawName_col_start.Contains (CHARBRACEEND)) param.rawName_col_start = param.rawName_col_start + CHARBRACEEND;
+                            param.val.array_column_start = col_find;
+                            rulestring_one.ReplaceAll (params_2[4], EMPTYSTRING);
+                            rulestring_one.ReplaceAll (params_2[5], EMPTYSTRING);
+                        }
+                    }
+                    if (nparam > 7) {
+                        short col_find = std::atoi (params_2[7].ToCStr ());
+                        if (col_find > 0 && !params_2[6].IsEmpty ()) {
+                            param.rawName_row_end = params_2[6];
+                            if (!param.rawName_row_end.Contains (CHARBRACESTART)) param.rawName_row_end = CHARBRACESTART + param.rawName_row_end;
+                            if (!param.rawName_row_end.Contains (CHARBRACEEND)) param.rawName_row_end = param.rawName_row_end + CHARBRACEEND;
+                            param.val.array_row_end = col_find;
+                            rulestring_one.ReplaceAll (params_2[6], EMPTYSTRING);
+                            rulestring_one.ReplaceAll (params_2[7], EMPTYSTRING);
+                        }
+                    }
+                    if (nparam > 9 && !params_2[8].IsEmpty ()) {
+                        short col_find = std::atoi (params_2[9].ToCStr ());
+                        if (col_find > 0) {
+                            param.rawName_row_start = params_2[8];
+                            if (!param.rawName_row_start.Contains (CHARBRACESTART)) param.rawName_row_start = CHARBRACESTART + param.rawName_row_start;
+                            if (!param.rawName_row_start.Contains (CHARBRACEEND)) param.rawName_row_start = param.rawName_row_start + CHARBRACEEND;
+                            param.val.array_row_start = col_find;
+                            rulestring_one.ReplaceAll (params_2[8], EMPTYSTRING);
+                            rulestring_one.ReplaceAll (params_2[9], EMPTYSTRING);
+                        }
+                    }
+                    rulestring_one.ReplaceAll (COMMA, EMPTYSTRING);
+                } else {
+                    syncdirection = SYNC_NO;
+                }
+            } else {
+                syncdirection = SYNC_NO;
+            }
+        }
+    }
+
     if (synctypefind == false) {
         if ((!rulestring_one.Contains (":") || rulestring_one.Contains ("escription:") || rulestring_one.Contains ("esc:")) && !hasformula) {
             if (rulestring_one.Contains ("escription:") || rulestring_one.Contains ("esc:")) {
@@ -1294,7 +1391,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.composite_pen = 20;
             rulestring_one.ReplaceAll (SPACESTRING, EMPTYSTRING);
             if (rulestring_one.Contains (COMMA) && rulestring_one.Contains (SEMICOLON)) {
-                GS::UniString penstring = rulestring_one.GetSubstring (',', CHARBSEMICOLON, 0);
+                GS::UniString penstring = rulestring_one.GetSubstring (CHARCOMMA, CHARBSEMICOLON, 0);
                 if (penstring.Contains ("all")) {
                     param.composite_pen = -1;
                     param.fromQuantity = true;
@@ -1358,6 +1455,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             if (!rulestring_one.Contains ("symb_pos_") && !rulestring_one.Contains ("symb_rotangle")) syncdirection = SYNC_FROM;
         }
     }
+
     if (synctypefind == false) {
         if (rulestring_one.Contains (PROPERTYPREF)) {
             synctypefind = true;
@@ -1427,17 +1525,6 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     }
 
     if (synctypefind == false) {
-        if (rulestring_one.Contains (FILEPREF)) {
-            synctypefind = true;
-            rulestring_one.ReplaceAll (FILEPREF, EMPTYSTRING);
-            paramNamePrefix = FILENAMEPREFIX;
-            param.typeinx = FILETYPEINX;
-            param.fromFile = true;
-            syncdirection = SYNC_FROM;
-        }
-    }
-
-    if (synctypefind == false) {
         if (rulestring_one.Contains (LISTDATAPREF)) {
             synctypefind = true;
             rulestring_one.ReplaceAll (LISTDATAPREF, EMPTYSTRING);
@@ -1447,6 +1534,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             syncdirection = SYNC_FROM;
         }
     }
+
     if (synctypefind == false) return false;
     param.eltype = elementType;
 
@@ -1508,6 +1596,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     if (nparam == 0) return false;
     GS::UniString paramName = params.Get (0);
     paramName.ReplaceAll (SLASHEKR, SLASH);
+
     if (param.fromMaterial || param.val.hasFormula) {
         param.rawName = paramNamePrefix;
         param.rawName.Append (paramName.ToLowerCase ());
@@ -1565,7 +1654,7 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
             param.val.array_format_out = ARRAY_MAX;
             hasArray = true;
         }
-        if (hasArray && !param.fromListData && !param.fromGDLparam) hasArray = false;
+        if (hasArray && !param.fromListData && !param.fromGDLparam && !param.fromGDLdescription && !param.fromGDLArray) hasArray = false;
         if (hasArray) {
             int array_row_start = 0;
             int array_row_end = 0;
@@ -1729,7 +1818,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.type, &parentelement.header.guid)) {
         return;
-}
+    }
     #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
         return;
@@ -1838,9 +1927,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
+            }
         }
     }
-}
     return has_element;
 }
 
@@ -1990,7 +2079,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                 }
             }
             selNeigs.PushNew (guid);
-}
+        }
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -2047,7 +2136,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -2207,8 +2296,8 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
                     }
                 }
             }
+        }
     }
-}
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
 }
@@ -2239,7 +2328,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-}
+    }
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
