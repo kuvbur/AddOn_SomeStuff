@@ -1221,6 +1221,31 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
     return nout;
 }
 
+GSCharCode GetCharCode (const std::string & instring)
+{
+    #ifdef EXTNDVERSION
+    return CC_Cyrillic;
+    #endif
+    if (ProbeCharCode (instring, CC_Cyrillic)) return CC_Cyrillic;
+    if (ProbeCharCode (instring, CC_Korean)) return CC_Korean;
+    if (ProbeCharCode (instring, CC_Application)) return CC_Application;
+    if (ProbeCharCode (instring, CC_UTF8)) return CC_UTF8;
+    if (ProbeCharCode (instring, CC_UniCode)) return CC_UniCode;
+    if (ProbeCharCode (instring, CC_UTF16)) return CC_UTF16;
+    if (ProbeCharCode (instring, CC_WestEuropean)) return CC_WestEuropean;
+    if (ProbeCharCode (instring, CC_EastEuropean)) return CC_EastEuropean;
+    if (ProbeCharCode (instring, CC_Greek)) return CC_Greek;
+    if (ProbeCharCode (instring, CC_Turkish)) return CC_Turkish;
+    if (ProbeCharCode (instring, CC_Hebrew)) return CC_Hebrew;
+    if (ProbeCharCode (instring, CC_Arabic)) return CC_Arabic;
+    if (ProbeCharCode (instring, CC_Thai)) return CC_Thai;
+    if (ProbeCharCode (instring, CC_Japanese)) return CC_Japanese;
+    if (ProbeCharCode (instring, CC_TradChinese)) return CC_TradChinese;
+    if (ProbeCharCode (instring, CC_SimpChinese)) return CC_SimpChinese;
+    if (ProbeCharCode (instring, CC_Symbol)) return CC_Symbol;
+    return CC_Cyrillic;
+}
+
 GSCharCode GetCharCode (const GS::UniString & instring)
 {
     bool findecode = true;
@@ -1235,6 +1260,10 @@ GSCharCode GetCharCode (const GS::UniString & instring, bool& findecode)
     #endif
     if (ProbeCharCode (instring, CC_Cyrillic)) return CC_Cyrillic;
     if (ProbeCharCode (instring, CC_Korean)) return CC_Korean;
+    if (ProbeCharCode (instring, CC_Application)) return CC_Application;
+    if (ProbeCharCode (instring, CC_UTF8)) return CC_UTF8;
+    if (ProbeCharCode (instring, CC_UniCode)) return CC_UniCode;
+    if (ProbeCharCode (instring, CC_UTF16)) return CC_UTF16;
     if (ProbeCharCode (instring, CC_WestEuropean)) return CC_WestEuropean;
     if (ProbeCharCode (instring, CC_EastEuropean)) return CC_EastEuropean;
     if (ProbeCharCode (instring, CC_Greek)) return CC_Greek;
@@ -1248,6 +1277,14 @@ GSCharCode GetCharCode (const GS::UniString & instring, bool& findecode)
     if (ProbeCharCode (instring, CC_Symbol)) return CC_Symbol;
     findecode = false;
     return CC_Cyrillic;
+}
+
+bool ProbeCharCode (const std::string & instring, GSCharCode chcode)
+{
+    GS::UniString unis = GS::UniString (instring.c_str (), chcode);
+    std::string s = unis.ToCStr (0, MaxUSize, chcode).Get ();
+    bool b = (instring == s);
+    return b;
 }
 
 bool ProbeCharCode (const GS::UniString & instring, GSCharCode chcode)

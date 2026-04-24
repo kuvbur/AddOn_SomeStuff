@@ -20,7 +20,7 @@
 #include    "ProfileVectorImage.hpp"
 
 static const GS::Array<short> paramTypesList = { IDTYPEINX,PROPERTYTYPEINX,COORDTYPEINX,GDLTYPEINX,INFOTYPEINX,IFCTYPEINX,MORPHTYPEINX,ATTRIBTYPEINX,LISTDATATYPEINX,MATERIALTYPEINX,GLOBTYPEINX,
-CLASSTYPEINX,FORMULATYPEINX,ELEMENTTYPEINX,MEPTYPEINX };
+CLASSTYPEINX, FILETYPEINX,FORMULATYPEINX,ELEMENTTYPEINX,MEPTYPEINX };
 
 static const GS::Array<short> paramTypesListWrite = { PROPERTYTYPEINX,GDLTYPEINX,IDTYPEINX,CLASSTYPEINX,ATTRIBTYPEINX,COORDTYPEINX };
 
@@ -4305,6 +4305,9 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 MEPv1::ReadMEP (elem_head, params);
                 #endif
                 break;
+            case FILETYPEINX:
+                ReadFile (params);
+                break;
             default:
                 break;
         }
@@ -5740,9 +5743,104 @@ bool ParamHelpers::ReadElementValues (const API_Element& element, ParamDictValue
 // -----------------------------------------------------------------------------
 // Обработка свойств с поиском в файлах
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadFile (ParamDictValue& params)
+//Sync_from { File:LOOKUP; "ИМЯ_ФАЙЛА", НОМЕР_ВОЗВРАЩАЕМОГО_СТОЛБЦА, Property:ИМЯ_СВОЙСТВА, НОМЕР_СТОЛБЦА_ПОИСКА }
+//
+//Sync_from { File:LOOKUP; Property:ИМЯ_СВОЙСТВА_С_ИМЕНЕМ_ФАЙЛА, НОМЕР_ВОЗВРАЩАЕМОГО_СТОЛБЦА, Property : ИМЯ_СВОЙСТВА, НОМЕР_СТОЛБЦА_ПОИСКА }
+void ParamHelpers::ReadFile (ParamDictValue& params)
 {
-    return true;
+    #if defined(TESTING)
+    DBprnt ("      ReadFile");
+    #endif
+    bool flag_find = false;
+    for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
+        #if defined(AC_28) || defined(AC_29)
+        ParamValue& param = cIt->value;
+        #else
+        ParamValue& param = *cIt->value;
+        #endif
+        if (!param.fromFile) continue;
+        if (param.isValid) continue;
+        int col_out = param.composite_pen;
+        if (col_out == 0) continue;
+        // Получаем имя файла
+        GS::UniString filename = param.val.uniStringValue;
+        if (filename.Contains (ATSIGN)) {
+            if (params.ContainsKey (filename)) {
+                if (params.Get (filename).isValid) {
+                    filename = params.Get (filename).val.uniStringValue;
+                } else {
+                    #if defined(TESTING)
+                    DBprnt ("      ReadFile err ", filename);
+                    #endif
+                    continue;
+                }
+            }
+        }
+        if (filename.Contains (CHARDQUT)) filename.ReplaceAll ("\"", EMPTYSTRING);
+        if (!filename.Contains (".txt") && !filename.Contains (".csv")) filename.Append (".txt");
+        GS::Array<ParamValue> vals = {};
+        // Получаем свойства для поиска
+        ParamValue val;
+        if (param.rawName_col_end.Contains (ATSIGN) && param.val.array_column_end > 0) {
+            if (params.ContainsKey (param.rawName_col_end)) {
+                if (params.Get (param.rawName_col_end).isValid) {
+                    val = params.Get (param.rawName_col_end);
+                    val.val.array_format_out = param.val.array_column_end;
+                    vals.PushNew (val);
+                }
+            }
+        }
+        if (param.rawName_col_start.Contains (ATSIGN) && param.val.array_column_start > 0) {
+            if (params.ContainsKey (param.rawName_col_start)) {
+                if (params.Get (param.rawName_col_start).isValid) {
+                    val = params.Get (param.rawName_col_start);
+                    val.val.array_format_out = param.val.array_column_start;
+                    vals.PushNew (val);
+                }
+            }
+        }
+        if (param.rawName_row_end.Contains (ATSIGN) && param.val.array_row_end > 0) {
+            if (params.ContainsKey (param.rawName_row_end)) {
+                if (params.Get (param.rawName_row_end).isValid) {
+                    val = params.Get (param.rawName_row_end);
+                    val.val.array_format_out = param.val.array_row_end;
+                    vals.PushNew (val);
+                }
+            }
+        }
+        if (param.rawName_row_start.Contains (ATSIGN) && param.val.array_row_start > 0) {
+            if (params.ContainsKey (param.rawName_row_start)) {
+                if (params.Get (param.rawName_row_start).isValid) {
+                    val = params.Get (param.rawName_row_start);
+                    val.val.array_format_out = param.val.array_row_start;
+                    vals.PushNew (val);
+                }
+            }
+        }
+        if (vals.IsEmpty ()) continue;
+        if (!PROPERTYCACHE ().AddFile (filename)) continue;
+        if (!PROPERTYCACHE ().filedata.ContainsKey (filename)) continue;
+        const GS::Array<GS::Array<GS::UniString>>& data = PROPERTYCACHE ().filedata.Get (filename);
+        if (data.IsEmpty ()) continue;
+        if (data[0].IsEmpty ()) continue;
+        if (col_out > (int) data[0].GetSize ()) continue;
+        for (const auto& d : data) {
+            bool flag = true;
+            for (const auto& v : vals) {
+                if (v.val.array_format_out > (int) data[0].GetSize ()) {
+                    flag = false;
+                } else {
+                    if (!d[v.val.array_format_out - 1].IsEqual (v.val.uniStringValue)) flag = false;
+                }
+            }
+            if (flag) {
+                ParamHelpers::ConvertStringToParamValue (param, param.rawName, d[col_out - 1]);
+                break;
+            }
+        }
+        param.isValid = true;
+    }
+    return;
 }
 
 GS::UniString ParamHelpers::GetUnitsPrefix (GS::UniString& unit)
@@ -5889,8 +5987,8 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
                     params.Add (*cIt->key, *cIt->value);
                     #endif
                 }
+            }
         }
-}
         if (!paramsAdd_1.IsEmpty ()) {
             for (ParamDictValue::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
@@ -5901,10 +5999,10 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
                     params.Add (*cIt->key, *cIt->value);
                     #endif
                 }
-        }
             }
         }
-                }
+    }
+}
 
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
@@ -6941,7 +7039,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     pvalue.isValid = true;
     pvalue.fromAttribElement = true;
     return true;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
@@ -7176,7 +7274,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         ParamComposite& c = *cIt->value;
         #endif
         c.composite = param_composite.composite;
-}
+    }
     return true;
 }
 
@@ -7205,11 +7303,11 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
         ParamValueComposite c = *cIt->value;
         #endif
         p.Push (c);
-}
+    }
     composite.Clear ();
     composite = p;
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
@@ -7262,7 +7360,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         ParamComposite& c = *cIt->value;
         #endif
         c.composite = param_composite.composite;
-}
+    }
     ACAPI_DisposeAttrDefsHdls (&defs);
     return true;
 }
@@ -7299,7 +7397,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         segment.Add (pen, segments);
         ParamComposite p = {};
         param_composite.Add (pen, p);
-}
+    }
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
     #endif
@@ -7402,7 +7500,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-            }
+        }
     }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
@@ -7529,18 +7627,18 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
+                            }
                         }
-                }
-        } else {
+                    } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-    }
+                }
                 break;
-}
+        }
         ++profileDescriptionIt1;
-            }
+    }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
         short pen = -1;
         if (param_composite.ContainsKey (pen)) {
@@ -7582,13 +7680,13 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 }
                 ct.composite = paramout;
             }
+        }
     }
-            }
     return hasData;
     #else
     return false;
     #endif
-        }
+}
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -7792,7 +7890,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         p.hasFormula = param.val.hasFormula;
         p.fromQuantity = param.fromQuantity;
         paramcomposite.Add (param.rawName, p);
-}
+    }
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramcomposite.IsEmpty () && (structtype == API_BasicStructure || structtype == API_CompositeStructure)) {
@@ -7834,7 +7932,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-            }
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -8030,7 +8128,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         }
         API_PropertyDefinition definition = param.definition;
         if (!definition.name.Contains (CharENTER) && definition.guid != APINULLGuid) propertyDefinitions.Push (definition);
-}
+    }
     #ifndef AC_22
     if (propertyDefinitions.IsEmpty ()) return flag_find;
     GS::Array<API_Property> properties = {};
@@ -8052,4 +8150,4 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     return (ParamHelpers::AddProperty (params, properties, APINULLGuid) || flag_find);
     #endif
     return flag_find;
-        }
+}

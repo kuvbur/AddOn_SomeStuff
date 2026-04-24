@@ -1,5 +1,6 @@
 //------------ kuvbur 2026 ------------
 #include "ACAPinc.h"
+#include "CommonFunction.hpp"
 #include "File.hpp"
 #include "Helpers.hpp"
 #include "Propertycache.hpp"
@@ -15,7 +16,7 @@ PropertyCache& (*PROPERTYCACHE)() = GetCache;
 namespace ParamHelpers
 {
 
-bool ReadLibraryFile (const GS::UniString& fileName)
+bool ReadLibraryFile (const GS::UniString& fileName, GS::Array<GS::Array<GS::UniString>>& data)
 {
     std::string lineStr;
     GS::UniString s;
@@ -45,9 +46,7 @@ bool ReadLibraryFile (const GS::UniString& fileName)
         msg_rep ("ReadLibraryFile", "buff == nullptr" + fileName, err, APINULLGuid);
         return false;
     }
-
     err = file.Open (IO::File::ReadMode);
-
     if (err != NoError) {
         msg_rep ("ReadLibraryFile", "Cant read file " + fileName, err, APINULLGuid);
         delete[] buff;
@@ -56,11 +55,32 @@ bool ReadLibraryFile (const GS::UniString& fileName)
     file.ReadBin (buff, (USize) fSize);
     file.Close ();
     std::istringstream stream (std::string (buff, fSize));
+    GS::UniString separatorString = "";
+    USize n_col = 0;
     while (std::getline (stream, lineStr)) {
-        s = GS::UniString (lineStr.c_str ());
+        GS::Array<GS::UniString> lines;
+        GSCharCode chcode = GetCharCode (lineStr);
+        s = GS::UniString (lineStr.c_str (), chcode);
+        if (separatorString.IsEmpty ()) {
+            if (s.Count ("\t") > s.Count (";")) {
+                separatorString = "\t";
+            } else {
+                separatorString = ";";
+            }
+        }
+        s.Split (separatorString, GS::UniString::KeepEmptyParts, &lines);
+        if (lines.IsEmpty ()) continue;
+        if (n_col < 2) {
+            n_col = lines.GetSize ();
+        }
+        if (n_col != lines.GetSize ()) {
+            msg_rep ("ReadLibraryFile", "Different n col " + fileName, err, APINULLGuid);
+        } else {
+            data.Push (lines);
+        }
     }
     delete[] buff;
-    return true;
+    return !data.IsEmpty ();
 }
 
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)

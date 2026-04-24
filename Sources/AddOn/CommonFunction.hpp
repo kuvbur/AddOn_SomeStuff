@@ -89,6 +89,7 @@ static const short FILETYPEINX = 17;
 
 static const GS::UniString DOT = ".";
 static const GS::UniString COMMA = ",";
+static const GS::UniChar CHARCOMMA = ',';
 static const GS::UniString METERS = "m";
 static const GS::UniChar CHARMETERS = 'm';
 static const GS::UniString MMETERS = "mm";
@@ -147,6 +148,9 @@ static const GS::UniString DEFULTINTFSTRING = "0m";
 #define ARRAY_SUM 2		// Вывод суммы (для текста - конкатенация)
 #define ARRAY_MAX 3
 #define ARRAY_MIN 4
+
+#define FILE_LOOKUP 1
+
 static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByName; // Словарь для сортировки наруальным алгоритмом
 
@@ -158,8 +162,7 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {
-    }
+    {}
     short  index;
     double level;
 };
@@ -462,9 +465,13 @@ GS::UniString StringUnic (const GS::UniString& instring, const GS::UniString& de
 // -----------------------------------------------------------------------------
 UInt32 StringSpltUnic (const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
 
+GSCharCode GetCharCode (const std::string& instring);
+
 GSCharCode GetCharCode (const GS::UniString& instring);
 
 GSCharCode GetCharCode (const GS::UniString& instring, bool& findecode);
+
+bool ProbeCharCode (const std::string& instring, GSCharCode chcode);
 
 bool ProbeCharCode (const GS::UniString& instring, GSCharCode chcode);
 
