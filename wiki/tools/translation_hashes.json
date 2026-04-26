@@ -107,7 +107,7 @@
       "index": 2
     },
     {
-      "hash": "1349c8231e67901d085995416bedf8aa654a3e44852139081d205ec1c0a758d2",
+      "hash": "e89271a55b3fea96af84b24fab05b1370c8f6c7e0478eac0f60778ebbf35ef21",
       "index": 3
     },
     {
@@ -161,7 +161,7 @@
       "index": 0
     },
     {
-      "hash": "5007d20ec13071c47fc0709e70d6ab51b4ba3623b65d728b316cbae5bcbcc116",
+      "hash": "bd0294c683812e9f636620ba1af407ecf30876abb1471d16c00a35beaa6565d1",
       "index": 1
     },
     {
@@ -407,7 +407,7 @@
       "index": 9
     },
     {
-      "hash": "373e300225a4e84721a457c45248f943fe261696d24900f19cc3a5d9ae18de5d",
+      "hash": "552f8677f14afa295969239c02ab22340c10307667e880806d593e2d8ca5df20",
       "index": 10
     },
     {
@@ -419,32 +419,36 @@
       "index": 12
     },
     {
-      "hash": "07bd7d8aaa75fdecd1dcf865eff16431b889955fcfd85943e0cf4f1e0b5c5085",
+      "hash": "df23750ef1aefaa82003408ebccc1ee63963c5686580d6c3c2b8994bc9204dd0",
       "index": 13
     },
     {
-      "hash": "0d445198a418cffd15da832c745943564fdadb701fe544fb2fa1acb63852b051",
+      "hash": "6ccb34fd4b4fcc2fea342065439e8bf4a2ece9edf27e2c6d34495c6033100ca8",
       "index": 14
     },
     {
-      "hash": "7c08895ed7511e4040799f710a31bc7e68f8e064d7f9377b8a0cbc59b6aca957",
+      "hash": "63f6ac2f23a365de041f5fbc731da51caccb37d9e3f1d004e9865afb7388c63f",
       "index": 15
     },
     {
-      "hash": "ce5908bb5f5d38cf2170bde6d1846adcd0b2df388e9c59d4debc0f9a9cc938cb",
+      "hash": "779dab15caca41d291dbda30ba3ea16e4831df43b2dac39e2fd93334be2d96d6",
       "index": 16
     },
     {
-      "hash": "82bc42df61605c2218b8f97f11363d6d846797553a8bec9641113c0e22aa8cc0",
+      "hash": "4c847ca93a9981360486c108860f1dd2b942c74931457df3b8eace66736e01fe",
       "index": 17
     },
     {
-      "hash": "8f64231becb8cd47c83b1d6971a222102e6a0c4b3d2f946a54c363346c4f7166",
+      "hash": "9bcebe26a18e4a4edaf17c02208874d0b3a44142dc5dd8eccdd00d125f1fee7d",
       "index": 18
     },
     {
-      "hash": "e338be24e19f4e9d88bd4dd0c3aaa6539297d8a8e01890b7d5d0e0526cdab706",
+      "hash": "8f64231becb8cd47c83b1d6971a222102e6a0c4b3d2f946a54c363346c4f7166",
       "index": 19
+    },
+    {
+      "hash": "e338be24e19f4e9d88bd4dd0c3aaa6539297d8a8e01890b7d5d0e0526cdab706",
+      "index": 20
     }
   ],
   "wiki/ru/QR-Code-Output-ru.md": [
@@ -605,6 +609,28 @@
     {
       "hash": "cf759131b1bd3d2767bfcd5a1a2ef5a4b9800cfc169312459462eef0b9f378b4",
       "index": 1
+    }
+  ],
+  "wiki/ru/_Sidebar.md": [
+    {
+      "hash": "3b95bc027de46a449282efcd87aa9486e775c69a8da61c197ec40f6466452c69",
+      "index": 0
+    },
+    {
+      "hash": "073a5b8b12891271ff1a7bc6c8f641b8069c81fc43be56db302f93b380cc93ca",
+      "index": 1
+    },
+    {
+      "hash": "d63bb324b9392d921bd1cbd0ede02cd89c155abfa1bf6dbbc96c9632cb8ebe3b",
+      "index": 2
+    },
+    {
+      "hash": "c7859971ce830c67ef9b9f86e015ad556503a0a29f76339a4e90fe89333f4e7b",
+      "index": 3
+    },
+    {
+      "hash": "042a64969be3dfb9b8aa8218991d56ed530c3c77ae82944960b9111115483668",
+      "index": 4
     }
   ]
 }
