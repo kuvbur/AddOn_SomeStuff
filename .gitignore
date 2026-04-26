@@ -371,5 +371,6 @@ Build/
 Build_[0-9][0-9]/
 Sources/AddOnResources/RINT/AddOn.grc
 /Sources/AddOnResources/RINT/AddOn.grc
-wiki/tools/.env
+Tools/build_ac.bat
 wiki/tools/test_compare.py
+wiki/tools/.env

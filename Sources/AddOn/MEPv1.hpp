@@ -2,31 +2,35 @@
 #pragma once
 #ifndef MEPV1_HPP
 #define MEPV1_HPP
-#if defined(AC_27) || defined(AC_28)
-#include "CommonFunction.hpp"
-#include "Definitions.hpp"
-#include "Helpers.hpp"
-// ACAPI
-
-#include "ACAPI/Result.hpp"
-
-// MEPAPI
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
 #include "ACAPI/MEPAdapter.hpp"
 #include "ACAPI/MEPElement.hpp"
 #include "ACAPI/MEPModifiableElement.hpp"
-#include "ACAPI/MEPPort.hpp"
-#include "ACAPI/MEPVentilationPort.hpp"
 #include "ACAPI/MEPPipingPort.hpp"
-#include "ACAPI/MEPRoutingElement.hpp"
-#include "ACAPI/MEPRoutingElementDefault.hpp"
-#include "ACAPI/MEPRoutingSegment.hpp"
-#include "ACAPI/MEPRoutingSegmentDefault.hpp"
+#include "ACAPI/MEPPort.hpp"
 #include "ACAPI/MEPRigidSegment.hpp"
 #include "ACAPI/MEPRigidSegmentDefault.hpp"
+#include "ACAPI/MEPRoutingElement.hpp"
+#include "ACAPI/MEPRoutingElementDefault.hpp"
 #include "ACAPI/MEPRoutingNode.hpp"
 #include "ACAPI/MEPRoutingNodeDefault.hpp"
+#include "ACAPI/MEPRoutingSegment.hpp"
+#include "ACAPI/MEPRoutingSegmentDefault.hpp"
+#include "ACAPI/MEPVentilationPort.hpp"
+#include "ACAPI/Result.hpp"
+#include "CommonFunction.hpp"
+#include "Definitions.hpp"
+#include "Helpers.hpp"
+#include "Propertycache.hpp"
+#if defined (AC_29)
+#include "ACAPI/MEPElbow.hpp"
+#include "ACAPI/MEPElbowDefault.hpp"
+#include "ACAPI/MEPSystemGroup.hpp"
+#include "ACAPI/MEPPhysicalSystem.hpp"
+#else
 #include "ACAPI/MEPBend.hpp"
 #include "ACAPI/MEPBendDefault.hpp"
+#endif
 #include "ACAPI/MEPTransition.hpp"
 #include "ACAPI/MEPTransitionDefault.hpp"
 #include "ACAPI/MEPBranch.hpp"
@@ -73,13 +77,14 @@
 #include <ACAPI/MEPEnums.hpp>
 #endif
 
+
 namespace MEPv1
 {
 void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 
 bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
-#if defined (AC_28)
+#if defined (AC_28) || defined(AC_29)
 bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
 bool ReadTransitionData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& transtableID, double& bdiametr, double& ediametr);
 bool ReadRoutingElementData (const ACAPI::MEP::UniqueID& elementID, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::UniqueID& branchtableID);

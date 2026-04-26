@@ -15,4 +15,6 @@
 #define ID_ADDON_STRINGS_ENG	33501
 #define ID_ADDON_DLG_ENG		33600
 
+#define ID_ADDON_RULE_DLG       32590
+
 #endif

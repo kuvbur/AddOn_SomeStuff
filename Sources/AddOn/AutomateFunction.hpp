@@ -6,7 +6,6 @@
 #include	"Sector2DData.h"
 namespace AutoFunc
 {
-
 // Структура с отрезками для создания 3д документов
 struct SSectLine
 {

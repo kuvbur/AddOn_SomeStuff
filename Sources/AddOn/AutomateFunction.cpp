@@ -7,7 +7,6 @@
 #include	"Model3D/model.h"
 namespace AutoFunc
 {
-
 // -----------------------------------------------------------------------------
 // Ищет в массиве отрезок, начало или конец которого находятся возле точки start
 // Возвращает индекс inx элемента в массиве, если точка была концом отрезка - поднимает флаг isend
@@ -610,9 +609,9 @@ void ProfileByLine ()
         }
         double koeff = 0.2;
         double depth = 0.01;
-        if (id.Contains ("@")) {
-            GS::Array<GS::UniString> sr;
-            UInt32 nsr = StringSplt (id, "@", sr);
+        if (id.Contains (ATSIGN)) {
+            GS::Array<GS::UniString> sr = {};
+            UInt32 nsr = StringSplt (id, ATSIGN, sr);
             if (nsr > 1) {
                 double x;
                 if (UniStringToDouble (sr[1], x)) {

@@ -1,5 +1,7 @@
 # List of All Available Commands
 
+
+
 ## Synchronization Control Flags
 
 Properties of the "Criteria" type (boolean) control the synchronization of element properties. A formula can be used in this property, for example, to disable synchronization for elements on a specific layer. Disabling synchronization may be necessary to improve performance or to allow manual property input.
@@ -167,21 +169,21 @@ Coordinate checking can be disabled in two ways: by disabling synchronization co
 | `Sync_from{Morph:Min_x}`, `Sync_from{Morph:Min_y}`, `Sync_from{Morph:Min_z}` | Minimum coordinates along the axes                      |
 | `Sync_from{Morph:A}`, `Sync_from{Morph:B}`, `Sync_from{Morph:ZZYZX}`         | Bounding box dimensions (analogous to library elements) |
 
-### [Construction Composition Processing](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Construction-Composition-en)
+### [Construction Composition Processing](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Construction-Composition-ru)
 
-_v1.72+_ To include user-defined properties of a building material, add `{@property:buildingmaterialproperties}` to the description.
+_v1.72+_ To include user-defined building material properties, add `{@property:buildingmaterialproperties}` to the description.
 
-| Command                                             | Description                                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `Sync_from{Material:Layers; "TEMPLATE"}`            | Outputs the layer composition of the construction                               |
-| `Sync_from{Material:Layers,PEN_NUMBER; "TEMPLATE"}` | Composition of the profile at the intersection with the pen line _<br>(v1.6)_   |
-| `Sync_from{Material:Layers_inv; "TEMPLATE"}`        | Outputs layers in reverse order _<br>(v1.70)_                                   |
-| `Sync_from{Material:Layers_auto; "TEMPLATE"}`       | Auto-detects layer order (as in preview) _<br>(v1.70)_                          |
-| `Sync_from{Material:Layers; "TEMPLATE <FORMULA>"}`  | Output with calculation of expressions inside `<>` _<br>(v1.72)_                |
-| `Sync_from{Material:Layers,all; "TEMPLATE"}`        | Outputs all layers of the construction (auto-detects thicknesses) _<br>(v1.77)_ |
-| `Sync_from{Material:Layers,unic; "TEMPLATE"}`       | Outputs unique layers (merges identical materials) _<br>(v1.77)_                |
+| Command                                           | Description                                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------ |
+| `Sync_from{Material:Layers; "TEMPLATE"}`            | Outputs the layer composition of the construction.                                          |
+| `Sync_from{Material:Layers,PEN_NUMBER; "TEMPLATE"}` | Composition of the profile at the intersection with the pen line _<br>(v1.6)_            |
+| `Sync_from{Material:Layers_inv; "TEMPLATE"}`        | Outputs layers in reverse order _<br>(v1.70)_                             |
+| `Sync_from{Material:Layers_auto; "TEMPLATE"}`       | Automatically determines layer order (as in preview) _<br>(v1.70)_        |
+| `Sync_from{Material:Layers; "TEMPLATE <FORMULA>"}`  | Output with calculation of expressions inside `<>` _<br>(v1.72)_                  |
+| `Sync_from{Material:Layers,all; "TEMPLATE"}`        | Outputs all layers of the construction (automatic thickness determination) _<br>(v1.77)_      |
+| `Sync_from{Material:Layers,unic; "TEMPLATE"}`       | Outputs unique layers (merges identical materials) _<br>(v1.77)_ |
 
-> For user-defined material properties, add `{@property:buildingmaterialproperties}` to the description
+> For user-defined material properties, add `{@property:buildingmaterialproperties}` to the description.
 
 ### Changing the Element Layer _v1.72+_
 
@@ -214,37 +216,46 @@ Processes pipes, ducts, transitions, bends, and routes.
 | `Sync_from{MEP:physical system name}` | _v1.78+_ System name in the MEP Systems Browser |
 | `Sync_from{MEP:physical system group name}` | _v1.78+_ System group name in the MEP Systems Browser |
 
-### [Element Classification](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Automatic-Element-Classification-en) _v1.72+_
+### [Element Classification](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Automatic-Element-Classification-ru) _v1.72+_
 
 - Enable classification for unclassified elements - add `some_stuff_class` to the class description.
 
-- `Sync_to{Class:CLASSIFICATION_NAME}` Text property. Search is performed by class Id.
+- `Sync_to{Class:CLASSIFICATION_NAME}` Text property. Search is performed by Class Id.
 
 - `Sync_from{Class:CLASSIFICATION_NAME; FullName}` - outputs the full class name
 
-## [Synchronization of Hierarchical Structure Properties (Curtain Wall, Elements in Zone)](https://github.com/kuvbur/AddOn_SomeStuff/wiki/LinkPropertyByGUID-en)
+### Reading Files _v1.78+_
 
-Similar to synchronization within a single element, with the addition of the \*sub suffix. For example, `Sync_from_sub{Property:GROUP_NAME/PROPERTY_NAME}` written in a Curtain Wall will read the property from a nested element (panel, frame, accessory). Similarly, `Sync_to_sub{Property:GROUP_NAME/PROPERTY_NAME}` works.
+This function allows working with tabular data in txt/csv format loaded into the library.
+
+| Command                                                                                                                                     | Description                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Sync_from {File:LOOKUP; "FILE_NAME", RETURN_COLUMN_NUMBER, Property:PROPERTY_NAME, SEARCH_COLUMN_NUMBER}`                            | Searches the loaded file for the property value in the specified search column and returns the corresponding value from the given return column. This function is analogous to the LOOKUP function in Microsoft Excel and allows extracting data from an external file based on matching an element's property value. |
+| `Sync_from { File:LOOKUP; Property:PROPERTY_NAME_WITH_FILE_NAME, RETURN_COLUMN_NUMBER, Property:PROPERTY_NAME, SEARCH_COLUMN_NUMBER }` | Similar to the previous function, but the file name is specified in a separate property. Allows changing the search file based on formulas.                                                                                                                                                                        |
+
+## [Synchronization of Hierarchical Structure Properties (Curtain Wall, Elements in Zone)](https://github.com/kuvbur/AddOn_SomeStuff/wiki/LinkPropertyByGUID-ru)
+
+Similar to synchronization within a single element, with the addition of the *sub suffix. For example, `Sync_from_sub{Property:GROUP_NAME/PROPERTY_NAME}`, written in a Curtain Wall, will read the property from a nested element (panel, frame, accessory). Similarly, `Sync_to_sub{Property:GROUP_NAME/PROPERTY_NAME}` works.
 
 ## Reset Property Value to Default
 
-- `Sync_reset` - Resets the property everywhere - in placed elements, in favorites, on layouts - everywhere. Synchronization of the reset property is disabled while `Sync_reset` is present in the description. _Does not work in AC27 version_
+- `Sync_reset` - Resets the property everywhere - in placed elements, in favorites, on layouts - everywhere. Synchronization of the reset property is disabled while `Sync_reset` is present in the description. *Does not work in AC27...29 versions*
 
-## [Dimension Rounding](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Dimension-Functions-en)
+## [Dimension Rounding](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Dimension-Functions-ru)
 
-Create a field named `Addon_Dimensions` in the Project Info. Enter the rules into it. The rule separator is a semicolon.
+Create a field named `Addon_Dimensions` in the project information. Enter the rules into it. The rule separator is a semicolon.
 
-- `"LAYER" - MULTIPLE_MM, CHANGED_TEXT_PEN, CONTENT_CHANGE_FLAG`
+- `"LAYER" - MULTIPLE_MM, CHANGED_TEXT_PREFIX, CONTENT_CHANGE_FLAG`
 
-- `"LAYER" - MULTIPLE_MM, CHANGED_TEXT_PEN, <FORMULA>`
+- `"LAYER" - MULTIPLE_MM, CHANGED_TEXT_PREFIX, <FORMULA>`
 
-- `"LAYER" - MULTIPLE_MM, CHANGED_TEXT_PEN, CONTENT_CHANGE_FLAG, <FORMULA>`
+- `"LAYER" - MULTIPLE_MM, CHANGED_TEXT_PREFIX, CONTENT_CHANGE_FLAG, <FORMULA>`
 
-- `DIMENSION_PEN - MULTIPLE_MM, CHANGED_TEXT_PEN, CONTENT_CHANGE_FLAG`
+- `DIMENSION_PREFIX - MULTIPLE_MM, CHANGED_TEXT_PREFIX, CONTENT_CHANGE_FLAG`
 
-- `DIMENSION_PEN - MULTIPLE_MM, CHANGED_TEXT_PEN, <FORMULA>`
+- `DIMENSION_PREFIX - MULTIPLE_MM, CHANGED_TEXT_PREFIX, <FORMULA>`
 
-- `DIMENSION_PEN - MULTIPLE_MM, CHANGED_TEXT_PEN, CONTENT_CHANGE_FLAG, <FORMULA>`
+- `DIMENSION_PREFIX - MULTIPLE_MM, CHANGED_TEXT_PREFIX, CONTENT_CHANGE_FLAG, <FORMULA>`
 
 ## [Renumbering](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Element-Renumbering-ru)
 
@@ -252,11 +263,11 @@ Create a field named `Addon_Dimensions` in the Project Info. Enter the rules int
 
 Elements with identical values of the criterion property are assigned identical numbers (positions). Renumbering is performed only upon manual execution of the function.
 
-_v1.74_ If only one element is selected, all elements on visible layers for which the selected element's renumbering rules are applicable will be processed.
+_v1.74_ If only one element is selected, all elements on visible layers for which the selected element's renumbering rules are available will be processed.
 
 After renumbering, synchronization of the selected elements is automatically launched.
 
-**Flag for enabling renumbering in one of the following formats**
+**Flag for enabling renumbering in one of the formats**
 
 - `Renum_flag{property name with rule}`
 
@@ -266,7 +277,7 @@ After renumbering, synchronization of the selected elements is automatically lau
 
 - `Renum_flag{property name with rule ; ALLNULL}`
 
-**Position rule property in one of the following formats**
+**Rule property for position in one of the formats**
 
 - `Renum{criterion property name}`
 
@@ -276,19 +287,19 @@ After renumbering, synchronization of the selected elements is automatically lau
 
 [Example file for AC25](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/files/%D0%A1%D1%83%D0%BC%D0%BC%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5_%D0%90%D0%A125.pln)
 
-Values of properties are summed for elements sharing the same criterion property. Summation is performed only upon manual execution of the function.
+Values of properties are summed for elements with the same criterion property. Summation is performed only when the function is manually executed.
 
 Numerical values are summed; text values are concatenated, including only unique values. The default separator is a semicolon.
-A summation flag is not required; values from all selected elements are summed. After summation, synchronization of the selected elements is automatically initiated.
+A summation flag is not required; values of all selected elements are summed. After summation, synchronization of the selected elements is automatically launched.
 
-_v1.74_ If only one element is selected, all elements on visible layers for which the summation rules of the selected element are applicable will be processed.
+_v1.74_ If only one element is selected - all elements from visible layers, for which the summation rules of the selected element are available, will be processed.
 
-- `Sum{Property:GROUP_NAME/SUMMATION_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME}`
+- `Sum{Property:GROUP_NAME/SUMMED_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME}`
 
-- `Sum{Property:GROUP_NAME/SUMMATION_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME; separator}` to specify a separator other than ;
+- `Sum{Property:GROUP_NAME/SUMMED_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME; separator}` to specify a separator other than ;
 
-- `Sum{Property:GROUP_NAME/SUMMATION_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME; max}` - outputs the maximum value, for numerical properties _v1.72+_
+- `Sum{Property:GROUP_NAME/SUMMED_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME; max}` - outputs the maximum value, for numerical properties _v1.72+_
 
-- `Sum{Property:GROUP_NAME/SUMMATION_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME; min}` - outputs the minimum value, for numerical properties _v1.72+_
+- `Sum{Property:GROUP_NAME/SUMMED_PROPERTY_NAME; Property:GROUP_NAME/CRITERION_PROPERTY_NAME; min}` - outputs the minimum value, for numerical properties _v1.72+_
   ![Summation example](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/sum-ru.PNG)
   ![Summation example](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/image/sum_2-ru.PNG)
