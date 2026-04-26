@@ -1156,6 +1156,9 @@ bool ParamHelpers::CheckIgnoreVal (const SkipValues& ignorevals, const ParamValu
 
 // --------------------------------------------------------------------
 // Сопоставляет параметры
+// 
+// is_ignore - параметр содержит игнорируемое значение
+// is_eq - параметры сопоставимы и равны, оба валидны
 // --------------------------------------------------------------------
 bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore, bool& is_eq)
 {
@@ -1173,8 +1176,11 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
     if (paramFrom.fromClassification && paramTo.fromClassification && paramFrom.val.guidval != APINULLGuid) {
         DBtest (paramFrom.val.guidval == APINULLGuid, paramFrom.rawName + " paramTo.fromClassification && paramFrom.val.guidval == APINULLGuid");
     }
-    #endif
-    if (!paramFrom.isValid) return false;
+    #endif 
+    if (!paramFrom.isValid) {
+        if (ignorevals.reset_to_def) is_ignore = true;
+        return false;
+    }
     if (paramFrom.fromClassification && paramTo.fromClassification && paramFrom.val.guidval == APINULLGuid) {
         return false;
     }
@@ -1210,7 +1216,7 @@ bool ParamHelpers::CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo
             return false;
         }
         //Сопоставляем и записываем, если значения отличаются
-        if (!(paramFrom == paramTo)) {
+        if (paramFrom != paramTo) {
             paramTo.val = paramFrom.val; // Записываем только значения
             paramTo.isValid = true;
             return true;
@@ -5743,9 +5749,6 @@ bool ParamHelpers::ReadElementValues (const API_Element& element, ParamDictValue
 // -----------------------------------------------------------------------------
 // Обработка свойств с поиском в файлах
 // -----------------------------------------------------------------------------
-//Sync_from { File:LOOKUP; "ИМЯ_ФАЙЛА", НОМЕР_ВОЗВРАЩАЕМОГО_СТОЛБЦА, Property:ИМЯ_СВОЙСТВА, НОМЕР_СТОЛБЦА_ПОИСКА }
-//
-//Sync_from { File:LOOKUP; Property:ИМЯ_СВОЙСТВА_С_ИМЕНЕМ_ФАЙЛА, НОМЕР_ВОЗВРАЩАЕМОГО_СТОЛБЦА, Property : ИМЯ_СВОЙСТВА, НОМЕР_СТОЛБЦА_ПОИСКА }
 void ParamHelpers::ReadFile (ParamDictValue& params)
 {
     #if defined(TESTING)
@@ -5838,7 +5841,6 @@ void ParamHelpers::ReadFile (ParamDictValue& params)
                 break;
             }
         }
-        param.isValid = true;
     }
     return;
 }

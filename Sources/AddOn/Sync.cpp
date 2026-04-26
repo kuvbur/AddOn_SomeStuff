@@ -692,6 +692,7 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
                     if (!property_write_guid.ContainsKey (paramTo.definition.guid)) property_write_guid.Add (paramTo.definition.guid, paramTo.rawName);
                 }
             }
+            // Т.к. у свойства может быть несколько описаний, в том числе с разными правилами синхронизации, то если хотя бы в одном описании есть указание на игнорирование - будем проверять необходимость сброса
             if (is_eq && !is_ignore) {
                 if (reset_property.ContainsKey (elemGuid)) {
                     ParamDict& res = reset_property.Get (elemGuid);
@@ -1217,7 +1218,9 @@ bool SyncString (const  API_ElemTypeID& elementType, GS::UniString rulestring_on
     if (syncdirection == SYNC_NO) return false;
     GS::UniString paramNamePrefix = "";
     bool synctypefind = false;
-
+    rulestring_one.ReplaceAll (LINEBRAKE, EMPTYSTRING);
+    rulestring_one.ReplaceAll (LINEBRAKER, EMPTYSTRING);
+    rulestring_one.ReplaceAll (TABSTRING, EMPTYSTRING);
     //Выбор типа копируемого свойства
     //Я не очень понял - умеет ли с++ в ленивые вычисления, поэтому сделаю вложенные условия, чтобы избежать ненужного поиска по строке
     if (rulestring_one.Contains ("{symb_pos_")) {
@@ -1818,7 +1821,7 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.type, &parentelement.header.guid)) {
         return;
-    }
+}
     #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
         return;
@@ -1927,9 +1930,9 @@ bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<A
                     has_element = true;
                 }
                 if (flag_write) break;
-            }
         }
     }
+}
     return has_element;
 }
 
@@ -2077,9 +2080,9 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
                     msg_rep ("ShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
                 }
-            }
+}
             selNeigs.PushNew (guid);
-        }
+}
     }
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
@@ -2136,7 +2139,7 @@ void SyncShowSubelement (const SyncSettings& syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -2296,8 +2299,8 @@ bool SyncGetSubelement (const GS::Array<API_Guid>& guidArray, UnicGuidByGuid& pa
                     }
                 }
             }
-        }
     }
+}
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
 }
@@ -2328,7 +2331,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>& guidArray, ParamDictEle
                 }
             }
         }
-    }
+}
     if (paramDict.IsEmpty ()) return false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guidArray[i], paramDict, paramToRead);
