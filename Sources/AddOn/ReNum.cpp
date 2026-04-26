@@ -58,7 +58,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     bool rule_from_one = (guidArray.GetSize () == 1);
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
     if (!GetRuleFromSelected (guidArray, rule_definitions, RENUMFLAG, false)) {
-        msg_rep ("ReNumSelected", "No Num rule found. Check that the description of the user property contains Renum_flag", NoError, APINULLGuid);
+        msg_rep ("ReNumSelected", "No Num rule found.\nCheck that the description of the user property contains Renum_flag", NoError, APINULLGuid, true);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
         #else
@@ -66,7 +66,6 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         #endif
         return NoError;
     }
-
     ParamDictElement paramToWriteelem = {};
     if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions, rule_from_one)) {
         msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
@@ -128,7 +127,7 @@ bool RenumDG (Rules& renum_rules, bool& rule_from_one)
         if (rules.qty_elements.ContainsKey (rule.rule_name)) continue;
         rules.rules.Add (rule.rule_name, true);
         rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elemts.GetSize ()));
-    }
+}
     rules.is_warn = rule_from_one;
     rules.titleResID = UndoReNumId;
     RuleSelectDialog dialog (rules);
@@ -211,7 +210,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
             s.ReplaceAll (BRACEEND, EMPTYSTRING);
             s.ReplaceAll (":", " : ");
             out.Append (s); out.Append (LINEBRAKE);
-        }
+}
         msg_rep ("ReNumSelected", "Can't find property, check name: " + out, APIERR_GENERAL, APINULLGuid);
         GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 71, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString + out, true);

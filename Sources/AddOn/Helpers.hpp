@@ -414,7 +414,7 @@ bool Write (const API_Guid& elemGuid, ParamDictValue& params);
 // --------------------------------------------------------------------
 // Запись ParamDictElement в информацию о проекте
 // --------------------------------------------------------------------
-void InfoWrite (ParamDictElement& paramToWrite);
+void WriteInfo (ParamDictElement& paramToWrite);
 
 // --------------------------------------------------------------------
 // Смена классификации

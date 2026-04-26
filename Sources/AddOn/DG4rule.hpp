@@ -10,6 +10,7 @@ struct RuleSelectData
 {
     GS::HashTable<GS::UniString, bool> rules;
     GS::HashTable<GS::UniString, GS::UniString> qty_elements;
+    GS::HashTable<GS::UniString, Gfx::Color> color;
     Int32 titleResID = 0;
     bool is_warn = false;
 };

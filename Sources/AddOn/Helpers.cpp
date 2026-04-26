@@ -64,6 +64,19 @@ bool GetRuleFromSelected (GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid
             GetRuleFromSelected (elemGuid, definitions, name, check_bracket);
         }
     }
+    UnicGuid unguid = {};
+    for (const auto& guid : guidArray) {
+        if (!unguid.ContainsKey (guid)) unguid.Add (guid, true);
+    }
+    guidArray.Clear ();
+    for (const auto& cIt : unguid) {
+        #if defined(AC_28) || defined(AC_29)
+        const API_Guid guid = cIt.key;
+        #else
+        const API_Guid guid = *cIt.key;
+        #endif
+        guidArray.PushNew (guid);
+    }
     return (!definitions.IsEmpty ());
 }
 
@@ -75,6 +88,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     #if defined(AC_22)
     return;
     #else
+    UnicGuid unguid = {};
     GSErrCode err = NoError;
     for (const auto& cIt : definitions) {
         #if defined(AC_28) || defined(AC_29)
@@ -3349,7 +3363,7 @@ bool ParamHelpers::Write (const API_Guid& elemGuid, ParamDictValue& params)
 // --------------------------------------------------------------------
 // Запись ParamDictValue в автотекст
 // --------------------------------------------------------------------
-void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
+void ParamHelpers::WriteInfo (ParamDictElement& paramToWrite)
 {
     if (paramToWrite.IsEmpty ()) return;
     clock_t start, finish;
@@ -3377,7 +3391,7 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
     }
     if (paramsinfo.IsEmpty ()) return;
     #if defined(TESTING)
-    DBprnt ("InfoWrite start");
+    DBprnt ("WriteInfo start");
     #endif
     GSErrCode err = NoError;
     for (GS::HashTable<GS::UniString, GS::UniString>::PairIterator cIt = paramsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -3393,12 +3407,12 @@ void ParamHelpers::InfoWrite (ParamDictElement& paramToWrite)
         #else
         err = ACAPI_Goodies (APIAny_SetAnAutoTextID, &dbKey, &value);
         #endif
-        if (err != NoError) msg_rep ("InfoWrite", "APIAny_SetAnAutoTextID", err, APINULLGuid);
+        if (err != NoError) msg_rep ("WriteInfo", "APIAny_SetAnAutoTextID", err, APINULLGuid);
     }
     finish = clock ();
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
-    msg_rep ("InfoWrite", "write " + time, NoError, APINULLGuid);
+    msg_rep ("WriteInfo", "write " + time, NoError, APINULLGuid);
 }
 
 
@@ -6946,6 +6960,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_PropertyD
     ParamHelpers::ConvertToParamValue_CheckAttrib (pvalue, definition);
     pvalue.fromProperty = true;
     if (!pvalue.fromAttribDefinition) pvalue.fromPropertyDefinition = true;
+    pvalue.val.type = definition.valueType;
+    pvalue.type = definition.valueType;
     pvalue.definition = definition;
     return true;
 }
@@ -7041,7 +7057,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     pvalue.isValid = true;
     pvalue.fromAttribElement = true;
     return true;
-}
+    }
 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
@@ -7276,7 +7292,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         ParamComposite& c = *cIt->value;
         #endif
         c.composite = param_composite.composite;
-    }
+}
     return true;
 }
 
@@ -7305,7 +7321,7 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
         ParamValueComposite c = *cIt->value;
         #endif
         p.Push (c);
-    }
+}
     composite.Clear ();
     composite = p;
     return;
@@ -7399,7 +7415,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         segment.Add (pen, segments);
         ParamComposite p = {};
         param_composite.Add (pen, p);
-    }
+}
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
     #endif
@@ -7502,8 +7518,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-        }
-    }
+                }
+            }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = { -10000, 0 };
@@ -7629,16 +7645,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
-                            }
                         }
-                    } else {
+                }
+        } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-                }
+    }
                 break;
-        }
+    }
         ++profileDescriptionIt1;
     }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
@@ -7892,7 +7908,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         p.hasFormula = param.val.hasFormula;
         p.fromQuantity = param.fromQuantity;
         paramcomposite.Add (param.rawName, p);
-    }
+}
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramcomposite.IsEmpty () && (structtype == API_BasicStructure || structtype == API_CompositeStructure)) {
@@ -8130,7 +8146,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         }
         API_PropertyDefinition definition = param.definition;
         if (!definition.name.Contains (CharENTER) && definition.guid != APINULLGuid) propertyDefinitions.Push (definition);
-    }
+}
     #ifndef AC_22
     if (propertyDefinitions.IsEmpty ()) return flag_find;
     GS::Array<API_Property> properties = {};
