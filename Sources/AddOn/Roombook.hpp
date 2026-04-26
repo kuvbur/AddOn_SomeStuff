@@ -29,6 +29,8 @@ typedef GS::HashTable<API_Guid, UnicGuidByTypeOtd> UnicGuidByBase;
 const double min_dim = 0.0001; // Минимальный размер элемента
 const double otd_thickness = 0.001;
 
+static const GS::UniString IGNORENAME = "----";
+
 struct ClassOtd
 {
     const GS::UniString otdwall_class = "some_stuff_fin_walls";
@@ -212,9 +214,9 @@ typedef GS::HashTable<GS::UniString, ColumnFormat> ColumnFormatDict;
 // -----------------------------------------------------------------------------
 void RoomBook ();
 
-GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, ClassificationFunc::ClassificationDict& finclass, ParamDictValue& propertyParams, bool& has_base_element);
+GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid>& zones, const UnicGuid& finclassguids, const ClassificationFunc::ClassificationDict& finclass, bool& has_base_element, UnicGuid& reserv_elements);
 
-UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>& otd_elements, ParamDictValue& propertyParams, bool& has_base_element);
+UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd>& otd_elements, bool& has_base_element);
 
 void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString& rawname, ColumnFormatDict& columnFormat);
 
@@ -237,7 +239,7 @@ double OtdWall_GetArea (const OtdWall& otdw);
 // -----------------------------------------------------------------------------
 // Получение информации из зоны о полгионах и находящейся в ней элементах
 // -----------------------------------------------------------------------------
-bool CollectRoomInfo (const Stories& storyLevels, API_Guid& zoneGuid, OtdRoom& roominfo, UnicElementByType& elementToRead, GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone);
+bool CollectRoomInfo (const Stories& storyLevels, const API_Guid& zoneGuid, OtdRoom& roominfo, UnicElementByType& elementToRead, GS::HashTable<API_Guid, GS::Array<API_Guid>>& slabsinzone);
 
 
 // -----------------------------------------------------------------------------
@@ -272,13 +274,13 @@ void Floor_FindInOneRoom (const Stories& storyLevels, API_Guid& elGuid, GS::Arra
 // -----------------------------------------------------------------------------
 // Подготовка словаря с параметрами для чтения из стен/колонн/балок
 // -----------------------------------------------------------------------------
-void Param_GetForBase (ParamDictValue& propertyParams, ParamDictValue& paramDict, ParamValue& param_composite);
+void Param_GetForBase (ParamDictValue& paramDict, ParamValue& param_composite);
 
 void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>& material_dict, OtdRoom& roominfo, ParamDictElement& paramToRead, ReadParams readparams);
 
-bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamValue& param_composite, GS::UniString& fav_name);
+bool Param_SetToBase (const API_Guid& base_guid, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, ParamValue& param_composite, GS::UniString& fav_name);
 
-void Param_SetComposite (const ParamValue& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin);
+void Param_SetComposite (const ParamComposite& base_composite, const bool& base_flipped, GS::Array<ParamValueComposite>& otdcpmpoosite, GS::UniString& fav_name, bool has_fin);
 
 // -----------------------------------------------------------------------------
 // Задание прочитанных параметров для окон
@@ -317,9 +319,9 @@ bool OtdWall_Delim_One (OtdWall otdn, GS::Array<OtdWall>& opw, double height, do
 // -----------------------------------------------------------------------------
 void Edges_GetFromRoom (const API_ElementMemo& zonememo, API_Element& zoneelement, GS::Array<Sector>& walledges, GS::Array<Sector>& columnedges, GS::Array<Sector>& restedges, GS::Array<Sector>& gableedges);
 
-void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo, UnicGUIDByType& guidselementToRead, ParamDictElement& paramToRead);
+void Floor_Create_All (const Stories& storyLevels, OtdRoom& roominfo);
 
-void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, ParamDictElement& paramToRead, TypeOtd type, OtdMaterial& material, bool only_on_slab);
+void Floor_Create_One (const Stories& storyLevels, const short& floorInd, OtdSlab& poly, GS::Array<API_Guid>& slabGuids, GS::Array<OtdSlab>& otdslabs, GS::Array<OtdWall>& otdwall, TypeOtd type, OtdMaterial& material, bool only_on_slab);
 
 bool Edge_FindOnEdge (Sector& edge, GS::Array<Sector>& edges, Sector& findedge);
 
@@ -393,7 +395,7 @@ bool Floor_GetDefult_Slab (const GS::UniString& favorite_name, API_Element& slab
 // -----------------------------------------------------------------------------
 // Связывание созданных элементов отделки с базовыми элементами
 // -----------------------------------------------------------------------------
-void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictValue& propertyParams, ParamDictElement& paramToWrite);
+void SetSyncOtdWall (UnicElementByType& subelementByparent, ParamDictElement& paramToWrite);
 
 void Class_SetClass (const OtdWall& op, const ClassificationFunc::ClassificationDict& finclass);
 
@@ -403,12 +405,12 @@ void Class_SetClass (const OtdSlab& op, const ClassificationFunc::Classification
 
 API_Guid Class_GetClassGuid (const TypeOtd& type, const ClassificationFunc::ClassificationDict& finclass);
 
-TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, ClassificationFunc::ClassificationDict& finclass);
+TypeOtd Class_GetOtdTypeByClass (const API_Guid& classguid, const ClassificationFunc::ClassificationDict& finclass);
 
 // -----------------------------------------------------------------------------
 // Поиск классов для отделочных стен (some_stuff_fin_ в описании класса)
 // -----------------------------------------------------------------------------
-void Class_FindFinClass (ClassificationFunc::SystemDict& systemdict, ClassificationFunc::ClassificationDict& findict, UnicGuid& finclassguids);
+void Class_FindFinClass (ClassificationFunc::ClassificationDict& findict, UnicGuid& finclassguids);
 
 bool Class_IsElementFinClass (const API_Guid& elGuid, const UnicGuid& finclassguids, API_Guid& classguid);
 
@@ -418,19 +420,19 @@ void Param_AddUnicGUIDByType (const API_Guid& elGuid, API_ElemTypeID elemtype, U
 
 API_ElemTypeID Favorite_GetType (const GS::UniString& favorite_name);
 MatarialToFavoriteDict Favorite_GetDict ();
-void Favorite_ReadComposite (ParamDictValue& propertyParams, const ParamValue& param_composite, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, const GS::UniString& fav_name);
-void Favorite_FindName (ParamDictValue& propertyParams, MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, ParamValue& param_composite);
+void Favorite_ReadComposite (const ParamValue& param_composite, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, const GS::UniString& fav_name);
+void Favorite_FindName (MatarialToFavorite& favorite, const OtdMaterial& material, const TypeOtd& type, const API_ElemTypeID& draw_type, MatarialToFavoriteDict& favdict, ParamDictValue& paramToRead_favorite, ParamValue& param_composite);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element);
 bool Favorite_GetByName (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo);
 
 void Param_ToParamDict (ParamDictValue& paramDict, ReadParams& zoneparams);
-void Param_Property_FindInParams (ParamDictValue& propertyParams, ReadParams& zoneparams);
+void Param_Property_FindInParams (ReadParams& zoneparams);
 bool Param_Property_Read (const API_Guid& elGuid, ParamDictElement& paramToRead, ReadParams& zoneparams);
 void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>& material_dict, ParamValueData& val);
-ReadParams Param_GetForWindowParams (ParamDictValue& propertyParams);
-ReadParams Param_GetForRooms (ParamDictValue& propertyParams);
+ReadParams Param_GetForWindowParams ();
+ReadParams Param_GetForRooms ();
 
-bool Check (const ClassificationFunc::ClassificationDict& finclass, const ParamDictValue& propertyParams, UnicGuid& finclassguids);
+bool Check (const ClassificationFunc::ClassificationDict& finclass, UnicGuid& finclassguids);
 #endif
 }
 

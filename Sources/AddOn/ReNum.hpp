@@ -2,24 +2,8 @@
 #if !defined(RENUM_HPP)
 #pragma once
 #define RENUM_HPP
-#ifdef AC_25
-#include "APICommon25.h"
-#endif // AC_25
-#ifdef AC_26
-#include "APICommon26.h"
-#endif // AC_26
-#ifdef AC_27
-#include	"APICommon27.h"
-#endif // AC_27
-#ifdef AC_28
-#include "APICommon28.h"
-#endif // AC_28
-#ifdef AC_29
-#include	"APICommon29.h"
-#endif // AC_29
-#include "DG.h"
-#include "Helpers.hpp"
 #include "alphanum.h"
+#include "Helpers.hpp"
 // Типы нумерации (см. RenumElement.state)
 #define RENUM_SKIP -1  // Исключить из обработки
 #define RENUM_IGNORE 0 // Не менять позмцию, но добавлять похожие элементы
@@ -44,8 +28,7 @@ public:
     std::string suffix = ""; // Суффикс
     GSCharCode chcode = GChCode;
     RenumPos ()
-    {
-    }
+    {}
 
     // TODO Добавить парсинг префикса и суффикса позиции
     RenumPos (const ParamValue& param)
@@ -191,6 +174,7 @@ struct RenumRule
     int nullcount = 0;             // Количество нулей, если задано жёское количество
     GS::Array<API_Guid> elemts;	   // Массив элементов
     API_Guid guid = APINULLGuid;   // GUID свойства с правилом
+    GS::UniString rule_name = "";  // Имя свойства-правила для отображения во всплывающем окне
 };
 
 typedef std::map<std::string, RenumElem, doj::alphanum_less<std::string>> Values; // Словарь элементов по критериям
@@ -208,22 +192,13 @@ typedef std::map<std::string, RenumPosDict, doj::alphanum_less<std::string>> DRe
 typedef GS::HashTable<API_Guid, RenumRule> Rules; // Таблица правил
 GSErrCode ReNumSelected (SyncSettings& syncSettings);
 
-// -----------------------------------------------------------------------------------------------------------------------
-// В случае, если выбран только один элемент - обрабатываем ТОЛЬКО правила, видимые у него
-// Функция для сбора правил с элемента
-// -----------------------------------------------------------------------------------------------------------------------
-bool GetRenumRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions);
+bool RenumDG (Rules& renum_rules, bool& rule_from_one);
 
-// -----------------------------------------------------------------------------------------------------------------------
-// Функция для выбора элементов, в которых видимо выбранное свойство
-// -----------------------------------------------------------------------------------------------------------------------
-void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray);
-
-bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions);
+bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions, bool& rule_from_one);
 
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition);
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictValue& propertyParams, ParamDictValue& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname);
+bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname, const GS::Array<API_PropertyDefinition>& definitions);
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos>& eleminpos);
 RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::string& delimetr, const std::string& criteria);
 bool ElementsSeparation (const RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error);

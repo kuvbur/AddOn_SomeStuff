@@ -38,6 +38,7 @@ static const Int32 SetSub_CommandID = 14;
 static const Int32 RoomBook_CommandID = 15;
 static const Int32 Auto3D_CommandID = 16;
 static const Int32 AutoLay_CommandID = 17;
+
 #if defined(AC_28) || defined(AC_29)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 
@@ -51,9 +52,6 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
 
 static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig* selElemNeig);
 #endif
-
-GSErrCode MemSelection (bool read);
-GS::Array<API_Neig>& GetSelectedElements ();
 
 void Do_ElementMonitor (bool& syncMon);
 

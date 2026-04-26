@@ -181,6 +181,8 @@ def GetInstalledVisualStudioGenerator():
     if len(vsWhereOutput) == 0:
         raise Exception('No installed Visual Studio detected!')
     vsVersion = vsWhereOutput[0]['installationVersion'].split('.')[0]
+    if vsVersion == '18':
+        return 'Visual Studio 18 2026'
     if vsVersion == '17':
         return 'Visual Studio 17 2022'
     elif vsVersion == '16':
@@ -208,7 +210,7 @@ def GetProjectGenerationParams(workspaceRootFolder, buildPath, platformName, dev
             toolset = 'v140'
         projGenParams.append(f'-T {toolset}')
     elif platformName == 'MAC':
-        projGenParams.extend(['-G', 'Xcode'])
+        projGenParams.append ('-GXcode')
 
     projGenParams.append(
         f'-DAC_API_DEVKIT_DIR={str (devKitFolder / "Support")}')
