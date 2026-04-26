@@ -106,8 +106,13 @@ void RuleSelectDialog::InitListBox ()
         ListBox.SetTabItemText (DG::ListBox::BottomItem, NameTab, rname);
         if (!rulelist.qty_elements.ContainsKey (rname)) continue;
         ListBox.SetTabItemText (DG::ListBox::BottomItem, QtyTab, rulelist.qty_elements.Get (rname));
-        if (rulelist.is_warn) ListBox.SetTabItemColor (DG::ListBox::BottomItem, QtyTab, Gfx::Color::Red);
-}
+        if (rulelist.color.ContainsKey (rname)) {
+            ListBox.SetTabItemColor (DG::ListBox::BottomItem, NameTab, rulelist.color.Get (rname));
+            ListBox.SetTabItemColor (DG::ListBox::BottomItem, QtyTab, rulelist.color.Get (rname));
+        } else {
+            if (rulelist.is_warn) ListBox.SetTabItemColor (DG::ListBox::BottomItem, QtyTab, Gfx::Color::Red);
+        }
+    }
 }
 
 void RuleSelectDialog::SetIcon (short dwListItem)

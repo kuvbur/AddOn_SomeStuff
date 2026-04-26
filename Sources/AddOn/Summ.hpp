@@ -22,6 +22,9 @@ static const short NumSum = 2;
 static const short MinSum = 3;
 static const short MaxSum = 4;
 
+static const short SumToProperty = 1;
+static const short SumToInfo = 2;
+
 struct SumRule
 {
     GS::UniString position = "";
@@ -30,6 +33,7 @@ struct SumRule
     std::string delimetr = "; ";
     std::string ignore_val = "";
     short sum_type = 0;
+    short write_to = SumToProperty;
     GS::Array <API_Guid> elemts = {};
     GS::UniString rule_name = "";  // Имя свойства-правила для отображения во всплывающем окне
     bool state = true;

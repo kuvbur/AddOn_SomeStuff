@@ -190,7 +190,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                         ParamHelpers::ElementsWrite (paramToWrite);
                     }
                 }
-                ParamHelpers::InfoWrite (paramToWrite);
+                ParamHelpers::WriteInfo (paramToWrite);
             }
         default:
             break;
