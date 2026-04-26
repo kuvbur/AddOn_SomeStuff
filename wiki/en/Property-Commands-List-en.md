@@ -1,7 +1,5 @@
 # List of All Available Commands
 
-
-
 ## Synchronization Control Flags
 
 Properties of the "Criteria" type (boolean) control the synchronization of element properties. A formula can be used in this property, for example, to disable synchronization for elements on a specific layer. Disabling synchronization may be necessary to improve performance or to allow manual property input.
@@ -173,15 +171,15 @@ Coordinate checking can be disabled in two ways: by disabling synchronization co
 
 _v1.72+_ To include user-defined building material properties, add `{@property:buildingmaterialproperties}` to the description.
 
-| Command                                           | Description                                                                 |
-| ------------------------------------------------- | ------------------------------------------------------------------------ |
-| `Sync_from{Material:Layers; "TEMPLATE"}`            | Outputs the layer composition of the construction.                                          |
+| Command                                             | Description                                                                              |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `Sync_from{Material:Layers; "TEMPLATE"}`            | Outputs the layer composition of the construction.                                       |
 | `Sync_from{Material:Layers,PEN_NUMBER; "TEMPLATE"}` | Composition of the profile at the intersection with the pen line _<br>(v1.6)_            |
-| `Sync_from{Material:Layers_inv; "TEMPLATE"}`        | Outputs layers in reverse order _<br>(v1.70)_                             |
-| `Sync_from{Material:Layers_auto; "TEMPLATE"}`       | Automatically determines layer order (as in preview) _<br>(v1.70)_        |
-| `Sync_from{Material:Layers; "TEMPLATE <FORMULA>"}`  | Output with calculation of expressions inside `<>` _<br>(v1.72)_                  |
-| `Sync_from{Material:Layers,all; "TEMPLATE"}`        | Outputs all layers of the construction (automatic thickness determination) _<br>(v1.77)_      |
-| `Sync_from{Material:Layers,unic; "TEMPLATE"}`       | Outputs unique layers (merges identical materials) _<br>(v1.77)_ |
+| `Sync_from{Material:Layers_inv; "TEMPLATE"}`        | Outputs layers in reverse order _<br>(v1.70)_                                            |
+| `Sync_from{Material:Layers_auto; "TEMPLATE"}`       | Automatically determines layer order (as in preview) _<br>(v1.70)_                       |
+| `Sync_from{Material:Layers; "TEMPLATE <FORMULA>"}`  | Output with calculation of expressions inside `<>` _<br>(v1.72)_                         |
+| `Sync_from{Material:Layers,all; "TEMPLATE"}`        | Outputs all layers of the construction (automatic thickness determination) _<br>(v1.77)_ |
+| `Sync_from{Material:Layers,unic; "TEMPLATE"}`       | Outputs unique layers (merges identical materials) _<br>(v1.77)_                         |
 
 > For user-defined material properties, add `{@property:buildingmaterialproperties}` to the description.
 
@@ -226,20 +224,22 @@ Processes pipes, ducts, transitions, bends, and routes.
 
 ### Reading Files _v1.78+_
 
+[Example file for AC25](https://github.com/kuvbur/AddOn_SomeStuff/blob/master/wiki/files/File-Lookup-Function-Example_AC25.pln)
+
 This function allows working with tabular data in txt/csv format loaded into the library.
 
-| Command                                                                                                                                     | Description                                                                                                                                                                                                                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Sync_from {File:LOOKUP; "FILE_NAME", RETURN_COLUMN_NUMBER, Property:PROPERTY_NAME, SEARCH_COLUMN_NUMBER}`                            | Searches the loaded file for the property value in the specified search column and returns the corresponding value from the given return column. This function is analogous to the LOOKUP function in Microsoft Excel and allows extracting data from an external file based on matching an element's property value. |
-| `Sync_from { File:LOOKUP; Property:PROPERTY_NAME_WITH_FILE_NAME, RETURN_COLUMN_NUMBER, Property:PROPERTY_NAME, SEARCH_COLUMN_NUMBER }` | Similar to the previous function, but the file name is specified in a separate property. Allows changing the search file based on formulas.                                                                                                                                                                        |
+| Command                                                                                                                                | Description                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Sync_from {File:LOOKUP; "FILE_NAME", RETURN_COLUMN_NUMBER, Property:PROPERTY_NAME, SEARCH_COLUMN_NUMBER}`                             | Searches the loaded file for the property value in the specified search column and returns the corresponding value from the given return column. This function is analogous to the LOOKUP function in Microsoft Excel and allows extracting data from an external file based on matching an element's property value. |
+| `Sync_from { File:LOOKUP; Property:PROPERTY_NAME_WITH_FILE_NAME, RETURN_COLUMN_NUMBER, Property:PROPERTY_NAME, SEARCH_COLUMN_NUMBER }` | Similar to the previous function, but the file name is specified in a separate property. Allows changing the search file based on formulas.                                                                                                                                                                           |
 
 ## [Synchronization of Hierarchical Structure Properties (Curtain Wall, Elements in Zone)](https://github.com/kuvbur/AddOn_SomeStuff/wiki/LinkPropertyByGUID-ru)
 
-Similar to synchronization within a single element, with the addition of the *sub suffix. For example, `Sync_from_sub{Property:GROUP_NAME/PROPERTY_NAME}`, written in a Curtain Wall, will read the property from a nested element (panel, frame, accessory). Similarly, `Sync_to_sub{Property:GROUP_NAME/PROPERTY_NAME}` works.
+Similar to synchronization within a single element, with the addition of the \*sub suffix. For example, `Sync_from_sub{Property:GROUP_NAME/PROPERTY_NAME}`, written in a Curtain Wall, will read the property from a nested element (panel, frame, accessory). Similarly, `Sync_to_sub{Property:GROUP_NAME/PROPERTY_NAME}` works.
 
 ## Reset Property Value to Default
 
-- `Sync_reset` - Resets the property everywhere - in placed elements, in favorites, on layouts - everywhere. Synchronization of the reset property is disabled while `Sync_reset` is present in the description. *Does not work in AC27...29 versions*
+- `Sync_reset` - Resets the property everywhere - in placed elements, in favorites, on layouts - everywhere. Synchronization of the reset property is disabled while `Sync_reset` is present in the description. _Does not work in AC27...29 versions_
 
 ## [Dimension Rounding](https://github.com/kuvbur/AddOn_SomeStuff/wiki/Dimension-Functions-ru)
 
