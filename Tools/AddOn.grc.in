@@ -5,46 +5,7 @@
 /* [  2] */		"Синхронизация свойств и параметров GDL элементов @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
 }
 
-'STR#' 32500 "Strings for the Menu" {
-/* [ 1] */	"SomeStuff Addon (Sync of properties and parameters)"
-/* [  1] */		"Отслеживать^E3^ES^EE^ED^EW^EL^32602"
-/* [  2] */		"Синхронизировать все^E3^ES^EE^ED^EW^EL^T^32603"
-/* [  3] */		"Синхронизировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32604"
-/* [  4] */		"Обрабатывать стены/перекрытия^E3^ES^EE^ED^EW^EL^32605"
-/* [  5] */		"Обрабатывать окна/двери^E3^ES^EE^ED^EW^EL^32606"
-/* [  6] */		"Обрабатывать объекты/зоны^E3^ES^EE^ED^EW^EL^32607"
-/* [  7] */		"Обрабатывать элементы навесных стен и ограждений^E3^ES^EE^ED^EW^EL^32612"
-/* [  8] */		"Перенумеровать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32608"
-/* [  9] */		"Просуммировать выделенные^E3^ES^EE^ED^EW^EL^S^R^T^32609"
-/* [  10] */	"Запустить скрипт параметров выделенных^E3^ES^EE^ED^EW^EL^S^R^T^32613"
-/* [  11] */	"Создать элементы^E3^32618"
-/* [  12] */	"Показать связанные элементы^ES^E3^S^32617"
-/* [  13] */	"Заполнение изменений на макетах^T^D2^EL^32619"
-/* [  14] */	"Привязать элементы к выделенному^E3^ES^EE^ED^EW^EL^S^R^T^32620"
-/* [  15] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
-}
-
-
-'STR#' 32502 "Strings for the Menu" {
-/* [  ] */	"SomeStuff Addon (Sync of properties and parameters)"
-/* [  1] */		"Отслеживать"
-/* [  2] */		"Синхронизировать все"
-/* [  3] */		"Синхронизировать выделенные"
-/* [  4] */		"Обрабатывать стены/перекрытия"
-/* [  5] */		"Обрабатывать окна/двери"
-/* [  6] */		"Обрабатывать объекты/зоны"
-/* [  7] */		"Обрабатывать элементы навесных стен и ограждений"
-/* [  8] */		"Перенумеровать выделенные"
-/* [  9] */		"Просуммировать выделенные"
-/* [  10] */	"Запустить скрипт параметров выделенных"
-/* [  11] */	"Создать элементы"
-/* [  12] */	"Показать связанные элементы"
-/* [  13] */	"Заполнение изменений на макетах"
-/* [  14] */	"Привязать элементы к выделенному"
-/* [  15] */	"Ведомость отделки"
-}
-
-'STR#' 30500 "Strings for the Menu" {
+'STR#' ID_ADDON_MENU "Strings for the Menu" {
 /* [ 1] */	"SomeStuff Addon (Sync of properties and parameters)"
 /* [  1] */		"Отслеживать^E3^ES^EE^ED^EW^EL^32602"
 /* [  2] */		"Синхронизировать все^E3^ES^EE^ED^EW^EL^T^32603"
@@ -65,7 +26,7 @@
 /* [  17] */	"Выровнять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
-'STR#' 30502 "Strings for the Menu" {
+'STR#' ID_ADDON_PROMT "Strings for the Menu" {
 /* [  ] */	"SomeStuff Addon (Sync of properties and parameters)"
 /* [  1] */		"Отслеживать"
 /* [  2] */		"Синхронизировать все"
@@ -85,7 +46,6 @@
 /* [  16] */	"Построить профиль по линии"
 /* [  17] */	"Выровнять выделенные чертежи"
 }
-
 
 'STR#' ID_ADDON_STRINGS "Add-On Strings" {
 /* [  1] */		"Синхронизация свойств и параметров"
@@ -175,7 +135,7 @@
 /* [  2] */		"Sync of GDL properties and parameters @ADDON_VERSION@ @ADDON_SUBVERSION@ \nhttps://github.com/kuvbur/AddOn_SomeStuff\nkuvbur@gmail.com"
 }
 
-'STR#' 33500 "Strings for the Menu" {
+'STR#' ID_ADDON_MENU_ENG "Strings for the Menu" {
 /* [ 1] */	"Sync of GDL properties and parameters"
 /* [  1] */		"Track^E3^ES^EE^ED^EW^EL^32602"
 /* [  2] */		"Sync all^E3^ES^EE^ED^EW^EL^T^32603"
@@ -192,9 +152,11 @@
 /* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
 /* [  14] */	"Set link to an element^E3^ES^EE^ED^EW^EL^S^R^T^32620"
 /* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
+/* [  16] */	"Build Profile Along Line^E3^ES^EE^ED^EW^EL^S^R^T^32615"
+/* [  17] */	"Align Selected Drawings by Hotspot^E3^ES^EE^ED^EW^EL^S^R^T^32616"
 }
 
-'STR#' 33502 "Strings for the Menu" {
+'STR#' ID_ADDON_PROMT_ENG "Strings for the Menu" {
 /* [  ] */		"Sync of GDL properties and parameters"
 /* [  1] */		"Track"
 /* [  2] */		"Sync all"
@@ -211,51 +173,9 @@
 /* [  13] */	"Process changes on layouts (RU_GOST)"
 /* [  14] */	"Set link to an element"
 /* [  15] */	"Create finishing elements for the zones"
+/* [  16] */	"Build Profile Along Line"
+/* [  17] */	"Align Selected Drawings by Hotspot"
 }
-
-'STR#' 31500 "Strings for the Menu" {
-/* [ 1] */	"Sync of GDL properties and parameters"
-/* [  1] */		"Track^E3^ES^EE^ED^EW^EL^32602"
-/* [  2] */		"Sync all^E3^ES^EE^ED^EW^EL^T^32603"
-/* [  3] */		"Sync the selections^E3^ES^EE^ED^EW^EL^S^R^T^32604"
-/* [  4] */		"Processing walls/slabs^E3^ES^EE^ED^EW^EL^32605"
-/* [  5] */		"Processing windows/doors^E3^ES^EE^ED^EW^EL^32606"
-/* [  6] */		"Processing objects/zones^E3^ES^EE^ED^EW^EL^32607"
-/* [  7] */		"Processing curtain wall and railing elements^E3^ES^EE^ED^EW^EL^32612"
-/* [  8] */		"Renumber the selections^E3^ES^EE^ED^EW^EL^S^R^T^32608"
-/* [  9] */		"Sum the selections^E3^ES^EE^ED^EW^EL^S^R^T^32609"
-/* [  10] */	"Run the script for the parameters of the selections^E3^ES^EE^ED^EW^EL^S^R^T^32613"
-/* [  11] */	"Create subelements^E3^32618"
-/* [  12] */	"Show subelements^ES^E3^S^32617"
-/* [  13] */	"Process changes on layouts (RU_GOST)^T^D2^EL^32619"
-/* [  14] */	"Set link to an element^E3^ES^EE^ED^EW^EL^S^R^T^32620"
-/* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
-/* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
-/* [  17] */	"Выровнять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
-}
-
-
-'STR#' 31502 "Strings for the Menu" {
-/* [ 1] */		"Sync of GDL properties and parameters"
-/* [  1] */		"Track"
-/* [  2] */		"Sync all"
-/* [  3] */		"Sync the selections"
-/* [  4] */		"Processing walls/slabs"
-/* [  5] */		"Processing windows/doors"
-/* [  6] */		"Processing objects/zones"
-/* [  7] */		"Processing curtain wall and railing elements"
-/* [  8] */		"Renumber the selections"
-/* [  9] */		"Sum the selections"
-/* [  10] */	"Run the script for the parameters of the selections"
-/* [  11] */	"Create subelements"
-/* [  12] */	"Show element parents"
-/* [  13] */	"Process changes on layouts (RU_GOST)"
-/* [  14] */	"Set link to an element"
-/* [  15] */	"Create finishing elements for the zones"
-/* [  16] */	"Построить профиль по линии"
-/* [  17] */	"Выровнять выделенные чертежи"
-}
-
 
 'STR#' ID_ADDON_STRINGS_ENG "Add-On Strings" {
 /* [  1] */		"Sync of properties and parameters"
