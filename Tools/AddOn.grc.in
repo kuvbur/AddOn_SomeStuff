@@ -260,14 +260,14 @@
 /* [  80] */ 	"ATTENTION!\nAll elements, for which the rules of the processed properties are applicable, will be processed"
 }
 
-'GDLG'  ID_ADDON_RULE_DLG  Modal | grow         0    0  500  300  "RuleSelect Dialog" {
+'GDLG'  32590  Modal | grow         0    0  500  300  "RuleSelect Dialog" {
 /* [  1] */ Button				  20  265  80   25	   LargePlain  "Chanel"
 /* [  2] */ Button				    400    265  80   25	   LargeBold  "Ok"
 /* [  3] */ MultiSelList		   20   60  470  180	LargePlain  PartialItems VScroll 25 HasHeader 30
 /* [  4] */ CenterText                 20  5  470   45    LargeBold vCenter StaticEdge "Text"
 }
 
-'DLGH'  ID_ADDON_RULE_DLG  DLG_32590_RuleSelect_Dialog {
+'DLGH'  32590  DLG_32590_RuleSelect_Dialog {
 1	""							Button_0
 2	""							Button_1
 3	""							MultiSelList_0
