@@ -581,8 +581,22 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         API_Elem_Head elem_head = {}; BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
-            GS::UniString elemName;
-
+            if (elem_head.hotlinkGuid != APINULLGuid) error_type = error_type + " IN HOTLINK";
+            switch (elem_head.renovationStatus) {
+                case API_UndefinedStatus:
+                    error_type = error_type + " Undefined renovation Status";
+                    break;
+                case API_NewStatus:
+                    error_type = error_type + " New renovation Status";
+                    break;
+                case API_DemolishedStatus:
+                    error_type = error_type + " Demolished renovation Status";
+                    break;
+                default:
+                    break;
+            }
+            if (elem_head.renovationFilterGuid != APINULLGuid) error_type = error_type + " IN renovationFilter";
+            GS::UniString elemName = "";
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
                 #else
@@ -599,6 +613,13 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
+            GS::UniString infoString = "";
+            GSErrCode err = NoError;
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+            if (ACAPI_Element_GetElementInfoString (&elem_head.guid, &infoString) == NoError) error_type = error_type + " ID:" + infoString;
+            #else
+            if (ACAPI_Database (APIDb_GetElementInfoStringID, &elem_head.guid, &infoString) == NoError) error_type = error_type + " ID:" + infoString;
+            #endif
         }
     }
     GS::UniString msg = modulename + ": " + reportString;

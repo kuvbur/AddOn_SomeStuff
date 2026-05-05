@@ -178,9 +178,9 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
     // Суммируем, заполняе словарь для записи
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
-        const SumRule& rule = cIt->value;
+        SumRule& rule = cIt->value;
         #else
-        const SumRule& rule = *cIt->value;
+        SumRule& rule = *cIt->value;
         #endif
         if (!rule.state) continue;
         if (rule.elemts.IsEmpty ()) continue;
@@ -217,36 +217,43 @@ bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<A
         if (!paramtype.value.IsEmpty ()) has_value = ParamHelpers::GetParamValueFromCache (paramtype.value, pvalue_value);
         if (!paramtype.criteria.IsEmpty ()) has_criteria = ParamHelpers::GetParamValueFromCache (paramtype.criteria, pvalue_criteria);
         if (paramtype.write_to == SumToInfo) {
-            GS::HashTable<API_Guid, API_PropertyDefinition> definitions;
+            GS::HashTable<API_Guid, API_PropertyDefinition> definitions = {};
             definitions.Add (definition.guid, definition);
             GS::Array<API_Guid> _guidArray = {};
             GetElementForPropertyDefinition (definitions, _guidArray);
-            for (const auto& elemGuid : _guidArray) {
-                // Дописываем элемент в правило
-                rules.Get (definition.guid).elemts.Push (elemGuid);
-                // Добавляем свойства для чтения в словарь
-                pvalue_position.fromGuid = elemGuid;
-                pvalue_value.fromGuid = elemGuid;
-                pvalue_criteria.fromGuid = elemGuid;
-                if (has_position) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
-                if (has_value) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
-                if (has_criteria) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
+            if (rules.ContainsKey (definition.guid)) {
+                SumRule& rule = rules.Get (definition.guid);
+                for (const auto& elemGuid : _guidArray) {
+                    // Дописываем элемент в правило
+                    rule.elemts.Push (elemGuid);
+                    // Добавляем свойства для чтения в словарь
+                    pvalue_position.fromGuid = elemGuid;
+                    pvalue_value.fromGuid = elemGuid;
+                    pvalue_criteria.fromGuid = elemGuid;
+                    if (has_position) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
+                    if (has_value) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
+                    if (has_criteria) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
+                }
             }
         } else {
-            for (const auto& elemGuid : guidArray) {
-                if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable)) {
-                    msg_rep ("GetSumRuleFromSelected", "Element not editable", NoError, elemGuid);
-                    continue;
+            if (rules.ContainsKey (definition.guid)) {
+                SumRule& rule = rules.Get (definition.guid);
+                for (const auto& elemGuid : guidArray) {
+                    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable)) {
+                        rule.n_ignore += 1;
+                        msg_rep ("GetSumRuleFromSelected", "Element not editable", NoError, elemGuid);
+                        continue;
+                    }
+                    // Дописываем элемент в правило
+                    rule.elemts.Push (elemGuid);
+                    // Добавляем свойства для чтения в словарь
+                    pvalue_position.fromGuid = elemGuid;
+                    pvalue_value.fromGuid = elemGuid;
+                    pvalue_criteria.fromGuid = elemGuid;
+                    if (has_position) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
+                    if (has_value) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
+                    if (has_criteria) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
                 }
-                // Дописываем элемент в правило
-                rules.Get (definition.guid).elemts.Push (elemGuid);
-                // Добавляем свойства для чтения в словарь
-                pvalue_position.fromGuid = elemGuid;
-                pvalue_value.fromGuid = elemGuid;
-                pvalue_criteria.fromGuid = elemGuid;
-                if (has_position) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
-                if (has_value) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
-                if (has_criteria) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
             }
         }
     }
@@ -349,7 +356,7 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     return true;
 } // Sum_Rule
 
-void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem)
+void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem)
 {
     SumCriteria criteriaList;
     GS::UniString delimetr = GS::UniString (rule.delimetr.c_str ());
@@ -373,11 +380,15 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
         for (UInt32 j = 0; j < eleminpos.GetSize (); j++) {
             const API_Guid& elemGuid = rule.elemts[eleminpos[j]];
             const ParamDictValue& params = paramToReadelem.Get (elemGuid);
-            if (!params.ContainsKey (rule.value)) continue;
+            if (!params.ContainsKey (rule.value)) {
+                rule.n_ignore += 1;
+                continue;
+            }
             // Проверяем - было ли считано значение
             const ParamValue& param = params.Get (rule.value);
             if (!param.isValid) {
                 msg_rep ("Sum_OneRule", "Param not valid :" + rule.value, NoError, elemGuid);
+                rule.n_ignore += 1;
                 continue;
             }
             if (rule.write_to == SumToInfo) {
@@ -418,7 +429,10 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
             has_sum = true;
         }
         // Заполнение словаря записи
-        if (!has_sum) continue;
+        if (!has_sum) {
+            rule.n_ignore += 1;
+            continue;
+        }
         // Для конкатенации текста определим уникальные значения
         if (rule.sum_type == TextSum) {
             GS::UniString unic = StringUnic (summ.val.uniStringValue, delimetr);
@@ -439,9 +453,13 @@ void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamD
             if (param != summ) {
                 param.val = summ.val;
                 ParamHelpers::AddParamValue2ParamDictElement (elemGuid, param, paramToWriteelem);
+                rule.n_write += 1;
             }
             // Если нужно записать в информацию о проекте - то достаточно записать один раз, так как свойство для записи будет одинаковое для всех элементов
-            if (rule.write_to == SumToInfo) break;
+            if (rule.write_to == SumToInfo) {
+                rule.n_write = (int) eleminpos.GetSize ();
+                break;
+            }
         }
     }
     return;
