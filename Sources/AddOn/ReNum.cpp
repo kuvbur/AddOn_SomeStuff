@@ -255,9 +255,9 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
-        const RenumRule& rule = cIt->value;
+        RenumRule& rule = cIt->value;
         #else
-        const RenumRule& rule = *cIt->value;
+        RenumRule& rule = *cIt->value;
         #endif
         bool has_error = false;
         if (!rule.elemts.IsEmpty ()) ReNumOneRule (rule, paramToReadelem, paramToWriteelem, has_error);
@@ -505,7 +505,7 @@ RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::st
     return pos;
 }
 
-void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem, bool& has_error)
+void ReNumOneRule (RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem, bool& has_error)
 {
 
     // Рассортируем элементы по разделителю, типу нумерации и критерию.
@@ -665,7 +665,7 @@ void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, Par
     return;
 }
 
-bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error)
+bool ElementsSeparation (RenumRule& rule, const  ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error)
 {
     if (!rule.state) return false;
     #if defined(TESTING)
@@ -686,58 +686,60 @@ bool ElementsSeparation (const RenumRule& rule, const  ParamDictElement& paramTo
             if (!paramflag.isValid) {
                 msg_rep ("ReNumSelected", "Skip element with not valid value in flag: " + rule.flag, APIERR_GENERAL, guid);
                 has_error = true;
-            }
-            state = ReNumGetFlag (paramflag, paramposition);
-
-            // Получаем позицию, если она есть
-            if (paramposition.isValid && state != RENUM_SKIP) {
-                pos = RenumPos (paramposition);
             } else {
-                int hh = 1;
+                state = ReNumGetFlag (paramflag, paramposition);
+            }
+            if (!paramposition.isValid) {
+                msg_rep ("ReNumSelected", "Skip element with not valid position: " + rule.position, APIERR_GENERAL, guid);
+                has_error = true;
+                state = RENUM_SKIP;
+            } else {
+                if (state != RENUM_SKIP) pos = RenumPos (paramposition);
+            }
+        }
+
+        // Получаем разделитель, если он есть
+        std::string delimetr = "";
+        if (params.ContainsKey (rule.delimetr)) {
+            const ParamValue& param = params.Get (rule.delimetr);
+            if (param.isValid) {
+                GSCharCode chcode = GetCharCode (param.val.uniStringValue);
+                delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+            } else {
+                msg_rep ("ReNumSelected", "Skip element with not valid value in delimetr: " + rule.delimetr, APIERR_GENERAL, guid);
+                state = RENUM_SKIP;
+                has_error = true;
+            }
+        }
+
+        // Получаем критерий, если он есть
+        std::string criteria = "";
+        if (params.ContainsKey (rule.criteria)) {
+            const ParamValue& param = params.Get (rule.criteria);
+            if (param.isValid) {
+                if (param.val.uniStringValue.IsEmpty ()) {
+                    msg_rep ("ReNumSelected", "Skip element with empty value in criteria: " + rule.criteria, APIERR_GENERAL, guid);
+                    state = RENUM_SKIP;
+                    has_error = true;
+                } else {
+                    GSCharCode chcode = GetCharCode (param.val.uniStringValue);
+                    criteria = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+                }
+            } else {
+                msg_rep ("ReNumSelected", "Skip element with not valid value in criteria: " + rule.criteria, APIERR_GENERAL, guid);
+                state = RENUM_SKIP;
+                has_error = true;
             }
         }
         if (state != RENUM_SKIP) {
-
-            // Получаем разделитель, если он есть
-            std::string delimetr = "";
-            if (params.ContainsKey (rule.delimetr)) {
-                const ParamValue& param = params.Get (rule.delimetr);
-                if (param.isValid) {
-                    GSCharCode chcode = GetCharCode (param.val.uniStringValue);
-                    delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
-                } else {
-                    msg_rep ("ReNumSelected", "Skip element with not valid value in delimetr: " + rule.delimetr, APIERR_GENERAL, guid);
-                    state = RENUM_SKIP;
-                    has_error = true;
-                }
-            }
-
-            // Получаем критерий, если он есть
-            std::string criteria = "";
-            if (params.ContainsKey (rule.criteria)) {
-                const ParamValue& param = params.Get (rule.criteria);
-                if (param.isValid) {
-                    if (param.val.uniStringValue.IsEmpty ()) {
-                        msg_rep ("ReNumSelected", "Skip element with empty value in criteria: " + rule.criteria, APIERR_GENERAL, guid);
-                        state = RENUM_SKIP;
-                        has_error = true;
-                    } else {
-                        GSCharCode chcode = GetCharCode (param.val.uniStringValue);
-                        criteria = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
-                    }
-                } else {
-                    msg_rep ("ReNumSelected", "Skip element with not valid value in criteria: " + rule.criteria, APIERR_GENERAL, guid);
-                    state = RENUM_SKIP;
-                    has_error = true;
-                }
-            }
-            if (state != RENUM_SKIP) {
-                if (delimetrList.count (delimetr) == 0) delimetrList[delimetr] = {};
-                if (delimetrList[delimetr].count (state) == 0) delimetrList[delimetr][state] = {};
-                if (delimetrList[delimetr][state].count (criteria) == 0) delimetrList[delimetr][state][criteria] = {};
-                delimetrList[delimetr][state][criteria].elements.Push (pos);
-                flag = true;
-            }
+            if (state == RENUM_IGNORE) rule.n_ignore += 1;
+            if (delimetrList.count (delimetr) == 0) delimetrList[delimetr] = {};
+            if (delimetrList[delimetr].count (state) == 0) delimetrList[delimetr][state] = {};
+            if (delimetrList[delimetr][state].count (criteria) == 0) delimetrList[delimetr][state][criteria] = {};
+            delimetrList[delimetr][state][criteria].elements.Push (pos);
+            flag = true;
+        } else {
+            rule.n_skip += 1;
         }
     }
     #if defined(TESTING)
@@ -774,6 +776,7 @@ short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition
             if (isEditable) {
                 return RENUM_NORMAL;
             } else {
+                msg_rep ("ReNumSelected", "Ignore not editable element for rule: " + paramflag.name, NoError, paramflag.fromGuid);
                 return RENUM_IGNORE;
             }
         } else {
@@ -788,8 +791,10 @@ short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition
         if (flag.Contains (txtypenum) || flag.Contains ("skip")) return RENUM_SKIP;
 
         // У нередактируемых элементов нет возможности поменять позицию - просто учтём её
-        if (!isEditable) return RENUM_IGNORE;
-
+        if (!isEditable) {
+            msg_rep ("ReNumSelected", "Ignore not editable element for rule: " + paramflag.name, NoError, paramflag.fromGuid);
+            return RENUM_IGNORE;
+        }
         // Неизменные позиции
         txtypenum = RSGetIndString (iseng, RenumIgnoreID, ACAPI_GetOwnResModule ());
         if (flag.Contains (txtypenum) || flag.Contains ("ignore")) return RENUM_IGNORE;

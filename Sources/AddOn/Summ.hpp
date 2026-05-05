@@ -37,6 +37,8 @@ struct SumRule
     GS::Array <API_Guid> elemts = {};
     GS::UniString rule_name = "";  // Имя свойства-правила для отображения во всплывающем окне
     bool state = true;
+    int n_ignore = 0;
+    int n_write = 0;
 };
 
 typedef GS::HashTable<API_Guid, SumRule> SumRules;
@@ -52,6 +54,6 @@ bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<A
 
 bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype);
 
-void Sum_OneRule (const SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
+void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem);
 
 #endif

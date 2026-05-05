@@ -175,6 +175,9 @@ struct RenumRule
     GS::Array<API_Guid> elemts;	   // Массив элементов
     API_Guid guid = APINULLGuid;   // GUID свойства с правилом
     GS::UniString rule_name = "";  // Имя свойства-правила для отображения во всплывающем окне
+    int n_ignore = 0;
+    int n_skip = 0;
+    int n_write = 0;
 };
 
 typedef std::map<std::string, RenumElem, doj::alphanum_less<std::string>> Values; // Словарь элементов по критериям
@@ -201,7 +204,7 @@ short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition
 bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname, const GS::Array<API_PropertyDefinition>& definitions);
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos>& eleminpos);
 RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::string& delimetr, const std::string& criteria);
-bool ElementsSeparation (const RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error);
-void ReNumOneRule (const RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem, bool& has_error);
+bool ElementsSeparation (RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error);
+void ReNumOneRule (RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem, bool& has_error);
 
 #endif
