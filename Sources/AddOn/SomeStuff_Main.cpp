@@ -139,7 +139,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
     if (elementType == API_ZombieElemID) return NoError;
     if (elementType == API_GroupID) return NoError;
-    if (elementType == API_DimensionID) return NoError;
+    if (elementType == API_DimensionID) {
+
+        return NoError;
+    }
     ParamDictElement paramToWrite = {};
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType)) return NoError;
     bool needresync = false;

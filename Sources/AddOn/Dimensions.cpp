@@ -12,10 +12,7 @@
 #define DIM_CHANGE_OFF 3
 
 
-// -----------------------------------------------------------------------------
-// Обработка одного размера
-// -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
+GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
 {
     if (!PROPERTYCACHE ().hasDimAutotext) return NoError;
     if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace)) {
@@ -33,10 +30,17 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
     if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsInStructureDisplay)) {
         return NoError;
     }
-
     API_ElemTypeID elementType;
     if (GetTypeByGUID (elemGuid, elementType) != NoError) return NoError;
     if (elementType != API_DimensionID) return NoError;
+    return DimAutoRound (elemGuid, syncSettings, isUndo);
+}
+
+// -----------------------------------------------------------------------------
+// Обработка одного размера
+// -----------------------------------------------------------------------------
+GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
+{
     GSErrCode err = NoError;
     if (syncSettings.syncMon) {
         err = AttachObserver (elemGuid, syncSettings);
@@ -99,6 +103,10 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
+    if (memo.dimElems == nullptr || element.dimension.nDimElem == 0) {
+        ACAPI_DisposeElemMemoHdls (&memo);
+        return err;
+    }
     bool flag_write = false;
     for (const auto& dimrule : rules) {
         pen_rounded = dimrule.pen_rounded;
@@ -153,7 +161,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
                         delete (*memo.dimElems)[k].note.contentUStr;
                     (*memo.dimElems)[k].note.contentUStr = new GS::UniString (content);
                 }
-                if (flag_change == DIM_CHANGE_OFF && (*memo.dimElems)[k].note.contentType != API_NoteContent_Measured && flag_change_rule) {
+                if (flag_change == DIM_CHANGE_OFF && contentType != API_NoteContent_Measured && flag_change_rule) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
                     if ((*memo.dimElems)[k].note.contentUStr != nullptr)
@@ -176,7 +184,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
                 (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
             }
             // Сброс пользовательского текста
-            if (dimrule.flag_reset && (*memo.dimElems)[k].note.contentType != API_NoteContent_Measured) {
+            if (dimrule.flag_reset && contentType != API_NoteContent_Measured) {
                 flag_write = true;
                 (*memo.dimElems)[k].note.notePen = pen_original;
                 (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
@@ -222,11 +230,12 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, const DimRule& dimrule)
+bool DimParse (const double& dimVal, const API_Guid& elemGuid, const API_NoteContentType& contentType, GS::UniString& content, UInt32& flag_change, UInt32& flag_highlight, const DimRule& dimrule)
 {
     flag_change = DIM_NOCHANGE;
     flag_highlight = DIM_NOCHANGE;
     Int32 round_value = dimrule.round_value;
+    bool only_show = (round_value < 1);
     if (round_value < 1) round_value = 1;
     double dimVal_r = round (dimVal * 1000.0);
     Int32 dimValmm_round = 0;
@@ -265,7 +274,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
         }
     }
     //Если указано округление до нуля - просто подсветим кривые размеры
-    if (round_value < 1) {
+    if (only_show) {
         if (contentType == API_NoteContent_Custom) flag_change = DIM_CHANGE_OFF;
         if (contentType == API_NoteContent_Measured) flag_change = DIM_NOCHANGE;
         if (dx > 0.099) {
@@ -300,18 +309,6 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, API_NoteContentTy
     if (flag_expression && flag_change == DIM_CHANGE_ON) flag_change = DIM_CHANGE_FORCE;
     if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) content = custom_txt;
     return (flag_change != DIM_NOCHANGE || flag_highlight != DIM_NOCHANGE);
-}
-
-void DimRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
-{
-    (void) syncSettings;
-    if (!PROPERTYCACHE ().hasDimAutotext) return;
-    DoneElemGuid doneelemguid = {};
-    #if defined(TESTING)
-    DBprnt ("DimRoundAll start");
-    #endif
-    bool flag_chanel = false;
-    DimAutoRound (elemGuid, syncSettings, isUndo);
 }
 
 // -----------------------------------------------------------------------------
