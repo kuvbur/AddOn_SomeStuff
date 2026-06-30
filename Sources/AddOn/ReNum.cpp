@@ -175,7 +175,7 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
     #if defined(TESTING)
     DBprnt ("find rule");
     #endif
-    for (const auto guid : guidArray) {
+    for (const auto& guid : guidArray) {
         GS::Array<API_PropertyDefinition> definitions = {};
         GSErrCode err = ACAPI_Element_GetPropertyDefinitions (guid, API_PropertyDefinitionFilter_UserDefined, definitions);
         if (err != NoError) {
@@ -296,10 +296,10 @@ bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramTo
         ACAPI_WriteReport (SpecEmptyListdString, true);
         return false;
     }
-    GS::UniString msg = GS::UniString::Printf ("%d", paramToReadelem.GetSize ()) + ok_rule_name;
+    GS::UniString msg = GS::UniString::Printf ("%d", paramToWriteelem.GetSize ()) + ok_rule_name;
     GS::UniString SpecEmptyListdString = RSGetIndString (iseng, 74, ACAPI_GetOwnResModule ());
     ACAPI_WriteReport (SpecEmptyListdString + msg, true);
-    msg_rep ("ReNumSelected", GS::UniString::Printf ("Elements with new position  - %d ", paramToReadelem.GetSize ()), NoError, APINULLGuid);
+    msg_rep ("ReNumSelected", GS::UniString::Printf ("Elements with new position  - %d ", paramToWriteelem.GetSize ()), NoError, APINULLGuid);
     #if defined(TESTING)
     DBprnt ("GetRenumElements end");
     #endif
@@ -383,7 +383,6 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
                     }
                     if (!rawNamecriteria.Contains (PROPERTYSTRING)) rawNamecriteria.ReplaceAll (BRACESTART, GDLNAMEPREFIX);
                     if (!rawNamedelimetr.IsEmpty () && !rawNamedelimetr.Contains (PROPERTYSTRING)) rawNamedelimetr.ReplaceAll (BRACESTART, GDLNAMEPREFIX);
-
                     // Если такие свойства есть - записываем правило
                     if (propertyParams.ContainsKey (rawNamecriteria) && (propertyParams.ContainsKey (rawNamedelimetr) || rawNamedelimetr.IsEmpty ())) {
                         rulecritetia.state = true;
