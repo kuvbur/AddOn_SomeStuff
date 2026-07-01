@@ -244,7 +244,7 @@ GS::UniString NameToRawName (const GS::UniString& name, FormatString& formatstri
 // Получение размеров Морфа
 // Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
-bool ReadMorphParam (const API_Element& element, ParamDictValue& pdictvaluemorph);
+bool ReadMorphParam (const API_Guid& guid, ParamDictValue& pdictvaluemorph);
 
 GS::UniString GetRawnamePrefixByTypeInx (const short& inx);
 

@@ -174,26 +174,15 @@ GS::UniString TextToQRCode (const GS::UniString& text, const int error_lvl)
 
 GS::UniString TextToQRCode (const GS::UniString& text)
 {
-    GS::UniString qr_txt = "";
-    if (text.IsEmpty ()) return qr_txt;
-    try {
-        qr_txt = TextToQRCode (text, 4);
-    } catch (const std::length_error) {
+    if (text.IsEmpty ()) return "";
+    for (int level = 4; level >= 1; --level) {
         try {
-            qr_txt = TextToQRCode (text, 3);
-        } catch (const std::length_error) {
-            try {
-                qr_txt = TextToQRCode (text, 2);
-            } catch (const std::length_error) {
-                try {
-                    qr_txt = TextToQRCode (text, 1);
-                } catch (const std::length_error) {
-                    qr_txt = "ERROR: data Too long";
-                }
-            }
+            return TextToQRCode (text, level);
+        } catch (const std::length_error&) {
+            continue;
         }
     }
-    return qr_txt;
+    return "ERROR: data Too long";
 }
 
 void DBprnt (double a, GS::UniString reportString)
@@ -2473,7 +2462,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
             if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (value)) elements.Push (elemGuid);
             #endif
         }
-    }
+}
     return elements;
     #endif // AC_22
 }
