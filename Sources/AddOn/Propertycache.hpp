@@ -295,6 +295,11 @@ struct PropertyCache
 
     void ReadSurveyPointTransformation ()
     {
+        #if defined(AC_22) || defined(AC_23) || defined(AC_24)
+        isSurveyPointTransformationRead = true;
+        isSurveyPointTransformation_OK = false;
+        return;
+        #else
         #if defined(TESTING)
         DBprnt ("=PropertyCache= ReadSurveyPointTransformation");
         #endif
@@ -313,6 +318,7 @@ struct PropertyCache
         }
         #if defined(TESTING)
         if (!isSurveyPointTransformation_OK) DBprnt ("=PropertyCache= ReadSurveyPointTransformation ERROR");
+        #endif
         #endif
     }
 
@@ -424,8 +430,8 @@ struct PropertyCache
                 if (!fname.Contains (".txt") && !fname.Contains (".csv")) fname.Append (".txt");
                 AddFile (fname);
             }
-        }
     }
+}
 
     void ReadClassification ()
     {
@@ -470,7 +476,7 @@ struct PropertyCache
                         d.Add (classguid, classname);
                     }
                 }
-            }
+    }
         }
         #if defined(TESTING)
         if (!isClassification_OK) DBprnt ("=PropertyCache= ReadClassification ERROR");
