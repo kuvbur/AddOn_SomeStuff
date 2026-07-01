@@ -766,7 +766,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType)
 {
-    GSErrCode		err = NoError;
+    GSErrCode err = NoError;
     API_Elem_Head elem_head = {};
     BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
     elem_head.guid = elemGuid;
@@ -805,7 +805,7 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
 {
     GS::UniString	ustr;
-    GSErrCode	err = ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) typeID, &ustr);
+    GSErrCode err = ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) typeID, &ustr);
     if (err == NoError) {
         CHTruncate (ustr.ToCStr (), elemStr, ELEMSTR_LEN - 1);
         return true;
@@ -2482,7 +2482,7 @@ API_ElemTypeID GetElemTypeID (const API_Guid & guid)
 
 API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)
 {
-    API_ElemTypeID eltype;
+    API_ElemTypeID eltype = API_ZombieElemID;
     #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     eltype = elementhead.type.typeID;
     #else
@@ -2493,7 +2493,7 @@ API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)
 
 API_ElemTypeID GetElemTypeID (const API_Element & element)
 {
-    API_ElemTypeID eltype;
+    API_ElemTypeID eltype = API_ZombieElemID;
     #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     eltype = element.header.type.typeID;
     #else
