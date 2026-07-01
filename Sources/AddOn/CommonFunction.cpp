@@ -125,7 +125,7 @@ double GetzPos (const double bottomOffset, const short floorInd, const Stories& 
     return 0;
 }
 
-GS::UniString TextToQRCode (GS::UniString& text, int error_lvl)
+GS::UniString TextToQRCode (const GS::UniString& text, const int error_lvl)
 {
     GS::UniString qr_txt = "";
     if (text.IsEmpty ()) return qr_txt;
@@ -172,22 +172,22 @@ GS::UniString TextToQRCode (GS::UniString& text, int error_lvl)
     return qr_txt;
 }
 
-GS::UniString TextToQRCode (GS::UniString& text)
+GS::UniString TextToQRCode (const GS::UniString& text)
 {
     GS::UniString qr_txt = "";
     if (text.IsEmpty ()) return qr_txt;
     try {
         qr_txt = TextToQRCode (text, 4);
-    } catch (std::length_error) {
+    } catch (const std::length_error) {
         try {
             qr_txt = TextToQRCode (text, 3);
-        } catch (std::length_error) {
+        } catch (const std::length_error) {
             try {
                 qr_txt = TextToQRCode (text, 2);
-            } catch (std::length_error) {
+            } catch (const std::length_error) {
                 try {
                     qr_txt = TextToQRCode (text, 1);
-                } catch (std::length_error) {
+                } catch (const std::length_error) {
                     qr_txt = "ERROR: data Too long";
                 }
             }
@@ -817,16 +817,15 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool check_accuracy (double val, double tolerance)
+bool check_accuracy (const double& rval, const double& tolerance)
 {
-    if (std::isinf (val) || std::isnan (val)) return true;
-    val = std::fabs (val * 1000.0);
+    if (std::isinf (rval) || std::isnan (rval)) return true;
+    if (is_equal (tolerance, 0)) return true;
+    double val = std::fabs (rval * 1000.0);
     if (val < std::numeric_limits<double>::epsilon ()) return true;
     double reciprocal = std::round ((1 / tolerance)); // Коэффицент домножения для заданной точности
     double val_round = std::round (val * reciprocal) / reciprocal; // Приведённое к заданной точности значение
-    if (val_round < std::numeric_limits<double>::epsilon () && val>tolerance) {
-        return false;
-    }
+    if (val_round < std::numeric_limits<double>::epsilon () && val>tolerance) return false;
     double val_correct1 = std::fabs (val_round - std::round (val_round));
     double val_correct2 = std::fabs (val_round - std::floor (val_round));
     bool bval1 = val_correct1 < tolerance;
@@ -861,6 +860,19 @@ bool UniStringToDouble (const GS::UniString & var, double& x)
         n = sscanf (var_str.c_str (), "%lf", &x);
     }
     return n > 0;
+}
+
+// -----------------------------------------------------------------------------
+// Округление до заданного количества нулей
+// -----------------------------------------------------------------------------
+double round_nzero (const double& var, const Int32 & n_zero)
+{
+    double scale = pow (10, n_zero);
+    if (!is_equal (scale, 0)) {
+        return round (var * scale) / scale;
+    } else {
+        return round (var);
+    }
 }
 
 // --------------------------------------------------------------------
@@ -1404,101 +1416,6 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
     }
     return;
 }
-
-// -----------------------------------------------------------------------------
-// Возвращает список параметров API_AddParType из memo
-// -----------------------------------------------------------------------------
-GSErrCode GetGDLParametersFromMemo (const API_Guid & elemGuid, API_AddParType * *&params)
-{
-    API_ElementMemo	memo = {};
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
-    params = memo.params;
-    if (err != NoError) {
-        msg_rep ("GetGDLParametersFromMemo", "ACAPI_Element_GetMemo", err, elemGuid);
-        return err;
-    }
-    if (memo.params == nullptr) {
-        msg_rep ("GetGDLParametersFromMemo", "ACAPI_Element_GetMemo", err, elemGuid);
-    }
-    return err;
-}
-
-// -----------------------------------------------------------------------------
-// Возвращает список параметров API_AddParType
-// -----------------------------------------------------------------------------
-GSErrCode GetGDLParameters (const API_ElemTypeID & elemType, const API_Guid & elemGuid, API_AddParType * *&params)
-{
-    return GetGDLParametersFromMemo (elemGuid, params);
-    /*   GSErrCode	err = NoError;
-       API_ParamOwnerType	apiOwner = {};
-       API_GetParamsType	apiParams = {};
-       BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
-       BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
-
-       if (elemType == API_RailingToprailID
-          || elemType == API_RailingHandrailID
-          || elemType == API_RailingRailID
-          || elemType == API_RailingPostID
-          || elemType == API_RailingInnerPostID
-          || elemType == API_RailingBalusterID
-          || elemType == API_RailingPanelID
-          || elemType == API_RailingNodeID
-          || elemType == API_RailingToprailEndID
-          || elemType == API_RailingHandrailEndID
-          || elemType == API_RailingRailEndID
-          || elemType == API_RailingToprailConnectionID
-          || elemType == API_RailingHandrailConnectionID
-          || elemType == API_RailingRailConnectionID
-          || elemType == API_RailingEndFinishID) {
-           return GetGDLParametersFromMemo (elemGuid, params);
-       }
-
-       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-       if (elemType == API_ExternalElemID) {
-           return GetGDLParametersFromMemo (elemGuid, params);
-       }
-       #endif
-       apiOwner.guid = elemGuid;
-       #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
-       apiOwner.type.typeID = elemType;
-       #else
-       apiOwner.typeID = elemType;
-       #endif
-       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-       err = ACAPI_LibraryPart_OpenParameters (&apiOwner);
-       #else
-       err = ACAPI_Goodies (APIAny_OpenParametersID, &apiOwner, nullptr);
-       #endif
-       if (err != NoError) {
-           msg_rep ("GetGDLParameters", "APIAny_OpenParametersID. Check library for missing library parts", err, elemGuid);
-           return GetGDLParametersFromMemo (elemGuid, params);
-       }
-       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-       err = ACAPI_LibraryPart_GetActParameters (&apiParams);
-       #else
-       err = ACAPI_Goodies (APIAny_GetActParametersID, &apiParams);
-       #endif
-       if (err != NoError) {
-           msg_rep ("GetGDLParameters", "APIAny_GetActParametersID", err, elemGuid);
-           #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-           err = ACAPI_LibraryPart_CloseParameters ();
-           #else
-           err = ACAPI_Goodies (APIAny_CloseParametersID);
-           #endif
-           if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
-           return err;
-       }
-       params = apiParams.params;
-       #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-       err = ACAPI_LibraryPart_CloseParameters ();
-       #else
-       err = ACAPI_Goodies (APIAny_CloseParametersID);
-       #endif
-       if (err != NoError) msg_rep ("GetGDLParameters", "APIAny_CloseParametersID", err, elemGuid);
-       return err;*/
-}
-
 
 // --------------------------------------------------------------------
 // Получение списка GUID панелей, рам и аксессуаров навесной стены
@@ -2244,7 +2161,6 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
     return format;
 }
 
-
 // -----------------------------------------------------------------------------
 // Переводит число в строку согласно настройкам строки-формата
 // -----------------------------------------------------------------------------
@@ -2259,7 +2175,7 @@ GS::UniString NumToString (const double& var, const FormatString& stringformat)
     bool trim_zero = stringformat.trim_zero;
     GS::UniString delimetr = stringformat.delimetr;
     double outvar = var * koeff;
-    outvar = round (outvar * pow (10, n_zero)) / pow (10, n_zero);
+    outvar = round_nzero (outvar, n_zero);
     if (krat > 0) outvar = ceil_mod ((GS::Int32) var, krat);
     out = GS::UniString::Printf ("%f", outvar);
     out.ReplaceAll (DOT, delimetr);

@@ -60,22 +60,22 @@ bool GetRuleFromSelected (GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid
         guidArray.Clear ();
         GetElementForPropertyDefinition (definitions, guidArray);
     } else {
+        UnicGuid unguid = {};
+        for (const auto& guid : guidArray) {
+            if (!unguid.ContainsKey (guid)) unguid.Add (guid, true);
+        }
+        guidArray.Clear ();
+        for (const auto& cIt : unguid) {
+            #if defined(AC_28) || defined(AC_29)
+            const API_Guid guid = cIt.key;
+            #else
+            const API_Guid guid = *cIt.key;
+            #endif
+            guidArray.PushNew (guid);
+        }
         for (const API_Guid& elemGuid : guidArray) {
             GetRuleFromSelected (elemGuid, definitions, name, check_bracket);
         }
-    }
-    UnicGuid unguid = {};
-    for (const auto& guid : guidArray) {
-        if (!unguid.ContainsKey (guid)) unguid.Add (guid, true);
-    }
-    guidArray.Clear ();
-    for (const auto& cIt : unguid) {
-        #if defined(AC_28) || defined(AC_29)
-        const API_Guid guid = cIt.key;
-        #else
-        const API_Guid guid = *cIt.key;
-        #endif
-        guidArray.PushNew (guid);
     }
     return (!definitions.IsEmpty ());
 }
@@ -92,9 +92,9 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     GSErrCode err = NoError;
     for (const auto& cIt : definitions) {
         #if defined(AC_28) || defined(AC_29)
-        const API_PropertyDefinition definition = cIt.value;
+        const API_PropertyDefinition& definition = cIt.value;
         #else
-        const API_PropertyDefinition definition = *cIt.value;
+        const API_PropertyDefinition& definition = *cIt.value;
         #endif
         for (const API_Guid& classificationItemGuid : definition.availability) {
             GS::Array<API_Guid> elemGuids = {};
@@ -105,6 +105,8 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
             }
             if (elemGuids.IsEmpty ()) continue;
             for (const API_Guid& elemGuid : elemGuids) {
+                if (unguid.ContainsKey (elemGuid)) continue;
+                unguid.Add (elemGuid, true);
                 guidArray.Push (elemGuid);
             }
         }
@@ -742,7 +744,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadMorphParam (const API_Element& element, ParamDictValue& pdictvaluemorph)
 {
-    if (!element.header.hasMemo) return NoError;
+    if (!element.header.hasMemo) return false;
     #if defined(TESTING)
     DBprnt ("      ReadMorphParam");
     #endif
@@ -1873,7 +1875,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             break;
     }
     if (eltype == API_ColumnID) {
-        double k = 100000.0;
+        const double k = 100000.0; // Коэфф для округления
         if (fabs (slantDirectionAngle) > 0.0000001) { slantDirectionAngle = fmod (round ((slantDirectionAngle * 180.0 / PI) * k) / k, 360.0); } else {
             slantDirectionAngle = 0.0;
         }
@@ -2843,7 +2845,7 @@ bool operator== (const ParamValue& lhs, const ParamValue& rhs)
                 double koeff = lhs.val.formatstring.koeff;
                 bool trim_zero = lhs.val.formatstring.trim_zero;
                 if (koeff != 1) n_zero = n_zero + (GS::Int32) log10 (koeff);
-                lhsd = round (lhsd * pow (10, n_zero)) / pow (10, n_zero);
+                lhsd = round_nzero (lhsd, n_zero);
             }
             return is_equal (lhsd, rhsd);
         case API_PropertyStringValueType:
@@ -5030,27 +5032,22 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
     API_ElemTypeID	elemType;
     API_Guid		elemGuid;
     GetGDLParametersHead (element, elem_head, elemType, elemGuid);
-    API_AddParType** addPars = NULL;
-    GSErrCode err = GetGDLParameters (elemType, elemGuid, addPars);
+    API_ElementMemo	memo = {};
+    BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
     if (err != NoError) {
         msg_rep ("ParamHelpers::GDLParamByName", "GetGDLParameters", err, elemGuid);
-        ACAPI_DisposeAddParHdl (&addPars);
-        return false;
-    }
-    if (addPars == nullptr || *addPars == nullptr) {
-        msg_rep ("ParamHelpers::GDLParamByName", "GetGDLParameters", err, elemGuid);
-        ACAPI_DisposeAddParHdl (&addPars);
+        ACAPI_DisposeElemMemoHdls (&memo);
         return false;
     }
     bool flagFind = false;
-    Int32 addParNum = BMGetHandleSize ((GSHandle) addPars) / sizeof (API_AddParType);
+    const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
     Int32 nfind = params.GetSize ();
-    for (Int32 i = 0; i < addParNum; ++i) {
-        API_AddParType& actualParam = (*addPars)[i];
+    for (Int32 i = 0; i < nParams; ++i) {
+        API_AddParType& actualParam = (*memo.params)[i];
         GS::UniString name = actualParam.name;
         GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + BRACEEND;
         if (!params.ContainsKey (rawname)) continue;
-
         // Проверим - нет ли подходящих параметров-массивов?
         if (paramnamearray.ContainsKey (rawname)) {
             GS::Array<GS::UniString>& paramarray = paramnamearray.Get (rawname);
@@ -5098,11 +5095,11 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
             }
         }
         if (nfind == 0) {
-            ACAPI_DisposeAddParHdl (&addPars);
+            ACAPI_DisposeElemMemoHdls (&memo);
             return flagFind;
         }
     }
-    ACAPI_DisposeAddParHdl (&addPars);
+    ACAPI_DisposeElemMemoHdls (&memo);
     return flagFind;
 }
 
@@ -6801,8 +6798,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
                 bool needRound = formatstringdict.Get (property.definition.measureType).needRound;
                 if (pvalue.rawName.IsEqual ("{@property:buildingmaterialproperties/some_stuff_th}")) needRound = false;
                 if (needRound && property.definition.measureType != API_PropertyLengthMeasureType) {
-                    double l = pow (10, n_zero);
-                    pvalue.val.doubleValue = round (pvalue.val.doubleValue * pow (10, n_zero)) / pow (10, n_zero);
+                    pvalue.val.doubleValue = round_nzero (pvalue.val.doubleValue, n_zero);
                     pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
                     if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
                 }
@@ -7217,7 +7213,7 @@ void ParamHelpers::ConvertByFormatString (ParamValue & pvalue)
         }
         pvalue.val.uniStringValue = ParamHelpers::ToString (pvalue);
         if (koeff != 1) n_zero = n_zero + (GS::Int32) log10 (koeff);
-        pvalue.val.doubleValue = round (pvalue.val.doubleValue * pow (10, n_zero)) / pow (10, n_zero);
+        pvalue.val.doubleValue = round_nzero (pvalue.val.doubleValue, n_zero);
         pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
         if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
     }

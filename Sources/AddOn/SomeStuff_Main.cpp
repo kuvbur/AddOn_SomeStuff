@@ -126,23 +126,19 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     syncSettings.syncMon = true;
     #endif // PK_1
     if (!syncSettings.syncMon) return NoError;
-    if (elemType->notifID == APINotifyElement_EndEvents) {
-        DimRoundAll (syncSettings, true);
-        return NoError;
-    }
     if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
-    if (elemType->elemHead.hotlinkGuid != APINULLGuid) return false;
+    if (elemType->elemHead.hotlinkGuid != APINULLGuid) return NoError;
     // Смотрим - что поменялось
-    #if defined(TESTING)
-    DBprnt ("ElementEventHandlerProc start");
-    #endif
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
     if (elementType == API_ZombieElemID) return NoError;
     if (elementType == API_GroupID) return NoError;
     if (elementType == API_DimensionID) {
-
+        DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true);
         return NoError;
     }
+    #if defined(TESTING)
+    DBprnt ("ElementEventHandlerProc start");
+    #endif
     ParamDictElement paramToWrite = {};
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType)) return NoError;
     bool needresync = false;
@@ -195,6 +191,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
                 }
                 ParamHelpers::WriteInfo (paramToWrite);
             }
+            break;
         default:
             break;
     }
@@ -256,7 +253,7 @@ void MenuSetState (SyncSettings & syncSettings)
     MenuItemCheckAC (Menu_cwallS, syncSettings.cwallS);
     Int32 bisEng = isEng ();
     if (bisEng > 0) {
-        for (UInt32 i = 0; i < 16; i++) {
+        for (UInt32 i = 0; i < MENU_ITEM_COUNT; i++) {
             SetPaletteMenuText (i, bisEng);
         }
     }

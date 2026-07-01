@@ -36,9 +36,9 @@ bool ReadLibraryFile (const GS::UniString& fileName, GS::Array<GS::Array<GS::Uni
     }
     // Открытие файла
     settingsText.location->ToPath (&locPath);
+    delete settingsText.location;
     IO::Location fileLoc (locPath);
     IO::File file (fileLoc);
-
     UInt64	fSize = 0;
     file.GetDataLength (&fSize);
     char* buff = new char[fSize];
