@@ -1575,17 +1575,6 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             bsync_coord_correct = pdictvaluecoord.Get (sync_coord_correctkey).val.boolValue;
         }
     }
-
-    // TODO перенести в PropertyCache
-    bool has_tm = false; // Есть прочитанная матрица трансформации
-    API_Tranmat tm = {}; GS::UniString tmstr = "";
-    for (UInt32 i = 0; i < 13; i++) {
-        tmstr = GS::UniString::Printf ("{@glob:tmx%d}", i);
-        if (!GetParamValueFromCache (tmstr, cacheparam)) continue;
-        tm.tmx[i] = cacheparam.val.rawDoubleValue;
-        has_tm = true;
-    }
-
     API_ElemTypeID eltype = GetElemTypeID (element);
     API_Element owner = {}; BNZeroMemory (&owner, sizeof (API_Element));
     // Обработка навесной стены- случай особый, т.к. у неё может быть несколько сегментов
@@ -1921,9 +1910,10 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             angz = 0.0;
         }
         xu = x - lox; yu = y - loy; zu = z - loz;
-        if (has_tm) {
+        if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
+        if (PROPERTYCACHE ().isSurveyPointTransformation_OK) {
             API_Coord3D vtx = { x, y, z };
-            API_Coord3D v = GetWordCoord3DTM (vtx, tm);
+            API_Coord3D v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
             xsp = v.x; ysp = v.y; zsp = v.z;
         }
         if (eltype == API_WindowID || eltype == API_DoorID) {
@@ -1940,9 +1930,10 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             double swx = sx + (ex - sx) * koeff; double swy = sy + (ey - sy) * koeff; //Абсолютные координаты середины проёма
             double swx_lo = swx - lox; double swy_lo = swy - loy; //Координаты относительно ПН середины проёма
             double swspx = 0; double swspy = 0;
-            if (has_tm) {
+            if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
+            if (PROPERTYCACHE ().isSurveyPointTransformation_OK) {
                 API_Coord3D vtx = { swx, swy, 0 };
-                API_Coord3D v = GetWordCoord3DTM (vtx, tm);
+                API_Coord3D v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
                 swspx = v.x; swspy = v.y;
             }
             bool windoor_in_wall = true;
@@ -2066,12 +2057,13 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
     if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
     sxu = sx - lox; syu = sy - loy;
     exu = ex - lox; eyu = ey - loy;
-    if (has_tm) {
+    if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
+    if (PROPERTYCACHE ().isSurveyPointTransformation_OK) {
         API_Coord3D vtx = { sx, sy, 0 };
-        API_Coord3D v = GetWordCoord3DTM (vtx, tm);
+        API_Coord3D v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
         sxsp = v.x; sysp = v.y;
         vtx = { ex, ey, 0 };
-        v = GetWordCoord3DTM (vtx, tm);
+        v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
         exsp = v.x; eysp = v.y;
     }
     if (hasLine && !hasSymbpos) {
@@ -7057,7 +7049,7 @@ bool ParamHelpers::ConvertAttributeToParamValue (ParamValue & pvalue, const GS::
     pvalue.isValid = true;
     pvalue.fromAttribElement = true;
     return true;
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Конвертация целого числа в ParamValue
@@ -7292,7 +7284,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         ParamComposite& c = *cIt->value;
         #endif
         c.composite = param_composite.composite;
-}
+    }
     return true;
 }
 
@@ -7321,7 +7313,7 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
         ParamValueComposite c = *cIt->value;
         #endif
         p.Push (c);
-}
+    }
     composite.Clear ();
     composite = p;
     return;
@@ -7415,7 +7407,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         segment.Add (pen, segments);
         ParamComposite p = {};
         param_composite.Add (pen, p);
-}
+    }
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
     #endif
@@ -7518,8 +7510,8 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             lines.Get (*cIt->key).cut_start = cutline.c2;
             lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
             #endif
-                }
-            }
+        }
+    }
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = { -10000, 0 };
@@ -7645,16 +7637,16 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         hasData = true;
                                     }
                                 }
+                            }
                         }
-                }
-        } else {
+                    } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-    }
+                }
                 break;
-    }
+        }
         ++profileDescriptionIt1;
     }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
@@ -7908,7 +7900,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         p.hasFormula = param.val.hasFormula;
         p.fromQuantity = param.fromQuantity;
         paramcomposite.Add (param.rawName, p);
-}
+    }
 
     // Если ничего нет - слои нам всё равно нужны
     if (paramcomposite.IsEmpty () && (structtype == API_BasicStructure || structtype == API_CompositeStructure)) {
@@ -8146,7 +8138,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         }
         API_PropertyDefinition definition = param.definition;
         if (!definition.name.Contains (CharENTER) && definition.guid != APINULLGuid) propertyDefinitions.Push (definition);
-}
+    }
     #ifndef AC_22
     if (propertyDefinitions.IsEmpty ()) return flag_find;
     GS::Array<API_Property> properties = {};

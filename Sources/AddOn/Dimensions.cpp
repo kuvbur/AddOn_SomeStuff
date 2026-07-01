@@ -58,7 +58,6 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
         msg_rep ("DimAutoRound", "ACAPI_Element_Get", err, elemGuid);
         return err;
     }
-
     // Если нет элементов - выходим
     if (!element.header.hasMemo) return err;
     short pen_dimenstion = element.dimension.linPen;
@@ -103,56 +102,59 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
-    if (memo.dimElems == nullptr || element.dimension.nDimElem == 0) {
+    if (memo.dimElems == nullptr || element.dimension.nDimElem < 1) {
+        ACAPI_DisposeElemMemoHdls (&memo);
+        return NoError;
+    }
+    API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
+    API_ElemTypeID elementType = API_ZombieElemID;
+    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+    elementType = (*memo.dimElems)[0].base.base.type.typeID;
+    #else
+    elementType = (*memo.dimElems)[0].base.base.typeID;
+    #endif // AC_26
+    if (elementType == API_OpeningID) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
+    if ((*memo.dimElems)[0].dimVal == 0 && elementType == API_ColumnID) {
+        ACAPI_DisposeElemMemoHdls (&memo);
+        return err;
+    };
     bool flag_write = false;
-    for (const auto& dimrule : rules) {
-        pen_rounded = dimrule.pen_rounded;
-        flag_change_rule = dimrule.flag_change;
-        short pen = pen_rounded;
-        pen_original = pen_dimenstion; // Быстрофикс
-        API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
-        API_ElemTypeID elementType;
+    for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
+        const API_NoteContentType originalContentType = (*memo.dimElems)[k].note.contentType;
+        UInt32 flag_change = DIM_NOCHANGE;
+        UInt32 flag_highlight = DIM_NOCHANGE;
         #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
-        elementType = (*memo.dimElems)[0].base.base.type.typeID;
+        elementType = (*memo.dimElems)[k].base.base.type.typeID;
         #else
-        elementType = (*memo.dimElems)[0].base.base.typeID;
+        elementType = (*memo.dimElems)[k].base.base.typeID;
         #endif // AC_26
+        // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
+        if ((*memo.dimElems)[k].dimVal == 0 && elementType == API_ColumnID) {
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return err;
+        };
         if (elementType == API_OpeningID) {
             ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         }
-        for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
-            UInt32 flag_change = DIM_NOCHANGE;
-            UInt32 flag_highlight = DIM_NOCHANGE;
-            #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
-            elementType = (*memo.dimElems)[k].base.base.type.typeID;
-            #else
-            elementType = (*memo.dimElems)[k].base.base.typeID;
-            #endif // AC_26
-
-            // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
-            if ((*memo.dimElems)[k].dimVal == 0 && elementType == API_ColumnID) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                return err;
-            };
-            if (elementType == API_OpeningID) {
-                ACAPI_DisposeElemMemoHdls (&memo);
-                return err;
-            }
-            if ((*memo.dimElems)[k].dimVal == 0) {
-                continue;
-            }
-            GS::UniString content = GS::UniString::Printf ("%s", (*memo.dimElems)[k].note.content);
-            API_Guid ref_elemGuid = (*memo.dimElems)[k].base.base.guid;
-            bool is_sameGUID = (ref_elemGuid == bef_elemGuid);
-            if (!is_sameGUID) ref_elemGuid = APINULLGuid;
-            bool is_wall = (elementType == API_WallID);
+        if ((*memo.dimElems)[k].dimVal == 0) {
+            continue;
+        }
+        GS::UniString content = GS::UniString::Printf ("%s", (*memo.dimElems)[k].note.content);
+        API_Guid ref_elemGuid = (*memo.dimElems)[k].base.base.guid;
+        bool is_sameGUID = (ref_elemGuid == bef_elemGuid);
+        if (!is_sameGUID) ref_elemGuid = APINULLGuid;
+        bool is_wall = (elementType == API_WallID);
+        for (const auto& dimrule : rules) {
+            pen_rounded = dimrule.pen_rounded;
+            flag_change_rule = dimrule.flag_change;
+            short pen = pen_rounded;
+            pen_original = pen_dimenstion; // Быстрофикс
             bool flag_deletewall = is_wall && is_sameGUID && dimrule.flag_deletewall;
-            API_NoteContentType contentType = (*memo.dimElems)[k].note.contentType;
-            if (!flag_deletewall && !dimrule.flag_reset && DimParse ((*memo.dimElems)[k].dimVal, ref_elemGuid, contentType, content, flag_change, flag_highlight, dimrule)) {
+            if (!flag_deletewall && !dimrule.flag_reset && DimParse ((*memo.dimElems)[k].dimVal, ref_elemGuid, originalContentType, content, flag_change, flag_highlight, dimrule)) {
                 if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE) flag_change = DIM_CHANGE_OFF;
                 if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
                     flag_write = true;
@@ -161,7 +163,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
                         delete (*memo.dimElems)[k].note.contentUStr;
                     (*memo.dimElems)[k].note.contentUStr = new GS::UniString (content);
                 }
-                if (flag_change == DIM_CHANGE_OFF && contentType != API_NoteContent_Measured && flag_change_rule) {
+                if (flag_change == DIM_CHANGE_OFF && originalContentType != API_NoteContent_Measured && flag_change_rule) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
                     if ((*memo.dimElems)[k].note.contentUStr != nullptr)
@@ -184,7 +186,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
                 (*memo.dimElems)[k].note.contentUStr = new GS::UniString ("");
             }
             // Сброс пользовательского текста
-            if (dimrule.flag_reset && contentType != API_NoteContent_Measured) {
+            if (dimrule.flag_reset && originalContentType != API_NoteContent_Measured) {
                 flag_write = true;
                 (*memo.dimElems)[k].note.notePen = pen_original;
                 (*memo.dimElems)[k].note.contentType = API_NoteContent_Measured;
@@ -194,17 +196,17 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
             }
             // Проверка перебитых размеров
             if (dimrule.flag_custom) {
-                if (contentType == API_NoteContent_Custom && (*memo.dimElems)[k].note.notePen != pen_rounded) {
+                if (originalContentType == API_NoteContent_Custom && (*memo.dimElems)[k].note.notePen != pen_rounded) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.notePen = pen_rounded;
                 }
-                if (contentType == API_NoteContent_Measured && (*memo.dimElems)[k].note.notePen != pen_original && !flag_write) {
+                if (originalContentType == API_NoteContent_Measured && (*memo.dimElems)[k].note.notePen != pen_original && !flag_write) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.notePen = pen_original;
                 }
             }
-            bef_elemGuid = (*memo.dimElems)[k].base.base.guid;
         }
+        bef_elemGuid = (*memo.dimElems)[k].base.base.guid;
     }
     if (flag_write) {
         API_Element mask = {};

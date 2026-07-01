@@ -58,8 +58,6 @@ bool GetMEPSystemGroup (MEPDicts& mepdict);
 
 bool GetGeoLocationToParamDict (ParamDictValue& propertyParams);
 
-bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams);
-
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
 // --------------------------------------------------------------------
@@ -105,6 +103,8 @@ struct PropertyCache
     bool isEng_OK;
 
     GS::HashTable <Int32, ParamDict> unreadedgdlparams;
+
+    API_Tranmat surv_point_tm;
 
     bool hasDimAutotext;
     bool isGetGeoLocation_OK; // Успешно прочитан
@@ -158,6 +158,7 @@ struct PropertyCache
         unreadedgdlparams.Clear ();
         file.Clear ();
         filedata.Clear ();
+        surv_point_tm = {};
         isEng = 0;
         isEng_OK = false;
         isGetGeoLocation_OK = false;
@@ -290,14 +291,26 @@ struct PropertyCache
         return true;
     }
 
+
+
     void ReadSurveyPointTransformation ()
     {
         #if defined(TESTING)
         DBprnt ("=PropertyCache= ReadSurveyPointTransformation");
         #endif
         isSurveyPointTransformationRead = true;
-        isSurveyPointTransformation_OK = ParamHelpers::GetSurveyPointTransformationToParamDict (glob);
-        if (glob.IsEmpty ()) isSurveyPointTransformation_OK = false;
+        GSErrCode err = NoError;
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        err = ACAPI_SurveyPoint_GetSurveyPointTransformation (&surv_point_tm);
+        #else
+        err = ACAPI_Environment (APIEnv_GetSurveyPointTransformationID, &surv_point_tm);
+        #endif
+        if (err != NoError) {
+            msg_rep ("GetSurveyPointTransformationToParamDict", "APIEnv_GetSurveyPointTransformationID", err, APINULLGuid);
+            isSurveyPointTransformation_OK = false;
+        } else {
+            isSurveyPointTransformation_OK = true;
+        }
         #if defined(TESTING)
         if (!isSurveyPointTransformation_OK) DBprnt ("=PropertyCache= ReadSurveyPointTransformation ERROR");
         #endif

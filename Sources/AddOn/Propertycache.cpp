@@ -354,43 +354,6 @@ bool GetGeoLocationToParamDict (ParamDictValue& propertyParams)
     return true;
     #endif
 }
-// --------------------------------------------------------------------
-// Получение списка глобальных переменных о местоположении проекта, солнца
-// --------------------------------------------------------------------
-bool GetSurveyPointTransformationToParamDict (ParamDictValue& propertyParams)
-{
-    #if defined(AC_22) || defined(AC_23) || defined(AC_24)
-    return false;
-    #else
-    #if defined(TESTING)
-    DBprnt ("   GetSurveyPointTransformationToParamDict start");
-    #endif
-    GS::UniString name = "";
-    GS::UniString rawName = "";
-    ParamValue pvalue = {};
-    GSErrCode err = NoError;
-    API_Tranmat tm = {};
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    err = ACAPI_SurveyPoint_GetSurveyPointTransformation (&tm);
-    #else
-    err = ACAPI_Environment (APIEnv_GetSurveyPointTransformationID, &tm);
-    #endif
-    if (err != NoError) {
-        msg_rep ("GetSurveyPointTransformationToParamDict", "APIEnv_GetSurveyPointTransformationID", err, APINULLGuid);
-        return false;
-    }
-    for (UInt32 i = 0; i < 13; i++) {
-        name = "tmx" + GS::UniString::Printf ("%d", i); rawName = GLOBNAMEPREFIX; rawName.Append (name.ToLowerCase ()); rawName.Append (BRACEEND);
-        pvalue.name = name; pvalue.rawName = rawName;
-        ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, tm.tmx[i]);
-        propertyParams.Add (rawName, pvalue);
-    }
-    #if defined(TESTING)
-    DBprnt ("   GetSurveyPointTransformationToParamDict end");
-    #endif
-    return true;
-    #endif
-}
 
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
