@@ -742,15 +742,14 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
 // Получение размеров Морфа
 // Формирует словарь ParamDictValue& pdictvalue со значениями
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ReadMorphParam (const API_Element& element, ParamDictValue& pdictvaluemorph)
+bool ParamHelpers::ReadMorphParam (const API_Guid& guid, ParamDictValue& pdictvaluemorph)
 {
-    if (!element.header.hasMemo) return false;
     #if defined(TESTING)
     DBprnt ("      ReadMorphParam");
     #endif
     API_ElementMemo memo = {};
     BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    GSErrCode err = ACAPI_Element_GetMemo (element.header.guid, &memo);
+    GSErrCode err = ACAPI_Element_GetMemo (guid, &memo);
     if (err != NoError || memo.morphBody == nullptr) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return false;
@@ -813,19 +812,19 @@ bool ParamHelpers::ReadMorphParam (const API_Element& element, ParamDictValue& p
         A = Max_x - Min_x;
         B = Max_y - Min_y;
         ZZYZX = Max_z - Min_z;
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "l", L, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "lx", Lx, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "ly", Ly, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "lz", Lz, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "max_x", Max_x, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "min_x", Min_x, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "max_y", Max_y, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "min_y", Min_y, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "max_z", Max_z, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "min_z", Min_z, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "a", A, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "b", B, true);
-        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, element.header.guid, MORPHNAMEPREFIX, "zzyzx", ZZYZX, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "l", L, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "lx", Lx, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "ly", Ly, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "lz", Lz, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "max_x", Max_x, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "min_x", Min_x, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "max_y", Max_y, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "min_y", Min_y, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "max_z", Max_z, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "min_z", Min_z, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "a", A, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "b", B, true);
+        ParamHelpers::AddLengthValueToParamDictValue (pdictvaluemorph, guid, MORPHNAMEPREFIX, "zzyzx", ZZYZX, true);
         ACAPI_DisposeElemMemoHdls (&memo);
         return true;
     } else {
@@ -3832,7 +3831,6 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
             return;
         }
     }
-
     // TODO Оптимизировать, разнести по функциям
     bool flagFind = false;
     Int32	addParNum = BMGetHandleSize ((GSHandle) apiParams.params) / sizeof (API_AddParType);
@@ -3872,9 +3870,10 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
             }
         }
         if (actualParam.typeID == APIParT_CString) {
-            GS::uchar_t* buffer = new GS::uchar_t[256];
-            GS::ucsncpy (buffer, paramfrom.uniStringValue.ToUStr ().Get (), 256);
-            chgParam.uStrValue = buffer;
+            constexpr USize MaxStrValueLength = 512;
+            static GS::uchar_t strValuePtr[MaxStrValueLength];
+            GS::ucscpy (strValuePtr, paramfrom.uniStringValue.ToUStr (0, GS::Min (paramfrom.uniStringValue.GetLength (), (USize) MaxStrValueLength)).Get ());
+            chgParam.uStrValue = strValuePtr;
         }
         if (actualParam.typeID == APIParT_Integer) {
             chgParam.realValue = paramfrom.intValue;
@@ -4289,7 +4288,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                 #endif
                 break;
             case MORPHTYPEINX:
-                ParamHelpers::ReadMorphParam (element, params);
+                if (element.header.hasMemo) ParamHelpers::ReadMorphParam (elemGuid, params);
                 break;
             case IDTYPEINX:
                 ParamHelpers::ReadID (elem_head, params);
