@@ -66,19 +66,22 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
     bool flag_change_rule = false;
     GS::UniString kstr = GS::UniString::Printf ("%d", pen_dimenstion);
     GS::Array<DimRule> rules = {}; //Массив найденных правил
-
     const DimRules& dimrules = PROPERTYCACHE ().dimrules;
     if (pen_dimenstion > 0 && dimrules.ContainsKey (kstr)) {
         DimRule d = dimrules.Get (kstr);
         rules.Push (d);
     }
-    // Если в файле только одно правило, и оно уже найдено - не смыслы запрашивать имя слоя
+    // Если в файле только одно правило, и оно уже найдено - не смысла запрашивать имя слоя
     if (!(!rules.IsEmpty () && dimrules.GetSize () == 1)) {
         API_Attribute layer;
         BNZeroMemory (&layer, sizeof (API_Attribute));
         layer.header.typeID = API_LayerID;
         layer.header.index = element.header.layer;
-        if (ACAPI_Attribute_Get (&layer) != NoError) return err;
+        err = ACAPI_Attribute_Get (&layer);
+        if (err != NoError) {
+            msg_rep ("DimAutoRound", "ACAPI_Attribute_Get", err, elemGuid);
+            return err;
+        }
         GS::UniString layert = GS::UniString::Printf ("%s", layer.header.name);
         for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
@@ -117,7 +120,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
-    if ((*memo.dimElems)[0].dimVal == 0 && elementType == API_ColumnID) {
+    if (is_equal ((*memo.dimElems)[0].dimVal, 0) && elementType == API_ColumnID) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     };
@@ -132,7 +135,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
         elementType = (*memo.dimElems)[k].base.base.typeID;
         #endif // AC_26
         // TODO Баг в архикаде - при обработке размеров, привязанных к колонне - они слетают.
-        if ((*memo.dimElems)[k].dimVal == 0 && elementType == API_ColumnID) {
+        if (is_equal ((*memo.dimElems)[k].dimVal, 0) && elementType == API_ColumnID) {
             ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         };
@@ -140,7 +143,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
             ACAPI_DisposeElemMemoHdls (&memo);
             return err;
         }
-        if ((*memo.dimElems)[k].dimVal == 0) {
+        if (is_equal ((*memo.dimElems)[k].dimVal, 0)) {
             continue;
         }
         GS::UniString content = GS::UniString::Printf ("%s", (*memo.dimElems)[k].note.content);
@@ -238,7 +241,7 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, const API_NoteCon
     flag_highlight = DIM_NOCHANGE;
     Int32 round_value = dimrule.round_value;
     bool only_show = (round_value < 1);
-    if (round_value < 1) round_value = 1;
+    if (only_show) round_value = 1;
     double dimVal_r = round (dimVal * 1000.0);
     Int32 dimValmm_round = 0;
     if (dimrule.classic_round_mode) {
@@ -285,7 +288,6 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, const API_NoteCon
             flag_highlight = DIM_HIGHLIGHT_OFF;
         }
     } else {
-
         // Если стоит пользовательский текст - сверим с вычисленным значением
         if (contentType == API_NoteContent_Custom) {
             if (flag_change == DIM_NOCHANGE && flag_expression == false && dx < 1.0) {

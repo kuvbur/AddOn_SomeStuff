@@ -39,6 +39,8 @@ static const Int32 RoomBook_CommandID = 15;
 static const Int32 Auto3D_CommandID = 16;
 static const Int32 AutoLay_CommandID = 17;
 
+static const UInt32 MENU_ITEM_COUNT = 16;
+
 #if defined(AC_28) || defined(AC_29)
 GSErrCode ElementEventHandlerProc (const API_NotifyElementType* elemType);
 

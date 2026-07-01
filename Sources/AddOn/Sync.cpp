@@ -64,25 +64,25 @@ void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSetti
     #endif
     GSErrCode err = ACAPI_Element_GetElemList (elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
     if (err != NoError || guidArray.IsEmpty ()) return;
-    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        err = AttachObserver (guidArray[i], syncSettings);
+    for (const auto& guid : guidArray) {
+        err = AttachObserver (guid, syncSettings);
         if (err == APIERR_LINKEXIST)
             err = NoError;
         if (err != NoError) {
-            msg_rep ("MonByType", "AttachObserver", err, guidArray[i]);
-            return;
+            msg_rep ("MonByType", "AttachObserver", err, guid);
+            continue;
         }
         // Получаем список связанных элементов
         if (syncSettings.cwallS) {
-            GS::Array<API_Guid> subelemGuids;
-            GetRelationsElement (guidArray[i], elementType, syncSettings, subelemGuids, true, true);
-            for (UInt32 j = 0; j < subelemGuids.GetSize (); j++) {
-                err = AttachObserver (subelemGuids[j], syncSettings);
+            GS::Array<API_Guid> subelemGuids = {};
+            GetRelationsElement (guid, elementType, syncSettings, subelemGuids, true, true);
+            for (const auto& subelemGuid : subelemGuids) {
+                err = AttachObserver (subelemGuid, syncSettings);
                 if (err == APIERR_LINKEXIST)
                     err = NoError;
                 if (err != NoError) {
-                    msg_rep ("MonByType", "AttachObserver", err, subelemGuids[j]);
-                    return;
+                    msg_rep ("MonByType", "AttachObserver", err, subelemGuid);
+                    continue;
                 }
             }
         }
@@ -773,10 +773,9 @@ void SyncCalcRule (const WriteDict& syncRules, const GS::Array<API_Guid>& subele
 // --------------------------------------------------------------------
 void SyncAddSubelement (const GS::Array<API_Guid>& subelemGuids, GS::Array <WriteData>& mainsyncRules, WriteDict& syncRules, ParamDictElement& paramToRead)
 {
-    const API_Guid& subelemGuid = subelemGuids[0];
     #if defined(TESTING)
     if (!subelemGuids.IsEmpty ()) {
-        if (subelemGuid == APINULLGuid) {
+        if (subelemGuids[0] == APINULLGuid) {
             DBprnt ("SyncAddSubelement err", "subelemGuid == APINULLGuid");
         }
     }
@@ -792,8 +791,8 @@ void SyncAddSubelement (const GS::Array<API_Guid>& subelemGuids, GS::Array <Writ
         // Для записи из дочернего в родительский возьмём только один, первый элемент
         if (mainsyncRule.fromSub) {
             mainsyncRule.fromSub = false;
-            mainsyncRule.guidFrom = subelemGuid;
-            mainsyncRule.paramFrom.fromGuid = subelemGuid;
+            mainsyncRule.guidFrom = subelemGuids[0];
+            mainsyncRule.paramFrom.fromGuid = subelemGuids[0];
             SyncAddRule (mainsyncRule, syncRules, paramToRead);
         }
         if (mainsyncRule.fromSub) {
@@ -1849,19 +1848,17 @@ void SyncSetSubelement (SyncSettings& syncSettings)
     }
     // Проверяем доступность для редактирования
     GS::Array<API_Guid> subguidArray = {}; // Массив редактируемых и почищенных от SectElem дочерних элементов
-    for (UInt32 i = 0; i < subguidArray_.GetSize (); i++) {
+    for (const auto& subguid : subguidArray_) {
         API_ElemTypeID elementType;
-        if (IsElementEditable (subguidArray_[i], syncSettings, false, elementType)) {
-            if (elementType != API_LabelID) {
-                if ((CheckElementType (elementType, syncSettings) && elementType != API_DimensionID)) {
-                    if (subguidArray_[i] != parentelementhead.guid) subguidArray.Push (subguidArray_[i]);
-                } else {
-                    if (elementType == API_SectElemID) {
-                        API_Guid parentguid;
-                        GetParentGUIDSectElem (subguidArray_[i], parentguid, elementType);
-                        if (parentguid != parentelementhead.guid) subguidArray.Push (parentguid);
-                    }
-                }
+        if (!IsElementEditable (subguid, syncSettings, false, elementType)) continue;
+        if (elementType == API_LabelID) continue;
+        if ((CheckElementType (elementType, syncSettings) && elementType != API_DimensionID)) {
+            if (subguid != parentelementhead.guid) subguidArray.Push (subguid);
+        } else {
+            if (elementType == API_SectElemID) {
+                API_Guid parentguid;
+                GetParentGUIDSectElem (subguid, parentguid, elementType);
+                if (parentguid != parentelementhead.guid) subguidArray.Push (parentguid);
             }
         }
     }

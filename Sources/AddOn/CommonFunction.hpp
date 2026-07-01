@@ -334,9 +334,9 @@ double GetOffsetFromStory (const double zPos, const short floorInd, const Storie
 // -----------------------------------------------------------------------------
 double GetzPos (const double bottomOffset, const short floorInd, const Stories& stories);
 
-GS::UniString TextToQRCode (GS::UniString& text, int error_lvl);
+GS::UniString TextToQRCode (const GS::UniString& text, const  int error_lvl);
 
-GS::UniString TextToQRCode (GS::UniString& text);
+GS::UniString TextToQRCode (const GS::UniString& text);
 
 
 void DBprnt (double a, GS::UniString reportString);
@@ -394,7 +394,7 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr);
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool check_accuracy (double val, double tolerance);
+bool check_accuracy (const double& val, const double& tolerance);
 
 Int32 ceil_mod_classic (Int32 n, Int32 k);
 
@@ -407,6 +407,11 @@ Int32 DoubleM2IntMM (const double& value);
 // Округлить целое n вверх до ближайшего целого числа, кратного k
 // --------------------------------------------------------------------
 Int32 ceil_mod (Int32 n, Int32 k);
+
+// -----------------------------------------------------------------------------
+// Округление до заданного количества нулей
+// -----------------------------------------------------------------------------
+double round_nzero (const double& var, const  Int32& n_zero);
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -492,11 +497,6 @@ UInt32 StringSplt (const GS::UniString& instring, const GS::UniString& delim, GS
 // Возвращает elemType и elemGuid для корректного чтение параметров элементов навесной стены
 // -----------------------------------------------------------------------------
 void GetGDLParametersHead (const API_Element& element, const API_Elem_Head& elem_head, API_ElemTypeID& elemType, API_Guid& elemGuid);
-
-// -----------------------------------------------------------------------------
-// Возвращает список параметров API_AddParType
-// -----------------------------------------------------------------------------
-GSErrCode GetGDLParameters (const API_ElemTypeID& elemType, const API_Guid& elemGuid, API_AddParType**& params);
 
 // --------------------------------------------------------------------
 // Получение списка GUID панелей, рам и аксессуаров навесной стены
