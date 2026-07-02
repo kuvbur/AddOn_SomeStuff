@@ -135,7 +135,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
         case API_GroupID:
             return NoError;
         case API_DimensionID:
-            DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true);
+            DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true, false);
             return NoError;
         default:
             break;

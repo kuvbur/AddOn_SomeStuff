@@ -47,6 +47,263 @@ int IsDummyModeOn ()
     return DUMMY_MODE_OFF;
 }
 
+
+namespace FormatStringFunc
+{
+FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat)
+{
+    FormatString f = ParseFormatString (DEFULTREALFSTRING);
+    if (!formula.Contains (DOT)) return f;
+    GS::UniString texpression = formula;
+    GS::UniString texpression_ = formula;
+    FormatStringFunc::ReplaceMeters (texpression);
+    if (!texpression.Contains (METERS)) return f;
+    GS::UniString tpart = part;
+    texpression.ReplaceAll (BRACESTART, EMPTYSTRING);
+    texpression.ReplaceAll (BRACEEND, EMPTYSTRING);
+    texpression_.ReplaceAll (BRACESTART, EMPTYSTRING);
+    texpression_.ReplaceAll (BRACEEND, EMPTYSTRING);
+    tpart.ReplaceAll (BRACESTART, EMPTYSTRING);
+    tpart.ReplaceAll (BRACEEND, EMPTYSTRING);
+    UInt32 n_start = texpression.FindFirst (tpart) + tpart.GetLength (); // Индекс начала поиска строки-формата
+    GS::UniString stringformat_ = texpression.GetSubstring (CHARFORMULAEND, CHARMETERS, n_start) + METERS; // Предположительно, строка-формат
+    if (stringformat_.IsEmpty ()) stringformat_ = texpression.GetSubstring (CHARDQUT, CHARMETERS, n_start) + METERS;
+    if (stringformat_.Contains (DOT) && !stringformat_.Contains (SPACESTRING)) {
+        // Проверим, не обрезали ли лишнюю m
+        n_start = texpression.FindFirst (stringformat_) - 1;
+        UInt32 n_end = n_start + stringformat_.GetLength ();
+        if (n_end + 1 < texpression.GetLength ()) {
+            GS::UniString endm = texpression.ToLowerCase ().GetSubstring (n_end + 1, 1);
+            if (endm.IsEqual (METERS) || endm.IsEqual (DOTSET) || endm.IsEqual (RDSET) || endm.IsEqual (FSET)) {
+                n_end = n_end + 1;
+            }
+        }
+
+        stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
+        #ifdef TESTING
+        DBtest (!stringformat.Contains (CHARDQUT), "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat, false);
+        DBtest (!stringformat.Contains (CHARFORMULAEND), "GetFormatStringFromFormula : stringformat.Contains(CHARFORMULAEND) " + stringformat, false);
+        DBtest (!stringformat.Contains (CHARPROC), "GetFormatStringFromFormula : stringformat.Contains(CHARPROC) " + stringformat, false);
+        DBtest (!stringformat.Contains (CHARBRACEEND), "GetFormatStringFromFormula : stringformat.Contains(CHARBRACEEND) " + stringformat, false);
+        #endif
+        stringformat.Trim (CHARDQUT);
+        stringformat.Trim (CHARFORMULAEND);
+        stringformat.Trim (CHARPROC);
+        stringformat.Trim (CHARBRACEEND);
+        stringformat.Trim ();
+        f = FormatStringFunc::ParseFormatString (stringformat);
+    }
+    return f;
+}
+
+// -----------------------------------------------------------------------------
+// Обработка количества нулей и единиц измерения в имени свойства
+// Удаляет из имени paramName найденные единицы измерения
+// Возвращает строку для скармливания функции NumToStig
+// -----------------------------------------------------------------------------
+GS::UniString GetFormatString (GS::UniString& paramName)
+{
+    GS::UniString formatstring = "";
+    if (!paramName.Contains (DOT)) return formatstring;
+    auto& cache = PROPERTYCACHE ();
+    if (!paramName.Contains (cache.meterString) && !paramName.Contains (METERS)) return formatstring;
+    GS::Array<GS::UniString> partstring = {};
+    UInt32 n = StringSplt (paramName, DOT, partstring);
+    if (n > 1) {
+        formatstring = partstring[n - 1];
+        if (formatstring.Contains (METERS) || formatstring.Contains (cache.meterString)) {
+            if (formatstring.Contains (CharENTER)) {
+                UIndex attribinx = formatstring.FindLast (CharENTER);
+                formatstring = formatstring.GetSubstring (0, attribinx);
+            }
+
+            if (IsValid (formatstring)) {
+                paramName.ReplaceAll (DOT + formatstring, EMPTYSTRING);
+                ReplaceMeters (formatstring);
+            } else {
+                formatstring = EMPTYSTRING;
+            }
+        } else {
+            // Если .м найдена не в последнем блоке - то это не строка-формат
+            formatstring = EMPTYSTRING;
+        }
+    }
+    return formatstring;
+}
+
+bool IsValid (GS::UniString formatstring)
+{
+    ReplaceMeters (formatstring);
+    if (PROPERTYCACHE ().parsedformatstring.ContainsKey (formatstring)) return true;
+    if (!formatstring.Contains (METERS)) return false;
+    formatstring.ReplaceAll (METERS, EMPTYSTRING);
+    formatstring.ReplaceAll (DOT, EMPTYSTRING);
+    formatstring.ReplaceAll (ZEROSTRING, EMPTYSTRING);
+    formatstring.ReplaceAll (SPACESTRING, EMPTYSTRING);
+    if (formatstring.IsEmpty ()) return true;
+    if (formatstring.Contains ("1")) formatstring.ReplaceAll ("1", EMPTYSTRING);
+    if (formatstring.Contains ("2")) formatstring.ReplaceAll ("2", EMPTYSTRING);
+    if (formatstring.Contains ("3")) formatstring.ReplaceAll ("3", EMPTYSTRING);
+    if (formatstring.IsEmpty ()) return true;
+    if (formatstring.Contains (CSTRING)) formatstring.ReplaceAll (CSTRING, EMPTYSTRING);
+    if (formatstring.Contains (DSTRING)) formatstring.ReplaceAll (DSTRING, EMPTYSTRING);
+    if (formatstring.Contains (DOTSET)) formatstring.ReplaceAll (DOTSET, EMPTYSTRING);
+    if (formatstring.Contains (RDSET)) formatstring.ReplaceAll (RDSET, EMPTYSTRING);
+    if (formatstring.Contains (FSET)) formatstring.ReplaceAll (FSET, EMPTYSTRING);
+    if (formatstring.Contains (GSTRING)) formatstring.ReplaceAll (GSTRING, EMPTYSTRING);
+    if (formatstring.Contains (KSTRING)) formatstring.ReplaceAll (KSTRING, EMPTYSTRING);
+    if (formatstring.Contains ("4")) formatstring.ReplaceAll ("3", EMPTYSTRING);
+    if (formatstring.IsEmpty ()) return true;
+    for (UInt32 i = 4; i < 10; i++) {
+        formatstring.ReplaceAll (GS::UniString::Printf ("%d", i), EMPTYSTRING);
+        if (formatstring.IsEmpty ()) return true;
+    }
+    if (formatstring.IsEmpty ()) return true;
+    return false;
+}
+
+void ReplaceMeters (GS::UniString& formatstring)
+{
+    if (formatstring.IsEmpty ()) return;
+    auto& cache = PROPERTYCACHE ();
+    if (formatstring.Contains (cache.meterString)) formatstring.ReplaceAll (cache.meterString, METERS);
+    if (formatstring.Contains (cache.santimeterString)) formatstring.ReplaceAll (cache.santimeterString, DSTRING);
+    if (formatstring.Contains (cache.decimeterString)) formatstring.ReplaceAll (cache.decimeterString, CSTRING);
+}
+
+// -----------------------------------------------------------------------------
+// Извлекает из строки информацио о единицах измерении и округлении
+// -----------------------------------------------------------------------------
+FormatString ParseFormatString (const GS::UniString& stringformat)
+{
+    auto& cache = PROPERTYCACHE ();
+    if (const auto* cached = cache.parsedformatstring.GetPtr (stringformat)) return *cached;
+    int n_zero = 3;
+    Int32 krat = 0; // Крутность округления
+    double koeff = 1; //Коэфф. увеличения
+    bool trim_zero = true; //Требуется образать нули после запятой
+    bool needround = false; //Требуется округлить численное значение для вычислений
+    bool forceRaw = false; // Использовать неокруглённое значение для записи
+    bool delimetr_iscomma = true;
+    FormatString format = {};
+    format.stringformat = stringformat;
+    format.isEmpty = true;
+    if (!stringformat.IsEmpty ()) {
+        GS::UniString outstringformat = stringformat;
+        if (stringformat.Contains (DOT)) {
+            outstringformat.ReplaceAll (DOT, EMPTYSTRING);
+            format.stringformat.ReplaceAll (DOT, EMPTYSTRING);
+        }
+        ReplaceMeters (outstringformat);
+        if (outstringformat.Contains (METERS)) {
+            if (outstringformat.Contains (MMETERS)) {
+                n_zero = 0;
+                koeff = 1000;
+                outstringformat.ReplaceAll (MMETERS, EMPTYSTRING);
+            } else {
+                if (outstringformat.Contains (CMETERS)) {
+                    n_zero = 1;
+                    koeff = 100;
+                    outstringformat.ReplaceAll (CMETERS, EMPTYSTRING);
+                } else {
+                    if (outstringformat.Contains (DMETERS)) {
+                        n_zero = 2;
+                        koeff = 10;
+                        outstringformat.ReplaceAll (DMETERS, EMPTYSTRING);
+                    } else {
+                        if (outstringformat.Contains (GMETERS)) {
+                            koeff = 1 / 100;
+                            outstringformat.ReplaceAll (GMETERS, EMPTYSTRING);
+                        } else {
+                            if (outstringformat.Contains (KMETERS)) {
+                                koeff = 1 / 1000;
+                                outstringformat.ReplaceAll (KMETERS, EMPTYSTRING);
+                            } else {
+                                koeff = 1;
+                                n_zero = 3;
+                                outstringformat.ReplaceAll (METERS, EMPTYSTRING);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains (DOTSET)) {
+                delimetr_iscomma = false;
+                outstringformat.ReplaceAll (DOTSET, EMPTYSTRING);
+            }
+        }
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains (RDSET)) {
+                needround = true;
+                outstringformat.ReplaceAll (RDSET, EMPTYSTRING);
+            }
+        }
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains (FSET)) {
+                forceRaw = true;
+                outstringformat.ReplaceAll (FSET, EMPTYSTRING);
+            }
+        }
+        // Принудительный вывод заданного кол-ва нулей после запятой
+        if (!outstringformat.IsEmpty ()) {
+            if (outstringformat.Contains (ZEROSTRING)) {
+                outstringformat.ReplaceAll (ZEROSTRING, EMPTYSTRING);
+                outstringformat.Trim ();
+                if (!outstringformat.IsEmpty ()) trim_zero = false;
+            }
+        }
+        if (!outstringformat.IsEmpty ()) {
+            n_zero = std::atoi (outstringformat.ToCStr ());
+        }
+        format.isEmpty = false;
+        format.isRead = true;
+    }
+    format.forceRaw = forceRaw;
+    format.needRound = needround;
+    if (delimetr_iscomma) {
+        format.delimetr = COMMA;
+    } else {
+        format.delimetr = DOT;
+    }
+    format.n_zero = n_zero;
+    format.krat = krat;
+    format.koeff = koeff;
+    format.trim_zero = trim_zero;
+    cache.parsedformatstring.Put (stringformat, format);
+    return format;
+}
+
+// -----------------------------------------------------------------------------
+// Переводит число в строку согласно настройкам строки-формата
+// -----------------------------------------------------------------------------
+GS::UniString NumToString (const double& var, const FormatString& stringformat)
+{
+    if (fabs (var) < 0.00000001) return ZEROSTRING;
+    GS::UniString out = "";
+    double outvar = var * stringformat.koeff;
+    outvar = round_nzero (outvar, stringformat.n_zero);
+    if (stringformat.krat > 0) outvar = ceil_mod ((GS::Int32) var, stringformat.krat);
+    out = GS::UniString::Printf ("%f", outvar);
+    if (stringformat.delimetr != DOT && out.Contains (DOT)) out.ReplaceAll (DOT, stringformat.delimetr);
+    if (stringformat.delimetr != COMMA && out.Contains (COMMA)) out.ReplaceAll (COMMA, stringformat.delimetr);
+    out.TrimRight (CHARZERO);
+    if (stringformat.trim_zero) {
+        out.TrimRight (stringformat.delimetr.GetChar (0));
+    } else {
+        Int32 addzero = stringformat.n_zero - (out.GetLength () - out.FindFirst (stringformat.delimetr.GetChar (0)) - 1);
+        if (addzero > 0) {
+            for (Int32 i = 0; i < addzero; i++) {
+                out.Append (ZEROSTRING);
+            }
+        }
+    }
+    return out;
+}
+}
+
+
 // -------------------------------------------------------------------------------
 // Функция для получения правил из массива элементов (по имени правила и наличию скобок в описании)
 // Если в массиве один элемент - будет произведён поиск по классификации
@@ -6684,6 +6941,7 @@ void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Proper
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property & property)
 {
+    auto& cache = PROPERTYCACHE ();
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) ParamHelpers::SetrawNameFromProperty (pvalue, property);
     if (property.definition.description.Contains (SYNCCORRECTFLAG)) pvalue.rawName = "{@property:sync_correct_flag}";
     API_PropertyValue value = {};
@@ -6755,19 +7013,16 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             if (pvalue.val.intValue / 1 < pvalue.val.doubleValue) pvalue.val.intValue += 1;
             if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
             pvalue.val.type = API_PropertyRealValueType;
-            formatstringdict = FormatStringFunc::GetFotmatStringForMeasureType ();
-            if (formatstringdict.ContainsKey (property.definition.measureType)) {
-                int n_zero = formatstringdict.Get (property.definition.measureType).n_zero;
-                GS::UniString stringformat = formatstringdict.Get (property.definition.measureType).stringformat;
-                bool needRound = formatstringdict.Get (property.definition.measureType).needRound;
+            if (const auto* formatstringch = cache.formatstringformeasuretype.GetPtr (property.definition.measureType)) {
+                bool needRound = formatstringch->needRound;
                 if (pvalue.rawName.IsEqual ("{@property:buildingmaterialproperties/some_stuff_th}")) needRound = false;
                 if (needRound && property.definition.measureType != API_PropertyLengthMeasureType) {
-                    pvalue.val.doubleValue = round_nzero (pvalue.val.doubleValue, n_zero);
+                    pvalue.val.doubleValue = round_nzero (pvalue.val.doubleValue, formatstringch->n_zero);
                     pvalue.val.intValue = (GS::Int32) pvalue.val.doubleValue;
                     if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
                 }
                 if (pvalue.val.formatstring.isEmpty) {
-                    pvalue.val.formatstring = FormatStringFunc::ParseFormatString (stringformat);
+                    pvalue.val.formatstring = FormatStringFunc::ParseFormatString (formatstringch->stringformat);
                     pvalue.val.formatstring.needRound = needRound;
                 }
                 pvalue.val.uniStringValue = ParamHelpers::ToString (pvalue);
@@ -7458,7 +7713,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     cutline.c2 = segment[j].c2;
                     min_r = r;
                 }
-            }
+        }
             #if defined(AC_28) || defined(AC_29)
             lines.Get (cIt->key).cut_start = cutline.c2;
             lines.Get (cIt->key).cut_direction = Geometry::SectorVector (cutline);
@@ -7592,19 +7847,19 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         }
                                         hasData = true;
                                     }
-                                }
                             }
-                        }
-                    } else {
+                    }
+                }
+        } else {
                         #if defined(TESTING)
                         DBprnt ("ERR == syHatch.ToPolygon2D ====================");
                         #endif
                     }
-                }
-                break;
-        }
-        ++profileDescriptionIt1;
     }
+                break;
+    }
+        ++profileDescriptionIt1;
+}
     if (needReadQuantities && !composite_all.IsEmpty ()) {
         short pen = -1;
         if (param_composite.ContainsKey (pen)) {
@@ -7646,13 +7901,13 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 }
                 ct.composite = paramout;
             }
+            }
         }
-    }
     return hasData;
     #else
     return false;
     #endif
-}
+    }
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента
@@ -7725,12 +7980,12 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                         if (memo.columnSegments[0].venType == APIVeneer_Finish) structype_ven = APICWallComp_Finish;
                     }
                     if (structtype == API_ProfileStructure) constrinx = memo.columnSegments[0].assemblySegmentData.profileAttr;
-                } else {
+            } else {
                     msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - ColumnSegment", err, element.header.guid);
                     ACAPI_DisposeElemMemoHdls (&memo);
                     return false;
                 }
-            } else {
+    } else {
                 msg_rep ("ParamHelpers::Components", "Multisegment column not supported", NoError, element.header.guid);
                 return false;
             }
@@ -7760,12 +8015,12 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
                         length = sqrt ((element.beam.begC.x - element.beam.endC.x) * (element.beam.begC.x - element.beam.endC.x) + (element.beam.begC.y - element.beam.endC.y) * (element.beam.begC.y - element.beam.endC.y));
                     }
                     if (structtype == API_ProfileStructure) constrinx = memo.beamSegments[0].assemblySegmentData.profileAttr;
-                } else {
+            } else {
                     msg_rep ("ParamHelpers::Components", "ACAPI_Element_GetMemo - BeamSegment", err, element.header.guid);
                     ACAPI_DisposeElemMemoHdls (&memo);
                     return false;
                 }
-            } else {
+} else {
                 msg_rep ("ParamHelpers::Components", "Multisegment beam not supported", NoError, element.header.guid);
                 return false;
             }
@@ -7832,7 +8087,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
         default:
             return false;
             break;
-    }
+}
     ACAPI_DisposeElemMemoHdls (&memo);
 
     // Типов вывода слоёв может быть насколько - для сложных профилей, для учёта несущих/ненесущих слоёв
@@ -7898,7 +8153,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-}
+            }
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
@@ -8114,4 +8369,4 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     return (ParamHelpers::AddProperty (params, properties, APINULLGuid) || flag_find);
     #endif
     return flag_find;
-}
+    }

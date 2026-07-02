@@ -34,11 +34,11 @@ bool ResetProperty ()
 //--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& definitions_to_reset)
 {
-    DoneElemGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
+    UnicGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
     UInt32 flag_reset = 0;
     GSErrCode	err = NoError;
     API_DatabaseID commandID = APIDb_GetCurrentDatabaseID;
-    API_AttributeIndex layerCombIndex;
+    API_AttributeIndex layerCombIndex = {};
 
     // Сейчас будем переключаться между БД
     // Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
@@ -95,7 +95,7 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& def
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств в выбранной БД
 //--------------------------------------------------------------------------------------------------------------------------
-UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid)
+UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, UnicGuid& doneelemguid)
 {
     UInt32 flag_reset = 0;
     GSErrCode	err = NoError;

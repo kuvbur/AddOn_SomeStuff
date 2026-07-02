@@ -17,8 +17,6 @@
 #include	"DG.h"
 #include	"SyncSettings.hpp"
 
-typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
-
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
@@ -29,7 +27,7 @@ bool ResetProperty ();
 //--------------------------------------------------------------------------------------------------------------------------
 UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition>& definitions_to_reset);
 
-UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, DoneElemGuid& doneelemguid);
+UInt32 ResetElementsInDB (const API_DatabaseID commandID, const GS::Array<API_PropertyDefinition>& definitions_to_reset, API_AttributeIndex layerCombIndex, UnicGuid& doneelemguid);
 
 GSErrCode ResetOneElemen (const API_Guid elemGuid, const GS::Array<API_PropertyDefinition>& definitions_to_reset);
 

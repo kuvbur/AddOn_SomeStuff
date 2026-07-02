@@ -38,17 +38,13 @@ void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue);
 
 bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue);
 
+bool isCacheContainsParamValue (const GS::UniString& rawname);
+
 bool isPropertyDefinitionRead ();
 
 bool isAttributeRead ();
 
-bool isCacheContainsGroup (const API_Guid& guid);
-
 bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group);
-
-bool isCacheContainsParamValue (const GS::UniString& rawname);
-
-bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname);
 
 #if defined (AC_29)
 bool isMEPRead ();
@@ -57,6 +53,8 @@ bool GetMEPSystemGroup (MEPDicts& mepdict);
 #endif
 
 bool GetGeoLocationToParamDict (ParamDictValue& propertyParams);
+
+FormatStringDict GetFormatStringForMeasureType ();
 
 // --------------------------------------------------------------------
 // Получение списка глобальных переменных о местоположении проекта, солнца
@@ -99,6 +97,12 @@ struct PropertyCache
     UnicGuidByGuidString reversesystemdict;
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
+    GS::HashTable<GS::UniString, FormatString> parsedformatstring;
+    FormatStringDict formatstringformeasuretype;
+    GS::UniString meterString = "m";
+    GS::UniString santimeterString = "cm";
+    GS::UniString decimeterString = "dm";
+
     Int32 isEng;
     bool isEng_OK;
 
@@ -158,6 +162,7 @@ struct PropertyCache
         unreadedgdlparams.Clear ();
         file.Clear ();
         filedata.Clear ();
+        formatstringformeasuretype.Clear ();
         surv_point_tm = {};
         isEng = 0;
         isEng_OK = false;
@@ -207,7 +212,7 @@ struct PropertyCache
     void ReadisEng ()
     {
         GSErrCode err = NoError;
-        API_ServerApplicationInfo AppInfo;
+        API_ServerApplicationInfo AppInfo = {};
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_AddOnIdentification_Application (&AppInfo);
         #else
@@ -221,6 +226,9 @@ struct PropertyCache
         isEng_OK = true;
         msg_rep ("PropertyCache AppInfo.language is", AppInfo.language, err, APINULLGuid);
         if (!AppInfo.language.IsEqual ("RUS")) isEng = 1000;
+        meterString = RSGetIndString (isEng, MeterStringID, ACAPI_GetOwnResModule ());
+        santimeterString = RSGetIndString (isEng, CMeterStringID, ACAPI_GetOwnResModule ());
+        decimeterString = RSGetIndString (isEng, DMeterStringID, ACAPI_GetOwnResModule ());
     }
 
     void Update ()
@@ -253,6 +261,46 @@ struct PropertyCache
         duration = (double) (finish - start) / CLOCKS_PER_SEC;
         GS::UniString time = GS::UniString::Printf ("Property Cache updated in %.3f s", duration);
         msg_rep ("=PropertyCache=", time, NoError, APINULLGuid);
+    }
+
+    void ReadFormatStringForMeasureType ()
+    {
+        #if defined(TESTING)
+        DBprnt ("=PropertyCache= ReadFormatStringForMeasureType");
+        #endif
+        // Получаем данные об округлении и типе расчёта
+        API_CalcUnitPrefs unitPrefs1 = {};
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
+        #else
+        ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
+        #endif
+        API_WorkingUnitPrefs unitPrefs = {};
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
+        #else
+        ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
+        #endif
+        FormatString fstring = {};
+        fstring.needRound = unitPrefs1.useDisplayedValues;
+
+        fstring.n_zero = 2; fstring.stringformat = "2";
+        formatstringformeasuretype.Add (API_PropertyUndefinedMeasureType, fstring);
+
+        fstring.n_zero = 2; fstring.stringformat = "2";
+        formatstringformeasuretype.Add (API_PropertyDefaultMeasureType, fstring);
+
+        fstring.n_zero = unitPrefs.areaDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.areaDecimals);
+        formatstringformeasuretype.Add (API_PropertyAreaMeasureType, fstring);
+
+        fstring.n_zero = unitPrefs.lenDecimals; fstring.stringformat = GS::UniString::Printf ("0%dmm", unitPrefs.lenDecimals);
+        formatstringformeasuretype.Add (API_PropertyLengthMeasureType, fstring);
+
+        fstring.n_zero = unitPrefs.volumeDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.volumeDecimals);
+        formatstringformeasuretype.Add (API_PropertyVolumeMeasureType, fstring);
+
+        fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.angleDecimals);
+        formatstringformeasuretype.Add (API_PropertyAngleMeasureType, fstring);
     }
 
     void ReadGetGeoLocation ()
@@ -290,8 +338,6 @@ struct PropertyCache
         #endif
         return true;
     }
-
-
 
     void ReadSurveyPointTransformation ()
     {
@@ -430,8 +476,8 @@ struct PropertyCache
                 if (!fname.Contains (".txt") && !fname.Contains (".csv")) fname.Append (".txt");
                 AddFile (fname);
             }
+        }
     }
-}
 
     void ReadClassification ()
     {
@@ -456,7 +502,7 @@ struct PropertyCache
                 API_Guid& systemguid = cd.Get ("@system@").system.guid;
                 if (!reversesystemdict.ContainsKey (systemguid)) {
                     UnicGuidString d = {};
-                    d.Add (APINULLGuid, systemname);
+                    d.Put (APINULLGuid, systemname);
                     reversesystemdict.Add (systemguid, d);
                 } else {
                     continue;
@@ -470,13 +516,10 @@ struct PropertyCache
                     GS::UniString classname = *cItt->key;
                     #endif
                     API_Guid& classguid = cl.item.guid;
-
                     UnicGuidString& d = reversesystemdict.Get (systemguid);
-                    if (!d.ContainsKey (classguid)) {
-                        d.Add (classguid, classname);
-                    }
+                    d.Put (classguid, classname);
                 }
-    }
+            }
         }
         #if defined(TESTING)
         if (!isClassification_OK) DBprnt ("=PropertyCache= ReadClassification ERROR");
@@ -488,22 +531,6 @@ struct PropertyCache
         isPropertyDefinitionRead = true;
         ParamHelpers::GetArrayPropertyDefinitionToParamDict (property, definitions);
         if (property.IsEmpty ()) isPropertyDefinition_OK = false;
-    }
-
-    void AddGroupProperty (const API_Guid& guid)
-    {
-        isGroupPropertyRead = true;
-        API_PropertyGroup group;
-        group.guid = guid;
-        GSErrCode err = ACAPI_Property_GetPropertyGroup (group);
-        if (err != NoError) {
-            msg_rep ("AddGroupProperty", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
-            return;
-        }
-        if (!propertygroups.ContainsKey (group.guid)) {
-            propertygroups.Add (group.guid, group);
-        }
-        isGroupProperty_OK = true;
     }
 
     void ReadGroupProperty ()
@@ -521,10 +548,8 @@ struct PropertyCache
             return;
         }
         for (const auto& group : groups) {
-            if (!propertygroups.ContainsKey (group.guid)) {
-                propertygroups.Add (group.guid, group);
-                isGroupProperty_OK = true;
-            }
+            propertygroups.Put (group.guid, group);
+            isGroupProperty_OK = true;
         }
         if (propertygroups.IsEmpty ()) isGroupProperty_OK = false;
         #if defined(TESTING)

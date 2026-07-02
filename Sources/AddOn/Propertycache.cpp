@@ -86,182 +86,159 @@ bool ReadLibraryFile (const GS::UniString& fileName, GS::Array<GS::Array<GS::Uni
 void SetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 {
     ParamValue paramFrom;
-    if (!GetParamValueFromCache (rawname, paramFrom)) {
-        return;
-    }
+    if (!GetParamValueFromCache (rawname, paramFrom)) return;
     paramFrom.fromGuid = pvalue.fromGuid;
     paramFrom.toQRCode = pvalue.toQRCode;
     pvalue = paramFrom;
 }
 
-bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
-{
-    short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
-    if (!(inx == PROPERTYTYPEINX || inx == GLOBTYPEINX || inx == ATTRIBTYPEINX || inx == INFOTYPEINX)) {
-        return false;
-    }
-    if (!isCacheContainsParamValue (inx, rawname)) {
-        return false;
-    }
-    switch (inx) {
-        case PROPERTYTYPEINX:
-            pvalue = PROPERTYCACHE ().property.Get (rawname);
-            return true;
-            break;
-        case GLOBTYPEINX:
-            pvalue = PROPERTYCACHE ().glob.Get (rawname);
-            return true;
-            break;
-        case ATTRIBTYPEINX:
-            pvalue = PROPERTYCACHE ().attrib.Get (rawname);
-            return true;
-            break;
-        case INFOTYPEINX:
-            pvalue = PROPERTYCACHE ().info.Get (rawname);
-            return true;
-            break;
-        default:
-            return false;
-            break;
-    }
-    return false;
-}
-
 bool isPropertyDefinitionRead ()
 {
-    if (!PROPERTYCACHE ().isPropertyDefinitionRead_full) {
-        PROPERTYCACHE ().ReadPropertyDefinition ();
-    }
-    return PROPERTYCACHE ().isPropertyDefinition_OK;
+    auto& cache = PROPERTYCACHE ();
+    if (!cache.isPropertyDefinitionRead_full) cache.ReadPropertyDefinition ();
+    return cache.isPropertyDefinition_OK;
 }
 
 bool isAttributeRead ()
 {
-    if (!PROPERTYCACHE ().isAttributeRead) {
-        PROPERTYCACHE ().ReadAttribute ();
-    }
-    return PROPERTYCACHE ().isAttribute_OK;
+    auto& cache = PROPERTYCACHE ();
+    if (!cache.isAttributeRead) cache.ReadAttribute ();
+    return cache.isAttribute_OK;
 }
 
 #if defined (AC_29)
 bool isMEPRead ()
 {
-    if (!PROPERTYCACHE ().isMEPRead_full) {
-        PROPERTYCACHE ().ReadMEP ();
-    }
-    return PROPERTYCACHE ().isMEP_OK;
+    auto& cache = PROPERTYCACHE ();
+    if (!cache.isMEPRead_full) cache.ReadMEP ();
+    return cache.isMEP_OK;
 }
 #endif
 
-bool isCacheContainsGroup (const API_Guid& guid)
-{
-    if (PROPERTYCACHE ().isGroupPropertyRead && PROPERTYCACHE ().isGroupProperty_OK) {
-        if (PROPERTYCACHE ().propertygroups.ContainsKey (guid)) return true;
-    }
-    if (!PROPERTYCACHE ().isGroupPropertyRead_full) {
-        PROPERTYCACHE ().AddGroupProperty (guid);
-    }
-    return PROPERTYCACHE ().propertygroups.ContainsKey (guid);
-}
-
 bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
 {
-    if (!isCacheContainsGroup (guid)) {
-        #if defined(TESTING)
-        DBprnt ("ERROR isCacheContainsGroup (guid) ");
-        #endif
+    auto& cache = PROPERTYCACHE ();
+    if (cache.isGroupPropertyRead && cache.isGroupProperty_OK) {
+        if (const auto* ptr = cache.propertygroups.GetPtr (guid)) { group = *ptr; return true; }
+    }
+
+    if (!cache.isGroupPropertyRead_full && cache.isGroupProperty_OK) {
+        if (const auto* ptr = cache.propertygroups.GetPtr (guid)) { group = *ptr; return true; }
+        cache.isGroupPropertyRead = true;
+        API_PropertyGroup group = {};
+        group.guid = guid;
+        GSErrCode err = ACAPI_Property_GetPropertyGroup (group);
+        if (err != NoError) {
+            msg_rep ("GetGroupFromCache", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
+            return false;
+        }
+        cache.isGroupProperty_OK = true;
+    }
+    if (const auto* ptr = cache.propertygroups.GetPtr (guid)) { group = *ptr; return true; }
+
+    #if defined(TESTING)
+    DBprnt ("ERROR GetGroupFromCache (guid) ");
+    #endif
+    return false;
+}
+
+bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
+{
+    short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
+    if (inx != PROPERTYTYPEINX && inx != GLOBTYPEINX && inx != ATTRIBTYPEINX && inx != INFOTYPEINX) {
         return false;
     }
-    group = PROPERTYCACHE ().propertygroups.Get (guid);
-    return true;
+    auto& cache = PROPERTYCACHE ();
+    switch (inx) {
+        case PROPERTYTYPEINX:
+            if (!cache.isPropertyDefinitionRead_full) cache.ReadPropertyDefinition ();
+            if (!cache.isPropertyDefinition_OK) return false;
+            if (const auto* ptr = cache.property.GetPtr (rawname)) { pvalue = *ptr; return true; }
+            return false;
+
+        case GLOBTYPEINX:
+            if (const auto* ptr = cache.glob.GetPtr (rawname)) { pvalue = *ptr; return true; }
+
+            if (!cache.isGetGeoLocationRead) cache.ReadGetGeoLocation ();
+            if (const auto* ptr = cache.glob.GetPtr (rawname)) { pvalue = *ptr; return true; }
+
+            if (!cache.isSurveyPointTransformationRead) cache.ReadSurveyPointTransformation ();
+            if (const auto* ptr = cache.glob.GetPtr (rawname)) { pvalue = *ptr; return true; }
+
+            if (!cache.isPlaceSetsRead) cache.ReadPlaceSets ();
+            if (const auto* ptr = cache.glob.GetPtr (rawname)) { pvalue = *ptr; return true; }
+
+            if (!cache.isLocOriginRead) cache.ReadLocOrigin ();
+            if (const auto* ptr = cache.glob.GetPtr (rawname)) { pvalue = *ptr; return true; }
+
+            return false;
+
+        case ATTRIBTYPEINX:
+            if (!cache.isAttributeRead) cache.ReadAttribute ();
+            if (!cache.isAttribute_OK) return false;
+
+            if (const auto* ptr = cache.attrib.GetPtr (rawname)) { pvalue = *ptr; return true; }
+            return false;
+
+        case INFOTYPEINX:
+            if (!cache.isInfoRead) cache.ReadInfo ();
+            if (!cache.isInfo_OK) return false;
+
+            if (const auto* ptr = cache.info.GetPtr (rawname)) { pvalue = *ptr; return true; }
+            return false;
+
+        default:
+            return false;
+    }
 }
 
 bool isCacheContainsParamValue (const GS::UniString& rawname)
 {
     short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
-    if (!(inx == PROPERTYTYPEINX || inx == GLOBTYPEINX || inx == ATTRIBTYPEINX || inx == INFOTYPEINX)) {
+    if (inx != PROPERTYTYPEINX && inx != GLOBTYPEINX && inx != ATTRIBTYPEINX && inx != INFOTYPEINX) {
         return false;
     }
-    return isCacheContainsParamValue (inx, rawname);
-    return false;
-}
-
-bool isCacheContainsParamValue (const short& inx, const GS::UniString& rawname)
-{
+    auto& cache = PROPERTYCACHE ();
     switch (inx) {
         case PROPERTYTYPEINX:
-            // Проверяем с кэша, если в кэше есть, то не читаем из API, если нет, то читаем и добавляем в кэш
-            if (PROPERTYCACHE ().isPropertyDefinitionRead && PROPERTYCACHE ().isPropertyDefinition_OK) {
-                if (PROPERTYCACHE ().property.ContainsKey (rawname)) return true;
-            }
-            // Если кэш не был прочитан, то читаем его и проверяем наличие ключа
-            if (!PROPERTYCACHE ().isPropertyDefinitionRead_full) {
-                PROPERTYCACHE ().ReadPropertyDefinition ();
-            }
-            if (!PROPERTYCACHE ().isPropertyDefinition_OK) {
-                #if defined(TESTING)
-                DBprnt ("ERROR isPropertyDefinition_OK " + rawname);
-                #endif
-                return false;
-            }
-            return PROPERTYCACHE ().property.ContainsKey (rawname);
-            break;
+            if (!cache.isPropertyDefinitionRead_full) cache.ReadPropertyDefinition ();
+            if (!cache.isPropertyDefinition_OK) return false;
+            return cache.property.ContainsKey (rawname);
+
         case GLOBTYPEINX:
-            if (!PROPERTYCACHE ().isGetGeoLocationRead) PROPERTYCACHE ().ReadGetGeoLocation ();
-            if (!PROPERTYCACHE ().isGetGeoLocation_OK) {
-                #if defined(TESTING)
-                DBprnt ("ERROR isGetGeoLocation_OK " + rawname);
-                #endif
-            }
-            if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-            if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
-            if (!PROPERTYCACHE ().isSurveyPointTransformation_OK) {
-                #if defined(TESTING)
-                DBprnt ("ERROR isSurveyPointTransformation_OK " + rawname);
-                #endif
-            }
-            if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-            if (!PROPERTYCACHE ().isPlaceSetsRead) PROPERTYCACHE ().ReadPlaceSets ();
-            if (!PROPERTYCACHE ().isPlaceSets_OK) {
-                #if defined(TESTING)
-                DBprnt ("ERROR isPlaceSets_OK " + rawname);
-                #endif
-            }
-            if (PROPERTYCACHE ().glob.ContainsKey (rawname)) return true;
-            if (!PROPERTYCACHE ().isLocOriginRead) PROPERTYCACHE ().ReadLocOrigin ();
-            if (!PROPERTYCACHE ().isLocOrigin_OK) {
-                #if defined(TESTING)
-                DBprnt ("ERROR isLocOrigin_OK " + rawname);
-                #endif
-            }
-            return PROPERTYCACHE ().glob.ContainsKey (rawname);
-            break;
+            if (cache.glob.ContainsKey (rawname)) return true;
+
+            if (!cache.isGetGeoLocationRead) cache.ReadGetGeoLocation ();
+            if (!cache.isGetGeoLocation_OK) return false;
+            if (cache.glob.ContainsKey (rawname)) return true;
+
+            if (!cache.isSurveyPointTransformationRead) cache.ReadSurveyPointTransformation ();
+            if (!cache.isSurveyPointTransformation_OK) return false;
+            if (cache.glob.ContainsKey (rawname)) return true;
+
+            if (!cache.isPlaceSetsRead) cache.ReadPlaceSets ();
+            if (!cache.isPlaceSets_OK)  return false;
+            if (cache.glob.ContainsKey (rawname)) return true;
+
+            if (!cache.isLocOriginRead) cache.ReadLocOrigin ();
+            if (!cache.isLocOrigin_OK) return false;
+            return cache.glob.ContainsKey (rawname);
+
         case ATTRIBTYPEINX:
-            if (!PROPERTYCACHE ().isAttributeRead) PROPERTYCACHE ().ReadAttribute ();
-            if (!PROPERTYCACHE ().isAttribute_OK) {
-                #if defined(TESTING)
-                DBprnt ("ERROR isAttribute_OK " + rawname);
-                #endif
-                return false;
-            }
-            return PROPERTYCACHE ().attrib.ContainsKey (rawname);
-            break;
+            if (!cache.isAttributeRead) cache.ReadAttribute ();
+            if (!cache.isAttribute_OK) return false;
+            return cache.attrib.ContainsKey (rawname);
+
         case INFOTYPEINX:
-            if (!PROPERTYCACHE ().isInfoRead) PROPERTYCACHE ().ReadInfo ();
-            if (!PROPERTYCACHE ().isInfo_OK) {
-                #if defined(TESTING)
-                DBprnt ("ERROR isInfo_OK " + rawname);
-                #endif
-                return false;
-            }
-            return PROPERTYCACHE ().info.ContainsKey (rawname);
-            break;
+            if (!cache.isInfoRead) cache.ReadInfo ();
+            if (!cache.isInfo_OK) return false;
+            return cache.info.ContainsKey (rawname);
+
         default:
             return false;
-            break;
     }
-    return false;
 }
+
 #if defined (AC_29)
 bool GetMEPSystemGroup (MEPDicts& mepdict)
 {
@@ -416,8 +393,8 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
     DBprnt ("   GetLocOriginToParamDict start");
     #endif
     //Пользовательское начало
-    API_Coord3D locOrigin;
-    API_Coord offset;
+    API_Coord3D locOrigin = {};
+    API_Coord offset = {};
     GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetLocOrigo (&locOrigin);
@@ -568,11 +545,12 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
     #if defined(TESTING)
     DBprnt ("   GetAllPropertyDefinitionToParamDict start");
     #endif
-    if (!PROPERTYCACHE ().isGroupPropertyRead_full) PROPERTYCACHE ().ReadGroupProperty ();
-    if (!PROPERTYCACHE ().isGroupPropertyRead_full) return false;
+    auto& cache = PROPERTYCACHE ();
+    if (!cache.isGroupPropertyRead_full) cache.ReadGroupProperty ();
+    if (!cache.isGroupPropertyRead_full) return false;
     GSErrCode err = NoError;
     // Созданим словарь с определением всех свойств
-    for (const auto& cIt : PROPERTYCACHE ().propertygroups) {
+    for (const auto& cIt : cache.propertygroups) {
         #if defined(AC_28) || defined(AC_29)
         const API_PropertyGroup& group = cIt.value;
         #else
@@ -682,23 +660,25 @@ Int32 isEng ()
     #ifdef EXTNDVERSION
     return 0;
     #endif
-    if (!PROPERTYCACHE ().isEng_OK) PROPERTYCACHE ().ReadisEng ();
-    return PROPERTYCACHE ().isEng;
+    auto& cache = PROPERTYCACHE ();
+    if (!cache.isEng_OK) cache.ReadisEng ();
+    return cache.isEng;
 }
 
 void AddUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
 {
     if (libinx < 1) return;
-    if (!PROPERTYCACHE ().unreadedgdlparams.ContainsKey (libinx)) {
+    auto& cache = PROPERTYCACHE ();
+    if (!cache.unreadedgdlparams.ContainsKey (libinx)) {
         ParamDict p = {};
         p.Add (rawname, true);
-        PROPERTYCACHE ().unreadedgdlparams.Add (libinx, p);
+        cache.unreadedgdlparams.Add (libinx, p);
         #if defined(TESTING)
         DBprnt ("        Add skip GDL param", rawname);
         #endif
         return;
     }
-    ParamDict& p = PROPERTYCACHE ().unreadedgdlparams.Get (libinx);
+    ParamDict& p = cache.unreadedgdlparams.Get (libinx);
     if (!p.ContainsKey (rawname)) {
         #if defined(TESTING)
         DBprnt ("        Add skip GDL param", rawname);
@@ -712,8 +692,9 @@ GS::UniString CountUnreadGDLParams ()
     GS::UniString out = "";
     Int32 clib = 0;
     Int32 cparam = 0;
-    if (PROPERTYCACHE ().unreadedgdlparams.IsEmpty ()) return out;
-    for (GS::HashTable<Int32, ParamDict>::PairIterator cIt = PROPERTYCACHE ().unreadedgdlparams.EnumeratePairs (); cIt != NULL; ++cIt) {
+    auto& cache = PROPERTYCACHE ();
+    if (cache.unreadedgdlparams.IsEmpty ()) return out;
+    for (GS::HashTable<Int32, ParamDict>::PairIterator cIt = cache.unreadedgdlparams.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamDict& param = cIt->value;
         #else
@@ -730,8 +711,9 @@ GS::UniString CountUnreadGDLParams ()
 bool IsUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
 {
     if (libinx < 1) return false;
-    if (!PROPERTYCACHE ().unreadedgdlparams.ContainsKey (libinx)) return false;
-    ParamDict& p = PROPERTYCACHE ().unreadedgdlparams.Get (libinx);
+    auto& cache = PROPERTYCACHE ();
+    if (!cache.unreadedgdlparams.ContainsKey (libinx)) return false;
+    ParamDict& p = cache.unreadedgdlparams.Get (libinx);
     return p.ContainsKey (rawname);
 }
 
