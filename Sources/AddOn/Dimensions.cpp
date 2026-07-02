@@ -51,7 +51,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
             return err;
         }
     }
-    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {};
     element.header.guid = elemGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
@@ -73,8 +73,7 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
     }
     // Если в файле только одно правило, и оно уже найдено - не смысла запрашивать имя слоя
     if (!(!rules.IsEmpty () && dimrules.GetSize () == 1)) {
-        API_Attribute layer;
-        BNZeroMemory (&layer, sizeof (API_Attribute));
+        API_Attribute layer = {};
         layer.header.typeID = API_LayerID;
         layer.header.index = element.header.layer;
         err = ACAPI_Attribute_Get (&layer);
@@ -98,7 +97,6 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
     // Нет подходящего привали - выходим
     if (rules.IsEmpty ()) return err;
     API_ElementMemo memo = {};
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
     if (err != NoError) {
         msg_rep ("DimAutoRound", "ACAPI_Element_GetMemo", err, elemGuid);

@@ -36,12 +36,7 @@ void RoomBook ()
     start = clock ();
     GS::UniString funcname ("RoomBook");
     nPhase = 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-    #else
-    ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
-    #endif
-
+    ProcessWindowGuard pwGuard (funcname, nPhase);
     GS::Array<API_Guid> zones = {};
     GSErrCode err = NoError;
     API_SelectionInfo selectionInfo;
@@ -383,14 +378,7 @@ void RoomBook ()
     paramToRead.Clear ();
     // Проверка существования классов и свойств
     if (!zones.IsEmpty ()) {
-        if (!Check (finclass, finclassguids)) {
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            ACAPI_ProcessWindow_CloseProcessWindow ();
-            #else
-            ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-            #endif
-            return;
-        }
+        if (!Check (finclass, finclassguids)) return;
     }
     // Неиспользованные существующие элементы удаляем
     for (GS::HashTable<API_Guid, UnicGuidByBase>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs (); cIt_1 != NULL; ++cIt_1) {
@@ -450,21 +438,11 @@ void RoomBook ()
             err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts);
             #endif
             if (err != NoError) {
-                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-                ACAPI_ProcessWindow_CloseProcessWindow ();
-                #else
-                ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-                #endif
                 msg_rep ("Roombook", "ACAPI_TeamworkControl_ReserveElements", err, APINULLGuid);
                 return;
             }
             if (!conflicts.IsEmpty ()) {
                 msg_rep ("Roombook", "Can't reserve elements", err, APINULLGuid, true);
-                #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-                ACAPI_ProcessWindow_CloseProcessWindow ();
-                #else
-                ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-                #endif
                 return;
             }
         }
@@ -479,11 +457,6 @@ void RoomBook ()
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf ("Calculate complete for %d room(s) by", zones.GetSize ()) + GS::UniString::Printf (" %.3f s", duration);
     msg_rep ("RoomBook", time, NoError, APINULLGuid);
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    ACAPI_ProcessWindow_CloseProcessWindow ();
-    #else
-    ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-    #endif
 }
 
 GS::HashTable<API_Guid, UnicGuidByBase> Otd_GetOtd_ByZone (const GS::Array<API_Guid>&zones, const UnicGuid & finclassguids, const ClassificationFunc::ClassificationDict & finclass, bool& has_base_element, UnicGuid & reserv_elements)
@@ -972,8 +945,8 @@ bool CollectRoomInfo (const Stories & storyLevels, const API_Guid & zoneGuid, Ot
     syncSettings.objS = true;
     syncSettings.cwallS = true;
     GSErrCode err;
-    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
-    API_Element zoneelement = {}; BNZeroMemory (&zoneelement, sizeof (API_Element));
+    API_Element element = {};
+    API_Element zoneelement = {};
     zoneelement.header.guid = zoneGuid;
     err = ACAPI_Element_Get (&zoneelement);
     if (err != NoError) {
@@ -987,7 +960,7 @@ bool CollectRoomInfo (const Stories & storyLevels, const API_Guid & zoneGuid, Ot
         roominfo.isValid = false;
         return false;
     }
-    API_ElementMemo zonememo = {}; BNZeroMemory (&zonememo, sizeof (API_ElementMemo));
+    API_ElementMemo zonememo = {};
     err = ACAPI_Element_GetMemo (zoneelement.header.guid, &zonememo);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&zonememo);
@@ -1004,6 +977,7 @@ bool CollectRoomInfo (const Stories & storyLevels, const API_Guid & zoneGuid, Ot
     API_RoomRelation relData = {};
     err = ACAPI_Element_GetRelations (zoneGuid, API_ZombieElemID, &relData);
     if (err != NoError) {
+        ACAPI_DisposeElemMemoHdls (&zonememo);
         ACAPI_DisposeRoomRelationHdls (&relData);
         msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetRelations zone", err, zoneGuid);
         return false;
@@ -1176,27 +1150,6 @@ void OtdWall_Create_FromWall (const Stories & storyLevels, API_Guid & elGuid, GS
     }
     double w_bottomOffset = element.wall.bottomOffset;
     double w_height = element.wall.height;
-    // Проблема сложного профиля - он может начинаться ниже зоны и иметь выступающие части
-    //API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    //if (element.wall.modelElemStructureType == API_ProfileStructure) {
-    //    UInt64 mask = APIMemoMask_StretchedProfile;
-    //    err = ACAPI_Element_GetMemo (elGuid, &memo, mask);
-    //    if (err == NoError) {
-    //        if (memo.stretchedProfile != nullptr) {
-    //            ProfileVectorImage profileDescription = *memo.stretchedProfile;
-    //            ConstProfileVectorImageIterator profileDescriptionIt (profileDescription);
-    //            while (!profileDescriptionIt.IsEOI ()) {
-    //                switch (profileDescriptionIt->item_Typ) {
-    //                    case SyHatch:
-    //                        {
-    //                            const HatchObject& syHatch = profileDescriptionIt;
-    //                            Geometry::MultiPolygon2D result;
-    //                            if (syHatch.ToPolygon2D (result, HatchObject::VertexAndEdgeData::Omit) == NoError) {
-    //                            }
-    //                        }
-    //        }
-    //    }
-    //}
     Point2D wbegC = { element.wall.begC.x, element.wall.begC.y };
     Point2D wendC = { element.wall.endC.x, element.wall.endC.y };
     Sector walledge = { wbegC , wendC };
@@ -1407,8 +1360,6 @@ void OtdWall_Create_FromColumn (const Stories & storyLevels, API_Guid & elGuid, 
     GSErrCode err;
     API_Element element = {};
     API_ElementMemo segmentmemo = {};
-    BNZeroMemory (&segmentmemo, sizeof (API_ElementMemo));
-    BNZeroMemory (&element, sizeof (API_Element));
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError || !element.header.hasMemo) {
@@ -1533,8 +1484,6 @@ void Floor_FindInOneRoom (const Stories & storyLevels, API_Guid & elGuid, GS::Ar
     GSErrCode err = NoError;
     API_Element element = {};
     API_ElementMemo memo = {};
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    BNZeroMemory (&element, sizeof (API_Element));
     element.header.guid = elGuid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError || !element.header.hasMemo) {
@@ -1645,7 +1594,6 @@ void Floor_Create_One (const Stories & storyLevels, const short& floorInd, OtdSl
     for (const auto& el : elems) {
         API_Guid slabGuid = APIGuidFromString (el.guid.c_str ());
         API_ElementMemo memo = {};
-        BNZeroMemory (&memo, sizeof (API_ElementMemo));
         err = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
         if (err != NoError || memo.coords == nullptr) {
             #if defined(TESTING)
@@ -1653,7 +1601,7 @@ void Floor_Create_One (const Stories & storyLevels, const short& floorInd, OtdSl
             #endif
             continue;
         }
-        Geometry::Polygon2D slabpolygon;
+        Geometry::Polygon2D slabpolygon = {};
         err = ConstructPolygon2DFromElementMemo (memo, slabpolygon);
         if (err != NoError) {
             msg_rep ("Floor_Create_One err", "ConstructPolygon2DFromElementMemo", err, slabGuid);
@@ -2887,7 +2835,7 @@ static void	__ACENV_CALL RoomRedProc (const API_RoomReductionPolyType * roomRed)
 // -----------------------------------------------------------------------------
 void Edges_GetFromRoom (const API_ElementMemo & zonememo, API_Element & zoneelement, GS::Array<Sector>&walledges, GS::Array<Sector>&columnedges, GS::Array<Sector>&restedges, GS::Array<Sector>&gableedges)
 {
-    RoomEdges rdges;
+    RoomEdges rdges = {};
     reducededges = &rdges;
     GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29) 
@@ -3912,7 +3860,7 @@ void Floor_Draw_Slab (const GS::UniString & favorite_name, const Stories & story
     if (otdslab.poly.CalcArea () < 0.0001) return;
     API_Element slabelement = {};
     bool is_new = (otdslab.otd_guid == APINULLGuid);// Элемент уже существует, нужно только обновить
-    API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    API_ElementMemo memo = {};
     if (is_new) {
         if (!Floor_GetDefult_Slab (favorite_name, slabelement)) return;
     } else {
@@ -4509,7 +4457,7 @@ void Favorite_ReadComposite (const ParamValue & param_composite, MatarialToFavor
     if (!favdict.ContainsKey (fav_name)) return;
     if (favdict.Get (fav_name).is_composite_read) return;
     favdict.Get (fav_name).is_composite_read = true;
-    API_Element element; BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {};
     if (!Favorite_GetByName (favdict.Get (fav_name).name, element)) return;
     if (!paramToRead_favorite.ContainsKey (param_composite.rawName)) return;
     paramToRead_favorite.Set (param_composite.rawName, param_composite);

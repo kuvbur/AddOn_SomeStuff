@@ -32,27 +32,13 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     bool showPercent = true;
     Int32 maxval = 6;
-    ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-    #else
-    ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
     #endif
+    ProcessWindowGuard pwGuard (funcname, nPhase);
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true, false, false);
-    if (guidArray.IsEmpty ()) {
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
-        return NoError;
-    }
+    if (guidArray.IsEmpty ()) return NoError;
     ParamDictElement paramToWriteelem = {};
     if (!GetSumValuesOfElements (guidArray, paramToWriteelem)) {
         msg_rep ("SumSelected", "No data to write", NoError, APINULLGuid);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return NoError;
     }
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", paramToWriteelem.GetSize ());
@@ -78,11 +64,6 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
         #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return NoError;
     });
     ParamHelpers::WriteInfo (paramToWriteelem);

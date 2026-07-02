@@ -45,11 +45,7 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
 {
     GS::UniString funcname ("Numbering");
     GS::Int32 nPhase = 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-    #else
-    ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
-    #endif
+    ProcessWindowGuard pwGuard (funcname, nPhase);
     clock_t start, finish;
     double  duration;
     start = clock ();
@@ -59,21 +55,11 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
     if (!GetRuleFromSelected (guidArray, rule_definitions, RENUMFLAG, false)) {
         msg_rep ("ReNumSelected", "No Num rule found.\nCheck that the description of the user property contains Renum_flag", NoError, APINULLGuid, true);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return NoError;
     }
     ParamDictElement paramToWriteelem = {};
     if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions, rule_from_one)) {
         msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return NoError;
     }
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
@@ -102,11 +88,6 @@ GSErrCode ReNumSelected (SyncSettings& syncSettings)
         #endif
         #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return NoError;
     });
     #if defined(TESTING)

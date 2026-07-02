@@ -3,7 +3,6 @@
 #include    "APIEnvir.h"
 #include    <cmath>
 #include    <limits>
-#include    <math.h>
 #if defined(AC_27) || defined (AC_28) || defined(AC_29)
 #include	"MEPv1.hpp"
 #endif // AC_27
@@ -18,6 +17,7 @@
 #include    "ProfileVectorImageOperations.hpp"
 #include    "ProfileAdditionalInfo.hpp"
 #include    "ProfileVectorImage.hpp"
+#include    "HashSet.hpp"
 
 static const GS::Array<short> paramTypesList = { IDTYPEINX,PROPERTYTYPEINX,COORDTYPEINX,GDLTYPEINX,INFOTYPEINX,IFCTYPEINX,MORPHTYPEINX,ATTRIBTYPEINX,LISTDATATYPEINX,MATERIALTYPEINX,GLOBTYPEINX,
 CLASSTYPEINX, FILETYPEINX,FORMULATYPEINX,ELEMENTTYPEINX,MEPTYPEINX };
@@ -60,19 +60,7 @@ bool GetRuleFromSelected (GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid
         guidArray.Clear ();
         GetElementForPropertyDefinition (definitions, guidArray);
     } else {
-        UnicGuid unguid = {};
-        for (const auto& guid : guidArray) {
-            if (!unguid.ContainsKey (guid)) unguid.Add (guid, true);
-        }
-        guidArray.Clear ();
-        for (const auto& cIt : unguid) {
-            #if defined(AC_28) || defined(AC_29)
-            const API_Guid guid = cIt.key;
-            #else
-            const API_Guid guid = *cIt.key;
-            #endif
-            guidArray.PushNew (guid);
-        }
+        GetUnicGuid (guidArray);
         for (const API_Guid& elemGuid : guidArray) {
             GetRuleFromSelected (elemGuid, definitions, name, check_bracket);
         }
@@ -88,7 +76,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     #if defined(AC_22)
     return;
     #else
-    UnicGuid unguid = {};
+    UnicGuid unguid;
     GSErrCode err = NoError;
     for (const auto& cIt : definitions) {
         #if defined(AC_28) || defined(AC_29)
@@ -123,7 +111,7 @@ bool GetRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_
     #if defined(AC_22)
     return false;
     #else
-    GS::Array<API_PropertyDefinition> definitions_ = {};
+    GS::Array<API_PropertyDefinition> definitions_;
     GSErrCode err = ACAPI_Element_GetPropertyDefinitions (elemguid, API_PropertyDefinitionFilter_UserDefined, definitions_);
     if (err != NoError) {
         msg_rep ("GetRuleFromSelected", "ACAPI_Element_GetPropertyDefinitions", err, elemguid);
@@ -156,7 +144,7 @@ bool GetRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_
 // -----------------------------------------------------------------------------
 // Добавление отслеживания (для разных версий)
 // -----------------------------------------------------------------------------
-GSErrCode	AttachObserver (const API_Guid& objectId, const SyncSettings& syncSettings)
+GSErrCode AttachObserver (const API_Guid& objectId, const SyncSettings& syncSettings)
 {
     GSErrCode err = NoError;
     if (IsElementEditable (objectId, syncSettings, false)) {
@@ -176,54 +164,53 @@ GSErrCode	AttachObserver (const API_Guid& objectId, const SyncSettings& syncSett
 // --------------------------------------------------------------------
 bool CheckElementType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings)
 {
-    if (elementType == API_GroupID)
-        return false;
-    if (elementType == API_DimensionID)
-        return true;
-    if (syncSettings.wallS &&
-       (elementType == API_WallID || elementType == API_ColumnID || elementType == API_BeamID || elementType == API_SlabID ||
-           elementType == API_RoofID || elementType == API_MeshID || elementType == API_ShellID ||
-           elementType == API_MorphID ||
-           elementType == API_BeamSegmentID ||
-           elementType == API_ColumnSegmentID))
-        return true;
-    if (syncSettings.objS &&
-       (elementType == API_StairID || elementType == API_RiserID ||
-           elementType == API_TreadID || elementType == API_StairStructureID ||
-           elementType == API_ObjectID ||
-           elementType == API_ZoneID ||
-           elementType == API_LampID))
-        return true;
-    if (syncSettings.cwallS &&
-       (elementType == API_RailingID || elementType == API_RailingToprailID || elementType == API_RailingHandrailID ||
-           elementType == API_RailingRailID || elementType == API_RailingPostID || elementType == API_RailingInnerPostID ||
-           elementType == API_RailingBalusterID || elementType == API_RailingPanelID || elementType == API_RailingSegmentID ||
-           elementType == API_RailingNodeID || elementType == API_RailingBalusterSetID || elementType == API_RailingPatternID ||
-           elementType == API_RailingToprailEndID || elementType == API_RailingHandrailEndID ||
-           elementType == API_RailingRailEndID ||
-           elementType == API_RailingToprailConnectionID ||
-           elementType == API_RailingHandrailConnectionID ||
-           elementType == API_RailingRailConnectionID ||
-           elementType == API_RailingEndFinishID))
-        return true;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    if (syncSettings.objS && elementType == API_ExternalElemID) return true;
-    #endif
+    switch (elementType) {
+        case API_GroupID:
+            return false;
 
-    if (syncSettings.cwallS &&
-       (elementType == API_CurtainWallSegmentID ||
-           elementType == API_CurtainWallFrameID ||
-           elementType == API_CurtainWallJunctionID ||
-           elementType == API_CurtainWallAccessoryID ||
-           elementType == API_CurtainWallID ||
-           elementType == API_CurtainWallPanelID))
-        return true;
-    if (syncSettings.widoS &&
-       (elementType == API_WindowID ||
-           elementType == API_DoorID ||
-           elementType == API_SkylightID ||
-           elementType == API_OpeningID))
-        return true;
+        case API_DimensionID:
+            return PROPERTYCACHE ().hasDimAutotext;
+
+        case API_WallID: case API_ColumnID:
+        case API_BeamID: case API_SlabID:
+        case API_RoofID: case API_MeshID:
+        case API_ShellID: case API_MorphID:
+        case API_BeamSegmentID: case API_ColumnSegmentID:
+            return syncSettings.wallS;
+
+        case API_StairID: case API_RiserID:
+        case API_TreadID: case API_StairStructureID:
+        case API_ObjectID: case API_ZoneID:
+        case API_LampID:
+            return syncSettings.objS;
+
+        case API_RailingID: case API_RailingToprailID:
+        case API_RailingHandrailID: case API_RailingRailID:
+        case API_RailingPostID: case API_RailingInnerPostID:
+        case API_RailingBalusterID: case API_RailingPanelID:
+        case API_RailingSegmentID: case API_RailingNodeID:
+        case API_RailingBalusterSetID: case API_RailingPatternID:
+        case API_RailingToprailEndID: case API_RailingHandrailEndID:
+        case API_RailingRailEndID: case API_RailingToprailConnectionID:
+        case API_RailingHandrailConnectionID: case API_RailingRailConnectionID:
+        case API_RailingEndFinishID:
+            return syncSettings.cwallS;
+
+            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        case API_ExternalElemID:
+            return syncSettings.objS;
+            #endif
+        case API_CurtainWallSegmentID: case API_CurtainWallFrameID:
+        case API_CurtainWallJunctionID: case API_CurtainWallAccessoryID:
+        case API_CurtainWallID: case API_CurtainWallPanelID:
+            return syncSettings.cwallS;
+
+        case API_WindowID: case API_DoorID:
+        case API_SkylightID: case API_OpeningID:
+            return syncSettings.widoS;
+        default:
+            return false;
+    }
     return false;
 }
 
@@ -246,9 +233,9 @@ bool IsElementEditable (const API_Elem_Head& tElemHead, const SyncSettings& sync
     API_ElemTypeID eltype = GetElemTypeID (tElemHead);
     if (needCheckElementType && !CheckElementType (eltype, syncSettings)) return false;
     // Проверяем - зарезервирован ли объект
+    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_IsEditable)) return false;
     if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_InMyWorkspace)) return false;
     if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_HasAccessRight)) return false;
-    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_IsEditable)) return false;
     return true;
 }
 
@@ -260,12 +247,11 @@ bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettin
 {
     // Проверяем - зарезервирован ли объект
     if (objectId == APINULLGuid) return false;
+    if (!ACAPI_Element_Filter (objectId, APIFilt_IsEditable)) return false;
     if (!ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) return false;
     if (!ACAPI_Element_Filter (objectId, APIFilt_HasAccessRight)) return false;
-    if (!ACAPI_Element_Filter (objectId, APIFilt_IsEditable)) return false;
     // Проверяем - на находится ли объект в модуле
-    API_Elem_Head	tElemHead = {};
-    BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
+    API_Elem_Head tElemHead = {};
     tElemHead.guid = objectId;
     if (ACAPI_Element_GetHeader (&tElemHead) != NoError) return false;
     if (tElemHead.hotlinkGuid != APINULLGuid) return false;
@@ -322,7 +308,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
     #ifdef AC_22
     API_Neig** selNeigs;
     #else
-    GS::Array<API_Neig> selNeigs = {};
+    GS::Array<API_Neig> selNeigs;
     #endif
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, onlyEditable);
     BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
@@ -337,7 +323,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
         #endif // AC_22
         return GS::Array<API_Guid> ();
     }
-    GS::Array<API_Guid> guidArray = {};
+    GS::Array<API_Guid> guidArray;
     #ifdef AC_22
     USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
     for (USize i = 0; i < nSel; i++) {
@@ -372,6 +358,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
         }
     }
     #endif // AC_22
+    GetUnicGuid (guidArray);
     return guidArray;
 
 }
@@ -403,40 +390,32 @@ void GetParentGUIDSectElem (const API_Guid& sectElemguid, API_Guid& parentguid, 
 void CallOnSelectedElemSettings (void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname, bool addSubelement)
 {
     GS::Array<API_Guid> guidArray = GetSelectedElements (assertIfNoSel, onlyEditable, addSubelement);
-    if (!guidArray.IsEmpty ()) {
-        GS::UniString subtitle ("working...");
-        GS::Int32 nPhase = 1;
+    if (guidArray.IsEmpty ()) return;
+    GS::UniString subtitle ("working...");
+    GS::Int32 nPhase = 1;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    bool showPercent = true;
+    Int32 maxval = guidArray.GetSize ();
+    #endif
+    ProcessWindowGuard pwGuard (funcname, nPhase);
+    long time_start = clock ();
+    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
+        function (guidArray[i], syncSettings);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        bool showPercent = true;
-        Int32 maxval = guidArray.GetSize ();
-        ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
+        if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
         #else
-        ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
+        if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
         #endif
-        long time_start = clock ();
-        for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            function (guidArray[i], syncSettings);
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-            #else
-            if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-            #endif
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
-            #else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
-            #endif
-        }
-        long time_end = clock ();
-        GS::UniString time = GS::UniString::Printf (" %.3f s", (time_end - time_start) / 1000);
-        GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
-        msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
+        if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
         #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
         #endif
     }
+    long time_end = clock ();
+    GS::UniString time = GS::UniString::Printf (" %.3f s", (time_end - time_start) / 1000);
+    GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
+    msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
 }
 
 // -----------------------------------------------------------------------------
@@ -453,10 +432,8 @@ void CallOnSelectedElem (void (*function)(const API_Guid&), bool assertIfNoSel /
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
-        ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-        #else
-        ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
         #endif
+        ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -474,11 +451,6 @@ void CallOnSelectedElem (void (*function)(const API_Guid&), bool assertIfNoSel /
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
         msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
     } else if (!assertIfNoSel) {
         function (APINULLGuid);
     }
@@ -505,8 +477,8 @@ void GetRelationsElement (const API_Guid& elemGuid, const SyncSettings& syncSett
 void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid, bool addZone, bool addConnect)
 {
     GSErrCode	err = NoError;
-    API_RoomRelation	relData;
-    GS::Array<API_ElemTypeID> typeinzone = {};
+    API_RoomRelation relData = {};
+    GS::Array<API_ElemTypeID> typeinzone;
     API_Guid ownerElemApiGuid = APINULLGuid;
     API_Guid ownerElemApiGuid_root = APINULLGuid;
     API_Guid elemGuid_t = elemGuid;
@@ -532,8 +504,8 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
     err = ACAPI_Goodies (APIAny_GetHierarchicalElementOwnerID, &elemGuid_t, &hierarchicalOwnerType, &hierarchicalElemType, &ownerElemApiGuid_root);
     #endif
     #endif
-    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
-    API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    API_Element element = {};
+    API_ElementMemo memo = {};
     switch (elementType) {
         #ifndef AC_22
         case API_ColumnID:
@@ -548,7 +520,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
                 if (err == NoError && memo.columnSegments != nullptr) {
                     for (UInt32 i = 0; i < element.column.nSegments; i++) {
-                        subelemGuid.Push (memo.columnSegments[0].head.guid);
+                        subelemGuid.Push (memo.columnSegments[i].head.guid);
                     }
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
@@ -566,7 +538,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
                 if (err == NoError && memo.beamSegments != nullptr) {
                     for (UInt32 i = 0; i < element.beam.nSegments; i++) {
-                        subelemGuid.Push (memo.beamSegments[0].head.guid);
+                        subelemGuid.Push (memo.beamSegments[i].head.guid);
                     }
                 }
                 ACAPI_DisposeElemMemoHdls (&memo);
@@ -575,7 +547,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
             #endif
         case API_WallID:
             if (syncSettings.widoS && addConnect) {
-                GS::Array<API_Guid> windows = {};
+                GS::Array<API_Guid> windows;
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 err = ACAPI_Grouping_GetConnectedElements (elemGuid, API_WindowID, &windows, APIFilt_None, APINULLGuid);
                 #else
@@ -586,7 +558,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                         subelemGuid.Push (windows[i]);
                     }
                 }
-                GS::Array<API_Guid> doors = {};
+                GS::Array<API_Guid> doors;
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 err = ACAPI_Grouping_GetConnectedElements (elemGuid, API_DoorID, &doors, APIFilt_None, APINULLGuid);
                 #else
@@ -748,7 +720,6 @@ bool ParamHelpers::ReadMorphParam (const API_Guid& guid, ParamDictValue& pdictva
     DBprnt ("      ReadMorphParam");
     #endif
     API_ElementMemo memo = {};
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
     GSErrCode err = ACAPI_Element_GetMemo (guid, &memo);
     if (err != NoError || memo.morphBody == nullptr) {
         ACAPI_DisposeElemMemoHdls (&memo);
@@ -761,9 +732,9 @@ bool ParamHelpers::ReadMorphParam (const API_Guid& guid, ParamDictValue& pdictva
     double Max_x = 0;
     double Max_y = 0;
     double Max_z = 0;
-    double Min_x = 0;
-    double Min_y = 0;
-    double Min_z = 0;
+    double Min_x = std::numeric_limits<double>::max ();
+    double Min_y = std::numeric_limits<double>::max ();
+    double Min_z = std::numeric_limits<double>::max ();
     double A = 0;
     double B = 0;
     double ZZYZX = 0;
@@ -1014,7 +985,7 @@ void ParamHelpers::SetParamValueSourseByName (ParamValue& pvalue)
 void ParamHelpers::SetArrayByRawname (ParamValue& pvalue)
 {
     if (!pvalue.rawName.Contains ("@arr_")) return;
-    GS::Array<GS::UniString> partstring = {};
+    GS::Array<GS::UniString> partstring;
     UInt32 n = StringSplt (pvalue.rawName, "@arr_", partstring, BRACEEND);
     if (n == 0) return;
     GS::UniString arr = partstring.Get (0);
@@ -1064,7 +1035,7 @@ GS::UniString ParamHelpers::NameToRawName (const GS::UniString& name, FormatStri
 
     // Проверяем - есть ли указатель на тип параметра (GDL, Property, IFC)
     if (name_.Contains (":")) {
-        GS::Array<GS::UniString> partstring = {};
+        GS::Array<GS::UniString> partstring;
         UInt32 n = StringSplt (name_, ":", partstring);
         if (n > 1) {
             rawname_prefix = partstring[0] + ":";
@@ -1577,7 +1548,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
         }
     }
     API_ElemTypeID eltype = GetElemTypeID (element);
-    API_Element owner = {}; BNZeroMemory (&owner, sizeof (API_Element));
+    API_Element owner = {};
     // Обработка навесной стены- случай особый, т.к. у неё может быть несколько сегментов
     if (eltype == API_CurtainWallID && element.header.hasMemo) {
         double aang = fabs (fmod (element.curtainWall.angle, 180.0));
@@ -1606,7 +1577,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
         bool bsymb_pos_e_correctu_ = false;
         bool bsymb_pos_s_correctu_ = false;
         bool bsymb_pos_correctu_ = false;
-        API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        API_ElementMemo memo = {};
         if (ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
             Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallSegments)) / sizeof (API_CWSegmentType);
             for (Int32 inx_segment = 0; inx_segment < size; ++inx_segment) {
@@ -1771,7 +1742,7 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             if (aang > 90.0) aang = 180.0 - aang;
             if (aang < 5.0) skip_north = true;
             Int32 inx_segment = element.cwPanel.segmentID;
-            API_ElementMemo  memo;
+            API_ElementMemo memo = {};
             if (ACAPI_Element_GetMemo (owner.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
                 Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallSegments)) / sizeof (API_CWSegmentType);
                 if (size >= inx_segment) {
@@ -1875,11 +1846,13 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
     }
     if (eltype == API_ColumnID) {
         const double k = 100000.0; // Коэфф для округления
-        if (fabs (slantDirectionAngle) > 0.0000001) { slantDirectionAngle = fmod (round ((slantDirectionAngle * 180.0 / PI) * k) / k, 360.0); } else {
+        if (fabs (slantDirectionAngle) > 0.0000001) {
+            slantDirectionAngle = fmod (round ((slantDirectionAngle * 180.0 / PI) * k) / k, 360.0);
+        } else {
             slantDirectionAngle = 0.0;
         }
         if (fabs (axisRotationAngle) > 0.0000001) {
-            slantDirectionAngle = fmod (round ((axisRotationAngle * 180.0 / PI) * k) / k, 360.0);
+            axisRotationAngle = fmod (round ((axisRotationAngle * 180.0 / PI) * k) / k, 360.0);
         } else {
             axisRotationAngle = 0.0;
         }
@@ -3542,11 +3515,11 @@ void ParamHelpers::WriteCoord (const API_Guid& elemGuid, ParamDictValue& params)
         msg_rep ("ParamHelpers::WriteCoord", "ACAPI_Element_Get", err, elem_head.guid);
         return;
     }
-    API_Element mask;
+    API_Element mask = {};
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     bool flag_write = false;
     double dval = 0;
-    ParamValueData pval;
+    ParamValueData pval = {};
     switch (elemType) {
         case API_WindowID:
             if (params.ContainsKey ("{@coord:symb_pos_x}")) {
@@ -3797,8 +3770,6 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
     }
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
     GetGDLParametersHead (element, elem_head, elemType, elemGuidt);
-    BNZeroMemory (&apiOwner, sizeof (API_ParamOwnerType));
-    BNZeroMemory (&apiParams, sizeof (API_GetParamsType));
     apiOwner.guid = elemGuidt;
     #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     apiOwner.type.typeID = elemType;
@@ -3841,7 +3812,6 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
         GS::UniString name = actualParam.name;
         GS::UniString rawname = GDLNAMEPREFIX + name.ToLowerCase () + BRACEEND;
         if (!params.ContainsKey (rawname)) continue;
-
         ParamValueData paramfrom = params.Get (rawname).val;
         BNZeroMemory (&chgParam, sizeof (API_ChangeParamType));
         chgParam.index = actualParam.index;
@@ -4122,7 +4092,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         msg_rep ("ParamDictRead", "elemGuid == APINULLGuid", APIERR_GENERAL, elemGuid);
         return;
     }
-    API_Elem_Head elem_head = {}; BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
+    API_Elem_Head elem_head = {};
     elem_head.guid = elemGuid;
     GSErrCode err = ACAPI_Element_GetHeader (&elem_head);
     if (err != NoError) {
@@ -4211,7 +4181,7 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
         hasListData = true;
         if (!hasparambytypes.ContainsKey (LISTDATATYPEINX)) hasparambytypes.Add (LISTDATATYPEINX, true);
     }
-    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {};
     if (needGetElement) {
         element.header.guid = elemGuid;
         err = ACAPI_Element_Get (&element);
@@ -4691,7 +4661,6 @@ bool ParamHelpers::ReadAttributeValues (const API_Elem_Head& elem_head, ParamDic
 
     API_Attribute attrib = {};
     GS::UniString name = "";
-    BNZeroMemory (&attrib, sizeof (API_Attribute));
     attrib.header.typeID = API_LayerID;
     attrib.header.index = elem_head.layer;
     GSErrCode error = ACAPI_Attribute_Get (&attrib);
@@ -4955,7 +4924,6 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
 bool ParamHelpers::GDLParamByDescription (const API_Element& element, ParamDictValue& params, ParamDictValue& find_params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>& paramnamearray)
 {
     API_LibPart libpart = {};
-    BNZeroMemory (&libpart, sizeof (libpart));
     libpart.index = element.object.libInd;
     GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -5032,7 +5000,6 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
     API_Guid		elemGuid;
     GetGDLParametersHead (element, elem_head, elemType, elemGuid);
     API_ElementMemo	memo = {};
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
     GSErrCode err = ACAPI_Element_GetMemo (elemGuid, &memo, APIMemoMask_AddPars);
     if (err != NoError) {
         msg_rep ("ParamHelpers::GDLParamByName", "GetGDLParameters", err, elemGuid);
@@ -5205,8 +5172,7 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
     GS::UniString key_th = "some_stuff_th";
     for (Int32 i = 0; i < nComp; i++) {
         if ((*descRefs)[i].status == APIDBRef_Deleted) continue;
-        API_ListData listdata;
-        BNZeroMemory (&listdata, sizeof (API_ListData));
+        API_ListData listdata = {};
         listdata.header.typeID = API_DescriptorID;
         listdata.header.index = (*descRefs)[i].index;
         listdata.header.setIndex = (*descRefs)[i].setIndex;
@@ -5270,7 +5236,6 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
     for (Int32 i = 0; i < nComp; i++) {
         if ((*compRefs)[i].status == APIDBRef_Deleted) continue;
         API_ListData listdata = {};
-        BNZeroMemory (&listdata, sizeof (API_ListData));
         #if defined(AC_22) || defined(AC_23) || defined(AC_24)
         listdata.header.typeID = API_ComponentID;
         #else
@@ -5323,7 +5288,7 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head& elemhead, ParamDictValue
     #endif
     API_ElementQuantity quantity = {};
     const API_ElemTypeID eltype = GetElemTypeID (elemhead);
-    API_QuantityPar paramq = {}; BNZeroMemory (&paramq, sizeof (API_QuantityPar));
+    API_QuantityPar paramq = {};
     paramq.minOpeningSize = EPS;
     GSErrCode err = NoError;
     GS::Array <API_CompositeQuantity> composites = {};
@@ -7323,11 +7288,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
     DBprnt ("        ComponentsCompositeStructure");
     #endif
     API_Attribute attrib = {};
-    BNZeroMemory (&attrib, sizeof (API_Attribute));
-
     API_AttributeDef defs = {};
-    BNZeroMemory (&defs, sizeof (API_AttributeDef));
-
     attrib.header.index = constrinx;
     attrib.header.typeID = API_CompWallID;
     GSErrCode err = ACAPI_Attribute_Get (&attrib);
@@ -7713,7 +7674,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     // Получаем данные о составе конструкции. Т.к. для разных типов элементов
     // информация храница в разных местах - запишем всё в одни переменные
     API_ElemTypeID eltype = GetElemTypeID (elemhead);
-    API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    API_ElementMemo	memo = {};
     GSErrCode err = NoError;
     switch (eltype) {
         #ifndef AC_22
@@ -7918,7 +7879,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     if (structtype == API_CompositeStructure) hasData = ParamHelpers::ComponentsCompositeStructure (elemhead.guid, constrinx, params, paramcomposite, paramsAdd, existsmaterial, width, length);
     #ifndef AC_23
     if (structtype == API_ProfileStructure) {
-        API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+        API_ElementMemo	memo = {};
         UInt64 mask = APIMemoMask_StretchedProfile;
         GSErrCode err = ACAPI_Element_GetMemo (elemhead.guid, &memo, mask);
         if (err != NoError) {
@@ -7946,7 +7907,6 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
 {
     API_Attribute	attrib = {};
     GS::UniString name = "";
-    BNZeroMemory (&attrib, sizeof (API_Attribute));
     attrib.header.typeID = API_BuildingMaterialID;
     attrib.header.index = constrinx;
     attrib.header.uniStringNamePtr = &name;
@@ -7958,7 +7918,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     };
 
     GS::UniString k = "{@material:cutfill_inx}";
-    if (params.ContainsKey (k)) {
+    if (const ParamValue* foundParam = params.GetPtr (k)) {
         ParamValue pvalue_bmat = {};
         pvalue_bmat.rawName = k;
         pvalue_bmat.name = "cutfill_inx";
@@ -7969,11 +7929,11 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         ParamHelpers::ConvertIntToParamValue (pvalue_bmat, pvalue_bmat.name, (Int32) constrinx);
         #endif
         pvalue_bmat.fromMaterial = true;
-        ParamHelpers::AddParamValue2ParamDict (params.Get (k).fromGuid, pvalue_bmat, params);
+        ParamHelpers::AddParamValue2ParamDict (foundParam->fromGuid, pvalue_bmat, params);
     }
 
     k = "{@material:bmat_inx}";
-    if (params.ContainsKey (k)) {
+    if (const ParamValue* foundParam = params.GetPtr (k)) {
         ParamValue pvalue_bmat = {};
         pvalue_bmat.rawName = k;
         pvalue_bmat.name = "bmat_inx";
@@ -7984,7 +7944,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         ParamHelpers::ConvertIntToParamValue (pvalue_bmat, pvalue_bmat.name, (Int32) constrinx);
         #endif
         pvalue_bmat.fromMaterial = true;
-        ParamHelpers::AddParamValue2ParamDict (params.Get (k).fromGuid, pvalue_bmat, params);
+        ParamHelpers::AddParamValue2ParamDict (foundParam->fromGuid, pvalue_bmat, params);
     }
 
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs = {};
@@ -8037,7 +7997,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     }
     // Определения и свойста для элементов
     bool flag_find = false;
-    GS::Array<API_PropertyDefinition> propertyDefinitions = {};
+    GS::Array<API_PropertyDefinition> propertyDefinitions;
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -8116,8 +8076,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         // Если в списке есть штриховка или покрытие - получим их имена.
         if (param.rawName.Contains ("buildingmaterialproperties/building material cutfill")) {
             GS::UniString namet = "";
-            API_Attribute	attribt = {};
-            BNZeroMemory (&attribt, sizeof (API_Attribute));
+            API_Attribute attribt = {};
             attribt.header.typeID = API_FilltypeID;
             attribt.header.index = attrib.buildingMaterial.cutFill;
             attribt.header.uniStringNamePtr = &namet;

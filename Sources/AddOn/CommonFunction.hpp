@@ -312,6 +312,31 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 
+struct ProcessWindowGuard
+{
+    ProcessWindowGuard (GS::UniString& name, GS::Int32& phase)
+    {
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        ACAPI_ProcessWindow_InitProcessWindow (&name, &phase);
+        #else
+        ACAPI_Interface (APIIo_InitProcessWindowID, &name, &phase);
+        #endif
+    }
+    ~ProcessWindowGuard ()
+    {
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        ACAPI_ProcessWindow_CloseProcessWindow ();
+        #else
+        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
+        #endif
+    }
+};
+
+// -----------------------------------------------------------------------------
+// Осталвяет в массиве только уникальные API_Guid
+// -----------------------------------------------------------------------------
+void GetUnicGuid (GS::Array<API_Guid>& guidArray);
+
 GS::UniString GetDBName (API_DatabaseInfo& databaseInfo);
 
 // -----------------------------------------------------------------------------
@@ -378,7 +403,6 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 GSErrCode GetTypeByGUID (const API_Guid& elemGuid, API_ElemTypeID& elementType);
 
 #if defined AC_26 || defined AC_27 || defined AC_28
-
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------

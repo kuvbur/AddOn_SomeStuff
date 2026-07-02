@@ -114,7 +114,6 @@ GSErrCode SpecAll (const SyncSettings& syncSettings)
 {
     GSErrCode err = NoError;
     API_DatabaseInfo homedatabaseInfo = {};
-    BNZeroMemory (&homedatabaseInfo, sizeof (API_DatabaseInfo));
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetCurrentDatabase (&homedatabaseInfo);
     #else
@@ -258,8 +257,7 @@ void SpecFilter (API_Guid& elemguid, API_DatabaseInfo& homedatabaseInfo)
         return;
     }
     if (homedatabaseInfo.databaseUnId.elemSetId == APINULLGuid) return;
-    API_DatabaseInfo elementdatabaseInfo;
-    BNZeroMemory (&elementdatabaseInfo, sizeof (API_DatabaseInfo));
+    API_DatabaseInfo elementdatabaseInfo = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetContainingDatabase (&elemguid, &elementdatabaseInfo);
     #else
@@ -396,10 +394,8 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
     GS::HashTable<GS::UniString, GS::HashTable<GS::UniString, GS::UniString>> paramdict_favorite = {}; // Словарь с именами параметров и описаниями свойств избранных элементов
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     bool showPercent = true;
-    ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-    #else
-    ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
     #endif
+    ProcessWindowGuard pwGuard (funcname, nPhase);
     GSErrCode err = NoError;
     subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -419,11 +415,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
             msg_rep ("Spec", "Rules not found", APIERR_GENERAL, APINULLGuid);
             GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecRuleNotFoundId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecRuleNotFoundString, true);
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            ACAPI_ProcessWindow_CloseProcessWindow ();
-            #else
-            ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-            #endif
             return APIERR_GENERAL;
         }
     }
@@ -444,22 +435,12 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         msg_rep ("Spec", "Parameters for read not found", APIERR_GENERAL, APINULLGuid);
         GS::UniString SpecRuleReadFoundString = RSGetIndString (iseng, SpecRuleReadFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecRuleReadFoundString, true);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return APIERR_GENERAL;
     }
     if (paramToWrite.IsEmpty ()) {
         msg_rep ("Spec", "Parameters for write not found", APIERR_GENERAL, APINULLGuid);
         GS::UniString SpecWriteNotFoundString = RSGetIndString (iseng, SpecWriteNotFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecWriteNotFoundString, true);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return APIERR_GENERAL;
     }
     subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
@@ -591,11 +572,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         msg_rep ("Spec", "Can't find parameters in place element: " + out, err, APINULLGuid);
         GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecParamPlaceNotFoundId, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString + out, true);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return APIERR_GENERAL;
     }
     // Читаем данные из размещённых элементов
@@ -665,11 +641,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         } else {
             msg_rep ("Spec", GS::UniString::Printf ("Too many element for highlight - %d", error_element.GetSize ()), err, APINULLGuid);
         }
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return APIERR_GENERAL;
     }
     #endif
@@ -765,11 +736,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         GS::UniString SpecEmptyListdString = RSGetIndString (iseng, SpecEmptyListdId, ACAPI_GetOwnResModule ());
         if (has_v2) SpecEmptyListdString += LINEBRAKE + RSGetIndString (iseng, 67, ACAPI_GetOwnResModule ());
         ACAPI_WriteReport (SpecEmptyListdString, true);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
         return APIERR_GENERAL;
     }
     Point2D startpos = { 0, 0 };
@@ -800,12 +766,6 @@ GSErrCode SpecArray (const SyncSettings& syncSettings, GS::Array<API_Guid>& guid
         ParamHelpers::ElementsWrite (paramOut);
         return NoError;
     });
-
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    ACAPI_ProcessWindow_CloseProcessWindow ();
-    #else
-    ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-    #endif
     if (has_v2) {
         GS::UniString msg = "";
         if (!elements_delete.IsEmpty ()) {
@@ -1739,8 +1699,8 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
 GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::HashTable<GS::UniString, GS::UniString>& paramdict)
 {
     GSErrCode err = NoError;
-    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
-    API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    API_Element element = {};
+    API_ElementMemo memo = {};
     #ifndef AC_22
     if (!favorite_name.IsEmpty ()) {
         API_Favorite favorite (favorite_name);
@@ -1939,8 +1899,8 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 #else
                 Element el = *cIt.value;
                 #endif
-                API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
-                API_ElementMemo memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+                API_Element element = {};
+                API_ElementMemo memo = {};
                 err = GetElementForPlace (el.favorite_name, element, memo);
                 if (err != NoError) {
                     ACAPI_DisposeElemMemoHdls (&memo);

@@ -249,15 +249,13 @@ GSErrCode Get3DDocument (API_DatabaseInfo& dbInfo, const GS::UniString& name, co
 // -----------------------------------------------------------------------------
 GSErrCode GetSectLine (API_Guid& elemguid, GS::Array<SSectLine>& lines, GS::UniString& id, const Point2D& startpos)
 {
-    API_Element element;
-    BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {};
     element.header.guid = elemguid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError) return err;
     API_ElementMemo memo = {};
-    BNZeroMemory (&memo, sizeof (API_ElementMemo));
-    GS::Array<Sector> k;
-    GS::Array<Point2D> p;
+    GS::Array<Sector> k = {};
+    GS::Array<Point2D> p = {};
     Point2D c1 = { 0,0 }; Point2D c2 = { 0,0 }; Sector s = { c1, c2 };
     API_ElemTypeID type = GetElemTypeID (element);
     err = ACAPI_Element_GetMemo (element.header.guid, &memo);
@@ -669,8 +667,7 @@ void ProfileByLine ()
         msg_rep ("ProfileByLine", "APIDo_ChangeWindowID", err, APINULLGuid);
         return;
     }
-    API_3DCutPlanesInfo cutInfo;
-    BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
+    API_3DCutPlanesInfo cutInfo = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_View_Get3DCuttingPlanes (&cutInfo);
     #else
@@ -706,8 +703,8 @@ void ProfileByLine ()
 GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& databasestart, API_WindowInfo& windowstart, const API_Coord& zeropos, API_Coord& startpos, API_Coord& drawingpos)
 {
     GSErrCode err = NoError;
-    API_Element element;
-    BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {};
+
     element.header.guid = elemguid;
     err = ACAPI_Element_Get (&element);
     if (err != NoError) {
@@ -715,8 +712,7 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
         return err;
     }
     if (GetElemTypeID (element) != API_DrawingID) return APIERR_GENERAL;
-    API_DatabaseInfo	dbInfo;
-    BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
+    API_DatabaseInfo dbInfo = {};
     dbInfo.typeID = APIWind_DrawingID;
     dbInfo.linkedElement = element.header.guid;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -802,9 +798,9 @@ GSErrCode AlignOneDrawingsByPoints (const API_Guid& elemguid, API_DatabaseInfo& 
 GS::Array<API_Guid> GetDrawingsSort (const GS::Array<API_Guid>& elems)
 {
     GSErrCode err = NoError;
-    SortByName drawingId;
-    API_DrawingLinkInfo drawingLinkInfo;
-    GS::Array<API_Guid> drawings;
+    SortByName drawingId = {};
+    API_DrawingLinkInfo drawingLinkInfo = {};
+    GS::Array<API_Guid> drawings = {};
     for (UInt32 i = 0; i < elems.GetSize (); i++) {
         BNZeroMemory (&drawingLinkInfo, sizeof (API_DrawingLinkInfo));
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -836,7 +832,7 @@ void AlignDrawingsByPoints ()
     GSErrCode err = NoError;
     GS::Array<API_Guid> elems = GetSelectedElements2 (true, true);
     if (elems.IsEmpty ()) return;
-    Point2D startpos_;
+    Point2D startpos_ = {};
     if (!ClickAPoint ("Click point", &startpos_))
         return;
     API_Coord startpos = { startpos_.x, startpos_.y };
@@ -852,9 +848,8 @@ void AlignDrawingsByPoints ()
         store = -1;
         err = NoError;
     }
-    API_DatabaseInfo databasestart;
-    API_WindowInfo windowstart;
-    BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
+    API_DatabaseInfo databasestart = {};
+    API_WindowInfo windowstart = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Database_GetCurrentDatabase (&databasestart);
     #else
@@ -864,7 +859,6 @@ void AlignDrawingsByPoints ()
         msg_rep ("AlignDrawingsByPoints", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
         return;
     }
-    BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Window_GetCurrentWindow (&windowstart);
     #else
@@ -877,8 +871,8 @@ void AlignDrawingsByPoints ()
     // Важно расставлять чертежи по-порядку.
     GS::Array<API_Guid> drawingId = GetDrawingsSort (elems);
     if (drawingId.IsEmpty ()) return;
-    GS::Array<API_Coord> coords;
-    GS::Array<API_Guid> gooddrawings;
+    GS::Array<API_Coord> coords = {};
+    GS::Array<API_Guid> gooddrawings = {};
     for (UInt32 i = 0; i < drawingId.GetSize (); i++) {
         API_Coord drawingpos = startpos;
         err = AlignOneDrawingsByPoints (drawingId[i], databasestart, windowstart, zeropos, startpos, drawingpos);
