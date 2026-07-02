@@ -90,6 +90,7 @@ static const short FILETYPEINX = 17;
 static const GS::UniString DOT = ".";
 static const GS::UniString COMMA = ",";
 static const GS::UniChar CHARCOMMA = ',';
+static const GS::UniChar CHARDOT = ',';
 static const GS::UniString METERS = "m";
 static const GS::UniChar CHARMETERS = 'm';
 static const GS::UniString MMETERS = "mm";
@@ -162,7 +163,8 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };
@@ -538,38 +540,8 @@ GSErrCode GetRElementsForRailing (const API_Guid& elemGuid, GS::Array<API_Guid>&
 API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const  API_Tranmat& tm);
 
 Point2D GetWordPoint2DTM (const Point2D vtx, const  API_Tranmat& tm);
+
 bool ClickAPoint (const char* prompt, Point2D* c);
-
-namespace FormatStringFunc
-{
-FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
-// -----------------------------------------------------------------------------
-// Обработка количества нулей и единиц измерения в имени свойства
-// Удаляет из имени paramName найденные единицы измерения
-// Возвращает строку для скармливания функции NumToStig
-// -----------------------------------------------------------------------------
-GS::UniString GetFormatString (GS::UniString& paramName);
-
-bool IsValid (GS::UniString formatstring);
-
-// -----------------------------------------------------------------------------
-// Возвращает словарь строк-форматов для типов данных согласно настройкам Рабочей среды проекта
-// -----------------------------------------------------------------------------
-FormatStringDict GetFotmatStringForMeasureType ();
-
-// -----------------------------------------------------------------------------
-// Извлекает из строки информацио о единицах измерении и округлении
-// -----------------------------------------------------------------------------
-FormatString ParseFormatString (const GS::UniString& stringformat);
-
-// -----------------------------------------------------------------------------
-// Переводит число в строку согласно настройкам строки-формата
-// -----------------------------------------------------------------------------
-GS::UniString NumToString (const double& var, const FormatString& stringformat);
-
-void ReplaceMeters (GS::UniString& formatstring);
-
-}
 
 GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo& memo, Geometry::Polygon2D& poly);
 

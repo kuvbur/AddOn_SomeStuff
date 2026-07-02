@@ -12,7 +12,7 @@
 #define DIM_CHANGE_OFF 3
 
 
-GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
+GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo, bool checktype)
 {
     if (!PROPERTYCACHE ().hasDimAutotext) return NoError;
     if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace)) {
@@ -30,9 +30,11 @@ GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSet
     if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsInStructureDisplay)) {
         return NoError;
     }
-    API_ElemTypeID elementType;
-    if (GetTypeByGUID (elemGuid, elementType) != NoError) return NoError;
-    if (elementType != API_DimensionID) return NoError;
+    if (checktype) {
+        API_ElemTypeID elementType;
+        if (GetTypeByGUID (elemGuid, elementType) != NoError) return NoError;
+        if (elementType != API_DimensionID) return NoError;
+    }
     return DimAutoRound (elemGuid, syncSettings, isUndo);
 }
 
@@ -42,15 +44,6 @@ GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSet
 GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
 {
     GSErrCode err = NoError;
-    if (syncSettings.syncMon) {
-        err = AttachObserver (elemGuid, syncSettings);
-        if (err == APIERR_LINKEXIST)
-            err = NoError;
-        if (err != NoError) {
-            msg_rep ("DimAutoRound", "AttachObserver", err, elemGuid);
-            return err;
-        }
-    }
     API_Element element = {};
     element.header.guid = elemGuid;
     err = ACAPI_Element_Get (&element);
@@ -318,13 +311,11 @@ bool DimParse (const double& dimVal, const API_Guid& elemGuid, const API_NoteCon
 // -----------------------------------------------------------------------------
 void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 {
-    DoneElemGuid doneelemguid = {};
     if (!PROPERTYCACHE ().hasDimAutotext) return;
     #if defined(TESTING)
     DBprnt ("DimRoundAll start");
     #endif
-    bool flag_chanel = false;
-    if (!flag_chanel) flag_chanel = DimRoundByType (API_DimensionID, doneelemguid, syncSettings, isUndo);
+    DimRoundByType (API_DimensionID, syncSettings, isUndo);
     #if defined(TESTING)
     DBprnt ("DimRoundAll end");
     #endif
@@ -333,18 +324,16 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, const SyncSettings& syncSettings, bool isUndo)
+bool DimRoundByType (const API_ElemTypeID& typeID, const SyncSettings& syncSettings, bool isUndo)
 {
     GSErrCode err = NoError;
     GS::Array<API_Guid>	guidArray = {};
     err = ACAPI_Element_GetElemList (typeID, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
     if (err != NoError) msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
     if (guidArray.IsEmpty ()) return false;
-    for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        if (!doneelemguid.ContainsKey (guidArray.Get (i))) {
-            err = DimAutoRound (guidArray.Get (i), syncSettings, isUndo);
-            if (err == NoError) doneelemguid.Add (guidArray.Get (i), false);
-        }
+    for (const auto& guid : guidArray) {
+        err = DimAutoRound (guid, syncSettings, isUndo);
+        if (err != NoError) msg_rep ("DimAutoRound", "DimAutoRound", err, guid);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return true;
         #else

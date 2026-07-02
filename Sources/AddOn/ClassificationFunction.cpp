@@ -51,7 +51,8 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
                 continue;
             }
             if (!classifications.IsEmpty ()) {
-                API_ClassificationItem parent, item;
+                API_ClassificationItem parent = {};
+                API_ClassificationItem item = {};
                 AddClassificationItem (item, parent, classifications, systems[i]);
                 if (!has_systemname) systemdict.Add (systemname, classifications);
                 if (!has_systemname_full) systemdict.Add (systemname_full, classifications);
@@ -128,9 +129,10 @@ void GetFullName (const API_ClassificationItem& item, const ClassificationDict& 
 
 bool ReadSystemDict ()
 {
-    if (PROPERTYCACHE ().isClassification_OK) return true;
-    if (!PROPERTYCACHE ().isClassificationRead) PROPERTYCACHE ().ReadClassification ();
-    return PROPERTYCACHE ().isClassification_OK;
+    auto& cache = PROPERTYCACHE ();
+    if (cache.isClassification_OK) return true;
+    if (!cache.isClassificationRead) cache.ReadClassification ();
+    return cache.isClassification_OK;
 }
 
 // -----------------------------------------------------------------------------
@@ -164,17 +166,18 @@ GS::UniString GetSystemName (const API_Guid& systemguid)
 
 API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid>& classitem)
 {
+    auto& cache = PROPERTYCACHE ();
     GS::UniString systemname = GetSystemName (classitem.first);
     GS::UniString classname = "";
-    API_ClassificationItem cl;
+    API_ClassificationItem cl = {};
     if (systemname.IsEmpty ()) return cl;
-    UnicGuidByGuidString& systemdict = PROPERTYCACHE ().reversesystemdict;
+    UnicGuidByGuidString& systemdict = cache.reversesystemdict;
     if (!systemdict.ContainsKey (classitem.first)) return cl;
     UnicGuidString& g = systemdict.Get (classitem.first);
     if (!g.ContainsKey (classitem.second)) return cl;
     classname = g.Get (classitem.second);
-    if (!PROPERTYCACHE ().systemdict.ContainsKey (systemname)) return cl;
-    ClassificationDict& syst = PROPERTYCACHE ().systemdict.Get (systemname);
+    if (!cache.systemdict.ContainsKey (systemname)) return cl;
+    ClassificationDict& syst = cache.systemdict.Get (systemname);
     if (!syst.ContainsKey (classname)) return cl;
     cl = syst.Get (classname).item;
     return cl;

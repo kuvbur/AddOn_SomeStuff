@@ -6,9 +6,7 @@
 #include "Helpers.hpp"
 #include "SyncSettings.hpp"
 
-typedef GS::HashTable<API_Guid, bool> DoneElemGuid;
-
-GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo);
+GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo, bool checktype);
 
 // -----------------------------------------------------------------------------
 // Обработка одного размера
@@ -30,6 +28,6 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo);
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, DoneElemGuid& doneelemguid, const SyncSettings& syncSettings, bool isUndo);
+bool DimRoundByType (const API_ElemTypeID& typeID, const SyncSettings& syncSettings, bool isUndo);
 
 #endif

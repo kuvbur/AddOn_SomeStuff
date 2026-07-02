@@ -273,7 +273,7 @@ bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, Pa
 bool SyncElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, ParamDictElement& paramToWrite, int dummymode, UnicGuid& syncedelem)
 {
     if (syncedelem.ContainsKey (elemGuid)) return false; // Элемент уже был синхронизирован
-    API_ElemTypeID elementType;
+    API_ElemTypeID elementType = API_ZombieElemID;
     GSErrCode err = GetTypeByGUID (elemGuid, elementType);
     if (err != NoError) return false;
     API_Guid elemGuid_ = elemGuid;
