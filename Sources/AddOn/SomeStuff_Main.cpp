@@ -118,6 +118,8 @@ GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
     #endif
+    if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
+    if (elemType->elemHead.hotlinkGuid != APINULLGuid) return NoError;
     ACAPI_KeepInMemory (true);
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
@@ -126,15 +128,17 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     syncSettings.syncMon = true;
     #endif // PK_1
     if (!syncSettings.syncMon) return NoError;
-    if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
-    if (elemType->elemHead.hotlinkGuid != APINULLGuid) return NoError;
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
-    if (elementType == API_ZombieElemID) return NoError;
-    if (elementType == API_GroupID) return NoError;
-    if (elementType == API_DimensionID) {
-        DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true);
-        return NoError;
+    switch (elementType) {
+        case API_ZombieElemID:
+        case API_GroupID:
+            return NoError;
+        case API_DimensionID:
+            DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true);
+            return NoError;
+        default:
+            break;
     }
     #if defined(TESTING)
     DBprnt ("ElementEventHandlerProc start");
@@ -261,8 +265,7 @@ void MenuSetState (SyncSettings & syncSettings)
 
 void SetPaletteMenuText (short paletteItemInd, Int32 & bisEng)
 {
-    API_MenuItemRef itemRef;
-    BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
+    API_MenuItemRef itemRef = {};
     GS::UniString itemStr = "";
     itemStr = RSGetIndString (ID_ADDON_PROMT + bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;
@@ -380,11 +383,6 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     DimRoundAll (syncSettings, false);
     WriteSyncSettingsToPreferences (syncSettings);
     MenuSetState (syncSettings);
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    ACAPI_ProcessWindow_CloseProcessWindow ();
-    #else
-    ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-    #endif
     ACAPI_KeepInMemory (true);
     #ifdef TESTING
     DBprnt ("MenuCommandHandler end");

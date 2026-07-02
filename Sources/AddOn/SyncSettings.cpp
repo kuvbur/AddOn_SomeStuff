@@ -9,8 +9,7 @@ GS::ClassInfo SyncSettings::classInfo ("SyncSettings", GS::Guid ("B45089A9-B372-
 
 SyncSettings::SyncSettings () :
     SyncSettings (false, false, true, true, true, true, false)
-{
-}
+{}
 
 SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon) :
     syncAll (syncAll),
@@ -20,8 +19,7 @@ SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, 
     objS (objS),
     cwallS (cwallS),
     logMon (logMon)
-{
-}
+{}
 
 GSErrCode SyncSettings::Read (GS::IChannel& ic)
 {
@@ -49,7 +47,7 @@ GSErrCode SyncSettings::Write (GS::OChannel& oc) const
     return oc.GetOutputStatus ();
 }
 
-bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings)
+static bool ReadSyncSettings (SyncSettings& syncSettings)
 {
     GSErrCode err = NoError;
     Int32 version = 3;
@@ -71,13 +69,34 @@ bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings)
         delete[] data;
         return false;
     }
-#ifdef EXTNDVERSION
+    #ifdef EXTNDVERSION
     tempsyncSettings.syncMon = true;
-#endif
+    #endif
     syncSettings = tempsyncSettings;
     delete[] data;
     return true;
 }
+
+// --------------------------------------------------------------------
+// Кэш настроек
+// --------------------------------------------------------------------
+SyncSettings& GetSyncSettingsCache ()
+{
+    static SyncSettings instance;
+    static bool loaded = false;
+    if (!loaded) {
+        ReadSyncSettings (instance);
+        loaded = true;
+    }
+    return instance;
+}
+
+bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings)
+{
+    syncSettings = GetSyncSettingsCache ();
+    return true;
+}
+
 
 bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings)
 {
@@ -93,5 +112,6 @@ bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings)
     if (err != NoError) {
         return false;
     }
+    GetSyncSettingsCache () = syncSettings;
     return true;
 }

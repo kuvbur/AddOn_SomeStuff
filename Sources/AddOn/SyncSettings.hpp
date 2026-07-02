@@ -32,7 +32,15 @@ using MemoryIChannel = IO::MemoryIChannel;
 using MemoryOChannel = IO::MemoryOChannel;
 #endif
 
+static bool ReadSyncSettings (SyncSettings& syncSettings);
+
+// --------------------------------------------------------------------
+// Кэш настроек
+// --------------------------------------------------------------------
+SyncSettings& GetSyncSettingsCache ();
+
 bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings);
+
 bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings);
 
 #endif

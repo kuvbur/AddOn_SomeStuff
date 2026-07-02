@@ -174,7 +174,6 @@ void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
     GSErrCode		err = NoError;
 
     API_Elem_Head elem_head = {};
-    BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
     if (elem_head.type.typeID != API_ExternalElemID) return;

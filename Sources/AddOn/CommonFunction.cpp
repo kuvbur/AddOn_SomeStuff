@@ -7,8 +7,27 @@
 #include <bitset>
 #include <cmath>
 #include <limits>
-#include <math.h>
 static const Int32 VersionId = 49;
+
+// -----------------------------------------------------------------------------
+// Осталвяет в массиве только уникальные API_Guid
+// -----------------------------------------------------------------------------
+void GetUnicGuid (GS::Array<API_Guid>& guidArray)
+{
+    if (guidArray.GetSize () < 2) return;
+
+    UnicGuid seen = {};
+    GS::Array<API_Guid> result = {};
+    result.SetCapacity (guidArray.GetSize ());
+    for (const auto& guid : guidArray) {
+        if (!seen.ContainsKey (guid)) {
+            seen.Put (guid, true);
+            result.Push (guid);
+        }
+    }
+    guidArray = std::move (result);
+}
+
 GS::UniString GetDBName (API_DatabaseInfo& databaseInfo)
 {
     GS::UniString рname = "";
@@ -567,7 +586,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
     }
     if (elemGuid != APINULLGuid) {
         error_type = "GUID element: " + APIGuid2GSGuid (elemGuid).ToUniString () + SPACESTRING + error_type;
-        API_Elem_Head elem_head = {}; BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
+        API_Elem_Head elem_head = {};
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
             if (elem_head.hotlinkGuid != APINULLGuid) error_type = error_type + " IN HOTLINK";
@@ -597,8 +616,7 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
                 #endif
                 error_type = error_type + " type:" + elemName;
             }
-            API_Attribute layer;
-            BNZeroMemory (&layer, sizeof (API_Attribute));
+            API_Attribute layer = {};
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
@@ -635,14 +653,10 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
 // --------------------------------------------------------------------
 void	MenuItemCheckAC (short itemInd, bool checked)
 {
-    API_MenuItemRef itemRef;
-    GSFlags         itemFlags;
-
-    BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
+    API_MenuItemRef itemRef = {};
+    GSFlags itemFlags = 0;
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = itemInd;
-
-    itemFlags = 0;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
     #else
@@ -719,10 +733,8 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
-        ACAPI_ProcessWindow_InitProcessWindow (&funcname, &nPhase);
-        #else
-        ACAPI_Interface (APIIo_InitProcessWindowID, &funcname, &nPhase);
         #endif
+        ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -740,11 +752,6 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
         msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_CloseProcessWindow ();
-        #else
-        ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
-        #endif
     } else if (!assertIfNoSel) {
         function (APINULLGuid);
     }
@@ -757,7 +764,6 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
 {
     GSErrCode err = NoError;
     API_Elem_Head elem_head = {};
-    BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
     if (err != NoError) {
@@ -975,7 +981,7 @@ short GetFontIndex (GS::UniString & fontname)
     err = ACAPI_Font_SearchFont (font);
     inx = font.head.index;
     #else
-    API_Attribute attrib; BNZeroMemory (&attrib, sizeof (API_Attribute));
+    API_Attribute attrib = {};
     attrib.header.typeID = API_FontID;
     attrib.header.index = 0;
     attrib.header.uniStringNamePtr = &fontname;
@@ -989,7 +995,7 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
 {
     GSErrCode err = NoError;
     double width = 0.0;
-    API_TextLinePars tlp; BNZeroMemory (&tlp, sizeof (API_TextLinePars));
+    API_TextLinePars tlp = {};
     tlp.drvScaleCorr = false;
     tlp.index = 0;
     tlp.wantsLongestIndex = false;
@@ -1173,12 +1179,10 @@ bool EvalExpression (GS::UniString & unistring_expression)
 // -----------------------------------------------------------------------------
 bool MenuInvertItemMark (short menuResID, short itemIndex)
 {
-    API_MenuItemRef		itemRef;
-    GSFlags				itemFlags;
-    BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
+    API_MenuItemRef itemRef = {};
+    GSFlags itemFlags = 0;
     itemRef.menuResID = menuResID;
     itemRef.itemIndex = itemIndex;
-    itemFlags = 0;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
     #else
@@ -1411,13 +1415,13 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&elementsSymbolGuids)
 {
-    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {};
     element.header.guid = cwGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError || !element.header.hasMemo) {
         return err;
     }
-    API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    API_ElementMemo	memo = {};
     UInt64 mask = APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
     err = ACAPI_Element_GetMemo (cwGuid, &memo, mask);
     if (err != NoError) {
@@ -1471,13 +1475,13 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 // --------------------------------------------------------------------
 GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>&elementsGuids)
 {
-    API_Element element = {}; BNZeroMemory (&element, sizeof (API_Element));
+    API_Element element = {};
     element.header.guid = elemGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError) {
         return err;
     }
-    API_ElementMemo	memo = {}; BNZeroMemory (&memo, sizeof (API_ElementMemo));
+    API_ElementMemo	memo = {};
     UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost | APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail | APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster | APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd | APIMemoMask_RailingHandrailEnd | APIMemoMask_RailingToprailEnd | APIMemoMask_RailingRailConnection | APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
     err = ACAPI_Element_GetMemo (elemGuid, &memo, mask);
     if (err != NoError) {
@@ -1839,9 +1843,7 @@ bool	ClickAnElem (const char* prompt,
 
     if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
         API_Elem_Head elemHead = {};
-        BNZeroMemory (&elemHead, sizeof (API_Elem_Head));
-        API_ElemSearchPars	pars;
-        BNZeroMemory (&pars, sizeof (API_ElemSearchPars));
+        API_ElemSearchPars	pars = {};
         pars.typeID = needTypeID;
         pars.loc.x = pointInfo.pos.x;
         pars.loc.y = pointInfo.pos.y;
@@ -1876,8 +1878,7 @@ bool	ClickAnElem (const char* prompt,
     bool good = (needTypeID == API_ZombieElemID || needTypeID == clickedID);
 
     if (!good && clickedID == API_SectElemID) {
-        API_Element element;
-        BNZeroMemory (&element, sizeof (API_Element));
+        API_Element element = {};
         element.header.guid = pointInfo.neig.guid;
         if (ACAPI_Element_Get (&element) == NoError)
             good = (needTypeID == element.sectElem.parentID);
@@ -2275,7 +2276,6 @@ void UnhideUnlockElementLayer (const API_Guid & elemGuid)
     GSErrCode err = NoError;
     if (ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer)) return;
     API_Elem_Head elem_head = {};
-    BNZeroMemory (&elem_head, sizeof (API_Elem_Head));
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
     if (err != NoError) {
@@ -2296,9 +2296,8 @@ void UnhideUnlockElementLayer (const API_Elem_Head & elem_head)
 
 void UnhideUnlockElementLayer (const API_AttributeIndex & layer)
 {
-    API_Attribute attrib;
-    GSErrCode err;
-    BNZeroMemory (&attrib, sizeof (API_Attribute));
+    API_Attribute attrib = {};
+    GSErrCode err = NoError;
     attrib.header.typeID = API_LayerID;
     attrib.header.index = layer;
     err = ACAPI_Attribute_Get (&attrib);
@@ -2326,8 +2325,7 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     BNZeroMemory (&attribinx, sizeof (API_AttributeIndex));
     if (type == API_ZombieAttrID) return false;
     GSErrCode err = NoError;
-    API_Attribute attrib;
-    BNZeroMemory (&attrib, sizeof (API_Attribute));
+    API_Attribute attrib = {};
     attrib.header.uniStringNamePtr = &name;
     attrib.header.typeID = type;
     attrib.header.guid = APINULLGuid;
@@ -2377,7 +2375,7 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array<
 API_ElemTypeID GetElemTypeID (const API_Guid & guid)
 {
     API_ElemTypeID eltype = API_ZombieElemID;
-    API_Elem_Head elementHead = {}; BNZeroMemory (&elementHead, sizeof (API_Elem_Head));
+    API_Elem_Head elementHead = {};
     elementHead.guid = guid;
     GSErrCode err = NoError;
     err = ACAPI_Element_GetHeader (&elementHead);
@@ -2462,7 +2460,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
             if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (value)) elements.Push (elemGuid);
             #endif
         }
-}
+    }
     return elements;
     #endif // AC_22
 }

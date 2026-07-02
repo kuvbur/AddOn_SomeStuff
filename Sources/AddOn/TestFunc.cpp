@@ -27,7 +27,7 @@ void TestGetTextLineLength (GS::UniString& var)
     GS::UniString fontname = "Arial";
     double fontsize = 2.5;
     short font_inx = 0; double width = 0.0;
-    API_TextLinePars tlp; BNZeroMemory (&tlp, sizeof (API_TextLinePars));
+    API_TextLinePars tlp = {};
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_FontType font; BNZeroMemory (&font, sizeof (API_FontType));
     font.head.index = 0;
@@ -35,7 +35,7 @@ void TestGetTextLineLength (GS::UniString& var)
     err = ACAPI_Font_SearchFont (font);
     font_inx = font.head.index;
     #else
-    API_Attribute attrib; BNZeroMemory (&attrib, sizeof (API_Attribute));
+    API_Attribute attrib = {};
     attrib.header.typeID = API_FontID;
     attrib.header.index = 0;
     attrib.header.uniStringNamePtr = &fontname;
