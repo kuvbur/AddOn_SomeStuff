@@ -46,6 +46,8 @@ bool isAttributeRead ();
 
 bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group);
 
+GS::UniString GetGDLRawName (const GS::UniString& name);
+
 #if defined (AC_29)
 bool isMEPRead ();
 
@@ -98,6 +100,7 @@ struct PropertyCache
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
     GS::HashTable<GS::UniString, FormatString> parsedformatstring;
+    GS::HashTable<GS::UniString, GS::UniString> gdlparamname;
     FormatStringDict formatstringformeasuretype;
     GS::UniString meterString = "m";
     GS::UniString santimeterString = "cm";
@@ -140,6 +143,9 @@ struct PropertyCache
     bool isGroupProperty_OK; // Успешно прочитан
     bool isGroupPropertyRead;    // Был запрошен
     bool isGroupPropertyRead_full;    // Был прочитан полностью
+
+    bool isFormatStringFormeasureTypeRead;
+    bool isFormatStringFormeasureTypeRead_OK;
 
     #if defined (AC_29)
     MEPDicts mepdict;
@@ -226,9 +232,10 @@ struct PropertyCache
         isEng_OK = true;
         msg_rep ("PropertyCache AppInfo.language is", AppInfo.language, err, APINULLGuid);
         if (!AppInfo.language.IsEqual ("RUS")) isEng = 1000;
-        meterString = RSGetIndString (isEng, MeterStringID, ACAPI_GetOwnResModule ());
-        santimeterString = RSGetIndString (isEng, CMeterStringID, ACAPI_GetOwnResModule ());
-        decimeterString = RSGetIndString (isEng, DMeterStringID, ACAPI_GetOwnResModule ());
+        const Int32 iseng_ = ID_ADDON_STRINGS + isEng;
+        meterString = RSGetIndString (iseng_, MeterStringID, ACAPI_GetOwnResModule ());
+        santimeterString = RSGetIndString (iseng_, CMeterStringID, ACAPI_GetOwnResModule ());
+        decimeterString = RSGetIndString (iseng_, DMeterStringID, ACAPI_GetOwnResModule ());
     }
 
     void Update ()
@@ -263,24 +270,35 @@ struct PropertyCache
         msg_rep ("=PropertyCache=", time, NoError, APINULLGuid);
     }
 
+
+
     void ReadFormatStringForMeasureType ()
     {
         #if defined(TESTING)
         DBprnt ("=PropertyCache= ReadFormatStringForMeasureType");
         #endif
+        isFormatStringFormeasureTypeRead = true;
         // Получаем данные об округлении и типе расчёта
         API_CalcUnitPrefs unitPrefs1 = {};
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
+        GSErrCode err = ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
         #else
-        ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
+        GSErrCode err = ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void*) APIPrefs_CalcUnitsID);
         #endif
+        if (err != NoError) {
+            msg_rep ("PropertyCache", "APIEnv_GetPreferencesID_APIPrefs_CalcUnitsID", err, APINULLGuid);
+            return;
+        }
         API_WorkingUnitPrefs unitPrefs = {};
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
+        err = ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
         #else
-        ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
+        err = ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void*) APIPrefs_WorkingUnitsID);
         #endif
+        if (err != NoError) {
+            msg_rep ("PropertyCache", "APIEnv_GetPreferencesID_APIPrefs_WorkingUnitsID", err, APINULLGuid);
+            return;
+        }
         FormatString fstring = {};
         fstring.needRound = unitPrefs1.useDisplayedValues;
 
@@ -301,6 +319,7 @@ struct PropertyCache
 
         fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.angleDecimals);
         formatstringformeasuretype.Add (API_PropertyAngleMeasureType, fstring);
+        isFormatStringFormeasureTypeRead_OK = true;
     }
 
     void ReadGetGeoLocation ()

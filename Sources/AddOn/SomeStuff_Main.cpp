@@ -118,7 +118,7 @@ GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
     #endif
-    if (elemType->notifID == APINotifyElement_BeginEvents || elemType->notifID == APINotifyElement_EndEvents) return NoError;
+    if (elemType->notifID == APINotifyElement_BeginEvents) return NoError;
     if (elemType->elemHead.hotlinkGuid != APINULLGuid) return NoError;
     ACAPI_KeepInMemory (true);
     SyncSettings syncSettings (false, false, true, true, true, true, false);
@@ -133,11 +133,14 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     switch (elementType) {
         case API_ZombieElemID:
         case API_GroupID:
-            return NoError;
         case API_DimensionID:
+            if (elemType->notifID == APINotifyElement_New) AttachObserver (elemType->elemHead.guid, syncSettings);
             DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true, false);
             return NoError;
         default:
+            if (elemType->notifID == APINotifyElement_EndEvents) {
+                DimRoundAll (syncSettings, true);
+            }
             break;
     }
     #if defined(TESTING)
@@ -148,6 +151,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     bool needresync = false;
     switch (elemType->notifID) {
         case APINotifyElement_New:
+            AttachObserver (elemType->elemHead.guid, syncSettings);
         case APINotifyElement_Change:
         case APINotifyElement_PropertyValueChange:
         case APINotifyElement_Edit:
@@ -213,7 +217,9 @@ void	Do_ElementMonitor (bool& syncMon)
     #ifdef EXTNDVERSION
     syncMon = true;
     #endif
-
+    bool isteamwork = false;
+    short userid = 0;
+    GSErrCode err = IsTeamwork (isteamwork, userid);
     if (syncMon) {
         #if defined(TESTING)
         DBprnt ("Do_ElementMonitor on");
@@ -221,11 +227,11 @@ void	Do_ElementMonitor (bool& syncMon)
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_Element_CatchNewElement (nullptr, ElementEventHandlerProc);
         ACAPI_Element_InstallElementObserver (ElementEventHandlerProc);
-        ACAPI_Notification_CatchElementReservationChange (ReservationChangeHandler);
+        if (isteamwork) ACAPI_Notification_CatchElementReservationChange (ReservationChangeHandler);
         #else
         ACAPI_Notify_CatchNewElement (nullptr, ElementEventHandlerProc);			// for all elements
         ACAPI_Notify_InstallElementObserver (ElementEventHandlerProc);
-        ACAPI_Notify_CatchElementReservationChange (ReservationChangeHandler);
+        if (isteamwork) ACAPI_Notify_CatchElementReservationChange (ReservationChangeHandler);
         #endif
     }
     if (!syncMon) {
@@ -235,11 +241,11 @@ void	Do_ElementMonitor (bool& syncMon)
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_Element_CatchNewElement (nullptr, nullptr);
         ACAPI_Element_InstallElementObserver (nullptr);
-        ACAPI_Notification_CatchElementReservationChange (nullptr);
+        if (isteamwork) ACAPI_Notification_CatchElementReservationChange (nullptr);
         #else
         ACAPI_Notify_CatchNewElement (nullptr, nullptr);
         ACAPI_Notify_InstallElementObserver (nullptr);
-        ACAPI_Notify_CatchElementReservationChange (nullptr);
+        if (isteamwork) ACAPI_Notify_CatchElementReservationChange (nullptr);
         #endif
     }
     return;
@@ -284,7 +290,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     DBprnt ("MenuCommandHandler start");
     #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
-    LoadSyncSettingsFromPreferences (syncSettings);
+    LoadSyncSettingsFromPreferences (syncSettings, true);
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
     #endif // PK_1

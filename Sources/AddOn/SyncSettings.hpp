@@ -37,9 +37,9 @@ static bool ReadSyncSettings (SyncSettings& syncSettings);
 // --------------------------------------------------------------------
 // Кэш настроек
 // --------------------------------------------------------------------
-SyncSettings& GetSyncSettingsCache ();
+SyncSettings& GetSyncSettingsCache (bool forceReload);
 
-bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings);
+bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings, bool forceReload = false);
 
 bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings);
 

@@ -142,6 +142,17 @@ bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
     return false;
 }
 
+GS::UniString GetGDLRawName (const GS::UniString& name)
+{
+    auto& cache = PROPERTYCACHE ();
+    if (const auto* ptr = cache.gdlparamname.GetPtr (name)) return *ptr;
+    GS::UniString lowerName = name;
+    lowerName.ToLowerCase ();
+    GS::UniString rawname = GDLNAMEPREFIX + lowerName + BRACEEND;
+    cache.gdlparamname.Put (name, rawname);
+    return rawname;
+}
+
 bool GetParamValueFromCache (const GS::UniString& rawname, ParamValue& pvalue)
 {
     short inx = ParamHelpers::GetTypeInxByRawnamePrefix (rawname);
@@ -421,27 +432,27 @@ bool GetLocOriginToParamDict (ParamDictValue& propertyParams)
     pvalue.name = "locOrigin_x";
     pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
     ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.x + offset.x);
-    propertyParams.Add (pvalue.rawName, pvalue);
+    propertyParams.Put (pvalue.rawName, pvalue);
 
     pvalue.name = "locOrigin_y";
     pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
     ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.y + offset.y);
-    propertyParams.Add (pvalue.rawName, pvalue);
+    propertyParams.Put (pvalue.rawName, pvalue);
 
     pvalue.name = "locOrigin_z";
     pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
     ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.z);
-    propertyParams.Add (pvalue.rawName, pvalue);
+    propertyParams.Put (pvalue.rawName, pvalue);
 
     pvalue.name = "offsetOrigin_x";
     pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
     ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.x);
-    propertyParams.Add (pvalue.rawName, pvalue);
+    propertyParams.Put (pvalue.rawName, pvalue);
 
     pvalue.name = "offsetOrigin_y";
     pvalue.rawName = GLOBNAMEPREFIX; pvalue.rawName.Append (pvalue.name.ToLowerCase ()); pvalue.rawName.Append (BRACEEND);
     ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.y);
-    propertyParams.Add (pvalue.rawName, pvalue);
+    propertyParams.Put (pvalue.rawName, pvalue);
     #if defined(TESTING)
     DBprnt ("   GetLocOriginToParamDict end");
     #endif
@@ -483,7 +494,7 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
             pvalue.rawName = rawName;
             pvalue.fromInfo = true;
             ParamHelpers::ConvertStringToParamValue (pvalue, rawName, autotexts[i][2]);
-            propertyParams.Add (rawName, pvalue);
+            propertyParams.Put (rawName, pvalue);
         }
     }
     #if defined(TESTING)
@@ -512,7 +523,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
             ParamValue pvalue = {};
             GS::UniString rawName = "layer_name_" + attribname;
             ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
-            propertyParams.Add (pvalue.rawName, pvalue);
+            propertyParams.Put (pvalue.rawName, pvalue);
             pvalue.name = "";
             pvalue.rawName = "";
             #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -521,7 +532,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
             rawName = "layer_inx_" + GS::UniString::Printf ("%d", attrib.header.index);
             #endif
             ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
-            propertyParams.Add (pvalue.rawName, pvalue);
+            propertyParams.Put (pvalue.rawName, pvalue);
         } else {
             if (err == APIERR_DELETED) err = NoError;
             if (err != NoError) {
@@ -606,7 +617,7 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             pvalue.name.Append (SLASH);
             pvalue.name.Append (definision.name);
             ParamHelpers::ConvertToParamValue (pvalue, definision);
-            propertyParams.Add (pvalue.rawName, pvalue);
+            propertyParams.Put (pvalue.rawName, pvalue);
             flag_add = true;
             continue;
         }
@@ -625,27 +636,24 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
         rawName = PROPERTYNAMEPREFIX;
         rawName.Append (name.ToLowerCase ());
         rawName.Append (BRACEEND);
-        if (!propertyParams.ContainsKey (rawName)) {
+        if (ParamValue* pvaluePtr = propertyParams.GetPtr (rawName)) {
+            if (pvaluePtr->definition.guid != definision.guid) {
+                if (!pvaluePtr->fromPropertyDefinition && !pvaluePtr->fromAttribDefinition) {
+                    FormatString fstring = pvaluePtr->val.formatstring;
+                    pvaluePtr->rawName = rawName;
+                    pvaluePtr->name = name;
+                    ParamHelpers::ConvertToParamValue (*pvaluePtr, definision);
+                    if (!fstring.isEmpty) pvaluePtr->val.formatstring = fstring;
+                    flag_add = true;
+                }
+            }
+        } else {
             ParamValue pvalue;
             pvalue.rawName = rawName;
             pvalue.name = name;
             ParamHelpers::ConvertToParamValue (pvalue, definision);
-            propertyParams.Add (pvalue.rawName, pvalue);
+            propertyParams.Put (rawName, std::move (pvalue));
             flag_add = true;
-        } else {
-            ParamValue& pvalue = propertyParams.Get (rawName);
-            if (pvalue.definition.guid != definision.guid) {
-                FormatString fstring = pvalue.val.formatstring;
-                if (!pvalue.fromPropertyDefinition && !pvalue.fromAttribDefinition) {
-                    pvalue.rawName = rawName;
-                    pvalue.name = name;
-                    ParamHelpers::ConvertToParamValue (pvalue, definision);
-                    if (!fstring.isEmpty) {
-                        pvalue.val.formatstring = fstring;
-                    }
-                    flag_add = true;
-                }
-            }
         }
     }
     return flag_add;
@@ -669,22 +677,23 @@ void AddUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
 {
     if (libinx < 1) return;
     auto& cache = PROPERTYCACHE ();
-    if (!cache.unreadedgdlparams.ContainsKey (libinx)) {
-        ParamDict p = {};
-        p.Add (rawname, true);
-        cache.unreadedgdlparams.Add (libinx, p);
-        #if defined(TESTING)
-        DBprnt ("        Add skip GDL param", rawname);
-        #endif
-        return;
+    bool isParamAdded = false;
+    if (ParamDict* pPtr = cache.unreadedgdlparams.GetPtr (libinx)) {
+        if (!pPtr->ContainsKey (rawname)) {
+            pPtr->Put (rawname, true);
+            isParamAdded = true;
+        }
+    } else {
+        ParamDict p;
+        p.Put (rawname, true);
+        cache.unreadedgdlparams.Add (libinx, std::move (p));
+        isParamAdded = true;
     }
-    ParamDict& p = cache.unreadedgdlparams.Get (libinx);
-    if (!p.ContainsKey (rawname)) {
-        #if defined(TESTING)
+    #if defined(TESTING)
+    if (isParamAdded) {
         DBprnt ("        Add skip GDL param", rawname);
-        #endif
-        p.Add (rawname, true);
     }
+    #endif
 }
 
 GS::UniString CountUnreadGDLParams ()
@@ -711,10 +720,11 @@ GS::UniString CountUnreadGDLParams ()
 bool IsUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
 {
     if (libinx < 1) return false;
-    auto& cache = PROPERTYCACHE ();
-    if (!cache.unreadedgdlparams.ContainsKey (libinx)) return false;
-    ParamDict& p = cache.unreadedgdlparams.Get (libinx);
-    return p.ContainsKey (rawname);
+    const auto& cache = PROPERTYCACHE ();
+    if (const ParamDict* pPtr = cache.unreadedgdlparams.GetPtr (libinx)) {
+        return pPtr->ContainsKey (rawname);
+    }
+    return false;
 }
 
 GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
@@ -755,7 +765,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
             return NoError;
         }
         #endif
-        API_PropertyGroup group;
+        API_PropertyGroup group = {};
         if (ParamHelpers::GetGroupFromCache (definision.groupGuid, group)) {
             name = group.name;
             name.Append (SLASH);
