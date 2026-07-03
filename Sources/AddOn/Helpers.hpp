@@ -322,7 +322,7 @@ void AddValueToParamDictValue (ParamDictValue& params, const GS::UniString& name
 // Проверяет необходимость добавления в словарь параметров
 // Если в имени параметра содержится информация о номере аттрибута и имя такого параметра есть в словаре - вернёт истину
 // -----------------------------------------------------------------------------
-bool needAdd (ParamDictValue& params, GS::UniString& rawName);
+bool needAdd (const ParamDictValue& params, const GS::UniString& rawName);
 
 // --------------------------------------------------------------------
 // Запись параметра ParamValue в словарь ParamDict, если его там прежде не было
@@ -390,7 +390,7 @@ bool ConvertToProperty (const ParamValue& pvalue, API_Property& property);
 // Сопоставление двух словарей ParamDictValue 
 // Не добавляет отсутствующие в paramsTo элементы
 // --------------------------------------------------------------------
-void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo, bool addInNotEx /* = false*/);
+void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo);
 
 // --------------------------------------------------------------------
 // Сопоставление двух словарей ParamDictValue
@@ -689,9 +689,9 @@ bool operator==(const API_Property& lhs, const API_Property& rhs);
 //--------------------------------------------------------------------------------------------------------------------------
 // Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind, bool check);
+bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, const GS::UniString& property_flag_name, bool& flagfind, bool check);
 
-bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, GS::UniString property_flag_name, bool& flagfind);
+bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, const GS::UniString& property_flag_name, bool& flagfind);
 
 bool hasLibData (const GS::UniString& description);
 

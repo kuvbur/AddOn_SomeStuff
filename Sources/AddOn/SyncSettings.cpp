@@ -80,20 +80,20 @@ static bool ReadSyncSettings (SyncSettings& syncSettings)
 // --------------------------------------------------------------------
 // Кэш настроек
 // --------------------------------------------------------------------
-SyncSettings& GetSyncSettingsCache ()
+SyncSettings& GetSyncSettingsCache (bool forceReload)
 {
     static SyncSettings instance;
     static bool loaded = false;
-    if (!loaded) {
+    if (!loaded || forceReload) {
         ReadSyncSettings (instance);
         loaded = true;
     }
     return instance;
 }
 
-bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings)
+bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings, bool forceReload)
 {
-    syncSettings = GetSyncSettingsCache ();
+    syncSettings = GetSyncSettingsCache (forceReload);
     return true;
 }
 
@@ -112,6 +112,6 @@ bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings)
     if (err != NoError) {
         return false;
     }
-    GetSyncSettingsCache () = syncSettings;
+    GetSyncSettingsCache (false) = syncSettings;
     return true;
 }

@@ -24,11 +24,11 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
         msg_rep ("ClassificationFunc::GetAllClassification", "ACAPI_Classification_GetClassificationSystems", err, APINULLGuid);
         return err;
     }
-    for (UIndex i = 0; i < systems.GetSize (); ++i) {
-        GS::UniString systemname = systems[i].name.ToLowerCase ();
+    for (const auto& system : systems) {
+        GS::UniString systemname = system.name.ToLowerCase ();
         systemname.Trim ();
 
-        GS::UniString systemname_full = systemname + " v" + systems[i].editionVersion.ToLowerCase ();
+        GS::UniString systemname_full = systemname + " v" + system.editionVersion.ToLowerCase ();
         systemname_full.Trim ();
 
         bool has_systemname = systemdict.ContainsKey (systemname);
@@ -36,30 +36,30 @@ GSErrCode GetAllClassification (SystemDict& systemdict)
         bool has_autoclassname = systemdict.ContainsKey (autoclassname);
 
         if (!has_systemname || !has_systemname_full) {
-            GS::Array<API_ClassificationItem> allItems = {};
-            GS::Array<API_ClassificationItem> rootItems = {};
+            GS::Array<API_ClassificationItem> allItems;
+            GS::Array<API_ClassificationItem> rootItems;
             ClassificationDict classifications = {};
-            err = ACAPI_Classification_GetClassificationSystemRootItems (systems[i].guid, rootItems);
+            err = ACAPI_Classification_GetClassificationSystemRootItems (system.guid, rootItems);
             if (err == NoError) {
-                for (UIndex j = 0; j < rootItems.GetSize (); ++j) {
+                for (const auto& item : rootItems) {
                     API_ClassificationItem parent = {};
-                    AddClassificationItem (rootItems[j], parent, classifications, systems[i]);
-                    GatherAllDescendantOfClassification (rootItems[j], classifications, systems[i]);
+                    AddClassificationItem (item, parent, classifications, system);
+                    GatherAllDescendantOfClassification (item, classifications, system);
                 }
             } else {
-                msg_rep ("ClassificationFunc::GetAllClassification", "ACAPI_Classification_GetClassificationSystemRootItems", err, systems[i].guid);
+                msg_rep ("ClassificationFunc::GetAllClassification", "ACAPI_Classification_GetClassificationSystemRootItems", err, system.guid);
                 continue;
             }
             if (!classifications.IsEmpty ()) {
                 API_ClassificationItem parent = {};
                 API_ClassificationItem item = {};
-                AddClassificationItem (item, parent, classifications, systems[i]);
-                if (!has_systemname) systemdict.Add (systemname, classifications);
-                if (!has_systemname_full) systemdict.Add (systemname_full, classifications);
+                AddClassificationItem (item, parent, classifications, system);
+                if (!has_systemname) systemdict.Put (systemname, classifications);
+                if (!has_systemname_full) systemdict.Put (systemname_full, classifications);
                 if (classifications.ContainsKey (autoclassname) && !has_autoclassname) {
                     ClassificationDict autoclassifications = {};
-                    autoclassifications.Add (autoclassname, classifications.Get (autoclassname));
-                    systemdict.Add (autoclassname, autoclassifications);
+                    autoclassifications.Put (autoclassname, classifications.Get (autoclassname));
+                    systemdict.Put (autoclassname, autoclassifications);
                 }
             }
         }
@@ -75,9 +75,9 @@ void GatherAllDescendantOfClassification (const API_ClassificationItem& item, Cl
     GS::Array<API_ClassificationItem> directChildren = {};
     err = ACAPI_Classification_GetClassificationItemChildren (item.guid, directChildren);
     if (err == NoError) {
-        for (UIndex i = 0; i < directChildren.GetSize (); ++i) {
-            AddClassificationItem (directChildren[i], item, classifications, system);
-            GatherAllDescendantOfClassification (directChildren[i], classifications, system);
+        for (const auto& children : directChildren) {
+            AddClassificationItem (children, item, classifications, system);
+            GatherAllDescendantOfClassification (children, classifications, system);
         }
     } else {
         msg_rep ("ClassificationFunc::GatherAllDescendantOfClassification", "ACAPI_Classification_GetClassificationItemChildren", err, item.guid);
@@ -95,7 +95,7 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
         classificationitem.system = system;
         classificationitem.itemname = itemname;
         classificationitem.parentname = parent.id.ToLowerCase ();
-        classifications.Add (itemname, classificationitem);
+        classifications.Put (itemname, classificationitem);
     }
 
     if (desc.ToLowerCase ().Contains ("some_stuff_class") || desc.ToLowerCase ().Contains ("somestuff_class") || desc.ToLowerCase ().Contains ("somestuffclass")) {
@@ -104,7 +104,7 @@ void AddClassificationItem (const API_ClassificationItem& item, const  API_Class
         classificationitem.system = system;
         classificationitem.itemname = autoclassname;
         classificationitem.parentname = "";
-        classifications.Add (autoclassname, classificationitem);
+        classifications.Put (autoclassname, classificationitem);
     }
 }
 
@@ -138,49 +138,58 @@ bool ReadSystemDict ()
 // -----------------------------------------------------------------------------
 // Поиск класса по ID в заданной классификации, возвращает Guid класса
 // -----------------------------------------------------------------------------
-API_Guid FindClass (const GS::UniString& systemname, const  GS::UniString& classname)
+API_Guid ClassificationFunc::FindClass (const GS::UniString& systemname, const GS::UniString& classname)
 {
     if (!ReadSystemDict ()) return APINULLGuid;
     ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
-    if (!systemdict.ContainsKey (systemname)) return APINULLGuid;
-    API_Guid classgiud = APINULLGuid;
-    if (systemdict.Get (systemname).ContainsKey (classname)) {
-        classgiud = systemdict.Get (systemname).Get (classname).item.guid;
-        return classgiud;
-    }
-    return classgiud;
+
+    auto* classDict = systemdict.GetPtr (systemname);
+    if (classDict == nullptr) return APINULLGuid;
+
+    auto* itemPtr = classDict->GetPtr (classname);
+    if (itemPtr == nullptr) return APINULLGuid;
+
+    return itemPtr->item.guid;
 }
 
-GS::UniString GetSystemName (const API_Guid& systemguid)
+GS::UniString ClassificationFunc::GetSystemName (const API_Guid& systemguid)
 {
-    GS::UniString systemname = "";
-    if (!ReadSystemDict ()) return systemname;
-    UnicGuidByGuidString& systemdict = PROPERTYCACHE ().reversesystemdict;
-    if (!systemdict.ContainsKey (systemguid)) return systemname;
-    UnicGuidString& g = systemdict.Get (systemguid);
-    if (!g.ContainsKey (APINULLGuid)) return systemname;
-    systemname = g.Get (APINULLGuid);
-    return systemname;
+
+    if (!ReadSystemDict ()) return GS::UniString ();
+
+    auto& reverseDict = PROPERTYCACHE ().reversesystemdict;
+
+    const auto* gPtr = reverseDict.GetPtr (systemguid);
+    if (gPtr == nullptr) return GS::UniString ();
+
+    const auto* namePtr = gPtr->GetPtr (APINULLGuid);
+    if (namePtr == nullptr) return GS::UniString ();
+
+    return *namePtr;
 }
 
 
 API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid>& classitem)
 {
+
     auto& cache = PROPERTYCACHE ();
-    GS::UniString systemname = GetSystemName (classitem.first);
-    GS::UniString classname = "";
-    API_ClassificationItem cl = {};
-    if (systemname.IsEmpty ()) return cl;
-    UnicGuidByGuidString& systemdict = cache.reversesystemdict;
-    if (!systemdict.ContainsKey (classitem.first)) return cl;
-    UnicGuidString& g = systemdict.Get (classitem.first);
-    if (!g.ContainsKey (classitem.second)) return cl;
-    classname = g.Get (classitem.second);
-    if (!cache.systemdict.ContainsKey (systemname)) return cl;
-    ClassificationDict& syst = cache.systemdict.Get (systemname);
-    if (!syst.ContainsKey (classname)) return cl;
-    cl = syst.Get (classname).item;
-    return cl;
+
+    const auto* systemDict = cache.reversesystemdict.GetPtr (classitem.first);
+    if (systemDict == nullptr) return {};
+
+    const auto* classNamePtr = systemDict->GetPtr (classitem.second);
+    if (classNamePtr == nullptr) return {};
+
+    const auto* systemNamePtr = systemDict->GetPtr (APINULLGuid);
+    if (systemNamePtr == nullptr) return {};
+
+    const auto* dictPtr = cache.systemdict.GetPtr (*systemNamePtr);
+    if (dictPtr == nullptr) return {};
+
+    const auto* itemPtr = dictPtr->GetPtr (*classNamePtr);
+    if (itemPtr == nullptr) return {};
+
+    return itemPtr->item;
 }
 
 // -----------------------------------------------------------------------------
@@ -189,20 +198,30 @@ API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid>& classitem)
 void SetAutoclass (const API_Guid elemGuid)
 {
     if (!ReadSystemDict ()) return;
-    ClassificationFunc::SystemDict& systemdict = PROPERTYCACHE ().systemdict;
-    if (!systemdict.ContainsKey (autoclassname)) return;
-    if (!systemdict.Get (autoclassname).ContainsKey (autoclassname)) return;
-    API_ClassificationItem item = systemdict.Get (autoclassname).Get (autoclassname).item;
-    API_ClassificationSystem system = systemdict.Get (autoclassname).Get (autoclassname).system;
-    GSErrCode err = NoError;
-    GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs = {};
-    err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
-    bool needChangeClass = false;
-    if (systemItemPairs.IsEmpty ()) needChangeClass = true;
-    if (needChangeClass) {
-        err = ACAPI_Element_AddClassificationItem (elemGuid, item.guid);
+
+    auto& systemdict = PROPERTYCACHE ().systemdict;
+
+    const auto* classDict = systemdict.GetPtr (autoclassname);
+    if (classDict == nullptr) return;
+
+    const auto* entry = classDict->GetPtr (autoclassname);
+    if (entry == nullptr) return;
+
+    const API_Guid targetGuid = entry->item.guid;
+    GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
+    GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
+
+    if (err != NoError) {
+        msg_rep ("SetAutoclass", "ACAPI_Element_GetClassificationItems", err, elemGuid);
+        return;
     }
-    if (err != NoError) msg_rep ("SetAutoclass", "ACAPI_Element_AddClassificationItem", err, elemGuid);
+
+    if (systemItemPairs.IsEmpty ()) {
+        err = ACAPI_Element_AddClassificationItem (elemGuid, targetGuid);
+        if (err != NoError) {
+            msg_rep ("SetAutoclass", "ACAPI_Element_AddClassificationItem", err, elemGuid);
+        }
+    }
     return;
 }
 }

@@ -930,7 +930,6 @@ void ReplaceCR (GS::UniString & val, bool clear)
 // -----------------------------------------------------------------------------
 void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl)
 {
-
     //Ищем указание длины строки
     Int32 stringlen = 0;
     GS::UniString part = "";
@@ -1339,19 +1338,18 @@ UInt32 StringSplt_ (const GS::UniString & instring, const GS::UniString & delim,
         partstring.Push (instring);
         return 1;
     }
-    GS::Array<GS::UniString> parts = {};
-    GS::UniString tinstring = instring;
-    UInt32 npart = instring.Split (delim, &parts);
+    GS::Array<GS::UniString> parts;
+    instring.Split (delim, &parts);
     UInt32 n = 0;
     GS::UniString part = "";
-    for (UInt32 i = 0; i < npart; i++) {
-        part = parts.Get (i);
+    for (const GS::UniString& originalPart : parts) {
+        GS::UniString part = originalPart;
+        part.Trim ();
+        part.Trim ('\r');
+        part.Trim ('\n');
         if (!part.IsEmpty () || !filter_empty) {
-            part.Trim ('\r');
-            part.Trim ('\n');
-            part.Trim ();
             if (!part.IsEmpty () || !filter_empty) {
-                partstring.Push (part);
+                partstring.Push (std::move (part));
                 n += 1;
             }
         }
@@ -1371,10 +1369,10 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
     }
     GS::Array<GS::UniString> parts = {};
     UInt32 n = 0;
-    UInt32 npart = StringSplt (instring, delim, parts);
-    for (UInt32 i = 0; i < npart; i++) {
-        if (parts[i].Contains (filter)) {
-            partstring.Push (parts.Get (i));
+    StringSplt_ (instring, delim, parts, true);
+    for (GS::UniString& part : parts) {
+        if (part.Contains (filter)) {
+            partstring.Push (std::move (part));
             n += 1;
         }
     }
