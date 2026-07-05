@@ -585,6 +585,7 @@ GS::Array<API_Guid>	GetSelectedElements (bool assertIfNoSel /* = true*/, bool on
     }
     BMKillHandle ((GSHandle*) &selNeigs);
     #else
+    guidArray.SetCapacity (selNeigs.GetSize ());
     for (const API_Neig& neig : selNeigs) {
         API_Guid elemguid = neig.guid;
         guidArray.Push (elemguid);
@@ -770,6 +771,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 if (element.column.nSegments == 0) return;
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
                 if (err == NoError && memo.columnSegments != nullptr) {
+                    if (element.column.nSegments > 2) subelemGuid.SetCapacity (subelemGuid.GetSize () + element.column.nSegments);
                     for (UInt32 i = 0; i < element.column.nSegments; i++) {
                         subelemGuid.Push (memo.columnSegments[i].head.guid);
                     }
@@ -788,6 +790,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 if (element.beam.nSegments == 0) return;
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
                 if (err == NoError && memo.beamSegments != nullptr) {
+                    if (element.beam.nSegments > 2) subelemGuid.SetCapacity (subelemGuid.GetSize () + element.beam.nSegments);
                     for (UInt32 i = 0; i < element.beam.nSegments; i++) {
                         subelemGuid.Push (memo.beamSegments[i].head.guid);
                     }
@@ -804,6 +807,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 #else
                 err = ACAPI_Element_GetConnectedElements (elemGuid, API_WindowID, &connectedElements, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
                 #endif
+                subelemGuid.SetCapacity (subelemGuid.GetSize () + connectedElements.GetSize ());
                 for (const auto& guid : connectedElements) subelemGuid.Push (guid);
                 connectedElements.Clear ();
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -811,6 +815,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 #else
                 err = ACAPI_Element_GetConnectedElements (elemGuid, API_DoorID, &connectedElements, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
                 #endif
+                subelemGuid.SetCapacity (subelemGuid.GetSize () + connectedElements.GetSize ());
                 for (const auto& guid : connectedElements) subelemGuid.Push (guid);
                 break;
             }
@@ -826,6 +831,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
         case API_CurtainWallAccessoryID:
         case API_CurtainWallPanelID:
             if (syncSettings.cwallS) {
+                subelemGuid.SetCapacity (subelemGuid.GetSize () + addZone * 2 + 2);
                 if (addZone) {
                     API_CWPanelRelation crelData = {};
                     err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &crelData);
@@ -846,6 +852,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
         case API_DoorID:
         case API_WindowID:
             if (syncSettings.widoS) {
+                subelemGuid.SetCapacity (subelemGuid.GetSize () + 4);
                 API_DoorRelation drelData = {};
                 err = ACAPI_Element_GetRelations (elemGuid, API_ZoneID, &drelData);
                 if (err == NoError) {
@@ -6130,17 +6137,17 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
             if (existsmaterial.ContainsKey (constrinx)) continue;
             ParamHelpers::GetAttributeValues (constrinx, paramsAdd, paramsAdd_1);
             if (!paramsAdd_1.IsEmpty ()) ParamHelpers::GetAttributeValues (constrinx, paramsAdd_1, paramsAdd_1);
-            existsmaterial.Add (constrinx, true);
+            existsmaterial.Put (constrinx, true);
             flag = true;
         }
         if (flag) {
             for (ParamDictValue::PairIterator cIt = paramsAdd.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
                 if (!params.ContainsKey (cIt->key)) {
-                    params.Add (cIt->key, cIt->value);
+                    params.Put (cIt->key, cIt->value);
                     #else
                 if (!params.ContainsKey (*cIt->key)) {
-                    params.Add (*cIt->key, *cIt->value);
+                    params.Put (*cIt->key, *cIt->value);
                     #endif
                 }
             }
@@ -6149,10 +6156,10 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDi
             for (ParamDictValue::PairIterator cIt = paramsAdd_1.EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
                 if (!params.ContainsKey (cIt->key)) {
-                    params.Add (cIt->key, cIt->value);
+                    params.Put (cIt->key, cIt->value);
                     #else
                 if (!params.ContainsKey (*cIt->key)) {
-                    params.Add (*cIt->key, *cIt->value);
+                    params.Put (*cIt->key, *cIt->value);
                     #endif
                 }
             }
@@ -7406,6 +7413,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     DBprnt ("        ComponentsBasicStructure\n");
     #endif
     ParamComposite param_composite = {};
+    param_composite.composite.SetCapacity (2);
     if (fillThick_ven > 0.0001) {
         ParamValueComposite layer = {};
         layer.inx = constrinx_ven;
@@ -7452,10 +7460,11 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
             e.length += c.length;
             e.qty += c.qty;
         } else {
-            existsmaterial.Add (key, c);
+            existsmaterial.Put (key, c);
         }
     }
     if (existsmaterial.IsEmpty ()) return;
+    p.SetCapacity (existsmaterial.GetSize ());
     for (GS::HashTable<GS::UniString, ParamValueComposite>::PairIterator cIt = existsmaterial.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValueComposite c = cIt->value;
@@ -7493,6 +7502,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         return false;
     }
     ParamComposite param_composite = {};
+    param_composite.composite.SetCapacity (attrib.compWall.nComps + 1);
     for (short i = 0; i < attrib.compWall.nComps; i++) {
         API_AttributeIndex	constrinxL = (*defs.cwall_compItems)[i].buildingMaterial;
         double	fillThickL = (*defs.cwall_compItems)[i].fillThick;
@@ -7506,7 +7516,7 @@ bool ParamHelpers::ComponentsCompositeStructure (const API_Guid & elemguid, API_
         param_composite.composite.Push (layer);
         if (!existsmaterial.ContainsKey (constrinxL)) {
             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
-            existsmaterial.Add (constrinxL, true);
+            existsmaterial.Put (constrinxL, true);
         }
     }
     for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -7547,12 +7557,12 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         #endif
         short pen = paramc.composite_pen;
         if (pen < 0 && !needReadQuantities) needReadQuantities = true;
-        OrientedSegments s = {};
-        GS::Array<Sector> segments = {};
-        lines.Add (pen, s);
-        segment.Add (pen, segments);
-        ParamComposite p = {};
-        param_composite.Add (pen, p);
+        OrientedSegments s;
+        GS::Array<Sector> segments;
+        lines.Put (pen, s);
+        segment.Put (pen, segments);
+        ParamComposite p;
+        param_composite.Put (pen, p);
     }
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
@@ -7597,11 +7607,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         d.start = p2;
         d.cut_start = p1;
         d.cut_direction = Geometry::SectorVector (cut1);
-        if (lines.ContainsKey (20)) {
-            lines.Set (20, d);
-        } else {
-            lines.Add (20, d);
-        }
+        lines.Put (20, d);
         Point2D p3 = { 0, -1000 };
         Point2D p4 = { 0, 1000 };
         Sector cut2 = { p3, p4 };
@@ -7609,14 +7615,11 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         d2.start = p3;
         d2.cut_start = p4;
         d2.cut_direction = Geometry::SectorVector (cut2);
-        if (lines.ContainsKey (6)) {
-            lines.Set (6, d2);
-        } else {
-            lines.Add (6, d2);
-        }
+        lines.Put (6, d2);
+
         ParamComposite p = {};
-        param_composite.Add (20, p);
-        param_composite.Add (6, p);
+        param_composite.Put (20, p);
+        param_composite.Put (6, p);
     } else {
         // Проходим по сегментам, соединяем их в одну линию
         for (GS::HashTable<short, GS::Array<Sector>>::PairIterator cIt = segment.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -7744,7 +7747,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                     layer.structype = structype;
                                     if (!existsmaterial.ContainsKey (constrinxL)) {
                                         ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
-                                        existsmaterial.Add (constrinxL, true);
+                                        existsmaterial.Put (constrinxL, true);
                                     }
                                     composite_all.Push (layer);
                                 } else {
@@ -7778,7 +7781,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                         param_composite.Get (pen).composite.Push (layer);
                                         if (!existsmaterial.ContainsKey (constrinxL)) {
                                             ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
-                                            existsmaterial.Add (constrinxL, true);
+                                            existsmaterial.Put (constrinxL, true);
                                         }
                                         hasData = true;
                                     }
@@ -8257,9 +8260,8 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
         // Поиск уже прочитанных свойств
         GS::UniString rawName = param.rawName;
         rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
-        if (params.ContainsKey (rawName)) {
-            ParamValue& p = params.Get (rawName);
-            if (p.isValid && p.definition.name.Contains (CharENTER)) {
+        if (const auto* p = params.GetPtr (rawName)) {
+            if (p->isValid && p->definition.name.Contains (CharENTER)) {
                 continue;
             }
         }
@@ -8285,7 +8287,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     }
     #ifndef AC_22
     if (propertyDefinitions.IsEmpty ()) return flag_find;
-    GS::Array<API_Property> properties = {};
+    GS::Array<API_Property> properties;
     error = ACAPI_Attribute_GetPropertyValues (attrib.header, propertyDefinitions, properties);
     if (error != NoError) {
         msg_rep ("materialString::GetAttributeValues", "ACAPI_Attribute_GetPropertyValues", error, APINULLGuid);
