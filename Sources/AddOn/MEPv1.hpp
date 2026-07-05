@@ -80,11 +80,32 @@
 
 namespace MEPv1
 {
+
+static const GS::UniString rawnamephysicalsystemname = "{@mep:physical system name}";
+static const GS::UniString rawnamephysicalsystemgroupname = "{@mep:physical system group name}";
+static const GS::UniString rawnamereferencesetname = "{@mep:reference set name}";
+static const GS::UniString rawnametest = "{@mep:test}";
+static const GS::UniString rawnameinsulationthickness = "{@mep:insulation thickness}";
+static const GS::UniString rawnamelength = "{@mep:length}";
+static const GS::UniString rawnamedescription = "{@mep:description}";
+static const GS::UniString rawnamesystem = "{@mep:system}";
+static const GS::UniString rawnameroutinglength = "{@mep:routing length}";
+static const GS::UniString rawnamebendfactorradius = "{@mep:bend factor radius}";
+static const GS::UniString rawnamebendradius = "{@mep:bend radius}";
+static const GS::UniString rawnamewidth = "{@mep:width}";
+static const GS::UniString rawnameheight = "{@mep:height}";
+static const GS::UniString rawnamewallthickness = "{@mep:wall thickness}";
+static const GS::UniString rawnameshape = "{@mep:shape}";
+static const GS::UniString rawnameelementsetname = "{@mep:element set name}";
+static const GS::UniString rawnamediametr = "{@mep:diametr}";
+
 void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 
 bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
+void ClearRoutingSubelemCache ();
 #if defined (AC_28) || defined(AC_29)
+static const GS::Array<API_Guid>& GetSubElementOfRoutingCached (const API_Guid& routingGuid);
 bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
 bool ReadTransitionData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& transtableID, double& bdiametr, double& ediametr);
 bool ReadRoutingElementData (const ACAPI::MEP::UniqueID& elementID, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::UniqueID& branchtableID);

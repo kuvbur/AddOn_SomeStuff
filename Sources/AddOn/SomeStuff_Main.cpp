@@ -20,6 +20,9 @@
 #include	"Dimensions.hpp"
 #include	"Spec.hpp"
 #include	"Propertycache.hpp"
+#if defined(AC_27) || defined (AC_28) || defined(AC_29)
+#include	"MEPv1.hpp"
+#endif // AC_27
 
 //-----------------------------------------------------------------------------
 // Срабатывает при событиях в тимворк
@@ -51,7 +54,7 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
         #else
         AttachObserver (*(it->key), syncSettings);
         #endif
-    }
+}
     ACAPI_KeepInMemory (true);
     return NoError;
 }
@@ -137,6 +140,11 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
             if (elemType->notifID == APINotifyElement_New) AttachObserver (elemType->elemHead.guid, syncSettings);
             DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true, false);
             return NoError;
+            #if defined (AC_28) || defined (AC_29)
+        case API_ExternalElemID:
+            MEPv1::ClearRoutingSubelemCache ();
+            break;
+            #endif
         default:
             if (elemType->notifID == APINotifyElement_EndEvents) {
                 DimRoundAll (syncSettings, true);
