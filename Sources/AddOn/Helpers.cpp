@@ -22,6 +22,8 @@
 static const GS::Array<short> paramTypesList = { IDTYPEINX,PROPERTYTYPEINX,COORDTYPEINX,GDLTYPEINX,INFOTYPEINX,IFCTYPEINX,MORPHTYPEINX,ATTRIBTYPEINX,LISTDATATYPEINX,MATERIALTYPEINX,GLOBTYPEINX,
 CLASSTYPEINX, FILETYPEINX,FORMULATYPEINX,ELEMENTTYPEINX,MEPTYPEINX };
 
+static const GS::UniString idRawname = "{@id:id}";
+
 static const GS::Array<short> paramTypesListWrite = { PROPERTYTYPEINX,GDLTYPEINX,IDTYPEINX,CLASSTYPEINX,ATTRIBTYPEINX,COORDTYPEINX };
 
 int IsDummyModeOn ()
@@ -771,7 +773,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 if (element.column.nSegments == 0) return;
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
                 if (err == NoError && memo.columnSegments != nullptr) {
-                    if (element.column.nSegments > 2) subelemGuid.SetCapacity (subelemGuid.GetSize () + element.column.nSegments);
+                    subelemGuid.SetCapacity (subelemGuid.GetSize () + element.column.nSegments);
                     for (UInt32 i = 0; i < element.column.nSegments; i++) {
                         subelemGuid.Push (memo.columnSegments[i].head.guid);
                     }
@@ -790,7 +792,7 @@ void GetRelationsElement (const API_Guid& elemGuid, const  API_ElemTypeID& eleme
                 if (element.beam.nSegments == 0) return;
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
                 if (err == NoError && memo.beamSegments != nullptr) {
-                    if (element.beam.nSegments > 2) subelemGuid.SetCapacity (subelemGuid.GetSize () + element.beam.nSegments);
+                    subelemGuid.SetCapacity (subelemGuid.GetSize () + element.beam.nSegments);
                     for (UInt32 i = 0; i < element.beam.nSegments; i++) {
                         subelemGuid.Push (memo.beamSegments[i].head.guid);
                     }
@@ -1578,37 +1580,55 @@ bool ParamHelpers::AddProperty (ParamDictValue& params, GS::Array<API_Property>&
     return flag_find;
 }
 
+template <typename Converter>
+void AddValueToParamDictValueImpl (ParamDictValue& params, const GS::UniString& rawName_prefix, const GS::UniString& name, const bool addInNotEx, const bool isLen, Converter&& convertValue)
+{
+    GS::UniString lowerName = name.ToLowerCase ();
+    GS::UniString rawName = rawName_prefix + lowerName + BRACEEND;
+    ParamValue* existingParam = params.GetPtr (rawName);
+    if (existingParam != nullptr) {
+        if (!addInNotEx) {
+            #if defined(TESTING)
+            DBprnt ("AddToParamDictValue err", rawName + " ContainsKey");
+            #endif
+            return;
+        }
+
+        ParamValue pvalue = {};
+        pvalue.rawName = std::move (rawName);
+        pvalue.name = std::move (lowerName);
+        ParamHelpers::SetParamValueSourseByName (pvalue);
+        if (isLen) pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
+        // Вызываем кастомную конвертацию через лямбду
+        convertValue (pvalue);
+
+        pvalue.fromGuid = existingParam->fromGuid;
+        pvalue.toQRCode = existingParam->toQRCode;
+
+        *existingParam = std::move (pvalue);
+
+    } else {
+        if (!addInNotEx) {
+            ParamValue pvalue = {};
+            pvalue.name = std::move (lowerName);
+            ParamHelpers::SetParamValueSourseByName (pvalue);
+            if (isLen) pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
+            convertValue (pvalue);
+            pvalue.rawName = rawName;
+            params.Put (std::move (rawName), std::move (pvalue));
+        }
+    }
+}
+
+
 // -----------------------------------------------------------------------------
 // Добавление значения в словарь ParamDictValue
 // -----------------------------------------------------------------------------
 void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const bool val, const bool addInNotEx)
 {
-    ParamValue pvalue = {};
-    pvalue.rawName = rawName_prefix;
-    pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append (BRACEEND);
-    bool flag_set = false;
-    if (params.ContainsKey (pvalue.rawName)) {
-        flag_set = true;
-        if (!addInNotEx) {
-            #if defined(TESTING)
-            DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
-            #endif
-            return;
-        }
-    }
-    pvalue.name = name.ToLowerCase ();
-    ParamHelpers::ConvertBoolToParamValue (pvalue, EMPTYSTRING, val);
-    if (flag_set) {
-        ParamValue paramFrom = params.Get (pvalue.rawName);
-        pvalue.fromGuid = paramFrom.fromGuid;
-        pvalue.toQRCode = paramFrom.toQRCode;
-        params.Set (pvalue.rawName, pvalue);
-    } else {
-        if (!addInNotEx) {
-            params.Put (pvalue.rawName, pvalue);
-        }
-    }
+    AddValueToParamDictValueImpl (params, rawName_prefix, name, addInNotEx, false, [val](ParamValue& pvalue) {
+        ParamHelpers::ConvertBoolToParamValue (pvalue, EMPTYSTRING, val);
+    });
 }
 
 
@@ -1617,33 +1637,9 @@ void ParamHelpers::AddBoolValueToParamDictValue (ParamDictValue& params, const A
 // -----------------------------------------------------------------------------
 void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val, const bool addInNotEx)
 {
-    ParamValue pvalue = {};
-    pvalue.rawName = rawName_prefix;
-    pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append (BRACEEND);
-    bool flag_set = false;
-    if (params.ContainsKey (pvalue.rawName)) {
-        flag_set = true;
-        if (!addInNotEx) {
-            #if defined(TESTING)
-            DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
-            #endif
-            return;
-        }
-    }
-    pvalue.name = name.ToLowerCase ();
-    pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, val);
-    if (flag_set) {
-        ParamValue paramFrom = params.Get (pvalue.rawName);
-        pvalue.fromGuid = paramFrom.fromGuid;
-        pvalue.toQRCode = paramFrom.toQRCode;
-        params.Set (pvalue.rawName, pvalue);
-    } else {
-        if (!addInNotEx) {
-            params.Put (pvalue.rawName, pvalue);
-        }
-    }
+    AddValueToParamDictValueImpl (params, rawName_prefix, name, addInNotEx, true, [val](ParamValue& pvalue) {
+        ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, val);
+    });
 }
 
 
@@ -1653,32 +1649,9 @@ void ParamHelpers::AddLengthValueToParamDictValue (ParamDictValue& params, const
 // -----------------------------------------------------------------------------
 void ParamHelpers::AddDoubleValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val, const bool addInNotEx)
 {
-    ParamValue pvalue = {};
-    pvalue.rawName = rawName_prefix;
-    pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append (BRACEEND);
-    bool flag_set = false;
-    if (params.ContainsKey (pvalue.rawName)) {
-        flag_set = true;
-        if (!addInNotEx) {
-            #if defined(TESTING)
-            DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
-            #endif
-            return;
-        }
-    }
-    pvalue.name = name.ToLowerCase ();
-    ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, val);
-    if (flag_set) {
-        ParamValue paramFrom = params.Get (pvalue.rawName);
-        pvalue.fromGuid = paramFrom.fromGuid;
-        pvalue.toQRCode = paramFrom.toQRCode;
-        params.Set (pvalue.rawName, pvalue);
-    } else {
-        if (!addInNotEx) {
-            params.Put (pvalue.rawName, pvalue);
-        }
-    }
+    AddValueToParamDictValueImpl (params, rawName_prefix, name, addInNotEx, false, [val](ParamValue& pvalue) {
+        ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, val);
+    });
 }
 
 // -----------------------------------------------------------------------------
@@ -1686,33 +1659,9 @@ void ParamHelpers::AddDoubleValueToParamDictValue (ParamDictValue& params, const
 // -----------------------------------------------------------------------------
 void ParamHelpers::AddStringValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString val, const bool addInNotEx)
 {
-    ParamValue pvalue = {};
-    pvalue.rawName = rawName_prefix;
-    pvalue.rawName.Append (name.ToLowerCase ());
-    pvalue.rawName.Append (BRACEEND);
-    bool flag_set = false;
-    if (params.ContainsKey (pvalue.rawName)) {
-        flag_set = true;
-        if (!addInNotEx) {
-            #if defined(TESTING)
-            DBprnt ("AddToParamDictValue err", pvalue.rawName + " ContainsKey");
-            #endif
-            return;
-        }
-    }
-    pvalue.name = name.ToLowerCase ();
-    ParamHelpers::ConvertStringToParamValue (pvalue, EMPTYSTRING, val);
-    ParamHelpers::SetParamValueSourseByName (pvalue);
-    if (flag_set) {
-        ParamValue paramFrom = params.Get (pvalue.rawName);
-        pvalue.fromGuid = paramFrom.fromGuid;
-        pvalue.toQRCode = paramFrom.toQRCode;
-        params.Set (pvalue.rawName, pvalue);
-    } else {
-        if (!addInNotEx) {
-            params.Put (pvalue.rawName, pvalue);
-        }
-    }
+    AddValueToParamDictValueImpl (params, rawName_prefix, name, addInNotEx, false, [val](ParamValue& pvalue) {
+        ParamHelpers::ConvertStringToParamValue (pvalue, EMPTYSTRING, val);
+    });
 }
 
 
@@ -1782,14 +1731,13 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
         north = cacheparam.val.doubleValue;
     }
     bool bsync_coord_correct = true;
-    GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
-    if (pdictvaluecoord.ContainsKey (sync_coord_correctkey)) {
-        if (pdictvaluecoord.Get (sync_coord_correctkey).isValid) {
-            bsync_coord_correct = pdictvaluecoord.Get (sync_coord_correctkey).val.boolValue;
-        }
+    const GS::UniString sync_coord_correctkey = "{@property:sync_correct_flag}";
+    if (auto* flag = pdictvaluecoord.GetPtr (sync_coord_correctkey)) {
+        if (flag->isValid) bsync_coord_correct = flag->val.boolValue;
     }
     API_ElemTypeID eltype = GetElemTypeID (element);
     API_Element owner = {};
+    auto& cache = PROPERTYCACHE ();
     // Обработка навесной стены- случай особый, т.к. у неё может быть несколько сегментов
     if (eltype == API_CurtainWallID && element.header.hasMemo) {
         double aang = fabs (fmod (element.curtainWall.angle, 180.0));
@@ -2125,10 +2073,10 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             angz = 0.0;
         }
         xu = x - lox; yu = y - loy; zu = z - loz;
-        if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
-        if (PROPERTYCACHE ().isSurveyPointTransformation_OK) {
+        if (!cache.isSurveyPointTransformationRead) cache.ReadSurveyPointTransformation ();
+        if (cache.isSurveyPointTransformation_OK) {
             API_Coord3D vtx = { x, y, z };
-            API_Coord3D v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
+            API_Coord3D v = GetWordCoord3DTM (vtx, cache.surv_point_tm);
             xsp = v.x; ysp = v.y; zsp = v.z;
         }
         if (eltype == API_WindowID || eltype == API_DoorID) {
@@ -2145,10 +2093,10 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
             double swx = sx + (ex - sx) * koeff; double swy = sy + (ey - sy) * koeff; //Абсолютные координаты середины проёма
             double swx_lo = swx - lox; double swy_lo = swy - loy; //Координаты относительно ПН середины проёма
             double swspx = 0; double swspy = 0;
-            if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
-            if (PROPERTYCACHE ().isSurveyPointTransformation_OK) {
+            if (!cache.isSurveyPointTransformationRead) cache.ReadSurveyPointTransformation ();
+            if (cache.isSurveyPointTransformation_OK) {
                 API_Coord3D vtx = { swx, swy, 0 };
-                API_Coord3D v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
+                API_Coord3D v = GetWordCoord3DTM (vtx, cache.surv_point_tm);
                 swspx = v.x; swspy = v.y;
             }
             bool windoor_in_wall = true;
@@ -2272,13 +2220,13 @@ bool ParamHelpers::ReadCoords (const API_Element& element, ParamDictValue& pdict
     if (hasLine) CoordRotAngle (sx, sy, ex, ey, isFliped, angz);
     sxu = sx - lox; syu = sy - loy;
     exu = ex - lox; eyu = ey - loy;
-    if (!PROPERTYCACHE ().isSurveyPointTransformationRead) PROPERTYCACHE ().ReadSurveyPointTransformation ();
-    if (PROPERTYCACHE ().isSurveyPointTransformation_OK) {
+    if (!cache.isSurveyPointTransformationRead) cache.ReadSurveyPointTransformation ();
+    if (cache.isSurveyPointTransformation_OK) {
         API_Coord3D vtx = { sx, sy, 0 };
-        API_Coord3D v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
+        API_Coord3D v = GetWordCoord3DTM (vtx, cache.surv_point_tm);
         sxsp = v.x; sysp = v.y;
         vtx = { ex, ey, 0 };
-        v = GetWordCoord3DTM (vtx, PROPERTYCACHE ().surv_point_tm);
+        v = GetWordCoord3DTM (vtx, cache.surv_point_tm);
         exsp = v.x; eysp = v.y;
     }
     if (hasLine && !hasSymbpos) {
@@ -2884,11 +2832,15 @@ bool ParamHelpers::ReplaceParamInExpression (const ParamDictValue& pdictvalue, G
 
 bool ParamHelpers::GetParamValueForElements (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue)
 {
-    if (!paramToRead.ContainsKey (elemguid)) return false;
-    const ParamDictValue& p = paramToRead.Get (elemguid);
-    if (!p.ContainsKey (rawname)) return false;
-    pvalue = p.Get (rawname);
-    return pvalue.isValid;
+    if (const auto* p = paramToRead.GetPtr (elemguid)) {
+        if (const auto* val = p->GetPtr (rawname)) {
+            if (val->isValid) {
+                pvalue = *val;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 GS::UniString PropertyHelpers::ToString (const API_Variant& variant, const FormatString& stringformat)
@@ -3653,11 +3605,12 @@ void ParamHelpers::WriteID (const API_Guid& elemGuid, ParamDictValue& params)
     #else
     if (params.IsEmpty ()) return;
     if (elemGuid == APINULLGuid) return;
-    if (!params.ContainsKey ("{@id:id}")) return;
+    const auto* id = params.GetPtr (idRawname);
+    if (id == nullptr) return;
     #if defined(TESTING)
     DBprnt ("    WriteID");
     #endif
-    GS::UniString val = ParamHelpers::ToString (params.Get ("{@id:id}"));
+    GS::UniString val = ParamHelpers::ToString (*id);
     GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Element_ChangeElementInfoString (&elemGuid, &val);
@@ -4394,8 +4347,8 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
            ) {
             needGetElement = true;
         }
-        if (!hasparambytypes.ContainsKey (param.typeinx)) hasparambytypes.Put (param.typeinx, true);
-        if (param.val.hasFormula && !hasparambytypes.ContainsKey (FORMULATYPEINX)) hasparambytypes.Put (FORMULATYPEINX, true);
+        hasparambytypes.Put (param.typeinx, true);
+        if (param.val.hasFormula) hasparambytypes.Put (FORMULATYPEINX, true);
     }
     if (hasQuantity && can_read_fromGDL) {
         can_read_fromMaterial = true;
@@ -4408,12 +4361,12 @@ void ParamHelpers::Read (const API_Guid& elemGuid, ParamDictValue& params, Param
                     pPtr->fromGuid = elemGuid;
                 }
             }
-            if (!hasparambytypes.ContainsKey (LISTDATATYPEINX)) hasparambytypes.Put (LISTDATATYPEINX, true);
+            hasparambytypes.Put (LISTDATATYPEINX, true);
         }
     }
     if (needListData && can_read_fromGDL) {
         hasListData = true;
-        if (!hasparambytypes.ContainsKey (LISTDATATYPEINX)) hasparambytypes.Put (LISTDATATYPEINX, true);
+        hasparambytypes.Put (LISTDATATYPEINX, true);
     }
     API_Element element = {};
     if (needGetElement) {
@@ -4596,8 +4549,9 @@ bool ParamHelpers::SubGuid_GetParamValue (const API_Guid& elemGuid, const GS::Ar
     GS::Array<API_PropertyDefinition> subdefinitions = {};
     GS::Array<API_Property> properties = {};
     if (!SubGuid_GetDefinition (definitions, subdefinitions)) return false;
-    if (!(PROPERTYCACHE ().isPropertyDefinitionRead_full && PROPERTYCACHE ().isPropertyDefinition_OK)) {
-        PROPERTYCACHE ().AddPropertyDefinition (subdefinitions);
+    auto& cache = PROPERTYCACHE ();
+    if (!(cache.isPropertyDefinitionRead_full && cache.isPropertyDefinition_OK)) {
+        cache.AddPropertyDefinition (subdefinitions);
     }
     GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, subdefinitions, properties);
     if (error != NoError) {
@@ -4882,9 +4836,8 @@ bool ParamHelpers::ReadID (const API_Elem_Head& elem_head, ParamDictValue& param
     #if defined(TESTING)
     DBprnt ("      ReadID");
     #endif
-    GS::UniString k = "{@id:id}";
-    if (!params.ContainsKey (k)) return false;
-    ParamValue& param = params.Get (k);
+    auto* id = params.GetPtr (idRawname);
+    if (id == nullptr) return false;
     GS::UniString infoString = "";
     API_Guid elguid = elem_head.guid;
     GSErrCode err = NoError;
@@ -4897,21 +4850,20 @@ bool ParamHelpers::ReadID (const API_Elem_Head& elem_head, ParamDictValue& param
         msg_rep ("ReadID - ID", "ACAPI_Database(APIDb_GetElementInfoStringID", err, elguid);
         return false;
     } else {
-        param.isValid = true;
-        param.val.type = API_PropertyStringValueType;
-        param.type = API_PropertyStringValueType;
-        param.val.boolValue = !infoString.IsEmpty ();
-        if (UniStringToDouble (infoString, param.val.doubleValue)) {
-            param.val.intValue = (GS::Int32) param.val.doubleValue;
-            param.val.canCalculate = true;
+        id->isValid = true;
+        id->val.type = API_PropertyStringValueType;
+        id->type = API_PropertyStringValueType;
+        id->val.boolValue = !infoString.IsEmpty ();
+        if (UniStringToDouble (infoString, id->val.doubleValue)) {
+            id->val.intValue = (GS::Int32) id->val.doubleValue;
+            id->val.canCalculate = true;
         } else {
-            param.val.intValue = !infoString.IsEmpty ();
-            param.val.doubleValue = param.val.intValue * 1.0;
+            id->val.intValue = !infoString.IsEmpty ();
+            id->val.doubleValue = id->val.intValue * 1.0;
         }
-        param.val.rawDoubleValue = param.val.doubleValue;
-        param.val.hasrawDouble = true;
-        param.val.uniStringValue = infoString;
-        params.Set (param.rawName, param);
+        id->val.rawDoubleValue = id->val.doubleValue;
+        id->val.hasrawDouble = true;
+        id->val.uniStringValue = infoString;
         return true;
     }
 }
@@ -4996,6 +4948,8 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
     }
 
     // Разбиваем по типам поиска - по описанию/по имени
+    GS::Array<GS::UniString> tparams;
+    GS::Array<GS::UniString> tarray;
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -5004,12 +4958,12 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
         #endif
         GS::UniString rawName = param.rawName;
         if (param.fromGDLArray) {
-            GS::Array<GS::UniString> tparams = {};
+            tparams.Clear ();
             UInt32 nparam = StringSplt (rawName, "@arr", tparams);
 
             // Проверим - были ли заданы числовые параметры для чтения (диапазоны и тип обработки массива)
             if ((param.val.array_row_start == 0 || param.val.array_row_end == 0 || param.val.array_column_start == 0 || param.val.array_column_end == 0 || param.val.array_format_out == ARRAY_UNDEF) && nparam > 1) {
-                GS::Array<GS::UniString> tarray;
+                tarray.Clear ();
                 UInt32 narray = StringSplt (tparams[1], "_", tarray);
                 if (param.val.array_row_start == 0 && narray > 0) {
                     double doubleValue = 0;
@@ -5044,11 +4998,14 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
             }
             if (param.val.array_format_out == ARRAY_UNDEF) param.val.array_format_out = ARRAY_SUM;
             rawName = tparams[0] + BRACEEND;
-            if (!paramnamearray.ContainsKey (rawName)) {
+
+            if (auto* p = paramnamearray.GetPtr (rawName)) {
+                if (!p->Contains (param.rawName)) p->Push (param.rawName);
+            } else {
                 GS::Array<GS::UniString> t = {};
-                paramnamearray.Put (rawName, t);
+                t.Push (param.rawName);
+                paramnamearray.Put (rawName, std::move (t));
             }
-            paramnamearray.Get (rawName).Push (param.rawName);
             if (param.fromGDLdescription && eltype == API_ObjectID) {
                 paramBydescription.Put (rawName, param);
             } else {
@@ -5213,46 +5170,34 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
     bool flagFind = false;
     const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
     Int32 nfind = params.GetSize ();
+    GS::UniString rawname;
     for (Int32 i = 0; i < nParams; ++i) {
         API_AddParType& actualParam = (*memo.params)[i];
-        GS::UniString rawname = GetGDLRawName (actualParam.name);
-        if (!params.ContainsKey (rawname)) continue;
+        rawname = GetGDLRawName (actualParam.name);
+        ParamValue* pvaluePtr = params.GetPtr (rawname);
+        if (pvaluePtr == nullptr) continue;
         // Проверим - нет ли подходящих параметров-массивов?
-        const auto* paramarrayPtr = paramnamearray.GetPtr (rawname);
-        if (paramarrayPtr != nullptr) {
+        if (const auto* paramarrayPtr = paramnamearray.GetPtr (rawname)) {
             for (UInt32 j = 0; j < paramarrayPtr->GetSize (); ++j) {
                 nfind--;
                 if (UpdateParamValue (params.GetPtr ((*paramarrayPtr)[j]), actualParam)) {
                     flagFind = true;
                 }
             }
-            ParamValue* pvaluePtr = params.GetPtr (rawname);
-            if (pvaluePtr != nullptr) {
-                if (UpdateParamValue (pvaluePtr, actualParam)) {
-                    flagFind = true;
-                }
-                nfind--;
-            } else {
-                #if defined(TESTING)
-                DBprnt ("ParamHelpers::GDLParamByName err", "params.ContainsKey(rawname) " + rawname);
-                #endif
+            if (UpdateParamValue (pvaluePtr, actualParam)) {
+                flagFind = true;
             }
+            nfind--;
         } else {
-            ParamValue* pvaluePtr = params.GetPtr (rawname);
-            if (pvaluePtr != nullptr) {
-                if (UpdateParamValue (pvaluePtr, actualParam)) {
-                    flagFind = true;
-                }
-                nfind--;
-            } else {
-                #if defined(TESTING)
-                DBprnt ("ParamHelpers::GDLParamByName err", "params.ContainsKey(rawname) " + rawname);
-                #endif
+
+            if (UpdateParamValue (pvaluePtr, actualParam)) {
+                flagFind = true;
             }
+            nfind--;
         }
         if (nfind == 0) {
-            ACAPI_DisposeElemMemoHdls (&memo);
-            return flagFind;
+            // Всё нужное нашли, выходим
+            break;
         }
     }
     ACAPI_DisposeElemMemoHdls (&memo);
@@ -5916,6 +5861,7 @@ void ParamHelpers::ReadFile (ParamDictValue& params)
     DBprnt ("      ReadFile");
     #endif
     bool flag_find = false;
+    auto& cache = PROPERTYCACHE ();
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -5982,9 +5928,9 @@ void ParamHelpers::ReadFile (ParamDictValue& params)
             }
         }
         if (vals.IsEmpty ()) continue;
-        if (!PROPERTYCACHE ().AddFile (filename)) continue;
-        if (!PROPERTYCACHE ().filedata.ContainsKey (filename)) continue;
-        const GS::Array<GS::Array<GS::UniString>>& data = PROPERTYCACHE ().filedata.Get (filename);
+        if (!cache.AddFile (filename)) continue;
+        if (!cache.filedata.ContainsKey (filename)) continue;
+        const GS::Array<GS::Array<GS::UniString>>& data = cache.filedata.Get (filename);
         if (data.IsEmpty ()) continue;
         if (data[0].IsEmpty ()) continue;
         if (col_out > (int) data[0].GetSize ()) continue;
@@ -6281,10 +6227,9 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                 if (!ignore_sync) {
                     for (UInt32 inx = 0; inx < 20; inx++) {
                         GS::UniString syncname = "{@property:sync_name" + GS::UniString::Printf ("%d", inx) + attribsuffix;
-                        if (params.ContainsKey (syncname)) {
-                            ParamValue& pp = params.Get (syncname);
-                            if (pp.isValid && !pp.property.isDefault) {
-                                templatestring = pp.val.uniStringValue;
+                        if (const auto* pp = params.GetPtr (syncname)) {
+                            if (pp->isValid && !pp->property.isDefault) {
+                                templatestring = pp->val.uniStringValue;
                                 break;
                             }
                         }

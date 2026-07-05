@@ -173,7 +173,7 @@ void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& sube
         API_Guid rguid = GSGuid2APIGuid (segment.GetGuid ());
         std::vector<ACAPI::MEP::UniqueID> rigidSegmentIds = routingSegment->GetRigidSegmentIds ();
         USize expectedSize = subelemGuid.GetSize () + (USize) rigidSegmentIds.size () + 1;
-        if (expectedSize >= subelemGuid.GetSize () * 2) subelemGuid.SetCapacity (expectedSize);
+        subelemGuid.SetCapacity (expectedSize);
         subelemGuid.Push (rguid);
         for (const auto& el : rigidSegmentIds) {
             API_Guid rguid = GSGuid2APIGuid (el.GetGuid ());
