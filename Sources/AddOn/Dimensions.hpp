@@ -6,12 +6,12 @@
 #include "Helpers.hpp"
 #include "SyncSettings.hpp"
 
-GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo, bool checktype);
+GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool checktype);
 
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo);
+GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings);
 
 // -----------------------------------------------------------------------------
 // Обрабатывает размер и решает - что с ним делать
@@ -28,6 +28,6 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo);
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, const SyncSettings& syncSettings, bool isUndo);
+bool DimRoundByType (const API_ElemTypeID& typeID, const SyncSettings& syncSettings);
 
 #endif

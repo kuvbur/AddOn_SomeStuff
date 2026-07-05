@@ -220,7 +220,7 @@ bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<A
             if (rules.ContainsKey (definition.guid)) {
                 SumRule& rule = rules.Get (definition.guid);
                 for (const auto& elemGuid : guidArray) {
-                    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable)) {
+                    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace)) {
                         rule.n_ignore += 1;
                         msg_rep ("GetSumRuleFromSelected", "Element not editable", NoError, elemGuid);
                         continue;

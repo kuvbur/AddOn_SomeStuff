@@ -53,9 +53,7 @@ void RoomBook ()
             elementType = Neig_To_ElemID (neig.neigID);
             #endif
             if (elementType == API_ZoneID) {
-                if (!ACAPI_Element_Filter (neig.guid, APIFilt_InMyWorkspace)) continue;
-                if (!ACAPI_Element_Filter (neig.guid, APIFilt_HasAccessRight)) continue;
-                if (!ACAPI_Element_Filter (neig.guid, APIFilt_IsEditable)) continue;
+                if (!ACAPI_Element_Filter (neig.guid, APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight | APIFilt_InMyWorkspace)) continue;
                 zones.Push (neig.guid);
             }
         }
@@ -4419,7 +4417,7 @@ MatarialToFavoriteDict Favorite_GetDict ()
         if (Favorite_GetNum (type, &count, nullptr, &names) != NoError) continue;
         fav.type = type;
         for (GS::UniString& name : names) {
-            name_ = name.ToLowerCase ();
+            name_.SetToLowerCase ();
             name_.Trim ();
             fav.name = name;
             if (!favdict.ContainsKey (name_)) favdict.Add (name_, fav);

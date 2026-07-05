@@ -1108,9 +1108,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
     GS::HashTable<GS::UniString, GS::UniString> out_param = {}; // Ключ - уникальные значения, значение - выходящие параметры
     for (const API_Guid& elemguid : rule.elements) {
         if (rule.only_visible) {
-            if (!ACAPI_Element_Filter (elemguid, APIFilt_OnVisLayer)) continue;
-            if (!ACAPI_Element_Filter (elemguid, APIFilt_IsVisibleByRenovation)) continue;
-            if (!ACAPI_Element_Filter (elemguid, APIFilt_IsInStructureDisplay)) continue;
+            if (!ACAPI_Element_Filter (elemguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay)) continue;
         }
         for (const GroupSpec& group : rule.groups) {
             Element element = {};
@@ -1238,7 +1236,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
             out.ReplaceAll (STRINGPROC, EMPTYSTRING);
             out.ReplaceAll ("nosyncname", EMPTYSTRING);
             msg_rep ("Spec", out, NoError, APINULLGuid);
-        }
+            }
         if (!not_found_unic.IsEmpty ()) {
             GS::UniString SpecNotFoundParametersString = RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecNotFoundParametersString, true);
@@ -1257,13 +1255,13 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
             out.ReplaceAll (STRINGPROC, EMPTYSTRING);
             out.ReplaceAll ("nosyncname", EMPTYSTRING);
             msg_rep ("Spec", out, NoError, APINULLGuid);
-        }
+            }
         if (!not_found_paramname.IsEmpty () || !not_found_unic.IsEmpty ()) {
             n_elements = 0;
             elements.Clear ();
             return 0;
         }
-    }
+        }
     if (!rule.delete_old) return n_elements;
     UnicGuid guids = {};
     for (const API_Guid& elemguid : rule.exsist_elements) {
@@ -1382,7 +1380,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
     n_elements += elements_mod.GetSize ();
     n_elements += elements.GetSize ();
     return n_elements;
-}
+        }
 
 // --------------------------------------------------------------------
 // Разбивает строку на части. Будем постепенно заменять на пустоту обработанные части
@@ -1770,7 +1768,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
     if (err != NoError) {
         msg_rep ("Spec", "ACAPI_Element_GetPropertyDefinitionsOfDefaultElem", err, APINULLGuid);
         return err;
-    }
+}
     for (const auto& definition : definitions) {
         GS::UniString fname = ""; GS::UniString rawName = PROPERTYNAMEPREFIX;
         GetPropertyFullName (definition, fname);
@@ -1779,7 +1777,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
         if (!paramdict.ContainsKey (rawName)) paramdict.Add (rawName, definition.description.ToLowerCase ());
     }
     return err;
-}
+    }
 
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
@@ -1807,7 +1805,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
-    }
+}
     return err;
 }
 // --------------------------------------------------------------------
@@ -1888,7 +1886,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         act_st = storyInfo.actStory;
         find_stor = true;
         BMKillHandle ((GSHandle*) &storyInfo.data);
-    }
+}
     ACAPI_CallUndoableCommand ("Create Spec element", [&]() -> GSErrCode {
         int n_elem = 0;
         for (UInt32 i = 0; i < elementstocreate.GetSize (); i++) {
@@ -2044,9 +2042,9 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 #endif
                 if (err != NoError) msg_rep ("Spec", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-        }
+            }
         return NoError;
-    });
+        });
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -2056,6 +2054,6 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         if (err != NoError) msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
     }
     return NoError;
-}
+    }
 
-}
+    }

@@ -489,10 +489,7 @@ bool IsElementEditable (const API_Elem_Head& tElemHead, const SyncSettings& sync
         if (!CheckElementType (eltype, syncSettings)) return false;
     }
     // Проверяем - зарезервирован ли объект
-    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_IsEditable)) return false;
-    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_InMyWorkspace)) return false;
-    if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_HasAccessRight)) return false;
-    return true;
+    return ACAPI_Element_Filter (tElemHead.guid, APIFilt_IsEditable | APIFilt_InMyWorkspace | APIFilt_HasAccessRight);
 }
 
 // -----------------------------------------------------------------------------
@@ -503,9 +500,7 @@ bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettin
 {
     // Проверяем - зарезервирован ли объект
     if (objectId == APINULLGuid) return false;
-    if (!ACAPI_Element_Filter (objectId, APIFilt_IsEditable)) return false;
-    if (!ACAPI_Element_Filter (objectId, APIFilt_InMyWorkspace)) return false;
-    if (!ACAPI_Element_Filter (objectId, APIFilt_HasAccessRight)) return false;
+    if (!ACAPI_Element_Filter (objectId, APIFilt_IsEditable | APIFilt_InMyWorkspace | APIFilt_HasAccessRight)) return false;
     // Проверяем - на находится ли объект в модуле
     API_Elem_Head tElemHead = {};
     tElemHead.guid = objectId;
@@ -5189,7 +5184,6 @@ bool ParamHelpers::GDLParamByName (const API_Element& element, const API_Elem_He
             }
             nfind--;
         } else {
-
             if (UpdateParamValue (pvaluePtr, actualParam)) {
                 flagFind = true;
             }
@@ -8171,10 +8165,10 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                     }
                     systemnameindes.ReplaceAll (BRACEEND, EMPTYSTRING);
                     systemnameindes.Trim ();
-                    systemnameindes.ToLowerCase ();
+                    systemnameindes.SetToLowerCase ();
                     for (const auto& s : systemItemPairs) {
                         GS::UniString systemname = ClassificationFunc::GetSystemName (s.first);
-                        systemname.ToLowerCase ();
+                        systemname.SetToLowerCase ();
                         if (systemnameindes == systemname) {
                             classitem = s;
                             break;
