@@ -778,8 +778,8 @@ void SyncAddSubelement (const GS::Array<API_Guid>&subelemGuids, GS::Array <Write
                 mainsyncRule.guidTo = elguid;
                 mainsyncRule.paramTo.fromGuid = elguid;
                 SyncAddRule (mainsyncRule, syncRules, paramToRead);
+            }
         }
-    }
     }
 }
 
@@ -902,26 +902,26 @@ bool ParseSyncString (const API_Guid & elemGuid, const API_ElemTypeID & elementT
                                 DBprnt ("ParseSyncString err", "elementType_from == API_ZombieElemID");
                                 #endif
                                 continue;
-                        }
+                            }
                         } else {
                             #if defined(TESTING)
                             DBprnt ("ParseSyncString err", "p.isValid");
                             #endif
                             continue;
-                    }
+                        }
                     } else {
                         #if defined(TESTING)
                         DBprnt ("ParseSyncString err", "!subproperty.ContainsKey (rawname) " + rawname);
                         #endif
                         continue;
-                }
+                    }
                 } else {
                     #if defined(TESTING)
                     DBprnt ("ParseSyncString err", "nparams == 2 ");
                     #endif
                     continue;
-            }
-        } else {
+                }
+            } else {
                 // Копировать в другой элемент
                 if (rulestring_one.Contains (TOGUIDBR)) {
                     params.Clear ();
@@ -1033,8 +1033,8 @@ bool ParseSyncString (const API_Guid & elemGuid, const API_ElemTypeID & elementT
                 writeOne.paramFrom = param;
             }
             syncRules.Push (writeOne);
+        }
     }
-}
     return hasRule;
 }
 
@@ -1848,7 +1848,7 @@ void SyncSetSubelement (SyncSettings & syncSettings)
     duration = (double) (finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
-    }
+}
 
 // -----------------------------------------------------------------------------
 // Запись Guid связанных элементов
@@ -2101,7 +2101,7 @@ void SyncShowSubelement (const SyncSettings & syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -2196,12 +2196,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid &
                     if (auto* un = parentGuid.GetPtr (guid)) {
                         find = true;
                         if (!un->ContainsKey (subguid)) {
-                            bool isvisible = true;
-                            if (!ACAPI_Element_Filter (subguid, APIFilt_OnVisLayer)) { isvisible = false; } else {
-                                if (!ACAPI_Element_Filter (subguid, APIFilt_IsVisibleByRenovation)) { isvisible = false; } else {
-                                    if (!ACAPI_Element_Filter (subguid, APIFilt_IsInStructureDisplay)) isvisible = false;
-                                }
-                            }
+                            bool isvisible = ACAPI_Element_Filter (subguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
                             un->Put (subguid, isvisible);
                         }
                     }
@@ -2209,7 +2204,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid &
 
             }
         }
-}
+    }
     if (!find) {
         parentGuid.Clear ();
         errcode = 2;
@@ -2257,20 +2252,15 @@ bool SyncGetSubelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid & pa
                             }
                             if (parentGuid.ContainsKey (subguid)) {
                                 if (!parentGuid.Get (subguid).ContainsKey (guid)) {
-                                    bool isvisible = true;
-                                    if (!ACAPI_Element_Filter (guid, APIFilt_OnVisLayer)) { isvisible = false; } else {
-                                        if (!ACAPI_Element_Filter (guid, APIFilt_IsVisibleByRenovation)) { isvisible = false; } else {
-                                            if (!ACAPI_Element_Filter (guid, APIFilt_IsInStructureDisplay)) isvisible = false;
-                                        }
-                                    }
+                                    bool isvisible = ACAPI_Element_Filter (subguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
                                     parentGuid.Get (subguid).Add (guid, isvisible);
                                 }
                             }
                         }
-                    }
-                }
             }
+        }
     }
+}
 }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
@@ -2300,12 +2290,12 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>&guidArray, ParamDictElem
             } else {
                 break;
             }
+            }
         }
-}
     if (paramDict.IsEmpty ()) return false;
     for (const auto& guid : guidArray) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guid, paramDict, paramToRead);
     }
     ParamHelpers::ElementsRead (paramToRead);
     return !paramToRead.IsEmpty ();
-}
+    }

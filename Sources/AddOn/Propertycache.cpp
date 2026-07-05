@@ -149,7 +149,7 @@ GS::UniString GetGDLRawName (const GS::UniString& name)
         return *ptr;
     }
     GS::UniString lowerName = name;
-    lowerName.ToLowerCase ();
+    lowerName.SetToLowerCase ();
     GS::UniString rawname = GDLNAMEPREFIX + lowerName + BRACEEND;
     cache.gdlparamname.Put (name, rawname);
     return rawname;
@@ -504,7 +504,7 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
     DBprnt ("   GetAllInfoToParamDict end");
     #endif
     return true;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение списка аттрибутов (имён слоёв, материалов)
@@ -548,7 +548,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     DBprnt ("   GetAllAttributeToParamDict end");
     #endif
     return true;
-    }
+}
 
 
 // --------------------------------------------------------------------
@@ -590,7 +590,7 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
     DBprnt ("   GetAllPropertyDefinitionToParamDict end");
     #endif
     return true;
-        }
+}
 
 // --------------------------------------------------------------------
 // Перевод GS::Array<API_PropertyDefinition> в ParamDictValue
@@ -659,9 +659,9 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             propertyParams.Put (rawName, std::move (pvalue));
             flag_add = true;
         }
-        }
-    return flag_add;
     }
+    return flag_add;
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -675,7 +675,7 @@ Int32 isEng ()
     auto& cache = PROPERTYCACHE ();
     if (!cache.isEng_OK) cache.ReadisEng ();
     return cache.isEng;
-    }
+}
 
 void AddUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
 {
@@ -812,6 +812,7 @@ bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
             } else {
                 kstr = dimrule.layer;
             }
+            dimrule.kstr = kstr;
             dimrules.Put (kstr, dimrule);
         }
     }

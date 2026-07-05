@@ -12,22 +12,9 @@
 #define DIM_CHANGE_OFF 3
 
 
-GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo, bool checktype)
+GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool checktype)
 {
-    if (!PROPERTYCACHE ().hasDimAutotext) return NoError;
-    if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace)) {
-        return NoError;
-    }
-    if (!ACAPI_Element_Filter (elemGuid, APIFilt_HasAccessRight)) {
-        return NoError;
-    }
-    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable)) {
-        return NoError;
-    }
-    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsVisibleByRenovation)) {
-        return NoError;
-    }
-    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsInStructureDisplay)) {
+    if (!ACAPI_Element_Filter (elemGuid, APIFilt_InMyWorkspace | APIFilt_HasAccessRight | APIFilt_IsEditable | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay | APIFilt_OnVisLayer)) {
         return NoError;
     }
     if (checktype) {
@@ -35,13 +22,13 @@ GSErrCode DimAutoRoundOne (const API_Guid& elemGuid, const SyncSettings& syncSet
         if (GetTypeByGUID (elemGuid, elementType) != NoError) return NoError;
         if (elementType != API_DimensionID) return NoError;
     }
-    return DimAutoRound (elemGuid, syncSettings, isUndo);
+    return DimAutoRound (elemGuid, syncSettings);
 }
 
 // -----------------------------------------------------------------------------
 // Обработка одного размера
 // -----------------------------------------------------------------------------
-GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings, bool isUndo)
+GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettings)
 {
     GSErrCode err = NoError;
     API_Element element = {};
@@ -60,9 +47,10 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
     GS::UniString kstr = GS::UniString::Printf ("%d", pen_dimenstion);
     GS::Array<DimRule> rules = {}; //Массив найденных правил
     const DimRules& dimrules = PROPERTYCACHE ().dimrules;
-    if (pen_dimenstion > 0 && dimrules.ContainsKey (kstr)) {
-        DimRule d = dimrules.Get (kstr);
-        rules.Push (d);
+    if (pen_dimenstion > 0) {
+        if (const auto* pd = dimrules.GetPtr (kstr)) {
+            rules.Push (*pd);
+        }
     }
     // Если в файле только одно правило, и оно уже найдено - не смысла запрашивать имя слоя
     if (!(!rules.IsEmpty () && dimrules.GetSize () == 1)) {
@@ -78,13 +66,12 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
         for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             const GS::UniString& regexpstring = cIt->key;
+            const DimRule& d = cIt->value;
             #else
             const GS::UniString& regexpstring = *cIt->key;
+            const DimRule& d = *cIt->value;
             #endif
-            if (layert.Contains (regexpstring)) {
-                DimRule d = dimrules.Get (regexpstring);
-                rules.Push (d);
-            }
+            if (layert.Contains (regexpstring)) rules.Push (d);
         }
     }
     // Нет подходящего привали - выходим
@@ -205,18 +192,11 @@ GSErrCode DimAutoRound (const API_Guid& elemGuid, const SyncSettings& syncSettin
     if (flag_write) {
         API_Element mask = {};
         ACAPI_ELEMENT_MASK_CLEAR (mask);
-        if (!isUndo) {
-            err = ACAPI_CallUndoableCommand ("Change dimension text", [&]() -> GSErrCode {
-                return ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
-            });
-        } else {
-            err = ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
-        }
-        if (err == APIERR_REFUSEDCMD) { // Я сказал надо!
-            err = ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
+        err = ACAPI_Element_Change (&element, &mask, &memo, APIMemoMask_All, true);
+        if (err != NoError) {
+            msg_rep ("DimAutoRound", "ACAPI_Element_Change", err, elemGuid);
         }
     }
-    if (err != NoError) msg_rep ("DimAutoRound", "ACAPI_Element_Change_1", err, elemGuid);
     ACAPI_DisposeElemMemoHdls (&memo);
     return err;
 }
@@ -315,7 +295,14 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
     #if defined(TESTING)
     DBprnt ("DimRoundAll start");
     #endif
-    DimRoundByType (API_DimensionID, syncSettings, isUndo);
+    if (!isUndo) {
+        ACAPI_CallUndoableCommand ("Change dimension text", [&]() -> GSErrCode {
+            DimRoundByType (API_DimensionID, syncSettings);
+            return NoError;
+        });
+    } else {
+        DimRoundByType (API_DimensionID, syncSettings);
+    }
     #if defined(TESTING)
     DBprnt ("DimRoundAll end");
     #endif
@@ -324,7 +311,7 @@ void DimRoundAll (const SyncSettings& syncSettings, bool isUndo)
 // -----------------------------------------------------------------------------
 // Округление одного типа размеров
 // -----------------------------------------------------------------------------
-bool DimRoundByType (const API_ElemTypeID& typeID, const SyncSettings& syncSettings, bool isUndo)
+bool DimRoundByType (const API_ElemTypeID& typeID, const SyncSettings& syncSettings)
 {
     GSErrCode err = NoError;
     GS::Array<API_Guid>	guidArray = {};
@@ -332,7 +319,7 @@ bool DimRoundByType (const API_ElemTypeID& typeID, const SyncSettings& syncSetti
     if (err != NoError) msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
     if (guidArray.IsEmpty ()) return false;
     for (const auto& guid : guidArray) {
-        err = DimAutoRound (guid, syncSettings, isUndo);
+        err = DimAutoRound (guid, syncSettings);
         if (err != NoError) msg_rep ("DimAutoRound", "DimAutoRound", err, guid);
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) return true;

@@ -54,7 +54,7 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
         #else
         AttachObserver (*(it->key), syncSettings);
         #endif
-}
+    }
     ACAPI_KeepInMemory (true);
     return NoError;
 }
@@ -137,8 +137,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
         case API_ZombieElemID:
         case API_GroupID:
         case API_DimensionID:
-            if (elemType->notifID == APINotifyElement_New) AttachObserver (elemType->elemHead.guid, syncSettings);
-            DimAutoRoundOne (elemType->elemHead.guid, syncSettings, true, false);
+            if (PROPERTYCACHE ().hasDimAutotext) {
+                if (elemType->notifID == APINotifyElement_New) AttachObserver (elemType->elemHead.guid, syncSettings);
+                DimAutoRoundOne (elemType->elemHead.guid, syncSettings, false);
+            }
             return NoError;
             #if defined (AC_28) || defined (AC_29)
         case API_ExternalElemID:

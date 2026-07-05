@@ -112,6 +112,7 @@ struct DimRule
     bool    classic_round_mode = false; // Использовать вместо округления вверх обычное округление
     GS::UniString expression = "";
     GS::UniString layer = "";
+    GS::UniString kstr = "";
     ParamDictValue paramDict;
 };
 
