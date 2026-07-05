@@ -145,7 +145,9 @@ bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
 GS::UniString GetGDLRawName (const GS::UniString& name)
 {
     auto& cache = PROPERTYCACHE ();
-    if (const auto* ptr = cache.gdlparamname.GetPtr (name)) return *ptr;
+    if (const auto* ptr = cache.gdlparamname.GetPtr (name)) {
+        return *ptr;
+    }
     GS::UniString lowerName = name;
     lowerName.ToLowerCase ();
     GS::UniString rawname = GDLNAMEPREFIX + lowerName + BRACEEND;
@@ -263,13 +265,14 @@ bool GetMEPSystemGroup (MEPDicts& mepdict)
         GS::Guid systemGroupguid = systemGroupID.GetGuid ();
         for (const ACAPI::MEP::UniqueID& systemID : systemIDs) {
             GS::Guid systemguid = systemID.GetGuid ();
-            if (!mepdict.ContainsKey (systemguid)) {
-                MEPDict p;
-                mepdict.Add (systemguid, p);
-            }
-            MEPDict& p = mepdict.Get (systemguid);
-            if (!p.ContainsKey (systemGroupguid)) {
-                p.Add (systemGroupguid, true);
+            if (MEPDict* pPtr = mepdict.GetPtr (systemguid)) {
+                if (!pPtr->ContainsKey (systemGroupguid)) {
+                    pPtr->Put (systemGroupguid, true);
+                }
+            } else {
+                MEPDict newDict;
+                newDict.Put (systemGroupguid, true);
+                mepdict.Put (systemguid, std::move (newDict));
             }
         }
     }
@@ -501,7 +504,7 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
     DBprnt ("   GetAllInfoToParamDict end");
     #endif
     return true;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение списка аттрибутов (имён слоёв, материалов)
@@ -545,7 +548,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     DBprnt ("   GetAllAttributeToParamDict end");
     #endif
     return true;
-}
+    }
 
 
 // --------------------------------------------------------------------
@@ -561,6 +564,7 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
     if (!cache.isGroupPropertyRead_full) return false;
     GSErrCode err = NoError;
     // Созданим словарь с определением всех свойств
+    GS::Array<API_PropertyDefinition> definitions = {};
     for (const auto& cIt : cache.propertygroups) {
         #if defined(AC_28) || defined(AC_29)
         const API_PropertyGroup& group = cIt.value;
@@ -576,7 +580,7 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
         filter = (group.name.Contains ("Material") || group.name.IsEqual ("GeneralElemProperties"));
         #endif
         if (group.groupType == API_PropertyCustomGroupType || (group.groupType == API_PropertyStaticBuiltInGroupType && filter)) {
-            GS::Array<API_PropertyDefinition> definitions = {};
+            definitions.Clear ();
             err = ACAPI_Property_GetPropertyDefinitions (group.guid, definitions);
             if (err != NoError) msg_rep ("GetPropertyByName", "ACAPI_Property_GetPropertyDefinitions", err, APINULLGuid);
             if (err == NoError) GetArrayPropertyDefinitionToParamDict (propertyParams, definitions);
@@ -586,7 +590,7 @@ bool GetAllPropertyDefinitionToParamDict (ParamDictValue& propertyParams)
     DBprnt ("   GetAllPropertyDefinitionToParamDict end");
     #endif
     return true;
-}
+        }
 
 // --------------------------------------------------------------------
 // Перевод GS::Array<API_PropertyDefinition> в ParamDictValue
@@ -655,9 +659,9 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             propertyParams.Put (rawName, std::move (pvalue));
             flag_add = true;
         }
-    }
+        }
     return flag_add;
-}
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -671,7 +675,7 @@ Int32 isEng ()
     auto& cache = PROPERTYCACHE ();
     if (!cache.isEng_OK) cache.ReadisEng ();
     return cache.isEng;
-}
+    }
 
 void AddUnreadGDLParams (const Int32& libinx, const GS::UniString& rawname)
 {
@@ -787,16 +791,16 @@ bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
     if (autotext.Contains (SEMICOLON)) {
         GS::Array<GS::UniString> partstring = {};
         StringSplt (autotext, SEMICOLON, partstring);
-        for (UInt32 k = 0; k < partstring.GetSize (); k++) {
+        for (const auto& part : partstring) {
             DimRule dimrule = {};
-            if (DimParsePref (partstring[k], dimrule, hasexpression)) {
+            if (DimParsePref (part, dimrule, hasexpression)) {
                 GS::UniString kstr;
                 if (dimrule.layer.IsEmpty ()) {
                     kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
                 } else {
                     kstr = dimrule.layer;
                 }
-                dimrules.Add (kstr, dimrule);
+                dimrules.Put (kstr, dimrule);
             }
         }
     } else {
@@ -808,7 +812,7 @@ bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
             } else {
                 kstr = dimrule.layer;
             }
-            dimrules.Add (kstr, dimrule);
+            dimrules.Put (kstr, dimrule);
         }
     }
     return !dimrules.IsEmpty ();
