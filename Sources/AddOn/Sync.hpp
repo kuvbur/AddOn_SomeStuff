@@ -75,6 +75,8 @@ const GS::UniString ignorevals_def = reinterpret_cast<const char*>("def");
 // Словарь с параметрами для записи
 typedef GS::HashTable<API_Guid, GS::Array <WriteData>> WriteDict;
 
+bool IsElementThrottled (const API_Guid& guid);
+
 // -----------------------------------------------------------------------------
 // Подключение мониторинга
 // -----------------------------------------------------------------------------
@@ -83,7 +85,7 @@ void MonAll (SyncSettings& syncSettings);
 // -----------------------------------------------------------------------------
 // Подключение мониторинга по типам
 // -----------------------------------------------------------------------------
-void MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
+bool MonByType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
 
 // -----------------------------------------------------------------------------
 // Запускает обработку всех объектов, заданных в настройке

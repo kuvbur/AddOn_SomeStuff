@@ -142,7 +142,7 @@ FormatString ParseFormatString (const GS::UniString& stringformat);
 // -----------------------------------------------------------------------------
 // Переводит число в строку согласно настройкам строки-формата
 // -----------------------------------------------------------------------------
-GS::UniString NumToString (const double& var, const FormatString& stringformat);
+GS::UniString NumToString (double var, const FormatString& stringformat);
 
 void ReplaceMeters (GS::UniString& formatstring);
 
@@ -493,7 +493,7 @@ void ElementsRead (ParamDictElement& paramToRead, ParamDictCompositeElement& par
 void Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictComposite& paramcomposite, ListData::LibElement& paramListData, bool needReturnComposite, bool needListData);
 
 void Array2ParamValue (GS::Array<ParamValueData>& pvalue, ParamValueData& pvalrezult);
-bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::UniString& pstring, const double& preal);
+bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::UniString& pstring, double preal);
 bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::Array<GS::UniString>& pstring, const GS::Array<double>& preal, const GS::Int32& dim1, const GS::Int32& dim2);
 
 // -----------------------------------------------------------------------------
@@ -624,7 +624,7 @@ bool ReadMaterial (const API_Element& element, ParamDictValue& params, ParamDict
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
-bool ComponentsBasicStructure (const API_AttributeIndex& constrinx, const double& fillThick, const API_AttributeIndex& constrinx_ven, const double& fillThick_ven, const double& fillThick_min, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, short& structype_ven, double& width, double& length);
+bool ComponentsBasicStructure (const API_AttributeIndex& constrinx, double fillThick, const API_AttributeIndex& constrinx_ven, double fillThick_ven, double fillThick_min, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, short& structype_ven, double& width, double& length);
 
 void ComponentsGetUnic (GS::Array<ParamValueComposite>& composite);
 
@@ -651,7 +651,7 @@ bool GetAttributeValues (const API_AttributeIndex& constrinx, ParamDictValue& pa
 // -----------------------------------------------------------------------------
 // Перевод значения в строку в соответсвии с stringformat
 // -----------------------------------------------------------------------------
-GS::UniString ToString (const ParamValue& pvalue, const FormatString stringformat);
+GS::UniString ToString (const ParamValue& pvalue, const FormatString& stringformat);
 
 // -----------------------------------------------------------------------------
 // Перевод значения в строку в соответсвии с stringformat

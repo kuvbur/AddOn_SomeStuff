@@ -121,6 +121,62 @@ GSErrCode ElementEventHandlerProc (const API_NotifyElementType * elemType)
 GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * elemType)
 {
     #endif
+    //#if defined(TESTING)
+    //GS::UniString tst = APIGuid2GSGuid (elemType->elemHead.guid).ToUniString ();
+    //tst.Append (SPACESTRING);
+    //switch (elemType->notifID) {
+    //    case APINotifyElement_BeginEvents:
+    //        tst.Append ("APINotifyElement_BeginEvents");
+    //        break;
+    //    case APINotifyElement_EndEvents:
+    //        tst.Append ("APINotifyElement_EndEvents");
+    //        break;
+    //    case APINotifyElement_New:
+    //        tst.Append ("APINotifyElement_New");
+    //        break;
+    //    case APINotifyElement_Copy:
+    //        tst.Append ("APINotifyElement_Copy");
+    //        break;
+    //    case APINotifyElement_Change:
+    //        tst.Append ("APINotifyElement_Change");
+    //        break;
+    //    case APINotifyElement_Edit:
+    //        tst.Append ("APINotifyElement_Edit");
+    //        break;
+    //    case APINotifyElement_Delete:
+    //        tst.Append ("APINotifyElement_Delete");
+    //        break;
+    //    case APINotifyElement_Undo_Created:
+    //        tst.Append ("APINotifyElement_Undo_Created");
+    //        break;
+    //    case APINotifyElement_Undo_Modified:
+    //        tst.Append ("APINotifyElement_Undo_Modified");
+    //        break;
+    //    case APINotifyElement_Undo_Deleted:
+    //        tst.Append ("APINotifyElement_Undo_Deleted");
+    //        break;
+    //    case APINotifyElement_Redo_Created:
+    //        tst.Append ("APINotifyElement_Redo_Created");
+    //        break;
+    //    case APINotifyElement_Redo_Modified:
+    //        tst.Append ("APINotifyElement_Redo_Modified");
+    //        break;
+    //    case APINotifyElement_Redo_Deleted:
+    //        tst.Append ("APINotifyElement_Redo_Deleted");
+    //        break;
+    //    case APINotifyElement_PropertyValueChange:
+    //        tst.Append ("APINotifyElement_PropertyValueChange");
+    //        break;
+    //    case APINotifyElement_ClassificationChange:
+    //        tst.Append ("APINotifyElement_ClassificationChange");
+    //        break;
+    //    default:
+    //        break;
+    //}
+    //tst.Append (SPACESTRING);
+    //DBprnt ("ElementEvent", tst);
+    //#endif
+
     if (elemType->notifID == APINotifyElement_BeginEvents) return NoError;
     if (elemType->elemHead.hotlinkGuid != APINULLGuid) return NoError;
     ACAPI_KeepInMemory (true);
@@ -157,6 +213,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     DBprnt ("ElementEventHandlerProc start");
     #endif
     ParamDictElement paramToWrite = {};
+    if (IsElementThrottled (elemType->elemHead.guid)) return NoError;
     if (!IsElementEditable (elemType->elemHead.guid, syncSettings, true, elementType)) return NoError;
     bool needresync = false;
     switch (elemType->notifID) {
@@ -452,7 +509,7 @@ GSErrCode __ACENV_CALL Initialize (void)
     DBprnt ("Initialize");
     #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
-    LoadSyncSettingsFromPreferences (syncSettings);
+    LoadSyncSettingsFromPreferences (syncSettings, true);
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
     #endif // PK_1

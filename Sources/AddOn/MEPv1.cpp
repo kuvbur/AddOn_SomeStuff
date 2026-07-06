@@ -5,6 +5,87 @@
 #include	"MEPv1.hpp"
 using namespace ACAPI::MEP;
 
+//struct RoutingElementSharedData
+//{
+//    bool ok = false;
+//    bool hasSystemName = false;
+//    GS::UniString systemName;
+//    double routingLength = 0.0;
+//    ACAPI::MEP::UniqueID branchTableID = Adapter::UniqueID (APINULLGuid);
+//};
+//
+//static GS::HashTable<API_Guid, RoutingElementSharedData> routingElementDataCache;
+//
+//void ClearRoutingSubelemCache ()
+//{
+//    routingSubelemCache.Clear ();
+//    routingElementDataCache.Clear ();
+//}
+//
+//static const RoutingElementSharedData& GetRoutingElementSharedDataCached (const ACAPI::MEP::UniqueID& elementID)
+//{
+//    API_Guid key = GSGuid2APIGuid (elementID.GetGuid ());
+//    if (RoutingElementSharedData* pCached = routingElementDataCache.GetPtr (key)) {
+//        return *pCached;
+//    }
+//
+//    RoutingElementSharedData data;
+//    ACAPI::Result<RoutingElement> element = RoutingElement::Get (elementID);
+//    if (element.IsOk ()) {
+//        data.ok = true;
+//        if (element->GetMEPSystem () != APIInvalidAttributeIndex) {
+//            API_Attribute attribute = {};
+//            attribute.header.typeID = API_MEPSystemID;
+//            attribute.header.index = element->GetMEPSystem ();
+//            if (ACAPI_Attribute_Get (&attribute) == NoError) {
+//                data.systemName = GS::UniString { attribute.header.name };
+//                data.hasSystemName = true;
+//            }
+//        }
+//        std::vector<API_Coord3D> poly = element->GetPolyLine ();
+//        bool is_first = true;
+//        double x1 = 0, y1 = 0, z1 = 0;
+//        for (const auto& pt : poly) {
+//            if (is_first) { x1 = pt.x; y1 = pt.y; z1 = pt.z; is_first = false; } else {
+//                double dx = (pt.x - x1) * (pt.x - x1);
+//                double dy = (pt.y - y1) * (pt.y - y1);
+//                double dz = (pt.z - z1) * (pt.z - z1);
+//                data.routingLength += sqrt (dx + dy + dz);
+//                x1 = pt.x; y1 = pt.y; z1 = pt.z;
+//            }
+//        }
+//        ACAPI::Result<ACAPI::MEP::UniqueID> tableID_ = element->GetBranchPreferenceTableId ();
+//        if (tableID_.IsOk ()) data.branchTableID = tableID_.Unwrap ();
+//    } else {
+//        ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
+//    }
+//    routingElementDataCache.Put (key, data);
+//    return *routingElementDataCache.GetPtr (key);
+//}
+//
+//bool ReadRoutingElementData (const ACAPI::MEP::UniqueID& elementID, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::UniqueID& branchtableID)
+//{
+//    if (ParamValue* pval = paramByType.GetPtr (rawnametest)) {
+//        ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, "IsRoutingElement");
+//        flag = true;
+//    }
+//    const RoutingElementSharedData& data = GetRoutingElementSharedDataCached (elementID);
+//    if (!data.ok) return false;
+//
+//    if (data.hasSystemName) {
+//        if (ParamValue* pval = paramByType.GetPtr (rawnamesystem)) {
+//            ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, data.systemName);
+//            flag = true;
+//        }
+//    }
+//    if (ParamValue* pval = paramByType.GetPtr (rawnameroutinglength)) {
+//        ParamHelpers::ConvertDoubleToParamValue (*pval, EMPTYSTRING, data.routingLength);
+//        flag = true;
+//    }
+//    branchtableID = data.branchTableID;
+//    return true;
+//}
+
 API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid& routingElemClassID)
 {
     #if defined (AC_28) || defined(AC_29)
@@ -240,7 +321,7 @@ void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
         subelemGuid = GetSubElementOfRoutingCached (GSGuid2APIGuid (routingId.GetGuid ()));
         return;
     }
-}
+    }
 #if defined (AC_28) || defined(AC_29)
 bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
 {
@@ -379,7 +460,7 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             return flag;
         }
         return flag;
-    }
+        }
     if (IsPiping (elem_head.type.classID)) {
         if (ParamValue* pval = paramByType.GetPtr (rawnamereferencesetname)) {
             ACAPI::Result<PipeReferenceSet> pipeReferenceSet = GetPipeReferenceSet ();
@@ -436,12 +517,12 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             return flag;
         }
         return flag;
-    }
+        }
     if (IsCableCarrier (elem_head.type.classID)) {
         return flag;
     }
     return flag;
-}
+    }
 
 bool ReadTransitionData (const API_Guid & guid, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & transtableID, double& bdiametr, double& ediametr)
 {
@@ -813,9 +894,9 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                 }
             }
         }
-    }
+        }
     return true;
-}
+    }
 
 bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, uint32_t & refid)
 {
@@ -877,7 +958,7 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
         }
     }
     return true;
-}
+    }
 
 bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, double& diametr, double& radius)
 {

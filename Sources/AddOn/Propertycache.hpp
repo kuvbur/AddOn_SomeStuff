@@ -101,6 +101,7 @@ struct PropertyCache
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
     GS::HashTable<GS::UniString, FormatString> parsedformatstring;
     GS::HashTable<GS::UniString, GS::UniString> gdlparamname;
+    GS::HashTable<API_Guid, GS::UniString> propertyparamname;
     FormatStringDict formatstringformeasuretype;
     GS::UniString meterString = "m";
     GS::UniString santimeterString = "cm";
@@ -477,6 +478,7 @@ struct PropertyCache
         DBprnt ("=PropertyCache= ReadFileFromDefinition");
         #endif
         if (!isPropertyDefinition_OK) return;
+        GS::Array<GS::UniString> loopScratch;
         for (const auto& cIt : property) {
             #if defined(AC_28) || defined(AC_29)
             const ParamValue& param = cIt.value;
@@ -489,7 +491,7 @@ struct PropertyCache
             if (!fname.Contains ("Sync_from")) continue;
             if (!fname.Contains ("File:")) continue;
             GS::Array<GS::UniString> params = {};
-            if (StringSplt (fname, COMMA, params, "\"") > 0) {
+            if (StringSplt (fname, COMMA, params, "\"", &loopScratch) > 0) {
                 fname = fname.GetSubstring (CHARDQUT, CHARDQUT, 0);
                 if (file.ContainsKey (fname)) file.Delete (fname);
                 if (!fname.Contains (".txt") && !fname.Contains (".csv")) fname.Append (".txt");

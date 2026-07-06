@@ -265,7 +265,7 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     paramName = paramName.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     paramName.ReplaceAll (SLASHEKR, SLASH);
     partstring.Clear ();
-    int nparam = StringSplt (paramName.ToLowerCase (), SEMICOLON, partstring);
+    int nparam = StringSplt (paramName.ToLowerCase (), SEMICOLON, partstring, true);
     if (nparam == 0) return false;
     GS::UniString key = PVALPREFIX + partstring[0] + BRACEEND;
     GS::UniString rawName_rule = "";

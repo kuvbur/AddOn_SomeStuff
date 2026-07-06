@@ -163,8 +163,7 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {
-    }
+    {}
     short  index;
     double level;
 };
@@ -420,14 +419,14 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr);
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool check_accuracy (const double& val, const double& tolerance);
+bool check_accuracy (double val, double tolerance);
 
 Int32 ceil_mod_classic (Int32 n, Int32 k);
 
 // --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
-Int32 DoubleM2IntMM (const double& value);
+Int32 DoubleM2IntMM (double value);
 
 // --------------------------------------------------------------------
 // Округлить целое n вверх до ближайшего целого числа, кратного k
@@ -437,7 +436,7 @@ Int32 ceil_mod (Int32 n, Int32 k);
 // -----------------------------------------------------------------------------
 // Округление до заданного количества нулей
 // -----------------------------------------------------------------------------
-double round_nzero (const double& var, const  Int32& n_zero);
+double round_nzero (double var, Int32 n_zero);
 
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
@@ -509,15 +508,13 @@ bool ProbeCharCode (const GS::UniString& instring, GSCharCode chcode);
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring);
-
-UInt32 StringSplt_ (const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, bool filter_empty);
+UInt32 StringSplt (const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, bool filter_empty, GS::Array<GS::UniString>* scratch_parts = nullptr);
 
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // Записывает в массив только части, содержащие строку filter
 // -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter);
+UInt32 StringSpltFilter (const GS::UniString& instring, const GS::UniString& delim, GS::Array<GS::UniString>& partstring, const GS::UniString& filter, GS::Array<GS::UniString>* scratch_parts = nullptr);
 
 // -----------------------------------------------------------------------------
 // Возвращает elemType и elemGuid для корректного чтение параметров элементов навесной стены
