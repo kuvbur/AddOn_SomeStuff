@@ -110,7 +110,7 @@ GS::UniString GetFormatString (GS::UniString& paramName)
     auto& cache = PROPERTYCACHE ();
     if (!paramName.Contains (cache.meterString) && !paramName.Contains (METERS)) return formatstring;
     GS::Array<GS::UniString> partstring = {};
-    UInt32 n = StringSplt (paramName, DOT, partstring);
+    UInt32 n = StringSplt (paramName, DOT, partstring, true);
     if (n > 1) {
         formatstring = partstring[n - 1];
         if (formatstring.Contains (METERS) || formatstring.Contains (cache.meterString)) {
@@ -283,7 +283,7 @@ FormatString ParseFormatString (const GS::UniString& stringformat)
 // -----------------------------------------------------------------------------
 // Переводит число в строку согласно настройкам строки-формата
 // -----------------------------------------------------------------------------
-GS::UniString NumToString (const double& var, const FormatString& stringformat)
+GS::UniString NumToString (double var, const FormatString& stringformat)
 {
     if (fabs (var) < 0.00000001) return ZEROSTRING;
     GS::UniString out = "";
@@ -988,9 +988,9 @@ bool ParamHelpers::ReadMorphParam (const API_Guid& guid, ParamDictValue& pdictva
             double y2 = vtx2.y;
             double z1 = vtx1.z;
             double z2 = vtx2.z;
-            double dx = pow (x2 - x1, 2);
-            double dy = pow (y2 - y1, 2);
-            double dz = pow (z2 - z1, 2);
+            double dx = (x2 - x1) * (x2 - x1);
+            double dy = (y2 - y1) * (y2 - y1);
+            double dz = (z2 - z1) * (z2 - z1);
             double dl = DoubleM2IntMM (sqrt (dx + dy + dz)) / 1000.0;
             double dlx = DoubleM2IntMM (sqrt (dy + dx)) / 1000.0;
             double dly = DoubleM2IntMM (sqrt (dx + dz)) / 1000.0;
@@ -1224,12 +1224,12 @@ void ParamHelpers::SetArrayByRawname (ParamValue& pvalue)
 {
     if (!pvalue.rawName.Contains ("@arr_")) return;
     GS::Array<GS::UniString> partstring;
-    UInt32 n = StringSplt (pvalue.rawName, "@arr_", partstring, BRACEEND);
+    UInt32 n = StringSpltFilter (pvalue.rawName, "@arr_", partstring, BRACEEND);
     if (n == 0) return;
     GS::UniString arr = partstring.Get (0);
     arr.ReplaceAll (BRACEEND, EMPTYSTRING);
     partstring.Clear ();
-    n = StringSplt (arr, "_", partstring);
+    n = StringSplt (arr, "_", partstring, true);
     if (n == 0) return;
     for (UInt32 i = 0; i < n; i++) {
         double inx = 0;
@@ -1274,7 +1274,7 @@ GS::UniString ParamHelpers::NameToRawName (const GS::UniString& name, FormatStri
     // Проверяем - есть ли указатель на тип параметра (GDL, Property, IFC)
     if (name_.Contains (":")) {
         GS::Array<GS::UniString> partstring;
-        UInt32 n = StringSplt (name_, ":", partstring);
+        UInt32 n = StringSplt (name_, ":", partstring, true);
         if (n > 1) {
             rawname_prefix = partstring[0] + ":";
             name_ = partstring[1].ToLowerCase ();
@@ -3270,26 +3270,26 @@ bool ParamHelpers::ConvertToProperty (const ParamValue& pvalue, API_Property& pr
         GS::Array<API_SingleEnumerationVariant> possibleEnumValues = property.definition.possibleEnumValues;
 
         // Для свойств с набором параметров необходимо задавать не само значение, а его GUID
-        for (UInt32 i = 0; i < possibleEnumValues.GetSize (); i++) {
+        for (const auto& poss_values : possibleEnumValues) {
             switch (property.definition.valueType) {
                 case API_PropertyIntegerValueType:
-                    if (property.value.singleVariant.variant.intValue == possibleEnumValues[i].displayVariant.intValue) {
-                        guidValue = possibleEnumValues[i].keyVariant.guidValue;
+                    if (property.value.singleVariant.variant.intValue == poss_values.displayVariant.intValue) {
+                        guidValue = poss_values.keyVariant.guidValue;
                     }
                     break;
                 case API_PropertyRealValueType:
-                    if (!is_equal (property.value.singleVariant.variant.doubleValue, possibleEnumValues[i].displayVariant.doubleValue)) {
-                        guidValue = possibleEnumValues[i].keyVariant.guidValue;
+                    if (!is_equal (property.value.singleVariant.variant.doubleValue, poss_values.displayVariant.doubleValue)) {
+                        guidValue = poss_values.keyVariant.guidValue;
                     }
                     break;
                 case API_PropertyBooleanValueType:
-                    if (property.value.singleVariant.variant.boolValue == possibleEnumValues[i].displayVariant.boolValue) {
-                        guidValue = possibleEnumValues[i].keyVariant.guidValue;
+                    if (property.value.singleVariant.variant.boolValue == poss_values.displayVariant.boolValue) {
+                        guidValue = poss_values.keyVariant.guidValue;
                     }
                     break;
                 case API_PropertyStringValueType:
-                    if (property.value.singleVariant.variant.uniStringValue == possibleEnumValues[i].displayVariant.uniStringValue) {
-                        guidValue = possibleEnumValues[i].keyVariant.guidValue;
+                    if (property.value.singleVariant.variant.uniStringValue == poss_values.displayVariant.uniStringValue) {
+                        guidValue = poss_values.keyVariant.guidValue;
                     }
                     break;
                 default:
@@ -3344,10 +3344,10 @@ bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinit
         if (n == 0) return false;
         if (n > 1) msg_rep ("There are several sync flags as an element. This can lead to errors.", flag_name, APIERR_GENERAL, elemGuid);
     }
+    API_Property propertyflag = {};
     for (const auto& definition : definitions) {
         if (definition.description.IsEmpty ()) continue;
         if (!definition.description.Contains (property_flag_name)) continue;
-        API_Property propertyflag = {};
         err = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
         if (err == NoError) {
             flagfind = true;
@@ -3381,10 +3381,10 @@ bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_Property
 {
     if (definitions.IsEmpty ()) return false;
     GSErrCode	err = NoError;
+    API_Property propertyflag = {};
     for (const auto& definition : definitions) {
         if (definition.description.IsEmpty ()) continue;
         if (!definition.description.Contains (property_flag_name)) continue;
-        API_Property propertyflag = {};
         err = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
         if (err != NoError) return true;
         flagfind = true;
@@ -3986,7 +3986,6 @@ void ParamHelpers::WriteGDL (const API_Guid& elemGuid, ParamDictValue& params)
             return;
         }
     }
-    // TODO Оптимизировать, разнести по функциям
     bool flagFind = false;
     Int32	addParNum = BMGetHandleSize ((GSHandle) apiParams.params) / sizeof (API_AddParType);
     Int32 nfind = params.GetSize ();
@@ -4130,6 +4129,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
     #endif
     // Если для свойств известно только определение, но не было получено свойство - самое время это сделать
     GS::Array<API_PropertyDefinition> propertyDefinitions = {};
+    GS::Array<API_Property> property2write; property2write.SetCapacity (params.GetSize ());
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -4145,10 +4145,7 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
                 #endif
                 continue;
             }
-            error = ACAPI_Element_SetProperty (elemGuid, property);
-            if (error != NoError) {
-                msg_rep ("WriteProperty err", "ACAPI_Element_SetProperty: " + property.definition.name, error, elemGuid);
-            }
+            property2write.Push (std::move (property));
         } else {
             // Если нет гуида определения свойства - поищем его в кэше
             if (param.definition.guid == APINULLGuid) {
@@ -4166,41 +4163,43 @@ void ParamHelpers::WriteProperty (const API_Guid& elemGuid, ParamDictValue& para
             if (param.definition.guid != APINULLGuid) propertyDefinitions.Push (param.definition);
         }
     }
-    if (propertyDefinitions.IsEmpty ()) return;
-    // Поиск свойств по их определению и повторная запись
-    #if defined(TESTING)
-    DBprnt ("    WriteProperty", "!propertyDefinitions.IsEmpty()");
-    #endif
-    GS::Array<API_Property> properties = {};
-    error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
-    if (error != NoError) {
-        msg_rep ("WriteProperty", "ACAPI_Element_GetPropertyValues", error, elemGuid);
-        return;
-    }
-    GS::UniString fname = "";
-    GS::UniString rawName = "";
-    for (auto& property : properties) {
-        GetPropertyFullName (property.definition, fname);
-        rawName = PROPERTYNAMEPREFIX + fname.ToLowerCase () + BRACEEND;
-
-        const auto* paramPtr = params.GetPtr (rawName);
-        if (paramPtr == nullptr) {
-            #if defined(TESTING)
-            DBprnt ("    WriteProperty err", "params.ContainsKey (rawName) " + rawName);
-            #endif
-            continue;
-        }
-        if (!ParamHelpers::ConvertToProperty (*paramPtr, property)) { // Конвертируем параметр в свойство
-            // Конвертация выдаёт ложь при ошибке или если значения свойства и параметра совпадают
-            #if defined(TESTING)
-            DBprnt ("    WriteProperty err", "!ConvertToProperty " + rawName);
-            #endif
-            continue;
-        }
-        error = ACAPI_Element_SetProperty (elemGuid, property);
+    if (!propertyDefinitions.IsEmpty ()) {
+        // Поиск свойств по их определению и повторная запись
+        #if defined(TESTING)
+        DBprnt ("    WriteProperty", "!propertyDefinitions.IsEmpty()");
+        #endif
+        GS::Array<API_Property> properties = {};
+        error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
         if (error != NoError) {
-            msg_rep ("WriteProperty err", "ACAPI_Element_SetProperty: " + property.definition.name, error, elemGuid);
+            msg_rep ("WriteProperty", "ACAPI_Element_GetPropertyValues", error, elemGuid);
+            return;
         }
+        GS::UniString fname = "";
+        GS::UniString rawName = "";
+        for (auto& property : properties) {
+            GetPropertyFullName (property.definition, fname);
+            rawName = PROPERTYNAMEPREFIX + fname.ToLowerCase () + BRACEEND;
+            const auto* paramPtr = params.GetPtr (rawName);
+            if (paramPtr == nullptr) {
+                #if defined(TESTING)
+                DBprnt ("    WriteProperty err", "params.ContainsKey (rawName) " + rawName);
+                #endif
+                continue;
+            }
+            if (!ParamHelpers::ConvertToProperty (*paramPtr, property)) { // Конвертируем параметр в свойство
+                // Конвертация выдаёт ложь при ошибке или если значения свойства и параметра совпадают
+                #if defined(TESTING)
+                DBprnt ("    WriteProperty err", "!ConvertToProperty " + rawName);
+                #endif
+                continue;
+            }
+            property2write.Push (std::move (property));
+
+        }
+    }
+    error = ACAPI_Element_SetProperties (elemGuid, property2write);
+    if (error != NoError) {
+        msg_rep ("WriteProperty err", "ACAPI_Element_SetProperty", error, elemGuid);
     }
 }
 
@@ -4563,7 +4562,7 @@ bool ParamHelpers::SubGuid_GetParamValue (const API_Guid& elemGuid, const GS::Ar
             continue;
         }
         if (elemGuid != APINULLGuid) pvalue.fromGuid = elemGuid;
-        if (!subproperty.ContainsKey (pvalue.rawName)) subproperty.Put (pvalue.rawName, pvalue);
+        if (!subproperty.ContainsKey (pvalue.rawName)) subproperty.Put (pvalue.rawName, std::move (pvalue));
         flag_add = true;
     }
     #if defined(TESTING)
@@ -4945,6 +4944,7 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
     // Разбиваем по типам поиска - по описанию/по имени
     GS::Array<GS::UniString> tparams;
     GS::Array<GS::UniString> tarray;
+    GS::Array<GS::UniString> local_scratch;
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -4954,12 +4954,12 @@ bool ParamHelpers::ReadGDL (const API_Element& element, const API_Elem_Head& ele
         GS::UniString rawName = param.rawName;
         if (param.fromGDLArray) {
             tparams.Clear ();
-            UInt32 nparam = StringSplt (rawName, "@arr", tparams);
+            UInt32 nparam = StringSplt (rawName, "@arr", tparams, true, &local_scratch);
 
             // Проверим - были ли заданы числовые параметры для чтения (диапазоны и тип обработки массива)
             if ((param.val.array_row_start == 0 || param.val.array_row_end == 0 || param.val.array_column_start == 0 || param.val.array_column_end == 0 || param.val.array_format_out == ARRAY_UNDEF) && nparam > 1) {
                 tarray.Clear ();
-                UInt32 narray = StringSplt (tparams[1], "_", tarray);
+                UInt32 narray = StringSplt (tparams[1], "_", tarray, true, &local_scratch);
                 if (param.val.array_row_start == 0 && narray > 0) {
                     double doubleValue = 0;
                     if (UniStringToDouble (tarray[0], doubleValue)) {
@@ -5299,6 +5299,8 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
     DBprnt ("          Read Descriptors");
     #endif
     GS::UniString key_th = "some_stuff_th";
+    GS::Array<GS::UniString> partstring = {};
+    GS::Array<GS::UniString> local_scratch;
     for (Int32 i = 0; i < nComp; i++) {
         if ((*descRefs)[i].status == APIDBRef_Deleted) continue;
         API_ListData listdata = {};
@@ -5332,8 +5334,8 @@ bool ParamHelpers::ReadListData (const API_Elem_Head& elem_head, ParamDictValue&
         GS::UniString name = GS::UniString (tname);
         GS::UniString keycode = GS::UniString (tkeycode);
         if (name.Contains (key_th)) {
-            GS::Array<GS::UniString> partstring = {};
-            UInt32 n = StringSplt_ (name, SEMICOLON, partstring, false);
+            partstring.Clear ();
+            UInt32 n = StringSplt (name, SEMICOLON, partstring, false, &local_scratch);
             if (n < 3) continue;
             GS::UniString attribsuffix = key_th + CharENTER + partstring[1];
             GS::UniString ttxt = partstring[2];
@@ -6123,37 +6125,44 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
     ParamHelpers::ReadMaterial_ReadAddParam (paramsAdd, paramcomposite, params, needReadQuantities);
     bool flag_add = false;
     if (needReadQuantities) ParamHelpers::ReadQuantities (element.header, params, paramcomposite);
-    GS::UniString layers_inv = "{@material:layers_inv";
-    GS::UniString layers_auto = "{@material:layers_auto";
-    GS::UniString nosyncname = "{@property:nosyncname}";
 
-    GS::UniString layer_thickness = "{@material:layer thickness}";
-    bool has_layer_thickness = params.ContainsKey (layer_thickness);
-    GS::UniString layer_minthickness = "{@material:layer min thickness}";
-    bool has_layer_minthickness = params.ContainsKey (layer_minthickness);
-    GS::UniString area = "{@material:area}";
-    bool has_area = params.ContainsKey (area);
-    GS::UniString area_section = "{@material:area_section}";
-    bool has_area_section = params.ContainsKey (area_section);
-    GS::UniString width = "{@material:width}";
-    bool has_width = params.ContainsKey (width);
-    GS::UniString length = "{@material:length}";
-    bool has_length = params.ContainsKey (length);
-    GS::UniString volume = "{@material:volume}";
-    bool has_volume = params.ContainsKey (volume);
-    GS::UniString qty = "{@material:qty}";
-    bool has_qty = params.ContainsKey (qty);
-    GS::UniString unit_prefix = "{@material:unit_prefix}";
-    bool has_unit_prefix = params.ContainsKey (unit_prefix);
-    GS::UniString unit = "{@material:unit}";
-    GS::UniString n_ = "{@material:n}";
-    bool has_n = params.ContainsKey (n_);
-    if (!has_n) ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "n", "");
-    has_n = params.ContainsKey (n_);
-    GS::UniString ns_ = "{@material:ns}";
-    bool has_ns = params.ContainsKey (ns_);
-    if (!has_ns) ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", "");
-    has_ns = params.ContainsKey (ns_);
+    static const GS::UniString layers_inv = "{@material:layers_inv";
+    static const GS::UniString layers_auto = "{@material:layers_auto";
+    static const GS::UniString nosyncname = "{@property:nosyncname}";
+    static const GS::UniString layer_minthickness = "{@material:layer min thickness}";
+    static const GS::UniString layer_thickness = "{@material:layer thickness}";
+    static const GS::UniString area = "{@material:area}";
+    static const GS::UniString area_section = "{@material:area_section}";
+    static const GS::UniString width = "{@material:width}";
+    static const GS::UniString length = "{@material:length}";
+    static const GS::UniString volume = "{@material:volume}";
+    static const GS::UniString qty = "{@material:qty}";
+    static const GS::UniString unit_prefix = "{@material:unit_prefix}";
+    static const GS::UniString unit = "{@material:unit}";
+    static const GS::UniString n_ = "{@material:n}";
+    static const GS::UniString ns_ = "{@material:ns}";
+
+    auto* layer_thickness_ptr = params.GetPtr (layer_thickness);
+    auto* layer_minthickness_ptr = params.GetPtr (layer_minthickness);
+    auto* area_ptr = params.GetPtr (area);
+    auto* area_section_ptr = params.GetPtr (area_section);
+    auto* width_ptr = params.GetPtr (width);
+    auto* length_ptr = params.GetPtr (length);
+    auto* volume_ptr = params.GetPtr (volume);
+    auto* qty_ptr = params.GetPtr (qty);
+    auto* unit_prefix_ptr = params.GetPtr (unit_prefix);
+    auto* n_ptr = params.GetPtr (n_);
+    auto* ns_ptr = params.GetPtr (ns_);
+
+    if (n_ptr == nullptr) {
+        ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "n", "");
+        n_ptr = params.GetPtr (n_);
+    }
+    if (ns_ptr == nullptr) {
+        ParamHelpers::AddStringValueToParamDictValue (params, element.header.guid, MATERIALNAMEPREFIX, "ns", "");
+        ns_ptr = params.GetPtr (ns_);
+    }
+
     API_ElemTypeID eltype = GetElemTypeID (element.header);
     // Если есть строка-шаблон - заполним её
     for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -6230,160 +6239,123 @@ bool ParamHelpers::ReadMaterial (const API_Element & element, ParamDictValue & p
                     }
                 }
                 // Если нужно заполнить толщину
-                GS::UniString defult_formatstring = DEFULTLEGHTFSTRING;
-                if (has_layer_thickness) {
+                if (layer_thickness_ptr != nullptr) {
                     double fillThick = param_composite.composite[indx].fillThick;
-                    ParamValue& pp = params.Get (layer_thickness);
-                    FormatString formatsting = pp.val.formatstring;
-                    if (formatsting.isEmpty) {
-                        formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                        pp.val.formatstring = formatsting;
+                    if (layer_thickness_ptr->val.formatstring.isEmpty) {
+                        layer_thickness_ptr->val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
                     }
-                    pp.val.doubleValue = fillThick;
-                    pp.val.rawDoubleValue = fillThick;
-                    pp.val.hasrawDouble = true;
-                    pp.val.type = API_PropertyRealValueType;
-                    pp.isValid = true;
+                    layer_thickness_ptr->val.doubleValue = fillThick;
+                    layer_thickness_ptr->val.rawDoubleValue = fillThick;
+                    layer_thickness_ptr->val.hasrawDouble = true;
+                    layer_thickness_ptr->val.type = API_PropertyRealValueType;
+                    layer_thickness_ptr->isValid = true;
                 }
-                if (has_layer_minthickness) {
+                if (layer_minthickness_ptr != nullptr) {
                     if (!is_equal (param_composite.composite[indx].fillThick_min, -1.0) && !is_equal (param_composite.composite[indx].fillThick_min, param_composite.composite[indx].fillThick)) {
                         double fillThick = param_composite.composite[indx].fillThick_min;
-                        ParamValue& pp = params.Get (layer_minthickness);
-                        FormatString formatsting = pp.val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            pp.val.formatstring = formatsting;
+                        if (layer_minthickness_ptr->val.formatstring.isEmpty) {
+                            layer_minthickness_ptr->val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
                         }
-                        pp.val.doubleValue = fillThick;
-                        pp.val.rawDoubleValue = fillThick;
-                        pp.val.hasrawDouble = true;
-                        pp.val.type = API_PropertyRealValueType;
-                        pp.isValid = true;
+                        layer_minthickness_ptr->val.doubleValue = fillThick;
+                        layer_minthickness_ptr->val.rawDoubleValue = fillThick;
+                        layer_minthickness_ptr->val.hasrawDouble = true;
+                        layer_minthickness_ptr->val.type = API_PropertyRealValueType;
+                        layer_minthickness_ptr->isValid = true;
                     }
                 }
                 if (param_composite.composite_pen < 0) {
-                    if (has_area) {
-                        defult_formatstring = "2m";
+                    if (area_ptr != nullptr) {
                         double val = param_composite.composite[indx].area;
-                        ParamValue& pp = params.Get (area);
-                        FormatString formatsting = pp.val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            pp.val.formatstring = formatsting;
+                        if (area_ptr->val.formatstring.isEmpty) {
+                            area_ptr->val.formatstring = FormatStringFunc::ParseFormatString ("2m");
                         }
-                        pp.val.doubleValue = val;
-                        pp.val.rawDoubleValue = val;
-                        pp.val.hasrawDouble = true;
-                        pp.val.type = API_PropertyRealValueType;
-                        pp.isValid = true;
+                        area_ptr->val.doubleValue = val;
+                        area_ptr->val.rawDoubleValue = val;
+                        area_ptr->val.hasrawDouble = true;
+                        area_ptr->val.type = API_PropertyRealValueType;
+                        area_ptr->isValid = true;
                     }
-                    if (has_area_section) {
-                        defult_formatstring = "2m";
+                    if (area_section_ptr != nullptr) {
                         double val = param_composite.composite[indx].area_fill;
-                        ParamValue& pp = params.Get (area_section);
-                        FormatString formatsting = pp.val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            pp.val.formatstring = formatsting;
+                        if (area_section_ptr->val.formatstring.isEmpty) {
+                            area_section_ptr->val.formatstring = FormatStringFunc::ParseFormatString ("2m");
                         }
-                        pp.val.doubleValue = val;
-                        pp.val.rawDoubleValue = val;
-                        pp.val.hasrawDouble = true;
-                        pp.val.type = API_PropertyRealValueType;
-                        pp.isValid = true;
+                        area_section_ptr->val.doubleValue = val;
+                        area_section_ptr->val.rawDoubleValue = val;
+                        area_section_ptr->val.hasrawDouble = true;
+                        area_section_ptr->val.type = API_PropertyRealValueType;
+                        area_section_ptr->isValid = true;
                     }
-                    if (has_width) {
-                        defult_formatstring = "0mm";
+                    if (width_ptr != nullptr) {
                         double val = param_composite.composite[indx].width;
-                        ParamValue& pp = params.Get (width);
-                        FormatString formatsting = pp.val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            pp.val.formatstring = formatsting;
+                        if (width_ptr->val.formatstring.isEmpty) {
+                            width_ptr->val.formatstring = FormatStringFunc::ParseFormatString ("0mm");
                         }
-                        pp.val.doubleValue = val;
-                        pp.val.rawDoubleValue = val;
-                        pp.val.hasrawDouble = true;
-                        pp.val.type = API_PropertyRealValueType;
-                        pp.isValid = true;
+                        width_ptr->val.doubleValue = val;
+                        width_ptr->val.rawDoubleValue = val;
+                        width_ptr->val.hasrawDouble = true;
+                        width_ptr->val.type = API_PropertyRealValueType;
+                        width_ptr->isValid = true;
                     }
-                    if (has_length) {
-                        defult_formatstring = "0mm";
+                    if (length_ptr != nullptr) {
                         double val = param_composite.composite[indx].length;
-                        ParamValue& pp = params.Get (length);
-                        FormatString formatsting = pp.val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            pp.val.formatstring = formatsting;
+                        if (length_ptr->val.formatstring.isEmpty) {
+                            length_ptr->val.formatstring = FormatStringFunc::ParseFormatString ("0mm");
                         }
-                        pp.val.doubleValue = val;
-                        pp.val.rawDoubleValue = val;
-                        pp.val.hasrawDouble = true;
-                        pp.val.type = API_PropertyRealValueType;
-                        pp.isValid = true;
+                        length_ptr->val.doubleValue = val;
+                        length_ptr->val.rawDoubleValue = val;
+                        length_ptr->val.hasrawDouble = true;
+                        length_ptr->val.type = API_PropertyRealValueType;
+                        length_ptr->isValid = true;
                     }
-                    if (has_volume) {
-                        defult_formatstring = "2m";
+                    if (volume_ptr != nullptr) {
                         double val = param_composite.composite[indx].volume;
-                        ParamValue& pp = params.Get (volume);
-                        FormatString formatsting = pp.val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            pp.val.formatstring = formatsting;
+                        if (volume_ptr->val.formatstring.isEmpty) {
+                            volume_ptr->val.formatstring = FormatStringFunc::ParseFormatString ("2m");
                         }
-                        pp.val.doubleValue = val;
-                        pp.val.rawDoubleValue = val;
-                        pp.val.hasrawDouble = true;
-                        pp.val.type = API_PropertyRealValueType;
-                        pp.isValid = true;
+                        volume_ptr->val.doubleValue = val;
+                        volume_ptr->val.rawDoubleValue = val;
+                        volume_ptr->val.hasrawDouble = true;
+                        volume_ptr->val.type = API_PropertyRealValueType;
+                        volume_ptr->isValid = true;
                     }
-                    if (has_qty) {
-                        defult_formatstring = "2m";
+                    if (qty_ptr != nullptr) {
                         double val = param_composite.composite[indx].qty;
-                        ParamValue& pp = params.Get (qty);
-                        FormatString formatsting = pp.val.formatstring;
-                        if (formatsting.isEmpty) {
-                            formatsting = FormatStringFunc::ParseFormatString (defult_formatstring);
-                            pp.val.formatstring = formatsting;
+                        if (qty_ptr->val.formatstring.isEmpty) {
+                            qty_ptr->val.formatstring = FormatStringFunc::ParseFormatString ("2m");
                         }
-                        pp.val.doubleValue = val;
-                        pp.val.rawDoubleValue = val;
-                        pp.val.hasrawDouble = true;
-                        pp.val.type = API_PropertyRealValueType;
-                        pp.isValid = true;
+                        qty_ptr->val.doubleValue = val;
+                        qty_ptr->val.rawDoubleValue = val;
+                        qty_ptr->val.hasrawDouble = true;
+                        qty_ptr->val.type = API_PropertyRealValueType;
+                        qty_ptr->isValid = true;
                     }
-                    if (has_unit_prefix) {
-                        defult_formatstring = "2m";
-                        ParamValue& pp = params.Get (unit_prefix);
+                    if (unit_prefix_ptr != nullptr) {
                         GS::UniString val = ParamHelpers::GetUnitsPrefix (param_composite.composite[indx].unit);
-                        pp.val.uniStringValue = val;
-                        pp.val.type = API_PropertyStringValueType;
-                        pp.isValid = true;
+                        unit_prefix_ptr->val.uniStringValue = val;
+                        unit_prefix_ptr->val.type = API_PropertyStringValueType;
+                        unit_prefix_ptr->isValid = true;
                     }
                 }
                 GS::UniString n_txt = GS::UniString::Printf ("%d", i + 1);
                 templatestring.ReplaceAll (n_, n_txt);
-                if (has_n) {
-                    defult_formatstring = DEFULTINTFSTRING;
-                    ParamValue& pp = params.Get (n_);
-                    pp.val.uniStringValue = n_txt;
-                    pp.val.intValue = i + 1;
-                    pp.val.doubleValue = i + 1;
-                    pp.val.rawDoubleValue = i + 1;
-                    pp.val.type = API_PropertyStringValueType;
-                    pp.isValid = true;
+                if (n_ptr != nullptr) {
+                    n_ptr->val.uniStringValue = n_txt;
+                    n_ptr->val.intValue = i + 1;
+                    n_ptr->val.doubleValue = i + 1;
+                    n_ptr->val.rawDoubleValue = i + 1;
+                    n_ptr->val.type = API_PropertyStringValueType;
+                    n_ptr->isValid = true;
                 }
                 n_txt = GS::UniString::Printf ("%d", ns + 1);
                 templatestring.ReplaceAll (ns_, n_txt);
-                if (has_ns) {
-                    defult_formatstring = DEFULTINTFSTRING;
-                    ParamValue& pp = params.Get (ns_);
-                    pp.val.uniStringValue = n_txt;
-                    pp.val.intValue = i + 1;
-                    pp.val.doubleValue = i + 1;
-                    pp.val.rawDoubleValue = i + 1;
-                    pp.val.type = API_PropertyStringValueType;
-                    pp.isValid = true;
+                if (ns_ptr != nullptr) {
+                    ns_ptr->val.uniStringValue = n_txt;
+                    ns_ptr->val.intValue = i + 1;
+                    ns_ptr->val.doubleValue = i + 1;
+                    ns_ptr->val.rawDoubleValue = i + 1;
+                    ns_ptr->val.type = API_PropertyStringValueType;
+                    ns_ptr->isValid = true;
                 }
                 templatestring.ReplaceAll (BRACEEND, attribsuffix);
                 if (ParamHelpers::ReplaceParamInExpression (params, templatestring)) {
@@ -6516,7 +6488,7 @@ void ParamHelpers::Array2ParamValue (GS::Array<ParamValueData>&pvalue, ParamValu
 // -----------------------------------------------------------------------------
 // Конвертация одиночного параметра библиотечного элемента (тип API_ParSimple) в ParamValue
 // -----------------------------------------------------------------------------
-bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddParID & typeIDr, const GS::UniString & pstring, const double& preal)
+bool ParamHelpers::ConvertToParamValue (ParamValueData & pvalue, const API_AddParID & typeIDr, const GS::UniString & pstring, double preal)
 {
 
     // TODO добавить округления на основе настроек проекта
@@ -6769,45 +6741,47 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_AddParTyp
 // -----------------------------------------------------------------------------
 void ParamHelpers::SetrawNameFromProperty (ParamValue & pvalue, const API_Property & property)
 {
+    bool fromAttrib = false;
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) {
         GS::UniString fname;
         GetPropertyFullName (property.definition, fname);
+        if (pvalue.name.IsEmpty ()) pvalue.name = fname;
         if (pvalue.rawName.IsEmpty ()) {
             pvalue.rawName = PROPERTYNAMEPREFIX;
-            pvalue.rawName.Append (fname.ToLowerCase ());
+            fname.SetToLowerCase ();
+            pvalue.rawName.Append (fname);
             pvalue.rawName.Append (BRACEEND);
         }
-        if (pvalue.name.IsEmpty ()) pvalue.name = fname;
+    } else {
+        fromAttrib = pvalue.rawName.Contains (CharENTER);
     }
-    GS::UniString description = property.definition.description.ToLowerCase ();
-    if (description.Contains ("sync_correct_flag")) {
+    GS::UniString description = property.definition.description;
+    if (description.Contains (SYNCCORRECTFLAG)) {
         pvalue.rawName = "{@property:sync_correct_flag}";
         return;
     }
-    if (description.Contains ("some_stuff_th")) {
-        // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
-        GS::UniString inx = "";
-        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th" + inx + BRACEEND;
-        pvalue.name = "some_stuff_th";
-        pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
-        return;
-    }
-    if (description.Contains ("some_stuff_units")) {
-        // Единицы измерения
-        GS::UniString inx = "";
-        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units" + inx + BRACEEND;
-        pvalue.name = "some_stuff_units";
-        return;
-    }
-    if (description.Contains ("some_stuff_kzap")) {
-        // Единицы измерения
-        GS::UniString inx = "";
-        if (pvalue.rawName.Contains (CharENTER)) inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
-        pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap" + inx + BRACEEND;
-        pvalue.name = "some_stuff_kzap";
-        return;
+    if (fromAttrib) {
+        description.SetToLowerCase ();
+        if (description.Contains ("some_stuff_th")) {
+            // Заданная толщина в материале. Используется, если не удалось вычислить из профиля
+            GS::UniString inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
+            pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_th" + inx + BRACEEND;
+            pvalue.name = "some_stuff_th";
+            pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
+            return;
+        }
+        if (description.Contains ("some_stuff_units")) {
+            GS::UniString inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
+            pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_units" + inx + BRACEEND;
+            pvalue.name = "some_stuff_units";
+            return;
+        }
+        if (description.Contains ("some_stuff_kzap")) {
+            GS::UniString inx = CharENTER + pvalue.rawName.GetSubstring (CharENTER, CHARBRACEEND, 0);
+            pvalue.rawName = "{@property:buildingmaterialproperties/some_stuff_kzap" + inx + BRACEEND;
+            pvalue.name = "some_stuff_kzap";
+            return;
+        }
     }
 }
 
@@ -6819,7 +6793,6 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
 {
     auto& cache = PROPERTYCACHE ();
     if (pvalue.rawName.IsEmpty () || pvalue.name.IsEmpty ()) ParamHelpers::SetrawNameFromProperty (pvalue, property);
-    if (property.definition.description.Contains (SYNCCORRECTFLAG)) pvalue.rawName = "{@property:sync_correct_flag}";
     API_PropertyValue value = {};
     #if defined(AC_22) || defined(AC_23)
     pvalue.isValid = property.isEvaluated;
@@ -6960,7 +6933,7 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue & pvalue, const A
     pvalue.typeinx = PROPERTYTYPEINX;
     if (description.Contains ("to{class:")) {
         GS::Array<GS::UniString> params = {};
-        UInt32 nparam = StringSplt (definition.description, "to{Class", params);
+        UInt32 nparam = StringSplt (definition.description, "to{Class", params, true);
         if (nparam > 1) {
             GS::UniString systemname = params.Get (1).GetSubstring (':', CHARBRACEEND, 0);
             pvalue.name = systemname.ToLowerCase ();
@@ -7321,11 +7294,10 @@ void ParamHelpers::ConvertByFormatString (ParamValue & pvalue)
 
 GS::UniString ParamHelpers::ToString (const ParamValue & pvalue)
 {
-    FormatString stringformat = pvalue.val.formatstring;
-    return ParamHelpers::ToString (pvalue, stringformat);
+    return ParamHelpers::ToString (pvalue, pvalue.val.formatstring);
 }
 
-GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatString stringformat)
+GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatString & stringformat)
 {
     switch (pvalue.val.type) {
         case API_PropertyIntegerValueType: return  FormatStringFunc::NumToString (pvalue.val.intValue, stringformat);
@@ -7346,7 +7318,7 @@ GS::UniString ParamHelpers::ToString (const ParamValue & pvalue, const FormatStr
 // --------------------------------------------------------------------
 // Получение данных из однородной конструкции
 // --------------------------------------------------------------------
-bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, const double& fillThick, const API_AttributeIndex & constrinx_ven, const double& fillThick_ven, const double& fillThick_min, ParamDictValue & params, ParamDictComposite & paramcomposite, ParamDictValue & paramsAdd, short& structype_ven, double& width, double& length)
+bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrinx, double fillThick, const API_AttributeIndex & constrinx_ven, double fillThick_ven, double fillThick_min, ParamDictValue & params, ParamDictComposite & paramcomposite, ParamDictValue & paramsAdd, short& structype_ven, double& width, double& length)
 {
     #if defined(TESTING)
     DBprnt ("        ComponentsBasicStructure\n");
@@ -8130,6 +8102,8 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
     // Определения и свойста для элементов
     bool flag_find = false;
     GS::Array<API_PropertyDefinition> propertyDefinitions;
+    GS::Array<GS::UniString> sr;
+    GS::Array<GS::UniString> local_scratch;
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -8156,8 +8130,8 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex & constrinx, Par
                     pvalue.rawName.ReplaceAll (BRACEEND, CharENTER + attribsuffix + BRACEEND);
                     GS::Pair<API_Guid, API_Guid> classitem = systemItemPairs[0];
                     GS::UniString systemnameindes = "";
-                    GS::Array<GS::UniString> sr = {};
-                    UInt32 nsr = StringSplt (param.rawName, SEMICOLON, sr);
+                    sr.Clear ();
+                    UInt32 nsr = StringSplt (param.rawName, SEMICOLON, sr, true, &local_scratch);
                     if (nsr > 1) {
                         systemnameindes = sr[1];
                     } else {

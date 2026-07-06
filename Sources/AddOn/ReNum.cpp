@@ -295,7 +295,8 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
     bool hasRenum = false;
     if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
     ParamDictValue& propertyParams = PROPERTYCACHE ().property;
-
+    GS::Array<GS::UniString> partstring;
+    GS::Array<GS::UniString> local_scratch;
     for (const API_PropertyDefinition& definition : definitions) {
         bool flag = false;
         if (!definition.description.Contains (RENUMFLAG)) continue;
@@ -320,8 +321,8 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
             paramName.ReplaceAll (SLASHEKR, SLASH);
             GS::UniString rawNameposition = PVALPREFIX;
             if (paramName.Contains (SEMICOLON)) { // Есть указание на нули
-                GS::Array<GS::UniString>	partstring;
-                int nparam = StringSplt (paramName, SEMICOLON, partstring);
+                partstring.Clear ();
+                int nparam = StringSplt (paramName, SEMICOLON, partstring, true, &local_scratch);
                 rawNameposition = rawNameposition + partstring[0] + BRACEEND;
                 if (nparam > 1) {
                     if (partstring[1].Contains ("null")) rulecritetia.nulltype = ADDZEROS;
@@ -331,7 +332,7 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
                     // Добавление нужного количества знаков
                     if (rulecritetia.nulltype != NOZEROS && partstring[1].Contains ("_")) {
                         GS::Array<GS::UniString> partstring_;
-                        if (StringSplt (partstring[1], "_", partstring_) > 0) {
+                        if (StringSplt (partstring[1], "_", partstring_, true, &local_scratch) > 0) {
                             double nullcount = 0;
                             if (UniStringToDouble (partstring_[0], nullcount)) rulecritetia.nullcount = (int) nullcount;
                         }
@@ -347,7 +348,7 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
                 GS::UniString ruleparamName = propertyParams.Get (rawNameposition).definition.description;
                 ruleparamName.ReplaceAll (SLASHEKR, SLASH);
                 if (ruleparamName.Contains (RENUM) && ruleparamName.Contains (BRACESTART) && ruleparamName.Contains (BRACEEND)) {
-                    GS::Array<GS::UniString> partstring;
+                    partstring.Clear ();
                     if (StringSplt (ruleparamName, BRACEEND, partstring, "enum") > 0) {
                         ruleparamName = partstring[0] + BRACEEND;
                     }
@@ -355,8 +356,8 @@ bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, 
                     GS::UniString rawNamecriteria = PVALPREFIX;
                     GS::UniString rawNamedelimetr = "";
                     if (ruleparamName.Contains (SEMICOLON)) { // Есть указание на нули
-                        GS::Array<GS::UniString>	partstring;
-                        int nparam = StringSplt (ruleparamName, SEMICOLON, partstring);
+                        partstring.Clear ();
+                        int nparam = StringSplt (ruleparamName, SEMICOLON, partstring, true, &local_scratch);
                         rawNamecriteria = rawNamecriteria + partstring[0] + BRACEEND;
                         if (nparam > 1) rawNamedelimetr = PVALPREFIX + rawNamedelimetr + partstring[1] + BRACEEND;
                     } else {

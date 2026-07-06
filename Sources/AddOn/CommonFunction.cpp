@@ -6,7 +6,12 @@
 #include <APIdefs_Environment.h>
 #include <bitset>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
+#if defined(_MAC)
+#include <xlocale.h>
+#endif
+
 static const Int32 VersionId = 49;
 
 // -----------------------------------------------------------------------------
@@ -15,7 +20,6 @@ static const Int32 VersionId = 49;
 void GetUnicGuid (GS::Array<API_Guid>& guidArray)
 {
     if (guidArray.GetSize () < 2) return;
-
     UnicGuid seen = {};
     GS::Array<API_Guid> result = {};
     result.SetCapacity (guidArray.GetSize ());
@@ -812,7 +816,7 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool check_accuracy (const double& rval, const double& tolerance)
+bool check_accuracy (double rval, double tolerance)
 {
     if (std::isinf (rval) || std::isnan (rval)) return true;
     if (is_equal (tolerance, 0)) return true;
@@ -842,25 +846,49 @@ bool is_equal (double x, double y)
 bool UniStringToDouble (const GS::UniString & var, double& x)
 {
     if (var.IsEmpty ()) return false;
-    GS::UniString var_clear = var;
-    var_clear.ReplaceAll (SPACESTRING, EMPTYSTRING);
-    var_clear.ReplaceAll (" ", EMPTYSTRING);
-    var_clear.ReplaceAll (COMMA, DOT);
+
     GSCharCode chcode = GetCharCode (var);
-    std::string var_str = var_clear.ToCStr (0, MaxUSize, chcode).Get ();
-    int n = sscanf (var_str.c_str (), "%lf", &x);
-    if (n <= 0) {
-        var_clear.ReplaceAll (DOT, COMMA);
-        var_str = var_clear.ToCStr (0, MaxUSize, chcode).Get ();
-        n = sscanf (var_str.c_str (), "%lf", &x);
+    auto cStr = var.ToCStr (0, MaxUSize, chcode);
+    const char* src = cStr.Get ();
+    if (src == nullptr || *src == '\0') return false;
+    char buf[64];
+    size_t dstIdx = 0;
+    const size_t maxDst = sizeof (buf) - 1;
+    while (*src != '\0' && dstIdx < maxDst) {
+        char ch = *src;
+        if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') {
+            src++;
+            continue;
+        }
+        if (static_cast<unsigned char> (ch) == 0xA0) {
+            src++;
+            continue;
+        }
+        if (ch == ',') ch = '.';
+        buf[dstIdx++] = ch;
+        src++;
     }
-    return n > 0;
+    buf[dstIdx] = '\0';
+    if (dstIdx == 0) return false;
+    char* endPtr = nullptr;
+    #if defined(_WIN32)
+    static _locale_t cLocale = _create_locale (LC_NUMERIC, "C");
+    x = _strtod_l (buf, &endPtr, cLocale);
+    #elif defined(_MAC)
+    static locale_t cLocale = newlocale (LC_NUMERIC_MASK, "C", nullptr);
+    x = strtod_l (buf, &endPtr, cLocale);
+    #else
+    x = std::strtod (buf, &endPtr);
+    #endif
+    return (endPtr == buf + dstIdx);
 }
+
+
 
 // -----------------------------------------------------------------------------
 // Округление до заданного количества нулей
 // -----------------------------------------------------------------------------
-double round_nzero (const double& var, const Int32 & n_zero)
+double round_nzero (double var, Int32 n_zero)
 {
     double scale = pow (10, n_zero);
     if (!is_equal (scale, 0)) {
@@ -897,13 +925,9 @@ Int32 ceil_mod_classic (Int32 n, Int32 k)
 // --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
-Int32 DoubleM2IntMM (const double& value)
+Int32 DoubleM2IntMM (double value)
 {
-    double param_real = round (value * 1000.0) / 1000.0;
-    if (value - param_real > 0.001) param_real += 0.001;
-    param_real = param_real * 1000.0;
-    Int32 param_int = ceil_mod ((GS::Int32) param_real, 1);
-    return param_int;
+    return static_cast<Int32> (std::round (value * 1000.0));
 }
 
 // -----------------------------------------------------------------------------
@@ -1042,12 +1066,13 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         return str;
     }
     GS::Array<GS::UniString> parts;
-    UInt32 npart = StringSplt (var, no_breake_space, parts);
-    if (npart == 1) npart = StringSplt (var, COMMA, parts);
-    if (npart == 1) npart = StringSplt (var, DOT, parts);
-    if (npart == 1) npart = StringSplt (var, ")", parts);
-    if (npart == 1) npart = StringSplt (var, ":", parts);
-    if (npart == 1) npart = StringSplt (var, "-", parts);
+    GS::Array<GS::UniString> loopScratch;
+    UInt32 npart = StringSplt (var, no_breake_space, parts, true, &loopScratch);
+    if (npart == 1) npart = StringSplt (var, COMMA, parts, true, &loopScratch);
+    if (npart == 1) npart = StringSplt (var, DOT, parts, true, &loopScratch);
+    if (npart == 1) npart = StringSplt (var, ")", parts, true, &loopScratch);
+    if (npart == 1) npart = StringSplt (var, ":", parts, true, &loopScratch);
+    if (npart == 1) npart = StringSplt (var, "-", parts, true, &loopScratch);
     if (npart == 1) {
         str.PushNew (var);
         return str;
@@ -1228,11 +1253,11 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
     GSCharCode chcode = GetCharCode (instring, findecode);
     GSCharCode chcode_ = chcode;
     GS::Array<GS::UniString> tpartstring;
-    UInt32 n = StringSplt (instring, delim, tpartstring);
+    StringSplt (instring, delim, tpartstring, true);
     std::map<std::string, GSCharCode, doj::alphanum_less<std::string> > unic = {};
-    for (UInt32 i = 0; i < n; i++) {
-        if (!findecode) chcode_ = GetCharCode (tpartstring[i]);
-        std::string s = tpartstring[i].ToCStr (0, MaxUSize, chcode_).Get ();
+    for (const auto& part : tpartstring) {
+        if (!findecode) chcode_ = GetCharCode (part);
+        std::string s = part.ToCStr (0, MaxUSize, chcode_).Get ();
         unic[s] = chcode_;
     }
     UInt32 nout = 0;
@@ -1240,7 +1265,7 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
         std::string s = k->first;
         chcode_ = k->second;
         GS::UniString unis = GS::UniString (s.c_str (), chcode_);
-        partstring.Push (unis);
+        partstring.Push (std::move (unis));
         nout = nout + 1;
     }
     return nout;
@@ -1321,37 +1346,26 @@ bool ProbeCharCode (const GS::UniString & instring, GSCharCode chcode)
 }
 
 // -----------------------------------------------------------------------------
-// Делит строку по разделителю, возвращает кол-во частей (кроме пустых)
-// -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring)
-{
-    return StringSplt_ (instring, delim, partstring, true);
-}
-
-
-// -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
-UInt32 StringSplt_ (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, bool filter_empty)
+UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, bool filter_empty, GS::Array<GS::UniString>*scratch_parts)
 {
-    if (!instring.Contains (delim)) {
-        partstring.Push (instring);
-        return 1;
+    // Если внешний буфер передан — используем его, если нет — создаем локальный
+    GS::Array<GS::UniString> local_scratch;
+    if (scratch_parts != nullptr) {
+        scratch_parts->Clear ();
     }
-    GS::Array<GS::UniString> parts;
-    instring.Split (delim, &parts);
+    GS::Array<GS::UniString>& working_scratch = (scratch_parts != nullptr) ? *scratch_parts : local_scratch;
+    instring.Split (delim, &working_scratch);
     UInt32 n = 0;
-    GS::UniString part = "";
-    for (const GS::UniString& originalPart : parts) {
-        GS::UniString part = originalPart;
+    if (working_scratch.GetSize () > 1) partstring.SetCapacity (partstring.GetSize () + working_scratch.GetSize ());
+    for (GS::UniString& part : working_scratch) {
         part.Trim ();
         part.Trim ('\r');
         part.Trim ('\n');
-        if (!part.IsEmpty () || !filter_empty) {
-            if (!part.IsEmpty () || !filter_empty) {
-                partstring.Push (std::move (part));
-                n += 1;
-            }
+        if (!filter_empty || !part.IsEmpty ()) {
+            partstring.Push (std::move (part));
+            n += 1;
         }
     }
     return n;
@@ -1361,17 +1375,21 @@ UInt32 StringSplt_ (const GS::UniString & instring, const GS::UniString & delim,
 // Делит строку по разделителю, возвращает кол-во частей
 // Записывает в массив только части, содержащие строку filter
 // -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, const GS::UniString & filter)
+UInt32 StringSpltFilter (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, const GS::UniString & filter, GS::Array<GS::UniString>*scratch_parts)
 {
-    if (!instring.Contains (delim) || !instring.Contains (filter)) {
-        partstring.Push (instring);
-        return 1;
+    GS::Array<GS::UniString> local_scratch;
+    if (scratch_parts != nullptr) {
+        scratch_parts->Clear ();
     }
-    GS::Array<GS::UniString> parts = {};
+    GS::Array<GS::UniString>& working_scratch = (scratch_parts != nullptr) ? *scratch_parts : local_scratch;
+    instring.Split (delim, &working_scratch);
     UInt32 n = 0;
-    StringSplt_ (instring, delim, parts, true);
-    for (GS::UniString& part : parts) {
-        if (part.Contains (filter)) {
+    if (working_scratch.GetSize () > 1) partstring.SetCapacity (partstring.GetSize () + working_scratch.GetSize ());
+    for (GS::UniString& part : working_scratch) {
+        part.Trim ();
+        part.Trim ('\r');
+        part.Trim ('\n');
+        if (!part.IsEmpty () && part.Contains (filter)) {
             partstring.Push (std::move (part));
             n += 1;
         }
@@ -2131,8 +2149,10 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
     #ifdef AC_22
     return elements;
     #else
+    GS::Array<API_Guid> elemGuids = {};
+    API_Property propertyflag = {};
     for (const auto& classificationItemGuid : definition.availability) {
-        GS::Array<API_Guid> elemGuids = {};
+        elemGuids.Clear ();
         error = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
         if (error != NoError) {
             msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetElementsWithClassification", error, classificationItemGuid);
@@ -2140,7 +2160,6 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
         }
         for (const auto& elemGuid : elemGuids) {
             if (!ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay | APIFilt_IsEditable | APIFilt_InMyWorkspace | APIFilt_HasAccessRight)) continue;
-            API_Property propertyflag = {};
             error = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
             if (error != NoError) {
                 msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetPropertyValue", error, elemGuid);

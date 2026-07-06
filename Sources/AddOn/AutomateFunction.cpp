@@ -609,7 +609,7 @@ void ProfileByLine ()
         double depth = 0.01;
         if (id.Contains (ATSIGN)) {
             GS::Array<GS::UniString> sr = {};
-            UInt32 nsr = StringSplt (id, ATSIGN, sr);
+            UInt32 nsr = StringSplt (id, ATSIGN, sr, true);
             if (nsr > 1) {
                 double x;
                 if (UniStringToDouble (sr[1], x)) {

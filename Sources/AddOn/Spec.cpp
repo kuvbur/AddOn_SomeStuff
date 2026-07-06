@@ -1236,7 +1236,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
             out.ReplaceAll (STRINGPROC, EMPTYSTRING);
             out.ReplaceAll ("nosyncname", EMPTYSTRING);
             msg_rep ("Spec", out, NoError, APINULLGuid);
-            }
+        }
         if (!not_found_unic.IsEmpty ()) {
             GS::UniString SpecNotFoundParametersString = RSGetIndString (iseng, SpecNotFoundParametersId, ACAPI_GetOwnResModule ());
             ACAPI_WriteReport (SpecNotFoundParametersString, true);
@@ -1255,13 +1255,13 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
             out.ReplaceAll (STRINGPROC, EMPTYSTRING);
             out.ReplaceAll ("nosyncname", EMPTYSTRING);
             msg_rep ("Spec", out, NoError, APINULLGuid);
-            }
+        }
         if (!not_found_paramname.IsEmpty () || !not_found_unic.IsEmpty ()) {
             n_elements = 0;
             elements.Clear ();
             return 0;
         }
-        }
+    }
     if (!rule.delete_old) return n_elements;
     UnicGuid guids = {};
     for (const API_Guid& elemguid : rule.exsist_elements) {
@@ -1380,7 +1380,7 @@ Int32 GetElementsForRule (SpecRule& rule, const ParamDictElement& paramToRead, c
     n_elements += elements_mod.GetSize ();
     n_elements += elements.GetSize ();
     return n_elements;
-        }
+}
 
 // --------------------------------------------------------------------
 // Разбивает строку на части. Будем постепенно заменять на пустоту обработанные части
@@ -1399,6 +1399,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     SpecRule rule = {};
     GS::Array<GS::UniString> partstring = {};
     GS::UniString ldescription = description.ToLowerCase ();
+    GS::Array<GS::UniString> local_scratch;
     if (ldescription.Contains ("pec_rule_v2")) {
         rule.delete_old = true;
     } else {
@@ -1440,14 +1441,14 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     GS::Array<GS::UniString> paramss = {};
     // Разбивка на группы и итог
     GS::Array<GS::UniString> rulestring_summ = {}; // Массив из имени избранного, групп g() и s()
-    if (StringSplt (description, "s@@", rulestring_summ) < 2) {
+    if (StringSplt (description, "s@@", rulestring_summ, true, &local_scratch) < 2) {
         rule.is_Valid = false;
         return rule;
     }
     // Параметры для записи
     // До точки с запятой - уникальные параметры , после - параметры для суммы
     GS::Array<GS::UniString> rulestring_write = {}; // Свойства для записи из группы s()
-    UInt32 nrule_write = StringSplt (rulestring_summ[1], SEMICOLON, rulestring_write);
+    UInt32 nrule_write = StringSplt (rulestring_summ[1], SEMICOLON, rulestring_write, true, &local_scratch);
     if (nrule_write != 2) {
         rule.is_Valid = false;
         return rule;
@@ -1458,7 +1459,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     // Qn1, Qn2 - имена параметров для записи количества Q1,Q2, part == 1
     for (UInt32 part = 0; part < nrule_write; part++) {
         GS::Array<GS::UniString> rulestring_param = {};
-        UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param);
+        UInt32 nrule_param = StringSplt (rulestring_write[part], COMMA, rulestring_param, true, &local_scratch);
         if (nrule_param > 0) {
             for (UInt32 i = 0; i < nrule_param; i++) {
                 FormatString formatstring;
@@ -1483,7 +1484,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
     }
     // Разбивка на группы
     GS::Array<GS::UniString> rulestring_group = {}; // Массив с строками групп
-    UInt32 nrule_group = StringSplt_ (rulestring_summ[0], "g@@", rulestring_group, false);
+    UInt32 nrule_group = StringSplt (rulestring_summ[0], "g@@", rulestring_group, false, &local_scratch);
     if (nrule_group < 1) {
         rule.is_Valid = false;
         return rule;
@@ -1509,7 +1510,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
         }
         if (hasLibData (rulestring_one_group)) group.fromLibData = true;
         // Разбивка группы на параметры
-        UInt32 nrule_read = StringSplt_ (rulestring_one_group, SEMICOLON, rulestring_read, false);
+        UInt32 nrule_read = StringSplt (rulestring_one_group, SEMICOLON, rulestring_read, false, &local_scratch);
         if (nrule_read <= 1) {
             rule.is_Valid = false;
             return rule;
@@ -1523,7 +1524,7 @@ SpecRule GetRuleFromDescription (GS::UniString& description)
         bool isUnicSameAsOut = false; // Совпадают ли уникальные параметры с параметрами для записи
         for (UInt32 part = 0; part < nrule_read; part++) {
             GS::Array<GS::UniString> rulestring_param = {}; // Массив параметров 
-            UInt32 nrule_param = StringSplt_ (rulestring_read[part], COMMA, rulestring_param, false);
+            UInt32 nrule_param = StringSplt (rulestring_read[part], COMMA, rulestring_param, false, &local_scratch);
             if (nrule_param < 1) continue;
             if (part == 0 && nrule_param == 1) {
                 GS::UniString& name = rulestring_param[0];
@@ -1768,7 +1769,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
     if (err != NoError) {
         msg_rep ("Spec", "ACAPI_Element_GetPropertyDefinitionsOfDefaultElem", err, APINULLGuid);
         return err;
-}
+    }
     for (const auto& definition : definitions) {
         GS::UniString fname = ""; GS::UniString rawName = PROPERTYNAMEPREFIX;
         GetPropertyFullName (definition, fname);
@@ -1777,7 +1778,7 @@ GSErrCode GetElementForPlaceProperties (const GS::UniString& favorite_name, GS::
         if (!paramdict.ContainsKey (rawName)) paramdict.Add (rawName, definition.description.ToLowerCase ());
     }
     return err;
-    }
+}
 
 GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& element, API_ElementMemo& memo)
 {
@@ -1805,7 +1806,7 @@ GSErrCode GetElementForPlace (const GS::UniString& favorite_name, API_Element& e
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         msg_rep ("Spec", "ACAPI_Element_GetDefaults", err, APINULLGuid);
-}
+    }
     return err;
 }
 // --------------------------------------------------------------------
@@ -1886,7 +1887,7 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         act_st = storyInfo.actStory;
         find_stor = true;
         BMKillHandle ((GSHandle*) &storyInfo.data);
-}
+    }
     ACAPI_CallUndoableCommand ("Create Spec element", [&]() -> GSErrCode {
         int n_elem = 0;
         for (UInt32 i = 0; i < elementstocreate.GetSize (); i++) {
@@ -2042,9 +2043,9 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
                 #endif
                 if (err != NoError) msg_rep ("Spec", "ACAPI_ElementGroup_Create", err, APINULLGuid);
             }
-            }
+        }
         return NoError;
-        });
+    });
     for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
@@ -2054,6 +2055,6 @@ GSErrCode PlaceElements (GS::Array<ElementDict>& elementstocreate, ParamDictValu
         if (err != NoError) msg_rep ("Spec", "APIAny_RunGDLParScriptID", err, APINULLGuid);
     }
     return NoError;
-    }
+}
 
-    }
+}

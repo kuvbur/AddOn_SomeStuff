@@ -80,7 +80,7 @@ GS::UniString GetParam (const GS::UniString& param_zone, GS::UniString param_nam
     if (!param_zone.Contains (ATSIGN)) return param;
     if (!param_zone.Contains ("=")) return param;
     GS::Array<GS::UniString> partstring = {};
-    UInt32 n = StringSplt (param_zone, ATSIGN, partstring, param_name);
+    UInt32 n = StringSpltFilter (param_zone, ATSIGN, partstring, param_name);
     param = partstring[0];
     param.ReplaceAll (param_name, EMPTYSTRING);
     param.ReplaceAll ("=", EMPTYSTRING);
@@ -306,7 +306,7 @@ void Add (LibElement& paramListDataToRead, GS::UniString& name, GS::UniString& u
     if (name.Contains ("v4%%")) version = 4;
     if (version == 0) return;
     GS::Array<GS::UniString> partstring = {};
-    UInt32 n = StringSplt_ (name, SEMICOLON, partstring, false);
+    UInt32 n = StringSplt (name, SEMICOLON, partstring, false);
     if (n < 1) return;
     GS::UniString tip_el = "";
     if (version == 3 || version == 4) tip_el = partstring[1];

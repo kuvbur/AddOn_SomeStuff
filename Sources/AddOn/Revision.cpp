@@ -534,7 +534,7 @@ bool ChangeLayoutProperty (ChangeMarkerDict& changes, GS::HashTable<GS::UniStrin
             }
             if (allchanges.ContainsKey (change.changeId)) {
                 GS::Array<GS::UniString> partnote;
-                UInt32 n = StringSplt (change.note, ";@", partnote);
+                UInt32 n = StringSplt (change.note, ";@", partnote, true);
                 for (auto noteone : partnote) {
                     if (!allchanges.Get (change.changeId).ContainsKey (noteone)) {
                         Notes notesd;
@@ -667,14 +667,16 @@ void GetChangesLayout (GS::Array<API_RVMChange>& layoutchange, ChangeMarkerDict&
     GS::UniString novString = RSGetIndString (isEng_, Nov_StringID, ACAPI_GetOwnResModule ());
     GS::UniString annulString = RSGetIndString (isEng_, Annul_StringID, ACAPI_GetOwnResModule ());
     // Обрабатываем изменения, не привязанные к маркерам
+    GS::Array<GS::UniString> partstring;
+    GS::Array<GS::UniString> local_scratch;
     for (auto c : layoutchange) {
         Change ch;
         GS::UniString nizm = "";
         GS::UniString changeId = c.id;
         changeId.Trim ();
         changeId.ReplaceAll ("  ", SPACESTRING);
-        GS::Array<GS::UniString> partstring;
-        UInt32 n = StringSplt (changeId, SPACESTRING, partstring);
+        partstring.Clear ();
+        UInt32 n = StringSplt (changeId, SPACESTRING, partstring, true, &local_scratch);
         ch.changeId = changeId;
         if (n > 3) {
             if (ch.typeizm == TypeNone && partstring[2].Contains (izmString)) ch.typeizm = TypeIzm;
@@ -737,7 +739,7 @@ bool GetChangesMarker (ChangeMarkerDict& changes)
                 changeId.Trim ();
                 changeId.ReplaceAll ("  ", SPACESTRING);
                 GS::Array<GS::UniString> partstring;
-                UInt32 n = StringSplt (changeId, SPACESTRING, partstring);
+                UInt32 n = StringSplt (changeId, SPACESTRING, partstring, true);
                 ch.changeId = changeId;
                 if (n > 3) {
                     if (typeizm > TypeNone && typeizm <= TypeAnnul) ch.typeizm = typeizm;

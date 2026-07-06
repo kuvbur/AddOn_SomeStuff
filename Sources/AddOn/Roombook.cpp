@@ -605,7 +605,7 @@ void OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString & r
     if (descripton.Contains (BRACESTART) && descripton.Contains (BRACEEND) && descripton.Contains (SEMICOLON)) {
         descripton = descripton.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
         GS::Array<GS::UniString> partstring;
-        UInt32 n = StringSplt (descripton, SEMICOLON, partstring);
+        UInt32 n = StringSplt (descripton, SEMICOLON, partstring, false);
         if (n > 0) {
             fontname = "Arial";
             if (!UniStringToDouble (partstring[0], c.width_mat)) c.width_mat = 50;

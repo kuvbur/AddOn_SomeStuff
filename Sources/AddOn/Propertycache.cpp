@@ -621,7 +621,7 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
             pvalue.name.Append (SLASH);
             pvalue.name.Append (definision.name);
             ParamHelpers::ConvertToParamValue (pvalue, definision);
-            propertyParams.Put (pvalue.rawName, pvalue);
+            propertyParams.Put (pvalue.rawName, std::move (pvalue));
             flag_add = true;
             continue;
         }
@@ -753,6 +753,11 @@ GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::UniString& name)
 {
     if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
+    auto& cache = PROPERTYCACHE ();
+    if (const auto* ptr = cache.propertyparamname.GetPtr (definision.groupGuid)) {
+        name = *ptr;
+        return NoError;
+    }
     GSErrCode error = NoError;
     if (definision.name.Contains ("ync_name")) {
         name = definision.name;
@@ -766,6 +771,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
                 GS::UniString attribsiffix = definision.name.GetSuffix (l - n);
                 name = name + attribsiffix;
             }
+            cache.propertyparamname.Put (definision.groupGuid, name);
             return NoError;
         }
         #endif
@@ -774,6 +780,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
             name = group.name;
             name.Append (SLASH);
             name.Append (definision.name);
+            cache.propertyparamname.Put (definision.groupGuid, name);
         } else {
             msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
         }
@@ -790,7 +797,7 @@ bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
     bool hasexpression = false; // Нужно ли нам читать список свойств
     if (autotext.Contains (SEMICOLON)) {
         GS::Array<GS::UniString> partstring = {};
-        StringSplt (autotext, SEMICOLON, partstring);
+        StringSplt (autotext, SEMICOLON, partstring, true);
         for (const auto& part : partstring) {
             DimRule dimrule = {};
             if (DimParsePref (part, dimrule, hasexpression)) {
@@ -828,7 +835,7 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
     if (!rawrule.Contains ("-")) return false;
     bool flag_find = false;
     GS::Array<GS::UniString> partstring_1 = {};
-    if (StringSplt (rawrule, "-", partstring_1) == 2) {
+    if (StringSplt (rawrule, "-", partstring_1, false) == 2) {
         //Проверяем - что указано в правиле: слой или номер пера
         // Слой указываем в кавычках, в regexp формате
         if (partstring_1[0].Contains (CHARDQUT)) {
@@ -861,7 +868,7 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
         }
         if (!partstring_1[1].Contains (COMMA)) return flag_find;
         GS::Array<GS::UniString> partstring_2 = {};
-        if (StringSplt (partstring_1[1], COMMA, partstring_2) > 1) {
+        if (StringSplt (partstring_1[1], COMMA, partstring_2, true) > 1) {
             if (!partstring_2[0].IsEmpty ()) {
                 dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
                 flag_find = true;
