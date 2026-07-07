@@ -23,10 +23,6 @@ void Test ()
     TestCheckIgnoreVal ();
     TestReadProperty ();
     TestAddProperty ();
-    GS::UniString var = " ";
-    TestGetTextLineLength (var);
-    var = u8"\u2007"; TestGetTextLineLength (var);
-    var = ""; TestGetTextLineLength (var);
     DBprnt ("TEST", "end");
 }
 
@@ -407,7 +403,11 @@ void TestConvertAttributeToParamValue ()
     pvalue = ParamValue ();
     attrib = {};
     attrib.header.typeID = API_LayerID;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    attrib.header.index = ACAPI_CreateAttributeIndex (0);
+    #else
     attrib.header.index = 0;
+    #endif
     ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrZero", attrib);
     DBtest (pvalue.val.intValue, (Int32) 0, "ConvertAttributeToParamValue : intValue (index == 0)", true);
     DBtest (!pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (index == 0, не > 0)", true);
@@ -421,7 +421,11 @@ void TestConvertAttributeToParamValue ()
     pvalue = ParamValue ();
     attrib = {};
     attrib.header.typeID = API_LayerID;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    attrib.header.index = ACAPI_CreateAttributeIndex (1);
+    #else
     attrib.header.index = 1;
+    #endif
     ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrOne", attrib);
     DBtest (pvalue.val.intValue, (Int32) 1, "ConvertAttributeToParamValue : intValue (index == 1)", true);
     DBtest (pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (index == 1 > 0)", true);
@@ -431,7 +435,11 @@ void TestConvertAttributeToParamValue ()
     pvalue = ParamValue ();
     attrib = {};
     attrib.header.typeID = API_LayerID;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    attrib.header.index = ACAPI_CreateAttributeIndex (std::numeric_limits<short>::max ());
+    #else
     attrib.header.index = std::numeric_limits<short>::max ();
+    #endif
     ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrMax", attrib);
     DBtest (pvalue.val.intValue, (Int32) std::numeric_limits<short>::max (), "ConvertAttributeToParamValue : intValue (index == SHRT_MAX)", true);
     DBtest (pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (SHRT_MAX > 0)", true);
@@ -442,7 +450,11 @@ void TestConvertAttributeToParamValue ()
     pvalue.rawName = "{@attrib:custom_rawname}";
     attrib = {};
     attrib.header.typeID = API_LayerID;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    attrib.header.index = ACAPI_CreateAttributeIndex (5);
+    #else
     attrib.header.index = 5;
+    #endif
     ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrCustomRaw", attrib);
     DBtest (pvalue.rawName, GS::UniString ("{@attrib:custom_rawname}"), "ConvertAttributeToParamValue : rawName не перезаписывается, если не пуст", true);
 

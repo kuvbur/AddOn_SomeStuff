@@ -43,11 +43,8 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
     #ifdef TESTING
     DBprnt ("ReservationChangeHandler");
     #endif
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    SyncSettings syncSettings (true, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
-    #ifdef EXTNDVERSION
-    syncSettings.syncMon = true;
-    #endif // PK_1
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
         #if defined(AC_28) || defined(AC_29)
         AttachObserver ((it->key), syncSettings);
@@ -72,11 +69,8 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
     #ifdef TESTING
     DBprnt ("ProjectEventHandlerProc");
     #endif
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    SyncSettings syncSettings (true, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings, true);
-    #ifdef EXTNDVERSION
-    syncSettings.syncMon = true;
-    #endif // PK_1
     MenuSetState (syncSettings);
     GSErrCode err = NoError;
     switch (notifID) {
@@ -179,9 +173,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings);
     int dummymode = DUMMY_MODE_UNDEF;
-    #ifdef EXTNDVERSION
-    syncSettings.syncMon = true;
-    #endif // PK_1
     if (!syncSettings.syncMon) return NoError;
     if (elemType->notifID == APINotifyElement_BeginEvents) {
         PROPERTYCACHE ().compositeCache.Clear ();
@@ -283,9 +274,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
 // -----------------------------------------------------------------------------
 void	Do_ElementMonitor (bool syncMon)
 {
-    #ifdef EXTNDVERSION
-    syncMon = true;
-    #endif
     bool isteamwork = false;
     short userid = 0;
     GSErrCode err = IsTeamwork (isteamwork, userid);
@@ -298,7 +286,7 @@ void	Do_ElementMonitor (bool syncMon)
         ACAPI_Element_InstallElementObserver (ElementEventHandlerProc);
         if (isteamwork) ACAPI_Notification_CatchElementReservationChange (ReservationChangeHandler);
         #else
-        ACAPI_Notify_CatchNewElement (nullptr, ElementEventHandlerProc);			// for all elements
+        ACAPI_Notify_CatchNewElement (nullptr, ElementEventHandlerProc);
         ACAPI_Notify_InstallElementObserver (ElementEventHandlerProc);
         if (isteamwork) ACAPI_Notify_CatchElementReservationChange (ReservationChangeHandler);
         #endif
@@ -357,11 +345,8 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
     #if defined(TESTING)
     DBprnt ("MenuCommandHandler start");
     #endif
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    SyncSettings syncSettings (true, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings, true);
-    #ifdef EXTNDVERSION
-    syncSettings.syncMon = true;
-    #endif // PK_1
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_UserInput_ClearElementHighlight ();
     #else
@@ -378,9 +363,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
             switch (menuParams->menuItemRef.itemIndex) {
                 case MonAll_CommandID:
                     syncSettings.syncAll = false;
-                    #ifndef EXTNDVERSION
                     syncSettings.syncMon = !syncSettings.syncMon;
-                    #endif // PK_1
                     Do_ElementMonitor (syncSettings.syncMon);
                     MonAll (syncSettings);
                     break;
@@ -452,7 +435,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     #endif
             }
             break;
-    }
+}
     (void) err;
     DimRoundAll (syncSettings, false);
     WriteSyncSettingsToPreferences (syncSettings);
@@ -509,11 +492,8 @@ GSErrCode __ACENV_CALL Initialize (void)
     #if defined(TESTING)
     DBprnt ("Initialize");
     #endif
-    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    SyncSettings syncSettings (true, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings, true);
-    #ifdef EXTNDVERSION
-    syncSettings.syncMon = true;
-    #endif // PK_1
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.syncMon);
     MonAll (syncSettings);

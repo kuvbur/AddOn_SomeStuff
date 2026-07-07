@@ -669,9 +669,6 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
 // -----------------------------------------------------------------------------
 Int32 isEng ()
 {
-    #ifdef EXTNDVERSION
-    return 0;
-    #endif
     auto& cache = PROPERTYCACHE ();
     if (!cache.isEng_OK) cache.ReadisEng ();
     return cache.isEng;
