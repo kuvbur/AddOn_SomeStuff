@@ -143,8 +143,10 @@ static const RoutingElementSharedData& GetRoutingElementSharedDataCached (const 
                 x1 = pt.x; y1 = pt.y; z1 = pt.z;
             }
         }
+        #if defined (AC_28) || defined(AC_29)
         ACAPI::Result<ACAPI::MEP::UniqueID> tableID_ = element->GetBranchPreferenceTableId ();
         if (tableID_.IsOk ()) data.branchTableID = tableID_.Unwrap ();
+        #endif
     } else {
         ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
     }
@@ -293,7 +295,7 @@ void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid)
         subelemGuid = GetSubElementOfRoutingCached (GSGuid2APIGuid (routingId.GetGuid ()));
         return;
     }
-}
+    }
 #if defined (AC_28) || defined(AC_29)
 bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
 {
@@ -432,7 +434,7 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             return flag;
         }
         return flag;
-    }
+        }
     if (IsPiping (elem_head.type.classID)) {
         if (ParamValue* pval = paramByType.GetPtr (rawnamereferencesetname)) {
             ACAPI::Result<PipeReferenceSet> pipeReferenceSet = GetPipeReferenceSet ();
@@ -489,12 +491,12 @@ bool GetMEPData (const API_Elem_Head & elem_head, ParamDictValue & paramByType)
             return flag;
         }
         return flag;
-    }
+        }
     if (IsCableCarrier (elem_head.type.classID)) {
         return flag;
     }
     return flag;
-}
+    }
 
 bool ReadTransitionData (const API_Guid & guid, bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & transtableID, double& bdiametr, double& ediametr)
 {
@@ -821,9 +823,9 @@ bool ReadDuctSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                 }
             }
         }
-    }
+        }
     return true;
-}
+    }
 
 bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, uint32_t & refid)
 {
@@ -851,11 +853,11 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
             if (val.IsOk ()) {
                 ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
-    } else {
+            } else {
                 ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, EMPTYSTRING);
                 flag = true;
             }
-}
+        }
         if (ParamValue* pval = paramByType.GetPtr (rawnamediametr)) {
             #if defined (AC_29)
             ACAPI::Result<double> val = table->GetDiameterByKey (refid);
@@ -866,8 +868,8 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
 
                 ParamHelpers::ConvertDoubleToParamValue (*pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
+            }
         }
-}
         if (ParamValue* pval = paramByType.GetPtr (rawnamewallthickness)) {
 
             if (!pval->isValid) {
@@ -879,12 +881,12 @@ bool ReadPipeSegmentPreferenceTable (bool& flag, ParamDictValue & paramByType, A
                 if (val.IsOk ()) {
                     ParamHelpers::ConvertDoubleToParamValue (*pval, EMPTYSTRING, val.Unwrap ());
                     flag = true;
+                }
             }
         }
-        }
-            }
+    }
     return true;
-        }
+    }
 
 bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, double& diametr, double& radius)
 {
@@ -944,11 +946,11 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAP
         if (val.IsOk ()) {
             ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, val.Unwrap ());
             flag = true;
-    } else {
+        } else {
             ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, EMPTYSTRING);
             flag = true;
         }
-}
+    }
     if (ParamValue* pval = paramByType.GetPtr (rawnamediametr)) {
         #if defined (AC_29)
         ACAPI::Result<double> val = table->GetDiameterByKey (key);
@@ -959,7 +961,7 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAP
 
             ParamHelpers::ConvertDoubleToParamValue (*pval, EMPTYSTRING, val.Unwrap ());
             flag = true;
-    }
+        }
     }
     if (ParamValue* pval = paramByType.GetPtr (rawnamebendradius)) {
         if (!pval->isValid) {
@@ -971,11 +973,11 @@ bool ReadDuctBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAP
             if (val.IsOk ()) {
                 ParamHelpers::ConvertDoubleToParamValue (*pval, EMPTYSTRING, val.Unwrap ());
                 flag = true;
+            }
         }
     }
-    }
     return true;
-    }
+}
 
 bool ReadPipeBendPreferenceTable (bool& flag, ParamDictValue & paramByType, ACAPI::MEP::ConnectorShape & shape, ACAPI::MEP::UniqueID & tableID, double& diametr, double& radius)
 {

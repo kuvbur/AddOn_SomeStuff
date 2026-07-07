@@ -72,6 +72,10 @@ static const Int32 SubElementNotExsistId = 48;
 static const Int32 SpecParamPlaceNotFoundId = 65;
 static const Int32 SpecFlagOff = 66;
 
+static const GS::UniString MAT_SOME_STUFF_TH = "@property:buildingmaterialproperties/some_stuff_th";
+static const GS::UniString MAT_SOME_STUFF_UNITS = "@property:buildingmaterialproperties/some_stuff_units";
+static const GS::UniString MAT_SOME_STUFF_KZAP = "@property:buildingmaterialproperties/some_stuff_kzap";
+
 struct SortGUID
 {
     GS::Array<API_Guid> guid = {};
@@ -631,12 +635,12 @@ void ComponentsGetUnic (GS::Array<ParamValueComposite>& composite);
 // --------------------------------------------------------------------
 // Получение данных из многослойной конструкции
 // --------------------------------------------------------------------
-bool ComponentsCompositeStructure (const API_Guid& elemguid, API_AttributeIndex& constrinx, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, double& width, double& length);
+bool ComponentsCompositeStructure (const API_Guid& elemguid, API_AttributeIndex& constrinx, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, double& width, double& length);
 
 // --------------------------------------------------------------------
 // Получение данных из сложного профиля, для АС24 и выше
 // --------------------------------------------------------------------
-bool ComponentsProfileStructure (ProfileVectorImage& profileDescription, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, GS::HashTable<API_AttributeIndex, bool>& existsmaterial, double& width, double& length, bool& needReadQuantities);
+bool ComponentsProfileStructure (ProfileVectorImage& profileDescription, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, double& width, double& length, bool& needReadQuantities);
 
 // --------------------------------------------------------------------
 // Вытаскивает всё, что может, из информации о составе элемента

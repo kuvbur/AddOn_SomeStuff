@@ -87,6 +87,13 @@ bool GetArrayPropertyDefinitionToParamDict (ParamDictValue& propertyParams, GS::
 
 }
 
+// Структура для хранения чистых данных одного слоя в кэше
+struct CachedLayer
+{
+    API_AttributeIndex buildingMaterial = {};
+    double fillThick = 0;
+    short flagBits = 0;
+};
 struct PropertyCache
 {
     ParamDictValue property;
@@ -101,11 +108,17 @@ struct PropertyCache
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
     GS::HashTable<GS::UniString, FormatString> parsedformatstring;
     GS::HashTable<GS::UniString, GS::UniString> gdlparamname;
-    GS::HashTable<API_Guid, GS::UniString> propertyparamname;
     FormatStringDict formatstringformeasuretype;
     GS::UniString meterString = "m";
     GS::UniString santimeterString = "cm";
     GS::UniString decimeterString = "dm";
+    GS::HashTable<Int32, GS::Array<CachedLayer>> compositeCache;
+    GS::UniString buildingMaterialNameString;
+    GS::UniString buildingMaterialDescriptionString;
+    GS::UniString buildingMaterialDensityString;
+    GS::UniString buildingMaterialManufacturerString;
+    GS::UniString buildingMaterialCutFillString;
+    GS::UniString thicknessString;
 
     Int32 isEng;
     bool isEng_OK;
@@ -170,6 +183,7 @@ struct PropertyCache
         file.Clear ();
         filedata.Clear ();
         formatstringformeasuretype.Clear ();
+        compositeCache.Clear ();
         surv_point_tm = {};
         isEng = 0;
         isEng_OK = false;
@@ -237,6 +251,13 @@ struct PropertyCache
         meterString = RSGetIndString (iseng_, MeterStringID, ACAPI_GetOwnResModule ());
         santimeterString = RSGetIndString (iseng_, CMeterStringID, ACAPI_GetOwnResModule ());
         decimeterString = RSGetIndString (iseng_, DMeterStringID, ACAPI_GetOwnResModule ());
+        const GS::UniString PROP_PREFIX = "@property:";
+        buildingMaterialNameString = PROP_PREFIX + RSGetIndString (iseng_, BuildingMaterialNameID, ACAPI_GetOwnResModule ());
+        buildingMaterialDescriptionString = PROP_PREFIX + RSGetIndString (iseng_, BuildingMaterialDescriptionID, ACAPI_GetOwnResModule ());
+        buildingMaterialDensityString = PROP_PREFIX + RSGetIndString (iseng_, BuildingMaterialDensityID, ACAPI_GetOwnResModule ());
+        buildingMaterialManufacturerString = PROP_PREFIX + RSGetIndString (iseng_, BuildingMaterialManufacturerID, ACAPI_GetOwnResModule ());
+        buildingMaterialCutFillString = PROP_PREFIX + RSGetIndString (iseng_, BuildingMaterialCutFillID, ACAPI_GetOwnResModule ());
+        thicknessString = PROP_PREFIX + RSGetIndString (iseng_, ThicknessID, ACAPI_GetOwnResModule ());
     }
 
     void Update ()

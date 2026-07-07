@@ -753,11 +753,6 @@ GS::UniString GetPropertyNameByGUID (const API_Guid& guid)
 GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::UniString& name)
 {
     if (definision.groupGuid == APINULLGuid) return APIERR_BADID;
-    auto& cache = PROPERTYCACHE ();
-    if (const auto* ptr = cache.propertyparamname.GetPtr (definision.groupGuid)) {
-        name = *ptr;
-        return NoError;
-    }
     GSErrCode error = NoError;
     if (definision.name.Contains ("ync_name")) {
         name = definision.name;
@@ -771,7 +766,6 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
                 GS::UniString attribsiffix = definision.name.GetSuffix (l - n);
                 name = name + attribsiffix;
             }
-            cache.propertyparamname.Put (definision.groupGuid, name);
             return NoError;
         }
         #endif
@@ -780,7 +774,6 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
             name = group.name;
             name.Append (SLASH);
             name.Append (definision.name);
-            cache.propertyparamname.Put (definision.groupGuid, name);
         } else {
             msg_rep ("GetPropertyFullName", "ACAPI_Property_GetPropertyGroup " + definision.name, error, APINULLGuid);
         }

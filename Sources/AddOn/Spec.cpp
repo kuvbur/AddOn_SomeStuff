@@ -956,9 +956,9 @@ void GetParamToReadFromRule (SpecRule& rule, ParamDictElement& paramToRead, Para
             t.ReplaceAll ("{@material:layers_auto,all;", BRACESTART);
             t = t.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
             ParamHelpers::ParseParamNameMaterial (t, paramDict);
-            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_th");
-            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_units");
-            ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_kzap");
+            ParamHelpers::AddValueToParamDictValue (paramDict, MAT_SOME_STUFF_TH);
+            ParamHelpers::AddValueToParamDictValue (paramDict, MAT_SOME_STUFF_UNITS);
+            ParamHelpers::AddValueToParamDictValue (paramDict, MAT_SOME_STUFF_KZAP);
             for (UInt32 inx = 0; inx < 20; inx++) {
                 ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
             }

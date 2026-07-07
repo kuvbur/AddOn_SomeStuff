@@ -43,10 +43,10 @@ bool IsElementThrottled (const API_Guid& guid)
     if (std::chrono::steady_clock::time_point* lastTime = g_ElementSyncCache.GetPtr (guid)) {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - *lastTime);
         if (elapsed < SYNC_THROTTLE_THRESHOLD) {
-            return true; // Элемент обрабатывался совсем недавно, игнорируем спам
             #if defined(TESTING)
             DBprnt ("!IsElementThrottled on!");
             #endif
+            return true; // Элемент обрабатывался совсем недавно, игнорируем спам
         }
         *lastTime = now; // Обновляем время для следующего легитимного изменения
         return false;
@@ -722,10 +722,10 @@ void SyncCalcRule (const WriteDict & syncRules, const GS::Array<API_Guid>&subele
             // Т.к. у свойства может быть несколько описаний, в том числе с разными правилами синхронизации, то если хотя бы в одном описании есть указание на игнорирование - будем проверять необходимость сброса
             if (is_eq && !is_ignore) {
                 if (ParamDict* res = reset_property.GetPtr (elemGuid)) {
-                    res->Put (paramTo.rawName, false);
+                    res->Put (paramTo.rawName, true);
                 } else {
                     ParamDict u = {};
-                    u.Put (paramTo.rawName, false);
+                    u.Put (paramTo.rawName, true);
                     reset_property.Put (elemGuid, std::move (u));
                 }
             }
@@ -737,10 +737,10 @@ void SyncCalcRule (const WriteDict & syncRules, const GS::Array<API_Guid>&subele
                 }
                 if (!isDefult) {
                     if (ParamDict* res = reset_property.GetPtr (elemGuid)) {
-                        res->Put (paramTo.rawName, false);
+                        res->Put (paramTo.rawName, true);
                     } else {
                         ParamDict u = {};
-                        u.Put (paramTo.rawName, false);
+                        u.Put (paramTo.rawName, true);
                         reset_property.Put (elemGuid, std::move (u));
 
                     }
@@ -941,7 +941,6 @@ bool ParseSyncString (const API_Guid & elemGuid, const API_ElemTypeID & elementT
         if (matchesKeywordBrace (i, "to_GUID", 7, consumed)) { dst.Append (TOGUIDBR);           i += consumed - 1; continue; }
         if (matchesKeywordBrace (i, "to_sub", 6, consumed)) { dst.Append (SYNCTOSUBSTRING);    i += consumed - 1; continue; }
         if (matchesKeywordBrace (i, "to", 2, consumed)) { dst.Append (SYNCTOSTRING);       i += consumed - 1; continue; }
-
         dst.Append (description_string[i]);
     }
     description_string = std::move (dst);
@@ -1066,16 +1065,15 @@ bool ParseSyncString (const API_Guid & elemGuid, const API_ElemTypeID & elementT
             GS::UniString templatestring = param.val.uniStringValue; //Строка с форматом числа
             if (ParamHelpers::ParseParamNameMaterial (templatestring, paramDict)) {
                 param.val.uniStringValue = templatestring;
-
                 // Свойств со спецтекстом может быть несколько (случайно)
                 // Тут будут костыли, которые хорошо бы убрать
                 for (UInt32 inx = 0; inx < 20; inx++) {
-                    ParamHelpers::AddValueToParamDictValue (paramDict, "@property:sync_name" + GS::UniString::Printf ("%d", inx));
+                    ParamHelpers::AddValueToParamDictValue (paramDict, GS::UniString::Printf ("@property:sync_name%d", inx));
                 }
                 if (param.fromQuantity) {
-                    ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_th");
-                    ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_units");
-                    ParamHelpers::AddValueToParamDictValue (paramDict, "@property:buildingmaterialproperties/some_stuff_kzap");
+                    ParamHelpers::AddValueToParamDictValue (paramDict, MAT_SOME_STUFF_TH);
+                    ParamHelpers::AddValueToParamDictValue (paramDict, MAT_SOME_STUFF_UNITS);
+                    ParamHelpers::AddValueToParamDictValue (paramDict, MAT_SOME_STUFF_KZAP);
                 }
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
             }
@@ -2042,7 +2040,7 @@ void SyncShowSubelement (const SyncSettings & syncSettings)
     if (err == NoError) {
         checkdb = (homedatabaseInfo.typeID != APIWind_3DModelID);
         isfloorplan = (homedatabaseInfo.typeID == APIWind_FloorPlanID);
-} else {
+    } else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
     GS::UniString pname = GetDBName (homedatabaseInfo);
@@ -2118,13 +2116,13 @@ void SyncShowSubelement (const SyncSettings & syncSettings)
                         count_otherplan++;
                         continue;
                     }
-            } else {
+                } else {
                     selNeigs.PushNew (guid);
                     count_otherplan++;
                     msg_rep ("ShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
                 }
-    }
+            }
             selNeigs.PushNew (guid);
         }
     }
@@ -2183,7 +2181,7 @@ void SyncShowSubelement (const SyncSettings & syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-    }
+}
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -2337,8 +2335,8 @@ bool SyncGetSubelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid & pa
                         un->Put (guid, isvisible);
                     }
                 }
-    }
-}
+            }
+        }
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
