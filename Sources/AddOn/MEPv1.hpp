@@ -103,9 +103,9 @@ void GetSubElementOfRouting (const API_Guid& elemGuid, GS::Array<API_Guid>& sube
 void GetSubElement (const API_Guid& elemGuid, GS::Array<API_Guid>& subelemGuid);
 
 bool ReadMEP (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
+
 void ClearRoutingSubelemCache ();
 #if defined (AC_28) || defined(AC_29)
-static const GS::Array<API_Guid>& GetSubElementOfRoutingCached (const API_Guid& routingGuid);
 bool GetMEPData (const API_Elem_Head& elem_head, ParamDictValue& paramByType);
 bool ReadTransitionData (const API_Guid& guid, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::ConnectorShape& shape, ACAPI::MEP::UniqueID& transtableID, double& bdiametr, double& ediametr);
 bool ReadRoutingElementData (const ACAPI::MEP::UniqueID& elementID, bool& flag, ParamDictValue& paramByType, ACAPI::MEP::UniqueID& branchtableID);
