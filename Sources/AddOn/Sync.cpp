@@ -680,24 +680,27 @@ bool SyncNeedResync (ParamDictElement & paramToRead, UnicGuidString property_wri
 
 void SyncCalcRule (const WriteDict & syncRules, const GS::Array<API_Guid>&subelemGuids, const ParamDictElement & paramToRead, ParamDictElement & paramToWrite, UnicGuidString & property_write_guid)
 {
-    GS::HashTable<API_Guid, ParamDict> reset_property = {}; // Словарь со сбрасываемыми значениями
-    bool has_ignore = false;
-    // Выбираем по-элементно параметры для чтения и записи, формируем словарь
+    GS::HashSet<GS::UniString> resolvedProps;  // Свойства, которые уже получили "полезное" значение
+    GS::HashSet<GS::UniString> propsToReset;   // Свойства, которые кандидаты на сброс к дефолту
     for (const API_Guid& elemGuid : subelemGuids) {
         const auto* writeSubs = syncRules.GetPtr (elemGuid);
         if (writeSubs == nullptr || writeSubs->IsEmpty ()) {
             continue;
         }
+        resolvedProps.Clear ();
+        propsToReset.Clear ();
 
-        // Заполняем значения параметров чтения/записи из словаря
+        // Заполняем значения параметров чтения/записи из словаря правил
         for (const WriteData& writeSub : *writeSubs) {
+            const GS::UniString& rawNameTo = writeSub.paramTo.rawName;
+
+            if (resolvedProps.Contains (rawNameTo)) continue; // для этого свойства уже найдено полезное значение 
             const API_Guid& elemGuidTo = writeSub.guidTo;
             const API_Guid& elemGuidFrom = writeSub.guidFrom;
 
             const auto* paramsToPtr = paramToRead.GetPtr (elemGuidTo);
             if (paramsToPtr == nullptr) continue;
 
-            const GS::UniString& rawNameTo = writeSub.paramTo.rawName;
             const auto* paramToPtr = paramsToPtr->GetPtr (rawNameTo);
             if (paramToPtr == nullptr) continue;
 
@@ -714,77 +717,43 @@ void SyncCalcRule (const WriteDict & syncRules, const GS::Array<API_Guid>&subele
 
             bool is_ignore = false;
             bool is_eq = false;
-            if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring, writeSub.ignorevals, is_ignore, is_eq)) {
-                ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
-                // Если это свойство и в него планировалась запись - сохраним GUID в словарь
-                if (paramTo.definition.guid != APINULLGuid) property_write_guid.Put (paramTo.definition.guid, paramTo.rawName);
-            }
-            // Т.к. у свойства может быть несколько описаний, в том числе с разными правилами синхронизации, то если хотя бы в одном описании есть указание на игнорирование - будем проверять необходимость сброса
-            if (is_eq && !is_ignore) {
-                if (ParamDict* res = reset_property.GetPtr (elemGuid)) {
-                    res->Put (paramTo.rawName, true);
-                } else {
-                    ParamDict u = {};
-                    u.Put (paramTo.rawName, true);
-                    reset_property.Put (elemGuid, std::move (u));
-                }
-            }
-            // Необходимость сброса свойства
-            if (is_ignore && writeSub.ignorevals.reset_to_def && paramTo.definition.guid != APINULLGuid) {
-                bool isDefult = false;
-                if (paramTo.property.definition.guid == paramTo.definition.guid) {
-                    isDefult = paramTo.property.isDefault;
-                }
-                if (!isDefult) {
-                    if (ParamDict* res = reset_property.GetPtr (elemGuid)) {
-                        res->Put (paramTo.rawName, true);
-                    } else {
-                        ParamDict u = {};
-                        u.Put (paramTo.rawName, true);
-                        reset_property.Put (elemGuid, std::move (u));
 
+            if (ParamHelpers::CompareParamValue (paramFrom, paramTo, formatstring, writeSub.ignorevals, is_ignore, is_eq)) {
+                // СЛУЧАЙ 1: Найдено новое значение
+                ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
+
+                if (paramTo.definition.guid != APINULLGuid) {
+                    property_write_guid.Put (paramTo.definition.guid, paramTo.rawName);
+                }
+                resolvedProps.Add (rawNameTo);
+                propsToReset.Delete (rawNameTo);
+            } else if (is_eq && !is_ignore) {
+                // СЛУЧАЙ 2: Значение совпадает с текущим и оно валидное не игнор
+                resolvedProps.Add (rawNameTo);
+                propsToReset.Delete (rawNameTo);
+            } else if (is_ignore && writeSub.ignorevals.reset_to_def && paramTo.definition.guid != APINULLGuid) {
+                // СЛУЧАЙ 3: Значение игнорируется, и правило требует сброса
+                bool isDefault = false;
+                if (paramTo.property.definition.guid == paramTo.definition.guid) {
+                    isDefault = paramTo.property.isDefault;
+                }
+                if (!isDefault) propsToReset.Add (rawNameTo);
+            }
+        }
+        if (!propsToReset.IsEmpty ()) {
+            if (const auto* pread = paramToRead.GetPtr (elemGuid)) {
+                for (const GS::UniString& rawName : propsToReset) {
+                    if (resolvedProps.Contains (rawName)) continue;
+                    if (const auto* paramToPtr = pread->GetPtr (rawName)) {
+                        ParamValue paramTo = *paramToPtr;
+                        paramTo.needResetToDef = true;
+                        paramTo.isValid = true;
+                        ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
                     }
-                    has_ignore = true;
                 }
             }
         }
     }
-    // Добавляем свойства для сброса
-    if (reset_property.IsEmpty ()) return;
-    if (!has_ignore) return;
-    for (GS::HashTable<API_Guid, ParamDict>::PairIterator cIt = reset_property.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        const API_Guid elemGuid = cIt->key;
-        ParamDict& r = cIt->value;
-        #else
-        const API_Guid elemGuid = *cIt->key;
-        ParamDict& r = *cIt->value;
-        #endif
-        if (const auto* pread = paramToRead.GetPtr (elemGuid)) {
-            for (ParamDict::PairIterator cIt = r.EnumeratePairs (); cIt != NULL; ++cIt) {
-                #if defined(AC_28) || defined(AC_29)
-                const GS::UniString& rawName = cIt->key;
-                const bool& is_eq = cIt->value;
-                #else
-                const GS::UniString& rawName = *cIt->key;
-                const bool& is_eq = *cIt->value;
-                #endif
-                if (!is_eq) continue;
-                if (const auto* prewr = paramToWrite.GetPtr (elemGuid)) {
-                    if (prewr->ContainsKey (rawName)) {
-                        continue;
-                    }
-                }
-                if (const auto* paramToPtr = pread->GetPtr (rawName)) {
-                    ParamValue paramTo = *paramToPtr;
-                    paramTo.needResetToDef = true;
-                    paramTo.isValid = true;
-                    ParamHelpers::AddParamValue2ParamDictElement (paramTo, paramToWrite);
-                }
-            }
-        }
-    }
-    return;
 }
 
 // --------------------------------------------------------------------
@@ -1873,7 +1842,7 @@ void SyncSetSubelement (SyncSettings & syncSettings)
     #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
         return;
-    }
+}
     #endif
     parentelementtype = GetElemTypeID (parentelement);
     clock_t start, finish;
@@ -2195,7 +2164,6 @@ bool SyncGetParentelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid &
     if (guidArray.IsEmpty ()) return false;
     if (!ParamHelpers::isPropertyDefinitionRead ()) return false;
     ParamDictValue& propertyParams = PROPERTYCACHE ().property;
-    const GS::UniString desc = "Sync_GUID";
     GS::HashTable<API_Guid, GS::Array<API_Guid>> classificationforread; //классификация найденных элементов
     for (auto& cItt : propertyParams) {
         #if defined(AC_28) || defined(AC_29)
@@ -2203,7 +2171,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid &
         #else
         ParamValue param = *cItt.value;
         #endif
-        if (!param.definition.description.Contains (desc)) continue;
+        if (!param.definition.description.Contains (SYNCGUID)) continue;
         if (!(suffix.IsEmpty () || param.definition.description.Contains (suffix))) continue;
         if (param.definition.valueType != API_PropertyStringValueType) continue;
         for (const auto& cls : param.definition.availability) {
@@ -2349,14 +2317,13 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid>&guidArray, ParamDictElem
 {
     ParamDictValue paramDict = {};
     const ParamDictValue& propertyParams = PROPERTYCACHE ().property;
-    const GS::UniString desc = "Sync_GUID";
     for (const auto& cItt : propertyParams) {
         #if defined(AC_28) || defined(AC_29)
         const ParamValue& param = cItt.value;
         #else
         const ParamValue& param = *cItt.value;
         #endif
-        if (!param.definition.description.Contains (desc)) continue; // Проверяем - есть ли у свойства в описании "Sync_GUID"
+        if (!param.definition.description.Contains (SYNCGUID)) continue; // Проверяем - есть ли у свойства в описании SYNCGUID
         if (!(suffix.IsEmpty () || param.definition.description.Contains (suffix))) continue; // Проверяем - есть ли у свойства в описании суффикс
         if (paramDict.ContainsKey (param.rawName)) continue; // Проверяем - есть ли уже в словаре свойство с таким именем
         for (const auto& guid : guidArray) {

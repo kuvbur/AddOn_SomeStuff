@@ -4626,7 +4626,7 @@ bool Check (const ClassificationFunc::ClassificationDict & finclass, UnicGuid & 
         #else
         ParamValue param = *cItt.value;
         #endif
-        if (param.definition.description.Contains ("Sync_GUID") && param.definition.description.Contains ("zone")) {
+        if (param.definition.description.Contains (SYNCGUID) && param.definition.description.Contains ("zone")) {
             for (const API_Guid& classguid : param.definition.availability) {
                 if (finclassguids.ContainsKey (classguid)) finclassguids.Set (classguid, true);
             }
@@ -4654,7 +4654,7 @@ bool Check (const ClassificationFunc::ClassificationDict & finclass, UnicGuid & 
         #else
         ParamValue param = *cItt.value;
         #endif
-        if (param.definition.description.Contains ("Sync_GUID") && param.definition.description.Contains ("base element")) {
+        if (param.definition.description.Contains (SYNCGUID) && param.definition.description.Contains ("base element")) {
             find = true;
             bool find_cls = false;
             for (const API_Guid& classguid : param.definition.availability) {

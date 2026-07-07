@@ -136,7 +136,7 @@ static const GS::UniString ATSIGN = "@";
 static const GS::UniString SYNCFLAG = "Sync_flag";
 static const GS::UniString SYNCCORRECTFLAG = "Sync_correct_flag";
 static const GS::UniString SYNCCLASSFLAG = "Sync_class_flag";
-
+static const GS::UniString SYNCGUID = "Sync_GUID";
 static const GS::UniString DEFULTREALFSTRING = ".3m";
 static const GS::UniString DEFULTLEGHTFSTRING = "1mm";
 static const GS::UniString DEFULTINTFSTRING = "0m";
@@ -163,7 +163,8 @@ struct Story
     Story (short _index, double _level)
         : index (_index)
         , level (_level)
-    {}
+    {
+    }
     short  index;
     double level;
 };

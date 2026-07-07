@@ -9,7 +9,8 @@ GS::ClassInfo SyncSettings::classInfo ("SyncSettings", GS::Guid ("B45089A9-B372-
 
 SyncSettings::SyncSettings () :
     SyncSettings (false, false, true, true, true, true, false)
-{}
+{
+}
 
 SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon) :
     syncAll (syncAll),
@@ -19,7 +20,8 @@ SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, 
     objS (objS),
     cwallS (cwallS),
     logMon (logMon)
-{}
+{
+}
 
 GSErrCode SyncSettings::Read (GS::IChannel& ic)
 {
@@ -69,9 +71,6 @@ static bool ReadSyncSettings (SyncSettings& syncSettings)
         delete[] data;
         return false;
     }
-    #ifdef EXTNDVERSION
-    tempsyncSettings.syncMon = true;
-    #endif
     syncSettings = tempsyncSettings;
     delete[] data;
     return true;

@@ -4603,7 +4603,7 @@ bool ParamHelpers::SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition
     bool flag_find = false;
     for (auto& definition : definitions) {
         if (definition.description.IsEmpty ()) continue;
-        if (!definition.description.Contains ("Sync_GUID")) continue;
+        if (!definition.description.Contains (SYNCGUID)) continue;
         definitionsout.Push (definition);
         flag_find = true;
     }
@@ -7389,7 +7389,6 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     DBprnt ("        ComponentsBasicStructure\n");
     #endif
     ParamComposite param_composite = {};
-    param_composite.composite.SetCapacity (2);
     if (fillThick_ven > 0.0001) {
         ParamValueComposite layer = {};
         layer.inx = constrinx_ven;
@@ -7398,7 +7397,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
         layer.structype = structype_ven;
         layer.length = length;
         layer.width = width;
-        param_composite.composite.Push (layer);
+        param_composite.composite.Push (std::move (layer));
         ParamHelpers::GetAttributeValues (constrinx_ven, params, paramsAdd);
     }
     ParamValueComposite layer = {};
@@ -7409,7 +7408,7 @@ bool ParamHelpers::ComponentsBasicStructure (const API_AttributeIndex & constrin
     layer.width = width;
     layer.num = 1;
     layer.structype = APICWallComp_Core;
-    param_composite.composite.Push (layer);
+    param_composite.composite.Push (std::move (layer));
     ParamHelpers::GetAttributeValues (constrinx, params, paramsAdd);
     for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
@@ -7443,14 +7442,13 @@ void ParamHelpers::ComponentsGetUnic (GS::Array<ParamValueComposite>&composite)
     p.SetCapacity (existsmaterial.GetSize ());
     for (GS::HashTable<GS::UniString, ParamValueComposite>::PairIterator cIt = existsmaterial.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
-        ParamValueComposite c = cIt->value;
+        ParamValueComposite& c = cIt->value;
         #else
-        ParamValueComposite c = *cIt->value;
+        ParamValueComposite& c = *cIt->value;
         #endif
-        p.Push (c);
+        p.Push (std::move (c));
     }
-    composite.Clear ();
-    composite = p;
+    composite = std::move (p);
     return;
 }
 
@@ -7536,10 +7534,12 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
     DBprnt ("        ComponentsProfileStructure");
     #endif
     ConstProfileVectorImageIterator profileDescriptionIt (profileDescription);
-    GS::HashTable<short, OrientedSegments> lines = {}; // Для хранения точки начала сечения и линии сечения
-    GS::HashTable<short, GS::Array<Sector>> segment = {}; // Для хранения отрезков линий сечения и последующего объединения
-    GS::HashTable<short, ParamComposite> param_composite = {}; // Словарь составов для чтения
-
+    GS::HashTable<short, OrientedSegments> lines; // Для хранения точки начала сечения и линии сечения
+    GS::HashTable<short, GS::Array<Sector>> segment; // Для хранения отрезков линий сечения и последующего объединения
+    GS::HashTable<short, ParamComposite> param_composite; // Словарь составов для чтения
+    GS::Array<ParamValueComposite> composite_all;
+    GS::Array<Sector> resSectors;
+    composite_all.SetCapacity (paramcomposite.GetSize ());
     // Получаем список перьев в параметрах
     for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
@@ -7553,17 +7553,17 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         if (pen < 0 && !needReadQuantities) needReadQuantities = true;
         OrientedSegments s;
         GS::Array<Sector> segments;
-        lines.Put (pen, s);
-        segment.Put (pen, segments);
+        lines.Put (pen, std::move (s));
+        segment.Put (pen, std::move (segments));
         ParamComposite p;
-        param_composite.Put (pen, p);
+        param_composite.Put (pen, std::move (p));
     }
     #if defined(TESTING)
     if (needReadQuantities) DBprnt ("        Quantities ProfileStructure");
     #endif
     bool hasLine = !lines.IsEmpty ();
     bool profilehasLine = false;
-    GS::Array<ParamValueComposite> composite_all = {};
+    composite_all.Clear ();
     // Ищем полилинию с нужным цветом
     while (!profileDescriptionIt.IsEOI ()) {
         switch (profileDescriptionIt->item_Typ) {
@@ -7571,9 +7571,9 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 {
                     const Sy_ArcType* pSyArc = static_cast <const Sy_ArcType*> (profileDescriptionIt);
                     short pen = pSyArc->GetExtendedPen ().GetIndex ();
-                    if (lines.ContainsKey (pen)) {
+                    if (auto* l = lines.GetPtr (pen)) {
                         Point2D s = { pSyArc->origC };
-                        lines.Get (pen).start = s;
+                        l->start = std::move (s);
                     }
                 }
                 break;
@@ -7581,9 +7581,9 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 {
                     const Sy_LinType* pSyPolyLine = static_cast <const Sy_LinType*> (profileDescriptionIt);
                     short pen = pSyPolyLine->GetExtendedPen ().GetIndex ();
-                    if (segment.ContainsKey (pen)) {
+                    if (auto* s = segment.GetPtr (pen)) {
                         Sector line = { pSyPolyLine->begC, pSyPolyLine->endC };
-                        segment.Get (pen).Push (line);
+                        s->Push (std::move (line));
                         profilehasLine = true;
                     }
                 }
@@ -7597,37 +7597,37 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         Point2D p1 = { -1000, 0 };
         Point2D p2 = { 1000, 0 };
         Sector cut1 = { p1, p2 };
-        OrientedSegments d = {};
+        OrientedSegments d;
         d.start = p2;
         d.cut_start = p1;
         d.cut_direction = Geometry::SectorVector (cut1);
-        lines.Put (20, d);
+        lines.Put (20, std::move (d));
         Point2D p3 = { 0, -1000 };
         Point2D p4 = { 0, 1000 };
         Sector cut2 = { p3, p4 };
-        OrientedSegments d2 = {};
+        OrientedSegments d2;
         d2.start = p3;
         d2.cut_start = p4;
         d2.cut_direction = Geometry::SectorVector (cut2);
-        lines.Put (6, d2);
-
-        ParamComposite p = {};
-        param_composite.Put (20, p);
-        param_composite.Put (6, p);
+        lines.Put (6, std::move (d2));
+        ParamComposite p;
+        param_composite.Put (20, std::move (p));
+        param_composite.Put (6, std::move (p));
     } else {
         // Проходим по сегментам, соединяем их в одну линию
         for (GS::HashTable<short, GS::Array<Sector>>::PairIterator cIt = segment.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             GS::Array<Sector>& segment = cIt->value;
-            Point2D pstart = lines.Get (cIt->key).start;
+            auto* pstart = lines.GetPtr (cIt->key);
             #else
             GS::Array<Sector>& segment = *cIt->value;
-            Point2D pstart = lines.Get (*cIt->key).start;
+            auto* pstart = lines.GetPtr (*cIt->key);
             #endif
+            if (pstart == nullptr) continue;
             Sector cutline;
             double max_r = 0; double min_r = 300000;
             for (UInt32 j = 0; j < segment.GetSize (); j++) {
-                double r = Geometry::Dist (pstart, segment[j].c1);
+                double r = Geometry::Dist (pstart->start, segment[j].c1);
                 if (r > max_r) {
                     cutline.c1 = segment[j].c1;
                     max_r = r;
@@ -7636,7 +7636,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                     cutline.c2 = segment[j].c1;
                     min_r = r;
                 }
-                r = Geometry::Dist (pstart, segment[j].c2);
+                r = Geometry::Dist (pstart->start, segment[j].c2);
                 if (r > max_r) {
                     cutline.c1 = segment[j].c2;
                     max_r = r;
@@ -7647,14 +7647,18 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 }
             }
             #if defined(AC_28) || defined(AC_29)
-            lines.Get (cIt->key).cut_start = cutline.c2;
-            lines.Get (cIt->key).cut_direction = Geometry::SectorVector (cutline);
+            if (auto* l = lines.GetPtr (*cIt->key)) {
+                l->cut_start = cutline.c2;
+                l->cut_direction = Geometry::SectorVector (cutline);
+            }
             #else
-            lines.Get (*cIt->key).cut_start = cutline.c2;
-            lines.Get (*cIt->key).cut_direction = Geometry::SectorVector (cutline);
-            #endif
+            if (auto* l = lines.GetPtr (*cIt->key)) {
+                l->cut_start = cutline.c2;
+                l->cut_direction = Geometry::SectorVector (cutline);
         }
+            #endif
     }
+}
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = { -10000, 0 };
@@ -7711,16 +7715,14 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                     if (ppoint.HasValue ()) {
                                         Sector edge_norm = { centr, ppoint.Get () };
                                         Vector2D cut_direction = Geometry::SectorVector (edge_norm);
-                                        GS::Array<Sector> resSectors = {};
+                                        resSectors.Clear ();
                                         bool h = result[i].Intersect (centr, cut_direction, &resSectors);
-                                        if (!resSectors.IsEmpty ()) {
-                                            for (UInt32 k = 0; k < resSectors.GetSize (); k++) {
-                                                double fillThickL = resSectors[k].GetLength ();
-                                                if (is_equal (th, 0)) {
-                                                    th = fillThickL;
-                                                } else {
-                                                    th = fmin (th, fillThickL);
-                                                }
+                                        for (const auto& sec : resSectors) {
+                                            double fillThickL = sec.GetLength ();
+                                            if (is_equal (th, 0)) {
+                                                th = fillThickL;
+                                            } else {
+                                                th = fmin (th, fillThickL);
                                             }
                                         }
                                     }
@@ -7756,10 +7758,12 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                 OrientedSegments& l = *cIt->value;
                                 short pen = *cIt->key;
                                 #endif
-                                GS::Array<Sector> resSectors = {};
                                 if (pen < 0) continue;
+                                auto* comp = param_composite.GetPtr (pen);
+                                if (comp == nullptr) continue;
+                                resSectors.Clear ();
                                 bool h = result[i].Intersect (l.cut_start, l.cut_direction, &resSectors);
-                                for (const auto sec : resSectors) {
+                                for (const auto& sec : resSectors) {
                                     double fillThickL = sec.GetLength ();
                                     double rfromstart = Geometry::Dist (l.start, sec.GetMidPoint ()); // Расстояние до окружности(начала порядка слоёв)
                                     ParamValueComposite layer = {};
@@ -7768,7 +7772,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                                     layer.rfromstart = rfromstart;
                                     layer.area_fill = area_fill;
                                     layer.structype = structype;
-                                    param_composite.Get (pen).composite.Push (std::move (layer));
+                                    comp->composite.Push (std::move (layer));
                                     ParamHelpers::GetAttributeValues (constrinxL, params, paramsAdd);
                                     hasData = true;
                                 }
@@ -7785,38 +7789,35 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
         ++profileDescriptionIt1;
     }
     if (needReadQuantities && !composite_all.IsEmpty ()) {
-        short pen = -1;
-        if (param_composite.ContainsKey (pen)) {
-            param_composite.Get (pen).composite = composite_all;
+        if (auto* p = param_composite.GetPtr (-1)) {
+            p->composite = composite_all;
             hasData = true;
         }
-        pen = -2;
-        if (param_composite.ContainsKey (pen)) {
-            param_composite.Get (pen).composite = composite_all;
+        if (auto* p = param_composite.GetPtr (-2)) {
+            p->composite = composite_all;
             hasData = true;
         }
     }
     if (hasData) {
+        GS::Array<ParamValueComposite> paramout = {};
         for (ParamDictComposite::PairIterator cIt = paramcomposite.EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             ParamComposite& ct = cIt->value;
             #else
             ParamComposite& ct = *cIt->value;
             #endif
-            if (!param_composite.ContainsKey (ct.composite_pen)) {
-                continue;
-            }
-            ParamComposite& cf = param_composite.Get (ct.composite_pen);
+            auto* cf = param_composite.GetPtr (ct.composite_pen);
+            if (cf == nullptr) continue;
             // Номер пера меньше нуля это признак использования состава при подсчёте кол-ва. Порядок там не важен.
-            if (cf.composite_pen < 0) {
-                ct.composite = cf.composite;
+            if (cf->composite_pen < 0) {
+                ct.composite = cf->composite;
             } else {
                 // Теперь нам надо отсортировать слои по параметру rfromstart
                 std::map<double, ParamValueComposite> comps = {};
-                for (const auto& comp : cf.composite) {
+                for (const auto& comp : cf->composite) {
                     comps[comp.rfromstart] = comp;
                 }
-                GS::Array<ParamValueComposite> paramout = {};
+                paramout.Clear ();
                 for (std::map<double, ParamValueComposite>::iterator k = comps.begin (); k != comps.end (); ++k) {
                     paramout.Push (k->second);
                 }
@@ -7885,7 +7886,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-            }
+    }
             if (element.column.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
@@ -7920,7 +7921,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-            }
+}
             if (element.beam.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
@@ -8047,7 +8048,6 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
 
     if (needReadQuantities && eltype == API_ObjectID) return true;
-
     bool hasData = false;
 
     // Получим индексы строительных материалов и толщины
@@ -8076,7 +8076,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-}
+        }
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
