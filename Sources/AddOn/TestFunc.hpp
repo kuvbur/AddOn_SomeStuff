@@ -14,17 +14,27 @@
 #endif // AC_26
 
 
-namespace TestFunc {
-    void Test ();
-    void TestGetTextLineLength (GS::UniString& var);
-    void TestCalc ();
-    void TestFormula ();
-    void TestFormatString ();
-    void TestFormatStringFormula ();
-    void DumpAllBuiltInProperties ();
-    void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray);
-    void ResetSyncPropertyOne (const API_Guid& elemGuid);
-    void ResetSyncPropertyOne (const API_Guid& elemGuid, GS::Array<API_Property>& propertywrite);
+namespace TestFunc
+{
+void Test ();
+void TestGetTextLineLength (GS::UniString& var);
+void TestCalc ();
+void TestFormula ();
+void TestFormatString ();
+void TestFormatStringFormula ();
+void TestConvertToParamValue ();
+void TestConvertAttributeToParamValue ();
+void TestConvertPropertyToParamValue ();
+void TestConvertPropertyDefinitionToParamValue ();
+void TestSetParamValueSourseByName ();
+void TestSetrawNameFromProperty ();
+void TestCheckIgnoreVal ();
+void TestReadProperty ();
+void TestAddProperty ();
+void DumpAllBuiltInProperties ();
+void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray);
+void ResetSyncPropertyOne (const API_Guid& elemGuid);
+void ResetSyncPropertyOne (const API_Guid& elemGuid, GS::Array<API_Property>& propertywrite);
 }
 
 #endif

@@ -73,7 +73,7 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
     DBprnt ("ProjectEventHandlerProc");
     #endif
     SyncSettings syncSettings (false, false, true, true, true, true, false);
-    LoadSyncSettingsFromPreferences (syncSettings);
+    LoadSyncSettingsFromPreferences (syncSettings, true);
     #ifdef EXTNDVERSION
     syncSettings.syncMon = true;
     #endif // PK_1
@@ -95,12 +95,10 @@ static GSErrCode __ACENV_CALL    ProjectEventHandlerProc (API_NotifyEventID noti
             ACAPI_Notify_CatchNewElement (nullptr, nullptr);
             ACAPI_Notify_InstallElementObserver (nullptr);
             #endif
-            //SelectElement (APINotify_Close);
             break;
         case APINotify_ChangeProjectDB:
         case APINotify_ChangeWindow:
         case APINotify_ChangeFloor:
-            //SelectElement (APINotify_ChangeWindow);
             DimRoundAll (syncSettings, false);
             break;
         default:
@@ -176,8 +174,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     //tst.Append (SPACESTRING);
     //DBprnt ("ElementEvent", tst);
     //#endif
-
-    if (elemType->notifID == APINotifyElement_BeginEvents) return NoError;
     if (elemType->elemHead.hotlinkGuid != APINULLGuid) return NoError;
     ACAPI_KeepInMemory (true);
     SyncSettings syncSettings (false, false, true, true, true, true, false);
@@ -187,6 +183,10 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     syncSettings.syncMon = true;
     #endif // PK_1
     if (!syncSettings.syncMon) return NoError;
+    if (elemType->notifID == APINotifyElement_BeginEvents) {
+        PROPERTYCACHE ().compositeCache.Clear ();
+        return NoError;
+    }
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
     switch (elementType) {
@@ -205,7 +205,9 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
             #endif
         default:
             if (elemType->notifID == APINotifyElement_EndEvents) {
-                DimRoundAll (syncSettings, true);
+                if (!IsElementThrottled (APINULLGuid)) {
+                    DimRoundAll (syncSettings, true);
+                }
             }
             break;
     }
@@ -279,7 +281,7 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
 // -----------------------------------------------------------------------------
 // Включение мониторинга
 // -----------------------------------------------------------------------------
-void	Do_ElementMonitor (bool& syncMon)
+void	Do_ElementMonitor (bool syncMon)
 {
     #ifdef EXTNDVERSION
     syncMon = true;
@@ -328,19 +330,18 @@ void MenuSetState (SyncSettings & syncSettings)
     MenuItemCheckAC (Menu_widoS, syncSettings.widoS);
     MenuItemCheckAC (Menu_objS, syncSettings.objS);
     MenuItemCheckAC (Menu_cwallS, syncSettings.cwallS);
-    Int32 bisEng = isEng ();
-    if (bisEng > 0) {
-        for (UInt32 i = 0; i < MENU_ITEM_COUNT; i++) {
-            SetPaletteMenuText (i, bisEng);
-        }
+    if (!isEng ()) return;
+    for (UInt32 i = 0; i < MENU_ITEM_COUNT; i++) {
+        SetPaletteMenuText (i);
     }
 }
 
-void SetPaletteMenuText (short paletteItemInd, Int32 & bisEng)
+void SetPaletteMenuText (short paletteItemInd)
 {
     API_MenuItemRef itemRef = {};
     GS::UniString itemStr = "";
-    itemStr = RSGetIndString (ID_ADDON_PROMT + bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
+    const Int32 bisEng = ID_ADDON_PROMT + isEng ();
+    itemStr = RSGetIndString (bisEng, paletteItemInd + 1, ACAPI_GetOwnResModule ());
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = paletteItemInd;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)

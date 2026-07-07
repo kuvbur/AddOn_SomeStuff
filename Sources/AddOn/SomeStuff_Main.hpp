@@ -55,9 +55,9 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
 static GSErrCode __ACENV_CALL	SelectionChangeHandlerProc (const API_Neig* selElemNeig);
 #endif
 
-void Do_ElementMonitor (bool& syncMon);
+void Do_ElementMonitor (bool syncMon);
 
-void SetPaletteMenuText (short paletteItemInd, Int32& bisEng);
+void SetPaletteMenuText (short paletteItemInd);
 
 void MenuSetState (SyncSettings& syncSettings);
 
