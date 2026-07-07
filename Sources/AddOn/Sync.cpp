@@ -892,6 +892,7 @@ bool ParseSyncString (const API_Guid & elemGuid, const API_ElemTypeID & elementT
         return false;
     }
     #endif
+
     if (!description_string.Contains (SYNCPART)) return false;
     if (!description_string.Contains (BRACESTART)) return false;
     if (!description_string.Contains (BRACEEND)) return false;
@@ -899,49 +900,48 @@ bool ParseSyncString (const API_Guid & elemGuid, const API_ElemTypeID & elementT
     UIndex length = description_string.GetLength ();
     GS::UniString dst;
     dst.SetCapacity (length);
+
     auto matchesStr = [&](UIndex idx, const char* str, USize len) -> bool {
         if (idx + len > length) return false;
         for (USize j = 0; j < len; ++j) {
-            if (description_string[idx + j] != str[j]) return false;
+            if (static_cast<unsigned short> (description_string[idx + j]) != GS::UniChar (str[j])) return false;
         }
         return true;
     };
+
     auto matchesUStr = [&](UIndex idx, const GS::UniString& uStr) -> bool {
         USize len = uStr.GetLength ();
         if (len == 0 || idx + len > length) return false;
         for (USize j = 0; j < len; ++j) {
-            if (description_string[idx + j] != uStr[j]) return false;
+            if (static_cast<unsigned short> (description_string[idx + j]) != GS::UniChar (uStr[j])) return false;
         }
         return true;
     };
+
+    // Проверяет "ключевое_слово" + любое число пробелов (0 и более) + "{".
+    // consumed - сколько символов всего "съедено" от idx (ключевое слово + пробелы + сама "{").
+    auto matchesKeywordBrace = [&](UIndex idx, const char* kw, USize kwLen, UIndex& consumed) -> bool {
+        if (!matchesStr (idx, kw, kwLen)) return false;
+        UIndex j = idx + kwLen;
+        while (j < length && static_cast<unsigned short> (description_string[j]) == ' ') ++j;
+        if (j >= length || static_cast<unsigned short> (description_string[j]) != '{') return false;
+        consumed = j + 1 - idx;
+        return true;
+    };
+
     for (UIndex i = 0; i < length; ++i) {
         if (matchesUStr (i, LINEBRAKE)) { i += LINEBRAKE.GetLength () - 1; continue; }
         if (matchesUStr (i, LINEBRAKER)) { i += LINEBRAKER.GetLength () - 1; continue; }
         if (matchesUStr (i, TABSTRING)) { i += TABSTRING.GetLength () - 1; continue; }
-        if (matchesStr (i, "from_GUID", 9)) {
-            if (matchesStr (i + 9, "  {", 3)) { dst.Append (FROMGUIDBR); i += 9 + 3 - 1; continue; }
-            if (matchesStr (i + 9, " {", 2)) { dst.Append (FROMGUIDBR); i += 9 + 2 - 1; continue; }
-        }
-        if (matchesStr (i, "from_sub", 8)) {
-            if (matchesStr (i + 8, "  {", 3)) { dst.Append (SYNCFROMSUBSTRING); i += 8 + 3 - 1; continue; }
-            if (matchesStr (i + 8, " {", 2)) { dst.Append (SYNCFROMSUBSTRING); i += 8 + 2 - 1; continue; }
-        }
-        if (matchesStr (i, "from", 4)) {
-            if (matchesStr (i + 4, "  {", 3)) { dst.Append (SYNCFROMSTRING); i += 4 + 3 - 1; continue; }
-            if (matchesStr (i + 4, " {", 2)) { dst.Append (SYNCFROMSTRING); i += 4 + 2 - 1; continue; }
-        }
-        if (matchesStr (i, "to_GUID", 7)) {
-            if (matchesStr (i + 7, "  {", 3)) { dst.Append (TOGUIDBR); i += 7 + 3 - 1; continue; }
-            if (matchesStr (i + 7, " {", 2)) { dst.Append (TOGUIDBR); i += 7 + 2 - 1; continue; }
-        }
-        if (matchesStr (i, "to_sub", 6)) {
-            if (matchesStr (i + 6, "  {", 3)) { dst.Append (SYNCTOSUBSTRING); i += 6 + 3 - 1; continue; }
-            if (matchesStr (i + 6, " {", 2)) { dst.Append (SYNCTOSUBSTRING); i += 6 + 2 - 1; continue; }
-        }
-        if (matchesStr (i, "to", 2)) {
-            if (matchesStr (i + 2, "  {", 3)) { dst.Append (SYNCTOSTRING); i += 2 + 3 - 1; continue; }
-            if (matchesStr (i + 2, " {", 2)) { dst.Append (SYNCTOSTRING); i += 2 + 2 - 1; continue; }
-        }
+
+        UIndex consumed = 0;
+        if (matchesKeywordBrace (i, "from_GUID", 9, consumed)) { dst.Append (FROMGUIDBR);         i += consumed - 1; continue; }
+        if (matchesKeywordBrace (i, "from_sub", 8, consumed)) { dst.Append (SYNCFROMSUBSTRING);  i += consumed - 1; continue; }
+        if (matchesKeywordBrace (i, "from", 4, consumed)) { dst.Append (SYNCFROMSTRING);     i += consumed - 1; continue; }
+        if (matchesKeywordBrace (i, "to_GUID", 7, consumed)) { dst.Append (TOGUIDBR);           i += consumed - 1; continue; }
+        if (matchesKeywordBrace (i, "to_sub", 6, consumed)) { dst.Append (SYNCTOSUBSTRING);    i += consumed - 1; continue; }
+        if (matchesKeywordBrace (i, "to", 2, consumed)) { dst.Append (SYNCTOSTRING);       i += consumed - 1; continue; }
+
         dst.Append (description_string[i]);
     }
     description_string = std::move (dst);
@@ -2042,7 +2042,7 @@ void SyncShowSubelement (const SyncSettings & syncSettings)
     if (err == NoError) {
         checkdb = (homedatabaseInfo.typeID != APIWind_3DModelID);
         isfloorplan = (homedatabaseInfo.typeID == APIWind_FloorPlanID);
-    } else {
+} else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
     GS::UniString pname = GetDBName (homedatabaseInfo);
@@ -2118,13 +2118,13 @@ void SyncShowSubelement (const SyncSettings & syncSettings)
                         count_otherplan++;
                         continue;
                     }
-                } else {
+            } else {
                     selNeigs.PushNew (guid);
                     count_otherplan++;
                     msg_rep ("ShowSubelement", "APIDb_GetCurrentDatabaseID", err, guid);
                     continue;
                 }
-            }
+    }
             selNeigs.PushNew (guid);
         }
     }
@@ -2183,7 +2183,7 @@ void SyncShowSubelement (const SyncSettings & syncSettings)
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
     msg_rep (fmane, time, err, APINULLGuid);
     return;
-}
+    }
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов
@@ -2313,7 +2313,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid & pa
         #endif
         for (auto& cItt : params) {
             #if defined(AC_28) || defined(AC_29)
-            ParamValue& param = cItt.value;
+            ParamValue param = cItt.value;
             #else
             ParamValue param = *cItt.value;
             #endif
@@ -2337,8 +2337,8 @@ bool SyncGetSubelement (const GS::Array<API_Guid>&guidArray, UnicGuidByGuid & pa
                         un->Put (guid, isvisible);
                     }
                 }
-            }
-        }
+    }
+}
     }
     if (parentGuid.IsEmpty ()) errcode = 2;
     return !parentGuid.IsEmpty ();
