@@ -399,6 +399,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     #else
     UnicGuid unguid;
     GSErrCode err = NoError;
+    GS::Array<API_Guid> elemGuids = {};
     for (const auto& cIt : definitions) {
         #if defined(AC_28) || defined(AC_29)
         const API_PropertyDefinition& definition = cIt.value;
@@ -406,17 +407,16 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
         const API_PropertyDefinition& definition = *cIt.value;
         #endif
         for (const API_Guid& classificationItemGuid : definition.availability) {
-            GS::Array<API_Guid> elemGuids = {};
+            elemGuids.Clear ();
             err = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
             if (err != NoError) {
                 msg_rep ("GetElementForPropertyDefinition", "ACAPI_Element_GetElementsWithClassification", err, APINULLGuid);
                 continue;
             }
-            if (elemGuids.IsEmpty ()) continue;
             for (const API_Guid& elemGuid : elemGuids) {
                 if (unguid.ContainsKey (elemGuid)) continue;
                 unguid.Put (elemGuid, true);
-                guidArray.Push (elemGuid);
+                guidArray.Push (std::move (elemGuid));
             }
         }
     }
@@ -3575,7 +3575,6 @@ void ParamHelpers::WriteInfo (ParamDictElement& paramToWrite)
         #else
         ParamDictValue& params = *elemIt->value;
         #endif
-        if (params.IsEmpty ()) continue;
         for (auto paramIt = params.EnumeratePairs (); paramIt != nullptr; ++paramIt) {
             #if defined(AC_28) || defined(AC_29)
             const ParamValue& param = paramIt->value;
@@ -5927,6 +5926,8 @@ void ParamHelpers::ReadFile (ParamDictValue& params)
     #endif
     bool flag_find = false;
     auto& cache = PROPERTYCACHE ();
+    GS::UniString filename;
+    GS::Array<ParamValue> vals;
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
         #if defined(AC_28) || defined(AC_29)
         ParamValue& param = cIt->value;
@@ -5936,13 +5937,13 @@ void ParamHelpers::ReadFile (ParamDictValue& params)
         if (!param.fromFile) continue;
         if (param.isValid) continue;
         int col_out = param.composite_pen;
-        if (col_out == 0) continue;
+        if (col_out <= 0) continue;
         // Получаем имя файла
-        GS::UniString filename = param.val.uniStringValue;
+        filename = param.val.uniStringValue;
         if (filename.Contains (ATSIGN)) {
-            if (params.ContainsKey (filename)) {
-                if (params.Get (filename).isValid) {
-                    filename = params.Get (filename).val.uniStringValue;
+            if (const auto* flenamePtr = params.GetPtr (filename)) {
+                if (flenamePtr->isValid) {
+                    filename = flenamePtr->val.uniStringValue;
                 } else {
                     #if defined(TESTING)
                     DBprnt ("      ReadFile err ", filename);
@@ -5951,61 +5952,55 @@ void ParamHelpers::ReadFile (ParamDictValue& params)
                 }
             }
         }
-        if (filename.Contains (CHARDQUT)) filename.ReplaceAll ("\"", EMPTYSTRING);
+        filename.ReplaceAll ("\"", EMPTYSTRING);
         if (!filename.Contains (".txt") && !filename.Contains (".csv")) filename.Append (".txt");
-        GS::Array<ParamValue> vals = {};
-        // Получаем свойства для поиска
-        ParamValue val;
-        if (param.rawName_col_end.Contains (ATSIGN) && param.val.array_column_end > 0) {
-            if (params.ContainsKey (param.rawName_col_end)) {
-                if (params.Get (param.rawName_col_end).isValid) {
-                    val = params.Get (param.rawName_col_end);
-                    val.val.array_format_out = param.val.array_column_end;
-                    vals.PushNew (val);
-                }
-            }
-        }
-        if (param.rawName_col_start.Contains (ATSIGN) && param.val.array_column_start > 0) {
-            if (params.ContainsKey (param.rawName_col_start)) {
-                if (params.Get (param.rawName_col_start).isValid) {
-                    val = params.Get (param.rawName_col_start);
-                    val.val.array_format_out = param.val.array_column_start;
-                    vals.PushNew (val);
-                }
-            }
-        }
-        if (param.rawName_row_end.Contains (ATSIGN) && param.val.array_row_end > 0) {
-            if (params.ContainsKey (param.rawName_row_end)) {
-                if (params.Get (param.rawName_row_end).isValid) {
-                    val = params.Get (param.rawName_row_end);
-                    val.val.array_format_out = param.val.array_row_end;
-                    vals.PushNew (val);
-                }
-            }
-        }
-        if (param.rawName_row_start.Contains (ATSIGN) && param.val.array_row_start > 0) {
-            if (params.ContainsKey (param.rawName_row_start)) {
-                if (params.Get (param.rawName_row_start).isValid) {
-                    val = params.Get (param.rawName_row_start);
-                    val.val.array_format_out = param.val.array_row_start;
-                    vals.PushNew (val);
-                }
-            }
-        }
-        if (vals.IsEmpty ()) continue;
+        // 2. СНАЧАЛА открываем файл / достаем из кэша
         if (!cache.AddFile (filename)) continue;
-        if (!cache.filedata.ContainsKey (filename)) continue;
-        const GS::Array<GS::Array<GS::UniString>>& data = cache.filedata.Get (filename);
-        if (data.IsEmpty ()) continue;
-        if (data[0].IsEmpty ()) continue;
-        if (col_out > (int) data[0].GetSize ()) continue;
-        for (const auto& d : data) {
+        const auto* dataPtr = cache.filedata.GetPtr (filename);
+        if (dataPtr == nullptr || dataPtr->IsEmpty ()) continue;
+        const int firstRowSize = (int) (*dataPtr)[0].GetSize ();
+        if (col_out > firstRowSize) {
+            msg_rep ("ParamHelpers::ReadFile", "col_out is out of bounds for the first row", APIERR_BADINDEX, APINULLGuid, false);
+            continue;
+        }
+
+
+        vals.Clear ();
+        bool hasInvalidIndex = false;
+
+        // Получаем свойства для поиска
+        auto collectSearchParam = [&](const GS::UniString& rawName, int arrayColumn) {
+            if (hasInvalidIndex) return; // Если уже нашли ошибку, пропускаем остальные
+            if (arrayColumn > 0 && rawName.Contains (ATSIGN)) {
+                if (arrayColumn > firstRowSize) {
+                    hasInvalidIndex = true;
+                    return;
+                }
+                if (const auto* valPtr = params.GetPtr (rawName)) {
+                    if (valPtr->isValid) {
+                        ParamValue val = *valPtr;
+                        val.val.array_format_out = arrayColumn;
+                        vals.Push (std::move (val));
+                    }
+                }
+            }
+        };
+
+        collectSearchParam (param.rawName_col_end, param.val.array_column_end);
+        collectSearchParam (param.rawName_col_start, param.val.array_column_start);
+        collectSearchParam (param.rawName_row_end, param.val.array_row_end);
+        collectSearchParam (param.rawName_row_start, param.val.array_row_start);
+        if (hasInvalidIndex || vals.IsEmpty ()) continue;
+
+        for (const auto& d : *dataPtr) {
+            const int currentRowSize = (int) d.GetSize ();
+            // Защита от поврежденных строк в файле
+            if (currentRowSize < firstRowSize || col_out > currentRowSize) continue;
             bool flag = true;
             for (const auto& v : vals) {
-                if (v.val.array_format_out > (int) data[0].GetSize ()) {
+                if (!d[v.val.array_format_out - 1].IsEqual (v.val.uniStringValue)) {
                     flag = false;
-                } else {
-                    if (!d[v.val.array_format_out - 1].IsEqual (v.val.uniStringValue)) flag = false;
+                    break;
                 }
             }
             if (flag) {
@@ -6057,65 +6052,54 @@ void ParamHelpers::SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp
         comp.qty = 0;
         return;
     }
-    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
-    GS::UniString nameunits = RSGetIndString (iseng, 58, ACAPI_GetOwnResModule ());
-    GS::UniString units = comp.unit.ToLowerCase ();
-    if (units.Contains (nameunits)) {
+    const auto& cache = PROPERTYCACHE ();
+    GS::UniString units = comp.unit;
+    units.SetToLowerCase ();
+    if (units.Contains (cache.dontspecstr_1)) { //"не специфицировать"
         comp.qty = 0;
         return;
     }
-    nameunits = RSGetIndString (iseng, 64, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.areastr_1)) { //"кв.м."
         comp.qty = comp.area * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 53, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.areastr_2)) { //"м²"
         comp.qty = comp.area * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 54, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
-        comp.qty = comp.area * comp.kzap;
-        return;
-    }
-    nameunits = RSGetIndString (iseng, 55, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.volumestr_1)) { //"куб.м."
         comp.qty = comp.volume * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 56, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.volumestr_2)) { //"м³"
         comp.qty = comp.volume * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 57, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.lengthstr_1)) { //"п.м."
         comp.qty = comp.length * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 59, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.dontspecstr_2)) {
         comp.qty = comp.area * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 60, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.areastr_3)) {
         comp.qty = comp.area * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 61, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.areastr_4)) {
+        comp.qty = comp.area * comp.kzap;
+        return;
+    }
+    if (units.Contains (cache.volumestr_3)) {
         comp.qty = comp.volume * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 62, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.volumestr_4)) {
         comp.qty = comp.volume * comp.kzap;
         return;
     }
-    nameunits = RSGetIndString (iseng, 63, ACAPI_GetOwnResModule ());
-    if (units.Contains (nameunits)) {
+    if (units.Contains (cache.lengthstr_3)) {
         comp.qty = comp.length * comp.kzap;
         return;
     }
@@ -7647,7 +7631,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
                 }
             }
             #if defined(AC_28) || defined(AC_29)
-            if (auto* l = lines.GetPtr (*cIt->key)) {
+            if (auto* l = lines.GetPtr (cIt->key)) {
                 l->cut_start = cutline.c2;
                 l->cut_direction = Geometry::SectorVector (cutline);
             }
@@ -7655,10 +7639,10 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage & profileDescr
             if (auto* l = lines.GetPtr (*cIt->key)) {
                 l->cut_start = cutline.c2;
                 l->cut_direction = Geometry::SectorVector (cutline);
-        }
+            }
             #endif
+        }
     }
-}
     bool hasData = false;
     ConstProfileVectorImageIterator profileDescriptionIt1 (profileDescription);
     Point2D startp = { -10000, 0 };
@@ -7886,7 +7870,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-    }
+            }
             if (element.column.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_ColumnSegment);
@@ -7921,7 +7905,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
             #else
             if (element.header.guid == APINULLGuid) {
                 return false;
-}
+            }
             if (element.beam.nSegments == 1) {
                 BNZeroMemory (&memo, sizeof (API_ElementMemo));
                 err = ACAPI_Element_GetMemo (element.header.guid, &memo, APIMemoMask_BeamSegment);
@@ -8076,7 +8060,7 @@ bool ParamHelpers::Components (const API_Element & element, ParamDictValue & par
     }
     #endif
     return hasData;
-        }
+}
 
 // --------------------------------------------------------------------
 // Заполнение данных для одного слоя
