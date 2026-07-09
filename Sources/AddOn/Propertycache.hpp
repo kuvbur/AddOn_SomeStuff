@@ -119,6 +119,18 @@ struct PropertyCache
     GS::UniString buildingMaterialManufacturerString;
     GS::UniString buildingMaterialCutFillString;
     GS::UniString thicknessString;
+    GS::UniString dontspecstr_1;
+    GS::UniString dontspecstr_2;
+    GS::UniString areastr_1;
+    GS::UniString areastr_2;
+    GS::UniString volumestr_1;
+    GS::UniString volumestr_2;
+    GS::UniString lengthstr_1;
+    GS::UniString areastr_3;
+    GS::UniString areastr_4;
+    GS::UniString volumestr_3;
+    GS::UniString volumestr_4;
+    GS::UniString lengthstr_3;
 
     Int32 isEng;
     bool isEng_OK;
@@ -258,6 +270,19 @@ struct PropertyCache
         buildingMaterialManufacturerString = PROP_PREFIX + RSGetIndString (iseng_, BuildingMaterialManufacturerID, ACAPI_GetOwnResModule ());
         buildingMaterialCutFillString = PROP_PREFIX + RSGetIndString (iseng_, BuildingMaterialCutFillID, ACAPI_GetOwnResModule ());
         thicknessString = PROP_PREFIX + RSGetIndString (iseng_, ThicknessID, ACAPI_GetOwnResModule ());
+
+        areastr_1 = RSGetIndString (iseng_, 53, ACAPI_GetOwnResModule ());
+        areastr_2 = RSGetIndString (iseng_, 54, ACAPI_GetOwnResModule ());
+        volumestr_1 = RSGetIndString (iseng_, 55, ACAPI_GetOwnResModule ());
+        volumestr_2 = RSGetIndString (iseng_, 56, ACAPI_GetOwnResModule ());
+        lengthstr_1 = RSGetIndString (iseng_, 57, ACAPI_GetOwnResModule ());
+        dontspecstr_1 = RSGetIndString (iseng_, 58, ACAPI_GetOwnResModule ());
+        areastr_3 = RSGetIndString (iseng_, 59, ACAPI_GetOwnResModule ());
+        areastr_4 = RSGetIndString (iseng_, 60, ACAPI_GetOwnResModule ());
+        volumestr_3 = RSGetIndString (iseng_, 61, ACAPI_GetOwnResModule ());
+        volumestr_4 = RSGetIndString (iseng_, 62, ACAPI_GetOwnResModule ());
+        lengthstr_3 = RSGetIndString (iseng_, 63, ACAPI_GetOwnResModule ());
+        dontspecstr_2 = RSGetIndString (iseng_, 64, ACAPI_GetOwnResModule ());
     }
 
     void Update ()
