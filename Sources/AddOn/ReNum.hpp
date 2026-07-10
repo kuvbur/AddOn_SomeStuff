@@ -1,38 +1,36 @@
 //------------ kuvbur 2022 ------------
 #if !defined(RENUM_HPP)
-#pragma once
-#define RENUM_HPP
-#include "alphanum.h"
-#include "Helpers.hpp"
-// Типы нумерации (см. RenumElement.state)
-#define RENUM_SKIP -1  // Исключить из обработки
-#define RENUM_IGNORE 0 // Не менять позмцию, но добавлять похожие элементы
-#define RENUM_ADD 1	   // Не менять позицию, если нет пропусков
-#define RENUM_NORMAL 2 // Обычная нумерация/перенумерация
+    #pragma once
+    #define RENUM_HPP
+    #include "alphanum.h"
+    #include "Helpers.hpp"
+    // Типы нумерации (см. RenumElement.state)
+    #define RENUM_SKIP -1  // Исключить из обработки
+    #define RENUM_IGNORE 0 // Не менять позмцию, но добавлять похожие элементы
+    #define RENUM_ADD 1    // Не менять позицию, если нет пропусков
+    #define RENUM_NORMAL 2 // Обычная нумерация/перенумерация
 
-// Типы простановки нулей для СТРОКОВОГО (API_PropertyStringValueType) свойства (см. RenumRule.nulltype)
-#define NOZEROS 0	  // Не добавлять нули в текстовое свойство
-#define ADDZEROS 1	  // Добавлять нули с учётом разбивки
-#define ADDMAXZEROS 2 // Добавлять нули по максимальному количеству без учёта разбивки
-#define ADDSPACE 3	  // Добавлять пробелы с учётом разбивки
-#define ADDMAXSPACE 4 // Добавлять пробелы по максимальному количеству без учёта разбивки
+    // Типы простановки нулей для СТРОКОВОГО (API_PropertyStringValueType) свойства (см. RenumRule.nulltype)
+    #define NOZEROS 0  // Не добавлять нули в текстовое свойство
+    #define ADDZEROS 1 // Добавлять нули с учётом разбивки
+    #define ADDMAXZEROS 2 // Добавлять нули по максимальному количеству без учёта разбивки
+    #define ADDSPACE 3    // Добавлять пробелы с учётом разбивки
+    #define ADDMAXSPACE 4 // Добавлять пробелы по максимальному количеству без учёта разбивки
 
-class RenumPos
-{
-public:
+class RenumPos {
+  public:
     API_Guid guid = APINULLGuid;
     std::string strpos = ""; // Полный текст позиции
-    int numpos = 0;			 // Численная часть позиции
-    bool isNum = false;		 // Есть численное значение
+    int numpos = 0;          // Численная часть позиции
+    bool isNum = false;      // Есть численное значение
     std::string prefix = ""; // Префикс
     std::string suffix = ""; // Суффикс
     GSCharCode chcode = GChCode;
-    RenumPos ()
-    {}
+
+    RenumPos () {}
 
     // TODO Добавить парсинг префикса и суффикса позиции
-    RenumPos (const ParamValue& param)
-    {
+    RenumPos (const ParamValue &param) {
         guid = param.fromGuid;
         if (param.val.canCalculate) {
             isNum = true;
@@ -41,22 +39,20 @@ public:
         chcode = GetCharCode (param.val.uniStringValue);
         strpos = param.val.uniStringValue.ToCStr (0, MaxUSize, this->chcode).Get ();
     }
-    RenumPos (int pos)
-    {
+
+    RenumPos (int pos) {
         isNum = true;
         numpos = pos;
         this->setStr ();
     }
 
-    GS::UniString ToUniString ()
-    {
+    GS::UniString ToUniString () {
         this->setStr ();
         GS::UniString unipos = GS::UniString (this->strpos.c_str (), this->chcode);
         return unipos;
     }
 
-    void Add (const int& i)
-    {
+    void Add (const int &i) {
         if (isNum) {
             this->numpos = this->numpos + i;
         } else {
@@ -68,8 +64,7 @@ public:
         this->setStr ();
     }
 
-    void FormatToMax (RenumPos& pos, short nulltype, int nullcount)
-    {
+    void FormatToMax (RenumPos &pos, short nulltype, int nullcount) {
         // Длина от начала строки до конца числа должна быть как у pos
         // Для заполнения используем либо нули, либо пробелы
         if (nulltype == NOZEROS)
@@ -97,8 +92,7 @@ public:
         }
     }
 
-    void SetToMax (RenumPos& pos)
-    {
+    void SetToMax (RenumPos &pos) {
         this->setStr ();
         if (doj::alphanum_comp (this->strpos, pos.strpos) < 0) {
             this->isNum = pos.isNum;
@@ -110,22 +104,19 @@ public:
         }
     }
 
-    void SetPrefix (GS::UniString& prefix)
-    {
+    void SetPrefix (GS::UniString &prefix) {
         GSCharCode chcode = GetCharCode (prefix);
         this->prefix = prefix.ToCStr (0, MaxUSize, chcode).Get ();
     }
 
-    ParamValue ToParamValue (GS::UniString& rawname)
-    {
+    ParamValue ToParamValue (GS::UniString &rawname) {
         ParamValue posvalue;
         GS::UniString unipos = this->ToUniString ();
         ParamHelpers::ConvertStringToParamValue (posvalue, rawname, unipos);
         return posvalue;
     }
 
-    bool operator==(const RenumPos& b)
-    {
+    bool operator== (const RenumPos &b) {
         if (this->isNum == b.isNum && this->isNum) {
             if (this->prefix != b.prefix)
                 return false;
@@ -147,34 +138,31 @@ public:
     //	return res;
     // }
 
-private:
-    void setStr ()
-    {
+  private:
+    void setStr () {
         if (this->isNum) {
             strpos = this->prefix + std::to_string (this->numpos) + this->suffix;
         }
     }
 };
 
-struct RenumElem
-{
+struct RenumElem {
     GS::Array<RenumPos> elements;
     RenumPos mostFrequentPos;
 };
 
-struct RenumRule
-{
+struct RenumRule {
     bool state = false;
     bool oldalgoritm = true;
-    GS::UniString flag = "";	   // Описание свойства, в которое ставим позицию
-    GS::UniString position = "";   // Описание свойства, в которое ставим позицию
-    GS::UniString criteria = "";   // Описание свойства-критерия
-    GS::UniString delimetr = "";   // Описание свойства-разбивки
-    short nulltype = NOZEROS;	   // Тип постановки нулей в позиции
-    int nullcount = 0;             // Количество нулей, если задано жёское количество
-    GS::Array<API_Guid> elemts;	   // Массив элементов
-    API_Guid guid = APINULLGuid;   // GUID свойства с правилом
-    GS::UniString rule_name = "";  // Имя свойства-правила для отображения во всплывающем окне
+    GS::UniString flag = "";     // Описание свойства, в которое ставим позицию
+    GS::UniString position = ""; // Описание свойства, в которое ставим позицию
+    GS::UniString criteria = ""; // Описание свойства-критерия
+    GS::UniString delimetr = ""; // Описание свойства-разбивки
+    short nulltype = NOZEROS;    // Тип постановки нулей в позиции
+    int nullcount = 0; // Количество нулей, если задано жёское количество
+    GS::Array<API_Guid> elemts;  // Массив элементов
+    API_Guid guid = APINULLGuid; // GUID свойства с правилом
+    GS::UniString rule_name = ""; // Имя свойства-правила для отображения во всплывающем окне
     int n_ignore = 0;
     int n_skip = 0;
     int n_write = 0;
@@ -193,18 +181,32 @@ typedef std::map<std::string, std::string, doj::alphanum_less<std::string>> Renu
 typedef std::map<std::string, RenumPosDict, doj::alphanum_less<std::string>> DRenumPosDict;
 
 typedef GS::HashTable<API_Guid, RenumRule> Rules; // Таблица правил
-GSErrCode ReNumSelected (SyncSettings& syncSettings);
+GSErrCode ReNumSelected (SyncSettings &syncSettings);
 
-bool RenumDG (Rules& renum_rules, bool& rule_from_one);
+bool RenumDG (Rules &renum_rules, bool &rule_from_one);
 
-bool GetRenumElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem, GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions, bool& rule_from_one);
+bool GetRenumElements (GS::Array<API_Guid> &guidArray,
+                       ParamDictElement &paramToWriteelem,
+                       GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
+                       bool &rule_from_one);
 
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
-short ReNumGetFlag (const ParamValue& paramflag, const ParamValue& paramposition);
-bool ReNum_GetElement (const API_Guid& elemGuid, ParamDictElement& paramToRead, Rules& rules, GS::HashTable<GS::UniString, bool>& error_propertyname, const GS::Array<API_PropertyDefinition>& definitions);
-RenumPos GetMostFrequentPos (const GS::Array<RenumPos>& eleminpos);
-RenumPos GetPos (DRenumPosDict& unicpos, DStringDict& unicriteria, const std::string& delimetr, const std::string& criteria);
-bool ElementsSeparation (RenumRule& rule, const ParamDictElement& paramToReadelem, Delimetr& delimetrList, bool& has_error);
-void ReNumOneRule (RenumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem, bool& has_error);
+short ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition);
+bool ReNum_GetElement (const API_Guid &elemGuid,
+                       ParamDictElement &paramToRead,
+                       Rules &rules,
+                       GS::HashTable<GS::UniString, bool> &error_propertyname,
+                       const GS::Array<API_PropertyDefinition> &definitions);
+RenumPos GetMostFrequentPos (const GS::Array<RenumPos> &eleminpos);
+RenumPos
+GetPos (DRenumPosDict &unicpos, DStringDict &unicriteria, const std::string &delimetr, const std::string &criteria);
+bool ElementsSeparation (RenumRule &rule,
+                         const ParamDictElement &paramToReadelem,
+                         Delimetr &delimetrList,
+                         bool &has_error);
+void ReNumOneRule (RenumRule &rule,
+                   ParamDictElement &paramToReadelem,
+                   ParamDictElement &paramToWriteelem,
+                   bool &has_error);
 
 #endif

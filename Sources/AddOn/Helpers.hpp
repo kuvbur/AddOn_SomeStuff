@@ -1,20 +1,20 @@
 //------------ kuvbur 2022 ------------
 #pragma once
 #ifndef HELPERS_HPP
-#define HELPERS_HPP
-#include "basicgeometry.h"
-#include "ClassificationFunction.hpp"
-#include "CommonFunction.hpp"
-#include "Spec_libpart.hpp"
-#include "StringConversion.hpp"
-#include "SyncSettings.hpp"
+    #define HELPERS_HPP
+    #include "basicgeometry.h"
+    #include "ClassificationFunction.hpp"
+    #include "CommonFunction.hpp"
+    #include "Spec_libpart.hpp"
+    #include "StringConversion.hpp"
+    #include "SyncSettings.hpp"
 
-#define SYNC_RESET 1
-#define SYNC 2
+    #define SYNC_RESET 1
+    #define SYNC 2
 
-#define DUMMY_MODE_UNDEF 0
-#define DUMMY_MODE_ON 1
-#define DUMMY_MODE_OFF 2
+    #define DUMMY_MODE_UNDEF 0
+    #define DUMMY_MODE_ON 1
+    #define DUMMY_MODE_OFF 2
 
 static const Int32 AddOnNameID = 1;
 static const Int32 AddOnDescriptionID = 2;
@@ -76,44 +76,38 @@ static const GS::UniString MAT_SOME_STUFF_TH = "@property:buildingmaterialproper
 static const GS::UniString MAT_SOME_STUFF_UNITS = "@property:buildingmaterialproperties/some_stuff_units";
 static const GS::UniString MAT_SOME_STUFF_KZAP = "@property:buildingmaterialproperties/some_stuff_kzap";
 
-struct SortGUID
-{
+struct SortGUID {
     GS::Array<API_Guid> guid = {};
 };
 
-struct SortInx
-{
+struct SortInx {
     GS::Array<UInt32> inx = {};
 };
 
 // Массив отрезков с указанием точки начала
 
-struct OrientedSegments
-{
+struct OrientedSegments {
     Vector2D cut_direction;
     Point2D cut_start;
     Point2D start;
 };
 
-
-struct SkipValues
-{
+struct SkipValues {
     GS::Array<GS::UniString> ignorevals = {}; // Список значений
-    bool skip_empty = false; // Пропускать пустые значения
+    bool skip_empty = false;                  // Пропускать пустые значения
     bool skip_trim_empty = false; // Пропускать значения, состоящие из пробелов
-    bool reset_to_def = false; // Сбрасывать свойство, если ничего не подошло
+    bool reset_to_def = false;    // Сбрасывать свойство, если ничего не подошло
 };
 
-struct DimRule
-{
-    short   pen_original = 0;
-    short   pen_rounded = 0;
-    UInt32  round_value = 0;
-    bool    flag_change = false;
-    bool    flag_deletewall = false;
-    bool    flag_reset = false;
-    bool    flag_custom = false;
-    bool    classic_round_mode = false; // Использовать вместо округления вверх обычное округление
+struct DimRule {
+    short pen_original = 0;
+    short pen_rounded = 0;
+    UInt32 round_value = 0;
+    bool flag_change = false;
+    bool flag_deletewall = false;
+    bool flag_reset = false;
+    bool flag_custom = false;
+    bool classic_round_mode = false; // Использовать вместо округления вверх обычное округление
     GS::UniString expression = "";
     GS::UniString layer = "";
     GS::UniString kstr = "";
@@ -122,583 +116,729 @@ struct DimRule
 
 typedef GS::HashTable<GS::UniString, DimRule> DimRules; // Словарь с правилами округления размеров
 
-
 int IsDummyModeOn ();
 
+namespace FormatStringFunc {
+    FormatString
+    GetFormatStringFromFormula (const GS::UniString &formula, const GS::UniString &part, GS::UniString &stringformat);
+    // -----------------------------------------------------------------------------
+    // Обработка количества нулей и единиц измерения в имени свойства
+    // Удаляет из имени paramName найденные единицы измерения
+    // Возвращает строку для скармливания функции NumToStig
+    // -----------------------------------------------------------------------------
+    GS::UniString GetFormatString (GS::UniString &paramName);
 
-namespace FormatStringFunc
-{
-FormatString GetFormatStringFromFormula (const GS::UniString& formula, const  GS::UniString& part, GS::UniString& stringformat);
-// -----------------------------------------------------------------------------
-// Обработка количества нулей и единиц измерения в имени свойства
-// Удаляет из имени paramName найденные единицы измерения
-// Возвращает строку для скармливания функции NumToStig
-// -----------------------------------------------------------------------------
-GS::UniString GetFormatString (GS::UniString& paramName);
+    bool IsValid (GS::UniString formatstring);
 
-bool IsValid (GS::UniString formatstring);
+    // -----------------------------------------------------------------------------
+    // Извлекает из строки информацио о единицах измерении и округлении
+    // -----------------------------------------------------------------------------
+    FormatString ParseFormatString (const GS::UniString &stringformat);
 
-// -----------------------------------------------------------------------------
-// Извлекает из строки информацио о единицах измерении и округлении
-// -----------------------------------------------------------------------------
-FormatString ParseFormatString (const GS::UniString& stringformat);
+    // -----------------------------------------------------------------------------
+    // Переводит число в строку согласно настройкам строки-формата
+    // -----------------------------------------------------------------------------
+    GS::UniString NumToString (double var, const FormatString &stringformat);
 
-// -----------------------------------------------------------------------------
-// Переводит число в строку согласно настройкам строки-формата
-// -----------------------------------------------------------------------------
-GS::UniString NumToString (double var, const FormatString& stringformat);
+    void ReplaceMeters (GS::UniString &formatstring);
 
-void ReplaceMeters (GS::UniString& formatstring);
-
-}
+} // namespace FormatStringFunc
 
 // -------------------------------------------------------------------------------
-// Функция для получения правил из массива элементов (по имени правила и наличию скобок в описании)
-// Если в массиве один элемент - будет произведён поиск по классификации
-// В этом случае в массив элементов будут добавлены элементы, у которых видны правила
+// Функция для получения правил из массива элементов (по имени правила и наличию
+// скобок в описании) Если в массиве один элемент - будет произведён поиск по
+// классификации В этом случае в массив элементов будут добавлены элементы, у
+// которых видны правила
 // -------------------------------------------------------------------------------
-bool GetRuleFromSelected (GS::Array<API_Guid>& guidArray, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, const GS::UniString& name, bool check_bracket);
+bool GetRuleFromSelected (GS::Array<API_Guid> &guidArray,
+                          GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
+                          const GS::UniString &name,
+                          bool check_bracket);
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция для выбора элементов, в которых видимо выбранное свойство
 // -----------------------------------------------------------------------------------------------------------------------
-void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, GS::Array<API_Guid>& guidArray);
+void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
+                                      GS::Array<API_Guid> &guidArray);
 
 // -----------------------------------------------------------------------------------------------------------------------
-// Функция получения словаря свойств, в описании которых есть name. Опционально проверяет наличие скобок { }
+// Функция получения словаря свойств, в описании которых есть name. Опционально
+// проверяет наличие скобок { }
 // -----------------------------------------------------------------------------------------------------------------------
-bool GetRuleFromSelected (const API_Guid& elemguid, GS::HashTable<API_Guid, API_PropertyDefinition>& definitions, const GS::UniString& name, bool check_bracket);
+bool GetRuleFromSelected (const API_Guid &elemguid,
+                          GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
+                          const GS::UniString &name,
+                          bool check_bracket);
 
 // -----------------------------------------------------------------------------
 // Добавление отслеживания (для разных версий)
 // -----------------------------------------------------------------------------
-GSErrCode AttachObserver (const API_Guid& objectId, const SyncSettings& syncSettings);
+GSErrCode AttachObserver (const API_Guid &objectId, const SyncSettings &syncSettings);
 
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
-bool CheckElementType (const API_ElemTypeID& elementType, const SyncSettings& syncSettings);
+bool CheckElementType (const API_ElemTypeID &elementType, const SyncSettings &syncSettings);
 
 // -----------------------------------------------------------------------------
-// Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
+// Проверяет возможность редактирования объекта (не находится в модуле,
+// разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
-bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType);
+bool IsElementEditable (const API_Guid &objectId, const SyncSettings &syncSettings, const bool needCheckElementType);
 
-bool IsElementEditable (const API_Elem_Head& tElemHead, const SyncSettings& syncSettings, const bool needCheckElementType);
+bool IsElementEditable (const API_Elem_Head &tElemHead,
+                        const SyncSettings &syncSettings,
+                        const bool needCheckElementType);
 
 // -----------------------------------------------------------------------------
-// Проверяет возможность редактирования объекта (не находится в модуле, разблокирован, зарезервирован)
-// Возвращает тип элемента
+// Проверяет возможность редактирования объекта (не находится в модуле,
+// разблокирован, зарезервирован) Возвращает тип элемента
 // -----------------------------------------------------------------------------
-bool IsElementEditable (const API_Guid& objectId, const SyncSettings& syncSettings, const bool needCheckElementType, API_ElemTypeID& eltype);
+bool IsElementEditable (const API_Guid &objectId,
+                        const SyncSettings &syncSettings,
+                        const bool needCheckElementType,
+                        API_ElemTypeID &eltype);
 
 // -----------------------------------------------------------------------------
 // Получить массив Guid выбранных элементов
 // Настройки будут считаны при вызове функции
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement);
+GS::Array<API_Guid>
+GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement);
 
-GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement, bool addZone, bool addConnect);
+GS::Array<API_Guid> GetSelectedElements (
+    bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement, bool addZone, bool addConnect);
 
 // -----------------------------------------------------------------------------
-// Получить массив Guid выбранных элементов в соответсвии с настройками обработки
+// Получить массив Guid выбранных элементов в соответсвии с настройками
+// обработки
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel, bool onlyEditable, const SyncSettings& syncSettings, bool addSubelement);
+GS::Array<API_Guid>
+GetSelectedElements (bool assertIfNoSel, bool onlyEditable, const SyncSettings &syncSettings, bool addSubelement);
 
-GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, const SyncSettings& syncSettings, bool addSubelement, bool addZone, bool addConnect);
+GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
+                                         bool onlyEditable /*= true*/,
+                                         const SyncSettings &syncSettings,
+                                         bool addSubelement,
+                                         bool addZone,
+                                         bool addConnect);
 
 // -----------------------------------------------------------------------------
 // Возвращает GUID родительского элемента для API_SectElemType
 // -----------------------------------------------------------------------------
-void GetParentGUIDSectElem (const API_Guid& sectElemguid, API_Guid& parentguid, API_ElemTypeID& parentType);
+void GetParentGUIDSectElem (const API_Guid &sectElemguid, API_Guid &parentguid, API_ElemTypeID &parentType);
 
 // -----------------------------------------------------------------------------
 // Вызов функции для выбранных элементов
 //	(функция должна принимать в качетве аргумента API_Guid SyncSettings
 // -----------------------------------------------------------------------------
-void CallOnSelectedElemSettings (void (*function)(const API_Guid&, const SyncSettings&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, const SyncSettings& syncSettings, GS::UniString& funcname, bool addSubelement);
+void CallOnSelectedElemSettings (void (*function) (const API_Guid &, const SyncSettings &),
+                                 bool assertIfNoSel /* = true*/,
+                                 bool onlyEditable /* = true*/,
+                                 const SyncSettings &syncSettings,
+                                 GS::UniString &funcname,
+                                 bool addSubelement);
 
-void GetRelationsElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid);
+void GetRelationsElement (const API_Guid &elemGuid, const SyncSettings &syncSettings, GS::Array<API_Guid> &subelemGuid);
 
 // --------------------------------------------------------------------
 // Поиск связанных элементов
 // --------------------------------------------------------------------
-void GetRelationsElement (const API_Guid& elemGuid, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid, bool addZone, bool addConnect);
+void GetRelationsElement (const API_Guid &elemGuid,
+                          const SyncSettings &syncSettings,
+                          GS::Array<API_Guid> &subelemGuid,
+                          bool addZone,
+                          bool addConnect);
 
 // --------------------------------------------------------------------
 // Поиск связанных элементов для определённого типа
 // --------------------------------------------------------------------
-void GetRelationsElement (const API_Guid& elemGuid, const API_ElemTypeID& elementType, const SyncSettings& syncSettings, GS::Array<API_Guid>& subelemGuid, bool addZone, bool addConnect);
+void GetRelationsElement (const API_Guid &elemGuid,
+                          const API_ElemTypeID &elementType,
+                          const SyncSettings &syncSettings,
+                          GS::Array<API_Guid> &subelemGuid,
+                          bool addZone,
+                          bool addConnect);
 
 void test ();
 
 // -----------------------------------------------------------------------------
-// По заданному углу поворота и глобальному углу направления на север возвращает ориентацию объекта
-// и текст с обозначением стороны света (RUS+ENG)
+// По заданному углу поворота и глобальному углу направления на север возвращает
+// ориентацию объекта и текст с обозначением стороны света (RUS+ENG)
 // -----------------------------------------------------------------------------
-void CoordNorthAngle (double north, double angz, double& angznorth, GS::UniString& angznorthtxt, GS::UniString& angznorthtxteng);
+void CoordNorthAngle (
+    double north, double angz, double &angznorth, GS::UniString &angznorthtxt, GS::UniString &angznorthtxteng);
 
 // -----------------------------------------------------------------------------
 // Вычисляет уголв поворота элемента по координатам его начала и конца
 // -----------------------------------------------------------------------------
-void CoordRotAngle (double sx, double sy, double ex, double ey, bool isFliped, double& angz);
+void CoordRotAngle (double sx, double sy, double ex, double ey, bool isFliped, double &angz);
 
 // -----------------------------------------------------------------------------
 // Проверяет наличие дробной части у угла с заданной точностью
 // -----------------------------------------------------------------------------
-bool CoordCorrectAngle (double angz, double& tolerance_ang, double& symb_rotangle_fraction, bool& bsymb_rotangle_correct_1000);
+bool CoordCorrectAngle (double angz,
+                        double &tolerance_ang,
+                        double &symb_rotangle_fraction,
+                        bool &bsymb_rotangle_correct_1000);
 
 // -----------------------------------------------------------------------------
 // Получение имени внутренних свойств по русскому имени
 // -----------------------------------------------------------------------------
-GS::UniString GetPropertyENGName (GS::UniString& name);
+GS::UniString GetPropertyENGName (GS::UniString &name);
 
-namespace PropertyHelpers
-{
-GS::UniString ToString (const API_Variant& variant, const FormatString& stringformat);
-GS::UniString ToString (const API_Variant& variant);
-GS::UniString ToString (const API_Property& property, const FormatString& stringformat);
-GS::UniString ToString (const API_Property& property);
-}
+namespace PropertyHelpers {
+    GS::UniString ToString (const API_Variant &variant, const FormatString &stringformat);
+    GS::UniString ToString (const API_Variant &variant);
+    GS::UniString ToString (const API_Property &property, const FormatString &stringformat);
+    GS::UniString ToString (const API_Property &property);
+} // namespace PropertyHelpers
 
 // -----------------------------------------------------------------------------
 // Функции для работы с ParamDict и ParamValue
 // -----------------------------------------------------------------------------
-namespace ParamHelpers
-{
-// -----------------------------------------------------------------------------
-// Возвращает строку в формате rawname
-// Очищает от единиц измерения, добавляет скобки
-// -----------------------------------------------------------------------------
-GS::UniString NameToRawName (const GS::UniString& name, FormatString& formatstring);
+namespace ParamHelpers {
+    // -----------------------------------------------------------------------------
+    // Возвращает строку в формате rawname
+    // Очищает от единиц измерения, добавляет скобки
+    // -----------------------------------------------------------------------------
+    GS::UniString NameToRawName (const GS::UniString &name, FormatString &formatstring);
 
-// -----------------------------------------------------------------------------
-// Получение размеров Морфа
-// Формирует словарь ParamDictValue& pdictvalue со значениями
-// -----------------------------------------------------------------------------
-bool ReadMorphParam (const API_Guid& guid, ParamDictValue& pdictvaluemorph);
+    // -----------------------------------------------------------------------------
+    // Получение размеров Морфа
+    // Формирует словарь ParamDictValue& pdictvalue со значениями
+    // -----------------------------------------------------------------------------
+    bool ReadMorphParam (const API_Guid &guid, ParamDictValue &pdictvaluemorph);
 
-GS::UniString GetRawnamePrefixByTypeInx (const short& inx);
+    GS::UniString GetRawnamePrefixByTypeInx (const short &inx);
 
-short GetTypeInxByRawnamePrefix (const GS::UniString& rawName);
+    short GetTypeInxByRawnamePrefix (const GS::UniString &rawName);
 
-// -----------------------------------------------------------------------------
-// Задаёт источник получения информации по rawName
-// -----------------------------------------------------------------------------
-void SetParamValueSourseByName (ParamValue& pvalue);
+    // -----------------------------------------------------------------------------
+    // Задаёт источник получения информации по rawName
+    // -----------------------------------------------------------------------------
+    void SetParamValueSourseByName (ParamValue &pvalue);
 
-void SetArrayByRawname (ParamValue& pvalue);
+    void SetArrayByRawname (ParamValue &pvalue);
 
-// -----------------------------------------------------------------------------
-// Получение координат объекта
-// symb_pos_x , symb_pos_y, symb_pos_z
-// Для панелей навесной стены возвращает центр панели
-// Для колонны или объекта - центр колонны и отм. низа
-// Для зоны - центр зоны (без отметки, symb_pos_z = 0)
-// -----------------------------------------------------------------------------
-bool ReadCoords (const API_Element& element, ParamDictValue& pdictvaluecoord);
+    // -----------------------------------------------------------------------------
+    // Получение координат объекта
+    // symb_pos_x , symb_pos_y, symb_pos_z
+    // Для панелей навесной стены возвращает центр панели
+    // Для колонны или объекта - центр колонны и отм. низа
+    // Для зоны - центр зоны (без отметки, symb_pos_z = 0)
+    // -----------------------------------------------------------------------------
+    bool ReadCoords (const API_Element &element, ParamDictValue &pdictvaluecoord);
 
-// -----------------------------------------------------------------------------
-// Замена имен параметров на значения в выражении
-// Значения передаются словарём, вычисление значений см. GetParamValueDict
-// -----------------------------------------------------------------------------
-bool ReplaceParamInExpression (const ParamDictValue& pdictvalue, GS::UniString& expression);
+    // -----------------------------------------------------------------------------
+    // Замена имен параметров на значения в выражении
+    // Значения передаются словарём, вычисление значений см. GetParamValueDict
+    // -----------------------------------------------------------------------------
+    bool ReplaceParamInExpression (const ParamDictValue &pdictvalue, GS::UniString &expression);
 
-bool GetParamValueForElements (const API_Guid& elemguid, const GS::UniString& rawname, const ParamDictElement& paramToRead, ParamValue& pvalue);
+    bool GetParamValueForElements (const API_Guid &elemguid,
+                                   const GS::UniString &rawname,
+                                   const ParamDictElement &paramToRead,
+                                   ParamValue &pvalue);
 
-void ReplaceProcToBrace (GS::UniString& expression, bool fromMaterial);
+    void ReplaceProcToBrace (GS::UniString &expression, bool fromMaterial);
 
-// -----------------------------------------------------------------------------
-// Извлекает из строки все имена свойств или параметров, заключенные в знаки %
-// -----------------------------------------------------------------------------
-bool ParseParamNameMaterial (GS::UniString& expression, ParamDictValue& paramDict, bool fromMaterial = true);
+    // -----------------------------------------------------------------------------
+    // Извлекает из строки все имена свойств или параметров, заключенные в знаки %
+    // -----------------------------------------------------------------------------
+    bool ParseParamNameMaterial (GS::UniString &expression, ParamDictValue &paramDict, bool fromMaterial = true);
 
-// -----------------------------------------------------------------------------
-// Извлекает из строки все имена свойств или параметров, заключенные в знаки {}
-// -----------------------------------------------------------------------------
-bool ParseParamName (GS::UniString& expression, ParamDictValue& paramDict);
+    // -----------------------------------------------------------------------------
+    // Извлекает из строки все имена свойств или параметров, заключенные в знаки {}
+    // -----------------------------------------------------------------------------
+    bool ParseParamName (GS::UniString &expression, ParamDictValue &paramDict);
 
-// -----------------------------------------------------------------------------
-// Добавление пустого значения в словарь ParamDictValue
-// -----------------------------------------------------------------------------
-void AddValueToParamDictValue (ParamDictValue& params, const GS::UniString& name);
+    // -----------------------------------------------------------------------------
+    // Добавление пустого значения в словарь ParamDictValue
+    // -----------------------------------------------------------------------------
+    void AddValueToParamDictValue (ParamDictValue &params, const GS::UniString &name);
 
-// -----------------------------------------------------------------------------
-// Проверяет необходимость добавления в словарь параметров
-// Если в имени параметра содержится информация о номере аттрибута и имя такого параметра есть в словаре - вернёт истину
-// -----------------------------------------------------------------------------
-bool needAdd (const ParamDictValue& params, const GS::UniString& rawName);
+    // -----------------------------------------------------------------------------
+    // Проверяет необходимость добавления в словарь параметров
+    // Если в имени параметра содержится информация о номере аттрибута и имя такого
+    // параметра есть в словаре - вернёт истину
+    // -----------------------------------------------------------------------------
+    bool needAdd (const ParamDictValue &params, const GS::UniString &rawName);
 
-// --------------------------------------------------------------------
-// Запись параметра ParamValue в словарь ParamDict, если его там прежде не было
-// --------------------------------------------------------------------
-void AddParamValue2ParamDict (const API_Guid& elemGuid, ParamValue& param, ParamDictValue& paramToRead);
+    // --------------------------------------------------------------------
+    // Запись параметра ParamValue в словарь ParamDict, если его там прежде не было
+    // --------------------------------------------------------------------
+    void AddParamValue2ParamDict (const API_Guid &elemGuid, ParamValue &param, ParamDictValue &paramToRead);
 
-// --------------------------------------------------------------------
-// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
-// --------------------------------------------------------------------
-void AddParamValue2ParamDictElement (const API_Guid& elemGuid, const ParamValue& param, ParamDictElement& paramToRead);
+    // --------------------------------------------------------------------
+    // Запись параметра ParamValue в словарь элементов ParamDictElement, если его
+    // там прежде не было
+    // --------------------------------------------------------------------
+    void
+    AddParamValue2ParamDictElement (const API_Guid &elemGuid, const ParamValue &param, ParamDictElement &paramToRead);
 
-// --------------------------------------------------------------------
-// Запись параметра ParamValue в словарь элементов ParamDictElement, если его там прежде не было
-// --------------------------------------------------------------------
-void AddParamValue2ParamDictElement (const ParamValue& param, ParamDictElement& paramToRead);
+    // --------------------------------------------------------------------
+    // Запись параметра ParamValue в словарь элементов ParamDictElement, если его
+    // там прежде не было
+    // --------------------------------------------------------------------
+    void AddParamValue2ParamDictElement (const ParamValue &param, ParamDictElement &paramToRead);
 
-// --------------------------------------------------------------------
-// Содержит ли значения элементиз списка игнорируемых
-// --------------------------------------------------------------------
-bool CheckIgnoreVal (const SkipValues& ignorevals, const ParamValue& param);
+    // --------------------------------------------------------------------
+    // Содержит ли значения элементиз списка игнорируемых
+    // --------------------------------------------------------------------
+    bool CheckIgnoreVal (const SkipValues &ignorevals, const ParamValue &param);
 
-// --------------------------------------------------------------------
-// Сопоставляет параметры
-// --------------------------------------------------------------------
-bool CompareParamValue (ParamValue& paramFrom, ParamValue& paramTo, FormatString stringformat, const SkipValues& ignorevals, bool& is_ignore, bool& is_eq);
+    // --------------------------------------------------------------------
+    // Сопоставляет параметры
+    // --------------------------------------------------------------------
+    bool CompareParamValue (ParamValue &paramFrom,
+                            ParamValue &paramTo,
+                            FormatString stringformat,
+                            const SkipValues &ignorevals,
+                            bool &is_ignore,
+                            bool &is_eq);
 
-// --------------------------------------------------------------------
-// Запись словаря ParamDictValue в словарь элементов ParamDictElement
-// --------------------------------------------------------------------
-void AddParamDictValue2ParamDictElement (const API_Guid& elemGuid, ParamDictValue& param, ParamDictElement& paramToRead);
+    // --------------------------------------------------------------------
+    // Запись словаря ParamDictValue в словарь элементов ParamDictElement
+    // --------------------------------------------------------------------
+    void
+    AddParamDictValue2ParamDictElement (const API_Guid &elemGuid, ParamDictValue &param, ParamDictElement &paramToRead);
 
-// -----------------------------------------------------------------------------
-// Добавление массива свойств в словарь
-// -----------------------------------------------------------------------------
-bool AddProperty (ParamDictValue& params, GS::Array<API_Property>& properties, const API_Guid& elemguid);
+    // -----------------------------------------------------------------------------
+    // Добавление массива свойств в словарь
+    // -----------------------------------------------------------------------------
+    bool AddProperty (ParamDictValue &params, GS::Array<API_Property> &properties, const API_Guid &elemguid);
 
-// -----------------------------------------------------------------------------
-// Добавление значения в словарь ParamDictValue
-// -----------------------------------------------------------------------------
-void AddBoolValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const bool val, const bool addInNotEx = false);
+    // -----------------------------------------------------------------------------
+    // Добавление значения в словарь ParamDictValue
+    // -----------------------------------------------------------------------------
+    void AddBoolValueToParamDictValue (ParamDictValue &params,
+                                       const API_Guid &elemGuid,
+                                       const GS::UniString &rawName_prefix,
+                                       const GS::UniString &name,
+                                       const bool val,
+                                       const bool addInNotEx = false);
 
-// -----------------------------------------------------------------------------
-// Добавление значения длины в словарь ParamDictValue
-// -----------------------------------------------------------------------------
-void AddLengthValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val, const bool addInNotEx = false);
+    // -----------------------------------------------------------------------------
+    // Добавление значения длины в словарь ParamDictValue
+    // -----------------------------------------------------------------------------
+    void AddLengthValueToParamDictValue (ParamDictValue &params,
+                                         const API_Guid &elemGuid,
+                                         const GS::UniString &rawName_prefix,
+                                         const GS::UniString &name,
+                                         const double val,
+                                         const bool addInNotEx = false);
 
-// -----------------------------------------------------------------------------
-// Добавление значения в словарь ParamDictValue
-// -----------------------------------------------------------------------------
-void AddDoubleValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const double val, const bool addInNotEx = false);
+    // -----------------------------------------------------------------------------
+    // Добавление значения в словарь ParamDictValue
+    // -----------------------------------------------------------------------------
+    void AddDoubleValueToParamDictValue (ParamDictValue &params,
+                                         const API_Guid &elemGuid,
+                                         const GS::UniString &rawName_prefix,
+                                         const GS::UniString &name,
+                                         const double val,
+                                         const bool addInNotEx = false);
 
-// -----------------------------------------------------------------------------
-// Добавление значения в словарь ParamDictValue
-// -----------------------------------------------------------------------------
-void AddStringValueToParamDictValue (ParamDictValue& params, const API_Guid& elemGuid, const GS::UniString& rawName_prefix, const GS::UniString& name, const GS::UniString val, const bool addInNotEx = false);
+    // -----------------------------------------------------------------------------
+    // Добавление значения в словарь ParamDictValue
+    // -----------------------------------------------------------------------------
+    void AddStringValueToParamDictValue (ParamDictValue &params,
+                                         const API_Guid &elemGuid,
+                                         const GS::UniString &rawName_prefix,
+                                         const GS::UniString &name,
+                                         const GS::UniString val,
+                                         const bool addInNotEx = false);
 
-// -----------------------------------------------------------------------------
-// Синхронизация ParamValue и API_Property
-// Возвращает true и подготовленное для записи свойство в случае отличий
-// TODO Переписать всё под запись ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertToProperty (const ParamValue& pvalue, API_Property& property);
+    // -----------------------------------------------------------------------------
+    // Синхронизация ParamValue и API_Property
+    // Возвращает true и подготовленное для записи свойство в случае отличий
+    // TODO Переписать всё под запись ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertToProperty (const ParamValue &pvalue, API_Property &property);
 
-// --------------------------------------------------------------------
-// Сопоставление двух словарей ParamDictValue 
-// Не добавляет отсутствующие в paramsTo элементы
-// --------------------------------------------------------------------
-void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo);
+    // --------------------------------------------------------------------
+    // Сопоставление двух словарей ParamDictValue
+    // Не добавляет отсутствующие в paramsTo элементы
+    // --------------------------------------------------------------------
+    void CompareParamDictValue (ParamDictValue &paramsFrom, ParamDictValue &paramsTo);
 
-// --------------------------------------------------------------------
-// Сопоставление двух словарей ParamDictValue
-// --------------------------------------------------------------------
-void CompareParamDictValue (ParamDictValue& paramsFrom, ParamDictValue& paramsTo);
+    // --------------------------------------------------------------------
+    // Сопоставление двух словарей ParamDictValue
+    // --------------------------------------------------------------------
+    void CompareParamDictValue (ParamDictValue &paramsFrom, ParamDictValue &paramsTo);
 
-// --------------------------------------------------------------------
-// Чтение значений свойств в ParamDictValue
-// --------------------------------------------------------------------
-bool ReadProperty (const API_Guid& elemGuid, ParamDictValue& params, const GS::Array<API_PropertyDefinition>& propertyDefinitions);
+    // --------------------------------------------------------------------
+    // Чтение значений свойств в ParamDictValue
+    // --------------------------------------------------------------------
+    bool ReadProperty (const API_Guid &elemGuid,
+                       ParamDictValue &params,
+                       const GS::Array<API_PropertyDefinition> &propertyDefinitions);
 
-// -----------------------------------------------------------------------------
-// Получение значения IFC свойств в ParamDictValue
-// -----------------------------------------------------------------------------
-#if !defined (AC_29)
-bool ReadIFC (const API_Guid& elemGuid, ParamDictValue& params);
-#endif
-// -----------------------------------------------------------------------------
-// Обработка данных о классификации
-// -----------------------------------------------------------------------------
-bool ReadClassification (const API_Guid& elemGuid, ParamDictValue& params);
+    // -----------------------------------------------------------------------------
+    // Получение значения IFC свойств в ParamDictValue
+    // -----------------------------------------------------------------------------
+    #if !defined(AC_29)
+    bool ReadIFC (const API_Guid &elemGuid, ParamDictValue &params);
+    #endif
+    // -----------------------------------------------------------------------------
+    // Обработка данных о классификации
+    // -----------------------------------------------------------------------------
+    bool ReadClassification (const API_Guid &elemGuid, ParamDictValue &params);
 
-// -----------------------------------------------------------------------------
-// Обработка данных о аттрибутах
-// -----------------------------------------------------------------------------
-bool ReadAttributeValues (const API_Elem_Head& elem_head, ParamDictValue& params);
+    // -----------------------------------------------------------------------------
+    // Обработка данных о аттрибутах
+    // -----------------------------------------------------------------------------
+    bool ReadAttributeValues (const API_Elem_Head &elem_head, ParamDictValue &params);
 
-// -----------------------------------------------------------------------------
-// Получение ID элемента
-// -----------------------------------------------------------------------------
-bool ReadID (const API_Elem_Head& elem_head, ParamDictValue& params);
+    // -----------------------------------------------------------------------------
+    // Получение ID элемента
+    // -----------------------------------------------------------------------------
+    bool ReadID (const API_Elem_Head &elem_head, ParamDictValue &params);
 
-// -----------------------------------------------------------------------------
-// Получить значение GDL параметра по его имени или описанию в ParamValue
-// -----------------------------------------------------------------------------
-bool ReadGDL (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params, ParamDictValue& allparams);
+    // -----------------------------------------------------------------------------
+    // Получить значение GDL параметра по его имени или описанию в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ReadGDL (const API_Element &element,
+                  const API_Elem_Head &elem_head,
+                  ParamDictValue &params,
+                  ParamDictValue &allparams);
 
-// --------------------------------------------------------------------
-// Запись словаря параметров для множества элементов
-// --------------------------------------------------------------------
-GS::Array<API_Guid> ElementsWrite (ParamDictElement& paramToWrite);
+    // --------------------------------------------------------------------
+    // Запись словаря параметров для множества элементов
+    // --------------------------------------------------------------------
+    GS::Array<API_Guid> ElementsWrite (ParamDictElement &paramToWrite);
 
-// --------------------------------------------------------------------
-// Запись ParamDictValue в один элемент
-// --------------------------------------------------------------------
-bool Write (const API_Guid& elemGuid, ParamDictValue& params);
+    // --------------------------------------------------------------------
+    // Запись ParamDictValue в один элемент
+    // --------------------------------------------------------------------
+    bool Write (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Запись ParamDictElement в информацию о проекте
-// --------------------------------------------------------------------
-void WriteInfo (ParamDictElement& paramToWrite);
+    // --------------------------------------------------------------------
+    // Запись ParamDictElement в информацию о проекте
+    // --------------------------------------------------------------------
+    void WriteInfo (ParamDictElement &paramToWrite);
 
-// --------------------------------------------------------------------
-// Смена классификации
-// --------------------------------------------------------------------
-bool WriteClassification (const API_Guid& elemGuid, ParamDictValue& params);
+    // --------------------------------------------------------------------
+    // Смена классификации
+    // --------------------------------------------------------------------
+    bool WriteClassification (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Запись ParamDictValue в ID
-// --------------------------------------------------------------------
-void WriteID (const API_Guid& elemGuid, ParamDictValue& params);
+    // --------------------------------------------------------------------
+    // Запись ParamDictValue в ID
+    // --------------------------------------------------------------------
+    void WriteID (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Запись ParamDictValue в аттрибуты элемента (слой)
-// --------------------------------------------------------------------
-void WriteAttribute (const API_Guid& elemGuid, ParamDictValue& params);
+    // --------------------------------------------------------------------
+    // Запись ParamDictValue в аттрибуты элемента (слой)
+    // --------------------------------------------------------------------
+    void WriteAttribute (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Запись ParamDictValue в координаты элемента
-// --------------------------------------------------------------------
-void WriteCoord (const API_Guid& elemGuid, ParamDictValue& params);
+    // --------------------------------------------------------------------
+    // Запись ParamDictValue в координаты элемента
+    // --------------------------------------------------------------------
+    void WriteCoord (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Запись ParamDictValue в GDL параметры
-// --------------------------------------------------------------------
-void WriteGDL (const API_Guid& elemGuid, ParamDictValue& params);
+    // --------------------------------------------------------------------
+    // Запись ParamDictValue в GDL параметры
+    // --------------------------------------------------------------------
+    void WriteGDL (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Запись ParamDictValue в свойства
-// --------------------------------------------------------------------
-void WriteProperty (const API_Guid& elemGuid, ParamDictValue& params);
+    // --------------------------------------------------------------------
+    // Запись ParamDictValue в свойства
+    // --------------------------------------------------------------------
+    void WriteProperty (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Заполнение словаря параметров для множества элементов
-// --------------------------------------------------------------------
-void ElementsRead (ParamDictElement& paramToRead);
+    // --------------------------------------------------------------------
+    // Заполнение словаря параметров для множества элементов
+    // --------------------------------------------------------------------
+    void ElementsRead (ParamDictElement &paramToRead);
 
-void Read (const API_Guid& elemGuid, ParamDictValue& params);
+    void Read (const API_Guid &elemGuid, ParamDictValue &params);
 
-// --------------------------------------------------------------------
-// Заполнение словаря параметров для множества элементов
-// При необходимости возвращает словарь для сложного элемента ParamDictCompositeElement
-// --------------------------------------------------------------------
-void ElementsRead (ParamDictElement& paramToRead, ParamDictCompositeElement& paramCompositeToRead, ListData::LibElements& paramListDataToRead, bool needReturnComposite, bool needListData);
+    // --------------------------------------------------------------------
+    // Заполнение словаря параметров для множества элементов
+    // При необходимости возвращает словарь для сложного элемента
+    // ParamDictCompositeElement
+    // --------------------------------------------------------------------
+    void ElementsRead (ParamDictElement &paramToRead,
+                       ParamDictCompositeElement &paramCompositeToRead,
+                       ListData::LibElements &paramListDataToRead,
+                       bool needReturnComposite,
+                       bool needListData);
 
-// --------------------------------------------------------------------
-// Заполнение словаря с параметрами
-// --------------------------------------------------------------------
-void Read (const API_Guid& elemGuid, ParamDictValue& params, ParamDictComposite& paramcomposite, ListData::LibElement& paramListData, bool needReturnComposite, bool needListData);
+    // --------------------------------------------------------------------
+    // Заполнение словаря с параметрами
+    // --------------------------------------------------------------------
+    void Read (const API_Guid &elemGuid,
+               ParamDictValue &params,
+               ParamDictComposite &paramcomposite,
+               ListData::LibElement &paramListData,
+               bool needReturnComposite,
+               bool needListData);
 
-void Array2ParamValue (GS::Array<ParamValueData>& pvalue, ParamValueData& pvalrezult);
-bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::UniString& pstring, double preal);
-bool ConvertToParamValue (ParamValueData& pvalue, const API_AddParID& typeIDr, const GS::Array<GS::UniString>& pstring, const GS::Array<double>& preal, const GS::Int32& dim1, const GS::Int32& dim2);
+    void Array2ParamValue (GS::Array<ParamValueData> &pvalue, ParamValueData &pvalrezult);
+    bool ConvertToParamValue (ParamValueData &pvalue,
+                              const API_AddParID &typeIDr,
+                              const GS::UniString &pstring,
+                              double preal);
+    bool ConvertToParamValue (ParamValueData &pvalue,
+                              const API_AddParID &typeIDr,
+                              const GS::Array<GS::UniString> &pstring,
+                              const GS::Array<double> &preal,
+                              const GS::Int32 &dim1,
+                              const GS::Int32 &dim2);
 
-// -----------------------------------------------------------------------------
-// Конвертация параметров библиотечного элемента в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertBoolToParamValue (ParamValue& pvalue, const GS::UniString& paramName, const bool boolValue);
+    // -----------------------------------------------------------------------------
+    // Конвертация параметров библиотечного элемента в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertBoolToParamValue (ParamValue &pvalue, const GS::UniString &paramName, const bool boolValue);
 
-// -----------------------------------------------------------------------------
-// Конвертация аттрибута в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertAttributeToParamValue (ParamValue& pvalue, const GS::UniString& paramName, const API_Attribute attr);
+    // -----------------------------------------------------------------------------
+    // Конвертация аттрибута в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertAttributeToParamValue (ParamValue &pvalue, const GS::UniString &paramName, const API_Attribute attr);
 
-// -----------------------------------------------------------------------------
-// Конвертация параметров библиотечного элемента в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertToParamValue (ParamValue& pvalue, const API_AddParType& nthParameter);
+    // -----------------------------------------------------------------------------
+    // Конвертация параметров библиотечного элемента в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertToParamValue (ParamValue &pvalue, const API_AddParType &nthParameter);
 
-// -----------------------------------------------------------------------------
-// Заполнение rawName для ParamValue по описанию в API_Property
-// -----------------------------------------------------------------------------
-void SetrawNameFromProperty (ParamValue& pvalue, const API_Property& property);
+    // -----------------------------------------------------------------------------
+    // Заполнение rawName для ParamValue по описанию в API_Property
+    // -----------------------------------------------------------------------------
+    void SetrawNameFromProperty (ParamValue &pvalue, const API_Property &property);
 
-// -----------------------------------------------------------------------------
-// Конвертация свойства в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertToParamValue (ParamValue& pvalue, const API_Property& property);
+    // -----------------------------------------------------------------------------
+    // Конвертация свойства в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertToParamValue (ParamValue &pvalue, const API_Property &property);
 
-void ConvertToParamValue_CheckAttrib (ParamValue& pvalue, const API_PropertyDefinition& definition);
+    void ConvertToParamValue_CheckAttrib (ParamValue &pvalue, const API_PropertyDefinition &definition);
 
-// -----------------------------------------------------------------------------
-// Конвертация определения свойства в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertToParamValue (ParamValue& pvalue, const API_PropertyDefinition& definition);
+    // -----------------------------------------------------------------------------
+    // Конвертация определения свойства в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertToParamValue (ParamValue &pvalue, const API_PropertyDefinition &definition);
 
-// -----------------------------------------------------------------------------
-// Конвертация строки в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertStringToParamValue (ParamValue& pvalue, const GS::UniString& paramName, const GS::UniString strvalue);
+    // -----------------------------------------------------------------------------
+    // Конвертация строки в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertStringToParamValue (ParamValue &pvalue, const GS::UniString &paramName, const GS::UniString strvalue);
 
-// -----------------------------------------------------------------------------
-// Конвертация целого числа в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertIntToParamValue (ParamValue& pvalue, const GS::UniString& paramName, const Int32 intValue);
+    // -----------------------------------------------------------------------------
+    // Конвертация целого числа в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertIntToParamValue (ParamValue &pvalue, const GS::UniString &paramName, const Int32 intValue);
 
-// -----------------------------------------------------------------------------
-// Конвертация double в ParamValue
-// -----------------------------------------------------------------------------
-bool ConvertDoubleToParamValue (ParamValue& pvalue, const GS::UniString& paramName, const double doubleValue);
+    // -----------------------------------------------------------------------------
+    // Конвертация double в ParamValue
+    // -----------------------------------------------------------------------------
+    bool ConvertDoubleToParamValue (ParamValue &pvalue, const GS::UniString &paramName, const double doubleValue);
 
-// -----------------------------------------------------------------------------
-// Конвертация API_IFCProperty в ParamValue
-// -----------------------------------------------------------------------------
-#if !defined (AC_29)
-bool ConvertToParamValue (ParamValue& pvalue, const API_IFCProperty& property);
-#endif // !AC_29
+    // -----------------------------------------------------------------------------
+    // Конвертация API_IFCProperty в ParamValue
+    // -----------------------------------------------------------------------------
+    #if !defined(AC_29)
+    bool ConvertToParamValue (ParamValue &pvalue, const API_IFCProperty &property);
+    #endif // !AC_29
 
-void ConvertByFormatString (ParamValue& pvalue);
+    void ConvertByFormatString (ParamValue &pvalue);
 
-#if !defined(AC_27) && !defined(AC_28) && !defined(AC_29)
-inline GSErrCode ACAPI_Attribute_GetAttributesByType (API_AttrTypeID typeID, GS::Array<API_Attribute>& attributes)
-{
-    API_AttributeIndex count;
-    GSErrCode err = ACAPI_Attribute_GetNum (typeID, &count);
-    for (API_AttributeIndex i = 1; i <= count; ++i) {
-        API_Attribute attr = {};
-        attr.header.typeID = typeID;
-        attr.header.index = i;
-        if (ACAPI_Attribute_Get (&attr) == NoError) {
-            attributes.Push (attr);
+    #if !defined(AC_27) && !defined(AC_28) && !defined(AC_29)
+    inline GSErrCode ACAPI_Attribute_GetAttributesByType (API_AttrTypeID typeID, GS::Array<API_Attribute> &attributes) {
+        API_AttributeIndex count;
+        GSErrCode err = ACAPI_Attribute_GetNum (typeID, &count);
+        for (API_AttributeIndex i = 1; i <= count; ++i) {
+            API_Attribute attr = {};
+            attr.header.typeID = typeID;
+            attr.header.index = i;
+            if (ACAPI_Attribute_Get (&attr) == NoError) {
+                attributes.Push (attr);
+            }
         }
+        return err;
     }
-    return err;
-}
-#endif
+    #endif
 
-// --------------------------------------------------------------------
-// Получение массива описаний свойств с указанием GUID родительского объекта
-// --------------------------------------------------------------------
-bool SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition>& definitions, GS::Array<API_PropertyDefinition>& definitionsout);
+    // --------------------------------------------------------------------
+    // Получение массива описаний свойств с указанием GUID родительского объекта
+    // --------------------------------------------------------------------
+    bool SubGuid_GetDefinition (const GS::Array<API_PropertyDefinition> &definitions,
+                                GS::Array<API_PropertyDefinition> &definitionsout);
 
-// --------------------------------------------------------------------
-// Получение словаря значений свойств с указанием GUID родительского объекта
-// --------------------------------------------------------------------
-bool SubGuid_GetParamValue (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, ParamDictValue& subproperty);
+    // --------------------------------------------------------------------
+    // Получение словаря значений свойств с указанием GUID родительского объекта
+    // --------------------------------------------------------------------
+    bool SubGuid_GetParamValue (const API_Guid &elemGuid,
+                                const GS::Array<API_PropertyDefinition> &definitions,
+                                ParamDictValue &subproperty);
 
-// --------------------------------------------------------------------
-// Сопоставление двух словарей ParamDictElement
-// --------------------------------------------------------------------
-void CompareParamDictElement (ParamDictElement& paramsFrom, ParamDictElement& paramsTo);
+    // --------------------------------------------------------------------
+    // Сопоставление двух словарей ParamDictElement
+    // --------------------------------------------------------------------
+    void CompareParamDictElement (ParamDictElement &paramsFrom, ParamDictElement &paramsTo);
 
-// -----------------------------------------------------------------------------
-// Поиск по описанию GDL параметра
-// Данный способ работат только с объектами (только чтение)
-// -----------------------------------------------------------------------------
-bool GDLParamByDescription (const API_Element& element, ParamDictValue& params, ParamDictValue& find_params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>& paramnamearray);
+    // -----------------------------------------------------------------------------
+    // Поиск по описанию GDL параметра
+    // Данный способ работат только с объектами (только чтение)
+    // -----------------------------------------------------------------------------
+    bool GDLParamByDescription (const API_Element &element,
+                                ParamDictValue &params,
+                                ParamDictValue &find_params,
+                                GS::HashTable<GS::UniString, GS::Array<GS::UniString>> &paramnamearray);
 
-// -----------------------------------------------------------------------------
-// Поиск по имени GDL параметра (чтение/запись)
-// -----------------------------------------------------------------------------
-bool GDLParamByName (const API_Element& element, const API_Elem_Head& elem_head, ParamDictValue& params, GS::HashTable<GS::UniString, GS::Array<GS::UniString>>& paramnamearray);
+    // -----------------------------------------------------------------------------
+    // Поиск по имени GDL параметра (чтение/запись)
+    // -----------------------------------------------------------------------------
+    bool GDLParamByName (const API_Element &element,
+                         const API_Elem_Head &elem_head,
+                         ParamDictValue &params,
+                         GS::HashTable<GS::UniString, GS::Array<GS::UniString>> &paramnamearray);
 
-// -----------------------------------------------------------------------------
-// Обработка свойств с формулами
-// -----------------------------------------------------------------------------
-bool ReadFormula (ParamDictValue& params, bool hasListData);
+    // -----------------------------------------------------------------------------
+    // Обработка свойств с формулами
+    // -----------------------------------------------------------------------------
+    bool ReadFormula (ParamDictValue &params, bool hasListData);
 
-bool ReadListData (const API_Elem_Head& elem_head, ParamDictValue& pdictvalue, ListData::LibElement& paramListDataToRead, bool needListData);
+    bool ReadListData (const API_Elem_Head &elem_head,
+                       ParamDictValue &pdictvalue,
+                       ListData::LibElement &paramListDataToRead,
+                       bool needListData);
 
-void ReadQuantities (const API_Elem_Head& elemhead, ParamDictValue& params, ParamDictComposite& paramcomposite);
+    void ReadQuantities (const API_Elem_Head &elemhead, ParamDictValue &params, ParamDictComposite &paramcomposite);
 
-bool ReadElementValues (const API_Element& element, ParamDictValue& params);
+    bool ReadElementValues (const API_Element &element, ParamDictValue &params);
 
-// -----------------------------------------------------------------------------
-// Обработка свойств с поиском в файлах
-// -----------------------------------------------------------------------------
-void ReadFile (ParamDictValue& params);
+    // -----------------------------------------------------------------------------
+    // Обработка свойств с поиском в файлах
+    // -----------------------------------------------------------------------------
+    void ReadFile (ParamDictValue &params);
 
-GS::UniString GetUnitsPrefix (GS::UniString& unit);
+    GS::UniString GetUnitsPrefix (GS::UniString &unit);
 
-void SetUnitsAndQty2ParamValueComposite (ParamValueComposite& comp);
+    void SetUnitsAndQty2ParamValueComposite (ParamValueComposite &comp);
 
-void ReadMaterial_ReadAddParam (ParamDictValue& paramsAdd, ParamDictComposite& paramcomposite, ParamDictValue& params, bool needReadQuantities);
+    void ReadMaterial_ReadAddParam (ParamDictValue &paramsAdd,
+                                    ParamDictComposite &paramcomposite,
+                                    ParamDictValue &params,
+                                    bool needReadQuantities);
 
-// -----------------------------------------------------------------------------
-// Получение информации о материалах и составе конструкции
-// -----------------------------------------------------------------------------
-bool ReadMaterial (const API_Element& element, ParamDictValue& params, ParamDictComposite& paramcomposite, bool& needReadQuantities);
-// --------------------------------------------------------------------
-// Получение данных из однородной конструкции
-// --------------------------------------------------------------------
-bool ComponentsBasicStructure (const API_AttributeIndex& constrinx, double fillThick, const API_AttributeIndex& constrinx_ven, double fillThick_ven, double fillThick_min, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, short& structype_ven, double& width, double& length);
+    // -----------------------------------------------------------------------------
+    // Получение информации о материалах и составе конструкции
+    // -----------------------------------------------------------------------------
+    bool ReadMaterial (const API_Element &element,
+                       ParamDictValue &params,
+                       ParamDictComposite &paramcomposite,
+                       bool &needReadQuantities);
+    // --------------------------------------------------------------------
+    // Получение данных из однородной конструкции
+    // --------------------------------------------------------------------
+    bool ComponentsBasicStructure (const API_AttributeIndex &constrinx,
+                                   double fillThick,
+                                   const API_AttributeIndex &constrinx_ven,
+                                   double fillThick_ven,
+                                   double fillThick_min,
+                                   ParamDictValue &params,
+                                   ParamDictComposite &paramcomposite,
+                                   ParamDictValue &paramsAdd,
+                                   short &structype_ven,
+                                   double &width,
+                                   double &length);
 
-void ComponentsGetUnic (GS::Array<ParamValueComposite>& composite);
+    void ComponentsGetUnic (GS::Array<ParamValueComposite> &composite);
 
-// --------------------------------------------------------------------
-// Получение данных из многослойной конструкции
-// --------------------------------------------------------------------
-bool ComponentsCompositeStructure (const API_Guid& elemguid, API_AttributeIndex& constrinx, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, double& width, double& length);
+    // --------------------------------------------------------------------
+    // Получение данных из многослойной конструкции
+    // --------------------------------------------------------------------
+    bool ComponentsCompositeStructure (const API_Guid &elemguid,
+                                       API_AttributeIndex &constrinx,
+                                       ParamDictValue &params,
+                                       ParamDictComposite &paramcomposite,
+                                       ParamDictValue &paramsAdd,
+                                       double &width,
+                                       double &length);
 
-// --------------------------------------------------------------------
-// Получение данных из сложного профиля, для АС24 и выше
-// --------------------------------------------------------------------
-bool ComponentsProfileStructure (ProfileVectorImage& profileDescription, ParamDictValue& params, ParamDictComposite& paramcomposite, ParamDictValue& paramsAdd, double& width, double& length, bool& needReadQuantities);
+    // --------------------------------------------------------------------
+    // Получение данных из сложного профиля, для АС24 и выше
+    // --------------------------------------------------------------------
+    bool ComponentsProfileStructure (ProfileVectorImage &profileDescription,
+                                     ParamDictValue &params,
+                                     ParamDictComposite &paramcomposite,
+                                     ParamDictValue &paramsAdd,
+                                     double &width,
+                                     double &length,
+                                     bool &needReadQuantities);
 
-// --------------------------------------------------------------------
-// Вытаскивает всё, что может, из информации о составе элемента
-// --------------------------------------------------------------------
-bool Components (const API_Element& element, ParamDictValue& params, ParamDictValue& paramsAdd, ParamDictComposite& paramcomposite, bool& needReadQuantities);
+    // --------------------------------------------------------------------
+    // Вытаскивает всё, что может, из информации о составе элемента
+    // --------------------------------------------------------------------
+    bool Components (const API_Element &element,
+                     ParamDictValue &params,
+                     ParamDictValue &paramsAdd,
+                     ParamDictComposite &paramcomposite,
+                     bool &needReadQuantities);
 
-// --------------------------------------------------------------------
-// Заполнение данных для одного слоя
-// --------------------------------------------------------------------
-bool GetAttributeValues (const API_AttributeIndex& constrinx, ParamDictValue& params, ParamDictValue& paramsAdd);
+    // --------------------------------------------------------------------
+    // Заполнение данных для одного слоя
+    // --------------------------------------------------------------------
+    bool GetAttributeValues (const API_AttributeIndex &constrinx, ParamDictValue &params, ParamDictValue &paramsAdd);
 
-// -----------------------------------------------------------------------------
-// Перевод значения в строку в соответсвии с stringformat
-// -----------------------------------------------------------------------------
-GS::UniString ToString (const ParamValue& pvalue, const FormatString& stringformat);
+    // -----------------------------------------------------------------------------
+    // Перевод значения в строку в соответсвии с stringformat
+    // -----------------------------------------------------------------------------
+    GS::UniString ToString (const ParamValue &pvalue, const FormatString &stringformat);
 
-// -----------------------------------------------------------------------------
-// Перевод значения в строку в соответсвии с stringformat
-// -----------------------------------------------------------------------------
-GS::UniString ToString (const ParamValue& pvalue);
-}
+    // -----------------------------------------------------------------------------
+    // Перевод значения в строку в соответсвии с stringformat
+    // -----------------------------------------------------------------------------
+    GS::UniString ToString (const ParamValue &pvalue);
+} // namespace ParamHelpers
 
-ParamValueData operator+ (const ParamValueData& lhs, const ParamValueData& rhs);
+ParamValueData operator+ (const ParamValueData &lhs, const ParamValueData &rhs);
 
-bool operator==(const ParamValue& lhs, const ParamValue& rhs);
+bool operator== (const ParamValue &lhs, const ParamValue &rhs);
 
-bool operator != (const ParamValue& lhs, const ParamValue& rhs);
+bool operator!= (const ParamValue &lhs, const ParamValue &rhs);
 
-bool operator==(const API_Variant& lhs, const API_Variant& rhs);
+bool operator== (const API_Variant &lhs, const API_Variant &rhs);
 
-bool operator==(const API_SingleVariant& lhs, const API_SingleVariant& rhs);
+bool operator== (const API_SingleVariant &lhs, const API_SingleVariant &rhs);
 
-bool operator==(const API_ListVariant& lhs, const API_ListVariant& rhs);
+bool operator== (const API_ListVariant &lhs, const API_ListVariant &rhs);
 
-bool operator==(const API_SingleEnumerationVariant& lhs, const API_SingleEnumerationVariant& rhs);
+bool operator== (const API_SingleEnumerationVariant &lhs, const API_SingleEnumerationVariant &rhs);
 
-#if defined(AC_24)
-bool operator==(const API_MultipleEnumerationVariant& lhs, const API_MultipleEnumerationVariant& rhs);
-#endif
+    #if defined(AC_24)
+bool operator== (const API_MultipleEnumerationVariant &lhs, const API_MultipleEnumerationVariant &rhs);
+    #endif
 
-bool Equals (const API_PropertyDefaultValue& lhs, const API_PropertyDefaultValue& rhs, API_PropertyCollectionType collType);
+bool Equals (const API_PropertyDefaultValue &lhs,
+             const API_PropertyDefaultValue &rhs,
+             API_PropertyCollectionType collType);
 
-bool Equals (const API_PropertyValue& lhs, const API_PropertyValue& rhs, API_PropertyCollectionType collType);
+bool Equals (const API_PropertyValue &lhs, const API_PropertyValue &rhs, API_PropertyCollectionType collType);
 
-bool operator==(const API_PropertyGroup& lhs, const API_PropertyGroup& rhs);
+bool operator== (const API_PropertyGroup &lhs, const API_PropertyGroup &rhs);
 
-bool operator==(const API_PropertyDefinition& lhs, const API_PropertyDefinition& rhs);
+bool operator== (const API_PropertyDefinition &lhs, const API_PropertyDefinition &rhs);
 
-bool operator==(const API_Property& lhs, const API_Property& rhs);
+bool operator== (const API_Property &lhs, const API_Property &rhs);
 
 //--------------------------------------------------------------------------------------------------------------------------
-// Ищет свойство property_flag_name в описании и по значению определяет - нужно ли обрабатывать элемент
+// Ищет свойство property_flag_name в описании и по значению определяет - нужно
+// ли обрабатывать элемент
 //--------------------------------------------------------------------------------------------------------------------------
-bool GetElemState (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, const GS::UniString& property_flag_name, bool& flagfind, bool check);
+bool GetElemState (const API_Guid &elemGuid,
+                   const GS::Array<API_PropertyDefinition> &definitions,
+                   const GS::UniString &property_flag_name,
+                   bool &flagfind,
+                   bool check);
 
-bool GetElemStateReverse (const API_Guid& elemGuid, const GS::Array<API_PropertyDefinition>& definitions, const GS::UniString& property_flag_name, bool& flagfind);
+bool GetElemStateReverse (const API_Guid &elemGuid,
+                          const GS::Array<API_PropertyDefinition> &definitions,
+                          const GS::UniString &property_flag_name,
+                          bool &flagfind);
 
-bool hasLibData (const GS::UniString& description);
-
+bool hasLibData (const GS::UniString &description);
 
 #endif
