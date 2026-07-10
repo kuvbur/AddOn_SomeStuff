@@ -169,7 +169,7 @@ void SyncSetSubelement (SyncSettings& syncSettings);
 // Запись Guid связанных элементов
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, GS::Array<API_Guid>& subguidArray, ParamDictElement& paramToWrite, const GS::UniString& suffix, const bool& check_guid);
+bool SyncSetSubelementScope (const API_Elem_Head& parentelementhead, const GS::Array<API_Guid>& subguidArray, ParamDictElement& paramToWrite, const GS::UniString& suffix, const bool& check_guid);
 
 // --------------------------------------------------------------------
 // Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID

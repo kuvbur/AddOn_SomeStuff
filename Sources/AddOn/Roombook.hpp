@@ -229,7 +229,7 @@ void OtdData_AddValueToDict (OtdMaterialAreaDictByType& dct, const TypeOtd& type
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
 // -----------------------------------------------------------------------------
-void ClearZoneGUID (UnicElementByType& elementToRead, GS::Array<API_ElemTypeID>& typeinzone);
+void ClearZoneGUID (UnicElementByType& elementToRead);
 
 // -----------------------------------------------------------------------------
 // Получение площади отделочной стены с учётом отверстий

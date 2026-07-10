@@ -6,7 +6,7 @@
 #include	"Propertycache.hpp"
 #include	"ResetProperty.hpp"
 #include	"Sync.hpp"
-#include	<stdlib.h> /* atoi */
+#include	<string>  // std::stoi
 #include	<time.h>
 #ifdef TESTING
 #include "TestFunc.hpp"
@@ -1282,12 +1282,14 @@ bool SyncString (const  API_ElemTypeID & elementType, GS::UniString rulestring_o
                         if (!param.val.uniStringValue.Contains (CHARBRACESTART)) param.val.uniStringValue = CHARBRACESTART + param.val.uniStringValue;
                         if (!param.val.uniStringValue.Contains (CHARBRACEEND)) param.val.uniStringValue = param.val.uniStringValue + CHARBRACEEND;
                     }
-                    short col_out = std::atoi (params_2[1].ToCStr ()); // номер столбца для вывода
-                    if (col_out > 0) {
-                        param.composite_pen = col_out;
-                    } else {
+                    short col_out;
+                    try {
+                        col_out = std::stoi (params_2[1].ToCStr ().Get ());
+                    } catch (const std::exception&) {
                         syncdirection = SYNC_NO;
+                        col_out = 0;
                     }
+                    param.composite_pen = col_out;
                     // имя свойства для поиска (1)
                     param.rawName_col_end = params_2[2];
                     if (!param.rawName_col_end.Contains (CHARBRACESTART)) param.rawName_col_end = CHARBRACESTART + param.rawName_col_end;
@@ -1296,14 +1298,25 @@ bool SyncString (const  API_ElemTypeID & elementType, GS::UniString rulestring_o
                     rulestring_one.ReplaceAll (params_2[1], EMPTYSTRING);
                     rulestring_one.ReplaceAll (params_2[2], EMPTYSTRING);
                     if (nparam > 3) {
-                        short col_find = std::atoi (params_2[3].ToCStr ());
+                        short col_find;
+                        try {
+                            col_find = std::stoi (params_2[3].ToCStr ().Get ());
+                        } catch (const std::exception&) {
+                            syncdirection = SYNC_NO;
+                            col_find = 0;
+                        }
                         if (col_find > 0) param.val.array_column_end = col_find;
                         if (param.val.array_column_end == 0) param.val.array_column_end = 1;
                         rulestring_one.ReplaceAll (params_2[3], EMPTYSTRING);
-
                     }
                     if (nparam > 5) {
-                        short col_find = std::atoi (params_2[5].ToCStr ());
+                        short col_find;
+                        try {
+                            col_find = std::stoi (params_2[5].ToCStr ().Get ());
+                        } catch (const std::exception&) {
+                            syncdirection = SYNC_NO;
+                            col_find = 0;
+                        }
                         if (col_find > 0 && !params_2[4].IsEmpty ()) {
                             param.rawName_col_start = params_2[4];
                             if (!param.rawName_col_start.Contains (CHARBRACESTART)) param.rawName_col_start = CHARBRACESTART + param.rawName_col_start;
@@ -1314,7 +1327,13 @@ bool SyncString (const  API_ElemTypeID & elementType, GS::UniString rulestring_o
                         }
                     }
                     if (nparam > 7) {
-                        short col_find = std::atoi (params_2[7].ToCStr ());
+                        short col_find;
+                        try {
+                            col_find = std::stoi (params_2[7].ToCStr ().Get ());
+                        } catch (const std::exception&) {
+                            syncdirection = SYNC_NO;
+                            col_find = 0;
+                        }
                         if (col_find > 0 && !params_2[6].IsEmpty ()) {
                             param.rawName_row_end = params_2[6];
                             if (!param.rawName_row_end.Contains (CHARBRACESTART)) param.rawName_row_end = CHARBRACESTART + param.rawName_row_end;
@@ -1325,7 +1344,13 @@ bool SyncString (const  API_ElemTypeID & elementType, GS::UniString rulestring_o
                         }
                     }
                     if (nparam > 9 && !params_2[8].IsEmpty ()) {
-                        short col_find = std::atoi (params_2[9].ToCStr ());
+                        short col_find;
+                        try {
+                            col_find = std::stoi (params_2[9].ToCStr ().Get ());
+                        } catch (const std::exception&) {
+                            syncdirection = SYNC_NO;
+                            col_find = 0;
+                        }
                         if (col_find > 0) {
                             param.rawName_row_start = params_2[8];
                             if (!param.rawName_row_start.Contains (CHARBRACESTART)) param.rawName_row_start = CHARBRACESTART + param.rawName_row_start;
@@ -1420,7 +1445,13 @@ bool SyncString (const  API_ElemTypeID & elementType, GS::UniString rulestring_o
                         param.composite_pen = -2;
                         param.fromQuantity = true;
                     } else {
-                        short pen = std::atoi (penstring.ToCStr ());
+                        short pen;
+                        try {
+                            pen = std::stoi (penstring.ToCStr ().Get ());
+                        } catch (const std::exception&) {
+                            syncdirection = SYNC_NO;
+                            pen = 0;
+                        }
                         if (pen > 0) param.composite_pen = pen;
                     }
                 }
@@ -1842,7 +1873,7 @@ void SyncSetSubelement (SyncSettings & syncSettings)
     #else
     if (!ClickAnElem ("Click an parent elem", API_ZombieElemID, nullptr, &parentelement.header.typeID, &parentelement.header.guid)) {
         return;
-}
+    }
     #endif
     parentelementtype = GetElemTypeID (parentelement);
     clock_t start, finish;
@@ -1903,7 +1934,7 @@ void SyncSetSubelement (SyncSettings & syncSettings)
 // Запись Guid связанных элементов
 // Функция для вызова из ACAPI_CallUndoableCommand
 // -----------------------------------------------------------------------------
-bool SyncSetSubelementScope (const API_Elem_Head & parentelementhead, GS::Array<API_Guid>&subguidArray, ParamDictElement & paramToWrite, const  GS::UniString & suffix, const bool& check_guid)
+bool SyncSetSubelementScope (const API_Elem_Head & parentelementhead, const GS::Array<API_Guid>&subguidArray, ParamDictElement & paramToWrite, const  GS::UniString & suffix, const bool& check_guid)
 {
     GSErrCode err = NoError;
     if (subguidArray.IsEmpty ()) return false;
