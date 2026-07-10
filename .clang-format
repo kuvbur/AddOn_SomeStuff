@@ -1,0 +1,45 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+# Жестко запрещаем использовать символы табуляции (\t), заменяем их на пробелы
+UseTab: Never
+
+# Устанавливаем размер стандартного отступа в 4 пробела
+IndentWidth: 4
+
+# Устанавливаем ширину символа табуляции в 4 пробела
+TabWidth: 4
+
+# Размер отступа для перенесенных строк (например, аргументов функции)
+ContinuationIndentWidth: 4
+
+# Запрещает упаковывать аргументы вызова функции в одну строку
+BinPackArguments: false
+
+# Запрещает упаковывать параметры объявления функции в одну строку
+BinPackParameters: false
+
+# Выравнивание аргументов по левому краю
+AlignAfterOpenBracket: Align
+
+ColumnLimit: 120
+
+# Выравнивает директивы препроцессора вместе с обычным кодом
+IndentPPDirectives: BeforeHash
+
+# Автоматически добавляет пустую строку между функциями, классами и методами
+SeparateDefinitionBlocks: Always
+
+# сколько максимум пустых строк подряд может оставить форматировщик
+MaxEmptyLinesToKeep: 1
+
+SpaceBeforeParens: Always
+SpacesInParens: Never
+
+SpacesInParentheses: false
+SpaceInEmptyParentheses: false
+
+SpaceBeforeAssignmentOperators: true
+
+NamespaceIndentation: All

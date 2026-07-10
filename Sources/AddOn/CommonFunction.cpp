@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <limits>
 #if defined(_MAC)
-#include <xlocale.h>
+    #include <xlocale.h>
 #endif
 
 static const Int32 VersionId = 49;
@@ -17,13 +17,13 @@ static const Int32 VersionId = 49;
 // -----------------------------------------------------------------------------
 // Осталвяет в массиве только уникальные API_Guid
 // -----------------------------------------------------------------------------
-void GetUnicGuid (GS::Array<API_Guid>& guidArray)
-{
-    if (guidArray.GetSize () < 2) return;
+void GetUnicGuid (GS::Array<API_Guid> &guidArray) {
+    if (guidArray.GetSize () < 2)
+        return;
     UnicGuid seen = {};
     GS::Array<API_Guid> result = {};
     result.SetCapacity (guidArray.GetSize ());
-    for (const auto& guid : guidArray) {
+    for (const auto &guid : guidArray) {
         if (!seen.ContainsKey (guid)) {
             seen.Put (guid, true);
             result.Push (guid);
@@ -32,99 +32,95 @@ void GetUnicGuid (GS::Array<API_Guid>& guidArray)
     guidArray = std::move (result);
 }
 
-GS::UniString GetDBName (API_DatabaseInfo& databaseInfo)
-{
+GS::UniString GetDBName (API_DatabaseInfo &databaseInfo) {
     GS::UniString рname = "";
     switch (databaseInfo.typeID) {
-        case (APIWind_FloorPlanID):
-            рname = "FloorPlan";
-            break;
-        case (APIWind_SectionID):
-            рname = "Section";
-            break;											// section window type
-        case (APIWind_DetailID):
-            рname = "Detail";
-            break;											// detail window type
-        case (APIWind_3DModelID):
-            рname = "3DModel";
-            break;											// 3D model window type
-        case (APIWind_LayoutID):
-            рname = "Layout";
-            break;											// layout window type
-        case (APIWind_DrawingID):
-            рname = "Drawing";
-            break;											// drawing's database type
-        case (APIWind_MyTextID):
-            рname = "MyText";
-            break;											// custom text window type
-        case (APIWind_MyDrawID):
-            рname = "MyDraw";
-            break;											// custom draw window type
-        case (APIWind_MasterLayoutID):
-            рname = "MasterLayout";
-            break;										// master layout window type
-        case (APIWind_ElevationID):
-            рname = "Elevation";
-            break;										// elevation window type
-        case (APIWind_InteriorElevationID):
-            рname = "InteriorElevation";
-            break;								// interior elevation window type
-        case (APIWind_WorksheetID):
-            рname = "Worksheet";
-            break;										// worksheet window type
-        case (APIWind_DocumentFrom3DID):
-            рname = "DocumentFrom3D";
-            break;									// 3D Document window type
-        default:
-            break;
+    case (APIWind_FloorPlanID):
+        рname = "FloorPlan";
+        break;
+    case (APIWind_SectionID):
+        рname = "Section";
+        break; // section window type
+    case (APIWind_DetailID):
+        рname = "Detail";
+        break; // detail window type
+    case (APIWind_3DModelID):
+        рname = "3DModel";
+        break; // 3D model window type
+    case (APIWind_LayoutID):
+        рname = "Layout";
+        break; // layout window type
+    case (APIWind_DrawingID):
+        рname = "Drawing";
+        break; // drawing's database type
+    case (APIWind_MyTextID):
+        рname = "MyText";
+        break; // custom text window type
+    case (APIWind_MyDrawID):
+        рname = "MyDraw";
+        break; // custom draw window type
+    case (APIWind_MasterLayoutID):
+        рname = "MasterLayout";
+        break; // master layout window type
+    case (APIWind_ElevationID):
+        рname = "Elevation";
+        break; // elevation window type
+    case (APIWind_InteriorElevationID):
+        рname = "InteriorElevation";
+        break; // interior elevation window type
+    case (APIWind_WorksheetID):
+        рname = "Worksheet";
+        break; // worksheet window type
+    case (APIWind_DocumentFrom3DID):
+        рname = "DocumentFrom3D";
+        break; // 3D Document window type
+    default:
+        break;
     }
     рname = рname + SPACESTRING;
     рname = рname + databaseInfo.title;
     return рname;
 }
 
-Stories GetStories ()
-{
+Stories GetStories () {
     Stories stories;
     API_StoryInfo storyInfo = {};
-    #if defined(AC_27) || defined(AC_28) || defined (AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     GSErrCode err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
-    #else
+#else
     GSErrCode err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);
-    #endif
+#endif
     if (err == NoError) {
         const short numberOfStories = storyInfo.lastStory - storyInfo.firstStory + 1;
         for (short i = 0; i < numberOfStories; ++i) {
             stories.PushNew ((*storyInfo.data)[i].index, (*storyInfo.data)[i].level);
         }
-        BMKillHandle ((GSHandle*) &storyInfo.data);
+        BMKillHandle ((GSHandle *)&storyInfo.data);
     }
     return stories;
 }
 
-GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories& stories)
-{
+GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories &stories) {
     if (stories.IsEmpty ()) {
-        return { 0, zPos };
+        return {0, zPos};
     }
 
-    const Story* storyPtr = &stories[0];
-    for (const auto& story : stories) {
+    const Story *storyPtr = &stories[0];
+    for (const auto &story : stories) {
         if (story.level > zPos) {
             break;
         }
         storyPtr = &story;
     }
-    return { storyPtr->index, zPos - storyPtr->level };
+    return {storyPtr->index, zPos - storyPtr->level};
 }
 
-double GetOffsetFromStory (const double zPos, const short floorInd, const Stories& stories)
-{
+double GetOffsetFromStory (const double zPos, const short floorInd, const Stories &stories) {
     if (stories.IsEmpty ()) {
         return zPos;
     }
-    const Story* storyPtr = &stories[0];
-    for (const auto& story : stories) {
+    const Story *storyPtr = &stories[0];
+    for (const auto &story : stories) {
         if (story.index == floorInd) {
             return zPos - story.level;
         }
@@ -133,13 +129,12 @@ double GetOffsetFromStory (const double zPos, const short floorInd, const Storie
     return zPos;
 }
 
-double GetzPos (const double bottomOffset, const short floorInd, const Stories& stories)
-{
+double GetzPos (const double bottomOffset, const short floorInd, const Stories &stories) {
     if (stories.IsEmpty ()) {
         return 0;
     }
-    const Story* storyPtr = &stories[0];
-    for (const auto& story : stories) {
+    const Story *storyPtr = &stories[0];
+    for (const auto &story : stories) {
         if (story.index == floorInd) {
             return story.level + bottomOffset;
         }
@@ -148,26 +143,26 @@ double GetzPos (const double bottomOffset, const short floorInd, const Stories& 
     return 0;
 }
 
-GS::UniString TextToQRCode (const GS::UniString& text, const int error_lvl)
-{
+GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl) {
     GS::UniString qr_txt = "";
-    if (text.IsEmpty ()) return qr_txt;
+    if (text.IsEmpty ())
+        return qr_txt;
     qrcodegen::QrCode::Ecc lvl = qrcodegen::QrCode::Ecc::HIGH;
     switch (error_lvl) {
-        case 1:
-            lvl = qrcodegen::QrCode::Ecc::LOW;
-            break;
-        case 2:
-            lvl = qrcodegen::QrCode::Ecc::MEDIUM;
-            break;
-        case 3:
-            lvl = qrcodegen::QrCode::Ecc::QUARTILE;
-            break;
-        case 4:
-            lvl = qrcodegen::QrCode::Ecc::HIGH;
-            break;
-        default:
-            break;
+    case 1:
+        lvl = qrcodegen::QrCode::Ecc::LOW;
+        break;
+    case 2:
+        lvl = qrcodegen::QrCode::Ecc::MEDIUM;
+        break;
+    case 3:
+        lvl = qrcodegen::QrCode::Ecc::QUARTILE;
+        break;
+    case 4:
+        lvl = qrcodegen::QrCode::Ecc::HIGH;
+        break;
+    default:
+        break;
     }
     const qrcodegen::QrCode qr = qrcodegen::QrCode::encodeText (text.ToCStr ().Get (), lvl);
     qr_txt = GS::UniString::Printf ("%d;", qr.getSize ());
@@ -182,12 +177,18 @@ GS::UniString TextToQRCode (const GS::UniString& text, const int error_lvl)
             if (d < 10) {
                 qr_txt = qr_txt + GS::UniString::Printf ("%d", d);
             } else {
-                if (d == 10) qr_txt.Append ("A");
-                if (d == 11) qr_txt.Append ("B");
-                if (d == 12) qr_txt.Append ("C");
-                if (d == 13) qr_txt.Append ("D");
-                if (d == 14) qr_txt.Append ("E");
-                if (d == 15) qr_txt.Append ("F");
+                if (d == 10)
+                    qr_txt.Append ("A");
+                if (d == 11)
+                    qr_txt.Append ("B");
+                if (d == 12)
+                    qr_txt.Append ("C");
+                if (d == 13)
+                    qr_txt.Append ("D");
+                if (d == 14)
+                    qr_txt.Append ("E");
+                if (d == 15)
+                    qr_txt.Append ("F");
             }
         }
         qr_txt.Append ("=");
@@ -195,22 +196,21 @@ GS::UniString TextToQRCode (const GS::UniString& text, const int error_lvl)
     return qr_txt;
 }
 
-GS::UniString TextToQRCode (const GS::UniString& text)
-{
-    if (text.IsEmpty ()) return "";
+GS::UniString TextToQRCode (const GS::UniString &text) {
+    if (text.IsEmpty ())
+        return "";
     for (int level = 4; level >= 1; --level) {
         try {
             return TextToQRCode (text, level);
-        } catch (const std::length_error&) {
+        } catch (const std::length_error &) {
             continue;
         }
     }
     return "ERROR: data Too long";
 }
 
-void DBprnt (double a, GS::UniString reportString)
-{
-    #if defined(TESTING)
+void DBprnt (double a, GS::UniString reportString) {
+#if defined(TESTING)
     GS::UniString msg = GS::UniString::Printf ("%f", a);
     #if defined(AC_22)
     DBPrintf ("== SMSTF == ");
@@ -219,13 +219,13 @@ void DBprnt (double a, GS::UniString reportString)
     #endif
     if (!reportString.IsEmpty ()) {
         std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
-        #if defined(AC_22)
+    #if defined(AC_22)
         DBPrintf (reportString_str.c_str ());
         DBPrintf (" : ");
-        #else
+    #else
         DBPrint (reportString_str.c_str ());
         DBPrint (" : ");
-        #endif
+    #endif
     }
     std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
     #if defined(AC_22)
@@ -238,21 +238,21 @@ void DBprnt (double a, GS::UniString reportString)
     #else
     DBPrint ("\n");
     #endif
-    #else
+#else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (reportString);
-    #endif
+#endif
 }
 
-void DBprnt (GS::UniString msg, GS::UniString reportString)
-{
-    #if defined(TESTING)
-    if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") || reportString.Contains ("ERROR")) {
-        #if defined(AC_22)
+void DBprnt (GS::UniString msg, GS::UniString reportString) {
+#if defined(TESTING)
+    if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") ||
+        reportString.Contains ("ERROR")) {
+    #if defined(AC_22)
         DBPrintf ("== ERROR == ");
-        #else
+    #else
         DBPrint ("== ERROR == ");
-        #endif
+    #endif
     }
     #if defined(AC_22)
     DBPrintf ("== SMSTF == ");
@@ -267,44 +267,43 @@ void DBprnt (GS::UniString msg, GS::UniString reportString)
     #endif
     if (!reportString.IsEmpty ()) {
         std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
-        #if defined(AC_22)
+    #if defined(AC_22)
         DBPrintf (" : ");
         DBPrintf (reportString_str.c_str ());
-        #else
+    #else
         DBPrint (" : ");
         DBPrint (reportString_str.c_str ());
-        #endif
+    #endif
     }
     #if defined(AC_22)
     DBPrintf ("\n");
     #else
     DBPrint ("\n");
     #endif
-    #else
+#else
     UNUSED_VARIABLE (msg);
     UNUSED_VARIABLE (reportString);
-    #endif
+#endif
 }
 
-void DBtest (bool usl, GS::UniString reportString, bool asserton)
-{
-    #if defined(TESTING)
+void DBtest (bool usl, GS::UniString reportString, bool asserton) {
+#if defined(TESTING)
     if (usl) {
         DBprnt (reportString, "ok");
     } else {
         DBprnt ("=== ERROR IN TEST ===", reportString);
     }
-    if (asserton) assert (usl);
-    #else
+    if (asserton)
+        assert (usl);
+#else
     UNUSED_VARIABLE (usl);
     UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
-    #endif
+#endif
 }
 
-void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton)
-{
-    #if defined(TESTING)
+void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton) {
+#if defined(TESTING)
     GS::UniString out = a + " = " + b;
     if (a.IsEqual (b)) {
         reportString = "test " + reportString + " ok";
@@ -313,18 +312,18 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
         out = "=== ERROR IN TEST === " + out;
         DBprnt (out, reportString);
     }
-    if (asserton) assert (a.IsEqual (b));
-    #else
+    if (asserton)
+        assert (a.IsEqual (b));
+#else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
     UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
-    #endif
+#endif
 }
 
-void DBtest (double a, double b, GS::UniString reportString, bool asserton)
-{
-    #if defined(TESTING)
+void DBtest (double a, double b, GS::UniString reportString, bool asserton) {
+#if defined(TESTING)
     GS::UniString out = GS::UniString::Printf ("%f = %f", a, b);
     if (is_equal (a, b)) {
         reportString = "test " + reportString + " ok";
@@ -333,259 +332,284 @@ void DBtest (double a, double b, GS::UniString reportString, bool asserton)
         out = "=== ERROR IN TEST === " + out;
         DBprnt (out, reportString);
     }
-    if (asserton) assert (is_equal (a, b));
-    #else
+    if (asserton)
+        assert (is_equal (a, b));
+#else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
     UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
-    #endif
+#endif
 }
 
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
 // -----------------------------------------------------------------------------
-void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString, const GSErrCode& err, const API_Guid& elemGuid, bool show)
-{
+void msg_rep (const GS::UniString &modulename,
+              const GS::UniString &reportString,
+              const GSErrCode &err,
+              const API_Guid &elemGuid,
+              bool show) {
     GS::UniString error_type = "";
     if (err != NoError) {
         switch (err) {
-            case APIERR_GENERAL:
-                error_type = "APIERR_GENERAL - General error code";
-                break;
-            case APIERR_MEMFULL:
-                error_type = "APIERR_MEMFULL Insufficient memory.";
-                break;
-            case APIERR_CANCEL:
-                error_type = "APIERR_CANCEL The operation has been canceled by the user, in case of a long process.";
-                break;
-            case APIERR_BADID:
-                error_type = "APIERR_BADID The passed identifier is not a valid one, or valid, but not proper for the given operation.";
-                break;
-            case APIERR_BADINDEX:
-                error_type = "APIERR_BADINDEX The passed index is out of range.";
-                break;
-            case APIERR_BADNAME:
-                error_type = "APIERR_BADNAME The passed name is not proper or not found in the existing list.";
-                break;
-            case APIERR_BADPARS:
-                error_type = "APIERR_BADPARS The passed parameters are inconsistent.";
-                break;
-            case APIERR_BADPOLY:
-                error_type = "APIERR_BADPOLY The passed polygon cannot be interpreted.";
-                break;
-            case APIERR_BADDATABASE:
-                error_type = "APIERR_BADDATABASE The command cannot be executed on the current database.";
-                break;
-            case APIERR_BADWINDOW:
-                error_type = "APIERR_BADWINDOW The command cannot be executed while the current window is active.";
-                break;
-            case APIERR_BADKEYCODE:
-                error_type = "APIERR_BADKEYCODE The key code cannot be found in the listing database.";
-                break;
-            case APIERR_BADPLATFORMSIGN:
-                error_type = "APIERR_BADPLATFORMSIGN The passed platform sign is not valid";
-                break;
-            case APIERR_BADPLANE:
-                error_type = "APIERR_BADPLANE The plane equation is incorrect.";
-                break;
-            case APIERR_BADUSERID:
-                error_type = "APIERR_BADUSERID The passed user ID(TeamWork client) is not valid.";
-                break;
-            case APIERR_BADVALUE:
-                error_type = "APIERR_BADVALUE The passed autotext value is not valid";
-                break;
-            case APIERR_BADELEMENTTYPE:
-                error_type = "APIERR_BADELEMENTTYPE The function cannot be applied to the passed element type";
-                break;
-            case APIERR_IRREGULARPOLY:
-                error_type = "APIERR_IRREGULARPOLY The passed polygon or polyline is irregular.See API_RegularizedPoly.";
-                break;
-            case APIERR_BADEXPRESSION:
-                error_type = "The passed expression string is syntactically incorrect.";
-                break;
-            case -2130313100:
-                error_type = "The passed guid is invalid or valid, but not proper for the given operation..";
-                break;
-            case APIERR_NO3D:
-                error_type = "There is no 3D information assigned to the passed element.";
-                break;
-            case APIERR_NOMORE:
-                error_type = "No more database items can be returned.";
-                break;
-            case APIERR_NOPLAN:
-                error_type = "There is no open project.The operation cannot be executed without an open project.";
-                break;
-            case APIERR_NOLIB:
-                error_type = "No library was loaded.The operation cannot be executed without a loaded library.Can be returned by ACAPI_LibPart_Create.";
-                break;
-            case APIERR_NOLIBSECT:
-                error_type = "The requested LibPart section is not found.";
-                break;
-            case APIERR_NOSEL:
-                error_type = "No selection.The operation cannot be executed without any element selected.";
-                break;
-            case APIERR_NOTEDITABLE:
-                error_type = "The referenced element is not editable.";
-                break;
-            case APIERR_NOTSUBTYPEOF:
-                error_type = "The specified first library part unique ID does not refer to a subtype of the second unique ID.See APIAny_CheckLibPartSubtypeOfID.";
-                break;
-            case APIERR_NOTEQUALMAIN:
-                error_type = "The main GUID parts of the specified two library part unique IDs are not equal.See APIAny_CompareLibPartUnIdsID.";
-                break;
-            case APIERR_NOTEQUALREVISION:
-                error_type = "The main GUID parts of the specified two library part unique IDs are equal but their revision IDs differ.See APIAny_CompareLibPartUnIdsID.";
-                break;
-            case APIERR_NOTEAMWORKPROJECT:
-                error_type = "There is no open project, or not in Teamwork mode.";
-                break;
-            case APIERR_NOUSERDATA:
-                error_type = "Attempt to get user data assigned to an element, but there isn’t any.";
-                break;
-            case APIERR_MOREUSER:
-                error_type = "The user data cannot be assigned to the element, since there is no free storage block avaliable.";
-                break;
-            case APIERR_LINKEXIST:
-                error_type = "The link already exists.";
-                break;
-            case APIERR_LINKNOTEXIST:
-                error_type = "The link doesn’t exist.";
-                break;
-            case APIERR_WINDEXIST:
-                error_type = "The window to be opened already exists.";
-                break;
-            case APIERR_WINDNOTEXIST:
-                error_type = "The referenced window does not exist.";
-                break;
-            case APIERR_UNDOEMPTY:
-                error_type = "No undoable entry has got into the opened undo operation.";
-                break;
-            case APIERR_REFERENCEEXIST:
-                error_type = "The reference already exists.";
-                break;
-            case APIERR_NAMEALREADYUSED:
-                error_type = "The resource must have a unique name but the specified one is already taken.";
-                break;
-            case APIERR_ATTREXIST:
-                error_type = "The attribute already exists.";
-                break;
-            case APIERR_DELETED:
-                error_type = "Reference to a deleted, purged or non - existent database item.";
-                break;
-            case APIERR_LOCKEDLAY:
-                error_type = "The referenced layer is locked.";
-                break;
-            case APIERR_HIDDENLAY:
-                error_type = "The referenced layer is hidden.";
-                break;
-            case APIERR_INVALFLOOR:
-                error_type = "The passed floor index is out of range.";
-                break;
-            case APIERR_NOTMINE:
-                error_type = "The database item is not in the user’s workspace.";
-                break;
-            case APIERR_NOACCESSRIGHT:
-                error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
-                break;
-                #if defined(AC_22) || defined(AC_23)
-            case APIERR_BADPROPERTYFORELEM:
-                error_type = "The property for the passed element or attribute is not available.";
-                break;
-            case APIERR_BADCLASSIFICATIONFORELEM:
-                error_type = "Can’t set the classification for the passed element or attribute.";
-                break;
-                #else
-            case APIERR_BADPROPERTY:
-                error_type = "The property for the passed element or attribute is not available.";
-                break;
-            case APIERR_BADCLASSIFICATION:
-                error_type = "Can’t set the classification for the passed element or attribute.";
-                break;
-                #endif // AC_22 or AC_23
-            case APIERR_MODULNOTINSTALLED:
-                error_type = "The referenced add - on is not installed.For more details see the Communication Manager.";
-                break;
-            case APIERR_MODULCMDMINE:
-                error_type = "The target add - on is the caller add - on.For more details see the Communication Manager.";
-                break;
-            case APIERR_MODULCMDNOTSUPPORTED:
-                error_type = "The referenced command is not supported by the target add - on.For more details see the Communication Manager.";
-                break;
-            case APIERR_MODULCMDVERSNOTSUPPORTED:
-                error_type = "The requested command version is newer than the version of the command that the target add - on can support.For more details see the Communication Manager.";
-                break;
-            case APIERR_NOMODULEDATA:
-                error_type = "No custom data section is saved into the project file identified by the add - on’s unique ID.See ACAPI_ModulData_Get and ACAPI_ModulData_GetInfo.";
-                break;
-            case APIERR_PAROVERLAP:
-                error_type = "Two or more paragraphs are overlapped.The end offset of one is greater than the beginner offset of the next one.";
-                break;
-            case APIERR_PARMISSING:
-                error_type = "Number of paragraphs – the size of paragraphs handle – is zero.";
-                break;
-            case APIERR_PAROVERFLOW:
-                error_type = "Paragraph end offset is run over the content length.";
-                break;
-            case APIERR_PARIMPLICIT:
-                error_type = "The content string contains line end character(CR) at invalid position(inside the paragraph range).";
-                break;
-            case APIERR_RUNOVERLAP:
-                error_type = "Two or more runs are overlapped.The end offset of one is greater than the beginner offset of the next one.";
-                break;
-            case APIERR_RUNMISSING:
-                error_type = "Number of runs – the size of run pointer – is zero.";
-                break;
-            case APIERR_RUNOVERFLOW:
-                error_type = "Run end offset is run over the content length.";
-                break;
-            case APIERR_RUNIMPLICIT:
-                error_type = "The beginner offset of one is greater than the end offset of the previous one.";
-                break;
-            case APIERR_RUNPROTECTED:
-                error_type = "Attempted to overwrite a protected text run(not used yet).";
-                break;
-            case APIERR_EOLOVERLAP:
-                error_type = "The EOL array is not a monotonous ascendant sequence.";
-                break;
-            case APIERR_TABOVERLAP:
-                error_type = "The tabulator array is not a monotonous ascendant sequence.";
-                break;
-            case APIERR_NOTINIT:
-                error_type = "The command needs initialization by an other API call.";
-                break;
-            case APIERR_NESTING:
-                error_type = "The API function is not reentrant.Nesting occurred.";
-                break;
-            case APIERR_NOTSUPPORTED:
-                error_type = "The command is not supported by the server application.It is not environment dependent.The server application cannot execute the command generally.";
-                break;
-            case APIERR_REFUSEDCMD:
-                error_type = "The passed identifier is not subject to the operation.";
-                break;
-            case APIERR_REFUSEDPAR:
-                error_type = "The command cannot be executed with the passed parameters.";
-                break;
-            case APIERR_READONLY:
-                error_type = "The specified location is read - only.Can be returned by ACAPI_LibPart_Create.";
-                break;
-            case APIERR_SERVICEFAILED:
-                error_type = "The invoked Teamwork service has failed.";
-                break;
-            case APIERR_COMMANDFAILED:
-                error_type = "The invoked undoable command threw an exception.Can be returned by ACAPI_CallUndoableCommand.";
-                break;
-            case APIERR_NEEDSUNDOSCOPE:
-                error_type = "The called command should be encapsulated in a ACAPI_CallUndoableCommand scope.";
-                break;
-            case APIERR_MISSINGCODE:
-                error_type = "The function is not implemented yet.";
-                break;
-            case APIERR_MISSINGDEF:
-                error_type = "The originating library part file is missing.The document name is still filled.";
-                break;
-            default:
-                break;
+        case APIERR_GENERAL:
+            error_type = "APIERR_GENERAL - General error code";
+            break;
+        case APIERR_MEMFULL:
+            error_type = "APIERR_MEMFULL Insufficient memory.";
+            break;
+        case APIERR_CANCEL:
+            error_type = "APIERR_CANCEL The operation has been canceled by the user, in case of a long process.";
+            break;
+        case APIERR_BADID:
+            error_type = "APIERR_BADID The passed identifier is not a valid one, or valid, but not proper for the "
+                         "given operation.";
+            break;
+        case APIERR_BADINDEX:
+            error_type = "APIERR_BADINDEX The passed index is out of range.";
+            break;
+        case APIERR_BADNAME:
+            error_type = "APIERR_BADNAME The passed name is not proper or not found in the existing list.";
+            break;
+        case APIERR_BADPARS:
+            error_type = "APIERR_BADPARS The passed parameters are inconsistent.";
+            break;
+        case APIERR_BADPOLY:
+            error_type = "APIERR_BADPOLY The passed polygon cannot be interpreted.";
+            break;
+        case APIERR_BADDATABASE:
+            error_type = "APIERR_BADDATABASE The command cannot be executed on the current database.";
+            break;
+        case APIERR_BADWINDOW:
+            error_type = "APIERR_BADWINDOW The command cannot be executed while the current window is active.";
+            break;
+        case APIERR_BADKEYCODE:
+            error_type = "APIERR_BADKEYCODE The key code cannot be found in the listing database.";
+            break;
+        case APIERR_BADPLATFORMSIGN:
+            error_type = "APIERR_BADPLATFORMSIGN The passed platform sign is not valid";
+            break;
+        case APIERR_BADPLANE:
+            error_type = "APIERR_BADPLANE The plane equation is incorrect.";
+            break;
+        case APIERR_BADUSERID:
+            error_type = "APIERR_BADUSERID The passed user ID(TeamWork client) is not valid.";
+            break;
+        case APIERR_BADVALUE:
+            error_type = "APIERR_BADVALUE The passed autotext value is not valid";
+            break;
+        case APIERR_BADELEMENTTYPE:
+            error_type = "APIERR_BADELEMENTTYPE The function cannot be applied to the passed element type";
+            break;
+        case APIERR_IRREGULARPOLY:
+            error_type = "APIERR_IRREGULARPOLY The passed polygon or polyline is irregular.See API_RegularizedPoly.";
+            break;
+        case APIERR_BADEXPRESSION:
+            error_type = "The passed expression string is syntactically incorrect.";
+            break;
+        case -2130313100:
+            error_type = "The passed guid is invalid or valid, but not proper for the given operation..";
+            break;
+        case APIERR_NO3D:
+            error_type = "There is no 3D information assigned to the passed element.";
+            break;
+        case APIERR_NOMORE:
+            error_type = "No more database items can be returned.";
+            break;
+        case APIERR_NOPLAN:
+            error_type = "There is no open project.The operation cannot be executed without an open project.";
+            break;
+        case APIERR_NOLIB:
+            error_type =
+                "No library was loaded.The operation cannot be executed without a loaded library.Can be returned by "
+                "ACAPI_LibPart_Create.";
+            break;
+        case APIERR_NOLIBSECT:
+            error_type = "The requested LibPart section is not found.";
+            break;
+        case APIERR_NOSEL:
+            error_type = "No selection.The operation cannot be executed without any element selected.";
+            break;
+        case APIERR_NOTEDITABLE:
+            error_type = "The referenced element is not editable.";
+            break;
+        case APIERR_NOTSUBTYPEOF:
+            error_type =
+                "The specified first library part unique ID does not refer to a subtype of the second unique ID.See "
+                "APIAny_CheckLibPartSubtypeOfID.";
+            break;
+        case APIERR_NOTEQUALMAIN:
+            error_type = "The main GUID parts of the specified two library part unique IDs are not equal.See "
+                         "APIAny_CompareLibPartUnIdsID.";
+            break;
+        case APIERR_NOTEQUALREVISION:
+            error_type =
+                "The main GUID parts of the specified two library part unique IDs are equal but their revision IDs "
+                "differ.See APIAny_CompareLibPartUnIdsID.";
+            break;
+        case APIERR_NOTEAMWORKPROJECT:
+            error_type = "There is no open project, or not in Teamwork mode.";
+            break;
+        case APIERR_NOUSERDATA:
+            error_type = "Attempt to get user data assigned to an element, but there isn’t any.";
+            break;
+        case APIERR_MOREUSER:
+            error_type =
+                "The user data cannot be assigned to the element, since there is no free storage block avaliable.";
+            break;
+        case APIERR_LINKEXIST:
+            error_type = "The link already exists.";
+            break;
+        case APIERR_LINKNOTEXIST:
+            error_type = "The link doesn’t exist.";
+            break;
+        case APIERR_WINDEXIST:
+            error_type = "The window to be opened already exists.";
+            break;
+        case APIERR_WINDNOTEXIST:
+            error_type = "The referenced window does not exist.";
+            break;
+        case APIERR_UNDOEMPTY:
+            error_type = "No undoable entry has got into the opened undo operation.";
+            break;
+        case APIERR_REFERENCEEXIST:
+            error_type = "The reference already exists.";
+            break;
+        case APIERR_NAMEALREADYUSED:
+            error_type = "The resource must have a unique name but the specified one is already taken.";
+            break;
+        case APIERR_ATTREXIST:
+            error_type = "The attribute already exists.";
+            break;
+        case APIERR_DELETED:
+            error_type = "Reference to a deleted, purged or non - existent database item.";
+            break;
+        case APIERR_LOCKEDLAY:
+            error_type = "The referenced layer is locked.";
+            break;
+        case APIERR_HIDDENLAY:
+            error_type = "The referenced layer is hidden.";
+            break;
+        case APIERR_INVALFLOOR:
+            error_type = "The passed floor index is out of range.";
+            break;
+        case APIERR_NOTMINE:
+            error_type = "The database item is not in the user’s workspace.";
+            break;
+        case APIERR_NOACCESSRIGHT:
+            error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
+            break;
+#if defined(AC_22) || defined(AC_23)
+        case APIERR_BADPROPERTYFORELEM:
+            error_type = "The property for the passed element or attribute is not available.";
+            break;
+        case APIERR_BADCLASSIFICATIONFORELEM:
+            error_type = "Can’t set the classification for the passed element or attribute.";
+            break;
+#else
+        case APIERR_BADPROPERTY:
+            error_type = "The property for the passed element or attribute is not available.";
+            break;
+        case APIERR_BADCLASSIFICATION:
+            error_type = "Can’t set the classification for the passed element or attribute.";
+            break;
+#endif // AC_22 or AC_23
+        case APIERR_MODULNOTINSTALLED:
+            error_type = "The referenced add - on is not installed.For more details see the Communication Manager.";
+            break;
+        case APIERR_MODULCMDMINE:
+            error_type = "The target add - on is the caller add - on.For more details see the Communication Manager.";
+            break;
+        case APIERR_MODULCMDNOTSUPPORTED:
+            error_type = "The referenced command is not supported by the target add - on.For more details see the "
+                         "Communication Manager.";
+            break;
+        case APIERR_MODULCMDVERSNOTSUPPORTED:
+            error_type =
+                "The requested command version is newer than the version of the command that the target add - on "
+                "can support.For more details see the Communication Manager.";
+            break;
+        case APIERR_NOMODULEDATA:
+            error_type =
+                "No custom data section is saved into the project file identified by the add - on’s unique ID.See "
+                "ACAPI_ModulData_Get and ACAPI_ModulData_GetInfo.";
+            break;
+        case APIERR_PAROVERLAP:
+            error_type =
+                "Two or more paragraphs are overlapped.The end offset of one is greater than the beginner offset of "
+                "the next one.";
+            break;
+        case APIERR_PARMISSING:
+            error_type = "Number of paragraphs – the size of paragraphs handle – is zero.";
+            break;
+        case APIERR_PAROVERFLOW:
+            error_type = "Paragraph end offset is run over the content length.";
+            break;
+        case APIERR_PARIMPLICIT:
+            error_type =
+                "The content string contains line end character(CR) at invalid position(inside the paragraph range).";
+            break;
+        case APIERR_RUNOVERLAP:
+            error_type = "Two or more runs are overlapped.The end offset of one is greater than the beginner offset of "
+                         "the next one.";
+            break;
+        case APIERR_RUNMISSING:
+            error_type = "Number of runs – the size of run pointer – is zero.";
+            break;
+        case APIERR_RUNOVERFLOW:
+            error_type = "Run end offset is run over the content length.";
+            break;
+        case APIERR_RUNIMPLICIT:
+            error_type = "The beginner offset of one is greater than the end offset of the previous one.";
+            break;
+        case APIERR_RUNPROTECTED:
+            error_type = "Attempted to overwrite a protected text run(not used yet).";
+            break;
+        case APIERR_EOLOVERLAP:
+            error_type = "The EOL array is not a monotonous ascendant sequence.";
+            break;
+        case APIERR_TABOVERLAP:
+            error_type = "The tabulator array is not a monotonous ascendant sequence.";
+            break;
+        case APIERR_NOTINIT:
+            error_type = "The command needs initialization by an other API call.";
+            break;
+        case APIERR_NESTING:
+            error_type = "The API function is not reentrant.Nesting occurred.";
+            break;
+        case APIERR_NOTSUPPORTED:
+            error_type =
+                "The command is not supported by the server application.It is not environment dependent.The server "
+                "application cannot execute the command generally.";
+            break;
+        case APIERR_REFUSEDCMD:
+            error_type = "The passed identifier is not subject to the operation.";
+            break;
+        case APIERR_REFUSEDPAR:
+            error_type = "The command cannot be executed with the passed parameters.";
+            break;
+        case APIERR_READONLY:
+            error_type = "The specified location is read - only.Can be returned by ACAPI_LibPart_Create.";
+            break;
+        case APIERR_SERVICEFAILED:
+            error_type = "The invoked Teamwork service has failed.";
+            break;
+        case APIERR_COMMANDFAILED:
+            error_type =
+                "The invoked undoable command threw an exception.Can be returned by ACAPI_CallUndoableCommand.";
+            break;
+        case APIERR_NEEDSUNDOSCOPE:
+            error_type = "The called command should be encapsulated in a ACAPI_CallUndoableCommand scope.";
+            break;
+        case APIERR_MISSINGCODE:
+            error_type = "The function is not implemented yet.";
+            break;
+        case APIERR_MISSINGDEF:
+            error_type = "The originating library part file is missing.The document name is still filled.";
+            break;
+        default:
+            break;
         }
     }
     if (elemGuid != APINULLGuid) {
@@ -593,88 +617,95 @@ void msg_rep (const GS::UniString& modulename, const GS::UniString& reportString
         API_Elem_Head elem_head = {};
         elem_head.guid = elemGuid;
         if (ACAPI_Element_GetHeader (&elem_head) == NoError) {
-            if (elem_head.hotlinkGuid != APINULLGuid) error_type = error_type + " IN HOTLINK";
+            if (elem_head.hotlinkGuid != APINULLGuid)
+                error_type = error_type + " IN HOTLINK";
             switch (elem_head.renovationStatus) {
-                case API_UndefinedStatus:
-                    error_type = error_type + " Undefined renovation Status";
-                    break;
-                case API_NewStatus:
-                    error_type = error_type + " New renovation Status";
-                    break;
-                case API_DemolishedStatus:
-                    error_type = error_type + " Demolished renovation Status";
-                    break;
-                default:
-                    break;
+            case API_UndefinedStatus:
+                error_type = error_type + " Undefined renovation Status";
+                break;
+            case API_NewStatus:
+                error_type = error_type + " New renovation Status";
+                break;
+            case API_DemolishedStatus:
+                error_type = error_type + " Demolished renovation Status";
+                break;
+            default:
+                break;
             }
-            if (elem_head.renovationFilterGuid != APINULLGuid) error_type = error_type + " IN renovationFilter";
+            if (elem_head.renovationFilterGuid != APINULLGuid)
+                error_type = error_type + " IN renovationFilter";
             GS::UniString elemName = "";
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
-                #else
-            #ifdef AC_26
+#else
+    #ifdef AC_26
             if (ACAPI_Goodies_GetElemTypeName (elem_head.type, elemName) == NoError) {
-                #else
-            if (ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) elem_head.typeID, &elemName) == NoError) {
-                #endif
-                #endif
+    #else
+            if (ACAPI_Goodies (APIAny_GetElemTypeNameID, (void *)elem_head.typeID, &elemName) == NoError) {
+    #endif
+#endif
                 error_type = error_type + " type:" + elemName;
             }
             API_Attribute layer = {};
             layer.header.typeID = API_LayerID;
             layer.header.index = elem_head.layer;
-            if (ACAPI_Attribute_Get (&layer) == NoError) error_type = error_type + " layer:" + layer.header.name;
+            if (ACAPI_Attribute_Get (&layer) == NoError)
+                error_type = error_type + " layer:" + layer.header.name;
             GS::UniString infoString = "";
             GSErrCode err = NoError;
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            if (ACAPI_Element_GetElementInfoString (&elem_head.guid, &infoString) == NoError) error_type = error_type + " ID:" + infoString;
-            #else
-            if (ACAPI_Database (APIDb_GetElementInfoStringID, &elem_head.guid, &infoString) == NoError) error_type = error_type + " ID:" + infoString;
-            #endif
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+            if (ACAPI_Element_GetElementInfoString (&elem_head.guid, &infoString) == NoError)
+                error_type = error_type + " ID:" + infoString;
+#else
+            if (ACAPI_Database (APIDb_GetElementInfoStringID, &elem_head.guid, &infoString) == NoError)
+                error_type = error_type + " ID:" + infoString;
+#endif
         }
     }
+
     GS::UniString msg = modulename + ": " + reportString;
-    if (err != NoError) msg = "!! ERROR !!" + msg;
-    if (!show) msg = msg + SPACESTRING + error_type;
+    if (err != NoError)
+        msg = "!! ERROR !!" + msg;
+    if (!show)
+        msg = msg + SPACESTRING + error_type;
     GS::UniString version = RSGetIndString (ID_ADDON_STRINGS, VersionId, ACAPI_GetOwnResModule ());
-    #if defined(TESTING)
+#if defined(TESTING)
     version = version + " =TESTING ON= ";
-    #endif
+#endif
     msg = version + msg + LINEBRAKE;
     ACAPI_WriteReport (msg, false);
-    if (show) ACAPI_WriteReport (msg, show);
+    if (show)
+        ACAPI_WriteReport (msg, show);
     if (err != NoError) {
         msg = "== SMSTF ERROR ==" + msg;
     }
-    #if defined(TESTING)
+#if defined(TESTING)
     DBprnt (msg);
-    #endif
+#endif
 }
-
 
 // --------------------------------------------------------------------
 // Отмечает заданный пункт активным/неактивным
 // --------------------------------------------------------------------
-void	MenuItemCheckAC (short itemInd, bool checked)
-{
+void MenuItemCheckAC (short itemInd, bool checked) {
     API_MenuItemRef itemRef = {};
     GSFlags itemFlags = 0;
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = itemInd;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
-    #else
+#else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
-    #endif
+#endif
     if (checked)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
-    #else
+#else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
-    #endif
+#endif
     return;
 }
 
@@ -682,43 +713,42 @@ void	MenuItemCheckAC (short itemInd, bool checked)
 // Получить массив Guid выбранных элементов
 // Версия без чтения настроек
 // -----------------------------------------------------------------------------
-GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/)
-{
-    GSErrCode            err;
-    API_SelectionInfo    selectionInfo;
+GS::Array<API_Guid> GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/) {
+    GSErrCode err;
+    API_SelectionInfo selectionInfo;
     GS::UniString errorString = "Empty";
-    #ifdef AC_22
-    API_Neig** selNeigs;
-    #else
-    GS::Array<API_Neig>  selNeigs;
-    #endif
+#ifdef AC_22
+    API_Neig **selNeigs;
+#else
+    GS::Array<API_Neig> selNeigs;
+#endif
     err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, onlyEditable);
-    BMKillHandle ((GSHandle*) &selectionInfo.marquee.coords);
+    BMKillHandle ((GSHandle *)&selectionInfo.marquee.coords);
     if (err == APIERR_NOSEL || selectionInfo.typeID == API_SelEmpty) {
         if (assertIfNoSel) {
             DGAlert (DG_ERROR, "Error", errorString, EMPTYSTRING, "Ok");
         }
     }
     if (err != NoError) {
-        #ifdef AC_22
-        BMKillHandle ((GSHandle*) &selNeigs);
-        #endif // AC_22
+#ifdef AC_22
+        BMKillHandle ((GSHandle *)&selNeigs);
+#endif // AC_22
         return GS::Array<API_Guid> ();
     }
     GS::Array<API_Guid> guidArray;
-    #ifdef AC_22
-    USize nSel = BMGetHandleSize ((GSHandle) selNeigs) / sizeof (API_Neig);
+#ifdef AC_22
+    USize nSel = BMGetHandleSize ((GSHandle)selNeigs) / sizeof (API_Neig);
     for (USize i = 0; i < nSel; i++) {
         guidArray.Push ((*selNeigs)[i].guid);
     }
-    BMKillHandle ((GSHandle*) &selNeigs);
-    #else
-    for (const API_Neig& neig : selNeigs) {
+    BMKillHandle ((GSHandle *)&selNeigs);
+#else
+    for (const API_Neig &neig : selNeigs) {
 
         // Получаем список связанных элементов
         guidArray.Push (neig.guid);
     }
-    #endif // AC_22
+#endif // AC_22
     return guidArray;
 }
 
@@ -727,30 +757,36 @@ GS::Array<API_Guid>	GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
 //	(функция должна принимать в качетве аргумента API_Guid
 // Версия без чтения настроек
 // -----------------------------------------------------------------------------
-void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel /* = true*/, bool onlyEditable /* = true*/, GS::UniString & funcname)
-{
+void CallOnSelectedElem2 (void (*function) (const API_Guid &),
+                          bool assertIfNoSel /* = true*/,
+                          bool onlyEditable /* = true*/,
+                          GS::UniString &funcname) {
     GS::Array<API_Guid> guidArray = GetSelectedElements2 (assertIfNoSel, onlyEditable);
     if (!guidArray.IsEmpty ()) {
         long time_start = clock ();
         GS::UniString subtitle ("working...");
         GS::Int32 nPhase = 1;
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
-        #endif
+#endif
         ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            if (i % 10 == 0) ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-            #else
-            if (i % 10 == 0) ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-            #endif
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+            if (i % 10 == 0)
+                ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+#else
+            if (i % 10 == 0)
+                ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+#endif
             function (guidArray[i]);
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
-            #else
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
-            #endif
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+                return;
+#else
+            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
+                return;
+#endif
         }
         long time_end = clock ();
         GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
@@ -764,8 +800,7 @@ void CallOnSelectedElem2 (void (*function)(const API_Guid&), bool assertIfNoSel 
 // -----------------------------------------------------------------------------
 // Получение типа объекта по его API_Guid
 // -----------------------------------------------------------------------------
-GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType)
-{
+GSErrCode GetTypeByGUID (const API_Guid &elemGuid, API_ElemTypeID &elementType) {
     GSErrCode err = NoError;
     API_Elem_Head elem_head = {};
     elem_head.guid = elemGuid;
@@ -782,10 +817,9 @@ GSErrCode GetTypeByGUID (const API_Guid & elemGuid, API_ElemTypeID & elementType
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------
-bool GetElementTypeString (API_ElemType elemType, char* elemStr)
-{
-    GS::UniString	ustr;
-    GSErrCode	err = NoError;
+bool GetElementTypeString (API_ElemType elemType, char *elemStr) {
+    GS::UniString ustr;
+    GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Element_GetElemTypeName (elemType, ustr);
     #else
@@ -801,10 +835,9 @@ bool GetElementTypeString (API_ElemType elemType, char* elemStr)
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------
-bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
-{
-    GS::UniString	ustr;
-    GSErrCode err = ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) typeID, &ustr);
+bool GetElementTypeString (API_ElemTypeID typeID, char *elemStr) {
+    GS::UniString ustr;
+    GSErrCode err = ACAPI_Goodies (APIAny_GetElemTypeNameID, (void *)typeID, &ustr);
     if (err == NoError) {
         CHTruncate (ustr.ToCStr (), elemStr, ELEMSTR_LEN - 1);
         return true;
@@ -816,15 +849,18 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr)
 // --------------------------------------------------------------------
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
-bool check_accuracy (double rval, double tolerance)
-{
-    if (std::isinf (rval) || std::isnan (rval)) return true;
-    if (is_equal (tolerance, 0)) return true;
+bool check_accuracy (double rval, double tolerance) {
+    if (std::isinf (rval) || std::isnan (rval))
+        return true;
+    if (is_equal (tolerance, 0))
+        return true;
     double val = std::fabs (rval * 1000.0);
-    if (val < std::numeric_limits<double>::epsilon ()) return true;
+    if (val < std::numeric_limits<double>::epsilon ())
+        return true;
     double reciprocal = std::round ((1 / tolerance)); // Коэффицент домножения для заданной точности
     double val_round = std::round (val * reciprocal) / reciprocal; // Приведённое к заданной точности значение
-    if (val_round < std::numeric_limits<double>::epsilon () && val>tolerance) return false;
+    if (val_round < std::numeric_limits<double>::epsilon () && val > tolerance)
+        return false;
     double val_correct1 = std::fabs (val_round - std::round (val_round));
     double val_correct2 = std::fabs (val_round - std::floor (val_round));
     bool bval1 = val_correct1 < tolerance;
@@ -835,27 +871,29 @@ bool check_accuracy (double rval, double tolerance)
 // --------------------------------------------------------------------
 // Сравнение double c учётом точности
 // --------------------------------------------------------------------
-bool is_equal (double x, double y)
-{
-    if (x == y) return true;
+bool is_equal (double x, double y) {
+    if (x == y)
+        return true;
     double absTol = 1e-12;
     double relTol = 1e-9;
     double diff = std::fabs (x - y);
-    if (diff <= absTol) return true;
+    if (diff <= absTol)
+        return true;
     return diff <= relTol * std::max (std::fabs (x), std::fabs (y));
 }
 
 // --------------------------------------------------------------------
 // Перевод строки в число
 // --------------------------------------------------------------------
-bool UniStringToDouble (const GS::UniString & var, double& x)
-{
-    if (var.IsEmpty ()) return false;
+bool UniStringToDouble (const GS::UniString &var, double &x) {
+    if (var.IsEmpty ())
+        return false;
 
     GSCharCode chcode = GetCharCode (var);
     auto cStr = var.ToCStr (0, MaxUSize, chcode);
-    const char* src = cStr.Get ();
-    if (src == nullptr || *src == '\0') return false;
+    const char *src = cStr.Get ();
+    if (src == nullptr || *src == '\0')
+        return false;
     char buf[64];
     size_t dstIdx = 0;
     const size_t maxDst = sizeof (buf) - 1;
@@ -869,32 +907,31 @@ bool UniStringToDouble (const GS::UniString & var, double& x)
             src++;
             continue;
         }
-        if (ch == ',') ch = '.';
+        if (ch == ',')
+            ch = '.';
         buf[dstIdx++] = ch;
         src++;
     }
     buf[dstIdx] = '\0';
-    if (dstIdx == 0) return false;
-    char* endPtr = nullptr;
-    #if defined(_WIN32)
+    if (dstIdx == 0)
+        return false;
+    char *endPtr = nullptr;
+#if defined(_WIN32)
     static _locale_t cLocale = _create_locale (LC_NUMERIC, "C");
     x = _strtod_l (buf, &endPtr, cLocale);
-    #elif defined(_MAC)
+#elif defined(_MAC)
     static locale_t cLocale = newlocale (LC_NUMERIC_MASK, "C", nullptr);
     x = strtod_l (buf, &endPtr, cLocale);
-    #else
+#else
     x = std::strtod (buf, &endPtr);
-    #endif
+#endif
     return (endPtr == buf + dstIdx);
 }
-
-
 
 // -----------------------------------------------------------------------------
 // Округление до заданного количества нулей
 // -----------------------------------------------------------------------------
-double round_nzero (double var, Int32 n_zero)
-{
+double round_nzero (double var, Int32 n_zero) {
     double scale = pow (10, n_zero);
     if (!is_equal (scale, 0)) {
         return round (var * scale) / scale;
@@ -906,40 +943,40 @@ double round_nzero (double var, Int32 n_zero)
 // --------------------------------------------------------------------
 // Округлить целое n вверх до ближайшего целого числа, кратного k
 // --------------------------------------------------------------------
-Int32 ceil_mod (Int32 n, Int32 k)
-{
-    if (!k) return 0;
-    if (!n) return 0;
+Int32 ceil_mod (Int32 n, Int32 k) {
+    if (!k)
+        return 0;
+    if (!n)
+        return 0;
     Int32 tmp = abs (n % k);
-    if (tmp) n += (n > -1 ? (abs (k) - tmp) : (tmp));
+    if (tmp)
+        n += (n > -1 ? (abs (k) - tmp) : (tmp));
     return n;
 }
 
 // --------------------------------------------------------------------
 // Округлить целое n до ближайшего целого числа, кратного k
 // --------------------------------------------------------------------
-Int32 ceil_mod_classic (Int32 n, Int32 k)
-{
-    if (!k) return 0;
-    if (!n) return 0;
+Int32 ceil_mod_classic (Int32 n, Int32 k) {
+    if (!k)
+        return 0;
+    if (!n)
+        return 0;
     double n_real = n / 1.0;
     double k_real = k / 1.0;
     double param_real = round (n_real / k_real) * k;
-    return (GS::Int32) param_real;
+    return (GS::Int32)param_real;
 }
+
 // --------------------------------------------------------------------
 // Перевод метров, заданных типом double в мм Int32
 // --------------------------------------------------------------------
-Int32 DoubleM2IntMM (double value)
-{
-    return static_cast<Int32> (std::round (value * 1000.0));
-}
+Int32 DoubleM2IntMM (double value) { return static_cast<Int32> (std::round (value * 1000.0)); }
 
 // -----------------------------------------------------------------------------
 // Замена \n на перенос строки
 // -----------------------------------------------------------------------------
-void ReplaceCR (GS::UniString & val, bool clear)
-{
+void ReplaceCR (GS::UniString &val, bool clear) {
     GS::UniString p = "\\n";
     if (val.Contains (p)) {
         if (!clear) {
@@ -957,16 +994,16 @@ void ReplaceCR (GS::UniString & val, bool clear)
 // -----------------------------------------------------------------------------
 // Дополнение строки заданным количеством пробелов или табуляций
 // -----------------------------------------------------------------------------
-void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl)
-{
-    //Ищем указание длины строки
+void GetNumSymbSpase (GS::UniString &outstring, GS::UniChar symb, char charrepl) {
+    // Ищем указание длины строки
     Int32 stringlen = 0;
     GS::UniString part = "";
     if (outstring.Contains (symb)) {
         part = outstring.GetSubstring (symb, ' ', 0);
         if (!part.IsEmpty () && part.GetLength () < 4)
             stringlen = std::atoi (part.ToCStr ());
-        if (stringlen > 0) part = symb + part;
+        if (stringlen > 0)
+            part = symb + part;
     }
     if (stringlen > 0) {
         Int32 modlen = outstring.GetLength () - part.GetLength () - 1;
@@ -981,46 +1018,43 @@ void GetNumSymbSpase (GS::UniString & outstring, GS::UniChar symb, char charrepl
 // -----------------------------------------------------------------------------
 // Замена символов \\TAB и др. на юникод
 // -----------------------------------------------------------------------------
-void ReplaceSymbSpase (GS::UniString & outstring)
-{
+void ReplaceSymbSpase (GS::UniString &outstring) {
     GetNumSymbSpase (outstring, '~', ' ');
     GetNumSymbSpase (outstring, '@', CharTAB);
-    #if !defined (AC_29)
-    outstring.ReplaceAll ("\\TAB", reinterpret_cast<const char*>(u8"\u0009"));
-    outstring.ReplaceAll ("\\CRLF", reinterpret_cast<const char*>(u8"\u000D\u000A"));
-    outstring.ReplaceAll ("\\CR", reinterpret_cast<const char*>(u8"\u000D"));
-    outstring.ReplaceAll ("\\LF", reinterpret_cast<const char*>(u8"\u000A"));
-    outstring.ReplaceAll ("\\PS", reinterpret_cast<const char*>(u8"\u2029"));
-    outstring.ReplaceAll ("\\LS", reinterpret_cast<const char*>(u8"\u2028"));
-    outstring.ReplaceAll ("\\NEL", reinterpret_cast<const char*>(u8"\u0085"));
-    outstring.ReplaceAll ("\\NL", reinterpret_cast<const char*>(u8"\u2424"));
-    #endif
+#if !defined(AC_29)
+    outstring.ReplaceAll ("\\TAB", reinterpret_cast<const char *> (u8"\u0009"));
+    outstring.ReplaceAll ("\\CRLF", reinterpret_cast<const char *> (u8"\u000D\u000A"));
+    outstring.ReplaceAll ("\\CR", reinterpret_cast<const char *> (u8"\u000D"));
+    outstring.ReplaceAll ("\\LF", reinterpret_cast<const char *> (u8"\u000A"));
+    outstring.ReplaceAll ("\\PS", reinterpret_cast<const char *> (u8"\u2029"));
+    outstring.ReplaceAll ("\\LS", reinterpret_cast<const char *> (u8"\u2028"));
+    outstring.ReplaceAll ("\\NEL", reinterpret_cast<const char *> (u8"\u0085"));
+    outstring.ReplaceAll ("\\NL", reinterpret_cast<const char *> (u8"\u2424"));
+#endif
 }
 
-
-short GetFontIndex (GS::UniString & fontname)
-{
+short GetFontIndex (GS::UniString &fontname) {
     GSErrCode err = NoError;
     short inx = 0;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    API_FontType font; BNZeroMemory (&font, sizeof (API_FontType));
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    API_FontType font;
+    BNZeroMemory (&font, sizeof (API_FontType));
     font.head.index = 0;
     font.head.uniStringNamePtr = &fontname;
     err = ACAPI_Font_SearchFont (font);
     inx = font.head.index;
-    #else
+#else
     API_Attribute attrib = {};
     attrib.header.typeID = API_FontID;
     attrib.header.index = 0;
     attrib.header.uniStringNamePtr = &fontname;
     err = ACAPI_Attribute_Search (&attrib.header);
     inx = attrib.header.index;
-    #endif
+#endif
     return inx;
 }
 
-double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
-{
+double GetTextWidth (short &font, double &fontsize, GS::UniString &var) {
     GSErrCode err = NoError;
     double width = 0.0;
     API_TextLinePars tlp = {};
@@ -1032,23 +1066,28 @@ double GetTextWidth (short& font, double& fontsize, GS::UniString & var)
     tlp.wFont = font;
     tlp.wSize = fontsize;
     tlp.wSlant = PI / 2.0;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_Element_GetTextLineLength (&tlp, &width);
-    #else
+#else
     err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
-    #endif
+#endif
     if (err != NoError || width < 0.001) {
-        #if defined(TESTING)
+#if defined(TESTING)
         DBprnt ("GetTextWidth err", "zero width text = ~" + var + "~");
-        #endif 
+#endif
     }
     return width;
 }
 
-GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& width, GS::UniString & var, GS::UniString & no_breake_space, GS::UniString & narow_space)
-{
+GS::Array<GS::UniString> DelimTextLine (short &font,
+                                        double &fontsize,
+                                        double &width,
+                                        GS::UniString &var,
+                                        GS::UniString &no_breake_space,
+                                        GS::UniString &narow_space) {
     GS::Array<GS::UniString> str;
-    if (var.IsEmpty ()) return str;
+    if (var.IsEmpty ())
+        return str;
     double width_space = 0;
     double width_in = GetTextWidth (font, fontsize, var);
     if (fabs (width_in - width) < 0.01) {
@@ -1059,8 +1098,10 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
     width_space = GetTextWidth (font, fontsize, narow_space);
     Int32 addspace = 1;
     if (width_in < width) {
-        if (width_space > 0.001) addspace = (Int32) ((width - width_in) / width_space);
-        if (fabs (addspace * width_space - width + width_in) > 0.01) addspace -= 1;
+        if (width_space > 0.001)
+            addspace = (Int32)((width - width_in) / width_space);
+        if (fabs (addspace * width_space - width + width_in) > 0.01)
+            addspace -= 1;
         GS::UniString addspace_txt = var;
         if (addspace > 0) {
             for (Int32 j = 0; j < addspace; j++) {
@@ -1073,11 +1114,16 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
     GS::Array<GS::UniString> parts;
     GS::Array<GS::UniString> loopScratch;
     UInt32 npart = StringSplt (var, no_breake_space, parts, true, &loopScratch);
-    if (npart == 1) npart = StringSplt (var, COMMA, parts, true, &loopScratch);
-    if (npart == 1) npart = StringSplt (var, DOT, parts, true, &loopScratch);
-    if (npart == 1) npart = StringSplt (var, ")", parts, true, &loopScratch);
-    if (npart == 1) npart = StringSplt (var, ":", parts, true, &loopScratch);
-    if (npart == 1) npart = StringSplt (var, "-", parts, true, &loopScratch);
+    if (npart == 1)
+        npart = StringSplt (var, COMMA, parts, true, &loopScratch);
+    if (npart == 1)
+        npart = StringSplt (var, DOT, parts, true, &loopScratch);
+    if (npart == 1)
+        npart = StringSplt (var, ")", parts, true, &loopScratch);
+    if (npart == 1)
+        npart = StringSplt (var, ":", parts, true, &loopScratch);
+    if (npart == 1)
+        npart = StringSplt (var, "-", parts, true, &loopScratch);
     if (npart == 1) {
         str.PushNew (var);
         return str;
@@ -1094,8 +1140,10 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         }
         width_in = GetTextWidth (font, fontsize, out);
         if (width_in > width && !old.IsEmpty ()) {
-            if (width_space > 0.001) addspace = (Int32) ((width - width_old) / width_space);
-            if (fabs (addspace * width_space - width + width_old) > 0.01) addspace -= 1;
+            if (width_space > 0.001)
+                addspace = (Int32)((width - width_old) / width_space);
+            if (fabs (addspace * width_space - width + width_old) > 0.01)
+                addspace -= 1;
             if (addspace > 0) {
                 for (Int32 j = 0; j < addspace; j++) {
                     old.Append (narow_space);
@@ -1106,8 +1154,10 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
         }
         if (i == npart - 1) {
             width_in = GetTextWidth (font, fontsize, out);
-            if (width_space > 0.001) addspace = (Int32) ((width - width_in) / width_space);
-            if (fabs (addspace * width_space - width + width_in) > 0.01) addspace -= 1;
+            if (width_space > 0.001)
+                addspace = (Int32)((width - width_in) / width_space);
+            if (fabs (addspace * width_space - width + width_in) > 0.01)
+                addspace -= 1;
             if (addspace > 0) {
                 for (Int32 j = 0; j < addspace; j++) {
                     out.Append (narow_space);
@@ -1124,17 +1174,16 @@ GS::Array<GS::UniString> DelimTextLine (short& font, double& fontsize, double& w
 // -----------------------------------------------------------------------------
 // Проверка статуса и получение ID пользователя Teamwork
 // -----------------------------------------------------------------------------
-GSErrCode IsTeamwork (bool& isteamwork, short& userid)
-{
+GSErrCode IsTeamwork (bool &isteamwork, short &userid) {
     isteamwork = false;
     userid = 0;
     API_ProjectInfo projectInfo = {};
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_ProjectOperation_Project (&projectInfo);
-    #else
+#else
     err = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
-    #endif
+#endif
     if (err == NoError) {
         isteamwork = projectInfo.teamwork;
         userid = projectInfo.userId;
@@ -1146,10 +1195,11 @@ GSErrCode IsTeamwork (bool& isteamwork, short& userid)
 // Вычисление выражений, заключённых в < >
 // Что не может вычислить - заменит на пустоту
 // -----------------------------------------------------------------------------
-bool EvalExpression (GS::UniString & unistring_expression)
-{
-    if (unistring_expression.IsEmpty ()) return false;
-    if (!unistring_expression.Contains (CHARFORMULASTART) && !unistring_expression.Contains (CHARFORMULAEND)) return false;
+bool EvalExpression (GS::UniString &unistring_expression) {
+    if (unistring_expression.IsEmpty ())
+        return false;
+    if (!unistring_expression.Contains (CHARFORMULASTART) && !unistring_expression.Contains (CHARFORMULAEND))
+        return false;
     GS::UniString part = "";
     GS::UniString part_clean = "";
     GS::UniString stringformat = "";
@@ -1161,15 +1211,16 @@ bool EvalExpression (GS::UniString & unistring_expression)
     GS::UniString baddelim = COMMA;
     GS::UniString delim_test = GS::UniString::Printf ("%.3f", 3.1456);
     if (delim_test.Contains (baddelim)) {
-        #if defined(TESTING)
+#if defined(TESTING)
         DBprnt ("EvalExpression", "delimetr change");
-        #endif
+#endif
         baddelim = DOT;
         delim = COMMA;
     }
     GS::UniString string_to_find = "";
     GSCharCode chcode = GetCharCode (unistring_expression);
-    while (unistring_expression.Contains (CHARFORMULASTART) && unistring_expression.Contains (CHARFORMULAEND) && flag_change) {
+    while (unistring_expression.Contains (CHARFORMULASTART) && unistring_expression.Contains (CHARFORMULAEND) &&
+           flag_change) {
         GS::UniString expression_old = unistring_expression;
         part = unistring_expression.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
         // Ищем строку-формат
@@ -1179,26 +1230,29 @@ bool EvalExpression (GS::UniString & unistring_expression)
         typedef exprtk::expression<T> expression_t;
         typedef exprtk::parser<T> parser_t;
         part_clean = part;
-        if (part_clean.Contains (baddelim)) part_clean.ReplaceAll (baddelim, delim);
+        if (part_clean.Contains (baddelim))
+            part_clean.ReplaceAll (baddelim, delim);
         std::string expression_string (part_clean.ToCStr (0, MaxUSize, chcode).Get ());
         expression_t expression;
         parser_t parser;
         parser.compile (expression_string, expression);
         const T result = expression.value ();
         rezult_txt.Clear ();
-        if (!std::isnan (result)) rezult_txt = FormatStringFunc::NumToString (result, fstring);
-        #if defined(TESTING)
+        if (!std::isnan (result))
+            rezult_txt = FormatStringFunc::NumToString (result, fstring);
+#if defined(TESTING)
         if (std::isnan (result)) {
             DBprnt ("err Formula is nan", part_clean);
         }
-        #endif
+#endif
         string_to_find.Clear ();
         string_to_find.Append (CHARFORMULASTART);
         string_to_find.Append (part);
         string_to_find.Append (CHARFORMULAEND);
         string_to_find.Append (stringformat);
         unistring_expression.ReplaceAll (string_to_find, rezult_txt);
-        if (expression_old.IsEqual (unistring_expression)) flag_change = false;
+        if (expression_old.IsEqual (unistring_expression))
+            flag_change = false;
     }
     return (!unistring_expression.IsEmpty ());
 }
@@ -1206,41 +1260,41 @@ bool EvalExpression (GS::UniString & unistring_expression)
 // -----------------------------------------------------------------------------
 // Toggle a checked menu item
 // -----------------------------------------------------------------------------
-bool MenuInvertItemMark (short menuResID, short itemIndex)
-{
+bool MenuInvertItemMark (short menuResID, short itemIndex) {
     API_MenuItemRef itemRef = {};
     GSFlags itemFlags = 0;
     itemRef.menuResID = menuResID;
     itemRef.itemIndex = itemIndex;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
-    #else
+#else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
-    #endif
+#endif
     if ((itemFlags & API_MenuItemChecked) == 0)
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
-    #else
+#else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
-    #endif
-    return (bool) ((itemFlags & API_MenuItemChecked) != 0);
+#endif
+    return (bool)((itemFlags & API_MenuItemChecked) != 0);
 }
 
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
 // -----------------------------------------------------------------------------
-GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & delim)
-{
-    if (!instring.Contains (delim)) return instring;
+GS::UniString StringUnic (const GS::UniString &instring, const GS::UniString &delim) {
+    if (!instring.Contains (delim))
+        return instring;
     GS::Array<GS::UniString> partstring;
     GS::UniString outsting = "";
     UInt32 n = StringSpltUnic (instring, delim, partstring);
     for (UInt32 i = 0; i < n; i++) {
         outsting.Append (partstring[i]);
-        if (i < n - 1) outsting.Append (delim);
+        if (i < n - 1)
+            outsting.Append (delim);
     }
     return outsting;
 }
@@ -1248,8 +1302,8 @@ GS::UniString StringUnic (const GS::UniString & instring, const GS::UniString & 
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
 // -----------------------------------------------------------------------------
-UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring)
-{
+UInt32
+StringSpltUnic (const GS::UniString &instring, const GS::UniString &delim, GS::Array<GS::UniString> &partstring) {
     if (!instring.Contains (delim)) {
         partstring.Push (instring);
         return 1;
@@ -1259,14 +1313,17 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
     GSCharCode chcode_ = chcode;
     GS::Array<GS::UniString> tpartstring;
     StringSplt (instring, delim, tpartstring, true);
-    std::map<std::string, GSCharCode, doj::alphanum_less<std::string> > unic = {};
-    for (const auto& part : tpartstring) {
-        if (!findecode) chcode_ = GetCharCode (part);
+    std::map<std::string, GSCharCode, doj::alphanum_less<std::string>> unic = {};
+    for (const auto &part : tpartstring) {
+        if (!findecode)
+            chcode_ = GetCharCode (part);
         std::string s = part.ToCStr (0, MaxUSize, chcode_).Get ();
         unic[s] = chcode_;
     }
     UInt32 nout = 0;
-    for (std::map<std::string, GSCharCode, doj::alphanum_less<std::string> >::iterator k = unic.begin (); k != unic.end (); ++k) {
+    for (std::map<std::string, GSCharCode, doj::alphanum_less<std::string>>::iterator k = unic.begin ();
+         k != unic.end ();
+         ++k) {
         std::string s = k->first;
         chcode_ = k->second;
         GS::UniString unis = GS::UniString (s.c_str (), chcode_);
@@ -1276,67 +1333,96 @@ UInt32 StringSpltUnic (const GS::UniString & instring, const GS::UniString & del
     return nout;
 }
 
-GSCharCode GetCharCode (const std::string & instring)
-{
-    if (ProbeCharCode (instring, CC_Cyrillic)) return CC_Cyrillic;
-    if (ProbeCharCode (instring, CC_Korean)) return CC_Korean;
-    if (ProbeCharCode (instring, CC_Application)) return CC_Application;
-    if (ProbeCharCode (instring, CC_UTF8)) return CC_UTF8;
-    if (ProbeCharCode (instring, CC_UniCode)) return CC_UniCode;
-    if (ProbeCharCode (instring, CC_UTF16)) return CC_UTF16;
-    if (ProbeCharCode (instring, CC_WestEuropean)) return CC_WestEuropean;
-    if (ProbeCharCode (instring, CC_EastEuropean)) return CC_EastEuropean;
-    if (ProbeCharCode (instring, CC_Greek)) return CC_Greek;
-    if (ProbeCharCode (instring, CC_Turkish)) return CC_Turkish;
-    if (ProbeCharCode (instring, CC_Hebrew)) return CC_Hebrew;
-    if (ProbeCharCode (instring, CC_Arabic)) return CC_Arabic;
-    if (ProbeCharCode (instring, CC_Thai)) return CC_Thai;
-    if (ProbeCharCode (instring, CC_Japanese)) return CC_Japanese;
-    if (ProbeCharCode (instring, CC_TradChinese)) return CC_TradChinese;
-    if (ProbeCharCode (instring, CC_SimpChinese)) return CC_SimpChinese;
-    if (ProbeCharCode (instring, CC_Symbol)) return CC_Symbol;
+GSCharCode GetCharCode (const std::string &instring) {
+    if (ProbeCharCode (instring, CC_Cyrillic))
+        return CC_Cyrillic;
+    if (ProbeCharCode (instring, CC_Korean))
+        return CC_Korean;
+    if (ProbeCharCode (instring, CC_Application))
+        return CC_Application;
+    if (ProbeCharCode (instring, CC_UTF8))
+        return CC_UTF8;
+    if (ProbeCharCode (instring, CC_UniCode))
+        return CC_UniCode;
+    if (ProbeCharCode (instring, CC_UTF16))
+        return CC_UTF16;
+    if (ProbeCharCode (instring, CC_WestEuropean))
+        return CC_WestEuropean;
+    if (ProbeCharCode (instring, CC_EastEuropean))
+        return CC_EastEuropean;
+    if (ProbeCharCode (instring, CC_Greek))
+        return CC_Greek;
+    if (ProbeCharCode (instring, CC_Turkish))
+        return CC_Turkish;
+    if (ProbeCharCode (instring, CC_Hebrew))
+        return CC_Hebrew;
+    if (ProbeCharCode (instring, CC_Arabic))
+        return CC_Arabic;
+    if (ProbeCharCode (instring, CC_Thai))
+        return CC_Thai;
+    if (ProbeCharCode (instring, CC_Japanese))
+        return CC_Japanese;
+    if (ProbeCharCode (instring, CC_TradChinese))
+        return CC_TradChinese;
+    if (ProbeCharCode (instring, CC_SimpChinese))
+        return CC_SimpChinese;
+    if (ProbeCharCode (instring, CC_Symbol))
+        return CC_Symbol;
     return CC_Cyrillic;
 }
 
-GSCharCode GetCharCode (const GS::UniString & instring)
-{
+GSCharCode GetCharCode (const GS::UniString &instring) {
     bool findecode = true;
     return GetCharCode (instring, findecode);
 }
 
-GSCharCode GetCharCode (const GS::UniString & instring, bool& findecode)
-{
-    if (ProbeCharCode (instring, CC_Cyrillic)) return CC_Cyrillic;
-    if (ProbeCharCode (instring, CC_Korean)) return CC_Korean;
-    if (ProbeCharCode (instring, CC_Application)) return CC_Application;
-    if (ProbeCharCode (instring, CC_UTF8)) return CC_UTF8;
-    if (ProbeCharCode (instring, CC_UniCode)) return CC_UniCode;
-    if (ProbeCharCode (instring, CC_UTF16)) return CC_UTF16;
-    if (ProbeCharCode (instring, CC_WestEuropean)) return CC_WestEuropean;
-    if (ProbeCharCode (instring, CC_EastEuropean)) return CC_EastEuropean;
-    if (ProbeCharCode (instring, CC_Greek)) return CC_Greek;
-    if (ProbeCharCode (instring, CC_Turkish)) return CC_Turkish;
-    if (ProbeCharCode (instring, CC_Hebrew)) return CC_Hebrew;
-    if (ProbeCharCode (instring, CC_Arabic)) return CC_Arabic;
-    if (ProbeCharCode (instring, CC_Thai)) return CC_Thai;
-    if (ProbeCharCode (instring, CC_Japanese)) return CC_Japanese;
-    if (ProbeCharCode (instring, CC_TradChinese)) return CC_TradChinese;
-    if (ProbeCharCode (instring, CC_SimpChinese)) return CC_SimpChinese;
-    if (ProbeCharCode (instring, CC_Symbol)) return CC_Symbol;
+GSCharCode GetCharCode (const GS::UniString &instring, bool &findecode) {
+    if (ProbeCharCode (instring, CC_Cyrillic))
+        return CC_Cyrillic;
+    if (ProbeCharCode (instring, CC_Korean))
+        return CC_Korean;
+    if (ProbeCharCode (instring, CC_Application))
+        return CC_Application;
+    if (ProbeCharCode (instring, CC_UTF8))
+        return CC_UTF8;
+    if (ProbeCharCode (instring, CC_UniCode))
+        return CC_UniCode;
+    if (ProbeCharCode (instring, CC_UTF16))
+        return CC_UTF16;
+    if (ProbeCharCode (instring, CC_WestEuropean))
+        return CC_WestEuropean;
+    if (ProbeCharCode (instring, CC_EastEuropean))
+        return CC_EastEuropean;
+    if (ProbeCharCode (instring, CC_Greek))
+        return CC_Greek;
+    if (ProbeCharCode (instring, CC_Turkish))
+        return CC_Turkish;
+    if (ProbeCharCode (instring, CC_Hebrew))
+        return CC_Hebrew;
+    if (ProbeCharCode (instring, CC_Arabic))
+        return CC_Arabic;
+    if (ProbeCharCode (instring, CC_Thai))
+        return CC_Thai;
+    if (ProbeCharCode (instring, CC_Japanese))
+        return CC_Japanese;
+    if (ProbeCharCode (instring, CC_TradChinese))
+        return CC_TradChinese;
+    if (ProbeCharCode (instring, CC_SimpChinese))
+        return CC_SimpChinese;
+    if (ProbeCharCode (instring, CC_Symbol))
+        return CC_Symbol;
     findecode = false;
     return CC_Cyrillic;
 }
 
-bool ProbeCharCode (const std::string & instring, GSCharCode chcode)
-{
+bool ProbeCharCode (const std::string &instring, GSCharCode chcode) {
     GS::UniString unis = GS::UniString (instring.c_str (), chcode);
     std::string s = unis.ToCStr (0, MaxUSize, chcode).Get ();
     bool b = (instring == s);
     return b;
 }
 
-bool ProbeCharCode (const GS::UniString & instring, GSCharCode chcode)
-{
+bool ProbeCharCode (const GS::UniString &instring, GSCharCode chcode) {
     std::string s = instring.ToCStr (0, MaxUSize, chcode).Get ();
     GS::UniString unis = GS::UniString (s.c_str (), chcode);
     bool b = unis.IsEqual (instring);
@@ -1346,18 +1432,22 @@ bool ProbeCharCode (const GS::UniString & instring, GSCharCode chcode)
 // -----------------------------------------------------------------------------
 // Делит строку по разделителю, возвращает кол-во частей
 // -----------------------------------------------------------------------------
-UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, bool filter_empty, GS::Array<GS::UniString>*scratch_parts)
-{
+UInt32 StringSplt (const GS::UniString &instring,
+                   const GS::UniString &delim,
+                   GS::Array<GS::UniString> &partstring,
+                   bool filter_empty,
+                   GS::Array<GS::UniString> *scratch_parts) {
     // Если внешний буфер передан — используем его, если нет — создаем локальный
     GS::Array<GS::UniString> local_scratch;
     if (scratch_parts != nullptr) {
         scratch_parts->Clear ();
     }
-    GS::Array<GS::UniString>& working_scratch = (scratch_parts != nullptr) ? *scratch_parts : local_scratch;
+    GS::Array<GS::UniString> &working_scratch = (scratch_parts != nullptr) ? *scratch_parts : local_scratch;
     instring.Split (delim, &working_scratch);
     UInt32 n = 0;
-    if (working_scratch.GetSize () > 1) partstring.SetCapacity (partstring.GetSize () + working_scratch.GetSize ());
-    for (GS::UniString& part : working_scratch) {
+    if (working_scratch.GetSize () > 1)
+        partstring.SetCapacity (partstring.GetSize () + working_scratch.GetSize ());
+    for (GS::UniString &part : working_scratch) {
         part.Trim ();
         part.Trim ('\r');
         part.Trim ('\n');
@@ -1373,17 +1463,21 @@ UInt32 StringSplt (const GS::UniString & instring, const GS::UniString & delim, 
 // Делит строку по разделителю, возвращает кол-во частей
 // Записывает в массив только части, содержащие строку filter
 // -----------------------------------------------------------------------------
-UInt32 StringSpltFilter (const GS::UniString & instring, const GS::UniString & delim, GS::Array<GS::UniString>&partstring, const GS::UniString & filter, GS::Array<GS::UniString>*scratch_parts)
-{
+UInt32 StringSpltFilter (const GS::UniString &instring,
+                         const GS::UniString &delim,
+                         GS::Array<GS::UniString> &partstring,
+                         const GS::UniString &filter,
+                         GS::Array<GS::UniString> *scratch_parts) {
     GS::Array<GS::UniString> local_scratch;
     if (scratch_parts != nullptr) {
         scratch_parts->Clear ();
     }
-    GS::Array<GS::UniString>& working_scratch = (scratch_parts != nullptr) ? *scratch_parts : local_scratch;
+    GS::Array<GS::UniString> &working_scratch = (scratch_parts != nullptr) ? *scratch_parts : local_scratch;
     instring.Split (delim, &working_scratch);
     UInt32 n = 0;
-    if (working_scratch.GetSize () > 1) partstring.SetCapacity (partstring.GetSize () + working_scratch.GetSize ());
-    for (GS::UniString& part : working_scratch) {
+    if (working_scratch.GetSize () > 1)
+        partstring.SetCapacity (partstring.GetSize () + working_scratch.GetSize ());
+    for (GS::UniString &part : working_scratch) {
         part.Trim ();
         part.Trim ('\r');
         part.Trim ('\n');
@@ -1395,31 +1489,32 @@ UInt32 StringSpltFilter (const GS::UniString & instring, const GS::UniString & d
     return n;
 }
 
-
 // -----------------------------------------------------------------------------
 // Возвращает elemType и elemGuid для корректного чтение параметров элементов навесной стены
 // -----------------------------------------------------------------------------
-void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & elem_head, API_ElemTypeID & elemType, API_Guid & elemGuid)
-{
+void GetGDLParametersHead (const API_Element &element,
+                           const API_Elem_Head &elem_head,
+                           API_ElemTypeID &elemType,
+                           API_Guid &elemGuid) {
     API_ElemTypeID elemtype_ = GetElemTypeID (elem_head);
     switch (elemtype_) {
-        case API_CurtainWallPanelID:
-            elemGuid = element.cwPanel.symbolID;
-            elemType = API_ObjectID;
-            break;
-        case API_CurtainWallJunctionID:
-            elemGuid = element.cwJunction.symbolID;
-            elemType = API_ObjectID;
-            break;
-        case API_CurtainWallAccessoryID:
-            elemGuid = element.cwAccessory.symbolID;
-            elemType = API_ObjectID;
-            break;
-        default:
-            UNUSED_VARIABLE (element);
-            elemGuid = elem_head.guid;
-            elemType = elemtype_;
-            break;
+    case API_CurtainWallPanelID:
+        elemGuid = element.cwPanel.symbolID;
+        elemType = API_ObjectID;
+        break;
+    case API_CurtainWallJunctionID:
+        elemGuid = element.cwJunction.symbolID;
+        elemType = API_ObjectID;
+        break;
+    case API_CurtainWallAccessoryID:
+        elemGuid = element.cwAccessory.symbolID;
+        elemType = API_ObjectID;
+        break;
+    default:
+        UNUSED_VARIABLE (element);
+        elemGuid = elem_head.guid;
+        elemType = elemtype_;
+        break;
     }
     return;
 }
@@ -1427,44 +1522,47 @@ void GetGDLParametersHead (const API_Element & element, const API_Elem_Head & el
 // --------------------------------------------------------------------
 // Получение списка GUID панелей, рам и аксессуаров навесной стены
 // --------------------------------------------------------------------
-GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&elementsSymbolGuids)
-{
+GSErrCode GetRElementsForCWall (const API_Guid &cwGuid, GS::Array<API_Guid> &elementsSymbolGuids) {
     API_Element element = {};
     element.header.guid = cwGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError || !element.header.hasMemo) {
         return err;
     }
-    API_ElementMemo	memo = {};
-    UInt64 mask = APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
+    API_ElementMemo memo = {};
+    UInt64 mask =
+        APIMemoMask_CWallFrames | APIMemoMask_CWallPanels | APIMemoMask_CWallJunctions | APIMemoMask_CWallAccessories;
     err = ACAPI_Element_GetMemo (cwGuid, &memo, mask);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     bool isDegenerate = false;
-    const GSSize nPanels = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallPanels)) / sizeof (API_CWPanelType);
+    const GSSize nPanels = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallPanels)) / sizeof (API_CWPanelType);
     if (nPanels > 0) {
         for (Int32 idx = 0; idx < nPanels; ++idx) {
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
             err = ACAPI_CurtainWall_IsCWPanelDegenerate (&memo.cWallPanels[idx].head.guid, &isDegenerate);
-            #else
-            err = ACAPI_Database (APIDb_IsCWPanelDegenerateID, (void*) (&memo.cWallPanels[idx].head.guid), &isDegenerate);
-            #endif
+#else
+            err =
+                ACAPI_Database (APIDb_IsCWPanelDegenerateID, (void *)(&memo.cWallPanels[idx].head.guid), &isDegenerate);
+#endif
             if (err == NoError && !isDegenerate && memo.cWallPanels[idx].hasSymbol && !memo.cWallPanels[idx].hidden) {
                 elementsSymbolGuids.Push (std::move (memo.cWallPanels[idx].head.guid));
             }
         }
     }
-    const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.cWallFrames)) / sizeof (API_CWFrameType);
+    const GSSize nWallFrames = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallFrames)) / sizeof (API_CWFrameType);
     if (nWallFrames > 0) {
         for (Int32 idx = 0; idx < nWallFrames; ++idx) {
-            if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag && memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
+            if (memo.cWallFrames[idx].hasSymbol && !memo.cWallFrames[idx].deleteFlag &&
+                memo.cWallFrames[idx].objectType != APICWFrObjectType_Invisible) {
                 elementsSymbolGuids.Push (std::move (memo.cWallFrames[idx].head.guid));
             }
         }
     }
-    const GSSize nWallJunctions = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallJunctions)) / sizeof (API_CWJunctionType);
+    const GSSize nWallJunctions =
+        BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallJunctions)) / sizeof (API_CWJunctionType);
     if (nWallJunctions > 0) {
         for (Int32 idx = 0; idx < nWallJunctions; ++idx) {
             if (memo.cWallJunctions[idx].hasSymbol) {
@@ -1472,7 +1570,8 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
             }
         }
     }
-    const GSSize nWallAccessories = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallAccessories)) / sizeof (API_CWAccessoryType);
+    const GSSize nWallAccessories =
+        BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallAccessories)) / sizeof (API_CWAccessoryType);
     if (nWallAccessories > 0) {
         for (Int32 idx = 0; idx < nWallAccessories; ++idx) {
             if (memo.cWallAccessories[idx].hasSymbol) {
@@ -1487,35 +1586,41 @@ GSErrCode GetRElementsForCWall (const API_Guid & cwGuid, GS::Array<API_Guid>&ele
 // --------------------------------------------------------------------
 // Получение списка GUID элементов ограждения
 // --------------------------------------------------------------------
-GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>&elementsGuids)
-{
+GSErrCode GetRElementsForRailing (const API_Guid &elemGuid, GS::Array<API_Guid> &elementsGuids) {
     API_Element element = {};
     element.header.guid = elemGuid;
     GSErrCode err = ACAPI_Element_Get (&element);
     if (err != NoError) {
         return err;
     }
-    API_ElementMemo	memo = {};
-    UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost | APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail | APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster | APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd | APIMemoMask_RailingHandrailEnd | APIMemoMask_RailingToprailEnd | APIMemoMask_RailingRailConnection | APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
+    API_ElementMemo memo = {};
+    UInt64 mask = APIMemoMask_RailingNode | APIMemoMask_RailingSegment | APIMemoMask_RailingPost |
+                  APIMemoMask_RailingInnerPost | APIMemoMask_RailingRail | APIMemoMask_RailingHandrail |
+                  APIMemoMask_RailingToprail | APIMemoMask_RailingPanel | APIMemoMask_RailingBaluster |
+                  APIMemoMask_RailingPattern | APIMemoMask_RailingBalusterSet | APIMemoMask_RailingRailEnd |
+                  APIMemoMask_RailingHandrailEnd | APIMemoMask_RailingToprailEnd | APIMemoMask_RailingRailConnection |
+                  APIMemoMask_RailingHandrailConnection | APIMemoMask_RailingToprailConnection;
     err = ACAPI_Element_GetMemo (elemGuid, &memo, mask);
     if (err != NoError) {
         ACAPI_DisposeElemMemoHdls (&memo);
         return err;
     }
     GSSize n = 0;
-    n = BMGetPtrSize (reinterpret_cast<GSPtr>(memo.railingRailConnections)) / sizeof (API_RailingRailConnectionType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingRailConnections)) / sizeof (API_RailingRailConnectionType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingRailConnections[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingHandrailConnections)) / sizeof (API_RailingRailConnectionType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingHandrailConnections)) /
+        sizeof (API_RailingRailConnectionType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingHandrailConnections[idx].head.guid));
         }
     }
-    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingToprailConnections)) / sizeof (API_RailingRailConnectionType);
+    n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingToprailConnections)) /
+        sizeof (API_RailingRailConnectionType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
             elementsGuids.Push (std::move (memo.railingToprailConnections[idx].head.guid));
@@ -1548,19 +1653,22 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
     n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingRails)) / sizeof (API_RailingRailType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingRails[idx].visible) elementsGuids.Push (std::move (memo.railingRails[idx].head.guid));
+            if (memo.railingRails[idx].visible)
+                elementsGuids.Push (std::move (memo.railingRails[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingToprails)) / sizeof (API_RailingToprailType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingToprails[idx].visible) elementsGuids.Push (std::move (memo.railingToprails[idx].head.guid));
+            if (memo.railingToprails[idx].visible)
+                elementsGuids.Push (std::move (memo.railingToprails[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingHandrails)) / sizeof (API_RailingHandrailType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingHandrails[idx].visible) elementsGuids.Push (std::move (memo.railingHandrails[idx].head.guid));
+            if (memo.railingHandrails[idx].visible)
+                elementsGuids.Push (std::move (memo.railingHandrails[idx].head.guid));
         }
     }
     n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingInnerPosts)) / sizeof (API_RailingInnerPostType);
@@ -1578,7 +1686,8 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
     n = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.railingPanels)) / sizeof (API_RailingPanelType);
     if (n > 0) {
         for (Int32 idx = 0; idx < n; ++idx) {
-            if (memo.railingPanels[idx].visible) elementsGuids.Push (std::move (memo.railingPanels[idx].head.guid));
+            if (memo.railingPanels[idx].visible)
+                elementsGuids.Push (std::move (memo.railingPanels[idx].head.guid));
         }
     }
     ACAPI_DisposeElemMemoHdls (&memo);
@@ -1588,55 +1697,50 @@ GSErrCode GetRElementsForRailing (const API_Guid & elemGuid, GS::Array<API_Guid>
 // --------------------------------------------------------------------
 // Возвращает координаты заданной точки после трансформации матрицей
 // --------------------------------------------------------------------
-API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat & tm)
-{
-    API_Coord3D	trCoord = {};	// world coordinates 
+API_Coord3D GetWordCoord3DTM (const API_Coord3D vtx, const API_Tranmat &tm) {
+    API_Coord3D trCoord = {}; // world coordinates
     trCoord.x = tm.tmx[0] * vtx.x + tm.tmx[1] * vtx.y + tm.tmx[2] * vtx.z + tm.tmx[3];
     trCoord.y = tm.tmx[4] * vtx.x + tm.tmx[5] * vtx.y + tm.tmx[6] * vtx.z + tm.tmx[7];
     trCoord.z = tm.tmx[8] * vtx.x + tm.tmx[9] * vtx.y + tm.tmx[10] * vtx.z + tm.tmx[11];
     return trCoord;
 }
 
-
-Point2D GetWordPoint2DTM (const Point2D vtx, const API_Tranmat & tm)
-{
-    API_Coord3D c = GetWordCoord3DTM ({ vtx.x, vtx.y, 0 }, tm);
-    return { c.x, c.y };
+Point2D GetWordPoint2DTM (const Point2D vtx, const API_Tranmat &tm) {
+    API_Coord3D c = GetWordCoord3DTM ({vtx.x, vtx.y, 0}, tm);
+    return {c.x, c.y};
 }
 
 // -----------------------------------------------------------------------------
 // Ask the user to click a point
 // -----------------------------------------------------------------------------
 
-bool	ClickAPoint (const char* prompt, Point2D * c)
-{
-    API_GetPointType	pointInfo = {};
-    GSErrCode			err;
+bool ClickAPoint (const char *prompt, Point2D *c) {
+    API_GetPointType pointInfo = {};
+    GSErrCode err;
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     err = ACAPI_UserInput_GetPoint (&pointInfo);
-    #else
+#else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
-    #endif
+#endif
     if (err != NoError) {
         return false;
     }
     c->x = pointInfo.pos.x;
     c->y = pointInfo.pos.y;
     return true;
-}		// ClickAPoint
+} // ClickAPoint
 
 #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
-API_ElemType Neig_To_ElemID (API_NeigID neigID)
-{
-    API_ElemType	type;
-    GSErrCode		err;
-    #if defined (AC_26)
+API_ElemType Neig_To_ElemID (API_NeigID neigID) {
+    API_ElemType type;
+    GSErrCode err;
+    #if defined(AC_26)
     err = ACAPI_Goodies_NeigIDToElemType (neigID, type);
     #else
     err = ACAPI_Element_NeigIDToElemType (neigID, type);
@@ -1650,12 +1754,12 @@ API_ElemType Neig_To_ElemID (API_NeigID neigID)
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
-API_ElemTypeID Neig_To_ElemID (API_NeigID neigID)
-{
-    API_ElemTypeID	typeID;
-    GSErrCode		err;
+API_ElemTypeID Neig_To_ElemID (API_NeigID neigID) {
+    API_ElemTypeID typeID;
+    GSErrCode err;
     err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &typeID);
-    if (err != NoError) typeID = API_ZombieElemID;
+    if (err != NoError)
+        typeID = API_ZombieElemID;
     return typeID;
 }
 #endif
@@ -1663,11 +1767,9 @@ API_ElemTypeID Neig_To_ElemID (API_NeigID neigID)
 // -----------------------------------------------------------------------------
 // Convert the element header to a neig
 // -----------------------------------------------------------------------------
-bool	ElemHead_To_Neig (API_Neig * neig,
-                          const API_Elem_Head * elemHead)
-{
+bool ElemHead_To_Neig (API_Neig *neig, const API_Elem_Head *elemHead) {
     API_ElemTypeID typeID = API_ZombieElemID;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
     *neig = {};
     neig->guid = elemHead->guid;
     API_ElemType type = elemHead->type;
@@ -1677,9 +1779,9 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         ACAPI_Element_GetHeader (&elemHeadCopy);
         typeID = elemHeadCopy.type.typeID;
     }
-    #else
+#else
     BNZeroMemory (neig, sizeof (API_Neig));
-    API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
+    API_Elem_Head *elemHeadNonConst = const_cast<API_Elem_Head *> (elemHead);
     neig->guid = elemHead->guid;
     if (elemHeadNonConst->typeID == API_ZombieElemID && neig->guid != APINULLGuid) {
         BNZeroMemory (elemHeadNonConst, sizeof (API_Elem_Head));
@@ -1687,68 +1789,198 @@ bool	ElemHead_To_Neig (API_Neig * neig,
         ACAPI_Element_GetHeader (elemHeadNonConst);
         typeID = elemHeadNonConst->typeID;
     }
-    #endif
+#endif
     switch (typeID) {
-        case API_WallID:					neig->neigID = APINeig_Wall;				neig->inIndex = 1;	break;
-        case API_ColumnID:					neig->neigID = APINeig_Colu;				neig->inIndex = 0;	break;
-        case API_BeamID:					neig->neigID = APINeig_Beam;				neig->inIndex = 1;	break;
-        case API_WindowID:					neig->neigID = APINeig_WindHole;			neig->inIndex = 0;	break;
-        case API_DoorID:					neig->neigID = APINeig_DoorHole;			neig->inIndex = 0;	break;
-        case API_ObjectID:					neig->neigID = APINeig_Symb;				neig->inIndex = 1;	break;
-        case API_LampID:					neig->neigID = APINeig_Light;				neig->inIndex = 1;	break;
-        case API_SlabID:					neig->neigID = APINeig_Ceil;				neig->inIndex = 1;	break;
-        case API_RoofID:					neig->neigID = APINeig_Roof;				neig->inIndex = 1;	break;
-        case API_MeshID:					neig->neigID = APINeig_Mesh;				neig->inIndex = 1;	break;
+    case API_WallID:
+        neig->neigID = APINeig_Wall;
+        neig->inIndex = 1;
+        break;
+    case API_ColumnID:
+        neig->neigID = APINeig_Colu;
+        neig->inIndex = 0;
+        break;
+    case API_BeamID:
+        neig->neigID = APINeig_Beam;
+        neig->inIndex = 1;
+        break;
+    case API_WindowID:
+        neig->neigID = APINeig_WindHole;
+        neig->inIndex = 0;
+        break;
+    case API_DoorID:
+        neig->neigID = APINeig_DoorHole;
+        neig->inIndex = 0;
+        break;
+    case API_ObjectID:
+        neig->neigID = APINeig_Symb;
+        neig->inIndex = 1;
+        break;
+    case API_LampID:
+        neig->neigID = APINeig_Light;
+        neig->inIndex = 1;
+        break;
+    case API_SlabID:
+        neig->neigID = APINeig_Ceil;
+        neig->inIndex = 1;
+        break;
+    case API_RoofID:
+        neig->neigID = APINeig_Roof;
+        neig->inIndex = 1;
+        break;
+    case API_MeshID:
+        neig->neigID = APINeig_Mesh;
+        neig->inIndex = 1;
+        break;
 
-        case API_DimensionID:				neig->neigID = APINeig_DimOn;				neig->inIndex = 1;	break;
-        case API_RadialDimensionID:			neig->neigID = APINeig_RadDim;				neig->inIndex = 1;	break;
-        case API_LevelDimensionID:			neig->neigID = APINeig_LevDim;				neig->inIndex = 1;	break;
-        case API_AngleDimensionID:			neig->neigID = APINeig_AngDimOn;			neig->inIndex = 1;	break;
+    case API_DimensionID:
+        neig->neigID = APINeig_DimOn;
+        neig->inIndex = 1;
+        break;
+    case API_RadialDimensionID:
+        neig->neigID = APINeig_RadDim;
+        neig->inIndex = 1;
+        break;
+    case API_LevelDimensionID:
+        neig->neigID = APINeig_LevDim;
+        neig->inIndex = 1;
+        break;
+    case API_AngleDimensionID:
+        neig->neigID = APINeig_AngDimOn;
+        neig->inIndex = 1;
+        break;
 
-        case API_TextID:					neig->neigID = APINeig_Word;				neig->inIndex = 1;	break;
-        case API_LabelID:					neig->neigID = APINeig_Label;				neig->inIndex = 1;	break;
-        case API_ZoneID:					neig->neigID = APINeig_Room;				neig->inIndex = 1;	break;
+    case API_TextID:
+        neig->neigID = APINeig_Word;
+        neig->inIndex = 1;
+        break;
+    case API_LabelID:
+        neig->neigID = APINeig_Label;
+        neig->inIndex = 1;
+        break;
+    case API_ZoneID:
+        neig->neigID = APINeig_Room;
+        neig->inIndex = 1;
+        break;
 
-        case API_HatchID:					neig->neigID = APINeig_Hatch;				neig->inIndex = 1;	break;
-        case API_LineID:					neig->neigID = APINeig_Line;				neig->inIndex = 1;	break;
-        case API_PolyLineID:				neig->neigID = APINeig_PolyLine;			neig->inIndex = 1;	break;
-        case API_ArcID:						neig->neigID = APINeig_Arc;					neig->inIndex = 1;	break;
-        case API_CircleID:					neig->neigID = APINeig_Circ;				neig->inIndex = 1;	break;
-        case API_SplineID:					neig->neigID = APINeig_Spline;				neig->inIndex = 1;	break;
-        case API_HotspotID:					neig->neigID = APINeig_Hot;					neig->inIndex = 1;	break;
+    case API_HatchID:
+        neig->neigID = APINeig_Hatch;
+        neig->inIndex = 1;
+        break;
+    case API_LineID:
+        neig->neigID = APINeig_Line;
+        neig->inIndex = 1;
+        break;
+    case API_PolyLineID:
+        neig->neigID = APINeig_PolyLine;
+        neig->inIndex = 1;
+        break;
+    case API_ArcID:
+        neig->neigID = APINeig_Arc;
+        neig->inIndex = 1;
+        break;
+    case API_CircleID:
+        neig->neigID = APINeig_Circ;
+        neig->inIndex = 1;
+        break;
+    case API_SplineID:
+        neig->neigID = APINeig_Spline;
+        neig->inIndex = 1;
+        break;
+    case API_HotspotID:
+        neig->neigID = APINeig_Hot;
+        neig->inIndex = 1;
+        break;
 
-        case API_CutPlaneID:				neig->neigID = APINeig_CutPlane;			neig->inIndex = 1;	break;
-        case API_ElevationID:				neig->neigID = APINeig_Elevation;			neig->inIndex = 1;	break;
-        case API_InteriorElevationID:		neig->neigID = APINeig_InteriorElevation;	neig->inIndex = 1;	break;
-        case API_CameraID:					neig->neigID = APINeig_Camera;				neig->inIndex = 1;	break;
-        case API_CamSetID:					return false;
+    case API_CutPlaneID:
+        neig->neigID = APINeig_CutPlane;
+        neig->inIndex = 1;
+        break;
+    case API_ElevationID:
+        neig->neigID = APINeig_Elevation;
+        neig->inIndex = 1;
+        break;
+    case API_InteriorElevationID:
+        neig->neigID = APINeig_InteriorElevation;
+        neig->inIndex = 1;
+        break;
+    case API_CameraID:
+        neig->neigID = APINeig_Camera;
+        neig->inIndex = 1;
+        break;
+    case API_CamSetID:
+        return false;
 
-        case API_PictureID:					neig->neigID = APINeig_PictObj;				neig->inIndex = 1;	break;
-        case API_DetailID:					neig->neigID = APINeig_Detail;				neig->inIndex = 1;	break;
-        case API_WorksheetID:				neig->neigID = APINeig_Worksheet;			neig->inIndex = 1;	break;
+    case API_PictureID:
+        neig->neigID = APINeig_PictObj;
+        neig->inIndex = 1;
+        break;
+    case API_DetailID:
+        neig->neigID = APINeig_Detail;
+        neig->inIndex = 1;
+        break;
+    case API_WorksheetID:
+        neig->neigID = APINeig_Worksheet;
+        neig->inIndex = 1;
+        break;
 
-        case API_SectElemID:				neig->neigID = APINeig_VirtSy;				neig->inIndex = 1;	break;
-        case API_DrawingID:					neig->neigID = APINeig_DrawingCenter;		neig->inIndex = 1;	break;
+    case API_SectElemID:
+        neig->neigID = APINeig_VirtSy;
+        neig->inIndex = 1;
+        break;
+    case API_DrawingID:
+        neig->neigID = APINeig_DrawingCenter;
+        neig->inIndex = 1;
+        break;
 
-        case API_CurtainWallID:				neig->neigID = APINeig_CurtainWall;			neig->inIndex = 1;	break;
-        case API_CurtainWallSegmentID:		neig->neigID = APINeig_CWSegment;			neig->inIndex = 1;	break;
-        case API_CurtainWallFrameID:		neig->neigID = APINeig_CWFrame;				neig->inIndex = 1;	break;
-        case API_CurtainWallPanelID:		neig->neigID = APINeig_CWPanel;				neig->inIndex = 1;	break;
-        case API_CurtainWallJunctionID:		neig->neigID = APINeig_CWJunction;			neig->inIndex = 1;	break;
-        case API_CurtainWallAccessoryID:	neig->neigID = APINeig_CWAccessory;			neig->inIndex = 1;	break;
-        case API_ShellID:					neig->neigID = APINeig_Shell;				neig->inIndex = 1;	break;
-        case API_SkylightID:				neig->neigID = APINeig_SkylightHole;		neig->inIndex = 0;	break;
-        case API_MorphID:					neig->neigID = APINeig_Morph;				neig->inIndex = 1;	break;
-        case API_ChangeMarkerID:			neig->neigID = APINeig_ChangeMarker;		neig->inIndex = 1;	break;
+    case API_CurtainWallID:
+        neig->neigID = APINeig_CurtainWall;
+        neig->inIndex = 1;
+        break;
+    case API_CurtainWallSegmentID:
+        neig->neigID = APINeig_CWSegment;
+        neig->inIndex = 1;
+        break;
+    case API_CurtainWallFrameID:
+        neig->neigID = APINeig_CWFrame;
+        neig->inIndex = 1;
+        break;
+    case API_CurtainWallPanelID:
+        neig->neigID = APINeig_CWPanel;
+        neig->inIndex = 1;
+        break;
+    case API_CurtainWallJunctionID:
+        neig->neigID = APINeig_CWJunction;
+        neig->inIndex = 1;
+        break;
+    case API_CurtainWallAccessoryID:
+        neig->neigID = APINeig_CWAccessory;
+        neig->inIndex = 1;
+        break;
+    case API_ShellID:
+        neig->neigID = APINeig_Shell;
+        neig->inIndex = 1;
+        break;
+    case API_SkylightID:
+        neig->neigID = APINeig_SkylightHole;
+        neig->inIndex = 0;
+        break;
+    case API_MorphID:
+        neig->neigID = APINeig_Morph;
+        neig->inIndex = 1;
+        break;
+    case API_ChangeMarkerID:
+        neig->neigID = APINeig_ChangeMarker;
+        neig->inIndex = 1;
+        break;
 
-        case API_GroupID:
-        case API_HotlinkID:
-        default:
-            return false;
+    case API_GroupID:
+    case API_HotlinkID:
+    default:
+        return false;
     }
 
     return true;
-}		// ElemHead_To_Neig
+} // ElemHead_To_Neig
 
 // -----------------------------------------------------------------------------
 // Ask the user to click an element
@@ -1760,17 +1992,16 @@ bool	ElemHead_To_Neig (API_Neig * neig,
 //	false:	the input is canceled or wrong type of element was clicked
 // -----------------------------------------------------------------------------
 #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
-bool	ClickAnElem (const char* prompt,
-                     const API_ElemType & needType,
-                     API_Neig * neig /*= nullptr*/,
-                     API_ElemType * type /*= nullptr*/,
-                     API_Guid * guid /*= nullptr*/,
-                     API_Coord3D * c /*= nullptr*/,
-                     bool					ignorePartialSelection /*= true*/)
-{
-    API_GetPointType	pointInfo = {};
-    API_ElemType		clickedType;
-    GSErrCode			err;
+bool ClickAnElem (const char *prompt,
+                  const API_ElemType &needType,
+                  API_Neig *neig /*= nullptr*/,
+                  API_ElemType *type /*= nullptr*/,
+                  API_Guid *guid /*= nullptr*/,
+                  API_Coord3D *c /*= nullptr*/,
+                  bool ignorePartialSelection /*= true*/) {
+    API_GetPointType pointInfo = {};
+    API_ElemType clickedType;
+    GSErrCode err;
 
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
@@ -1784,19 +2015,19 @@ bool	ClickAnElem (const char* prompt,
         return false;
     }
 
-    if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
-        API_Elem_Head		elemHead = {};
-        API_ElemSearchPars	pars = {};
+    if (pointInfo.neig.neigID == APINeig_None) { // try to find polygonal element clicked inside the polygon area
+        API_Elem_Head elemHead = {};
+        API_ElemSearchPars pars = {};
         pars.type = needType;
         pars.loc.x = pointInfo.pos.x;
         pars.loc.y = pointInfo.pos.y;
         pars.z = 1.00E6;
         pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
-        #else
+    #else
         err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
-        #endif
+    #endif
         if (err == NoError) {
             elemHead.type = pars.type;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
@@ -1832,19 +2063,18 @@ bool	ClickAnElem (const char* prompt,
     }
 
     return good;
-}		// ClickAnElem
+} // ClickAnElem
 #else
-bool	ClickAnElem (const char* prompt,
-                     API_ElemTypeID		needTypeID,
-                     API_Neig * neig /*= nullptr*/,
-                     API_ElemTypeID * typeID /*= nullptr*/,
-                     API_Guid * guid /*= nullptr*/,
-                     API_Coord3D * c /*= nullptr*/,
-                     bool				ignorePartialSelection /*= true*/)
-{
-    API_GetPointType	pointInfo = {};
-    API_ElemTypeID		clickedID;
-    GSErrCode			err;
+bool ClickAnElem (const char *prompt,
+                  API_ElemTypeID needTypeID,
+                  API_Neig *neig /*= nullptr*/,
+                  API_ElemTypeID *typeID /*= nullptr*/,
+                  API_Guid *guid /*= nullptr*/,
+                  API_Coord3D *c /*= nullptr*/,
+                  bool ignorePartialSelection /*= true*/) {
+    API_GetPointType pointInfo = {};
+    API_ElemTypeID clickedID;
+    GSErrCode err;
 
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
@@ -1855,15 +2085,15 @@ bool	ClickAnElem (const char* prompt,
             return false;
     }
 
-    if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
+    if (pointInfo.neig.neigID == APINeig_None) { // try to find polygonal element clicked inside the polygon area
         API_Elem_Head elemHead = {};
-        API_ElemSearchPars	pars = {};
+        API_ElemSearchPars pars = {};
         pars.typeID = needTypeID;
         pars.loc.x = pointInfo.pos.x;
         pars.loc.y = pointInfo.pos.y;
-        //pars.z = 1.00E6;
-        //pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-        //err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
+        // pars.z = 1.00E6;
+        // pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
+        // err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
         if (err == NoError) {
             elemHead.typeID = pars.typeID;
             ElemHead_To_Neig (&pointInfo.neig, &elemHead);
@@ -1899,11 +2129,10 @@ bool	ClickAnElem (const char* prompt,
     }
 
     return good;
-}		// ClickAnElem
+} // ClickAnElem
 #endif
 
-GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geometry::Polygon2D & poly)
-{
+GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo &memo, Geometry::Polygon2D &poly) {
     GSErrCode err = NoError;
     Geometry::Polygon2DData polygon2DData;
     Geometry::InitPolygon2DData (&polygon2DData);
@@ -1911,7 +2140,8 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geome
     static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
 
     polygon2DData.nVertices = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (Coord) - 1;
-    polygon2DData.vertices = reinterpret_cast<Coord**> (BMAllocateHandle ((polygon2DData.nVertices + 1) * sizeof (Coord), ALLOCATE_CLEAR, 0));
+    polygon2DData.vertices = reinterpret_cast<Coord **> (
+        BMAllocateHandle ((polygon2DData.nVertices + 1) * sizeof (Coord), ALLOCATE_CLEAR, 0));
     if (polygon2DData.vertices != nullptr)
         BNCopyMemory (*polygon2DData.vertices, *memo.coords, (polygon2DData.nVertices + 1) * sizeof (Coord));
     else
@@ -1919,7 +2149,8 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geome
     if (err == NoError && memo.parcs != nullptr) {
         polygon2DData.nArcs = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.parcs)) / sizeof (PolyArcRec);
         if (polygon2DData.nArcs > 0) {
-            polygon2DData.arcs = reinterpret_cast<PolyArcRec**> (BMAllocateHandle ((polygon2DData.nArcs + 1) * sizeof (PolyArcRec), ALLOCATE_CLEAR, 0));
+            polygon2DData.arcs = reinterpret_cast<PolyArcRec **> (
+                BMAllocateHandle ((polygon2DData.nArcs + 1) * sizeof (PolyArcRec), ALLOCATE_CLEAR, 0));
             if (polygon2DData.arcs != nullptr)
                 BNCopyMemory (*polygon2DData.arcs + 1, *memo.parcs, polygon2DData.nArcs * sizeof (PolyArcRec));
             else
@@ -1928,7 +2159,8 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geome
     }
     if (err == NoError) {
         polygon2DData.nContours = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.pends)) / sizeof (Int32) - 1;
-        polygon2DData.contourEnds = reinterpret_cast<UIndex**> (BMAllocateHandle ((polygon2DData.nContours + 1) * sizeof (UIndex), ALLOCATE_CLEAR, 0));
+        polygon2DData.contourEnds = reinterpret_cast<UIndex **> (
+            BMAllocateHandle ((polygon2DData.nContours + 1) * sizeof (UIndex), ALLOCATE_CLEAR, 0));
         if (polygon2DData.contourEnds != nullptr)
             BNCopyMemory (*polygon2DData.contourEnds, *memo.pends, (polygon2DData.nContours + 1) * sizeof (UIndex));
         else
@@ -1945,13 +2177,12 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo & memo, Geome
     return err;
 }
 
-GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D & polygon, API_Polygon & poly, API_ElementMemo & memo)
-{
+GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_Polygon &poly, API_ElementMemo &memo) {
     GSErrCode err = NoError;
-    BMhKill ((GSHandle*) &memo.coords);
-    BMhKill ((GSHandle*) &memo.pends);
-    BMhKill ((GSHandle*) &memo.vertexIDs);
-    BMhKill ((GSHandle*) &memo.parcs);
+    BMhKill ((GSHandle *)&memo.coords);
+    BMhKill ((GSHandle *)&memo.pends);
+    BMhKill ((GSHandle *)&memo.vertexIDs);
+    BMhKill ((GSHandle *)&memo.parcs);
     BNZeroMemory (&poly, sizeof (API_Polygon));
 
     Geometry::Polygon2DData polygon2DData;
@@ -1963,10 +2194,14 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D & polygon, API
     poly.nArcs = polygon2DData.nArcs;
 
     UInt32 vId = 1;
-    memo.coords = reinterpret_cast<API_Coord**>	(BMAllocateHandle ((poly.nCoords + 1) * sizeof (API_Coord), ALLOCATE_CLEAR, 0));
-    memo.pends = reinterpret_cast<Int32**>		(BMAllocateHandle ((poly.nSubPolys + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
-    memo.parcs = reinterpret_cast<API_PolyArc**> (BMAllocateHandle (poly.nArcs * sizeof (API_PolyArc), ALLOCATE_CLEAR, 0));
-    memo.vertexIDs = reinterpret_cast<UInt32**> (BMAllocateHandle ((poly.nCoords + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
+    memo.coords =
+        reinterpret_cast<API_Coord **> (BMAllocateHandle ((poly.nCoords + 1) * sizeof (API_Coord), ALLOCATE_CLEAR, 0));
+    memo.pends =
+        reinterpret_cast<Int32 **> (BMAllocateHandle ((poly.nSubPolys + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
+    memo.parcs =
+        reinterpret_cast<API_PolyArc **> (BMAllocateHandle (poly.nArcs * sizeof (API_PolyArc), ALLOCATE_CLEAR, 0));
+    memo.vertexIDs =
+        reinterpret_cast<UInt32 **> (BMAllocateHandle ((poly.nCoords + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
     if (memo.coords != nullptr && memo.pends != nullptr && polygon2DData.vertices != nullptr) {
         static_assert (sizeof (API_Coord) == sizeof (Coord), "sizeof (API_Coord) != sizeof (Coord)");
         BNCopyMemory (*memo.coords, *polygon2DData.vertices, (poly.nCoords + 1) * sizeof (API_Coord));
@@ -1988,10 +2223,10 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D & polygon, API
     return err;
 }
 
-void UnhideUnlockElementLayer (const API_Guid & elemGuid)
-{
+void UnhideUnlockElementLayer (const API_Guid &elemGuid) {
     GSErrCode err = NoError;
-    if (ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer)) return;
+    if (ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer))
+        return;
     API_Elem_Head elem_head = {};
     elem_head.guid = elemGuid;
     err = ACAPI_Element_GetHeader (&elem_head);
@@ -2002,17 +2237,18 @@ void UnhideUnlockElementLayer (const API_Guid & elemGuid)
     UnhideUnlockElementLayer (elem_head);
 }
 
-void UnhideUnlockElementLayer (const API_Elem_Head & elem_head)
-{
+void UnhideUnlockElementLayer (const API_Elem_Head &elem_head) {
     API_ElemTypeID typeID = GetElemTypeID (elem_head);
-    if (typeID == API_DoorID) return;
-    if (typeID == API_WindowID) return;
-    if (ACAPI_Element_Filter (elem_head.guid, APIFilt_OnVisLayer)) return;
+    if (typeID == API_DoorID)
+        return;
+    if (typeID == API_WindowID)
+        return;
+    if (ACAPI_Element_Filter (elem_head.guid, APIFilt_OnVisLayer))
+        return;
     UnhideUnlockElementLayer (elem_head.layer);
 }
 
-void UnhideUnlockElementLayer (const API_AttributeIndex & layer)
-{
+void UnhideUnlockElementLayer (const API_AttributeIndex &layer) {
     API_Attribute attrib = {};
     GSErrCode err = NoError;
     attrib.header.typeID = API_LayerID;
@@ -2033,14 +2269,15 @@ void UnhideUnlockElementLayer (const API_AttributeIndex & layer)
     }
     if (flag_write) {
         err = ACAPI_Attribute_Modify (&attrib, NULL);
-        if (err != NoError) msg_rep ("UnhideUnlockElementLayer", attrib.header.name, err, APINULLGuid);
+        if (err != NoError)
+            msg_rep ("UnhideUnlockElementLayer", attrib.header.name, err, APINULLGuid);
     }
 }
 
-bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & type, API_AttributeIndex & attribinx)
-{
+bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx) {
     BNZeroMemory (&attribinx, sizeof (API_AttributeIndex));
-    if (type == API_ZombieAttrID) return false;
+    if (type == API_ZombieAttrID)
+        return false;
     GSErrCode err = NoError;
     API_Attribute attrib = {};
     attrib.header.uniStringNamePtr = &name;
@@ -2056,16 +2293,17 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     }
     double inx = 0;
     if (UniStringToDouble (name, inx)) {
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        attribinx = ACAPI_CreateAttributeIndex ((Int32) inx);
-        #else
-        attribinx = (Int32) inx;
-        #endif
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        attribinx = ACAPI_CreateAttributeIndex ((Int32)inx);
+#else
+        attribinx = (Int32)inx;
+#endif
         attrib.header.typeID = type;
         attrib.header.index = attribinx;
         err = ACAPI_Attribute_Get (&attrib);
         if (err != NoError) {
-            msg_rep ("API_AttributeIndexFindByName", "ACAPI_Attribute_Search - UniStringToDouble" + name, err, APINULLGuid);
+            msg_rep (
+                "API_AttributeIndexFindByName", "ACAPI_Attribute_Search - UniStringToDouble" + name, err, APINULLGuid);
             return false;
         }
         return true;
@@ -2074,11 +2312,13 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
     return false;
 }
 
-GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array< API_FavoriteFolderHierarchy >*folders, GS::Array< GS::UniString >*names)
-{
-    #if defined AC_22
+GSErrCode Favorite_GetNum (const API_ElemTypeID &type,
+                           short *count,
+                           GS::Array<API_FavoriteFolderHierarchy> *folders,
+                           GS::Array<GS::UniString> *names) {
+#if defined AC_22
     return APIERR_GENERAL;
-    #else
+#else
     #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     API_ElemType type_;
     type_.typeID = type;
@@ -2086,117 +2326,126 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array<
     #else
     return ACAPI_Favorite_GetNum (type, APIVarId_Generic, count, folders, names);
     #endif
-    #endif
+#endif
 }
 
-API_ElemTypeID GetElemTypeID (const API_Guid & guid)
-{
+API_ElemTypeID GetElemTypeID (const API_Guid &guid) {
     API_ElemTypeID eltype = API_ZombieElemID;
     API_Elem_Head elementHead = {};
     elementHead.guid = guid;
     GSErrCode err = NoError;
     err = ACAPI_Element_GetHeader (&elementHead);
-    if (err == NoError) eltype = GetElemTypeID (elementHead);
+    if (err == NoError)
+        eltype = GetElemTypeID (elementHead);
     return eltype;
 }
 
-API_ElemTypeID GetElemTypeID (const API_Elem_Head & elementhead)
-{
+API_ElemTypeID GetElemTypeID (const API_Elem_Head &elementhead) {
     API_ElemTypeID eltype = API_ZombieElemID;
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     eltype = elementhead.type.typeID;
-    #else
+#else
     eltype = elementhead.typeID;
-    #endif
+#endif
     return eltype;
 }
 
-API_ElemTypeID GetElemTypeID (const API_Element & element)
-{
+API_ElemTypeID GetElemTypeID (const API_Element &element) {
     API_ElemTypeID eltype = API_ZombieElemID;
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     eltype = element.header.type.typeID;
-    #else
+#else
     eltype = element.header.typeID;
-    #endif
+#endif
     return eltype;
 }
 
-void SetElemTypeID (API_Element & element, const API_ElemTypeID eltype)
-{
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+void SetElemTypeID (API_Element &element, const API_ElemTypeID eltype) {
+#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     element.header.type.typeID = eltype;
-    #else
+#else
     element.header.typeID = eltype;
-    #endif
+#endif
 }
 
-void SetElemTypeID (API_Elem_Head & elementhead, const API_ElemTypeID eltype)
-{
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
+#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     elementhead.type.typeID = eltype;
-    #else
+#else
     elementhead.typeID = eltype;
-    #endif
+#endif
 }
 
-GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & definition, const GS::UniString value)
-{
+GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &definition, const GS::UniString value) {
     GSErrCode error = NoError;
     GS::Array<API_Guid> elements = {};
-    #ifdef AC_22
+#ifdef AC_22
     return elements;
-    #else
+#else
     GS::Array<API_Guid> elemGuids = {};
     API_Property propertyflag = {};
-    for (const auto& classificationItemGuid : definition.availability) {
+    for (const auto &classificationItemGuid : definition.availability) {
         elemGuids.Clear ();
         error = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
         if (error != NoError) {
-            msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetElementsWithClassification", error, classificationItemGuid);
+            msg_rep ("GetElementByPropertyDescription",
+                     "ACAPI_Element_GetElementsWithClassification",
+                     error,
+                     classificationItemGuid);
             continue;
         }
-        for (const auto& elemGuid : elemGuids) {
-            if (!ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay | APIFilt_IsEditable | APIFilt_InMyWorkspace | APIFilt_HasAccessRight)) continue;
+        for (const auto &elemGuid : elemGuids) {
+            if (!ACAPI_Element_Filter (elemGuid,
+                                       APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation |
+                                           APIFilt_IsInStructureDisplay | APIFilt_IsEditable | APIFilt_InMyWorkspace |
+                                           APIFilt_HasAccessRight))
+                continue;
             error = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
             if (error != NoError) {
                 msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetPropertyValue", error, elemGuid);
                 continue;
             }
-            #if defined(AC_22) || defined(AC_23)
-            if (!propertyflag.isEvaluated) continue;
-            if (propertyflag.isDefault) continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ()) continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == value.ToLowerCase ())                     elements.Push (elemGuid);
-            #else
-            if (propertyflag.status != API_Property_HasValue) continue;
-            if (propertyflag.isDefault) continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ()) continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (value)) elements.Push (elemGuid);
-            #endif
+    #if defined(AC_22) || defined(AC_23)
+            if (!propertyflag.isEvaluated)
+                continue;
+            if (propertyflag.isDefault)
+                continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
+                continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == value.ToLowerCase ())
+                elements.Push (elemGuid);
+    #else
+            if (propertyflag.status != API_Property_HasValue)
+                continue;
+            if (propertyflag.isDefault)
+                continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
+                continue;
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (value))
+                elements.Push (elemGuid);
+    #endif
         }
     }
     return elements;
-    #endif // AC_22
+#endif // AC_22
 }
 
-namespace GDLHelpers
-{
-bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
-{
-    const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
-    GS::UniString rawname;
-    for (GSIndex ii = 0; ii < nParams; ++ii) {
-        API_AddParType& actParam = (*memo.params)[ii];
-        rawname = GDLNAMEPREFIX;
-        rawname += GS::UniString (actParam.name);
-        rawname.SetToLowerCase ();
-        rawname += BRACEEND;
+namespace GDLHelpers {
+    bool ParamToMemo (API_ElementMemo &memo, ParamDict &param) {
+        const GSSize nParams = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
+        GS::UniString rawname;
+        for (GSIndex ii = 0; ii < nParams; ++ii) {
+            API_AddParType &actParam = (*memo.params)[ii];
+            rawname = GDLNAMEPREFIX;
+            rawname += GS::UniString (actParam.name);
+            rawname.SetToLowerCase ();
+            rawname += BRACEEND;
 
-        const Param* pp = param.GetPtr (rawname);
-        if (pp == nullptr) continue;
-        if (actParam.typeMod == API_ParSimple) {
-            switch (actParam.typeID) {
+            const Param *pp = param.GetPtr (rawname);
+            if (pp == nullptr)
+                continue;
+            if (actParam.typeMod == API_ParSimple) {
+                switch (actParam.typeID) {
                 case APIParT_LineTyp:
                 case APIParT_Profile:
                 case APIParT_BuildingMaterial:
@@ -2213,15 +2462,16 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
                     actParam.value.real = pp->num;
                     break;
                 case APIParT_CString:
-                    GS::ucscpy (actParam.value.uStr, pp->str.ToUStr (0, GS::Min (pp->str.GetLength (), (USize) API_UAddParStrLen)).Get ());
+                    GS::ucscpy (actParam.value.uStr,
+                                pp->str.ToUStr (0, GS::Min (pp->str.GetLength (), (USize)API_UAddParStrLen)).Get ());
                     break;
                 default:
                     break;
-            }
-        } else {
-            double** newArrHdl = nullptr;
-            double** origArrHdl = nullptr;
-            switch (actParam.typeID) {
+                }
+            } else {
+                double **newArrHdl = nullptr;
+                double **origArrHdl = nullptr;
+                switch (actParam.typeID) {
                 case APIParT_LineTyp:
                 case APIParT_Profile:
                 case APIParT_BuildingMaterial:
@@ -2239,26 +2489,26 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
                         actParam.dim1 = pp->dim1;
                         actParam.dim2 = pp->dim2;
                     }
-                    origArrHdl = (double**) actParam.value.array;
-                    newArrHdl = (double**) BMAllocateHandle (actParam.dim1 * actParam.dim2 * sizeof (double), ALLOCATE_CLEAR, 0);
+                    origArrHdl = (double **)actParam.value.array;
+                    newArrHdl = (double **)BMAllocateHandle (
+                        actParam.dim1 * actParam.dim2 * sizeof (double), ALLOCATE_CLEAR, 0);
                     for (Int32 k = 0; k < actParam.dim1; k++)
                         for (Int32 j = 0; j < actParam.dim2; j++)
                             (*newArrHdl)[k * actParam.dim2 + j] = pp->arr_num[k * actParam.dim2 + j];
-                    BMKillHandle ((GSHandle*) &origArrHdl);
-                    actParam.value.array = (GSHandle) newArrHdl;
+                    BMKillHandle ((GSHandle *)&origArrHdl);
+                    actParam.value.array = (GSHandle)newArrHdl;
                     break;
                 case APIParT_CString:
                     break;
                 default:
                     break;
+                }
+            }
+            param.Delete (rawname);
+            if (param.IsEmpty ()) {
+                return true;
             }
         }
-        param.Delete (rawname);
-        if (param.IsEmpty ()) {
-            return true;
-        }
+        return param.IsEmpty ();
     }
-    return param.IsEmpty ();
-}
-}
-
+} // namespace GDLHelpers

@@ -1,30 +1,21 @@
 //------------ kuvbur 2022 ------------
-#include	"ACAPinc.h"
-#include	"APIEnvir.h"
-#include	"SyncSettings.hpp"
+#include "ACAPinc.h"
+#include "APIEnvir.h"
+#include "SyncSettings.hpp"
 
 static const Int32 PreferencesVersion = 1;
 
-GS::ClassInfo SyncSettings::classInfo ("SyncSettings", GS::Guid ("B45089A9-B372-460B-B145-80E6EBF107C3"), GS::ClassVersion (1, 0));
+GS::ClassInfo SyncSettings::classInfo ("SyncSettings",
+                                       GS::Guid ("B45089A9-B372-460B-B145-80E6EBF107C3"),
+                                       GS::ClassVersion (1, 0));
 
-SyncSettings::SyncSettings () :
-    SyncSettings (false, false, true, true, true, true, false)
-{
-}
+SyncSettings::SyncSettings () : SyncSettings (false, false, true, true, true, true, false) {}
 
-SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon) :
-    syncAll (syncAll),
-    syncMon (syncMon),
-    wallS (wallS),
-    widoS (widoS),
-    objS (objS),
-    cwallS (cwallS),
-    logMon (logMon)
-{
-}
+SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon)
+    : syncAll (syncAll), syncMon (syncMon), wallS (wallS), widoS (widoS), objS (objS), cwallS (cwallS),
+      logMon (logMon) {}
 
-GSErrCode SyncSettings::Read (GS::IChannel& ic)
-{
+GSErrCode SyncSettings::Read (GS::IChannel &ic) {
     GS::InputFrame frame (ic, classInfo);
     ic.Read (syncAll);
     ic.Read (syncMon);
@@ -36,8 +27,7 @@ GSErrCode SyncSettings::Read (GS::IChannel& ic)
     return ic.GetInputStatus ();
 }
 
-GSErrCode SyncSettings::Write (GS::OChannel& oc) const
-{
+GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
     GS::OutputFrame frame (oc, classInfo);
     oc.Write (syncAll);
     oc.Write (syncMon);
@@ -49,8 +39,7 @@ GSErrCode SyncSettings::Write (GS::OChannel& oc) const
     return oc.GetOutputStatus ();
 }
 
-static bool ReadSyncSettings (SyncSettings& syncSettings)
-{
+static bool ReadSyncSettings (SyncSettings &syncSettings) {
     GSErrCode err = NoError;
     Int32 version = 3;
     GSSize bytes = 0;
@@ -58,7 +47,7 @@ static bool ReadSyncSettings (SyncSettings& syncSettings)
     if (err != NoError || version == 0 || bytes == 0) {
         return false;
     }
-    char* data = new char[bytes];
+    char *data = new char[bytes];
     err = ACAPI_GetPreferences (&version, &bytes, data);
     if (err != NoError) {
         delete[] data;
@@ -79,8 +68,7 @@ static bool ReadSyncSettings (SyncSettings& syncSettings)
 // --------------------------------------------------------------------
 // Кэш настроек
 // --------------------------------------------------------------------
-SyncSettings& GetSyncSettingsCache (bool forceReload)
-{
+SyncSettings &GetSyncSettingsCache (bool forceReload) {
     static SyncSettings instance;
     static bool loaded = false;
     if (!loaded || forceReload) {
@@ -90,15 +78,12 @@ SyncSettings& GetSyncSettingsCache (bool forceReload)
     return instance;
 }
 
-bool LoadSyncSettingsFromPreferences (SyncSettings& syncSettings, bool forceReload)
-{
+bool LoadSyncSettingsFromPreferences (SyncSettings &syncSettings, bool forceReload) {
     syncSettings = GetSyncSettingsCache (forceReload);
     return true;
 }
 
-
-bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings)
-{
+bool WriteSyncSettingsToPreferences (const SyncSettings &syncSettings) {
     GSErrCode err = NoError;
     MemoryOChannel outputChannel;
     err = syncSettings.Write (outputChannel);
@@ -106,8 +91,8 @@ bool WriteSyncSettingsToPreferences (const SyncSettings& syncSettings)
         return false;
     }
     UInt64 bytes = outputChannel.GetDataSize ();
-    const char* data = outputChannel.GetDestination ();
-    err = ACAPI_SetPreferences (PreferencesVersion, (GSSize) bytes, data);
+    const char *data = outputChannel.GetDestination ();
+    err = ACAPI_SetPreferences (PreferencesVersion, (GSSize)bytes, data);
     if (err != NoError) {
         return false;
     }

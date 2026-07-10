@@ -7,7 +7,7 @@
 #include "Sync.hpp"
 #include <map>
 
-typedef std::unordered_map <std::string, SortInx> SumCriteria;
+typedef std::unordered_map<std::string, SortInx> SumCriteria;
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Объединение уникальных значений свойств выделенных элементов
@@ -22,20 +22,20 @@ typedef std::unordered_map <std::string, SortInx> SumCriteria;
 // 5. Записываем их через разделитель
 // TODO Попробовать сделать диапазоны 1...10 и т.д.
 // -----------------------------------------------------------------------------------------------------------------------
-GSErrCode SumSelected (SyncSettings& syncSettings)
-{
+GSErrCode SumSelected (SyncSettings &syncSettings) {
     clock_t start, finish;
-    double  duration;
+    double duration;
     start = clock ();
     GS::UniString funcname = "Summation";
     GS::Int32 nPhase = 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     bool showPercent = true;
     Int32 maxval = 6;
-    #endif
+#endif
     ProcessWindowGuard pwGuard (funcname, nPhase);
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, true, syncSettings, true, false, false);
-    if (guidArray.IsEmpty ()) return NoError;
+    if (guidArray.IsEmpty ())
+        return NoError;
     ParamDictElement paramToWriteelem = {};
     if (!GetSumValuesOfElements (guidArray, paramToWriteelem)) {
         msg_rep ("SumSelected", "No data to write", NoError, APINULLGuid);
@@ -43,25 +43,26 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     }
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", paramToWriteelem.GetSize ());
     short i = 6;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
+#else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-    #endif
+#endif
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString undoString = RSGetIndString (iseng, UndoSumId, ACAPI_GetOwnResModule ());
     UInt32 qtywrite = 0;
-    ACAPI_CallUndoableCommand (undoString, [&]() -> GSErrCode {
+    ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
         bool suspGrp = false;
-        #ifndef AC_22
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifndef AC_22
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_View_IsSuspendGroupOn (&suspGrp);
-        if (!suspGrp) ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
-        #else
+        if (!suspGrp)
+            ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
+    #else
         ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
         if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
-        #endif
-        #endif
+    #endif
+#endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
         return NoError;
@@ -69,74 +70,91 @@ GSErrCode SumSelected (SyncSettings& syncSettings)
     ParamHelpers::WriteInfo (paramToWriteelem);
     SyncArray (syncSettings, guidArray);
     finish = clock ();
-    duration = (double) (finish - start) / CLOCKS_PER_SEC;
+    duration = (double)(finish - start) / CLOCKS_PER_SEC;
     GS::UniString time = GS::UniString::Printf (" %.3f s", duration);
-    GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) + GS::UniString::Printf ("wrtite to - %d", qtywrite) + time;
+    GS::UniString intString = GS::UniString::Printf ("Qty elements - %d ", guidArray.GetSize ()) +
+                              GS::UniString::Printf ("wrtite to - %d", qtywrite) + time;
     msg_rep ("SumSelected", intString, NoError, APINULLGuid);
     return NoError;
 }
 
-bool SumDG (SumRules& sum_rules, bool& rule_from_one)
-{
+bool SumDG (SumRules &sum_rules, bool &rule_from_one) {
     RuleSelectData rules = {};
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = sum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        const SumRule& rule = cIt->value;
-        #else
-        const SumRule& rule = *cIt->value;
-        #endif
-        if (!rule.state) continue;
-        if (rules.rules.ContainsKey (rule.rule_name)) continue;
-        if (rules.qty_elements.ContainsKey (rule.rule_name)) continue;
+#if defined(AC_28) || defined(AC_29)
+        const SumRule &rule = cIt->value;
+#else
+        const SumRule &rule = *cIt->value;
+#endif
+        if (!rule.state)
+            continue;
+        if (rules.rules.ContainsKey (rule.rule_name))
+            continue;
+        if (rules.qty_elements.ContainsKey (rule.rule_name))
+            continue;
         rules.rules.Add (rule.rule_name, true);
         rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elemts.GetSize ()));
-        if (rule.write_to == SumToInfo) rules.color.Add (rule.rule_name, Gfx::Color::Blue);
+        if (rule.write_to == SumToInfo)
+            rules.color.Add (rule.rule_name, Gfx::Color::Blue);
     }
     rules.is_warn = rule_from_one;
     rules.titleResID = UndoSumId;
     RuleSelectDialog dialog (rules);
-    if (!dialog.Invoke ()) return false;
+    if (!dialog.Invoke ())
+        return false;
     bool has_true_state = false;
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = sum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        SumRule& rule = cIt->value;
-        #else
-        SumRule& rule = *cIt->value;
-        #endif
-        if (!rule.state) continue;
-        if (!rules.rules.ContainsKey (rule.rule_name)) continue;
+#if defined(AC_28) || defined(AC_29)
+        SumRule &rule = cIt->value;
+#else
+        SumRule &rule = *cIt->value;
+#endif
+        if (!rule.state)
+            continue;
+        if (!rules.rules.ContainsKey (rule.rule_name))
+            continue;
         rule.state = rules.rules.Get (rule.rule_name);
-        if (rule.state) has_true_state = true;
+        if (rule.state)
+            has_true_state = true;
     }
     return has_true_state;
 }
 
-bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& paramToWriteelem)
-{
+bool GetSumValuesOfElements (GS::Array<API_Guid> &guidArray, ParamDictElement &paramToWriteelem) {
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
     SumRules rules = {};
     ParamDictElement paramToRead = {};
-    GS::UniString subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ()); short i = 6;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    GS::UniString subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
+    short i = 6;
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     bool showPercent = true;
     Int32 maxval = 6;
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
+#else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-    #endif
+#endif
     bool rule_from_one = (guidArray.GetSize () == 1);
     if (!GetRuleFromSelected (guidArray, rule_definitions, "Sum", true)) {
-        msg_rep ("SumSelected", "No sum rule found.\nCheck that the description of the user property contains Sum and the name of the property", NoError, APINULLGuid, true);
+        msg_rep ("SumSelected",
+                 "No sum rule found.\nCheck that the description of the user property contains Sum and the name of the "
+                 "property",
+                 NoError,
+                 APINULLGuid,
+                 true);
         return false;
     }
     subtitle = GS::UniString::Printf ("Calc rule from %d elements", guidArray.GetSize ());
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
+#else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-    #endif
+#endif
     if (!Sum_GetElement (guidArray, rule_definitions, paramToRead, rules)) {
-        msg_rep ("SumSelected", "No data to read.\nCheck that the properties specified in the rule exist and have values", NoError, APINULLGuid, true);
+        msg_rep ("SumSelected",
+                 "No data to read.\nCheck that the properties specified in the rule exist and have values",
+                 NoError,
+                 APINULLGuid,
+                 true);
         return false;
     }
     if (!SumDG (rules, rule_from_one)) {
@@ -144,27 +162,29 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
         return false;
     }
     subtitle = GS::UniString::Printf ("Read data from %d elements", guidArray.GetSize ());
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
+#else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-    #endif
+#endif
     ParamHelpers::ElementsRead (paramToRead);
     subtitle = GS::UniString::Printf ("Sum data from %d elements", paramToRead.GetSize ());
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
+#else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-    #endif
+#endif
     // Суммируем, заполняе словарь для записи
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-        #if defined(AC_28) || defined(AC_29)
-        SumRule& rule = cIt->value;
-        #else
-        SumRule& rule = *cIt->value;
-        #endif
-        if (!rule.state) continue;
-        if (rule.elemts.IsEmpty ()) continue;
+#if defined(AC_28) || defined(AC_29)
+        SumRule &rule = cIt->value;
+#else
+        SumRule &rule = *cIt->value;
+#endif
+        if (!rule.state)
+            continue;
+        if (rule.elemts.IsEmpty ())
+            continue;
         Sum_OneRule (rule, paramToRead, paramToWriteelem);
     }
     return !paramToWriteelem.IsEmpty ();
@@ -173,54 +193,65 @@ bool GetSumValuesOfElements (GS::Array<API_Guid>& guidArray, ParamDictElement& p
 // ----------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // ----------------------------------------------------------------------------
-bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<API_Guid, API_PropertyDefinition>& rule_definitions, ParamDictElement& paramToRead, SumRules& rules)
-{
-    for (const auto& cIt : rule_definitions) {
-        #if defined(AC_28) || defined(AC_29)
+bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
+                     const GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
+                     ParamDictElement &paramToRead,
+                     SumRules &rules) {
+    for (const auto &cIt : rule_definitions) {
+#if defined(AC_28) || defined(AC_29)
         const API_PropertyDefinition definition = cIt.value;
-        #else
+#else
         const API_PropertyDefinition definition = *cIt.value;
-        #endif
+#endif
         if (!rules.ContainsKey (definition.guid)) {
             SumRule paramtype = {};
-            if (!Sum_Rule (definition, paramtype)) continue;
+            if (!Sum_Rule (definition, paramtype))
+                continue;
             rules.Add (definition.guid, paramtype);
         }
-        if (!rules.ContainsKey (definition.guid)) continue;
-        SumRule& paramtype = rules.Get (definition.guid);
+        if (!rules.ContainsKey (definition.guid))
+            continue;
+        SumRule &paramtype = rules.Get (definition.guid);
         ParamValue pvalue_position;
         ParamValue pvalue_value;
         ParamValue pvalue_criteria;
         bool has_position = false;
         bool has_value = false;
         bool has_criteria = false;
-        if (!paramtype.position.IsEmpty ()) has_position = ParamHelpers::GetParamValueFromCache (paramtype.position, pvalue_position);
-        if (!paramtype.value.IsEmpty ()) has_value = ParamHelpers::GetParamValueFromCache (paramtype.value, pvalue_value);
-        if (!paramtype.criteria.IsEmpty ()) has_criteria = ParamHelpers::GetParamValueFromCache (paramtype.criteria, pvalue_criteria);
+        if (!paramtype.position.IsEmpty ())
+            has_position = ParamHelpers::GetParamValueFromCache (paramtype.position, pvalue_position);
+        if (!paramtype.value.IsEmpty ())
+            has_value = ParamHelpers::GetParamValueFromCache (paramtype.value, pvalue_value);
+        if (!paramtype.criteria.IsEmpty ())
+            has_criteria = ParamHelpers::GetParamValueFromCache (paramtype.criteria, pvalue_criteria);
         if (paramtype.write_to == SumToInfo) {
             GS::HashTable<API_Guid, API_PropertyDefinition> definitions = {};
             definitions.Add (definition.guid, definition);
             GS::Array<API_Guid> _guidArray = {};
             GetElementForPropertyDefinition (definitions, _guidArray);
             if (rules.ContainsKey (definition.guid)) {
-                SumRule& rule = rules.Get (definition.guid);
-                for (const auto& elemGuid : _guidArray) {
+                SumRule &rule = rules.Get (definition.guid);
+                for (const auto &elemGuid : _guidArray) {
                     // Дописываем элемент в правило
                     rule.elemts.Push (elemGuid);
                     // Добавляем свойства для чтения в словарь
                     pvalue_position.fromGuid = elemGuid;
                     pvalue_value.fromGuid = elemGuid;
                     pvalue_criteria.fromGuid = elemGuid;
-                    if (has_position) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
-                    if (has_value) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
-                    if (has_criteria) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
+                    if (has_position)
+                        ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
+                    if (has_value)
+                        ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
+                    if (has_criteria)
+                        ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
                 }
             }
         } else {
             if (rules.ContainsKey (definition.guid)) {
-                SumRule& rule = rules.Get (definition.guid);
-                for (const auto& elemGuid : guidArray) {
-                    if (!ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace)) {
+                SumRule &rule = rules.Get (definition.guid);
+                for (const auto &elemGuid : guidArray) {
+                    if (!ACAPI_Element_Filter (elemGuid,
+                                               APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace)) {
                         rule.n_ignore += 1;
                         msg_rep ("GetSumRuleFromSelected", "Element not editable", NoError, elemGuid);
                         continue;
@@ -231,15 +262,18 @@ bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<A
                     pvalue_position.fromGuid = elemGuid;
                     pvalue_value.fromGuid = elemGuid;
                     pvalue_criteria.fromGuid = elemGuid;
-                    if (has_position) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
-                    if (has_value) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
-                    if (has_criteria) ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
+                    if (has_position)
+                        ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_position, paramToRead);
+                    if (has_value)
+                        ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_value, paramToRead);
+                    if (has_criteria)
+                        ParamHelpers::AddParamValue2ParamDictElement (elemGuid, pvalue_criteria, paramToRead);
                 }
             }
         }
     }
     return (!rules.IsEmpty ());
-}// Sum_GetElement
+} // Sum_GetElement
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция возвращает заполненное правило суммирования SumRule
@@ -249,14 +283,16 @@ bool Sum_GetElement (const GS::Array<API_Guid>& guidArray, const GS::HashTable<A
 // SumRule.delimetr - разделитель для текстовой суммы (конкатенации)
 // SumRule.ignore_val - игнорируемые значения
 // -----------------------------------------------------------------------------------------------------------------------
-bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
-{
+bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype) {
     // По типу данных свойства определим тим суммирования
     // Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
     paramtype.sum_type = 0;
-    if (definition.valueType == API_PropertyStringValueType) paramtype.sum_type = TextSum;
-    if (definition.valueType == API_PropertyRealValueType || definition.valueType == API_PropertyIntegerValueType) paramtype.sum_type = NumSum;
-    if (!paramtype.sum_type) return false;
+    if (definition.valueType == API_PropertyStringValueType)
+        paramtype.sum_type = TextSum;
+    if (definition.valueType == API_PropertyRealValueType || definition.valueType == API_PropertyIntegerValueType)
+        paramtype.sum_type = NumSum;
+    if (!paramtype.sum_type)
+        return false;
     GS::UniString paramName = definition.description;
     GS::Array<GS::UniString> partstring = {};
     if (StringSplt (paramName.ToLowerCase (), BRACEEND, partstring, "sum") > 0) {
@@ -266,7 +302,8 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     paramName.ReplaceAll (SLASHEKR, SLASH);
     partstring.Clear ();
     int nparam = StringSplt (paramName.ToLowerCase (), SEMICOLON, partstring, true);
-    if (nparam == 0) return false;
+    if (nparam == 0)
+        return false;
     GS::UniString key = PVALPREFIX + partstring[0] + BRACEEND;
     GS::UniString rawName_rule = "";
     GetPropertyFullName (definition, rawName_rule);
@@ -275,7 +312,8 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     if (ParamHelpers::isCacheContainsParamValue (key)) {
         // Если свойство ведёт в информцию о проекте - до складываем свойство, в котором указано правило
         if (key.Contains (INFONAMEPREFIX)) {
-            if (ParamHelpers::isCacheContainsParamValue (rawName_rule)) paramtype.value = rawName_rule;
+            if (ParamHelpers::isCacheContainsParamValue (rawName_rule))
+                paramtype.value = rawName_rule;
             paramtype.write_to = SumToInfo;
             paramtype.position = key;
             paramtype.value = rawName_rule;
@@ -285,7 +323,10 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
         }
     }
     if (paramtype.value.IsEmpty ()) {
-        msg_rep ("SumSelected", "Check that the property name is correct and must begin with Property. " + definition.name, NoError, APINULLGuid);
+        msg_rep ("SumSelected",
+                 "Check that the property name is correct and must begin with Property. " + definition.name,
+                 NoError,
+                 APINULLGuid);
         return false;
     }
     // Ищём определение свойства-критерия
@@ -294,9 +335,12 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
         if (ParamHelpers::isCacheContainsParamValue (key) && paramtype.write_to != SumToInfo) {
             paramtype.criteria = key;
         } else {
-            if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
-            if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
-            if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum) paramtype.delimetr = partstring[1].ToCStr ().Get ();
+            if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum)
+                paramtype.sum_type = MinSum;
+            if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum)
+                paramtype.sum_type = MaxSum;
+            if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum)
+                paramtype.delimetr = partstring[1].ToCStr ().Get ();
         }
     }
     // Ищём определение свойства-критерия
@@ -305,9 +349,12 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
         if (ParamHelpers::isCacheContainsParamValue (key) && paramtype.write_to != SumToInfo) {
             paramtype.criteria = PVALPREFIX + partstring[1] + BRACEEND;
         } else {
-            if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
-            if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
-            if (paramtype.delimetr.empty () && (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum)) paramtype.delimetr = partstring[1].ToCStr ().Get ();
+            if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum)
+                paramtype.sum_type = MinSum;
+            if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum)
+                paramtype.sum_type = MaxSum;
+            if (paramtype.delimetr.empty () && (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum))
+                paramtype.delimetr = partstring[1].ToCStr ().Get ();
         }
     }
     // Если задан и разделитель - пропишем его
@@ -316,8 +363,10 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
         if (ParamHelpers::isCacheContainsParamValue (key) && paramtype.write_to != SumToInfo) {
             paramtype.criteria = key;
         } else {
-            if (partstring[2].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
-            if (partstring[2].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
+            if (partstring[2].Contains ("min") && paramtype.sum_type == NumSum)
+                paramtype.sum_type = MinSum;
+            if (partstring[2].Contains ("max") && paramtype.sum_type == NumSum)
+                paramtype.sum_type = MaxSum;
             if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum) {
                 if (paramtype.delimetr.empty ()) {
                     paramtype.delimetr = partstring[2].ToCStr ().Get ();
@@ -329,22 +378,24 @@ bool Sum_Rule (const API_PropertyDefinition& definition, SumRule& paramtype)
     }
     // Если заданы игнорируемые значения
     if (nparam > 3) {
-        if (partstring[3].Contains ("min") && paramtype.sum_type == NumSum) paramtype.sum_type = MinSum;
-        if (partstring[3].Contains ("max") && paramtype.sum_type == NumSum) paramtype.sum_type = MaxSum;
+        if (partstring[3].Contains ("min") && paramtype.sum_type == NumSum)
+            paramtype.sum_type = MinSum;
+        if (partstring[3].Contains ("max") && paramtype.sum_type == NumSum)
+            paramtype.sum_type = MaxSum;
         if (paramtype.ignore_val.empty () && (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum))
             paramtype.ignore_val = partstring[3].ToCStr ().Get ();
     }
     return true;
 } // Sum_Rule
 
-void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictElement& paramToWriteelem)
-{
+void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem) {
     SumCriteria criteriaList;
     GS::UniString delimetr = GS::UniString (rule.delimetr.c_str ());
     // Выбираем значения критериев
     for (UInt32 i = 0; i < rule.elemts.GetSize (); i++) {
-        if (!paramToReadelem.ContainsKey (rule.elemts[i])) continue;
-        const ParamDictValue& params = paramToReadelem.Get (rule.elemts[i]);
+        if (!paramToReadelem.ContainsKey (rule.elemts[i]))
+            continue;
+        const ParamDictValue &params = paramToReadelem.Get (rule.elemts[i]);
         if (!rule.criteria.IsEmpty () && params.ContainsKey (rule.criteria)) {
             GSCharCode chcode = GetCharCode (params.Get (rule.criteria).val.uniStringValue);
             std::string criteria = params.Get (rule.criteria).val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
@@ -359,14 +410,14 @@ void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictEle
         ParamValue summ; // Для суммирования числовых значений
         bool has_sum = false;
         for (UInt32 j = 0; j < eleminpos.GetSize (); j++) {
-            const API_Guid& elemGuid = rule.elemts[eleminpos[j]];
-            const ParamDictValue& params = paramToReadelem.Get (elemGuid);
+            const API_Guid &elemGuid = rule.elemts[eleminpos[j]];
+            const ParamDictValue &params = paramToReadelem.Get (elemGuid);
             if (!params.ContainsKey (rule.value)) {
                 rule.n_ignore += 1;
                 continue;
             }
             // Проверяем - было ли считано значение
-            const ParamValue& param = params.Get (rule.value);
+            const ParamValue &param = params.Get (rule.value);
             if (!param.isValid) {
                 msg_rep ("Sum_OneRule", "Param not valid :" + rule.value, NoError, elemGuid);
                 rule.n_ignore += 1;
@@ -378,7 +429,8 @@ void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictEle
             }
             if (rule.sum_type == TextSum) {
                 summ.val.uniStringValue = summ.val.uniStringValue + param.val.uniStringValue;
-                if (j < eleminpos.GetSize () - 1) summ.val.uniStringValue = summ.val.uniStringValue + delimetr;
+                if (j < eleminpos.GetSize () - 1)
+                    summ.val.uniStringValue = summ.val.uniStringValue + delimetr;
             } else {
                 if (rule.sum_type == NumSum) {
                     summ.val.doubleValue = summ.val.doubleValue + param.val.doubleValue;
@@ -395,13 +447,15 @@ void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictEle
                         if (rule.sum_type == MinSum) {
                             summ.val.doubleValue = fmin (summ.val.doubleValue, param.val.doubleValue);
                             summ.val.rawDoubleValue = fmin (summ.val.rawDoubleValue, param.val.rawDoubleValue);
-                            summ.val.intValue = summ.val.intValue > param.val.intValue ? param.val.intValue : summ.val.intValue;
+                            summ.val.intValue =
+                                summ.val.intValue > param.val.intValue ? param.val.intValue : summ.val.intValue;
                             summ.val.boolValue = summ.val.boolValue || param.val.boolValue;
                         }
                         if (rule.sum_type == MaxSum) {
                             summ.val.doubleValue = fmax (summ.val.doubleValue, param.val.doubleValue);
                             summ.val.rawDoubleValue = fmax (summ.val.rawDoubleValue, param.val.rawDoubleValue);
-                            summ.val.intValue = summ.val.intValue < param.val.intValue ? param.val.intValue : summ.val.intValue;
+                            summ.val.intValue =
+                                summ.val.intValue < param.val.intValue ? param.val.intValue : summ.val.intValue;
                             summ.val.boolValue = summ.val.boolValue && param.val.boolValue;
                         }
                     }
@@ -421,11 +475,13 @@ void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictEle
         }
         for (UInt32 j = 0; j < eleminpos.GetSize (); j++) {
             API_Guid elemGuid = rule.elemts[eleminpos[j]];
-            ParamDictValue& params = paramToReadelem.Get (elemGuid);
-            if (!params.ContainsKey (rule.position)) continue;
-            ParamValue& param = params.Get (rule.position);
+            ParamDictValue &params = paramToReadelem.Get (elemGuid);
+            if (!params.ContainsKey (rule.position))
+                continue;
+            ParamValue &param = params.Get (rule.position);
             param.isValid = true;
-            if (rule.write_to != SumToInfo) summ.val.type = param.val.type;
+            if (rule.write_to != SumToInfo)
+                summ.val.type = param.val.type;
             if (rule.sum_type != TextSum) {
                 summ.val.formatstring = param.val.formatstring;
                 summ.val.uniStringValue = ParamHelpers::ToString (summ);
@@ -436,12 +492,13 @@ void Sum_OneRule (SumRule& rule, ParamDictElement& paramToReadelem, ParamDictEle
                 ParamHelpers::AddParamValue2ParamDictElement (elemGuid, param, paramToWriteelem);
                 rule.n_write += 1;
             }
-            // Если нужно записать в информацию о проекте - то достаточно записать один раз, так как свойство для записи будет одинаковое для всех элементов
+            // Если нужно записать в информацию о проекте - то достаточно записать один раз, так как свойство для записи
+            // будет одинаковое для всех элементов
             if (rule.write_to == SumToInfo) {
-                rule.n_write = (int) eleminpos.GetSize ();
+                rule.n_write = (int)eleminpos.GetSize ();
                 break;
             }
         }
     }
     return;
-}//Sum_OneRule
+} // Sum_OneRule
