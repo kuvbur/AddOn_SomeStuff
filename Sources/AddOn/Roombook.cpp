@@ -13,6 +13,8 @@
 #include "Sync.hpp"
 #include    "VectorImageIterator.hpp"
 
+
+
 namespace Roombook
 
 {
@@ -22,8 +24,12 @@ void RoomBook ()
     ACAPI_WriteReport ("Function not work in AC22 and AC23", true);
 }
 #else
+static const API_ElemTypeID typeinzone[] = { API_WindowID , API_DoorID ,API_WallID, API_ColumnID ,API_SlabID, API_ZoneID };
+
 RoomEdges* reducededges = nullptr; // Указатель для обработки полигонов зоны
+
 static const ClassOtd cls;
+
 GS::Int32 nPhase = 1;
 
 // -----------------------------------------------------------------------------
@@ -101,20 +107,15 @@ void RoomBook ()
         #endif
         OtdRoom roominfo;
         if (CollectRoomInfo (storyLevels, zoneGuid, roominfo, elementToRead, slabsinzone)) {
-            roomsinfo.Add (zoneGuid, roominfo);
+            roomsinfo.Add (zoneGuid, std::move (roominfo));
         }
     }
     guidselementToRead.Add (API_ZoneID, zones);
-    GS::Array<API_ElemTypeID> typeinzone = {};
-    typeinzone.Push (API_WindowID);
-    typeinzone.Push (API_DoorID);
-    typeinzone.Push (API_ColumnID);
-    typeinzone.Push (API_WallID);
-    typeinzone.Push (API_SlabID);
-    ClearZoneGUID (elementToRead, typeinzone);
+    ClearZoneGUID (elementToRead);
+    GS::Array<API_Guid> zoneGuids;
     for (const API_ElemTypeID& typeelem : typeinzone) {
-        if (elementToRead.ContainsKey (typeelem)) {
-            for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
+        if (auto* elems = elementToRead.GetPtr (typeelem)) {
+            for (UnicElement::PairIterator cIt = (*elems).EnumeratePairs (); cIt != NULL; ++cIt) {
                 nPhase += 1;
                 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
@@ -128,7 +129,7 @@ void RoomBook ()
                 GS::Array<API_Guid> zoneGuids = cIt->value;
                 #else
                 API_Guid guid = *cIt->key;
-                GS::Array<API_Guid> zoneGuids = *cIt->value;
+                zoneGuids = *cIt->value;
                 #endif
                 // Проверяем классификацию, исключаем отделочные элементы
                 API_Guid classguid;
@@ -157,26 +158,23 @@ void RoomBook ()
     // Необходимые для чтения параметры и свойства
     ReadParams windowParams = Param_GetForWindowParams ();
     ReadParams roomParams = Param_GetForRooms ();
-    typeinzone.Push (API_ZoneID);
     for (const API_ElemTypeID& typeelem : typeinzone) {
-        if (guidselementToRead.ContainsKey (typeelem)) {
-            paramDict.Clear ();
-            if (typeelem == API_ZoneID) {
-                Param_ToParamDict (paramDict, roomParams);
+        if (!guidselementToRead.ContainsKey (typeelem)) continue;
+        paramDict.Clear ();
+        if (typeelem == API_ZoneID) {
+            Param_ToParamDict (paramDict, roomParams);
+        }
+        if (typeelem == API_WindowID) {
+            Param_ToParamDict (paramDict, windowParams);
+        }
+        if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
+            Param_GetForBase (paramDict, param_composite);
+            paramDict_favorite = paramDict;
+        }
+        if (!paramDict.IsEmpty ()) {
+            for (const API_Guid& guid : guidselementToRead[typeelem]) {
+                ParamHelpers::AddParamDictValue2ParamDictElement (guid, paramDict, paramToRead);
             }
-            if (typeelem == API_WindowID) {
-                Param_ToParamDict (paramDict, windowParams);
-            }
-            if (typeelem == API_WallID || typeelem == API_ColumnID || typeelem == API_SlabID) {
-                Param_GetForBase (paramDict, param_composite);
-                paramDict_favorite = paramDict;
-            }
-            if (!paramDict.IsEmpty ()) {
-                for (const API_Guid& guid : guidselementToRead[typeelem]) {
-                    ParamHelpers::AddParamDictValue2ParamDictElement (guid, paramDict, paramToRead);
-                }
-            }
-
         }
     }
     funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ()); nPhase += 1;
@@ -983,12 +981,6 @@ bool CollectRoomInfo (const Stories & storyLevels, const API_Guid & zoneGuid, Ot
     roominfo.zBottom = GetzPos (zoneelement.zone.roomBaseLev, zoneelement.header.floorInd, storyLevels);
     roominfo.zBottom = std::round (roominfo.zBottom * 1000) / 1000;
     roominfo.floorInd = zoneelement.header.floorInd;
-    GS::Array<API_ElemTypeID> typeinzone = {};
-    typeinzone.Push (API_WindowID);
-    typeinzone.Push (API_DoorID);
-    typeinzone.Push (API_WallID);
-    typeinzone.Push (API_ColumnID);
-    typeinzone.Push (API_SlabID);
     bool flag = false;
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (relData.elementsGroupedByType.ContainsKey (typeelem)) {
@@ -1703,13 +1695,13 @@ void Floor_Create_One (const Stories & storyLevels, const short& floorInd, OtdSl
 void Param_ToParamDict (ParamDictValue & paramDict, ReadParams & zoneparams)
 {
     if (zoneparams.IsEmpty ()) return;
-    for (auto& p : zoneparams) {
+    for (const auto& p : zoneparams) {
         #if defined(AC_28) || defined(AC_29)
-        ReadParam param = p.value;
+        const ReadParam& param = p.value;
         #else
-        ReadParam param = *p.value;
+        const ReadParam& param = *p.value;
         #endif
-        for (UInt32 i = 0; i < param.rawnames.GetSize (); ++i) ParamHelpers::AddValueToParamDictValue (paramDict, param.rawnames[i]);
+        for (const auto& rawname : param.rawnames) ParamHelpers::AddValueToParamDictValue (paramDict, rawname);
     }
 }
 
@@ -1721,42 +1713,42 @@ ReadParams Param_GetForWindowParams ()
 
     zoneparam_name = "frame";
     zoneparam.rawnames.Push ("{@gdl:gs_frame_thk}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "sill";
     zoneparam.rawnames.Push ("{@gdl:gs_wido_sill}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "useWallFinishSkin";
     zoneparam.rawnames.Push ("{@gdl:gs_usewallfinishskin}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "maxPlasterThk";
     zoneparam.rawnames.Push ("{@gdl:gs_maxplasterthk}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "AutoTurnIn";
     zoneparam.rawnames.Push ("{@gdl:gs_bautoturnin}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "bOverIn";
     zoneparam.rawnames.Push ("{@gdl:gs_boverin}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "plaster_show_3D";
     zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_show_3d}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "plaster_show_2D";
     zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_dim_2d}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     Param_Property_FindInParams (zoneparams);
@@ -1899,49 +1891,49 @@ ReadParams Param_GetForRooms ()
     zoneparam_name = "has_ceil";
     zoneparam.rawnames.Push ("some_stuff_fin_has_ceil");
     zoneparam.rawnames.Push ("{@gdl:ispot}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Включение пола
     zoneparam_name = "has_floor";
     zoneparam.rawnames.Push ("some_stuff_fin_has_floor");
     zoneparam.rawnames.Push ("{@gdl:ispol}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Включение потолка только по плитам
     zoneparam_name = "floor_by_slab";
     zoneparam.rawnames.Push ("some_stuff_fin_floor_by_slab");
     zoneparam.rawnames.Push ("{@gdl:floor_by_slab}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Включение потолка только по плитам
     zoneparam_name = "ceil_by_slab";
     zoneparam.rawnames.Push ("some_stuff_fin_ceil_by_slab");
     zoneparam.rawnames.Push ("{@gdl:ceil_by_slab}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Тип отделки
     zoneparam_name = "tip_otd";
     zoneparam.rawnames.Push ("{@gdl:tip_otd}");
     zoneparam.rawnames.Push ("some_stuff_fin_type");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Тип потолка
     zoneparam_name = "tip_pot";
     zoneparam.rawnames.Push ("some_stuff_fin_type_ceil");
     zoneparam.rawnames.Push ("{@gdl:tip_pot}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Тип пола
     zoneparam_name = "tip_pol";
     zoneparam.rawnames.Push ("some_stuff_fin_type_floor");
     zoneparam.rawnames.Push ("{@gdl:tip_pol}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Основная отделка стен
@@ -1949,21 +1941,21 @@ ReadParams Param_GetForRooms ()
     zoneparam.rawnames.Push ("some_stuff_fin_main_material");
     zoneparam.rawnames.Push ("{@gdl:stwallmat}");
     zoneparam.rawnames.Push ("{@gdl:votw}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Высота до подвесного потолка
     zoneparam_name = "height_main";
     zoneparam.rawnames.Push ("some_stuff_fin_main_height");
     zoneparam.rawnames.Push ("{@gdl:hroom_pot}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка стен выше потолка
     zoneparam_name = "om_up";
     zoneparam.rawnames.Push ("some_stuff_fin_up_material");
     zoneparam.rawnames.Push ("{@gdl:votw2}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка низа стен/колонн
@@ -1971,7 +1963,7 @@ ReadParams Param_GetForRooms ()
     zoneparam.rawnames.Push ("some_stuff_fin_down_material");
     zoneparam.rawnames.Push ("{@gdl:stwalldownmat}");
     zoneparam.rawnames.Push ("{@gdl:votp}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Высота нижних панелей
@@ -1979,19 +1971,19 @@ ReadParams Param_GetForRooms ()
     zoneparam.rawnames.Push ("some_stuff_fin_down_height");
     zoneparam.rawnames.Push ("{@gdl:hpan}");
     zoneparam.rawnames.Push ("{@gdl:z17}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Наличие нижней отделки (химера)
     zoneparam_name = "him_has_height_down";
     zoneparam.rawnames.Push ("{@gdl:busewalldown}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Высота нижних панелей (химера)
     zoneparam_name = "him_height_down";
     zoneparam.rawnames.Push ("{@gdl:walldownhigh}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка колонн
@@ -1999,7 +1991,7 @@ ReadParams Param_GetForRooms ()
     zoneparam.rawnames.Push ("some_stuff_fin_column_material");
     zoneparam.rawnames.Push ("{@gdl:stcolumnmat}");
     zoneparam.rawnames.Push ("{@gdl:votc}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка потолка
@@ -2009,18 +2001,18 @@ ReadParams Param_GetForRooms ()
     zoneparam.rawnames.Push ("{@gdl:vots}");
     zoneparam.rawnames.Push ("{@gdl:vots_fill}");
     zoneparam.rawnames.Push ("{@gdl:vots_bmat}");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка потолка - запись результатов
     zoneparam_name = "om_ceil.rawname";
     zoneparam.rawnames.Push ("some_stuff_fin_ceil_result");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "om_ceil.rawname_bytype";
     zoneparam.rawnames.Push ("some_stuff_fin_ceil_result_bytype");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
 
@@ -2029,100 +2021,100 @@ ReadParams Param_GetForRooms ()
     zoneparam.rawnames.Push ("some_stuff_fin_reveal_result");
     zoneparam.rawnames.Push ("some_stuff_fin_reveals_result");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "om_reveals.rawname_bytype";
     zoneparam.rawnames.Push ("some_stuff_fin_reveal_result_bytype");
     zoneparam.rawnames.Push ("some_stuff_fin_reveals_result_bytype");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка выше потолка - запись результатов
     zoneparam_name = "om_up.rawname";
     zoneparam.rawnames.Push ("some_stuff_fin_up_result");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "om_up.rawname_bytype";
     zoneparam.rawnames.Push ("some_stuff_fin_up_result_bytype");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка стен - запись результатов
     zoneparam_name = "om_main.rawname";
     zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "om_main.rawname_bytype";
     zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка низа стен/колонн - запись результатов
     zoneparam_name = "om_down.rawname";
     zoneparam.rawnames.Push ("some_stuff_fin_down_result");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "om_down.rawname_bytype";
     zoneparam.rawnames.Push ("some_stuff_fin_down_result_bytype");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Отделка колонн - запись результатов
     zoneparam_name = "om_column.rawname";
     zoneparam.rawnames.Push ("some_stuff_fin_column_result");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     zoneparam_name = "om_column.rawname_bytype";
     zoneparam.rawnames.Push ("some_stuff_fin_column_result_bytype");
     zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Создание всех элементов
     zoneparam_name = "create_all_elements";
     zoneparam.rawnames.Push ("some_stuff_fin_create_elements");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Создание отделки колонн
     zoneparam_name = "create_column_elements";
     zoneparam.rawnames.Push ("some_stuff_fin_create_column");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Создание отделки стен
     zoneparam_name = "create_wall_elements";
     zoneparam.rawnames.Push ("some_stuff_fin_create_wall");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Создание пола
     zoneparam_name = "create_ceil_elements";
     zoneparam.rawnames.Push ("some_stuff_fin_create_ceil");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Создание пола
     zoneparam_name = "create_floor_elements";
     zoneparam.rawnames.Push ("some_stuff_fin_create_floor");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     // Создание откосов
     zoneparam_name = "create_reveal_elements";
     zoneparam.rawnames.Push ("some_stuff_fin_create_reveal");
-    zoneparams.Add (zoneparam_name, zoneparam);
+    zoneparams.Put (zoneparam_name, zoneparam);
     zoneparam.rawnames.Clear ();
 
     Param_Property_FindInParams (zoneparams);
@@ -2134,6 +2126,7 @@ void Param_Property_FindInParams (ReadParams & zoneparams)
     if (zoneparams.IsEmpty ()) return;
     if (!ParamHelpers::isPropertyDefinitionRead ()) return;
     ParamDictValue& propertyParams = PROPERTYCACHE ().property;
+    GS::Array<GS::UniString> valid_rawnames = {}; // список проверенных имён параметров
     for (auto& p : zoneparams) {
         #if defined(AC_28) || defined(AC_29)
         ReadParam& param = p.value;
@@ -2142,7 +2135,7 @@ void Param_Property_FindInParams (ReadParams & zoneparams)
         ReadParam& param = *p.value;
         GS::UniString name = *p.key;
         #endif
-        GS::Array<GS::UniString> valid_rawnames = {}; // список проверенных имён параметров
+        valid_rawnames.Clear ();
         for (const GS::UniString& param_name : param.rawnames) {
             if (param_name.Contains (PVALPREFIX)) {
                 // Если это gdl парметр - добавляем
@@ -2151,9 +2144,9 @@ void Param_Property_FindInParams (ReadParams & zoneparams)
                 bool flag_find = false;
                 for (auto& cItt : propertyParams) {
                     #if defined(AC_28) || defined(AC_29)
-                    ParamValue parameters = cItt.value;
+                    ParamValue& parameters = cItt.value;
                     #else
-                    ParamValue parameters = *cItt.value;
+                    ParamValue& parameters = *cItt.value;
                     #endif
                     if (parameters.definition.description.Contains (param_name) && !parameters.definition.description.Contains (param_name + "_")) {
                         // В дланном случае нам нужно только имя свойства, считывать его не нужно
@@ -2177,10 +2170,10 @@ void Param_Property_FindInParams (ReadParams & zoneparams)
 bool Param_Property_Read (const API_Guid & elGuid, ParamDictElement & paramToRead, ReadParams & zoneparams)
 {
     if (zoneparams.IsEmpty ()) return false;
-    GS::UniString param_name = "";
     bool flag = false;
     // Прочитанные параметры базового компонента
-    ParamDictValue& baseparam = paramToRead.Get (elGuid);
+    const auto* baseparam = paramToRead.GetPtr (elGuid);
+
     for (auto& p : zoneparams) {
         #if defined(AC_28) || defined(AC_29)
         ReadParam& param = p.value;
@@ -2188,20 +2181,20 @@ bool Param_Property_Read (const API_Guid & elGuid, ParamDictElement & paramToRea
         ReadParam& param = *p.value;
         #endif
         if (param.isValid) continue; // Пропуск уже прочитанных свойств с именами свойств для записи
-        for (UInt32 i = 0; i < param.rawnames.GetSize (); ++i) {
-            param_name = param.rawnames[i];
-            if (!baseparam.ContainsKey (param_name)) continue;
-            if (baseparam.Get (param_name).isValid) {
-                if (param_name.Contains ("{@gdl:vots}") || param_name.Contains ("{@gdl:vots_fill}")) {
-                    if (!baseparam.Get (param_name).val.boolValue) continue;
+        for (const auto& param_name : param.rawnames) {
+            if (const auto* p = baseparam->GetPtr (param_name)) {
+                if (p->isValid) {
+                    if (param_name.Contains ("{@gdl:vots}") || param_name.Contains ("{@gdl:vots_fill}")) {
+                        if (!p->val.boolValue) continue;
+                    }
+                    flag = true;
+                    param.isValid = true;
+                    param.val = p->val;
+                    if (p->fromProperty) {
+                        param.val.type = API_PropertyStringValueType;
+                    }
+                    break;
                 }
-                flag = true;
-                param.isValid = true;
-                param.val = baseparam.Get (param_name).val;
-                if (baseparam.Get (param_name).fromProperty) {
-                    param.val.type = API_PropertyStringValueType;
-                }
-                break;
             }
         }
     }
@@ -2210,26 +2203,26 @@ bool Param_Property_Read (const API_Guid & elGuid, ParamDictElement & paramToRea
 
 void Param_Material_Get (GS::HashTable<GS::UniString, GS::Int32>&material_dict, ParamValueData & val)
 {
-    API_AttrTypeID type = API_MaterialID;
-    if (val.type == API_PropertyStringValueType) {
-        if (material_dict.ContainsKey (val.uniStringValue)) {
-            val.intValue = material_dict.Get (val.uniStringValue);
-        } else {
-            API_AttributeIndex attribinx;
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            attribinx = ACAPI_CreateAttributeIndex (val.intValue);
-            #else
-            attribinx = val.intValue;
-            #endif
-            API_AttributeIndexFindByName (val.uniStringValue, type, attribinx);
-            #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            val.intValue = attribinx.ToInt32_Deprecated ();
-            #else
-            val.intValue = attribinx;
-            #endif
-            material_dict.Add (val.uniStringValue, val.intValue);
-        }
+    if (val.type != API_PropertyStringValueType) return;
+    if (const auto* m = material_dict.GetPtr (val.uniStringValue)) {
+        val.intValue = *m;
+    } else {
+        API_AttrTypeID type = API_MaterialID;
+        API_AttributeIndex attribinx;
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        attribinx = ACAPI_CreateAttributeIndex (val.intValue);
+        #else
+        attribinx = val.intValue;
+        #endif
+        API_AttributeIndexFindByName (val.uniStringValue, type, attribinx);
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        val.intValue = attribinx.ToInt32_Deprecated ();
+        #else
+        val.intValue = attribinx;
+        #endif
+        material_dict.Put (val.uniStringValue, val.intValue);
     }
+
 }
 
 // -----------------------------------------------------------------------------
@@ -2246,61 +2239,62 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
     ParamValueData val = {};
 
     param_name = "tip_pot";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.tip_pot = val.uniStringValue;
         }
     }
 
     param_name = "tip_otd";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.tip_otd = val.uniStringValue;
         }
     }
     param_name = "tip_pol";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.tip_pol = val.uniStringValue;
         }
     }
     param_name = "has_ceil";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             val = readparams.Get (param_name).val;
             roominfo.has_ceil = val.boolValue;
         }
     }
     param_name = "has_floor";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.has_floor = val.boolValue;
         }
     }
     param_name = "ceil_by_slab";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             if (roominfo.has_ceil) roominfo.ceil_by_slab = val.boolValue;
         }
     }
 
     param_name = "floor_by_slab";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             if (roominfo.has_floor) roominfo.floor_by_slab = val.boolValue;
         }
     }
 
     param_name = "om_column";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             Param_Material_Get (material_dict, val);
             val.uniStringValue.Trim ();
             val.uniStringValue = "0&#& " + val.uniStringValue;
@@ -2309,9 +2303,9 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
         }
     }
     param_name = "om_down";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             Param_Material_Get (material_dict, val);
             val.uniStringValue.Trim ();
             val.uniStringValue = "0&#& " + val.uniStringValue;
@@ -2320,9 +2314,9 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
         }
     }
     param_name = "om_main";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             Param_Material_Get (material_dict, val);
             val.uniStringValue.Trim ();
             val.uniStringValue = "0&#& " + val.uniStringValue;
@@ -2331,9 +2325,9 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
         }
     }
     param_name = "om_ceil";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             Param_Material_Get (material_dict, val);
             val.uniStringValue.Trim ();
             val.uniStringValue = "0&#& " + val.uniStringValue;
@@ -2342,9 +2336,9 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
         }
     }
     param_name = "om_up";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             Param_Material_Get (material_dict, val);
             val.uniStringValue.Trim ();
             val.uniStringValue = "0&#& " + val.uniStringValue;
@@ -2355,9 +2349,9 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
     bool has_height_down = false;
 
     param_name = "height_down";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.height_down = val.doubleValue;
             has_height_down = true;
         }
@@ -2365,9 +2359,9 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
 
     if (!has_height_down) {
         param_name = "him_has_height_down";
-        if (readparams.ContainsKey (param_name)) {
-            if (readparams.Get (param_name).isValid) {
-                val = readparams.Get (param_name).val;
+        if (const auto* p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                val = p->val;
                 bool him_has_height_down = val.boolValue;
                 param_name = "him_height_down";
                 if (readparams.ContainsKey (param_name)) {
@@ -2380,138 +2374,138 @@ void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32>&material_dict, Ot
         }
     }
     param_name = "height_main";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.height_main = val.doubleValue;
         }
     }
     param_name = "om_ceil.rawname";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_ceil.rawname = val.uniStringValue;
         }
     }
     param_name = "om_reveals.rawname";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_reveals.rawname = val.uniStringValue;
         }
     }
     param_name = "om_up.rawname";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_up.rawname = val.uniStringValue;
         }
     }
     param_name = "om_main.rawname";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_main.rawname = val.uniStringValue;
         }
     }
     param_name = "om_down.rawname";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_down.rawname = val.uniStringValue;
         }
     }
     param_name = "om_column.rawname";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_column.rawname = val.uniStringValue;
         }
     }
 
     param_name = "om_ceil.rawname_bytype";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_ceil.rawname_bytype = val.uniStringValue;
         }
     }
     param_name = "om_reveals.rawname_bytype";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_reveals.rawname_bytype = val.uniStringValue;
         }
     }
     param_name = "om_up.rawname_bytype";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_up.rawname_bytype = val.uniStringValue;
         }
     }
     param_name = "om_main.rawname_bytype";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_main.rawname_bytype = val.uniStringValue;
         }
     }
     param_name = "om_down.rawname_bytype";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_down.rawname_bytype = val.uniStringValue;
         }
     }
     param_name = "om_column.rawname_bytype";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.om_column.rawname_bytype = val.uniStringValue;
         }
     }
     bool find_create_all_elements = false;
     param_name = "create_all_elements";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             find_create_all_elements = true;
             roominfo.create_all_elements = val.boolValue;
         }
     }
     param_name = "create_column_elements";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.create_column_elements = val.boolValue;
         }
     }
     param_name = "create_wall_elements";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.create_wall_elements = val.boolValue;
         }
     }
     param_name = "create_floor_elements";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.create_floor_elements = val.boolValue;
         }
     }
     param_name = "create_ceil_elements";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.create_ceil_elements = val.boolValue;
         }
     }
     param_name = "create_reveal_elements";
-    if (readparams.ContainsKey (param_name)) {
-        if (readparams.Get (param_name).isValid) {
-            val = readparams.Get (param_name).val;
+    if (const auto* p = readparams.GetPtr (param_name)) {
+        if (p->isValid) {
+            val = p->val;
             roominfo.create_reveal_elements = val.boolValue;
         }
     }
@@ -2895,28 +2889,30 @@ void Edges_GetFromRoom (const API_ElementMemo & zonememo, API_Element & zoneelem
 // -----------------------------------------------------------------------------
 // Убираем задвоение Guid зон у элементов
 // -----------------------------------------------------------------------------
-void ClearZoneGUID (UnicElementByType & elementToRead, GS::Array<API_ElemTypeID>&typeinzone)
+void ClearZoneGUID (UnicElementByType & elementToRead)
 {
+    UnicGuid zoneGuidsd = {};
+    GS::Array<API_Guid> zoneGuids = {};
     for (const API_ElemTypeID& typeelem : typeinzone) {
         if (elementToRead.ContainsKey (typeelem)) {
             for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
                 #if defined(AC_28) || defined(AC_29)
                 API_Guid guid = cIt->key;
-                GS::Array<API_Guid> zoneGuids_ = cIt->value;
+                const GS::Array<API_Guid>& zoneGuids_ = cIt->value;
                 #else
                 API_Guid guid = *cIt->key;
-                GS::Array<API_Guid> zoneGuids_ = *cIt->value;
+                const GS::Array<API_Guid>& zoneGuids_ = *cIt->value;
                 #endif
-                UnicGuid zoneGuidsd = {};
-                GS::Array<API_Guid> zoneGuids = {};
-                for (API_Guid zoneGuid : zoneGuids_) {
-                    if (!zoneGuidsd.ContainsKey (zoneGuid)) zoneGuidsd.Add (zoneGuid, true);
+                zoneGuidsd.Clear ();
+                zoneGuids.Clear ();
+                for (const API_Guid& zoneGuid : zoneGuids_) {
+                    zoneGuidsd.Put (zoneGuid, true);
                 }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
                     #if defined(AC_28) || defined(AC_29)
-                    API_Guid zoneGuid = cIt->key;
+                    const API_Guid& zoneGuid = cIt->key;
                     #else
-                    API_Guid zoneGuid = *cIt->key;
+                    const API_Guid& zoneGuid = *cIt->key;
                     #endif
                     zoneGuids.Push (zoneGuid);
                 }
@@ -3328,6 +3324,7 @@ void Draw_Elements (const Stories & storyLevels, OtdRooms & zoneelements, UnicEl
     if (!suspGrp) ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
     #endif
     #endif // !AC_22
+    GS::Array<API_Guid> group;
     ACAPI_CallUndoableCommand (UndoString, [&]() -> GSErrCode {
         if (!deletelist.IsEmpty ()) {
             err = ACAPI_Element_Delete (deletelist);
@@ -3352,7 +3349,7 @@ void Draw_Elements (const Stories & storyLevels, OtdRooms & zoneelements, UnicEl
             if (!otd.isValid) continue;
             if (!otd.create_all_elements) continue;
             API_Guid class_guid = APINULLGuid;
-            GS::Array<API_Guid> group;
+            group.Clear ();
             if (otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements) {
                 for (OtdWall& otdwall : otd.otdwall) {
                     if (!otdwall.isValid) continue;
@@ -3561,38 +3558,38 @@ void OtdWall_Draw_Object (const GS::UniString & favorite_name, const Stories & s
     double ac_wall_length = walledge.GetLength ();
     GDLHelpers::ParamDict accsessoryparams;
     GDLHelpers::Param p;
-    p.num = 1; accsessoryparams.Add ("{@gdl:ac_refside}", p);
-    p.num = edges.material.material; accsessoryparams.Add ("{@gdl:gs_bw_mat}", p);
-    p.num = edges.material.material; accsessoryparams.Add ("{@gdl:matp1}", p);
+    p.num = 1; accsessoryparams.Put ("{@gdl:ac_refside}", p);
+    p.num = edges.material.material; accsessoryparams.Put ("{@gdl:gs_bw_mat}", p);
+    p.num = edges.material.material; accsessoryparams.Put ("{@gdl:matp1}", p);
 
 
-    p.num = edges.height; accsessoryparams.Add ("{@gdl:ac_wall_height}", p);
-    p.num = ac_wall_length; accsessoryparams.Add ("{@gdl:ac_wall_length}", p);
-    p.num = 0; accsessoryparams.Add ("{@gdl:ac_wall_radius}", p);
+    p.num = edges.height; accsessoryparams.Put ("{@gdl:ac_wall_height}", p);
+    p.num = ac_wall_length; accsessoryparams.Put ("{@gdl:ac_wall_length}", p);
+    p.num = 0; accsessoryparams.Put ("{@gdl:ac_wall_radius}", p);
 
     p.dim1 = 1; p.dim2 = 2;
     p.arr_num.Push (0);
     p.arr_num.Push (0);
-    accsessoryparams.Add ("{@gdl:ac_side_poly}", p); p.arr_num.Clear ();
+    accsessoryparams.Put ("{@gdl:ac_side_poly}", p); p.arr_num.Clear ();
 
     p.dim1 = 2; p.dim2 = 2;
     p.arr_num.Push (0);
     p.arr_num.Push (edges.height);
     p.arr_num.Push (ac_wall_length);
     p.arr_num.Push (edges.height);
-    accsessoryparams.Add ("{@gdl:ac_top_poly}", p); p.arr_num.Clear ();
+    accsessoryparams.Put ("{@gdl:ac_top_poly}", p); p.arr_num.Clear ();
 
     p.dim1 = 2; p.dim2 = 2;
     p.arr_num.Push (0);
     p.arr_num.Push (0);
     p.arr_num.Push (ac_wall_length);
     p.arr_num.Push (0);
-    accsessoryparams.Add ("{@gdl:ac_bot_poly}", p); p.arr_num.Clear ();
+    accsessoryparams.Put ("{@gdl:ac_bot_poly}", p); p.arr_num.Clear ();
 
     p.dim1 = 1; p.dim2 = 2;
     p.arr_num.Push (edges.ang_begC);
     p.arr_num.Push (edges.ang_endC);
-    accsessoryparams.Add ("{@gdl:ac_angles}", p); p.arr_num.Clear ();
+    accsessoryparams.Put ("{@gdl:ac_angles}", p); p.arr_num.Clear ();
 
     if (edges.openings.IsEmpty ()) {
         p.dim1 = 1; p.dim2 = 2;
@@ -3624,7 +3621,7 @@ void OtdWall_Draw_Object (const GS::UniString & favorite_name, const Stories & s
         }
         p.dim1 = edges.openings.GetSize (); p.dim2 = 9;
     }
-    accsessoryparams.Add ("{@gdl:ac_wd_poly}", p); p.arr_num.Clear ();
+    accsessoryparams.Put ("{@gdl:ac_wd_poly}", p); p.arr_num.Clear ();
     GDLHelpers::ParamToMemo (wallobjmemo, accsessoryparams);
     Vector2D ref = { -1, 0 };
     Vector2D wallvect = walldir.Get ().ToVector2D ();
@@ -3756,8 +3753,8 @@ bool OtdWall_GetDefult_Wall (const GS::UniString & favorite_name, API_Element & 
 void Opening_Draw (API_Element & wallelement, OtdOpening & op, UnicElementByType & subelementByparent, const double& zBottom)
 {
     GSErrCode err = NoError;
-    API_Element windowelement;
-    API_ElementMemo windowmemo;
+    API_Element windowelement {};
+    API_ElementMemo windowmemo {};
     if (wallelement.wall.type == APIWtyp_Poly) return;
     if (!Opening_GetDefult ("smstf window", windowelement, windowmemo)) {
         return;
@@ -3970,24 +3967,24 @@ void Floor_Draw_Object (const GS::UniString & favorite_name, const Stories & sto
     GDLHelpers::ParamDict accsessoryparams = {};
     GDLHelpers::Param p = {};
     if (otdslab.type == Ceil) {
-        p.num = otdslab.zBottom; accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
+        p.num = otdslab.zBottom; accsessoryparams.Put ("{@gdl:ac_ref_height}", p);
         slabobjelement.object.level = GetzPos (0, otdslab.floorInd, storyLevels);
     }
     if (otdslab.type == Floor) {
-        p.num = otdslab.zBottom; accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
+        p.num = otdslab.zBottom; accsessoryparams.Put ("{@gdl:ac_ref_height}", p);
         slabobjelement.object.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
     }
-    p.str = otdslab.tip; accsessoryparams.Add ("{@gdl:tip_pol}", p);  p.str = "";
-    p.num = 1; accsessoryparams.Add ("{@gdl:mun_zone}", p);
-    p.num = 0; accsessoryparams.Add ("{@gdl:ac_pitch}", p);
-    p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceilling_side}", p);
-    p.num = 0; accsessoryparams.Add ("{@gdl:ac_ceiling_type}", p);
-    p.num = otdslab.material.material; accsessoryparams.Add ("{@gdl:ceil_mat}", p);
-    p.num = otdslab.material.material; accsessoryparams.Add ("{@gdl:matedge}", p);
-    p.num = otdslab.material.material; accsessoryparams.Add ("{@gdl:matceipanel}", p);
-    p.num = 0.02; accsessoryparams.Add ("{@gdl:ceil_thk}", p);
-    p.num = 0.02; accsessoryparams.Add ("{@gdl:ac_thickness}", p);
-    p.num = 0; accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
+    p.str = otdslab.tip; accsessoryparams.Put ("{@gdl:tip_pol}", p);  p.str = "";
+    p.num = 1; accsessoryparams.Put ("{@gdl:mun_zone}", p);
+    p.num = 0; accsessoryparams.Put ("{@gdl:ac_pitch}", p);
+    p.num = 0; accsessoryparams.Put ("{@gdl:ac_ceilling_side}", p);
+    p.num = 0; accsessoryparams.Put ("{@gdl:ac_ceiling_type}", p);
+    p.num = otdslab.material.material; accsessoryparams.Put ("{@gdl:ceil_mat}", p);
+    p.num = otdslab.material.material; accsessoryparams.Put ("{@gdl:matedge}", p);
+    p.num = otdslab.material.material; accsessoryparams.Put ("{@gdl:matceipanel}", p);
+    p.num = 0.02; accsessoryparams.Put ("{@gdl:ceil_thk}", p);
+    p.num = 0.02; accsessoryparams.Put ("{@gdl:ac_thickness}", p);
+    p.num = 0; accsessoryparams.Put ("{@gdl:ac_slab_side}", p);
     Geometry::Polygon2DData polygon2DData;
     Geometry::InitPolygon2DData (&polygon2DData);
     Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, otdslab.poly);
@@ -4012,21 +4009,21 @@ void Floor_Draw_Object (const GS::UniString & favorite_name, const Stories & sto
     }
     ac_coords.dim1 = ac_coords.arr_num.GetSize () / 3; ac_coords.dim2 = 3;
     ac_whole_poly.dim1 = 1; ac_whole_poly.dim2 = ac_whole_poly.arr_num.GetSize ();
-    accsessoryparams.Add ("{@gdl:ac_whole_poly}", ac_whole_poly);
-    accsessoryparams.Add ("{@gdl:ac_coords}", ac_coords);
+    accsessoryparams.Put ("{@gdl:ac_whole_poly}", ac_whole_poly);
+    accsessoryparams.Put ("{@gdl:ac_coords}", ac_coords);
     if (is_new) {
         if (otdslab.type == Ceil) {
-            p.num = bbox.xMax - bbox.xMin - 0.1; accsessoryparams.Add ("{@gdl:pos_x2}", p);
-            p.num = bbox.yMax - bbox.yMin - 0.1; accsessoryparams.Add ("{@gdl:pos_y2}", p);
+            p.num = bbox.xMax - bbox.xMin - 0.1; accsessoryparams.Put ("{@gdl:pos_x2}", p);
+            p.num = bbox.yMax - bbox.yMin - 0.1; accsessoryparams.Put ("{@gdl:pos_y2}", p);
 
-            p.num = (bbox.xMax - bbox.xMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
-            p.num = (bbox.yMax - bbox.yMin - 0.1) / 2; accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
+            p.num = (bbox.xMax - bbox.xMin - 0.1) / 2; accsessoryparams.Put ("{@gdl:pos_xtxt}", p);
+            p.num = (bbox.yMax - bbox.yMin - 0.1) / 2; accsessoryparams.Put ("{@gdl:pos_ytxt}", p);
         }
         if (otdslab.type == Floor) {
-            p.num = otdslab.poly.GetCenter ().x - bbox.xMin; accsessoryparams.Add ("{@gdl:pos_x1}", p);
-            p.num = otdslab.poly.GetCenter ().y - bbox.yMin; accsessoryparams.Add ("{@gdl:pos_y1}", p);
+            p.num = otdslab.poly.GetCenter ().x - bbox.xMin; accsessoryparams.Put ("{@gdl:pos_x1}", p);
+            p.num = otdslab.poly.GetCenter ().y - bbox.yMin; accsessoryparams.Put ("{@gdl:pos_y1}", p);
         }
-        p.dim1 = 1; p.dim2 = 2; p.arr_num.Push (otdslab.poly.GetCenter ().x - bbox.xMin); p.arr_num.Push (otdslab.poly.GetCenter ().y - bbox.yMin); accsessoryparams.Add ("{@gdl:fieldorig}", p);
+        p.dim1 = 1; p.dim2 = 2; p.arr_num.Push (otdslab.poly.GetCenter ().x - bbox.xMin); p.arr_num.Push (otdslab.poly.GetCenter ().y - bbox.yMin); accsessoryparams.Put ("{@gdl:fieldorig}", p);
     }
     Geometry::FreePolygon2DData (&polygon2DData);
     GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
@@ -4206,32 +4203,32 @@ void Class_FindFinClass (ClassificationFunc::ClassificationDict & findict, UnicG
             GS::UniString desc = clas.item.description.ToLowerCase ();
             if (desc.Contains ("some_stuff_fin_")) {
                 if (desc.Contains (cls.all_class)) {
-                    findict.Add (cls.all_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                    findict.Put (cls.all_class, clas);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Put (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.ceil_class)) {
                     findict.Add (cls.ceil_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Put (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.column_class)) {
-                    findict.Add (cls.column_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                    findict.Put (cls.column_class, clas);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Put (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.floor_class)) {
-                    findict.Add (cls.floor_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                    findict.Put (cls.floor_class, clas);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Put (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.otdwall_class)) {
-                    findict.Add (cls.otdwall_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                    findict.Put (cls.otdwall_class, clas);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Put (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.reveal_class)) {
-                    findict.Add (cls.reveal_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                    findict.Put (cls.reveal_class, clas);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Put (clas.item.guid, false);
                 }
                 if (desc.Contains (cls.otdwall_down_class)) {
-                    findict.Add (cls.otdwall_down_class, clas);
-                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Add (clas.item.guid, false);
+                    findict.Put (cls.otdwall_down_class, clas);
+                    if (!finclassguids.ContainsKey (clas.item.guid)) finclassguids.Put (clas.item.guid, false);
                 }
             }
         }
@@ -4244,14 +4241,7 @@ void Class_FindFinClass (ClassificationFunc::ClassificationDict & findict, UnicG
 void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictElement & paramToWrite)
 {
     API_Elem_Head parentelementhead = {};
-    GS::Array<API_ElemTypeID> typeinzone = {};
     UnicGuid syncguidsdict;
-    // Типы родительских элементов
-    typeinzone.Push (API_ZoneID);
-    typeinzone.Push (API_WindowID);
-    typeinzone.Push (API_WallID);
-    typeinzone.Push (API_SlabID);
-    typeinzone.Push (API_ColumnID);
     GS::UniString suffix = "";
     GS::Array<API_Guid> syncguids;
     GS::UniString funcname = "Create link with base element";
@@ -4260,10 +4250,10 @@ void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictElement & 
         for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL; ++cIt) {
             #if defined(AC_28) || defined(AC_29)
             API_Guid guid = cIt->key;
-            GS::Array<API_Guid> subguids = cIt->value;
+            const GS::Array<API_Guid>& subguids = cIt->value;
             #else
             API_Guid guid = *cIt->key;
-            GS::Array<API_Guid> subguids = *cIt->value;
+            const GS::Array<API_Guid>& subguids = *cIt->value;
             #endif
 
             nPhase += 1;
@@ -4281,12 +4271,11 @@ void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictElement & 
             } else {
                 suffix = "base element";
             }
-            if (SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false)) {
-                for (const auto& g : subguids) {
-                    if (!syncguidsdict.ContainsKey (g)) {
-                        syncguidsdict.Add (g, true);
-                        syncguids.Push (g);
-                    }
+            if (!SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false)) continue;
+            for (const auto& g : subguids) {
+                if (!syncguidsdict.ContainsKey (g)) {
+                    syncguidsdict.Put (g, true);
+                    syncguids.Push (g);
                 }
             }
         }
@@ -4315,25 +4304,24 @@ void SetSyncOtdWall (UnicElementByType & subelementByparent, ParamDictElement & 
             return NoError;
         });
     }
-    if (!syncguids.IsEmpty ()) {
-        funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
-        nPhase += 1;
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-        if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
-        #else
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
+    if (syncguids.IsEmpty ()) return;
+    funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
+    nPhase += 1;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
+    if (ACAPI_ProcessWindow_IsProcessCanceled ()) return;
+    #else
+    ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
+    if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) return;
+    #endif
+    SyncSettings syncSettings (false, false, true, true, true, true, false);
+    LoadSyncSettingsFromPreferences (syncSettings);
+    GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids);
+    if (!rereadelem.IsEmpty ()) {
+        #if defined(TESTING)
+        DBprnt ("===== REREAD =======");
         #endif
-        SyncSettings syncSettings (false, false, true, true, true, true, false);
-        LoadSyncSettingsFromPreferences (syncSettings);
-        GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids);
-        if (!rereadelem.IsEmpty ()) {
-            #if defined(TESTING)
-            DBprnt ("===== REREAD =======");
-            #endif
-            SyncArray (syncSettings, rereadelem);
-        }
+        SyncArray (syncSettings, rereadelem);
     }
 }
 
@@ -4342,13 +4330,11 @@ bool Class_IsElementFinClass (const API_Guid & elGuid, const UnicGuid & finclass
 {
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
     if (ACAPI_Element_GetClassificationItems (elGuid, systemItemPairs) == NoError) {
-        if (!systemItemPairs.IsEmpty ()) {
-            for (const auto& cl : systemItemPairs) {
-                if (finclassguids.ContainsKey (cl.second)) {
-                    classguid = cl.second;
-                    return true;
-                }
-            }
+        if (systemItemPairs.IsEmpty ()) return false;
+        for (const auto& cl : systemItemPairs) {
+            if (!finclassguids.ContainsKey (cl.second)) continue;
+            classguid = cl.second;
+            return true;
         }
     }
     return false;
@@ -4358,30 +4344,34 @@ void Param_AddUnicElementByType (const API_Guid & parentguid, const API_Guid & g
 {
     if (parentguid == APINULLGuid) return;
     if (guid == APINULLGuid) return;
-    if (!elementToRead.ContainsKey (elemtype)) {
+
+    auto* bytypePtr = elementToRead.GetPtr (elemtype);
+
+    if (bytypePtr == nullptr) {
         UnicElement el;
-        elementToRead.Add (elemtype, el);
+        elementToRead.Put (elemtype, std::move (el));
+        bytypePtr = elementToRead.GetPtr (elemtype);
     }
-    if (elementToRead.ContainsKey (elemtype)) {
-        if (!elementToRead.Get (elemtype).ContainsKey (parentguid)) {
-            GS::Array<API_Guid> el;
-            el.Push (guid);
-            elementToRead.Get (elemtype).Add (parentguid, el);
-        } else {
-            elementToRead.Get (elemtype).Get (parentguid).Push (guid);
-        }
+
+    if (bytypePtr == nullptr) return;
+    if (auto* byparent = bytypePtr->GetPtr (parentguid)) {
+        byparent->Push (guid);
+    } else {
+        GS::Array<API_Guid> el;
+        el.Push (guid);
+        bytypePtr->Put (parentguid, std::move (el));
     }
 }
 
 void Param_AddUnicGUIDByType (const API_Guid & elGuid, API_ElemTypeID elemtype, UnicGUIDByType & guidselementToRead)
 {
     if (elGuid == APINULLGuid) return;
-    if (guidselementToRead.ContainsKey (elemtype)) {
-        guidselementToRead.Get (elemtype).Push (elGuid);
+    if (auto* p = guidselementToRead.GetPtr (elemtype)) {
+        p->Push (elGuid);
     } else {
         GS::Array<API_Guid> z;
         z.Push (elGuid);
-        guidselementToRead.Add (elemtype, z);
+        guidselementToRead.Put (elemtype, std::move (z));
     }
 }
 
@@ -4405,22 +4395,15 @@ MatarialToFavoriteDict Favorite_GetDict ()
     MatarialToFavoriteDict favdict;
     MatarialToFavorite fav = {};
     // Поиск элементов по-умолчанию
-    GS::Array<API_ElemTypeID> types;
-    types.Push (API_WallID);
-    types.Push (API_SlabID);
-    types.Push (API_BeamID);
-    types.Push (API_ColumnID);
-    types.Push (API_ObjectID);
-    types.Push (API_WindowID);
-    GS::UniString name_ = ""; short count = 0; GS::Array<GS::UniString> names;
-    for (API_ElemTypeID type : types) {
+    short count = 0; GS::Array<GS::UniString> names;
+    for (const auto& type : typeinzone) {
         if (Favorite_GetNum (type, &count, nullptr, &names) != NoError) continue;
         fav.type = type;
         for (GS::UniString& name : names) {
-            name_.SetToLowerCase ();
-            name_.Trim ();
+            name.SetToLowerCase ();
+            name.Trim ();
             fav.name = name;
-            if (!favdict.ContainsKey (name_)) favdict.Add (name_, fav);
+            if (!favdict.ContainsKey (name)) favdict.Put (name, fav);
         }
     }
     if (favdict.IsEmpty ()) {

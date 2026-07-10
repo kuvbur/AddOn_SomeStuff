@@ -115,13 +115,39 @@ bool isMEPRead ()
 }
 #endif
 
+GS::UniString GetLayerFromCache (const API_AttributeIndex& layerinx)
+{
+    auto& cache = PROPERTYCACHE ();
+    if (cache.isAttributeRead && cache.isAttribute_OK) {
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        GS::UniString rawName = "layer_inx_" + GS::UniString::Printf ("%d", layerinx.ToInt32_Deprecated ());
+        #else
+        GS::UniString rawName = "layer_inx_" + GS::UniString::Printf ("%d", layerinx);
+        #endif
+        if (const auto* ptr = cache.attrib.GetPtr (rawName)) {
+            if (ptr->isValid) {
+                return ptr->val.uniStringValue;
+            }
+        }
+    }
+    API_Attribute layer = {};
+    layer.header.typeID = API_LayerID;
+    layer.header.index = layerinx;
+    GSErrCode err = ACAPI_Attribute_Get (&layer);
+    if (err != NoError) {
+        msg_rep ("GetLayerFromCache", "ACAPI_Attribute_Get", err, APINULLGuid);
+        return GS::UniString {};
+    }
+    return GS::UniString (layer.header.name);
+}
+
+
 bool GetGroupFromCache (const API_Guid& guid, API_PropertyGroup& group)
 {
     auto& cache = PROPERTYCACHE ();
     if (cache.isGroupPropertyRead && cache.isGroupProperty_OK) {
         if (const auto* ptr = cache.propertygroups.GetPtr (guid)) { group = *ptr; return true; }
     }
-
     if (!cache.isGroupPropertyRead_full && cache.isGroupProperty_OK) {
         if (const auto* ptr = cache.propertygroups.GetPtr (guid)) { group = *ptr; return true; }
         cache.isGroupPropertyRead = true;
@@ -497,7 +523,7 @@ bool GetAllInfoToParamDict (ParamDictValue& propertyParams)
             pvalue.rawName = rawName;
             pvalue.fromInfo = true;
             ParamHelpers::ConvertStringToParamValue (pvalue, rawName, autotexts[i][2]);
-            propertyParams.Put (rawName, pvalue);
+            propertyParams.Put (rawName, std::move (pvalue));
         }
     }
     #if defined(TESTING)
@@ -517,14 +543,16 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
     API_Attribute attrib = {};
     GSErrCode err = NoError;
     GS::Array<API_Attribute> attributes = {};
+    GS::UniString rawName;
+    GS::UniString attribname;
     err = ACAPI_Attribute_GetAttributesByType (API_LayerID, attributes);
     for (API_Attribute& attrib : attributes) {
-        GS::UniString attribname = "";
+        attribname.Clear ();
         attrib.header.uniStringNamePtr = &attribname;
         err = ACAPI_Attribute_Get (&attrib);
         if (err == NoError) {
             ParamValue pvalue = {};
-            GS::UniString rawName = "layer_name_" + attribname;
+            rawName = "layer_name_" + attribname;
             ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
             propertyParams.Put (pvalue.rawName, pvalue);
             pvalue.name = "";
@@ -535,7 +563,7 @@ bool GetAllAttributeToParamDict (ParamDictValue& propertyParams)
             rawName = "layer_inx_" + GS::UniString::Printf ("%d", attrib.header.index);
             #endif
             ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
-            propertyParams.Put (pvalue.rawName, pvalue);
+            propertyParams.Put (pvalue.rawName, std::move (pvalue));
         } else {
             if (err == APIERR_DELETED) err = NoError;
             if (err != NoError) {
@@ -782,27 +810,30 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition& definision, GS::Uni
 //	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
 //					"Слой" - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
 // -----------------------------------------------------------------------------
-bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
+bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext, bool& hasLayerNameInDimRules)
 {
     bool hasexpression = false; // Нужно ли нам читать список свойств
+    bool hasLayerNameInOneDimRules = false; // Нужно ли нам читать список свойств
     if (autotext.Contains (SEMICOLON)) {
         GS::Array<GS::UniString> partstring = {};
         StringSplt (autotext, SEMICOLON, partstring, true);
         for (const auto& part : partstring) {
             DimRule dimrule = {};
-            if (DimParsePref (part, dimrule, hasexpression)) {
+            if (DimParsePref (part, dimrule, hasexpression, hasLayerNameInOneDimRules)) {
+                if (hasLayerNameInOneDimRules) hasLayerNameInDimRules = true;
                 GS::UniString kstr;
                 if (dimrule.layer.IsEmpty ()) {
                     kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
                 } else {
                     kstr = dimrule.layer;
                 }
-                dimrules.Put (kstr, dimrule);
+                dimrules.Put (std::move (kstr), std::move (dimrule));
             }
         }
     } else {
         DimRule dimrule = {};
-        if (DimParsePref (autotext, dimrule, hasexpression)) {
+        if (DimParsePref (autotext, dimrule, hasexpression, hasLayerNameInOneDimRules)) {
+            if (hasLayerNameInOneDimRules) hasLayerNameInDimRules = true;
             GS::UniString kstr = "";
             if (dimrule.layer.IsEmpty ()) {
                 kstr = GS::UniString::Printf ("%d", dimrule.pen_original);
@@ -810,7 +841,7 @@ bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
                 kstr = dimrule.layer;
             }
             dimrule.kstr = kstr;
-            dimrules.Put (kstr, dimrule);
+            dimrules.Put (std::move (kstr), std::move (dimrule));
         }
     }
     return !dimrules.IsEmpty ();
@@ -819,7 +850,7 @@ bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext)
 // -----------------------------------------------------------------------------
 // Обработка текста правила
 // -----------------------------------------------------------------------------
-bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression)
+bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression, bool& hasLayerNameInDimRules)
 {
     if (rawrule.IsEmpty ()) return false;
     if (!rawrule.Contains ("-")) return false;
@@ -829,43 +860,64 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
         //Проверяем - что указано в правиле: слой или номер пера
         // Слой указываем в кавычках, в regexp формате
         if (partstring_1[0].Contains (CHARDQUT)) {
-            GS::UniString layer = partstring_1[0];
-            layer.ReplaceAll (CHARDQUT, ' ');
-            layer.Trim ();
-            dimrule.layer = layer;
+            dimrule.layer = partstring_1[0];
+            dimrule.layer.ReplaceAll (CHARDQUT, ' ');
+            dimrule.layer.Trim ();
+            hasLayerNameInDimRules = true;
         } else {
-            dimrule.pen_original = std::atoi (partstring_1[0].ToCStr ());
+            try {
+                dimrule.pen_original = std::stoi (partstring_1[0].ToCStr ().Get ());
+            } catch (const std::exception&) {
+                dimrule.pen_original = 0;
+                return false;
+            }
         }
-        if (partstring_1[1].Contains ("DeleteWall")) {
+        partstring_1[1].SetToLowerCase ();
+        if (partstring_1[1].Contains ("deletewall")) {
             dimrule.flag_change = true;
             dimrule.flag_deletewall = true;
             dimrule.pen_rounded = dimrule.pen_original;
+            partstring_1[1].ReplaceAll ("deletewall", EMPTYSTRING);
             flag_find = true;
         }
-        if (partstring_1[1].Contains ("ResetText")) {
+        if (partstring_1[1].Contains ("resettext")) {
             dimrule.flag_change = true;
             dimrule.flag_reset = true;
             dimrule.pen_rounded = dimrule.pen_original;
+            partstring_1[1].ReplaceAll ("resettext", EMPTYSTRING);
             flag_find = true;
         }
-        if (partstring_1[1].Contains ("CheckCustom")) {
+        if (partstring_1[1].Contains ("checkcustom")) {
             dimrule.flag_change = false;
             dimrule.flag_custom = true;
+            partstring_1[1].ReplaceAll ("checkcustom", EMPTYSTRING);
             flag_find = true;
         }
-        if (partstring_1[1].Contains ("lassic")) {
+        if (partstring_1[1].Contains ("classic")) {
             dimrule.classic_round_mode = true;
+            partstring_1[1].ReplaceAll ("classicround", EMPTYSTRING);
+            partstring_1[1].ReplaceAll ("classic", EMPTYSTRING);
         }
         if (!partstring_1[1].Contains (COMMA)) return flag_find;
         GS::Array<GS::UniString> partstring_2 = {};
         if (StringSplt (partstring_1[1], COMMA, partstring_2, true) > 1) {
             if (!partstring_2[0].IsEmpty ()) {
-                dimrule.round_value = std::atoi (partstring_2[0].ToCStr ());
                 flag_find = true;
+                try {
+                    dimrule.round_value = std::stoi (partstring_2[0].ToCStr ().Get ());
+                } catch (const std::exception&) {
+                    dimrule.round_value = 0;
+                    flag_find = false;
+                }
             }
             if (!partstring_2[1].IsEmpty ()) {
-                dimrule.pen_rounded = std::atoi (partstring_2[1].ToCStr ());
                 flag_find = true;
+                try {
+                    dimrule.pen_rounded = std::stoi (partstring_2[1].ToCStr ().Get ());
+                } catch (const std::exception&) {
+                    dimrule.pen_rounded = 0;
+                    flag_find = false;
+                }
             }
             if (partstring_2.GetSize () < 3) return flag_find;
             for (UInt32 k = 2; k < partstring_2.GetSize (); k++) {
@@ -875,13 +927,20 @@ bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpr
                     GS::UniString expression = partstring_2[k];
                     expression.ReplaceAll ("<MeasuredValue>", "{MeasuredValue}");
                     ParamHelpers::ParseParamName (expression, paramDict);
-                    dimrule.paramDict = paramDict;
-                    dimrule.expression = expression;
+                    dimrule.paramDict = std::move (paramDict);
+                    dimrule.expression = std::move (expression);
                     if (!hasexpression) hasexpression = !paramDict.IsEmpty ();
                 } else {
                     if (k == 2) {
-                        dimrule.flag_change = (std::atoi (partstring_2[k].ToCStr ()) > 0);
                         flag_find = true;
+                        short flag_change;
+                        try {
+                            flag_change = std::stoi (partstring_2[k].ToCStr ().Get ());
+                        } catch (const std::exception&) {
+                            flag_change = 0;
+                            flag_find = false;
+                        }
+                        dimrule.flag_change = (flag_change > 0);
                     }
                 }
             }

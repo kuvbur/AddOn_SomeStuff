@@ -22,15 +22,17 @@ typedef GS::HashTable <GS::Guid, MEPDict> MEPDicts;
 //	Формат записи: ПЕРО_РАЗМЕРА - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА", либо
 //					"Слой" - КРАТНОСТЬ_ММ, ПЕРО_ТЕКСТА_ИЗМЕНЁННОЕ, ФЛАГ_ИЗМЕНЕНИЯ_СОДЕРЖИМОГО, "ФОРМУЛА"
 // -----------------------------------------------------------------------------
-bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext);
+bool DimReadPref (DimRules& dimrules, const GS::UniString& autotext, bool& hasLayerNameInDimRules);
 
 // -----------------------------------------------------------------------------
 // Обработка текста правила
 // -----------------------------------------------------------------------------
-bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression);
+bool DimParsePref (const GS::UniString& rawrule, DimRule& dimrule, bool& hasexpression, bool& hasLayerNameInDimRules);
 
 namespace ParamHelpers
 {
+
+GS::UniString GetLayerFromCache (const API_AttributeIndex& layerinx);
 
 bool ReadLibraryFile (const GS::UniString& fileName, GS::Array<GS::Array<GS::UniString>>& data);
 
@@ -106,6 +108,7 @@ struct PropertyCache
     UnicGuidByGuidString reversesystemdict;
     GS::HashTable <API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
+    bool hasLayerNameInDimRules;
     GS::HashTable<GS::UniString, FormatString> parsedformatstring;
     GS::HashTable<GS::UniString, GS::UniString> gdlparamname;
     FormatStringDict formatstringformeasuretype;
@@ -171,7 +174,7 @@ struct PropertyCache
     bool isGroupPropertyRead_full;    // Был прочитан полностью
 
     bool isFormatStringFormeasureTypeRead;
-    bool isFormatStringFormeasureTypeRead_OK;
+    bool isFormatStringFormeasureType_OK;
 
     #if defined (AC_29)
     MEPDicts mepdict;
@@ -227,6 +230,8 @@ struct PropertyCache
         isGroupProperty_OK = false;
         isGroupPropertyRead = false;
         isGroupPropertyRead_full = false;
+
+        hasLayerNameInDimRules = false;
 
         #if defined (AC_29)
         mepdict.Clear ();
@@ -317,8 +322,6 @@ struct PropertyCache
         msg_rep ("=PropertyCache=", time, NoError, APINULLGuid);
     }
 
-
-
     void ReadFormatStringForMeasureType ()
     {
         #if defined(TESTING)
@@ -366,7 +369,7 @@ struct PropertyCache
 
         fstring.n_zero = unitPrefs.angleDecimals; fstring.stringformat = GS::UniString::Printf ("0%d", unitPrefs.angleDecimals);
         formatstringformeasuretype.Add (API_PropertyAngleMeasureType, fstring);
-        isFormatStringFormeasureTypeRead_OK = true;
+        isFormatStringFormeasureType_OK = true;
     }
 
     void ReadGetGeoLocation ()
@@ -471,11 +474,12 @@ struct PropertyCache
         isInfo_OK = ParamHelpers::GetAllInfoToParamDict (info);
         if (info.IsEmpty ()) isInfo_OK = false;
         hasDimAutotext = false;
+        hasLayerNameInDimRules = false;
         if (isInfo_OK) {
             dimrules.Clear ();
             if (info.ContainsKey (autotextkey)) {
                 GS::UniString autotext = info.Get (autotextkey).val.uniStringValue;
-                hasDimAutotext = DimReadPref (dimrules, autotext);
+                hasDimAutotext = DimReadPref (dimrules, autotext, hasLayerNameInDimRules);
                 if (hasDimAutotext) {
                     msg_rep ("=PropertyCache= find dim rule ", autotext, NoError, APINULLGuid);
                     #if defined(TESTING)

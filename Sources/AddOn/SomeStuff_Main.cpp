@@ -52,6 +52,8 @@ static GSErrCode __ACENV_CALL	ReservationChangeHandler (const GS::HashTable<API_
         AttachObserver (*(it->key), syncSettings);
         #endif
     }
+    PROPERTYCACHE ().Update ();
+    DimRoundAll (syncSettings, false);
     ACAPI_KeepInMemory (true);
     return NoError;
 }
@@ -177,6 +179,11 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
     if (elemType->notifID == APINotifyElement_BeginEvents) {
         PROPERTYCACHE ().compositeCache.Clear ();
         return NoError;
+    } else if (elemType->notifID == APINotifyElement_EndEvents) {
+        if (!IsElementThrottled (APINULLGuid)) {
+            DimRoundAll (syncSettings, true);
+        }
+        return NoError;
     }
     // Смотрим - что поменялось
     API_ElemTypeID elementType = GetElemTypeID (elemType->elemHead);
@@ -195,11 +202,6 @@ GSErrCode __ACENV_CALL	ElementEventHandlerProc (const API_NotifyElementType * el
             break;
             #endif
         default:
-            if (elemType->notifID == APINotifyElement_EndEvents) {
-                if (!IsElementThrottled (APINULLGuid)) {
-                    DimRoundAll (syncSettings, true);
-                }
-            }
             break;
     }
     #if defined(TESTING)
@@ -435,7 +437,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams * menuParams)
                     #endif
             }
             break;
-}
+    }
     (void) err;
     DimRoundAll (syncSettings, false);
     WriteSyncSettingsToPreferences (syncSettings);

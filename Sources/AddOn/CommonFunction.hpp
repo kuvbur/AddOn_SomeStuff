@@ -158,12 +158,10 @@ typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>> SortByN
 const GS::Int32 max_group_mat = 50; //Максимальное количество материалов у одного элемента
 const GS::Int32 max_group_lib = 100; //Максимальное количество компонент у одного элемента
 
-struct Story
-{
+struct Story {
     Story (short _index, double _level)
         : index (_index)
-        , level (_level)
-    {
+        , level (_level) {
     }
     short  index;
     double level;
@@ -171,8 +169,7 @@ struct Story
 using Stories = GS::Array<Story>; // Хранение информации об этажах в формате Индекс - Уровень
 
 // Структура для хранения формата перевода чисел в строку и округления чисел
-struct FormatString
-{
+struct FormatString {
     int n_zero = 3; //Количество нулей после запятой
     GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
     bool needRound = false; //Использовать в расчётах округлённые значения
@@ -197,8 +194,7 @@ typedef GS::HashTable<API_Guid, GS::UniString> UnicGuidString;
 typedef GS::HashTable<API_Guid, UnicGuidString> UnicGuidByGuidString;
 
 // Хранение данных параметра
-struct ParamValueData
-{
+struct ParamValueData {
     // Собственно значения
     API_VariantType type = API_PropertyUndefinedValueType; // Прочитанный тип данных
     GS::UniString uniStringValue = "";
@@ -219,8 +215,7 @@ struct ParamValueData
 };
 
 // Структура для описания слоя в многослойной конструкции
-struct ParamValueComposite
-{
+struct ParamValueComposite {
     API_AttributeIndex inx = {};					// Индекс материала
     double fillThick = 0.0;					// Толщина слоя
     double fillThick_min = -1.0;			// Толщина слоя
@@ -240,8 +235,7 @@ struct ParamValueComposite
 };
 
 // Для хранения данных о составе конструкции, так как в многослойной конструкции может быть несколько слоёв, а также для удобства передачи данных в функции записи в свойства и т.д.
-struct ParamComposite
-{
+struct ParamComposite {
     GS::UniString templatestring = "";
     GS::Array<ParamValueComposite> composite = {};
     API_ModelElemStructureType composite_type = API_BasicStructure;
@@ -261,8 +255,7 @@ typedef GS::HashTable<API_Guid, ParamDictComposite> ParamDictCompositeElement;
 
 // Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
 // Это позволяет свободно конвертировать и записывать данные в любое место
-struct ParamValue
-{
+struct ParamValue {
     API_VariantType type = API_PropertyUndefinedValueType; // Тип данных для записи
     GS::UniString rawName = "";							   // Имя для сопоставления в словаре - с указанием откуда взято
     GS::UniString name = "";							   // Очищенное имя для поиска
@@ -314,18 +307,15 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 
-struct ProcessWindowGuard
-{
-    ProcessWindowGuard (GS::UniString& name, GS::Int32& phase)
-    {
+struct ProcessWindowGuard {
+    ProcessWindowGuard (GS::UniString& name, GS::Int32& phase) {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_InitProcessWindow (&name, &phase);
         #else
         ACAPI_Interface (APIIo_InitProcessWindowID, &name, &phase);
         #endif
     }
-    ~ProcessWindowGuard ()
-    {
+    ~ProcessWindowGuard () {
         #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         ACAPI_ProcessWindow_CloseProcessWindow ();
         #else
@@ -421,6 +411,7 @@ bool GetElementTypeString (API_ElemTypeID typeID, char* elemStr);
 // Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
 // --------------------------------------------------------------------
 bool check_accuracy (double val, double tolerance);
+
 
 Int32 ceil_mod_classic (Int32 n, Int32 k);
 
@@ -567,21 +558,19 @@ void SetElemTypeID (API_Elem_Head& elementhead, const API_ElemTypeID eltype);
 
 GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition& definition, const GS::UniString value);
 
-namespace GDLHelpers
-{
-struct Param
-{
-    GS::Array <double> arr_num;
-    GS::Array <GS::UniString> arr_str;
-    Int32 dim1 = 1;
-    Int32 dim2 = 1;
-    double num = 0;
-    GS::UniString str = "";
-}; // Структура для чтения/записи в объекты
+namespace GDLHelpers {
+    struct Param {
+        GS::Array <double> arr_num;
+        GS::Array <GS::UniString> arr_str;
+        Int32 dim1 = 1;
+        Int32 dim2 = 1;
+        double num = 0;
+        GS::UniString str = "";
+    }; // Структура для чтения/записи в объекты
 
-typedef GS::HashTable <GS::UniString, Param> ParamDict;
+    typedef GS::HashTable <GS::UniString, Param> ParamDict;
 
-bool ParamToMemo (API_ElementMemo& memo, ParamDict& param);
+    bool ParamToMemo (API_ElementMemo& memo, ParamDict& param);
 
 }
 

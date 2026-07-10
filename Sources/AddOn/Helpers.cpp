@@ -1418,6 +1418,7 @@ bool ParamHelpers::CheckIgnoreVal (const SkipValues& ignorevals, const ParamValu
         }
     }
     if (ignorevals.ignorevals.IsEmpty ()) return false;
+
     for (const auto& ign : ignorevals.ignorevals) {
         if (emp.IsEqual (ign)) return true;
         if (ign.BeginsWith ("*")) {
@@ -6912,7 +6913,7 @@ bool ParamHelpers::ConvertToParamValue (ParamValue & pvalue, const API_Property 
             if (fabs (pvalue.val.doubleValue) > std::numeric_limits<double>::epsilon ()) pvalue.val.boolValue = true;
             pvalue.val.type = API_PropertyRealValueType;
             if (!cache.isFormatStringFormeasureTypeRead) cache.ReadFormatStringForMeasureType ();
-            if (cache.isFormatStringFormeasureTypeRead_OK) {
+            if (cache.isFormatStringFormeasureType_OK) {
                 if (const auto* formatstringch = cache.formatstringformeasuretype.GetPtr (property.definition.measureType)) {
                     bool needRound = formatstringch->needRound;
                     if (pvalue.rawName.IsEqual ("{@property:buildingmaterialproperties/some_stuff_th}")) needRound = false;

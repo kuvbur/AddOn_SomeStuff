@@ -837,7 +837,12 @@ bool check_accuracy (double rval, double tolerance)
 // --------------------------------------------------------------------
 bool is_equal (double x, double y)
 {
-    return std::fabs (x - y) < std::numeric_limits<double>::epsilon ();
+    if (x == y) return true;
+    double absTol = 1e-12;
+    double relTol = 1e-9;
+    double diff = std::fabs (x - y);
+    if (diff <= absTol) return true;
+    return diff <= relTol * std::max (std::fabs (x), std::fabs (y));
 }
 
 // --------------------------------------------------------------------
@@ -1801,7 +1806,7 @@ bool	ClickAnElem (const char* prompt,
     if (pointInfo.neig.elemPartType != APINeigElemPart_None && ignorePartialSelection) {
         pointInfo.neig.elemPartType = APINeigElemPart_None;
         pointInfo.neig.elemPartIndex = 0;
-}
+    }
 
     clickedType = Neig_To_ElemID (pointInfo.neig.neigID);
 
@@ -2064,10 +2069,10 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID & ty
             return false;
         }
         return true;
-        }
+    }
     msg_rep ("API_AttributeIndexFindByName", "ACAPI_Attribute_Search - " + name, err, APINULLGuid);
     return false;
-    }
+}
 
 GSErrCode Favorite_GetNum (const API_ElemTypeID & type, short* count, GS::Array< API_FavoriteFolderHierarchy >*folders, GS::Array< GS::UniString >*names)
 {
@@ -2150,7 +2155,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
         if (error != NoError) {
             msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetElementsWithClassification", error, classificationItemGuid);
             continue;
-    }
+        }
         for (const auto& elemGuid : elemGuids) {
             if (!ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay | APIFilt_IsEditable | APIFilt_InMyWorkspace | APIFilt_HasAccessRight)) continue;
             error = ACAPI_Element_GetPropertyValue (elemGuid, definition.guid, propertyflag);
@@ -2173,18 +2178,23 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition & de
     }
     return elements;
     #endif // AC_22
-        }
+}
 
 namespace GDLHelpers
 {
 bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
 {
     const GSSize nParams = BMGetHandleSize ((GSHandle) memo.params) / sizeof (API_AddParType);
+    GS::UniString rawname;
     for (GSIndex ii = 0; ii < nParams; ++ii) {
         API_AddParType& actParam = (*memo.params)[ii];
-        GS::UniString rawname = GDLNAMEPREFIX + GS::UniString (actParam.name).ToLowerCase () + BRACEEND;
-        if (!param.ContainsKey (rawname)) continue;
-        Param pp = param.Get (rawname);
+        rawname = GDLNAMEPREFIX;
+        rawname += GS::UniString (actParam.name);
+        rawname.SetToLowerCase ();
+        rawname += BRACEEND;
+
+        const Param* pp = param.GetPtr (rawname);
+        if (pp == nullptr) continue;
         if (actParam.typeMod == API_ParSimple) {
             switch (actParam.typeID) {
                 case APIParT_LineTyp:
@@ -2200,10 +2210,10 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
                 case APIParT_ColRGB:
                 case APIParT_Intens:
                 case APIParT_Angle:
-                    actParam.value.real = pp.num;
+                    actParam.value.real = pp->num;
                     break;
                 case APIParT_CString:
-                    GS::ucscpy (actParam.value.uStr, pp.str.ToUStr (0, GS::Min (pp.str.GetLength (), (USize) API_UAddParStrLen)).Get ());
+                    GS::ucscpy (actParam.value.uStr, pp->str.ToUStr (0, GS::Min (pp->str.GetLength (), (USize) API_UAddParStrLen)).Get ());
                     break;
                 default:
                     break;
@@ -2225,15 +2235,15 @@ bool ParamToMemo (API_ElementMemo& memo, ParamDict& param)
                 case APIParT_ColRGB:
                 case APIParT_Intens:
                 case APIParT_Angle:
-                    if (actParam.dim1 != pp.dim1 || actParam.dim2 != pp.dim2) {
-                        actParam.dim1 = pp.dim1;
-                        actParam.dim2 = pp.dim2;
+                    if (actParam.dim1 != pp->dim1 || actParam.dim2 != pp->dim2) {
+                        actParam.dim1 = pp->dim1;
+                        actParam.dim2 = pp->dim2;
                     }
                     origArrHdl = (double**) actParam.value.array;
                     newArrHdl = (double**) BMAllocateHandle (actParam.dim1 * actParam.dim2 * sizeof (double), ALLOCATE_CLEAR, 0);
                     for (Int32 k = 0; k < actParam.dim1; k++)
                         for (Int32 j = 0; j < actParam.dim2; j++)
-                            (*newArrHdl)[k * actParam.dim2 + j] = pp.arr_num[k * actParam.dim2 + j];
+                            (*newArrHdl)[k * actParam.dim2 + j] = pp->arr_num[k * actParam.dim2 + j];
                     BMKillHandle ((GSHandle*) &origArrHdl);
                     actParam.value.array = (GSHandle) newArrHdl;
                     break;
