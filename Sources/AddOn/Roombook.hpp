@@ -214,8 +214,9 @@ namespace Roombook {
 
     UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd> &otd_elements, bool &has_base_element);
 
-    void
-    OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString &rawname, ColumnFormatDict &columnFormat);
+    void OtdData_GetColumnfFormat (GS::UniString descripton,
+                                   const GS::UniString &rawname,
+                                   ColumnFormatDict &columnFormat);
 
     void OtdData_CalcForRoom (const ColumnFormatDict &columnFormat,
                               const OtdRoom &otd,
@@ -233,7 +234,7 @@ namespace Roombook {
     void OtdData_AddValueToDict (OtdMaterialAreaDictByType &dct,
                                  const TypeOtd &type,
                                  const GS::UniString &mat,
-                                 const double &area);
+                                 double area);
 
     // -----------------------------------------------------------------------------
     // Убираем задвоение Guid зон у элементов
@@ -325,11 +326,11 @@ namespace Roombook {
                            ReadParams readparams);
 
     bool Param_SetToBase (const API_Guid &base_guid,
-                          const bool &base_flipped,
-                          GS::Array<ParamValueComposite> &otdcpmpoosite,
+                          bool base_flipped,
+                          GS::Array<ParamValueComposite> &otdComposite,
                           ParamDictElement &paramToRead,
                           ParamDictCompositeElement &paramCompositeToRead,
-                          ParamValue &param_composite,
+                          const ParamValue &param_composite,
                           GS::UniString &fav_name);
 
     void Param_SetComposite (const ParamComposite &base_composite,
@@ -439,7 +440,7 @@ namespace Roombook {
                            OtdMaterial &material,
                            bool only_on_slab);
 
-    bool Edge_FindOnEdge (Sector &edge, GS::Array<Sector> &edges, Sector &findedge);
+    bool Edge_FindOnEdge (const Sector &edge, const GS::Array<Sector> &edges, Sector &findedge);
 
     // -----------------------------------------------------------------------------
     // Проверка наличия отрезка в массиве отрезков.
@@ -463,13 +464,15 @@ namespace Roombook {
 
     void OtdBeam_Draw_Beam (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges);
 
-    bool
-    OtdBeam_GetDefult_Beam (const GS::UniString &favorite_name, API_Element &beamelement, API_ElementMemo &beammemo);
+    bool OtdBeam_GetDefult_Beam (const GS::UniString &favorite_name,
+                                 API_Element &beamelement,
+                                 API_ElementMemo &beammemo);
 
     void OtdBeam_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges);
 
-    bool
-    OtdBeam_GetDefult_Object (const GS::UniString &favorite_name, API_Element &beamelement, API_ElementMemo &beammemo);
+    bool OtdBeam_GetDefult_Object (const GS::UniString &favorite_name,
+                                   API_Element &beamelement,
+                                   API_ElementMemo &beammemo);
 
     // -----------------------------------------------------------------------------
     // Построение отделочных стен аксессуаром
@@ -507,8 +510,9 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     // Получение настроек проёмов в отделочных стенах
     // -----------------------------------------------------------------------------
-    bool
-    Opening_GetDefult (const GS::UniString &favorite_name, API_Element &windowelement, API_ElementMemo &windowmemo);
+    bool Opening_GetDefult (const GS::UniString &favorite_name,
+                            API_Element &windowelement,
+                            API_ElementMemo &windowmemo);
 
     // -----------------------------------------------------------------------------
     // Построение потолка/пола (общая)

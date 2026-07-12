@@ -680,51 +680,58 @@ namespace Roombook
         }
         if (!SyncGetSubelement (otd_els, parentdict, "base element", errcode)) {
             API_Guid parentguid = APINULLGuid;
+            UnicGuidByTypeOtd *parentMapPtr = exsistot_byparent.GetPtr (parentguid);
+            if (parentMapPtr == nullptr) {
+                exsistot_byparent.Add (parentguid, UnicGuidByTypeOtd{});
+                parentMapPtr = exsistot_byparent.GetPtr (parentguid);
+            }
+            UnicGuidByTypeOtd &parentMap = *parentMapPtr;
             for (const API_Guid &subguid : otd_els) {
-                if (!otd_elements.ContainsKey (subguid))
+                const TypeOtd *typePtr = otd_elements.GetPtr (subguid);
+                if (typePtr == nullptr) {
                     continue;
-                TypeOtd t = otd_elements.Get (subguid);
-                if (!exsistot_byparent.ContainsKey (parentguid)) {
-                    UnicGuidByTypeOtd subdicttype = {};
-                    exsistot_byparent.Add (parentguid, subdicttype);
                 }
-                if (!exsistot_byparent.Get (parentguid).ContainsKey (t)) {
-                    UnicGuid subdicttype = {};
-                    exsistot_byparent.Get (parentguid).Add (t, subdicttype);
+                TypeOtd t = *typePtr;
+                UnicGuid *subdictPtr = parentMap.GetPtr (t);
+                if (subdictPtr == nullptr) {
+                    parentMap.Add (t, UnicGuid{});
+                    subdictPtr = parentMap.GetPtr (t);
                 }
-                if (!exsistot_byparent.Get (parentguid).Get (t).ContainsKey (subguid)) {
-                    exsistot_byparent.Get (parentguid).Get (t).Add (subguid, true);
-                }
+                UnicGuid &subdict = *subdictPtr;
+                subdict.Add (subguid, true);
             }
             return exsistot_byparent;
         }
         for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentdict.EnumeratePairs (); cIt != NULL; ++cIt) {
     #if defined(AC_28) || defined(AC_29)
-            API_Guid subguid = cIt->key;
-            UnicGuid parentels = cIt->value;
+            const API_Guid &subguid = cIt->key;
+            UnicGuid &parentels = cIt->value;
     #else
-            API_Guid subguid = *cIt->key;
-            UnicGuid parentels = *cIt->value;
+            const API_Guid &subguid = *cIt->key;
+            UnicGuid &parentels = *cIt->value;
     #endif
-            if (!otd_elements.ContainsKey (subguid))
+            const TypeOtd *tPtr = otd_elements.GetPtr (subguid);
+            if (tPtr == nullptr)
                 continue;
-            TypeOtd t = otd_elements.Get (subguid);
+            TypeOtd t = *tPtr;
             for (UnicGuid::PairIterator cItt = parentels.EnumeratePairs (); cItt != NULL; ++cItt) {
     #if defined(AC_28) || defined(AC_29)
                 API_Guid parentguid = cItt->key;
     #else
                 API_Guid parentguid = *cItt->key;
     #endif
-                if (!exsistot_byparent.ContainsKey (parentguid)) {
-                    UnicGuidByTypeOtd subdicttype = {};
-                    exsistot_byparent.Add (parentguid, subdicttype);
+                UnicGuidByTypeOtd *parentMapPtr = exsistot_byparent.GetPtr (parentguid);
+                if (parentMapPtr == nullptr) {
+                    exsistot_byparent.Add (parentguid, UnicGuidByTypeOtd{});
+                    parentMapPtr = exsistot_byparent.GetPtr (parentguid);
                 }
-                if (!exsistot_byparent.Get (parentguid).ContainsKey (t)) {
-                    UnicGuid subdicttype = {};
-                    exsistot_byparent.Get (parentguid).Add (t, subdicttype);
+                UnicGuid *subdictPtr = parentMapPtr->GetPtr (t);
+                if (subdictPtr == nullptr) {
+                    parentMapPtr->Add (t, UnicGuid{});
+                    subdictPtr = parentMapPtr->GetPtr (t);
                 }
-                if (!exsistot_byparent.Get (parentguid).Get (t).ContainsKey (subguid)) {
-                    exsistot_byparent.Get (parentguid).Get (t).Add (subguid, true);
+                if (!subdictPtr->ContainsKey (subguid)) {
+                    subdictPtr->Add (subguid, true);
                     has_base_element = true;
                 }
             }
@@ -733,8 +740,9 @@ namespace Roombook
     }
 
     // Настройки для форматирования текста в таблицу
-    void
-    OtdData_GetColumnfFormat (GS::UniString descripton, const GS::UniString &rawname, ColumnFormatDict &columnFormat) {
+    void OtdData_GetColumnfFormat (GS::UniString descripton,
+                                   const GS::UniString &rawname,
+                                   ColumnFormatDict &columnFormat) {
         GS::UniString fontname = "GOST 2.304 type A";
         ColumnFormat c;
         if (descripton.Contains (BRACESTART) && descripton.Contains (BRACEEND) && descripton.Contains (SEMICOLON)) {
@@ -760,9 +768,9 @@ namespace Roombook
             if (n > 4) {
                 GS::UniString space = partstring[4].ToLowerCase ();
                 if (space.Contains ("nbs"))
-                    space = reinterpret_cast<const char *> (u8 "\u2007");
+                    space = reinterpret_cast<const char *> (u8"\u2007");
                 if (space.Contains ("ns"))
-                    space = reinterpret_cast<const char *> (u8 "\u202F");
+                    space = reinterpret_cast<const char *> (u8"\u202F");
                 if (space.Contains ("s"))
                     space = SPACESTRING;
                 c.no_breake_space = space;
@@ -770,9 +778,9 @@ namespace Roombook
             if (n > 5) {
                 GS::UniString space = partstring[5].ToLowerCase ();
                 if (space.Contains ("nbs"))
-                    space = reinterpret_cast<const char *> (u8 "\u2007");
+                    space = reinterpret_cast<const char *> (u8"\u2007");
                 if (space.Contains ("ns"))
-                    space = reinterpret_cast<const char *> (u8 "\u202F");
+                    space = reinterpret_cast<const char *> (u8"\u202F");
                 if (space.Contains ("s"))
                     space = SPACESTRING;
                 c.narow_space = space;
@@ -1059,23 +1067,26 @@ namespace Roombook
     void OtdData_AddValueToDict (OtdMaterialAreaDictByType &dct,
                                  const TypeOtd &type,
                                  const GS::UniString &mat,
-                                 const double &area) {
+                                 double area) {
         if (area < 0.000001)
             return;
         if (mat.Contains (IGNORENAME))
             return;
-        if (!dct.ContainsKey (type)) {
-            OtdMaterialAreaDict dcta = {};
-            dcta.Add (mat, area);
-            dct.Add (type, dcta);
+        OtdMaterialAreaDict *innerDictPtr = dct.GetPtr (type);
+
+        if (innerDictPtr == nullptr) {
+            // Если такого типа еще нет, создаем и добавляем
+            OtdMaterialAreaDict newDict;
+            newDict.Add (mat, area);
+            dct.Add (type, std::move (newDict));
             return;
+        }
+
+        // ищем площадь конкретного материала
+        if (double *existingAreaPtr = innerDictPtr->GetPtr (mat)) {
+            *existingAreaPtr += area;
         } else {
-            if (!dct.Get (type).ContainsKey (mat)) {
-                dct.Get (type).Add (mat, area);
-            } else {
-                double area_sum = dct.Get (type).Get (mat) + area;
-                dct.Get (type).Set (mat, area_sum);
-            }
+            innerDictPtr->Add (mat, area);
         }
     }
 
@@ -1173,17 +1184,16 @@ namespace Roombook
         roominfo.zBottom = std::round (roominfo.zBottom * 1000) / 1000;
         roominfo.floorInd = zoneelement.header.floorInd;
         bool flag = false;
-        for (const API_ElemTypeID &typeelem : typeinzone) {
-            if (relData.elementsGroupedByType.ContainsKey (typeelem)) {
-                GS::Array<API_Guid> guids = relData.elementsGroupedByType.Get (typeelem);
-                for (const API_Guid &elGuid : guids) {
+        for (API_ElemTypeID typeelem : typeinzone) {
+            if (const GS::Array<API_Guid> *guidsPtr = relData.elementsGroupedByType.GetPtr (typeelem)) {
+                for (const API_Guid &elGuid : *guidsPtr) {
                     Param_AddUnicElementByType (elGuid, zoneGuid, typeelem, elementToRead);
                 }
                 flag = true;
             }
         }
-        if (slabsinzone.ContainsKey (zoneGuid)) {
-            for (const API_Guid &elGuid : slabsinzone.Get (zoneGuid)) {
+        if (const GS::Array<API_Guid> *slabsPtr = slabsinzone.GetPtr (zoneGuid)) {
+            for (const API_Guid &elGuid : *slabsPtr) {
                 Param_AddUnicElementByType (elGuid, zoneGuid, API_SlabID, elementToRead);
             }
         }
@@ -1202,6 +1212,7 @@ namespace Roombook
             API_Guid elGuid;
             API_ElemSearchPars searchPars;
             API_ElemTypeID typeelem = API_WallID;
+            GS::Array<API_Guid> subelemGuid;
             for (UInt32 j = 0; j < walledges.GetSize (); j++) {
                 Sector tedge = walledges[j];
                 BNZeroMemory (&searchPars, sizeof (API_ElemSearchPars));
@@ -1223,31 +1234,27 @@ namespace Roombook
     #endif
                 if (err == NoError && elGuid != APINULLGuid) {
                     flag = true;
-                    GS::Array<API_Guid> subelemGuid;
+                    subelemGuid.Clear ();
                     GetRelationsElement (elGuid, syncSettings, subelemGuid);
                     for (const API_Guid &elGuid_ : subelemGuid) {
                         Param_AddUnicElementByType (elGuid_, zoneGuid, API_WindowID, elementToRead);
                     }
-                    if (!roominfo.walledges.ContainsKey (elGuid)) {
-                        GS::Array<Sector> t;
-                        t.Push (tedge);
-                        roominfo.walledges.Add (elGuid, t);
+                    if (GS::Array<Sector> *sectorsPtr = roominfo.walledges.GetPtr (elGuid)) {
+                        sectorsPtr->Push (tedge); // Если нашли, пушим напрямую в оригинальный массив
                     } else {
-                        roominfo.walledges.Get (elGuid).Push (tedge);
+                        roominfo.walledges.Add (elGuid, {tedge}); // Если не нашли, эффективно добавляем
                     }
-                    if (!elementToRead.ContainsKey (typeelem)) {
-                        UnicElement el;
-                        elementToRead.Add (typeelem, el);
+                    UnicElement *unicElPtr = elementToRead.GetPtr (typeelem);
+                    if (unicElPtr == nullptr) {
+                        elementToRead.Add (typeelem, UnicElement{});
+                        unicElPtr = elementToRead.GetPtr (typeelem);
                     }
-                    if (elementToRead.ContainsKey (typeelem)) {
-                        if (!elementToRead.Get (typeelem).ContainsKey (elGuid)) {
-                            GS::Array<API_Guid> el;
-                            el.Push (zoneGuid);
-                            elementToRead.Get (typeelem).Add (elGuid, el);
-                        } else {
-                            if (typeelem == API_WallID || typeelem == API_ColumnID)
-                                elementToRead.Get (typeelem).Get (elGuid).Push (zoneGuid);
+                    if (GS::Array<API_Guid> *zonesPtr = unicElPtr->GetPtr (elGuid)) {
+                        if (typeelem == API_WallID || typeelem == API_ColumnID) {
+                            zonesPtr->Push (zoneGuid);
                         }
+                    } else {
+                        unicElPtr->Add (elGuid, {zoneGuid});
                     }
                 } else {
                     msg_rep (
@@ -1312,12 +1319,10 @@ namespace Roombook
         if (op.width < min_dim || op.height < min_dim)
             return;
         op.base_guid = elGuid;
-        if (openinginwall.ContainsKey (wallguid)) {
-            openinginwall.Get (wallguid).Push (op);
+        if (GS::Array<OtdOpening> *openingsPtr = openinginwall.GetPtr (wallguid)) {
+            openingsPtr->Push (op);
         } else {
-            GS::Array<OtdOpening> openings;
-            openings.Push (op);
-            openinginwall.Add (wallguid, openings);
+            openinginwall.Add (wallguid, {op});
         }
         Param_AddUnicGUIDByType (elGuid, API_WindowID, guidselementToRead);
     }
@@ -1548,7 +1553,7 @@ namespace Roombook
             } else {
                 opinwall.objLoc = wallLength - op.objLoc - (wallLength - tEnd) + dw / 2;
             }
-            wallotd.openings.Push (opinwall);
+            wallotd.openings.Push (std::move (opinwall));
         }
     }
 
@@ -1641,30 +1646,30 @@ namespace Roombook
             columnedge = {begedge, endedge};
             columnedges.Push (columnedge);
             double zBottom = GetzPos (element.column.bottomOffset, element.header.floorInd, storyLevels);
-            for (Sector &coledge : columnedges) {
-                for (API_Guid zoneGuid : zoneGuids) {
-                    if (!roomsinfo.ContainsKey (zoneGuid))
+            for (const Sector &coledge : columnedges) {
+                for (const auto &zoneGuid : zoneGuids) {
+                    OtdRoom *roominfo = roomsinfo.GetPtr (zoneGuid);
+                    if (roominfo == nullptr)
                         continue;
-                    OtdRoom &roominfo = roomsinfo.Get (zoneGuid);
-                    if (!roominfo.isValid)
+                    if (!roominfo->isValid)
                         continue;
                     Sector cdge;
-                    bool find = Edge_FindOnEdge (coledge, roominfo.edges, cdge);
+                    bool find = Edge_FindOnEdge (coledge, roominfo->edges, cdge);
                     if (!find)
-                        find = Edge_FindOnEdge (coledge, roominfo.columnedges, cdge);
+                        find = Edge_FindOnEdge (coledge, roominfo->columnedges, cdge);
                     if (!find)
                         continue;
                     OtdWall wallotd;
                     wallotd.base_guid = elGuid;
                     wallotd.height = element.column.height;
                     wallotd.zBottom = zBottom;
-                    wallotd.floorInd = roominfo.floorInd;
+                    wallotd.floorInd = roominfo->floorInd;
                     wallotd.begC = {cdge.c1.x, cdge.c1.y};
                     wallotd.endC = {cdge.c2.x, cdge.c2.y};
-                    wallotd.material = roominfo.om_main;
+                    wallotd.material = roominfo->om_main;
                     wallotd.base_type = API_ColumnID;
                     wallotd.type = Column;
-                    roominfo.otdwall.Push (wallotd);
+                    roominfo->otdwall.Push (std::move (wallotd));
                     flag_find = true;
                 }
             }
@@ -1690,10 +1695,10 @@ namespace Roombook
         }
         if (allslabs_.IsEmpty ())
             return;
-        for (auto guid : allslabs_) {
+        for (const auto &guid : allslabs_) {
             API_Guid classguid = APINULLGuid;
             if (!Class_IsElementFinClass (guid, finclassguids, classguid))
-                allslabs.Push (guid);
+                allslabs.Push (std::move (guid));
         }
         if (allslabs.IsEmpty ())
             return;
@@ -1710,12 +1715,12 @@ namespace Roombook
             API_Guid classguid = APINULLGuid;
             if (Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids, classguid))
                 continue;
-            if (!slabsinzone.ContainsKey (pair.first.collidedElemGuid)) {
-                GS::Array<API_Guid> s = {};
-                s.Push (pair.second.collidedElemGuid);
-                slabsinzone.Add (pair.first.collidedElemGuid, s);
+            const API_Guid &zoneGuid = pair.first.collidedElemGuid;
+            const API_Guid &slabGuid = pair.second.collidedElemGuid;
+            if (GS::Array<API_Guid> *slabsPtr = slabsinzone.GetPtr (zoneGuid)) {
+                slabsPtr->Push (slabGuid);
             } else {
-                slabsinzone.Get (pair.first.collidedElemGuid).Push (pair.second.collidedElemGuid);
+                slabsinzone.Add (zoneGuid, {slabGuid});
             }
         }
     }
@@ -1742,20 +1747,17 @@ namespace Roombook
                                   element.header.floorInd,
                                   storyLevels);
         double zUp = zBottom + element.slab.thickness;
-        for (API_Guid zoneGuid : zoneGuids) {
-            if (!roomsinfo.ContainsKey (zoneGuid))
-                continue;
-            OtdRoom &roominfo = roomsinfo.Get (zoneGuid);
-            if (!roominfo.isValid)
+        for (const API_Guid &zoneGuid : zoneGuids) { // ОПТИМИЗАЦИЯ: Передаем по ссылке, а не копируем 16 байт GUID
+            OtdRoom *roominfoPtr = roomsinfo.GetPtr (zoneGuid);
+            if (roominfoPtr == nullptr || !roominfoPtr->isValid)
                 continue;
             // Проверяем отметки
-            bool is_floor = (zBottom <= roominfo.zBottom && zUp >= roominfo.zBottom);
-            bool is_ceil = (zBottom <= roominfo.zBottom + roominfo.height);
+            bool is_floor = (zBottom <= roominfoPtr->zBottom && zUp >= roominfoPtr->zBottom);
+            bool is_ceil = (zBottom <= roominfoPtr->zBottom + roominfoPtr->height);
             if (is_floor) {
-                roominfo.floorslab.Push (elGuid);
-            } else {
-                if (is_ceil)
-                    roominfo.ceilslab.Push (elGuid);
+                roominfoPtr->floorslab.Push (elGuid);
+            } else if (is_ceil) {
+                roominfoPtr->ceilslab.Push (elGuid);
             }
             flag_find = true;
         }
@@ -1914,7 +1916,7 @@ namespace Roombook
             otdslab.floorInd = floorInd;
             otdslab.type = type;
             otdslab.material = poly.material;
-            otdslabs.Push (otdslab);
+            otdslabs.Push (std::move (otdslab));
             // Удаляем отверстия и вычитаем из комнаты
             reducedroom.RemoveHoles ();
             double dzBottom = poly.zBottom - el.zBottom;
@@ -1951,7 +1953,7 @@ namespace Roombook
                         wallotd.type = type;
                         wallotd.floorInd = floorInd;
                         if (wallotd.height > 0.005)
-                            otdwall.Push (wallotd);
+                            otdwall.Push (std::move (wallotd));
                     }
                 }
                 Geometry::FreePolygon2DData (&polygon2DData);
@@ -1974,7 +1976,7 @@ namespace Roombook
             otdslab.floorInd = floorInd;
             otdslab.poly = roompolygon;
             roompolygon.Clear ();
-            otdslabs.Push (otdslab);
+            otdslabs.Push (std::move (otdslab));
         }
     }
 
@@ -1999,42 +2001,42 @@ namespace Roombook
 
         zoneparam_name = "frame";
         zoneparam.rawnames.Push ("{@gdl:gs_frame_thk}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "sill";
         zoneparam.rawnames.Push ("{@gdl:gs_wido_sill}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "useWallFinishSkin";
         zoneparam.rawnames.Push ("{@gdl:gs_usewallfinishskin}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "maxPlasterThk";
         zoneparam.rawnames.Push ("{@gdl:gs_maxplasterthk}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "AutoTurnIn";
         zoneparam.rawnames.Push ("{@gdl:gs_bautoturnin}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "bOverIn";
         zoneparam.rawnames.Push ("{@gdl:gs_boverin}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "plaster_show_3D";
         zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_show_3d}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "plaster_show_2D";
         zoneparam.rawnames.Push ("{@gdl:gs_turn_plaster_dim_2d}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         Param_Property_FindInParams (zoneparams);
@@ -2197,49 +2199,49 @@ namespace Roombook
         zoneparam_name = "has_ceil";
         zoneparam.rawnames.Push ("some_stuff_fin_has_ceil");
         zoneparam.rawnames.Push ("{@gdl:ispot}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Включение пола
         zoneparam_name = "has_floor";
         zoneparam.rawnames.Push ("some_stuff_fin_has_floor");
         zoneparam.rawnames.Push ("{@gdl:ispol}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Включение потолка только по плитам
         zoneparam_name = "floor_by_slab";
         zoneparam.rawnames.Push ("some_stuff_fin_floor_by_slab");
         zoneparam.rawnames.Push ("{@gdl:floor_by_slab}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Включение потолка только по плитам
         zoneparam_name = "ceil_by_slab";
         zoneparam.rawnames.Push ("some_stuff_fin_ceil_by_slab");
         zoneparam.rawnames.Push ("{@gdl:ceil_by_slab}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Тип отделки
         zoneparam_name = "tip_otd";
         zoneparam.rawnames.Push ("{@gdl:tip_otd}");
         zoneparam.rawnames.Push ("some_stuff_fin_type");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Тип потолка
         zoneparam_name = "tip_pot";
         zoneparam.rawnames.Push ("some_stuff_fin_type_ceil");
         zoneparam.rawnames.Push ("{@gdl:tip_pot}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Тип пола
         zoneparam_name = "tip_pol";
         zoneparam.rawnames.Push ("some_stuff_fin_type_floor");
         zoneparam.rawnames.Push ("{@gdl:tip_pol}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Основная отделка стен
@@ -2247,21 +2249,21 @@ namespace Roombook
         zoneparam.rawnames.Push ("some_stuff_fin_main_material");
         zoneparam.rawnames.Push ("{@gdl:stwallmat}");
         zoneparam.rawnames.Push ("{@gdl:votw}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Высота до подвесного потолка
         zoneparam_name = "height_main";
         zoneparam.rawnames.Push ("some_stuff_fin_main_height");
         zoneparam.rawnames.Push ("{@gdl:hroom_pot}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка стен выше потолка
         zoneparam_name = "om_up";
         zoneparam.rawnames.Push ("some_stuff_fin_up_material");
         zoneparam.rawnames.Push ("{@gdl:votw2}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка низа стен/колонн
@@ -2269,7 +2271,7 @@ namespace Roombook
         zoneparam.rawnames.Push ("some_stuff_fin_down_material");
         zoneparam.rawnames.Push ("{@gdl:stwalldownmat}");
         zoneparam.rawnames.Push ("{@gdl:votp}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Высота нижних панелей
@@ -2277,19 +2279,19 @@ namespace Roombook
         zoneparam.rawnames.Push ("some_stuff_fin_down_height");
         zoneparam.rawnames.Push ("{@gdl:hpan}");
         zoneparam.rawnames.Push ("{@gdl:z17}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Наличие нижней отделки (химера)
         zoneparam_name = "him_has_height_down";
         zoneparam.rawnames.Push ("{@gdl:busewalldown}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Высота нижних панелей (химера)
         zoneparam_name = "him_height_down";
         zoneparam.rawnames.Push ("{@gdl:walldownhigh}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка колонн
@@ -2297,7 +2299,7 @@ namespace Roombook
         zoneparam.rawnames.Push ("some_stuff_fin_column_material");
         zoneparam.rawnames.Push ("{@gdl:stcolumnmat}");
         zoneparam.rawnames.Push ("{@gdl:votc}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка потолка
@@ -2307,18 +2309,18 @@ namespace Roombook
         zoneparam.rawnames.Push ("{@gdl:vots}");
         zoneparam.rawnames.Push ("{@gdl:vots_fill}");
         zoneparam.rawnames.Push ("{@gdl:vots_bmat}");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка потолка - запись результатов
         zoneparam_name = "om_ceil.rawname";
         zoneparam.rawnames.Push ("some_stuff_fin_ceil_result");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "om_ceil.rawname_bytype";
         zoneparam.rawnames.Push ("some_stuff_fin_ceil_result_bytype");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка откосов - запись результатов
@@ -2326,100 +2328,100 @@ namespace Roombook
         zoneparam.rawnames.Push ("some_stuff_fin_reveal_result");
         zoneparam.rawnames.Push ("some_stuff_fin_reveals_result");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "om_reveals.rawname_bytype";
         zoneparam.rawnames.Push ("some_stuff_fin_reveal_result_bytype");
         zoneparam.rawnames.Push ("some_stuff_fin_reveals_result_bytype");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка выше потолка - запись результатов
         zoneparam_name = "om_up.rawname";
         zoneparam.rawnames.Push ("some_stuff_fin_up_result");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "om_up.rawname_bytype";
         zoneparam.rawnames.Push ("some_stuff_fin_up_result_bytype");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка стен - запись результатов
         zoneparam_name = "om_main.rawname";
         zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "om_main.rawname_bytype";
         zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка низа стен/колонн - запись результатов
         zoneparam_name = "om_down.rawname";
         zoneparam.rawnames.Push ("some_stuff_fin_down_result");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "om_down.rawname_bytype";
         zoneparam.rawnames.Push ("some_stuff_fin_down_result_bytype");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Отделка колонн - запись результатов
         zoneparam_name = "om_column.rawname";
         zoneparam.rawnames.Push ("some_stuff_fin_column_result");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         zoneparam_name = "om_column.rawname_bytype";
         zoneparam.rawnames.Push ("some_stuff_fin_column_result_bytype");
         zoneparam.rawnames.Push ("some_stuff_fin_main_result_bytype");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Создание всех элементов
         zoneparam_name = "create_all_elements";
         zoneparam.rawnames.Push ("some_stuff_fin_create_elements");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Создание отделки колонн
         zoneparam_name = "create_column_elements";
         zoneparam.rawnames.Push ("some_stuff_fin_create_column");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Создание отделки стен
         zoneparam_name = "create_wall_elements";
         zoneparam.rawnames.Push ("some_stuff_fin_create_wall");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Создание пола
         zoneparam_name = "create_ceil_elements";
         zoneparam.rawnames.Push ("some_stuff_fin_create_ceil");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Создание пола
         zoneparam_name = "create_floor_elements";
         zoneparam.rawnames.Push ("some_stuff_fin_create_floor");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         // Создание откосов
         zoneparam_name = "create_reveal_elements";
         zoneparam.rawnames.Push ("some_stuff_fin_create_reveal");
-        zoneparams.Put (zoneparam_name, zoneparam);
+        zoneparams.Add (zoneparam_name, zoneparam);
         zoneparam.rawnames.Clear ();
 
         Param_Property_FindInParams (zoneparams);
@@ -2531,7 +2533,7 @@ namespace Roombook
     #else
             val.intValue = attribinx;
     #endif
-            material_dict.Put (val.uniStringValue, val.intValue);
+            material_dict.Add (val.uniStringValue, val.intValue);
         }
     }
 
@@ -3036,8 +3038,10 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Задание прочитанных параметров для окон
     // -----------------------------------------------------------------------------
-    void
-    Param_SetToWindows (OtdOpening &op, ParamDictElement &paramToRead, ReadParams readparams, const OtdWall &otdw) {
+    void Param_SetToWindows (OtdOpening &op,
+                             ParamDictElement &paramToRead,
+                             ReadParams readparams,
+                             const OtdWall &otdw) {
         API_Guid base_guid = op.base_guid;
         if (!paramToRead.ContainsKey (base_guid)) {
     #if defined(TESTING)
@@ -3270,7 +3274,7 @@ namespace Roombook
                     zoneGuidsd.Clear ();
                     zoneGuids.Clear ();
                     for (const API_Guid &zoneGuid : zoneGuids_) {
-                        zoneGuidsd.Put (zoneGuid, true);
+                        zoneGuidsd.Add (zoneGuid, true);
                     }
                     for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
     #if defined(AC_28) || defined(AC_29)
@@ -3797,7 +3801,7 @@ namespace Roombook
         base_composite.Push (p);
     }
 
-    bool Edge_FindOnEdge (Sector &edge, GS::Array<Sector> &edges, Sector &findedge) {
+    bool Edge_FindOnEdge (const Sector &edge, const GS::Array<Sector> &edges, Sector &findedge) {
         double dx;
         double dy;
         double dr;
@@ -4060,8 +4064,9 @@ namespace Roombook
         edges.otd_guid = beamelement.header.guid;
     }
 
-    bool
-    OtdBeam_GetDefult_Beam (const GS::UniString &favorite_name, API_Element &beamelement, API_ElementMemo &beammemo) {
+    bool OtdBeam_GetDefult_Beam (const GS::UniString &favorite_name,
+                                 API_Element &beamelement,
+                                 API_ElementMemo &beammemo) {
         GSErrCode err = NoError;
         BNZeroMemory (&beamelement, sizeof (API_Element));
         BNZeroMemory (&beammemo, sizeof (API_ElementMemo));
@@ -4089,8 +4094,9 @@ namespace Roombook
         // ACAPI_DisposeElemMemoHdls (&beammemo);
     }
 
-    bool
-    OtdBeam_GetDefult_Object (const GS::UniString &favorite_name, API_Element &beamelement, API_ElementMemo &beammemo) {
+    bool OtdBeam_GetDefult_Object (const GS::UniString &favorite_name,
+                                   API_Element &beamelement,
+                                   API_ElementMemo &beammemo) {
         GSErrCode err = NoError;
         BNZeroMemory (&beammemo, sizeof (API_ElementMemo));
         BNZeroMemory (&beamelement, sizeof (API_Element));
@@ -4136,24 +4142,24 @@ namespace Roombook
         GDLHelpers::ParamDict accsessoryparams;
         GDLHelpers::Param p;
         p.num = 1;
-        accsessoryparams.Put ("{@gdl:ac_refside}", p);
+        accsessoryparams.Add ("{@gdl:ac_refside}", p);
         p.num = edges.material.material;
-        accsessoryparams.Put ("{@gdl:gs_bw_mat}", p);
+        accsessoryparams.Add ("{@gdl:gs_bw_mat}", p);
         p.num = edges.material.material;
-        accsessoryparams.Put ("{@gdl:matp1}", p);
+        accsessoryparams.Add ("{@gdl:matp1}", p);
 
         p.num = edges.height;
-        accsessoryparams.Put ("{@gdl:ac_wall_height}", p);
+        accsessoryparams.Add ("{@gdl:ac_wall_height}", p);
         p.num = ac_wall_length;
-        accsessoryparams.Put ("{@gdl:ac_wall_length}", p);
+        accsessoryparams.Add ("{@gdl:ac_wall_length}", p);
         p.num = 0;
-        accsessoryparams.Put ("{@gdl:ac_wall_radius}", p);
+        accsessoryparams.Add ("{@gdl:ac_wall_radius}", p);
 
         p.dim1 = 1;
         p.dim2 = 2;
         p.arr_num.Push (0);
         p.arr_num.Push (0);
-        accsessoryparams.Put ("{@gdl:ac_side_poly}", p);
+        accsessoryparams.Add ("{@gdl:ac_side_poly}", p);
         p.arr_num.Clear ();
 
         p.dim1 = 2;
@@ -4162,7 +4168,7 @@ namespace Roombook
         p.arr_num.Push (edges.height);
         p.arr_num.Push (ac_wall_length);
         p.arr_num.Push (edges.height);
-        accsessoryparams.Put ("{@gdl:ac_top_poly}", p);
+        accsessoryparams.Add ("{@gdl:ac_top_poly}", p);
         p.arr_num.Clear ();
 
         p.dim1 = 2;
@@ -4171,14 +4177,14 @@ namespace Roombook
         p.arr_num.Push (0);
         p.arr_num.Push (ac_wall_length);
         p.arr_num.Push (0);
-        accsessoryparams.Put ("{@gdl:ac_bot_poly}", p);
+        accsessoryparams.Add ("{@gdl:ac_bot_poly}", p);
         p.arr_num.Clear ();
 
         p.dim1 = 1;
         p.dim2 = 2;
         p.arr_num.Push (edges.ang_begC);
         p.arr_num.Push (edges.ang_endC);
-        accsessoryparams.Put ("{@gdl:ac_angles}", p);
+        accsessoryparams.Add ("{@gdl:ac_angles}", p);
         p.arr_num.Clear ();
 
         if (edges.openings.IsEmpty ()) {
@@ -4214,7 +4220,7 @@ namespace Roombook
             p.dim1 = edges.openings.GetSize ();
             p.dim2 = 9;
         }
-        accsessoryparams.Put ("{@gdl:ac_wd_poly}", p);
+        accsessoryparams.Add ("{@gdl:ac_wd_poly}", p);
         p.arr_num.Clear ();
         GDLHelpers::ParamToMemo (wallobjmemo, accsessoryparams);
         Vector2D ref = {-1, 0};
@@ -4408,8 +4414,9 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Получение настроек проёмов в отделочных стенах
     // -----------------------------------------------------------------------------
-    bool
-    Opening_GetDefult (const GS::UniString &favorite_name, API_Element &windowelement, API_ElementMemo &windowmemo) {
+    bool Opening_GetDefult (const GS::UniString &favorite_name,
+                            API_Element &windowelement,
+                            API_ElementMemo &windowmemo) {
         GSErrCode err = NoError;
         BNZeroMemory (&windowmemo, sizeof (API_ElementMemo));
         BNZeroMemory (&windowelement, sizeof (API_Element));
@@ -4587,37 +4594,37 @@ namespace Roombook
         GDLHelpers::Param p = {};
         if (otdslab.type == Ceil) {
             p.num = otdslab.zBottom;
-            accsessoryparams.Put ("{@gdl:ac_ref_height}", p);
+            accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
             slabobjelement.object.level = GetzPos (0, otdslab.floorInd, storyLevels);
         }
         if (otdslab.type == Floor) {
             p.num = otdslab.zBottom;
-            accsessoryparams.Put ("{@gdl:ac_ref_height}", p);
+            accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
             slabobjelement.object.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
         }
         p.str = otdslab.tip;
-        accsessoryparams.Put ("{@gdl:tip_pol}", p);
+        accsessoryparams.Add ("{@gdl:tip_pol}", p);
         p.str = "";
         p.num = 1;
-        accsessoryparams.Put ("{@gdl:mun_zone}", p);
+        accsessoryparams.Add ("{@gdl:mun_zone}", p);
         p.num = 0;
-        accsessoryparams.Put ("{@gdl:ac_pitch}", p);
+        accsessoryparams.Add ("{@gdl:ac_pitch}", p);
         p.num = 0;
-        accsessoryparams.Put ("{@gdl:ac_ceilling_side}", p);
+        accsessoryparams.Add ("{@gdl:ac_ceilling_side}", p);
         p.num = 0;
-        accsessoryparams.Put ("{@gdl:ac_ceiling_type}", p);
+        accsessoryparams.Add ("{@gdl:ac_ceiling_type}", p);
         p.num = otdslab.material.material;
-        accsessoryparams.Put ("{@gdl:ceil_mat}", p);
+        accsessoryparams.Add ("{@gdl:ceil_mat}", p);
         p.num = otdslab.material.material;
-        accsessoryparams.Put ("{@gdl:matedge}", p);
+        accsessoryparams.Add ("{@gdl:matedge}", p);
         p.num = otdslab.material.material;
-        accsessoryparams.Put ("{@gdl:matceipanel}", p);
+        accsessoryparams.Add ("{@gdl:matceipanel}", p);
         p.num = 0.02;
-        accsessoryparams.Put ("{@gdl:ceil_thk}", p);
+        accsessoryparams.Add ("{@gdl:ceil_thk}", p);
         p.num = 0.02;
-        accsessoryparams.Put ("{@gdl:ac_thickness}", p);
+        accsessoryparams.Add ("{@gdl:ac_thickness}", p);
         p.num = 0;
-        accsessoryparams.Put ("{@gdl:ac_slab_side}", p);
+        accsessoryparams.Add ("{@gdl:ac_slab_side}", p);
         Geometry::Polygon2DData polygon2DData;
         Geometry::InitPolygon2DData (&polygon2DData);
         Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, otdslab.poly);
@@ -4650,31 +4657,31 @@ namespace Roombook
         ac_coords.dim2 = 3;
         ac_whole_poly.dim1 = 1;
         ac_whole_poly.dim2 = ac_whole_poly.arr_num.GetSize ();
-        accsessoryparams.Put ("{@gdl:ac_whole_poly}", ac_whole_poly);
-        accsessoryparams.Put ("{@gdl:ac_coords}", ac_coords);
+        accsessoryparams.Add ("{@gdl:ac_whole_poly}", ac_whole_poly);
+        accsessoryparams.Add ("{@gdl:ac_coords}", ac_coords);
         if (is_new) {
             if (otdslab.type == Ceil) {
                 p.num = bbox.xMax - bbox.xMin - 0.1;
-                accsessoryparams.Put ("{@gdl:pos_x2}", p);
+                accsessoryparams.Add ("{@gdl:pos_x2}", p);
                 p.num = bbox.yMax - bbox.yMin - 0.1;
-                accsessoryparams.Put ("{@gdl:pos_y2}", p);
+                accsessoryparams.Add ("{@gdl:pos_y2}", p);
 
                 p.num = (bbox.xMax - bbox.xMin - 0.1) / 2;
-                accsessoryparams.Put ("{@gdl:pos_xtxt}", p);
+                accsessoryparams.Add ("{@gdl:pos_xtxt}", p);
                 p.num = (bbox.yMax - bbox.yMin - 0.1) / 2;
-                accsessoryparams.Put ("{@gdl:pos_ytxt}", p);
+                accsessoryparams.Add ("{@gdl:pos_ytxt}", p);
             }
             if (otdslab.type == Floor) {
                 p.num = otdslab.poly.GetCenter ().x - bbox.xMin;
-                accsessoryparams.Put ("{@gdl:pos_x1}", p);
+                accsessoryparams.Add ("{@gdl:pos_x1}", p);
                 p.num = otdslab.poly.GetCenter ().y - bbox.yMin;
-                accsessoryparams.Put ("{@gdl:pos_y1}", p);
+                accsessoryparams.Add ("{@gdl:pos_y1}", p);
             }
             p.dim1 = 1;
             p.dim2 = 2;
             p.arr_num.Push (otdslab.poly.GetCenter ().x - bbox.xMin);
             p.arr_num.Push (otdslab.poly.GetCenter ().y - bbox.yMin);
-            accsessoryparams.Put ("{@gdl:fieldorig}", p);
+            accsessoryparams.Add ("{@gdl:fieldorig}", p);
         }
         Geometry::FreePolygon2DData (&polygon2DData);
         GDLHelpers::ParamToMemo (slabobjmemo, accsessoryparams);
@@ -4878,39 +4885,39 @@ namespace Roombook
                 GS::UniString desc = clas.item.description.ToLowerCase ();
                 if (desc.Contains ("some_stuff_fin_")) {
                     if (desc.Contains (cls.all_class)) {
-                        findict.Put (cls.all_class, clas);
+                        findict.Add (cls.all_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Put (clas.item.guid, false);
+                            finclassguids.Add (clas.item.guid, false);
                     }
                     if (desc.Contains (cls.ceil_class)) {
                         findict.Add (cls.ceil_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Put (clas.item.guid, false);
+                            finclassguids.Add (clas.item.guid, false);
                     }
                     if (desc.Contains (cls.column_class)) {
-                        findict.Put (cls.column_class, clas);
+                        findict.Add (cls.column_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Put (clas.item.guid, false);
+                            finclassguids.Add (clas.item.guid, false);
                     }
                     if (desc.Contains (cls.floor_class)) {
-                        findict.Put (cls.floor_class, clas);
+                        findict.Add (cls.floor_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Put (clas.item.guid, false);
+                            finclassguids.Add (clas.item.guid, false);
                     }
                     if (desc.Contains (cls.otdwall_class)) {
-                        findict.Put (cls.otdwall_class, clas);
+                        findict.Add (cls.otdwall_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Put (clas.item.guid, false);
+                            finclassguids.Add (clas.item.guid, false);
                     }
                     if (desc.Contains (cls.reveal_class)) {
-                        findict.Put (cls.reveal_class, clas);
+                        findict.Add (cls.reveal_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Put (clas.item.guid, false);
+                            finclassguids.Add (clas.item.guid, false);
                     }
                     if (desc.Contains (cls.otdwall_down_class)) {
-                        findict.Put (cls.otdwall_down_class, clas);
+                        findict.Add (cls.otdwall_down_class, clas);
                         if (!finclassguids.ContainsKey (clas.item.guid))
-                            finclassguids.Put (clas.item.guid, false);
+                            finclassguids.Add (clas.item.guid, false);
                     }
                 }
             }
@@ -4960,7 +4967,7 @@ namespace Roombook
                     continue;
                 for (const auto &g : subguids) {
                     if (!syncguidsdict.ContainsKey (g)) {
-                        syncguidsdict.Put (g, true);
+                        syncguidsdict.Add (g, true);
                         syncguids.Push (g);
                     }
                 }
@@ -5046,7 +5053,7 @@ namespace Roombook
 
         if (bytypePtr == nullptr) {
             UnicElement el;
-            elementToRead.Put (elemtype, std::move (el));
+            elementToRead.Add (elemtype, std::move (el));
             bytypePtr = elementToRead.GetPtr (elemtype);
         }
 
@@ -5057,7 +5064,7 @@ namespace Roombook
         } else {
             GS::Array<API_Guid> el;
             el.Push (guid);
-            bytypePtr->Put (parentguid, std::move (el));
+            bytypePtr->Add (parentguid, std::move (el));
         }
     }
 
@@ -5069,7 +5076,7 @@ namespace Roombook
         } else {
             GS::Array<API_Guid> z;
             z.Push (elGuid);
-            guidselementToRead.Put (elemtype, std::move (z));
+            guidselementToRead.Add (elemtype, std::move (z));
         }
     }
 
@@ -5104,7 +5111,7 @@ namespace Roombook
                 name.Trim ();
                 fav.name = name;
                 if (!favdict.ContainsKey (name))
-                    favdict.Put (name, fav);
+                    favdict.Add (name, fav);
             }
         }
         if (favdict.IsEmpty ()) {

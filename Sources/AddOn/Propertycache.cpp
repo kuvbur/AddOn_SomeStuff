@@ -181,7 +181,7 @@ namespace ParamHelpers {
         GS::UniString lowerName = name;
         lowerName.SetToLowerCase ();
         GS::UniString rawname = GDLNAMEPREFIX + lowerName + BRACEEND;
-        cache.gdlparamname.Put (name, rawname);
+        cache.gdlparamname.Add (name, rawname);
         return rawname;
     }
 
@@ -348,12 +348,12 @@ namespace ParamHelpers {
                 GS::Guid systemguid = systemID.GetGuid ();
                 if (MEPDict *pPtr = mepdict.GetPtr (systemguid)) {
                     if (!pPtr->ContainsKey (systemGroupguid)) {
-                        pPtr->Put (systemGroupguid, true);
+                        pPtr->Add (systemGroupguid, true);
                     }
                 } else {
                     MEPDict newDict;
-                    newDict.Put (systemGroupguid, true);
-                    mepdict.Put (systemguid, std::move (newDict));
+                    newDict.Add (systemGroupguid, true);
+                    mepdict.Add (systemguid, std::move (newDict));
                 }
             }
         }
@@ -578,35 +578,35 @@ namespace ParamHelpers {
         pvalue.rawName.Append (pvalue.name.ToLowerCase ());
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.x + offset.x);
-        propertyParams.Put (pvalue.rawName, pvalue);
+        propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "locOrigin_y";
         pvalue.rawName = GLOBNAMEPREFIX;
         pvalue.rawName.Append (pvalue.name.ToLowerCase ());
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.y + offset.y);
-        propertyParams.Put (pvalue.rawName, pvalue);
+        propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "locOrigin_z";
         pvalue.rawName = GLOBNAMEPREFIX;
         pvalue.rawName.Append (pvalue.name.ToLowerCase ());
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, locOrigin.z);
-        propertyParams.Put (pvalue.rawName, pvalue);
+        propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "offsetOrigin_x";
         pvalue.rawName = GLOBNAMEPREFIX;
         pvalue.rawName.Append (pvalue.name.ToLowerCase ());
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.x);
-        propertyParams.Put (pvalue.rawName, pvalue);
+        propertyParams.Add (pvalue.rawName, pvalue);
 
         pvalue.name = "offsetOrigin_y";
         pvalue.rawName = GLOBNAMEPREFIX;
         pvalue.rawName.Append (pvalue.name.ToLowerCase ());
         pvalue.rawName.Append (BRACEEND);
         ParamHelpers::ConvertDoubleToParamValue (pvalue, EMPTYSTRING, offset.y);
-        propertyParams.Put (pvalue.rawName, pvalue);
+        propertyParams.Add (pvalue.rawName, pvalue);
 #if defined(TESTING)
         DBprnt ("   GetLocOriginToParamDict end");
 #endif
@@ -647,7 +647,7 @@ namespace ParamHelpers {
                 pvalue.rawName = rawName;
                 pvalue.fromInfo = true;
                 ParamHelpers::ConvertStringToParamValue (pvalue, rawName, autotexts[i][2]);
-                propertyParams.Put (rawName, std::move (pvalue));
+                propertyParams.Add (rawName, std::move (pvalue));
             }
         }
 #if defined(TESTING)
@@ -677,7 +677,7 @@ namespace ParamHelpers {
                 ParamValue pvalue = {};
                 rawName = "layer_name_" + attribname;
                 ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
-                propertyParams.Put (pvalue.rawName, pvalue);
+                propertyParams.Add (pvalue.rawName, pvalue);
                 pvalue.name = "";
                 pvalue.rawName = "";
 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -686,7 +686,7 @@ namespace ParamHelpers {
                 rawName = "layer_inx_" + GS::UniString::Printf ("%d", attrib.header.index);
 #endif
                 ParamHelpers::ConvertAttributeToParamValue (pvalue, rawName, attrib);
-                propertyParams.Put (pvalue.rawName, std::move (pvalue));
+                propertyParams.Add (pvalue.rawName, std::move (pvalue));
             } else {
                 if (err == APIERR_DELETED)
                     err = NoError;
@@ -769,7 +769,7 @@ namespace ParamHelpers {
                     rawName = "{@property:sync_name";
                     rawName.Append (strinx);
                     rawName.Append (BRACEEND);
-                    name = "sync_name";
+                    name = SYNCNAME;
                     name.Append (strinx);
                     if (!propertyParams.ContainsKey (rawName))
                         break;
@@ -781,7 +781,7 @@ namespace ParamHelpers {
                 pvalue.name.Append (SLASH);
                 pvalue.name.Append (definision.name);
                 ParamHelpers::ConvertToParamValue (pvalue, definision);
-                propertyParams.Put (pvalue.rawName, std::move (pvalue));
+                propertyParams.Add (pvalue.rawName, std::move (pvalue));
                 flag_add = true;
                 continue;
             }
@@ -817,7 +817,8 @@ namespace ParamHelpers {
                 pvalue.rawName = rawName;
                 pvalue.name = name;
                 ParamHelpers::ConvertToParamValue (pvalue, definision);
-                propertyParams.Put (rawName, std::move (pvalue));
+                rawName = pvalue.rawName; // при конвертации могло измениться
+                propertyParams.Add (rawName, std::move (pvalue));
                 flag_add = true;
             }
         }
@@ -842,12 +843,12 @@ void AddUnreadGDLParams (const Int32 &libinx, const GS::UniString &rawname) {
     bool isParamAdded = false;
     if (ParamDict *pPtr = cache.unreadedgdlparams.GetPtr (libinx)) {
         if (!pPtr->ContainsKey (rawname)) {
-            pPtr->Put (rawname, true);
+            pPtr->Add (rawname, true);
             isParamAdded = true;
         }
     } else {
         ParamDict p;
-        p.Put (rawname, true);
+        p.Add (rawname, true);
         cache.unreadedgdlparams.Add (libinx, std::move (p));
         isParamAdded = true;
     }
@@ -972,7 +973,7 @@ bool DimReadPref (DimRules &dimrules, const GS::UniString &autotext, bool &hasLa
                 } else {
                     kstr = dimrule.layer;
                 }
-                dimrules.Put (std::move (kstr), std::move (dimrule));
+                dimrules.Add (std::move (kstr), std::move (dimrule));
             }
         }
     } else {
@@ -987,7 +988,7 @@ bool DimReadPref (DimRules &dimrules, const GS::UniString &autotext, bool &hasLa
                 kstr = dimrule.layer;
             }
             dimrule.kstr = kstr;
-            dimrules.Put (std::move (kstr), std::move (dimrule));
+            dimrules.Add (std::move (kstr), std::move (dimrule));
         }
     }
     return !dimrules.IsEmpty ();
