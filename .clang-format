@@ -43,3 +43,11 @@ SpaceInEmptyParentheses: false
 SpaceBeforeAssignmentOperators: true
 
 NamespaceIndentation: All
+
+BreakStringLiterals: false
+
+Standard: Latest
+
+AlwaysBreakAfterReturnType: None
+
+PenaltyReturnTypeOnItsOwnLine: 1000

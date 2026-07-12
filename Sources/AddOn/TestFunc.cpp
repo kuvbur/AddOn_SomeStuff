@@ -766,13 +766,13 @@ namespace TestFunc {
                 "ConvertToParamValue(Definition) : fromPropertyDefinition (нет спецмаркеров)",
                 true);
 
-        // ---- Граница: description содержит "sync_name" -> особый rawName ----
+        // ---- Граница: description содержит SYNCNAME -> особый rawName ----
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:anything}";
         pvalue.name = "TestDefSyncName";
         definition = {};
         definition.guid = APINULLGuid;
-        definition.description = "sync_name";
+        definition.description = SYNCNAME;
         definition.valueType = API_PropertyStringValueType;
         ParamHelpers::ConvertToParamValue (pvalue, definition);
         DBtest (pvalue.rawName,

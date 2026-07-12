@@ -1054,7 +1054,7 @@ short GetFontIndex (GS::UniString &fontname) {
     return inx;
 }
 
-double GetTextWidth (short &font, double &fontsize, GS::UniString &var) {
+double GetTextWidth (short font, double fontsize, GS::UniString &var) {
     GSErrCode err = NoError;
     double width = 0.0;
     API_TextLinePars tlp = {};
@@ -1079,94 +1079,104 @@ double GetTextWidth (short &font, double &fontsize, GS::UniString &var) {
     return width;
 }
 
-GS::Array<GS::UniString> DelimTextLine (short &font,
-                                        double &fontsize,
-                                        double &width,
+GS::Array<GS::UniString> DelimTextLine (short font,
+                                        double fontsize,
+                                        double width,
                                         GS::UniString &var,
-                                        GS::UniString &no_breake_space,
-                                        GS::UniString &narow_space) {
+                                        GS::UniString &no_break_space,
+                                        GS::UniString &narrow_space) {
     GS::Array<GS::UniString> str;
     if (var.IsEmpty ())
         return str;
-    double width_space = 0;
+
     double width_in = GetTextWidth (font, fontsize, var);
-    if (fabs (width_in - width) < 0.01) {
-        str.PushNew (var);
+    if (std::fabs (width_in - width) < 0.01) {
+        str.Push (var);
         return str;
     }
-    var.ReplaceAll (SPACESTRING, no_breake_space);
-    width_space = GetTextWidth (font, fontsize, narow_space);
-    Int32 addspace = 1;
-    if (width_in < width) {
-        if (width_space > 0.001)
-            addspace = (Int32)((width - width_in) / width_space);
-        if (fabs (addspace * width_space - width + width_in) > 0.01)
-            addspace -= 1;
-        GS::UniString addspace_txt = var;
-        if (addspace > 0) {
+
+    // Заменяем обычные пробелы на неразрывные в исходном тексте
+    var.ReplaceAll (SPACESTRING, no_break_space);
+    double width_space = GetTextWidth (font, fontsize, narrow_space);
+
+    auto padLineWithSpaces = [&] (GS::UniString &text, double currentWidth) {
+        if (width_space > 0.001 && currentWidth < width) {
+            Int32 addspace = static_cast<Int32> ((width - currentWidth) / width_space);
+            if (std::fabs (addspace * width_space - width + currentWidth) > 0.01) {
+                addspace -= 1;
+            }
             for (Int32 j = 0; j < addspace; j++) {
-                addspace_txt.Append (narow_space);
+                text.Append (narrow_space);
             }
         }
-        str.Push (addspace_txt);
+    };
+
+    if (width_in < width) {
+        GS::UniString paddedTxt = var;
+        padLineWithSpaces (paddedTxt, width_in);
+        str.Push (paddedTxt);
         return str;
     }
+
     GS::Array<GS::UniString> parts;
-    GS::Array<GS::UniString> loopScratch;
-    UInt32 npart = StringSplt (var, no_breake_space, parts, true, &loopScratch);
-    if (npart == 1)
-        npart = StringSplt (var, COMMA, parts, true, &loopScratch);
-    if (npart == 1)
-        npart = StringSplt (var, DOT, parts, true, &loopScratch);
-    if (npart == 1)
-        npart = StringSplt (var, ")", parts, true, &loopScratch);
-    if (npart == 1)
-        npart = StringSplt (var, ":", parts, true, &loopScratch);
-    if (npart == 1)
-        npart = StringSplt (var, "-", parts, true, &loopScratch);
-    if (npart == 1) {
-        str.PushNew (var);
-        return str;
-    };
-    GS::UniString out = "";
-    GS::UniString old = "";
-    double width_old = 0;
+    GS::UniString currentPart = "";
+
+    for (UIndex i = 0; i < var.GetLength (); ++i) {
+        GS::UniChar ch = var[i];
+        currentPart.Append (ch);
+
+        // Если символ является разделителем, текущий токен завершается прямо НА НЁМ
+        if (ch == ',' || ch == '.' || ch == ')' || ch == ':' || ch == '-' ||
+            (!no_break_space.IsEmpty () && ch == no_break_space[0])) {
+            parts.Push (currentPart);
+            currentPart.Clear ();
+        }
+    }
+    if (!currentPart.IsEmpty ()) {
+        parts.Push (currentPart);
+    }
+
+    // Сборка строк с контролем ширины
+    GS::UniString currentLine = "";
+    double currentLineWidth = 0.0;
+    UInt32 npart = parts.GetSize ();
+
     for (UInt32 i = 0; i < npart; i++) {
-        if (out.IsEmpty ()) {
-            out = parts.Get (i);
+        const GS::UniString &part = parts[i];
+
+        GS::UniString testLine = currentLine + part;
+        double testWidth = GetTextWidth (font, fontsize, testLine);
+
+        if (testWidth > width && !currentLine.IsEmpty ()) {
+            // Перед переносом убираем «висячие» пробелы на конце строки, если они есть,
+            // чтобы выравнивание по ширине (narrow_space) считалось корректно
+            while (!currentLine.IsEmpty () && currentLine.EndsWith (no_break_space)) {
+                currentLine.Delete (currentLine.GetLength () - no_break_space.GetLength (),
+                                    no_break_space.GetLength ());
+            }
+            currentLineWidth = GetTextWidth (font, fontsize, currentLine);
+
+            padLineWithSpaces (currentLine, currentLineWidth);
+            str.Push (currentLine);
+
+            // Начинаем новую строку с элемента, который не поместился
+            currentLine = part;
+            currentLineWidth = GetTextWidth (font, fontsize, currentLine);
         } else {
-            out.Append (no_breake_space);
-            out.Append (parts.Get (i));
+            currentLine = testLine;
+            currentLineWidth = testWidth;
         }
-        width_in = GetTextWidth (font, fontsize, out);
-        if (width_in > width && !old.IsEmpty ()) {
-            if (width_space > 0.001)
-                addspace = (Int32)((width - width_old) / width_space);
-            if (fabs (addspace * width_space - width + width_old) > 0.01)
-                addspace -= 1;
-            if (addspace > 0) {
-                for (Int32 j = 0; j < addspace; j++) {
-                    old.Append (narow_space);
-                }
-            }
-            str.Push (old);
-            out = parts.Get (i);
-        }
+
+        // Если это самый последний кусочек текста
         if (i == npart - 1) {
-            width_in = GetTextWidth (font, fontsize, out);
-            if (width_space > 0.001)
-                addspace = (Int32)((width - width_in) / width_space);
-            if (fabs (addspace * width_space - width + width_in) > 0.01)
-                addspace -= 1;
-            if (addspace > 0) {
-                for (Int32 j = 0; j < addspace; j++) {
-                    out.Append (narow_space);
-                }
+            while (!currentLine.IsEmpty () && currentLine.EndsWith (no_break_space)) {
+                currentLine.Delete (currentLine.GetLength () - no_break_space.GetLength (),
+                                    no_break_space.GetLength ());
             }
-            str.Push (out);
+            currentLineWidth = GetTextWidth (font, fontsize, currentLine);
+            padLineWithSpaces (currentLine, currentLineWidth);
+            str.Push (currentLine);
         }
-        old = out;
-        width_old = width_in;
     }
     return str;
 }
@@ -1198,14 +1208,10 @@ GSErrCode IsTeamwork (bool &isteamwork, short &userid) {
 bool EvalExpression (GS::UniString &unistring_expression) {
     if (unistring_expression.IsEmpty ())
         return false;
-    if (!unistring_expression.Contains (CHARFORMULASTART) && !unistring_expression.Contains (CHARFORMULAEND))
+
+    if (!unistring_expression.Contains (CHARFORMULASTART) || !unistring_expression.Contains (CHARFORMULAEND))
         return false;
-    GS::UniString part = "";
-    GS::UniString part_clean = "";
-    GS::UniString stringformat = "";
-    GS::UniString rezult_txt = "";
-    FormatString fstring;
-    bool flag_change = true;
+
     // Определение правильного разделителя для расчётов
     GS::UniString delim = DOT;
     GS::UniString baddelim = COMMA;
@@ -1217,43 +1223,67 @@ bool EvalExpression (GS::UniString &unistring_expression) {
         baddelim = DOT;
         delim = COMMA;
     }
-    GS::UniString string_to_find = "";
-    GSCharCode chcode = GetCharCode (unistring_expression);
-    while (unistring_expression.Contains (CHARFORMULASTART) && unistring_expression.Contains (CHARFORMULAEND) &&
-           flag_change) {
-        GS::UniString expression_old = unistring_expression;
-        part = unistring_expression.GetSubstring (CHARFORMULASTART, CHARFORMULAEND, 0);
-        // Ищем строку-формат
-        stringformat.Clear ();
-        fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
+
+    const GSCharCode chcode = GetCharCode (unistring_expression);
+
+    UIndex startPos = 0;
+    while ((startPos = unistring_expression.FindFirst (CHARFORMULASTART, startPos)) != MaxUSize) {
+
+        UIndex endPos = unistring_expression.FindFirst (CHARFORMULAEND, startPos + 1);
+        if (endPos == MaxUSize) {
+            break;
+        }
+
+        UIndex formulaLength = endPos - startPos - 1;
+        GS::UniString part = unistring_expression.GetSubstring (startPos + 1, formulaLength);
+
+        GS::UniString stringformat;
+        FormatString fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
+
+        // Конвертируем в std::string для безопасной посимвольной обработки
+        std::string expression_string (part.ToCStr (0, MaxUSize, chcode).Get ());
+        if (baddelim == COMMA && expression_string.length () > 2) {
+            for (size_t j = 1; j < expression_string.length () - 1; ++j) {
+                if (expression_string[j] == ',') {
+                    // Меняем на точку, ТОЛЬКО если слева И справа находятся чистые цифры
+                    if (std::isdigit (static_cast<unsigned char> (expression_string[j - 1])) &&
+                        std::isdigit (static_cast<unsigned char> (expression_string[j + 1]))) {
+                        expression_string[j] = '.';
+                    }
+                }
+            }
+        }
+
+        // Вычисляем математическое выражение через ExprTk
         typedef double T;
         typedef exprtk::expression<T> expression_t;
         typedef exprtk::parser<T> parser_t;
-        part_clean = part;
-        if (part_clean.Contains (baddelim))
-            part_clean.ReplaceAll (baddelim, delim);
-        std::string expression_string (part_clean.ToCStr (0, MaxUSize, chcode).Get ());
+
         expression_t expression;
         parser_t parser;
-        parser.compile (expression_string, expression);
-        const T result = expression.value ();
-        rezult_txt.Clear ();
-        if (!std::isnan (result))
-            rezult_txt = FormatStringFunc::NumToString (result, fstring);
+
+        GS::UniString rezult_txt;
+        if (parser.compile (expression_string, expression)) {
+            const T result = expression.value ();
+            if (!std::isnan (result)) {
+                rezult_txt = FormatStringFunc::NumToString (result, fstring);
+            }
+        }
 #if defined(TESTING)
-        if (std::isnan (result)) {
-            DBprnt ("err Formula is nan", part_clean);
+        else {
+            DBprnt ("ExprTk Compile Error in formula:", expression_string.c_str ());
         }
 #endif
-        string_to_find.Clear ();
-        string_to_find.Append (CHARFORMULASTART);
-        string_to_find.Append (part);
-        string_to_find.Append (CHARFORMULAEND);
-        string_to_find.Append (stringformat);
-        unistring_expression.ReplaceAll (string_to_find, rezult_txt);
-        if (expression_old.IsEqual (unistring_expression))
-            flag_change = false;
+
+        // Формируем токен для удаления
+        GS::UniString totalToken = CHARFORMULASTART + part + CHARFORMULAEND + stringformat;
+
+        unistring_expression.Delete (startPos, totalToken.GetLength ());
+        unistring_expression.Insert (startPos, rezult_txt);
+
+        startPos += rezult_txt.GetLength ();
     }
+
     return (!unistring_expression.IsEmpty ());
 }
 
@@ -1302,8 +1332,9 @@ GS::UniString StringUnic (const GS::UniString &instring, const GS::UniString &de
 // -----------------------------------------------------------------------------
 // Возвращает уникальные вхождения текста
 // -----------------------------------------------------------------------------
-UInt32
-StringSpltUnic (const GS::UniString &instring, const GS::UniString &delim, GS::Array<GS::UniString> &partstring) {
+UInt32 StringSpltUnic (const GS::UniString &instring,
+                       const GS::UniString &delim,
+                       GS::Array<GS::UniString> &partstring) {
     if (!instring.Contains (delim)) {
         partstring.Push (instring);
         return 1;

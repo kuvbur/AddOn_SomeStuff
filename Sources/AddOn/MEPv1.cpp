@@ -801,7 +801,7 @@ namespace MEPv1 {
             ACAPI::Result<DuctRectangularSegmentPreferenceTable> table =
                 DuctRectangularSegmentPreferenceTable::Get (tableID);
             if (table.IsErr ()) {
-                ACAPI_WriteReport (table.UnwrapErr ().text.c_str (), false);
+
                 return false;
             }
             if (ParamValue *pval = paramByType.GetPtr (rawnameelementsetname)) {
@@ -825,7 +825,7 @@ namespace MEPv1 {
         } else if (shape == ACAPI::MEP::ConnectorShape::Circular) {
             ACAPI::Result<DuctCircularSegmentPreferenceTable> table = DuctCircularSegmentPreferenceTable::Get (tableID);
             if (table.IsErr ()) {
-                ACAPI_WriteReport (table.UnwrapErr ().text.c_str (), false);
+
                 return false;
             }
             if (ParamValue *pval = paramByType.GetPtr (rawnameelementsetname)) {
@@ -889,7 +889,7 @@ namespace MEPv1 {
             return false;
         ACAPI::Result<PipeSegmentPreferenceTable> table = PipeSegmentPreferenceTable::Get (tableID);
         if (table.IsErr ()) {
-            ACAPI_WriteReport (table.UnwrapErr ().text.c_str (), false);
+
             return false;
         }
         if (ParamValue *pval = paramByType.GetPtr (rawnameelementsetname)) {
@@ -955,7 +955,7 @@ namespace MEPv1 {
             return false;
         ACAPI::Result<DuctElbowPreferenceTable> table = DuctElbowPreferenceTable::Get (tableID);
         if (table.IsErr ()) {
-            ACAPI_WriteReport (table.UnwrapErr ().text.c_str (), false);
+
             return false;
         }
         if (ParamValue *pval = paramByType.GetPtr (rawnameelementsetname)) {
@@ -1046,13 +1046,6 @@ namespace MEPv1 {
                 }
             }
         }
-
-        if (ParamValue *pval = paramByType.GetPtr (rawnamelength)) {
-            double l = PI * radius * angval / 180.0;
-            ParamHelpers::ConvertDoubleToParamValue (*pval, EMPTYSTRING, l);
-            flag = pval->isValid;
-        }
-
         return true;
     }
 
@@ -1066,7 +1059,7 @@ namespace MEPv1 {
             return false;
         ACAPI::Result<PipeElbowPreferenceTable> table = PipeElbowPreferenceTable::Get (tableID);
         if (table.IsErr ()) {
-            ACAPI_WriteReport (table.UnwrapErr ().text.c_str (), false);
+
             return false;
         }
         if (ParamValue *pval = paramByType.GetPtr (rawnameelementsetname)) {
@@ -1144,7 +1137,7 @@ namespace MEPv1 {
         #ifdef MEPAPI_VERSION
         ACAPI::Result<PipeTransitionPreferenceTable> table = PipeTransitionPreferenceTable::Get (tableID);
         if (table.IsErr ()) {
-            ACAPI_WriteReport (table.UnwrapErr ().text.c_str (), false);
+
             return false;
         }
         if (ParamValue *pval = paramByType.GetPtr (rawnameelementsetname)) {

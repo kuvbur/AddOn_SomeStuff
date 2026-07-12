@@ -111,8 +111,9 @@ int IsDummyModeOn () {
 }
 
 namespace FormatStringFunc {
-    FormatString
-    GetFormatStringFromFormula (const GS::UniString &formula, const GS::UniString &part, GS::UniString &stringformat) {
+    FormatString GetFormatStringFromFormula (const GS::UniString &formula,
+                                             const GS::UniString &part,
+                                             GS::UniString &stringformat) {
         FormatString f = ParseFormatString (DEFULTREALFSTRING);
         if (!formula.Contains (DOT))
             return f;
@@ -683,8 +684,9 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
     return GetSelectedElements (assertIfNoSel, onlyEditable, syncSettings, addSubelement, addZone, addConnect);
 }
 
-GS::Array<API_Guid>
-GetSelectedElements (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/, bool addSubelement /*= true*/) {
+GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
+                                         bool onlyEditable /*= true*/,
+                                         bool addSubelement /*= true*/) {
     SyncSettings syncSettings (false, false, true, true, true, true, false);
     LoadSyncSettingsFromPreferences (syncSettings, true);
     bool addZone = false;
@@ -1870,13 +1872,13 @@ void AddValueToParamDictValueImpl (ParamDictValue &params,
     } else {
         if (!addInNotEx) {
             ParamValue pvalue = {};
-            pvalue.rawName = std::move (rawName);
+            pvalue.rawName = rawName;
             pvalue.name = name;
             ParamHelpers::SetParamValueSourseByName (pvalue);
             if (isLen)
                 pvalue.val.formatstring = FormatStringFunc::ParseFormatString (DEFULTLEGHTFSTRING);
             convertValue (pvalue);
-            params.Put (std::move (rawName), std::move (pvalue));
+            params.Add (std::move (rawName), std::move (pvalue));
         }
     }
 }
@@ -6703,7 +6705,7 @@ bool ParamHelpers::ReadListData (const API_Elem_Head &elem_head,
             if (!UniStringToDouble (ttxt, t))
                 continue;
             ParamHelpers::AddLengthValueToParamDictValue (
-                pdictvalue, elem_head.guid, LISTDATANAMEPREFIX, attribsuffix, t / 1000.0);
+                pdictvalue, elem_head.guid, LISTDATANAMEPREFIX, attribsuffix, t / 1000.0, false);
             continue;
         } else {
             if (!needListData)
@@ -6853,7 +6855,7 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
     // Разбираем считанные компонены
     int num = 1;
     for (const auto &composit : composites) {
-        API_AttributeIndex constrinx = composit.buildMatIndices;
+        const API_AttributeIndex &constrinx = composit.buildMatIndices;
         double volume = composit.volumes;     // Объём из компонент
         double area = composit.projectedArea; // Площадь проекции из компонент
         short flags = composit.flags;
@@ -6925,9 +6927,9 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
             p.unit = units;
             p.kzap = kzap;
             p.structype = flags;
-            composites_quantity.Put (p.inx, std::move (p));
+            composites_quantity.Put (p.inx, p);
             num += 1;
-            add_composite.Push (p);
+            add_composite.Push (std::move (p));
         }
         flag_find = true;
     }
@@ -8379,7 +8381,8 @@ bool ParamHelpers::ConvertToParamValue (ParamValue &pvalue, const API_Property &
 }
 
 void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue &pvalue, const API_PropertyDefinition &definition) {
-    GS::UniString description = definition.description.ToLowerCase ();
+    GS::UniString description = definition.description;
+    description.SetToLowerCase ();
     pvalue.typeinx = PROPERTYTYPEINX;
     if (description.Contains ("to{class:")) {
         GS::Array<GS::UniString> params = {};
@@ -8391,7 +8394,7 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue &pvalue, const AP
         pvalue.fromClassification = true;
         return;
     }
-    if (description.Contains ("sync_name")) {
+    if (description.Contains (SYNCNAME)) {
         if (!pvalue.rawName.Contains ("{@property:sync_name")) {
             pvalue.rawName = "{@property:sync_name0}";
             pvalue.name = "Sync_name0";
@@ -8404,10 +8407,6 @@ void ParamHelpers::ConvertToParamValue_CheckAttrib (ParamValue &pvalue, const AP
         return;
     }
     if (pvalue.rawName.Contains ("component")) {
-        pvalue.fromAttribDefinition = true;
-        return;
-    }
-    if (description.Contains ("{@property:buildingmaterialproperties}")) {
         pvalue.fromAttribDefinition = true;
         return;
     }
@@ -9599,7 +9598,8 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex &constrinx,
     GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs = {};
     GS::Array<GS::UniString> systemNamesLower;
     API_ClassificationItem cl = {};
-
+    GS::UniString name_fill = "";
+    API_Attribute attribt_fill = {};
     GS::UniString k = "{@material:cutfill_inx}";
     if (const ParamValue *foundParam = params.GetPtr (k)) {
         ParamValue pvalue_bmat = {};
@@ -9725,13 +9725,13 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex &constrinx,
         // пропуск прочитанного с ошибкой
         if (param.rawName.Contains (CharENTER)) {
 #if defined(TESTING)
-            if (!param.rawName.Contains ("sync_name"))
+            if (!param.rawName.Contains (SYNCNAME))
                 DBprnt ("GetAttributeValues err - param.rawName.Contains (CharENTER)", param.rawName);
 #endif
             continue;
         } else if (param.definition.name.Contains (CharENTER)) {
 #if defined(TESTING)
-            if (!param.rawName.Contains ("sync_name"))
+            if (!param.rawName.Contains (SYNCNAME))
                 DBprnt ("GetAttributeValues err - param.definition.name.Contains (CharENTER)", param.rawName);
 #endif
             continue;
@@ -9801,7 +9801,7 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex &constrinx,
                 continue; // Это уже прочитанное валидное свойство
             } else {
 #if defined(TESTING)
-                if (!param.rawName.Contains ("sync_name"))
+                if (!param.rawName.Contains (SYNCNAME))
                     DBprnt ("GetAttributeValues err - !p->isValid", rawName);
 #endif
             }
@@ -9809,15 +9809,23 @@ bool ParamHelpers::GetAttributeValues (const API_AttributeIndex &constrinx,
 
         // Обработка свойства штриховки
         if (param.rawName.Contains ("buildingmaterialproperties/building material cutfill")) {
-            GS::UniString namet = "";
-            API_Attribute attribt = {};
-            if (getAttribute (API_FilltypeID, attrib.buildingMaterial.cutFill, namet, attribt)) {
+            if (!isBmatAttribReadOk) {
+                if (!getAttribute (API_BuildingMaterialID, constrinx, name, attrib)) {
+#if defined(TESTING)
+                    DBprnt ("GetAttributeValues err - getAttribute API_BuildingMaterialID", attribsuffix);
+#endif
+                } else {
+                    isBmatAttribReadOk = true;
+                }
+            }
+            if (isBmatAttribReadOk &&
+                getAttribute (API_FilltypeID, attrib.buildingMaterial.cutFill, name_fill, attribt_fill)) {
                 ParamValue pvalue = {};
                 pvalue.name = param.name + CharENTER + attribsuffix;
                 pvalue.rawName = rawName;
-                ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.name, namet);
+                ParamHelpers::ConvertStringToParamValue (pvalue, pvalue.name, name_fill);
                 pvalue.fromMaterial = true;
-                pendingAdds.Push ({param.fromGuid, pvalue});
+                pendingAdds.Push ({param.fromGuid, std::move (pvalue)});
                 flag_find = true;
             } else {
 #if defined(TESTING)

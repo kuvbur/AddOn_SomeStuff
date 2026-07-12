@@ -140,6 +140,7 @@ static const GS::UniString SYNCGUID = "Sync_GUID";
 static const GS::UniString DEFULTREALFSTRING = ".3m";
 static const GS::UniString DEFULTLEGHTFSTRING = "1mm";
 static const GS::UniString DEFULTINTFSTRING = "0m";
+static const GS::UniString SYNCNAME = "sync_name";
 
     #define ELEMSTR_LEN 256
     // Типы операций по переводу значений массива гдл параметра в совйство
@@ -464,11 +465,11 @@ void ReplaceSymbSpase (GS::UniString &outstring);
 
 short GetFontIndex (GS::UniString &fontname);
 
-double GetTextWidth (short &font, double &fontsize, GS::UniString &var);
+double GetTextWidth (short font, double fontsize, GS::UniString &var);
 
-GS::Array<GS::UniString> DelimTextLine (short &font,
-                                        double &fontsize,
-                                        double &width,
+GS::Array<GS::UniString> DelimTextLine (short font,
+                                        double fontsize,
+                                        double width,
                                         GS::UniString &var,
                                         GS::UniString &no_breake_space,
                                         GS::UniString &narow_space);
