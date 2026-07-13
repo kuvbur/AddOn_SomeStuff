@@ -38,10 +38,10 @@ namespace Roombook
         GS::UniString funcname ("RoomBook");
         nPhase = 1;
         ProcessWindowGuard pwGuard (funcname, nPhase);
-        GS::Array<API_Guid> zones = {};
+        GS::Array<API_Guid> zones;
         GSErrCode err = NoError;
         API_SelectionInfo selectionInfo;
-        GS::Array<API_Neig> selNeigs = {};
+        GS::Array<API_Neig> selNeigs;
         err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
         BMKillHandle ((GSHandle *)&selectionInfo.marquee.coords);
         if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
@@ -56,7 +56,7 @@ namespace Roombook
                 if (elementType == API_ZoneID) {
                     if (!ACAPI_Element_Filter (neig.guid,
                                                APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight |
-                                                   APIFilt_InMyWorkspace))
+                                                   APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation))
                         continue;
                     zones.Push (neig.guid);
                 }
@@ -79,23 +79,23 @@ namespace Roombook
 
         funcname = GS::UniString::Printf ("Collect info from %d room(s)", zones.GetSize ());
         // Подготовка параметров
-        ClassificationFunc::ClassificationDict finclass = {}; // Словарь классов для отделочных стен
-        UnicGuid finclassguids = {};
+        ClassificationFunc::ClassificationDict finclass; // Словарь классов для отделочных стен
+        UnicGuid finclassguids;
         Class_FindFinClass (finclass, finclassguids);
-        Stories storyLevels = GetStories (); // Уровни этажей в проекте
-        GS::Array<API_Guid> deletelist = {}; // Массив устаревших элементов
-        GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone = {}; // Словарь существующих элементов
+        Stories storyLevels = GetStories ();                     // Уровни этажей в проекте
+        GS::Array<API_Guid> deletelist;                          // Массив устаревших элементов
+        GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone; // Словарь существующих элементов
         // Чтение данных о зоне, создание словаря с элементами для чтения
-        OtdRooms roomsinfo = {};              // Информация о всех зонах
-        UnicElementByType elementToRead = {}; // Список всех элементов в зоне
-        ParamDictElement paramToRead = {};    // Прочитанные из элементов свойства
-        ParamValue param_composite = {};      // Состав базовых конструкций
-        ParamDictValue paramDict = {};
-        ParamDictValue paramDict_favorite = {};
-        UnicGUIDByType guidselementToRead = {}; // Словарь элементов по типам для чтения свойств
-        GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall = {}; // Все проёмы в зонах
+        OtdRooms roomsinfo;              // Информация о всех зонах
+        UnicElementByType elementToRead; // Список всех элементов в зоне
+        ParamDictElement paramToRead;    // Прочитанные из элементов свойства
+        ParamValue param_composite;      // Состав базовых конструкций
+        ParamDictValue paramDict;
+        ParamDictValue paramDict_favorite;
+        UnicGUIDByType guidselementToRead;                            // Словарь элементов по типам для чтения свойств
+        GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall; // Все проёмы в зонах
         // Поиск перекрытий в зонах
-        GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone = {};
+        GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
         Floor_FindAll (slabsinzone, finclassguids, zones);
         for (const API_Guid &zoneGuid : zones) {
             nPhase += 1;
@@ -196,15 +196,15 @@ namespace Roombook
             return;
     #endif
         // Читаем свойства всех элементов
-        ParamDictCompositeElement paramCompositeToRead = {};
-        ListData::LibElements paramListDataToRead = {};
+        ParamDictCompositeElement paramCompositeToRead;
+        ListData::LibElements paramListDataToRead;
         ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
         // Словарь избранного
         MatarialToFavoriteDict favdict = Favorite_GetDict ();
         // Ищём существующие элементы и определяем их привязку к базовым
         // конструкциям
         bool has_base_element = false;
-        UnicGuid reserv_elements = {}; // Словарь незарезервированных или скрытых элементов
+        UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
         exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
         // Заполняем данные для элементов
         funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
@@ -291,7 +291,7 @@ namespace Roombook
             } // Обработка перекрытий
             if (otd.otdwall.IsEmpty ())
                 continue;
-            GS::Array<OtdWall> opw = {}; // Массив созданных стен
+            GS::Array<OtdWall> opw; // Массив созданных стен
             for (OtdWall &otdw : otd.otdwall) {
                 // Заполняем данные для отделочных стен (состав)
                 GS::UniString fav_name = "";
@@ -375,17 +375,17 @@ namespace Roombook
                     SetMaterialFinish_ByComposite (otdw.material, otdw.favorite.composite);
                     otdw.base_composite.Append (otdw.favorite.composite);
                 }
-            }                  // Назначение избранного
+            } // Назначение избранного
             otd.otdwall = opw; // Заменяем на разбитые стены
-        }                      // Обработка зон
+        } // Обработка зон
         // Получаем список существующих элементов отделки для обрабатываемых зон
         zones.Clear ();
         paramDict_favorite.Clear ();
         favdict.Clear ();
-        ParamDictElement paramToWrite = {}; // Параметры для записи в зоны и элементы отделки
-        ColumnFormatDict columnFormat = {}; // Словарь с форматом текста для столбцов
-        OtdMaterialAreaDictByOtdType dct_bytype = {}; // Словарь с отделкой по типу отделки
-        GS::Array<API_Guid> zones_bytype = {};        // Зоны для записи отделки по типам
+        ParamDictElement paramToWrite;           // Параметры для записи в зоны и элементы отделки
+        ColumnFormatDict columnFormat;           // Словарь с форматом текста для столбцов
+        OtdMaterialAreaDictByOtdType dct_bytype; // Словарь с отделкой по типу отделки
+        GS::Array<API_Guid> zones_bytype;        // Зоны для записи отделки по типам
         funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
         for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
     #if defined(AC_28) || defined(AC_29)
@@ -408,7 +408,7 @@ namespace Roombook
                 zones.Push (otd.zone_guid);
             }
             if (otd.isValid && paramToRead.ContainsKey (otd.zone_guid)) {
-                GS::Array<GS::UniString> rawnames = {};
+                GS::Array<GS::UniString> rawnames;
                 GS::UniString msg = "";
                 if (!otd.om_up.rawname.IsEmpty ())
                     rawnames.Push (otd.om_up.rawname);
@@ -480,7 +480,7 @@ namespace Roombook
             if (!dct_bytype.ContainsKey (otd.tip_otd))
                 continue;
             OtdMaterialAreaDictByType &dct = dct_bytype.Get (otd.tip_otd);
-            GS::HashTable<TypeOtd, GS::UniString> paramnamebytype = {};
+            GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
             paramnamebytype.Add (Wall_Up,
                                  otd.om_up.rawname_bytype); // Отделка стен выше потолка
             paramnamebytype.Add (Wall_Main,
@@ -537,11 +537,11 @@ namespace Roombook
         // Резервирование и открытие слоёв элементов отделки
         if (!reserv_elements.IsEmpty ()) {
     #if defined(AC_24) || defined(AC_23)
-            GS::PagedArray<API_Guid> reserv = {};
+            GS::PagedArray<API_Guid> reserv;
     #else
-            GS::Array<API_Guid> reserv = {};
+            GS::Array<API_Guid> reserv;
     #endif
-            GS::HashTable<API_Guid, short> conflicts = {};
+            GS::HashTable<API_Guid, short> conflicts;
             for (UnicGuid::PairIterator cIt_3 = reserv_elements.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
     #if defined(AC_28) || defined(AC_29)
                 API_Guid guid = cIt_3->key;
@@ -596,9 +596,9 @@ namespace Roombook
         //                для элементов без базовой конструкции (потолки, полы) там
         //                будет guid зоны
         //  Далее уже идёт словарь с GUID существующих элементов отделки
-        GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone = {};
+        GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone;
         // Поиск существующих элементов отделки
-        UnicGuidByGuid exsistotdelements = {}; // Словарь существующих отделочных элементов с разбивкой по зонам
+        UnicGuidByGuid exsistotdelements; // Словарь существующих отделочных элементов с разбивкой по зонам
         int errcode = 0;
         if (!SyncGetParentelement (zones, exsistotdelements, "zone", errcode)) {
             return exsistot_byzone;
@@ -611,7 +611,7 @@ namespace Roombook
             UnicGuid guids = *cIt->value;
             API_Guid zoneguid = *cIt->key;
     #endif
-            GS::HashTable<API_Guid, TypeOtd> otd_elements = {};
+            GS::HashTable<API_Guid, TypeOtd> otd_elements;
             // Список всех элементов отделки
             for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
     #if defined(AC_28) || defined(AC_29)
@@ -667,9 +667,9 @@ namespace Roombook
 
     UnicGuidByBase Otd_GetOtd_Parent (GS::HashTable<API_Guid, TypeOtd> &otd_elements, bool &has_base_element) {
         int errcode = 0;
-        UnicGuidByBase exsistot_byparent = {};
-        UnicGuidByGuid parentdict = {}; // Для считывания элементов
-        GS::Array<API_Guid> otd_els = {};
+        UnicGuidByBase exsistot_byparent;
+        UnicGuidByGuid parentdict; // Для считывания элементов
+        GS::Array<API_Guid> otd_els;
         for (GS::HashTable<API_Guid, TypeOtd>::PairIterator cIt = otd_elements.EnumeratePairs (); cIt != NULL; ++cIt) {
     #if defined(AC_28) || defined(AC_29)
             API_Guid elems = cIt->key;
@@ -836,7 +836,7 @@ namespace Roombook
                               ParamDictElement &paramToWrite,
                               const ParamDictElement &paramToRead,
                               OtdMaterialAreaDictByOtdType &dct_bytype) {
-        OtdMaterialAreaDictByType dct = {}; // Основной словарь
+        OtdMaterialAreaDictByType dct; // Основной словарь
         // Разбивка по отделочным слоям, вычисление площадей и добавление их в
         // словарь по типам отделки
         for (const OtdWall &otdw : otd.otdwall) {
@@ -847,7 +847,7 @@ namespace Roombook
             for (UInt32 j = 0; j < otdw.base_composite.GetSize (); j++) {
                 GS::UniString mat = otdw.base_composite[j].val;
                 if (mat.Contains (SEMICOLON)) {
-                    GS::Array<GS::UniString> partstring = {};
+                    GS::Array<GS::UniString> partstring;
                     UInt32 n = StringSpltUnic (mat, SEMICOLON, partstring);
                     if (n < 1) {
                         OtdData_AddValueToDict (dct, t, mat, area);
@@ -870,7 +870,7 @@ namespace Roombook
             for (UInt32 j = 0; j < otdslab.base_composite.GetSize (); j++) {
                 GS::UniString mat = otdslab.base_composite[j].val;
                 if (mat.Contains (SEMICOLON)) {
-                    GS::Array<GS::UniString> partstring = {};
+                    GS::Array<GS::UniString> partstring;
                     UInt32 n = StringSpltUnic (mat, SEMICOLON, partstring);
                     if (n < 1) {
                         OtdData_AddValueToDict (dct, t, mat, area);
@@ -885,7 +885,7 @@ namespace Roombook
             }
         }
         // Записываем результаты в результаты для каждого помещения
-        GS::HashTable<TypeOtd, GS::UniString> paramnamebytype = {};
+        GS::HashTable<TypeOtd, GS::UniString> paramnamebytype;
         paramnamebytype.Add (Wall_Up,
                              otd.om_up.rawname); // Отделка стен выше потолка
         paramnamebytype.Add (Wall_Main,
@@ -933,8 +933,8 @@ namespace Roombook
         // Мы получили словарь по типам отделки
         // Проблема в том, что для разных типов имя свойство может быть одно
         // Это означает, что нужно просуммировать отделку для каждого имени свойства
-        GS::HashTable<GS::UniString, GS::Array<TypeOtd>> exsists_rawname = {}; // словарь существующих свойств для типов
-                                                                               // отделки
+        GS::HashTable<GS::UniString, GS::Array<TypeOtd>> exsists_rawname; // словарь существующих свойств для типов
+                                                                          // отделки
         for (auto &cItt : paramnamebytype) {
     #if defined(AC_28) || defined(AC_29)
             const GS::UniString rawname = cItt.value;
@@ -948,7 +948,7 @@ namespace Roombook
             if (!paramToRead.Get (zone_guid).ContainsKey (rawname))
                 continue;
             if (!exsists_rawname.ContainsKey (rawname)) {
-                GS::Array<TypeOtd> t = {};
+                GS::Array<TypeOtd> t;
                 exsists_rawname.Add (rawname, t);
             }
             exsists_rawname.Get (rawname).Push (typeotd);
@@ -968,7 +968,7 @@ namespace Roombook
             GS::UniString new_val = "";
             // Если такой тип отделки есть в словаре - записываем послойно материалы
             // и площади
-            OtdMaterialAreaDict dcta = {};
+            OtdMaterialAreaDict dcta;
             if (typeotd.GetSize () == 1) {
                 if (dct.ContainsKey (typeotd[0]))
                     dcta = dct.Get (typeotd[0]);
@@ -997,11 +997,11 @@ namespace Roombook
                 }
             }
             if (!dcta.IsEmpty ()) {
-                ColumnFormat c = {};
+                ColumnFormat c;
                 if (columnFormat.ContainsKey (rawname))
                     c = columnFormat.Get (rawname);
                 // Сортировка по алфавиту
-                std::map<std::string, GS::UniString, doj::alphanum_less<std::string>> abc_material = {};
+                std::map<std::string, GS::UniString, doj::alphanum_less<std::string>> abc_material;
                 for (auto &cIt : dcta) {
     #if defined(AC_28) || defined(AC_29)
                     GS::UniString mat = cIt.key;
@@ -1126,6 +1126,160 @@ namespace Roombook
         return area;
     }
 
+    // 2. Определение типа поверхности по вектору нормали
+    TypeOtd ClassifySurfaceType (const API_Coord3D &normal) {
+        double len = std::sqrt (normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+        if (len < 1e-6)
+            return NoSet;
+        double nz = normal.z / len;
+        if (nz > 0.999)
+            return Floor; // Смотрит строго вверх
+        if (nz < -0.999)
+            return Ceil; // Смотрит строго вниз
+        if (std::abs (nz) < 0.01)
+            return Wall_Main; // Вертикальная стена
+        return Sloped;        // Наклонная плоскость
+    }
+
+    // 3. Главная функция сбора плоскостей Зоны
+    GSErrCode GetZone3DPolygons_StrictAPI (const API_Elem_Head &elemHead,
+                                           GS::Array<OtdZoneSurfacePolygon> &outSurfaces) {
+        outSurfaces.Clear ();
+
+        // Шаг 1: Получаем базовую 3D-информацию об элементе
+        API_ElemInfo3D info3D;
+        GSErrCode err = ACAPI_Element_Get3DInfo (elemHead, &info3D);
+        if (err != NoError)
+            return err;
+
+        // Сквозные счетчики смещений для плоской базы данных компонента внутри элемента
+        Int32 pgonOffset = 1;
+        Int32 pedgOffset = 1;
+        Int32 edgeOffset = 1;
+        Int32 vertOffset = 1;
+        Int32 vectOffset = 1;
+        API_Component3D pgonComp;
+        API_Component3D vectComp;
+        API_Component3D pedgComp;
+        API_Component3D edgeComp;
+        API_Component3D vertComp;
+        API_Component3D bodyComp;
+        for (Int32 bIdx = info3D.fbody; bIdx <= info3D.lbody; ++bIdx) {
+            BNClear (bodyComp);
+            bodyComp.header.typeID = API_BodyID;
+            bodyComp.header.index = bIdx;
+            err = ACAPI_3D_GetComponent (&bodyComp);
+            if (err != NoError)
+                continue;
+
+            // Фиксируем количество подобъектов в текущем теле из структуры API_BodyType
+            Int32 numPgons = bodyComp.body.nPgon;
+
+            // Шаг 3: Итерируемся по полигонам (Pgon) текущего тела
+            for (Int32 pIdx = 0; pIdx < numPgons; ++pIdx) {
+                Int32 currentPgonIdx = pgonOffset + pIdx;
+                BNClear (pgonComp);
+                pgonComp.header.typeID = API_PgonID;
+                pgonComp.header.index = currentPgonIdx;
+
+                err = ACAPI_3D_GetComponent (&pgonComp);
+                if (err != NoError)
+                    continue;
+                OtdZoneSurfacePolygon surface;
+
+                // Получаем понятное имя покрытия (материала) из атрибутов проекта
+                API_Attribute attrib;
+                attrib.header.typeID = API_MaterialID;
+                attrib.header.index = pgonComp.pgon.iumat;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+                surface.material.material = pgonComp.pgon.iumat.ToInt32_Deprecated ();
+    #else
+                surface.material.material = pgonComp.pgon.iumat;
+    #endif
+                if (ACAPI_Attribute_Get (&attrib) == NoError) {
+                    surface.material.smaterial = attrib.header.name;
+                }
+                // Извлекаем нормаль полигона через API_VectType
+                Int32 signedVectIdx = pgonComp.pgon.ivect;
+                Int32 absVectIdx = GS::Abs (signedVectIdx);
+                if (absVectIdx > 0) {
+                    BNClear (vectComp);
+                    vectComp.header.typeID = API_VectID;
+                    vectComp.header.index =
+                        vectOffset + (absVectIdx - 1); // Индексация внутри тела относительная (от 1)
+
+                    if (ACAPI_3D_GetComponent (&vectComp) == NoError) {
+                        // Если ivect отрицательный — инвертируем направление нормали
+                        double sign = (signedVectIdx > 0) ? 1.0 : -1.0;
+                        surface.normal.x = vectComp.vect.x * sign;
+                        surface.normal.y = vectComp.vect.y * sign;
+                        surface.normal.z = vectComp.vect.z * sign;
+                    }
+                }
+                surface.type = ClassifySurfaceType (surface.normal);
+
+                // Диапазон ребер полигона (fpedg и lpedg возвращаются относительно структуры текущего тела)
+                Int32 startPedg = pgonComp.pgon.fpedg;
+                Int32 endPedg = pgonComp.pgon.lpedg;
+
+                // Шаг 4: Проходим по ребрам полигона (Pedg)
+                for (Int32 peIdx = startPedg; peIdx <= endPedg; ++peIdx) {
+                    BNClear (pedgComp);
+                    pedgComp.header.typeID = API_PedgID;
+                    pedgComp.header.index = pedgOffset + (peIdx - 1);
+
+                    if (ACAPI_3D_GetComponent (&pedgComp) != NoError)
+                        continue;
+
+                    Int32 signedEdgeIdx = pedgComp.pedg.pedg;
+                    if (signedEdgeIdx == 0)
+                        continue; // 0 по описанию — маркер начала нового отверстия (Hole)
+
+                    // Шаг 5: Достаем ребро (Edge)
+
+                    BNClear (edgeComp);
+                    edgeComp.header.typeID = API_EdgeID;
+                    edgeComp.header.index = edgeOffset + (GS::Abs (signedEdgeIdx) - 1);
+
+                    if (ACAPI_3D_GetComponent (&edgeComp) != NoError)
+                        continue;
+
+                    // Согласно знаку pedg, выбираем правильное направление обхода ребра через vert1/vert2
+                    Int32 localVertIdx = (signedEdgeIdx > 0) ? edgeComp.edge.vert1 : edgeComp.edge.vert2;
+
+                    // Шаг 6: Получаем глобальные координаты вершины (Vert)
+
+                    BNClear (vertComp);
+                    vertComp.header.typeID = API_VertID;
+                    vertComp.header.index = vertOffset + (localVertIdx - 1);
+
+                    if (ACAPI_3D_GetComponent (&vertComp) != NoError)
+                        continue;
+
+                    API_Coord3D vertexCoord;
+                    vertexCoord.x = vertComp.vert.x;
+                    vertexCoord.y = vertComp.vert.y;
+                    vertexCoord.z = vertComp.vert.z;
+
+                    surface.vertices.Push (std::move (vertexCoord));
+                }
+
+                // Если полигон успешно собран, рассчитываем площадь и сохраняем
+                if (surface.vertices.GetSize () >= 3 && surface.type != NoSet)
+                    outSurfaces.Push (std::move (surface));
+            }
+
+            // Смещаем глобальные индексы плоской структуры на объем обработанного тела
+            pgonOffset += bodyComp.body.nPgon;
+            pedgOffset += bodyComp.body.nPedg;
+            edgeOffset += bodyComp.body.nEdge;
+            vertOffset += bodyComp.body.nVert;
+            vectOffset += bodyComp.body.nVect;
+        }
+
+        return NoError;
+    }
+
     // -----------------------------------------------------------------------------
     // Получение информации из зоны о полгионах и находящейся в ней элементах
     // -----------------------------------------------------------------------------
@@ -1142,15 +1296,15 @@ namespace Roombook
         syncSettings.widoS = true;
         syncSettings.objS = true;
         syncSettings.cwallS = true;
-        GSErrCode err;
-        API_Element element = {};
         API_Element zoneelement = {};
         zoneelement.header.guid = zoneGuid;
-        err = ACAPI_Element_Get (&zoneelement);
+
+        GSErrCode err = ACAPI_Element_Get (&zoneelement);
         if (err != NoError) {
             msg_rep ("CollectRoomInfo err", "ACAPI_Element_Get zone", err, zoneGuid);
             return false;
         }
+
         roominfo.height = zoneelement.zone.roomHeight;
         roominfo.height = std::round (roominfo.height * 1000) / 1000;
         if (roominfo.height < 0.0001) {
@@ -1158,6 +1312,13 @@ namespace Roombook
             roominfo.isValid = false;
             return false;
         }
+
+        if (GetZone3DPolygons_StrictAPI (zoneelement.header, roominfo.zonesurf) != NoError) {
+            msg_rep ("CollectRoomInfo err", "GetZone3DPolygons_StrictAPI", err, zoneGuid);
+            roominfo.isValid = false;
+            return false;
+        }
+
         API_ElementMemo zonememo = {};
         err = ACAPI_Element_GetMemo (zoneelement.header.guid, &zonememo);
         if (err != NoError) {
@@ -1165,10 +1326,10 @@ namespace Roombook
             msg_rep ("CollectRoomInfo err", "ACAPI_Element_GetMemo zone", err, zoneGuid);
             return false;
         }
-        GS::Array<Sector> walledges = {}; // Границы стен, не явяющихся границей зоны
-        GS::Array<Sector> columnedges = {}; // Границы колонн, не явяющихся границей зоны
-        GS::Array<Sector> restedges = {}; // Границы зоны
-        GS::Array<Sector> gableedges = {};
+        GS::Array<Sector> walledges;   // Границы стен, не явяющихся границей зоны
+        GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
+        GS::Array<Sector> restedges;   // Границы зоны
+        GS::Array<Sector> gableedges;
         Edges_GetFromRoom (zonememo, zoneelement, walledges, columnedges, restedges, gableedges);
         roominfo.edges = restedges;
         roominfo.columnedges = columnedges;
@@ -1197,7 +1358,7 @@ namespace Roombook
                 Param_AddUnicElementByType (elGuid, zoneGuid, API_SlabID, elementToRead);
             }
         }
-        OtdSlab otdslab = {};
+        OtdSlab otdslab;
         ConstructPolygon2DFromElementMemo (zonememo, otdslab.poly);
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         otdslab.material.material = zoneelement.zone.material.ToInt32_Deprecated ();
@@ -1210,7 +1371,7 @@ namespace Roombook
         roominfo.poly = otdslab;
         if (!walledges.IsEmpty ()) {
             API_Guid elGuid;
-            API_ElemSearchPars searchPars;
+            API_ElemSearchPars searchPars = {};
             API_ElemTypeID typeelem = API_WallID;
             GS::Array<API_Guid> subelemGuid;
             for (UInt32 j = 0; j < walledges.GetSize (); j++) {
@@ -1320,9 +1481,9 @@ namespace Roombook
             return;
         op.base_guid = elGuid;
         if (GS::Array<OtdOpening> *openingsPtr = openinginwall.GetPtr (wallguid)) {
-            openingsPtr->Push (op);
+            openingsPtr->Push (std::move (op));
         } else {
-            openinginwall.Add (wallguid, {op});
+            openinginwall.Add (wallguid, {std::move (op)});
         }
         Param_AddUnicGUIDByType (elGuid, API_WindowID, guidselementToRead);
     }
@@ -1331,10 +1492,10 @@ namespace Roombook
     // Создание стен-отделок для стен
     // -----------------------------------------------------------------------------
     void OtdWall_Create_FromWall (const Stories &storyLevels,
-                                  API_Guid &elGuid,
-                                  GS::Array<API_Guid> &zoneGuids,
+                                  const API_Guid &elGuid,
+                                  const GS::Array<API_Guid> &zoneGuids,
                                   OtdRooms &roomsinfo,
-                                  GS::HashTable<API_Guid, GS::Array<OtdOpening>> &openinginwall,
+                                  const GS::HashTable<API_Guid, GS::Array<OtdOpening>> &openinginwall,
                                   UnicGUIDByType &guidselementToRead) {
         GSErrCode err = NoError;
         API_Element element = {};
@@ -1366,18 +1527,17 @@ namespace Roombook
     #endif
             return;
         }
-        for (API_Guid zoneGuid : zoneGuids) {
-            if (!roomsinfo.ContainsKey (zoneGuid)) {
+        for (const API_Guid &zoneGuid : zoneGuids) {
+            OtdRoom *roominfoPtr = roomsinfo.GetPtr (zoneGuid);
+            if (roominfoPtr == nullptr || !roominfoPtr->isValid) {
     #if defined(TESTING)
                 DBprnt ("OtdWall_Create_FromWall err", "!roomsinfo.ContainsKey (zoneGuid)");
     #endif
                 continue;
             }
-            OtdRoom &roominfo = roomsinfo.Get (zoneGuid);
-            if (!roominfo.isValid)
-                continue;
+
             bool flag_find = false;
-            if (roominfo.walledges.ContainsKey (elGuid)) {
+            if (const auto *sectorsPtr = roominfoPtr->walledges.GetPtr (elGuid)) {
                 GS::Optional<Geometry::Line2D> wallline = walledge.AsLine ();
                 if (!wallline.HasValue ()) {
     #if defined(TESTING)
@@ -1385,7 +1545,7 @@ namespace Roombook
     #endif
                     continue;
                 }
-                for (Sector &roomedge : roominfo.walledges[elGuid]) {
+                for (const auto &roomedge : *sectorsPtr) {
                     GS::Optional<Geometry::Line2D> roomeline = roomedge.AsLine ();
                     if (!roomeline.HasValue ()) {
     #if defined(TESTING)
@@ -1404,10 +1564,10 @@ namespace Roombook
                     bool is_fliped = false;
                     if (is_parallel)
                         is_fliped = !walldir.Get ().IsEqualWith (roomedgedir.Get ());
-                    OtdWall wallotd = {};
+                    OtdWall wallotd;
                     if (is_parallel) {
-                        Point2D begedge = {};
-                        Point2D endedge = {};
+                        Point2D begedge;
+                        Point2D endedge;
                         if (is_fliped) {
                             begedge = wallline.Get ().ProjectPoint (roomedge.c2);
                             endedge = wallline.Get ().ProjectPoint (roomedge.c1);
@@ -1420,8 +1580,8 @@ namespace Roombook
                         double tEnd = wallLength - sqrt ((wendC.x - endedge.x) * (wendC.x - endedge.x) +
                                                          (wendC.y - endedge.y) * (wendC.y - endedge.y));
                         // Ищем проёмы в этом участке стены
-                        if (openinginwall.ContainsKey (elGuid)) {
-                            for (const OtdOpening &op : openinginwall[elGuid]) {
+                        if (const auto *opsPtr = openinginwall.GetPtr (elGuid)) {
+                            for (const OtdOpening &op : *opsPtr) {
                                 Opening_Add_One (op, is_fliped, zBottom, tBeg, tEnd, wallLength, wallotd);
                             }
                         }
@@ -1432,26 +1592,26 @@ namespace Roombook
                                          is_fliped,
                                          w_height,
                                          zBottom,
-                                         roominfo.floorInd,
+                                         roominfoPtr->floorInd,
                                          element.wall.thickness,
                                          wallotd)) {
-                        roominfo.otdwall.Push (wallotd);
+                        roominfoPtr->otdwall.Push (std::move (wallotd));
                         flag_find = true;
                     }
                 }
             }
-            if (!roominfo.wallPart.IsEmpty () && element.wall.zoneRel != APIZRel_None) {
-                for (const API_WallPart &wpart : roominfo.wallPart) {
+            if (!roominfoPtr->wallPart.IsEmpty () && element.wall.zoneRel != APIZRel_None) {
+                for (const API_WallPart &wpart : roominfoPtr->wallPart) {
                     if (wpart.guid != elGuid)
                         continue;
                     UInt32 inxedge = wpart.roomEdge - 1;
-                    if (inxedge > roominfo.edges.GetSize ()) {
+                    if (inxedge > roominfoPtr->edges.GetSize ()) {
     #if defined(TESTING)
                         DBprnt ("OtdWall_Create_FromWall err", "inxedge > roomedges.restedges.GetSize ()");
     #endif
                         continue;
                     }
-                    Sector roomedge = roominfo.edges.Get (inxedge);
+                    const Sector &roomedge = roominfoPtr->edges.Get (inxedge);
                     GS::Optional<Geometry::Line2D> roomeline = roomedge.AsLine ();
                     if (!roomeline.HasValue ()) {
     #if defined(TESTING)
@@ -1470,7 +1630,7 @@ namespace Roombook
                     bool is_fliped = false;
                     if (is_parallel)
                         is_fliped = !walldir.Get ().IsEqualWith (roomedgedir.Get ());
-                    OtdWall wallotd = {};
+                    OtdWall wallotd;
                     if (is_parallel) {
                         Point2D begedge = wbegC;
                         Point2D endedge = wendC;
@@ -1494,8 +1654,8 @@ namespace Roombook
                             walledge = {begedge, endedge};
                         }
                         // Ищем проёмы в этом участке стены
-                        if (openinginwall.ContainsKey (elGuid)) {
-                            for (const OtdOpening &op : openinginwall[elGuid]) {
+                        if (const auto *opsPtr = openinginwall.GetPtr (elGuid)) {
+                            for (const OtdOpening &op : *opsPtr) {
                                 Opening_Add_One (op, is_fliped, zBottom, wpart.tBeg, wpart.tEnd, wallLength, wallotd);
                             }
                         }
@@ -1509,10 +1669,10 @@ namespace Roombook
                                          is_fliped,
                                          w_height,
                                          zBottom,
-                                         roominfo.floorInd,
+                                         roominfoPtr->floorInd,
                                          element.wall.thickness,
                                          wallotd)) {
-                        roominfo.otdwall.Push (wallotd);
+                        roominfoPtr->otdwall.Push (std::move (wallotd));
                         flag_find = true;
                     }
                 }
@@ -1523,35 +1683,32 @@ namespace Roombook
     }
 
     void Opening_Add_One (const OtdOpening &op,
-                          const bool &is_fliped,
-                          const double &zBottom,
-                          const double &tBeg,
-                          const double &tEnd,
-                          const double &wallLength,
+                          bool is_fliped,
+                          double zBottom,
+                          double tBeg,
+                          double tEnd,
+                          double wallLength,
                           OtdWall &wallotd) {
         // Проверяем - находится ли этот проём на заданном участке стены
-        if (op.objLoc <= tEnd + op.width / 2 && op.objLoc >= tBeg - op.width / 2) {
+        double opLeft = op.objLoc - op.width / 2.0;
+        double opRight = op.objLoc + op.width / 2.0;
+
+        // Обрезаем проем границами участка стены
+        double newLeft = std::max (opLeft, tBeg);
+        double newRight = std::min (opRight, tEnd);
+
+        if (newLeft < newRight) {
             OtdOpening opinwall;
             opinwall.base_guid = op.base_guid;
-            opinwall.width = op.width;
-            opinwall.base_reveal_width = op.base_reveal_width;
-            opinwall.lower = op.lower;
-            opinwall.zBottom = zBottom + op.lower;
-            double dw = 0; // Уменьшение ширины в случае, если стена попадает на
-                           // часть проёма
-            if (op.objLoc > tEnd - op.width / 2) {
-                dw = tEnd - op.objLoc - op.width / 2;
-                opinwall.width = opinwall.width + dw;
-            }
-            if (op.objLoc < tBeg + op.width / 2) {
-                dw = tBeg - op.objLoc + op.width / 2;
-                opinwall.width = opinwall.width - dw;
-            }
+            opinwall.width = newRight - newLeft;
             opinwall.height = op.height;
+            opinwall.zBottom = zBottom + op.lower;
+
+            double newCenter = (newLeft + newRight) / 2.0;
             if (!is_fliped) {
-                opinwall.objLoc = op.objLoc - tBeg + dw / 2;
+                opinwall.objLoc = newCenter - tBeg;
             } else {
-                opinwall.objLoc = wallLength - op.objLoc - (wallLength - tEnd) + dw / 2;
+                opinwall.objLoc = (wallLength - newCenter) - (wallLength - tEnd);
             }
             wallotd.openings.Push (std::move (opinwall));
         }
@@ -1559,11 +1716,11 @@ namespace Roombook
 
     bool OtdWall_Add_One (const API_Guid &wallguid,
                           const Sector &walledge,
-                          const bool &is_fliped,
-                          const double &height,
-                          const double &zBottom,
-                          const short &floorInd,
-                          const double &thickness,
+                          bool is_fliped,
+                          double height,
+                          double zBottom,
+                          short floorInd,
+                          double thickness,
                           OtdWall &wallotd) {
         double walledgedx = -walledge.c1.x + walledge.c2.x;
         double walledgedy = -walledge.c1.y + walledge.c2.y;
@@ -1587,8 +1744,8 @@ namespace Roombook
     // Создание стен-отделок для колонны
     // -----------------------------------------------------------------------------
     void OtdWall_Create_FromColumn (const Stories &storyLevels,
-                                    API_Guid &elGuid,
-                                    GS::Array<API_Guid> &zoneGuids,
+                                    const API_Guid &elGuid,
+                                    const GS::Array<API_Guid> &zoneGuids,
                                     OtdRooms &roomsinfo,
                                     UnicGUIDByType &guidselementToRead) {
         GSErrCode err;
@@ -1649,9 +1806,7 @@ namespace Roombook
             for (const Sector &coledge : columnedges) {
                 for (const auto &zoneGuid : zoneGuids) {
                     OtdRoom *roominfo = roomsinfo.GetPtr (zoneGuid);
-                    if (roominfo == nullptr)
-                        continue;
-                    if (!roominfo->isValid)
+                    if (roominfo == nullptr || !roominfo->isValid)
                         continue;
                     Sector cdge;
                     bool find = Edge_FindOnEdge (coledge, roominfo->edges, cdge);
@@ -1686,8 +1841,8 @@ namespace Roombook
     void Floor_FindAll (GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone,
                         const UnicGuid &finclassguids,
                         const GS::Array<API_Guid> &zones) {
-        GS::Array<API_Guid> allslabs_ = {};
-        GS::Array<API_Guid> allslabs = {};
+        GS::Array<API_Guid> allslabs_;
+        GS::Array<API_Guid> allslabs;
         GSErrCode err = NoError;
         err = ACAPI_Element_GetElemList (API_SlabID, &allslabs_, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation);
         if (err != NoError) {
@@ -1702,8 +1857,8 @@ namespace Roombook
         }
         if (allslabs.IsEmpty ())
             return;
-        GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions = {};
-        API_CollisionDetectionSettings colDetSettings = {};
+        GS::Array<GS::Pair<API_CollisionElem, API_CollisionElem>> collisions;
+        API_CollisionDetectionSettings colDetSettings;
         colDetSettings.volumeTolerance = 0.000000000001;
         colDetSettings.performSurfaceCheck = true;
         colDetSettings.surfaceTolerance = 0.000000000001;
@@ -1822,7 +1977,7 @@ namespace Roombook
     }
 
     void Floor_Create_One (const Stories &storyLevels,
-                           const short &floorInd,
+                           short floorInd,
                            OtdSlab &poly,
                            GS::Array<API_Guid> &slabGuids,
                            GS::Array<OtdSlab> &otdslabs,
@@ -1870,7 +2025,7 @@ namespace Roombook
         std::sort (elems.begin (), elems.end (), [] (const GuidByZ &a, const GuidByZ &b) { return a.r > b.r; });
         for (const auto &el : elems) {
             API_Guid slabGuid = APIGuidFromString (el.guid.c_str ());
-            API_ElementMemo memo = {};
+            API_ElementMemo memo;
             err = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
             if (err != NoError || memo.coords == nullptr) {
     #if defined(TESTING)
@@ -1878,7 +2033,7 @@ namespace Roombook
     #endif
                 continue;
             }
-            Geometry::Polygon2D slabpolygon = {};
+            Geometry::Polygon2D slabpolygon;
             err = ConstructPolygon2DFromElementMemo (memo, slabpolygon);
             if (err != NoError) {
                 msg_rep ("Floor_Create_One err", "ConstructPolygon2DFromElementMemo", err, slabGuid);
@@ -1903,7 +2058,7 @@ namespace Roombook
                 ACAPI_DisposeElemMemoHdls (&memo);
                 continue;
             }
-            OtdSlab otdslab = {};
+            OtdSlab otdslab;
             otdslab.poly = reducedroom;
             otdslab.base_type = API_SlabID;
             otdslab.base_guid = slabGuid;
@@ -1995,8 +2150,8 @@ namespace Roombook
     }
 
     ReadParams Param_GetForWindowParams () {
-        ReadParams zoneparams = {};
-        ReadParam zoneparam = {};
+        ReadParams zoneparams;
+        ReadParam zoneparam;
         GS::UniString zoneparam_name = "";
 
         zoneparam_name = "frame";
@@ -2058,8 +2213,8 @@ namespace Roombook
         GS::UniString rawName_desc = "";
         GS::UniString rawName_fav = "";
         GS::UniString rawName_hasfin = "";
-        ParamValue param_hasfin_elem = {};
-        ParamValue param_onoff_elem = {};
+        ParamValue param_hasfin_elem;
+        ParamValue param_onoff_elem;
         GS::UniString msg = "";
         if (!ParamHelpers::isPropertyDefinitionRead ())
             return;
@@ -2168,7 +2323,7 @@ namespace Roombook
             ParamHelpers::CompareParamDictValue (propertyParams, paramDict);
         }
         if (!param_hasfin_elem.rawName.IsEmpty ()) {
-            ParamValue param = {};
+            ParamValue param;
             param.rawName = "{@flag:rawname_hasfin_elem}";
             param.val.uniStringValue = param_hasfin_elem.rawName;
             ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param, paramDict);
@@ -2180,7 +2335,7 @@ namespace Roombook
                      APINULLGuid);
         }
         if (!param_onoff_elem.rawName.IsEmpty ()) {
-            ParamValue param = {};
+            ParamValue param;
             param.rawName = "{@flag:rawname_element_onoff}";
             param.val.uniStringValue = param_onoff_elem.rawName;
             ParamHelpers::AddParamValue2ParamDict (APINULLGuid, param, paramDict);
@@ -2191,8 +2346,8 @@ namespace Roombook
     }
 
     ReadParams Param_GetForRooms () {
-        ReadParams zoneparams = {};
-        ReadParam zoneparam = {};
+        ReadParams zoneparams;
+        ReadParam zoneparam;
         GS::UniString zoneparam_name = "";
 
         // Включение потолка
@@ -2434,7 +2589,7 @@ namespace Roombook
         if (!ParamHelpers::isPropertyDefinitionRead ())
             return;
         ParamDictValue &propertyParams = PROPERTYCACHE ().property;
-        GS::Array<GS::UniString> valid_rawnames = {}; // список проверенных имён параметров
+        GS::Array<GS::UniString> valid_rawnames; // список проверенных имён параметров
         for (auto &p : zoneparams) {
     #if defined(AC_28) || defined(AC_29)
             ReadParam &param = p.value;
@@ -2550,7 +2705,7 @@ namespace Roombook
             return;
         }
         GS::UniString param_name = "";
-        ParamValueData val = {};
+        ParamValueData val;
 
         param_name = "tip_pot";
         if (const auto *p = readparams.GetPtr (param_name)) {
@@ -2833,11 +2988,11 @@ namespace Roombook
             roominfo.create_floor_elements = true;  // Создавать элементы отделки откосов
         } else {
             if (find_create_all_elements) {
-                roominfo.create_ceil_elements = false; // Создавать элементы отделки потолка
-                roominfo.create_wall_elements = false; // Создавать элементы отделки стен
+                roominfo.create_ceil_elements = false;   // Создавать элементы отделки потолка
+                roominfo.create_wall_elements = false;   // Создавать элементы отделки стен
                 roominfo.create_column_elements = false; // Создавать элементы отделки колонн
                 roominfo.create_reveal_elements = false; // Создавать элементы отделки откосов
-                roominfo.create_floor_elements = false; // Создавать элементы отделки откосов
+                roominfo.create_floor_elements = false;  // Создавать элементы отделки откосов
             }
         }
         // Заполнение непрочитанных
@@ -2926,7 +3081,7 @@ namespace Roombook
     // Запись прочитанных свойств в отделочные стены
     // -----------------------------------------------------------------------------
     void Param_SetComposite (const ParamComposite &base_composite,
-                             const bool &base_flipped,
+                             bool base_flipped,
                              GS::Array<ParamValueComposite> &otdcpmpoosite,
                              GS::UniString &fav_name,
                              bool has_fin) {
@@ -2989,7 +3144,7 @@ namespace Roombook
         if (!fav_name.IsEmpty ())
             fav_name.SetToLowerCase ();
         // Получаем индекс и имя прокрытия для последнего слоя
-        ParamValueComposite last = {};
+        ParamValueComposite last;
         if (otdcpmpoosite.IsEmpty () && !has_fin) {
             last = cpmpoosite.GetLast ();
             last.structype = -1;
@@ -2999,7 +3154,7 @@ namespace Roombook
             last = otdcpmpoosite.GetLast ();
         }
         if (last.structype == -1) {
-            API_Attribute attrib = {};
+            API_Attribute attrib;
             attrib.header.typeID = API_BuildingMaterialID;
             attrib.header.index = last.inx;
             GSErrCode err = ACAPI_Attribute_Get (&attrib);
@@ -3056,49 +3211,80 @@ namespace Roombook
     #endif
             return;
         }
+
         GS::UniString param_name = "";
+        double frame = 0;
+        double sill = 0;
+        bool plaster_show_3D = false;
+        bool plaster_show_2D = false;
+        bool AutoTurnIn = false;
+        int bOverIn = 0;
 
         param_name = "frame";
-        if (!readparams.ContainsKey (param_name))
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                frame = p->val.doubleValue;
+            } else {
+                return;
+            }
+        } else {
             return;
-        if (!readparams.Get (param_name).isValid)
-            return;
-        double frame = readparams.Get (param_name).val.doubleValue;
+        }
 
         param_name = "sill";
-        if (!readparams.ContainsKey (param_name))
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                sill = p->val.doubleValue;
+            } else {
+                return;
+            }
+        } else {
             return;
-        if (!readparams.Get (param_name).isValid)
-            return;
-        double sill = readparams.Get (param_name).val.doubleValue;
+        }
 
         param_name = "plaster_show_3D";
-        if (!readparams.ContainsKey (param_name))
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                plaster_show_3D = p->val.boolValue;
+            } else {
+                return;
+            }
+        } else {
             return;
-        if (!readparams.Get (param_name).isValid)
-            return;
-        bool plaster_show_3D = readparams.Get (param_name).val.boolValue;
+        }
 
         param_name = "plaster_show_2D";
-        if (!readparams.ContainsKey (param_name))
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                plaster_show_2D = p->val.boolValue;
+            } else {
+                return;
+            }
+        } else {
             return;
-        if (!readparams.Get (param_name).isValid)
-            return;
-        bool plaster_show_2D = readparams.Get (param_name).val.boolValue;
+        }
 
         param_name = "AutoTurnIn";
-        if (!readparams.ContainsKey (param_name))
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                AutoTurnIn = p->val.boolValue;
+            } else {
+                return;
+            }
+        } else {
             return;
-        if (!readparams.Get (param_name).isValid)
-            return;
-        bool AutoTurnIn = readparams.Get (param_name).val.boolValue;
+        }
 
         param_name = "bOverIn";
-        if (!readparams.ContainsKey (param_name))
+        if (const auto *p = readparams.GetPtr (param_name)) {
+            if (p->isValid) {
+                bOverIn = p->val.boolValue;
+            } else {
+                return;
+            }
+        } else {
             return;
-        if (!readparams.Get (param_name).isValid)
-            return;
-        int bOverIn = readparams.Get (param_name).val.boolValue;
+        }
 
         // Расчёт ширины откосы
         op.base_reveal_width = op.base_reveal_width - sill - frame;
@@ -3163,18 +3349,18 @@ namespace Roombook
         }
         switch (roomRed->type) {
         case APIRoomReduction_Rest:
-            reducededges->restedges.Append (roomedges);
+            reducededges->restedges.Append (std::move (roomedges));
             break;
         case APIRoomReduction_Wall:
-            reducededges->walledges.Append (roomedges);
+            reducededges->walledges.Append (std::move (roomedges));
             break;
         case APIRoomReduction_Column:
-            reducededges->columnedges.Append (roomedges);
+            reducededges->columnedges.Append (std::move (roomedges));
             break;
         case APIRoomReduction_Hatch:
             break;
         case APIRoomReduction_Gable:
-            reducededges->gableedges.Append (roomedges);
+            reducededges->gableedges.Append (std::move (roomedges));
             break;
         default:
             break;
@@ -3194,7 +3380,7 @@ namespace Roombook
                             GS::Array<Sector> &columnedges,
                             GS::Array<Sector> &restedges,
                             GS::Array<Sector> &gableedges) {
-        RoomEdges rdges = {};
+        RoomEdges rdges;
         reducededges = &rdges;
         GSErrCode err = NoError;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -3211,7 +3397,7 @@ namespace Roombook
         Point2D begC = {0, 0};
         Point2D endC = {0, 0};
         Sector roomedge = {begC, endC};
-        GS::Array<Sector> roomedges = {};
+        GS::Array<Sector> roomedges;
         for (Int32 j = 1; j <= zoneelement.zone.poly.nSubPolys; j++) {
             UInt32 begInd = (*zonememo.pends)[j - 1] + 1;
             UInt32 endInd = (*zonememo.pends)[j];
@@ -3229,7 +3415,7 @@ namespace Roombook
             roomedges.Push (roomedge);
         }
 
-        GS::Array<Sector> edges = {};
+        GS::Array<Sector> edges;
 
         for (auto &tedge : rdges.columnedges) {
             if (Edge_FindEdge (tedge, rdges.restedges))
@@ -3258,34 +3444,35 @@ namespace Roombook
     // Убираем задвоение Guid зон у элементов
     // -----------------------------------------------------------------------------
     void ClearZoneGUID (UnicElementByType &elementToRead) {
-        UnicGuid zoneGuidsd = {};
-        GS::Array<API_Guid> zoneGuids = {};
+        UnicGuid zoneGuidsd;
+        GS::Array<API_Guid> zoneGuids;
         for (const API_ElemTypeID &typeelem : typeinzone) {
-            if (elementToRead.ContainsKey (typeelem)) {
-                for (UnicElement::PairIterator cIt = elementToRead.Get (typeelem).EnumeratePairs (); cIt != NULL;
-                     ++cIt) {
+            auto *elemsPtr = elementToRead.GetPtr (typeelem);
+            if (elemsPtr == nullptr)
+                continue;
+            auto &elems = *elemsPtr;
+            for (UnicElement::PairIterator cIt = elems.EnumeratePairs (); cIt != NULL; ++cIt) {
     #if defined(AC_28) || defined(AC_29)
-                    API_Guid guid = cIt->key;
-                    const GS::Array<API_Guid> &zoneGuids_ = cIt->value;
+                API_Guid guid = cIt->key;
+                const GS::Array<API_Guid> &zoneGuids_ = cIt->value;
     #else
-                    API_Guid guid = *cIt->key;
-                    const GS::Array<API_Guid> &zoneGuids_ = *cIt->value;
+                API_Guid guid = *cIt->key;
+                const GS::Array<API_Guid> &zoneGuids_ = *cIt->value;
     #endif
-                    zoneGuidsd.Clear ();
-                    zoneGuids.Clear ();
-                    for (const API_Guid &zoneGuid : zoneGuids_) {
-                        zoneGuidsd.Add (zoneGuid, true);
-                    }
-                    for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
-                        const API_Guid &zoneGuid = cIt->key;
-    #else
-                        const API_Guid &zoneGuid = *cIt->key;
-    #endif
-                        zoneGuids.Push (zoneGuid);
-                    }
-                    elementToRead.Get (typeelem).Set (guid, zoneGuids);
+                zoneGuidsd.Clear ();
+                zoneGuids.Clear ();
+                for (const API_Guid &zoneGuid : zoneGuids_) {
+                    zoneGuidsd.Add (zoneGuid, true);
                 }
+                for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
+    #if defined(AC_28) || defined(AC_29)
+                    const API_Guid &zoneGuid = cIt->key;
+    #else
+                    const API_Guid &zoneGuid = *cIt->key;
+    #endif
+                    zoneGuids.Push (zoneGuid);
+                }
+                elems.Set (guid, zoneGuids);
             }
         }
         return;
@@ -3453,11 +3640,11 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     void OtdWall_Delim_All (GS::Array<OtdWall> &opw,
                             OtdWall &otdw,
-                            double &otd_zBottom,
-                            double &otd_height_down,
-                            double &otd_height_main,
-                            double &otd_height_up,
-                            double &otd_height,
+                            double otd_zBottom,
+                            double otd_height_down,
+                            double otd_height_main,
+                            double otd_height_up,
+                            double otd_height,
                             OtdMaterial &om_main,
                             OtdMaterial &om_up,
                             OtdMaterial &om_down,
@@ -3660,7 +3847,7 @@ namespace Roombook
                             OtdMaterial &om_floor,
                             OtdMaterial &om_ceil,
                             OtdMaterial &om_zone) {
-        OtdMaterial material = {};
+        OtdMaterial material;
         // Проверим существование свойств для записи, при необходимости - поменяем
         // тип отделки
         switch (otdw.type) {
@@ -3774,7 +3961,7 @@ namespace Roombook
 
     void SetMaterialFinish (OtdMaterial &material, GS::Array<ParamValueComposite> &base_composite) {
         SetMaterialFinish_ByComposite (material, base_composite);
-        ParamValueComposite p = {};
+        ParamValueComposite p;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         p.inx = ACAPI_CreateAttributeIndex (material.material);
     #else
@@ -4026,8 +4213,8 @@ namespace Roombook
 
     void OtdBeam_Draw_Beam (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges) {
         GSErrCode err = NoError;
-        API_Element beamelement;
-        API_ElementMemo beammemo;
+        API_Element beamelement = {};
+        API_ElementMemo beammemo = {};
         if (!OtdBeam_GetDefult_Beam (favorite_name, beamelement, beammemo)) {
             return;
         }
@@ -4123,8 +4310,8 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     void OtdWall_Draw_Object (const GS::UniString &favorite_name, const Stories &storyLevels, OtdWall &edges) {
         GSErrCode err = NoError;
-        API_Element wallobjelement;
-        API_ElementMemo wallobjmemo;
+        API_Element wallobjelement = {};
+        API_ElementMemo wallobjmemo = {};
         if (!OtdWall_GetDefult_Object (favorite_name, wallobjelement, wallobjmemo)) {
             return;
         }
@@ -4280,7 +4467,7 @@ namespace Roombook
                             OtdWall &edges,
                             UnicElementByType &subelementByparent) {
         GSErrCode err = NoError;
-        API_Element wallelement;
+        API_Element wallelement = {};
         if (!OtdWall_GetDefult_Wall (favorite_name, wallelement)) {
             return;
         }
@@ -4358,10 +4545,10 @@ namespace Roombook
     void Opening_Draw (API_Element &wallelement,
                        OtdOpening &op,
                        UnicElementByType &subelementByparent,
-                       const double &zBottom) {
+                       double zBottom) {
         GSErrCode err = NoError;
-        API_Element windowelement{};
-        API_ElementMemo windowmemo{};
+        API_Element windowelement = {};
+        API_ElementMemo windowmemo = {};
         if (wallelement.wall.type == APIWtyp_Poly)
             return;
         if (!Opening_GetDefult ("smstf window", windowelement, windowmemo)) {
@@ -4590,8 +4777,8 @@ namespace Roombook
                 return;
             }
         }
-        GDLHelpers::ParamDict accsessoryparams = {};
-        GDLHelpers::Param p = {};
+        GDLHelpers::ParamDict accsessoryparams;
+        GDLHelpers::Param p;
         if (otdslab.type == Ceil) {
             p.num = otdslab.zBottom;
             accsessoryparams.Add ("{@gdl:ac_ref_height}", p);
@@ -4793,63 +4980,90 @@ namespace Roombook
     }
 
     API_Guid Class_GetClassGuid (const TypeOtd &type, const ClassificationFunc::ClassificationDict &finclass) {
-        if (type == Column && finclass.ContainsKey (cls.column_class))
-            return finclass.Get (cls.column_class).item.guid;
-        if ((type == Reveal_Main || type == Reveal_Up || type == Reveal_Down) &&
-            finclass.ContainsKey (cls.reveal_class))
-            return finclass.Get (cls.reveal_class).item.guid;
-        if ((type == Wall_Down) && finclass.ContainsKey (cls.otdwall_down_class))
-            return finclass.Get (cls.otdwall_down_class).item.guid;
-        if ((type == Wall_Main || type == Wall_Up || type == Wall_Down || type == Reveal_Main || type == Reveal_Up ||
-             type == Reveal_Down) &&
-            finclass.ContainsKey (cls.otdwall_class))
-            return finclass.Get (cls.otdwall_class).item.guid;
-        if (type == Floor && finclass.ContainsKey (cls.floor_class))
-            return finclass.Get (cls.floor_class).item.guid;
-        if (type == Ceil && finclass.ContainsKey (cls.ceil_class))
-            return finclass.Get (cls.ceil_class).item.guid;
-        if (finclass.ContainsKey (cls.all_class))
-            return finclass.Get (cls.all_class).item.guid;
+        switch (type) {
+        case Column:
+            if (auto *p = finclass.GetPtr (cls.column_class))
+                return p->item.guid;
+            break;
+
+        case Reveal_Main:
+        case Reveal_Up:
+        case Reveal_Down:
+            if (auto *p = finclass.GetPtr (cls.reveal_class))
+                return p->item.guid;
+            if (auto *p = finclass.GetPtr (cls.otdwall_class))
+                return p->item.guid;
+            break;
+
+        case Wall_Down:
+            if (auto *p = finclass.GetPtr (cls.otdwall_down_class))
+                return p->item.guid;
+            if (auto *p = finclass.GetPtr (cls.otdwall_class))
+                return p->item.guid;
+            break;
+
+        case Wall_Main:
+        case Wall_Up:
+            if (auto *p = finclass.GetPtr (cls.otdwall_class))
+                return p->item.guid;
+            break;
+
+        case Floor:
+            if (auto *p = finclass.GetPtr (cls.floor_class))
+                return p->item.guid;
+            break;
+
+        case Ceil:
+            if (auto *p = finclass.GetPtr (cls.ceil_class))
+                return p->item.guid;
+            break;
+
+        default:
+            break;
+        }
+        if (auto *p = finclass.GetPtr (cls.all_class))
+            return p->item.guid;
         return APINULLGuid;
     }
 
     TypeOtd Class_GetOtdTypeByClass (const API_Guid &classguid,
                                      const ClassificationFunc::ClassificationDict &finclass) {
-        for (GS::HashTable<GS::UniString, ClassificationFunc::ClassificationValues>::ConstPairIterator cIt =
-                 finclass.EnumeratePairs ();
-             cIt != NULL;
-             ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
-            GS::UniString name = cIt->key;
-            const ClassificationFunc::ClassificationValues &cl = cIt->value;
-    #else
-            GS::UniString name = *cIt->key;
-            const ClassificationFunc::ClassificationValues &cl = *cIt->value;
-    #endif
-            if (cl.item.guid != classguid)
-                continue;
-            if (name == cls.all_class) {
-                return NoSet;
-            }
-            if (name == cls.otdwall_class) {
+
+        if (const auto *p = finclass.GetPtr (cls.otdwall_class)) {
+            if (p->item.guid == classguid)
                 return Wall_Main;
-            }
-            if (name == cls.otdwall_down_class) {
-                return Wall_Down;
-            }
-            if (name == cls.ceil_class) {
-                return Ceil;
-            }
-            if (name == cls.floor_class) {
-                return Floor;
-            }
-            if (name == cls.column_class) {
-                return Column;
-            }
-            if (name == cls.reveal_class) {
-                return Reveal_Main;
-            }
         }
+
+        if (const auto *p = finclass.GetPtr (cls.otdwall_down_class)) {
+            if (p->item.guid == classguid)
+                return Wall_Down;
+        }
+
+        if (const auto *p = finclass.GetPtr (cls.ceil_class)) {
+            if (p->item.guid == classguid)
+                return Ceil;
+        }
+
+        if (const auto *p = finclass.GetPtr (cls.floor_class)) {
+            if (p->item.guid == classguid)
+                return Floor;
+        }
+
+        if (const auto *p = finclass.GetPtr (cls.column_class)) {
+            if (p->item.guid == classguid)
+                return Column;
+        }
+
+        if (const auto *p = finclass.GetPtr (cls.reveal_class)) {
+            if (p->item.guid == classguid)
+                return Reveal_Main;
+        }
+
+        if (const auto *p = finclass.GetPtr (cls.all_class)) {
+            if (p->item.guid == classguid)
+                return NoSet;
+        }
+
         return NoSet;
     }
 
@@ -4928,7 +5142,7 @@ namespace Roombook
     // Связывание созданных элементов отделки с базовыми элементами
     // -----------------------------------------------------------------------------
     void SetSyncOtdWall (UnicElementByType &subelementByparent, ParamDictElement &paramToWrite) {
-        API_Elem_Head parentelementhead = {};
+        API_Elem_Head parentelementhead;
         UnicGuid syncguidsdict;
         GS::UniString suffix = "";
         GS::Array<API_Guid> syncguids;
@@ -5098,7 +5312,7 @@ namespace Roombook
     MatarialToFavoriteDict Favorite_GetDict () {
         // Словарь с избранным
         MatarialToFavoriteDict favdict;
-        MatarialToFavorite fav = {};
+        MatarialToFavorite fav;
         // Поиск элементов по-умолчанию
         short count = 0;
         GS::Array<GS::UniString> names;
@@ -5169,30 +5383,37 @@ namespace Roombook
                                  MatarialToFavoriteDict &favdict,
                                  ParamDictValue &paramToRead_favorite,
                                  const GS::UniString &fav_name) {
-        if (!favdict.ContainsKey (fav_name))
+
+        // ОПТИМИЗАЦИЯ: 1 поиск в favdict вместо 5 (!) с одновременной проверкой флага
+        auto *favData = favdict.GetPtr (fav_name);
+        if (favData == nullptr || favData->is_composite_read)
             return;
-        if (favdict.Get (fav_name).is_composite_read)
-            return;
-        favdict.Get (fav_name).is_composite_read = true;
+
+        favData->is_composite_read = true;
+
         API_Element element = {};
-        if (!Favorite_GetByName (favdict.Get (fav_name).name, element))
+        if (!Favorite_GetByName (favData->name, element))
             return;
-        if (!paramToRead_favorite.ContainsKey (param_composite.rawName))
+
+        // ОПТИМИЗАЦИЯ: Получаем элемент для записи за 1 проход вместо ContainsKey + Set
+        ParamValue *favParamPtr = paramToRead_favorite.GetPtr (param_composite.rawName);
+        if (favParamPtr == nullptr)
             return;
-        paramToRead_favorite.Set (param_composite.rawName, param_composite);
-        ParamDictComposite paramcomposite = {};
+
+        *favParamPtr = param_composite;
+
+        ParamDictComposite paramcomposite;
         bool needReadQuantities = false;
         if (!ParamHelpers::ReadMaterial (element, paramToRead_favorite, paramcomposite, needReadQuantities))
             return;
-        if (!paramToRead_favorite.Get (param_composite.rawName).isValid)
+        favParamPtr = paramToRead_favorite.GetPtr (param_composite.rawName);
+        if (favParamPtr == nullptr || !favParamPtr->isValid)
             return;
-        if (!paramcomposite.ContainsKey (param_composite.rawName))
+        const ParamComposite *base_composite = paramcomposite.GetPtr (param_composite.rawName);
+        if (base_composite == nullptr)
             return;
         GS::UniString fav_name_ = "";
-        const ParamComposite &base_composite = paramcomposite.Get (param_composite.rawName);
-        GS::Array<ParamValueComposite> &otdcpmpoosite = favdict.Get (fav_name).composite;
-        Param_SetComposite (base_composite, element.wall.flipped, otdcpmpoosite, fav_name_, true);
-        return;
+        Param_SetComposite (*base_composite, element.wall.flipped, favData->composite, fav_name_, true);
     }
 
     void Favorite_FindName (MatarialToFavorite &favorite,
@@ -5212,27 +5433,33 @@ namespace Roombook
             part.Trim ();
             if (!fav_name.IsEmpty ()) {
                 GS::UniString part_full = part + "_" + fav_name;
-                if (favdict.ContainsKey (part_full)) {
-                    if (favdict.Get (part_full).type == draw_type || favdict.Get (part_full).type == API_ObjectID) {
+                if (auto *favPtr = favdict.GetPtr (part_full)) {
+                    if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
                         Favorite_ReadComposite (param_composite, favdict, paramToRead_favorite, part_full);
-                        favorite = favdict.Get (part_full);
+                        if (auto *updatedFavPtr = favdict.GetPtr (part_full)) {
+                            favorite = *updatedFavPtr;
+                        }
                         return;
                     }
                 }
             }
-            if (favdict.ContainsKey (part)) {
-                if (favdict.Get (part).type == draw_type || favdict.Get (part).type == API_ObjectID) {
+            if (auto *favPtr = favdict.GetPtr (part)) {
+                if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
                     Favorite_ReadComposite (param_composite, favdict, paramToRead_favorite, part);
-                    favorite = favdict.Get (part);
+                    if (auto *updatedFavPtr = favdict.GetPtr (part)) {
+                        favorite = *updatedFavPtr;
+                    }
                     return;
                 }
             }
         }
         if (!fav_name.IsEmpty ()) {
-            if (favdict.ContainsKey (fav_name)) {
-                if (favdict.Get (fav_name).type == draw_type || favdict.Get (fav_name).type == API_ObjectID) {
+            if (auto *favPtr = favdict.GetPtr (fav_name)) {
+                if (favPtr->type == draw_type || favPtr->type == API_ObjectID) {
                     Favorite_ReadComposite (param_composite, favdict, paramToRead_favorite, fav_name);
-                    favorite = favdict.Get (fav_name);
+                    if (auto *updatedFavPtr = favdict.GetPtr (fav_name)) {
+                        favorite = *updatedFavPtr;
+                    }
                     return;
                 }
             }
@@ -5274,11 +5501,12 @@ namespace Roombook
                 return;
                 break;
             }
-            if (favdict.ContainsKey (favorite_name_defult)) {
-                if (favdict.Get (favorite_name_defult).type == possibly_type ||
-                    favdict.Get (favorite_name_defult).type == API_ObjectID) {
+            if (auto *favPtr = favdict.GetPtr (favorite_name_defult)) {
+                if (favPtr->type == possibly_type || favPtr->type == API_ObjectID) {
                     Favorite_ReadComposite (param_composite, favdict, paramToRead_favorite, favorite_name_defult);
-                    favorite = favdict.Get (favorite_name_defult);
+                    if (auto *updatedFavPtr = favdict.GetPtr (favorite_name_defult)) {
+                        favorite = *updatedFavPtr;
+                    }
                     return;
                 }
             }
@@ -5354,12 +5582,12 @@ namespace Roombook
         // Проверка наличия свойств `Sync_GUID zone`
         if (!ParamHelpers::isPropertyDefinitionRead ())
             return false;
-        ParamDictValue &propertyParams = PROPERTYCACHE ().property;
-        for (auto &cItt : propertyParams) {
+        const ParamDictValue &propertyParams = PROPERTYCACHE ().property;
+        for (const auto &cItt : propertyParams) {
     #if defined(AC_28) || defined(AC_29)
-            ParamValue param = cItt.value;
+            const ParamValue &param = cItt.value;
     #else
-            ParamValue param = *cItt.value;
+            const ParamValue &param = *cItt.value;
     #endif
             if (param.definition.description.Contains (SYNCGUID) && param.definition.description.Contains ("zone")) {
                 for (const API_Guid &classguid : param.definition.availability) {
@@ -5384,11 +5612,11 @@ namespace Roombook
 
         // Проверка наличия свойств `Sync_GUID base`
         bool find = false;
-        for (auto &cItt : propertyParams) {
+        for (const auto &cItt : propertyParams) {
     #if defined(AC_28) || defined(AC_29)
-            ParamValue param = cItt.value;
+            const ParamValue &param = cItt.value;
     #else
-            ParamValue param = *cItt.value;
+            const ParamValue &param = *cItt.value;
     #endif
             if (param.definition.description.Contains (SYNCGUID) &&
                 param.definition.description.Contains ("base element")) {
