@@ -7479,7 +7479,7 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue &paramsAdd,
             continue;
         bool flag = false;
         for (const auto &p : param_composite.composite) {
-            API_AttributeIndex constrinx = p.inx;
+            const API_AttributeIndex &constrinx = p.inx;
             ParamHelpers::GetAttributeValues (constrinx, paramsAdd, paramsAdd_1);
             if (!paramsAdd_1.IsEmpty ())
                 ParamHelpers::GetAttributeValues (constrinx, paramsAdd_1, paramsAdd_1);

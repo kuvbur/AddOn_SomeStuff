@@ -92,7 +92,7 @@ namespace Roombook
         ParamValue param_composite;      // Состав базовых конструкций
         ParamDictValue paramDict;
         ParamDictValue paramDict_favorite;
-        UnicGUIDByType guidselementToRead;                            // Словарь элементов по типам для чтения свойств
+        UnicGUIDByType guidselementToRead; // Словарь элементов по типам для чтения свойств
         GS::HashTable<API_Guid, GS::Array<OtdOpening>> openinginwall; // Все проёмы в зонах
         // Поиск перекрытий в зонах
         GS::HashTable<API_Guid, GS::Array<API_Guid>> slabsinzone;
@@ -375,15 +375,15 @@ namespace Roombook
                     SetMaterialFinish_ByComposite (otdw.material, otdw.favorite.composite);
                     otdw.base_composite.Append (otdw.favorite.composite);
                 }
-            } // Назначение избранного
+            }                  // Назначение избранного
             otd.otdwall = opw; // Заменяем на разбитые стены
-        } // Обработка зон
+        }                      // Обработка зон
         // Получаем список существующих элементов отделки для обрабатываемых зон
         zones.Clear ();
         paramDict_favorite.Clear ();
         favdict.Clear ();
-        ParamDictElement paramToWrite;           // Параметры для записи в зоны и элементы отделки
-        ColumnFormatDict columnFormat;           // Словарь с форматом текста для столбцов
+        ParamDictElement paramToWrite; // Параметры для записи в зоны и элементы отделки
+        ColumnFormatDict columnFormat; // Словарь с форматом текста для столбцов
         OtdMaterialAreaDictByOtdType dct_bytype; // Словарь с отделкой по типу отделки
         GS::Array<API_Guid> zones_bytype;        // Зоны для записи отделки по типам
         funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
@@ -1190,12 +1190,12 @@ namespace Roombook
                 // Получаем понятное имя покрытия (материала) из атрибутов проекта
                 API_Attribute attrib;
                 attrib.header.typeID = API_MaterialID;
-                attrib.header.index = pgonComp.pgon.iumat;
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-                surface.material.material = pgonComp.pgon.iumat.ToInt32_Deprecated ();
+                attrib.header.index = ACAPI_CreateAttributeIndex ((Int32)pgonComp.pgon.iumat);
     #else
-                surface.material.material = pgonComp.pgon.iumat;
+                attrib.header.index = pgonComp.pgon.iumat;
     #endif
+                surface.material.material = pgonComp.pgon.iumat;
                 if (ACAPI_Attribute_Get (&attrib) == NoError) {
                     surface.material.smaterial = attrib.header.name;
                 }
@@ -2988,11 +2988,11 @@ namespace Roombook
             roominfo.create_floor_elements = true;  // Создавать элементы отделки откосов
         } else {
             if (find_create_all_elements) {
-                roominfo.create_ceil_elements = false;   // Создавать элементы отделки потолка
-                roominfo.create_wall_elements = false;   // Создавать элементы отделки стен
+                roominfo.create_ceil_elements = false; // Создавать элементы отделки потолка
+                roominfo.create_wall_elements = false; // Создавать элементы отделки стен
                 roominfo.create_column_elements = false; // Создавать элементы отделки колонн
                 roominfo.create_reveal_elements = false; // Создавать элементы отделки откосов
-                roominfo.create_floor_elements = false;  // Создавать элементы отделки откосов
+                roominfo.create_floor_elements = false; // Создавать элементы отделки откосов
             }
         }
         // Заполнение непрочитанных

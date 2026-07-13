@@ -4,7 +4,10 @@
     #define ROOMBOOK_HPP
 
     #include "Helpers.hpp"
-
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        #define ACAPI_Element_Get3DInfo ACAPI_ModelAccess_Get3DInfo
+        #define ACAPI_3D_GetComponent ACAPI_ModelAccess_GetComponent
+    #endif
 namespace Roombook {
     #if defined(AC_22) || defined(AC_23)
     void RoomBook ();
@@ -52,7 +55,7 @@ namespace Roombook {
         double base_reveal_width = 0;     // Глубина откоса базового проёма
         API_Guid base_guid = APINULLGuid; // GUID базового проёма
         API_Guid otd_guid = APINULLGuid;  // GUID созданного проёма
-    }; // Проём в стене
+    };                                    // Проём в стене
 
     struct OtdMaterial {
         short material = 0;                // Индекс материала
@@ -76,8 +79,8 @@ namespace Roombook {
     };
 
     struct MatarialToFavorite {
-        GS::UniString name = "";                  // Имя избранного
-        API_ElemTypeID type = API_ZombieElemID;   // Тип элемента в избранном
+        GS::UniString name = "";                // Имя избранного
+        API_ElemTypeID type = API_ZombieElemID; // Тип элемента в избранном
         GS::Array<ParamValueComposite> composite; // Состав элемента (только отделочные слои)
         bool is_composite_read = false;
     };
@@ -90,38 +93,38 @@ namespace Roombook {
         short floorInd = 0; // Этаж
         double height = 0;
         OtdMaterial material;
-        GS::UniString tip = "";                        // Тип потолка/пола из зоны
-        API_ElemTypeID base_type = API_ZombieElemID;   // Тип базового элемента
-        API_ElemTypeID draw_type = API_SlabID;         // Тип отрисовываемого элемента
-        API_Guid base_guid = APINULLGuid;              // GUID базового элемента
+        GS::UniString tip = "";                      // Тип потолка/пола из зоны
+        API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
+        API_ElemTypeID draw_type = API_SlabID;       // Тип отрисовываемого элемента
+        API_Guid base_guid = APINULLGuid;            // GUID базового элемента
         GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
-        API_Guid otd_guid = APINULLGuid;               // GUID стены-отделки
-        TypeOtd type = NoSet;                          // В какую графу заносить элемент (пол, потолок, стены и т.д.)
-        MatarialToFavorite favorite;                   // Избранное
+        API_Guid otd_guid = APINULLGuid; // GUID стены-отделки
+        TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
+        MatarialToFavorite favorite; // Избранное
         bool isValid = true;
     };
 
     struct OtdWall {
-        double ang_begC = 90 * DEGRAD;                 // Угол подрезки начала
-        double ang_endC = 90 * DEGRAD;                 // Угол подрезки конца
-        double height = 0;                             // Высота стены-отделки
-        double width = 0;                              // Ширина (для откоса)
-        double length = 0;                             // Длина (для откоса)
-        double zBottom = 0;                            // Аболютная координата z низа
-        short floorInd = 0;                            // Этаж
-        double base_th = 0;                            // Толщина базовой стены (для расчёта откосов)
-        API_Coord begC = {0, 0};                       // Координата начала
-        API_Coord endC = {0, 0};                       // Координата конца
-        API_Guid base_guid = APINULLGuid;              // GUID базового элемента
-        API_Guid otd_guid = APINULLGuid;               // GUID стены-отделки
-        bool base_flipped = false;                     // Базовая конструкция отзеркалена (для чтения состава)
+        double ang_begC = 90 * DEGRAD; // Угол подрезки начала
+        double ang_endC = 90 * DEGRAD; // Угол подрезки конца
+        double height = 0;             // Высота стены-отделки
+        double width = 0;              // Ширина (для откоса)
+        double length = 0;             // Длина (для откоса)
+        double zBottom = 0;            // Аболютная координата z низа
+        short floorInd = 0;            // Этаж
+        double base_th = 0;      // Толщина базовой стены (для расчёта откосов)
+        API_Coord begC = {0, 0}; // Координата начала
+        API_Coord endC = {0, 0}; // Координата конца
+        API_Guid base_guid = APINULLGuid; // GUID базового элемента
+        API_Guid otd_guid = APINULLGuid;  // GUID стены-отделки
+        bool base_flipped = false; // Базовая конструкция отзеркалена (для чтения состава)
         GS::Array<ParamValueComposite> base_composite; // Состав базового элемента (только отделочные слои)
-        GS::Array<OtdOpening> openings;                // Проёмы в стене-отделке
+        GS::Array<OtdOpening> openings; // Проёмы в стене-отделке
         OtdMaterial material;
         API_ElemTypeID base_type = API_ZombieElemID; // Тип базового элемента
         API_ElemTypeID draw_type = API_WallID;       // Тип отрисовываемого элемента
-        TypeOtd type = NoSet;                        // В какую графу заносить элемент (пол, потолок, стены и т.д.)
-        MatarialToFavorite favorite;                 // Избранное
+        TypeOtd type = NoSet; // В какую графу заносить элемент (пол, потолок, стены и т.д.)
+        MatarialToFavorite favorite; // Избранное
         bool isValid = true;
     }; // Структура со стенами для отделки
 
@@ -145,12 +148,12 @@ namespace Roombook {
         double zBottom = 0;                                   // Аболютная координата z низа
         short floorInd = 0;                                   // Этаж
         GS::HashTable<API_Guid, GS::Array<Sector>> walledges; // Границы стен, не явяющихся границей зоны
-        GS::Array<Sector> columnedges;                        // Границы колонн, не явяющихся границей зоны
-        GS::Array<Sector> edges;                              // Границы зоны
-        GS::Array<API_WallPart> wallPart;                     // Участки стен в зоне
-        GS::Array<API_BeamPart> beamPart;                     // Участки балок в зоне
-        GS::Array<API_CWSegmentPart> cwSegmentPart;           // Навесные стены в зоне
-        GS::Array<API_Niche> niches;                          // Ниши в зоне
+        GS::Array<Sector> columnedges; // Границы колонн, не явяющихся границей зоны
+        GS::Array<Sector> edges;       // Границы зоны
+        GS::Array<API_WallPart> wallPart;           // Участки стен в зоне
+        GS::Array<API_BeamPart> beamPart;           // Участки балок в зоне
+        GS::Array<API_CWSegmentPart> cwSegmentPart; // Навесные стены в зоне
+        GS::Array<API_Niche> niches;                // Ниши в зоне
         GS::Array<OtdZoneSurfacePolygon> zonesurf;
         double height_down = 0;        // Высота панелей
         double height_main = 0;        // Высота основной отделки
@@ -158,19 +161,19 @@ namespace Roombook {
         OtdSlab poly;                  // Полгон зоны для полов/потолков
         GS::Array<API_Guid> floorslab; // Перекрытия в уровне пола
         GS::Array<API_Guid> ceilslab;  // Перекрытия в уровне потолка
-        GS::Array<OtdWall> otdwall;    // Стены-отделки, созданные для расчётов и отрисовки
-        GS::Array<OtdSlab> otdslab;    // Потолки/полы для построения
+        GS::Array<OtdWall> otdwall; // Стены-отделки, созданные для расчётов и отрисовки
+        GS::Array<OtdSlab> otdslab; // Потолки/полы для построения
         bool has_ceil = true;
         bool has_floor = true;
-        bool ceil_by_slab = false;           // Создавать потолок только по перекрытиям
-        bool floor_by_slab = false;          // Создавать потолок только по перекрытиям
-        GS::UniString tip_pot = "";          // Тип потолка для записи в аксессуар
-        GS::UniString tip_pol = "";          // Тип пола для записи в аксессуар
-        GS::UniString tip_otd = "";          // Тип отделки для разбивки
-        API_Guid zone_guid = APINULLGuid;    // GUID базового элемента
-        bool isValid = true;                 // Зона считана нормально
-        bool create_all_elements = true;     // Создавать элементы отделки
-        bool create_ceil_elements = false;   // Создавать элементы отделки потолка
+        bool ceil_by_slab = false;         // Создавать потолок только по перекрытиям
+        bool floor_by_slab = false;        // Создавать потолок только по перекрытиям
+        GS::UniString tip_pot = "";        // Тип потолка для записи в аксессуар
+        GS::UniString tip_pol = "";        // Тип пола для записи в аксессуар
+        GS::UniString tip_otd = "";        // Тип отделки для разбивки
+        API_Guid zone_guid = APINULLGuid;  // GUID базового элемента
+        bool isValid = true;               // Зона считана нормально
+        bool create_all_elements = true;   // Создавать элементы отделки
+        bool create_ceil_elements = false; // Создавать элементы отделки потолка
         bool create_floor_elements = false;  // Создавать элементы отделки пола
         bool create_wall_elements = false;   // Создавать элементы отделки стен
         bool create_column_elements = false; // Создавать элементы отделки колонн
