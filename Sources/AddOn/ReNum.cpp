@@ -171,8 +171,9 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     #if defined(TESTING)
     DBprnt ("find rule");
     #endif
+    GS::Array<API_PropertyDefinition> definitions = {};
     for (const auto &guid : guidArray) {
-        GS::Array<API_PropertyDefinition> definitions = {};
+        definitions.Clear ();
         GSErrCode err =
             ACAPI_Element_GetPropertyDefinitions (guid, API_PropertyDefinitionFilter_UserDefined, definitions);
         if (err != NoError) {
@@ -332,6 +333,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
     if (!ParamHelpers::isPropertyDefinitionRead ())
         return false;
     ParamDictValue &propertyParams = PROPERTYCACHE ().property;
+    GS::Array<GS::UniString> partstring_;
     GS::Array<GS::UniString> partstring;
     GS::Array<GS::UniString> local_scratch;
     for (const API_PropertyDefinition &definition : definitions) {
@@ -357,8 +359,8 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
             // Разбираем - что записано в свойстве с флагом
             // В нём должно быть имя свойства и, возможно, флаг добавления нулей
             GS::UniString paramName = definition.description.ToLowerCase ();
-            GS::Array<GS::UniString> partstring;
-            if (StringSplt (paramName, BRACEEND, partstring, "enum_flag") > 0) {
+            partstring.Clear ();
+            if (StringSplt (paramName, BRACEEND, partstring, "enum_flag", &local_scratch) > 0) {
                 paramName = partstring[0] + BRACEEND;
             }
             paramName = paramName.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
@@ -379,7 +381,6 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         rulecritetia.nulltype = ADDMAXSPACE;
                     // Добавление нужного количества знаков
                     if (rulecritetia.nulltype != NOZEROS && partstring[1].Contains ("_")) {
-                        GS::Array<GS::UniString> partstring_;
                         if (StringSplt (partstring[1], "_", partstring_, true, &local_scratch) > 0) {
                             double nullcount = 0;
                             if (UniStringToDouble (partstring_[0], nullcount))
@@ -557,8 +558,10 @@ RenumPos GetMostFrequentPos (const GS::Array<RenumPos> &eleminpos) {
     return out;
 }
 
-RenumPos
-GetPos (DRenumPosDict &unicpos, DStringDict &unicriteria, const std::string &delimetr, const std::string &criteria) {
+RenumPos GetPos (DRenumPosDict &unicpos,
+                 DStringDict &unicriteria,
+                 const std::string &delimetr,
+                 const std::string &criteria) {
     RenumPos pos (1);
     while (unicpos[delimetr].count (pos.strpos) != 0) {
         pos.Add (1);
@@ -654,13 +657,10 @@ void ReNumOneRule (RenumRule &rule,
         if (tv.count (RENUM_ADD) != 0 && !rule.oldalgoritm) {
             for (Values::iterator k = tv[RENUM_ADD].begin (); k != tv[RENUM_ADD].end (); ++k) {
                 std::string criteria = k->first;
-                GS::Array<RenumPos> eleminpos = k->second.elements;
-
                 // Расставляем позиции для элементов, для которых есть подходящая по критериям позиция
                 if (unicriteria[delimetr].count (criteria) != 0) {
                     delimetrList[delimetr][RENUM_ADD][criteria].mostFrequentPos = unicriteria[delimetr][criteria];
                 } else {
-
                     // Если такой позиции нет (например, она занята) - создадим новую позицию
                     RenumPos pos = GetPos (unicpos, unicriteria, delimetr, criteria);
                     delimetrList[delimetr][RENUM_ADD][criteria].mostFrequentPos = pos;
@@ -677,7 +677,6 @@ void ReNumOneRule (RenumRule &rule,
                 if (unicriteria[delimetr].count (criteria) != 0) {
                     delimetrList[delimetr][RENUM_NORMAL][criteria].mostFrequentPos = unicriteria[delimetr][criteria];
                 } else {
-
                     // Если такой позиции нет (например, она занята) - создадим новую позицию
                     RenumPos pos = GetPos (unicpos, unicriteria, delimetr, criteria);
                     delimetrList[delimetr][RENUM_NORMAL][criteria].mostFrequentPos = pos;
@@ -712,17 +711,17 @@ void ReNumOneRule (RenumRule &rule,
                 pos.FormatToMax (maxposdelim, rule.nulltype, rule.nullcount);
                 ParamValue posvalue = pos.ToParamValue (rawname_position);
                 for (const auto &elem : eleminpos) {
-                    if (!paramToReadelem.ContainsKey (elem.guid)) {
+                    ParamDictValue *pPtr = paramToReadelem.GetPtr (elem.guid);
+                    if (pPtr == nullptr) {
                         continue;
                     }
-                    ParamDictValue &p = paramToReadelem.Get (elem.guid);
-                    if (!p.ContainsKey (rawname_position)) {
+                    ParamValue *parampositionPtr = pPtr->GetPtr (rawname_position);
+                    if (parampositionPtr == nullptr) {
                         continue;
                     }
-                    ParamValue paramposition = p.Get (rawname_position);
+                    ParamValue paramposition = *parampositionPtr;
                     paramposition.isValid = true;
                     posvalue.val.type = paramposition.val.type;
-                    // Записываем только изменённые значения
                     if (paramposition != posvalue) {
                         paramposition.val = posvalue.val;
                         ParamHelpers::AddParamValue2ParamDictElement (elem.guid, paramposition, paramToWriteelem);
@@ -749,16 +748,20 @@ bool ElementsSeparation (RenumRule &rule,
     bool flag = false;
     // Собираем значения свойств из criteria. Нам нужны только уникальные значения.
     for (const auto &guid : rule.elemts) {
-        if (!paramToReadelem.ContainsKey (guid))
+        const ParamDictValue *params = paramToReadelem.GetPtr (guid);
+        if (params == nullptr) {
             continue;
-
+        }
         // Сразу проверим режим нумерации элемента
         short state = RENUM_SKIP;
         RenumPos pos;
-        const ParamDictValue &params = paramToReadelem.Get (guid);
-        if (params.ContainsKey (rule.flag) && params.ContainsKey (rule.position)) {
-            const ParamValue &paramflag = params.Get (rule.flag);
-            const ParamValue &paramposition = params.Get (rule.position);
+
+        const ParamValue *paramflagPtr = params->GetPtr (rule.flag);
+        const ParamValue *parampositionPtr = params->GetPtr (rule.position);
+
+        if (paramflagPtr != nullptr && parampositionPtr != nullptr) {
+            const ParamValue &paramflag = *paramflagPtr;
+            const ParamValue &paramposition = *parampositionPtr;
             if (!paramflag.isValid) {
                 msg_rep (
                     "ReNumSelected", "Skip element with not valid value in flag: " + rule.flag, APIERR_GENERAL, guid);
@@ -779,8 +782,8 @@ bool ElementsSeparation (RenumRule &rule,
 
         // Получаем разделитель, если он есть
         std::string delimetr = "";
-        if (params.ContainsKey (rule.delimetr)) {
-            const ParamValue &param = params.Get (rule.delimetr);
+        if (const ParamValue *paramPtr = params->GetPtr (rule.delimetr)) {
+            const ParamValue &param = *paramPtr;
             if (param.isValid) {
                 GSCharCode chcode = GetCharCode (param.val.uniStringValue);
                 delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
@@ -796,8 +799,8 @@ bool ElementsSeparation (RenumRule &rule,
 
         // Получаем критерий, если он есть
         std::string criteria = "";
-        if (params.ContainsKey (rule.criteria)) {
-            const ParamValue &param = params.Get (rule.criteria);
+        if (const ParamValue *paramPtr = params->GetPtr (rule.criteria)) {
+            const ParamValue &param = *paramPtr;
             if (param.isValid) {
                 if (param.val.uniStringValue.IsEmpty ()) {
                     msg_rep ("ReNumSelected",
@@ -840,9 +843,9 @@ bool ElementsSeparation (RenumRule &rule,
     return flag;
 }
 
-//--------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------
 // Проверяет - есть ли хоть одно описание флага
-//--------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions) {
     if (definitions.IsEmpty ())
         return false;
