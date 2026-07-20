@@ -45,6 +45,7 @@
 GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     GS::UniString funcname ("Numbering");
     GS::Int32 nPhase = 1;
+    GSErrCode err = NoError;
     ProcessWindowGuard pwGuard (funcname, nPhase);
     clock_t start, finish;
     double duration;
@@ -70,36 +71,54 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
     UInt32 qtywrite = paramToWriteelem.GetSize ();
+    GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite);
+    short i = 2;
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    bool showPercent = false;
+    Int32 maxval = 2;
+    ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
+    #else
+    ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
+    #endif
+    #ifndef AC_22
+    bool suspGrp = false;
+        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
+    if (err != NoError) {
+        msg_rep ("ReNumSelected", "ACAPI_Environment - APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
+        return err;
+    }
+    if (!suspGrp)
+        err = ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #else
+    err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
+    if (err != NoError) {
+        msg_rep ("ReNumSelected", "ACAPI_Environment - APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
+        return err;
+    }
+    if (!suspGrp)
+        err = ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
+        #endif
+    #endif
+    if (err != NoError) {
+        msg_rep ("ReNumSelected", "ACAPI_Environment - APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
+        return err;
+    }
+
     #if defined(TESTING)
     DBprnt ("Write start");
     #endif
-    ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
-        GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite);
-        short i = 2;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        bool showPercent = false;
-        Int32 maxval = 2;
-        ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
-    #else
-        ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
-    #endif
-    #ifndef AC_22
-        bool suspGrp = false;
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-        ACAPI_View_IsSuspendGroupOn (&suspGrp);
-        if (!suspGrp)
-            ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
-        #else
-        ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-        if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
-        #endif
-    #endif
+    err = ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
         ParamHelpers::ElementsWrite (paramToWriteelem);
-        return NoError;
+        return err;
     });
     #if defined(TESTING)
     DBprnt ("Write end");
     #endif
+    if (err != NoError) {
+        msg_rep ("ReNumSelected", "ACAPI_CallUndoableCommand", err, APINULLGuid);
+        return err;
+    }
     SyncArray (syncSettings, guidArray);
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;
@@ -557,8 +576,10 @@ RenumPos GetMostFrequentPos (const GS::Array<RenumPos> &eleminpos) {
     return out;
 }
 
-RenumPos
-GetPos (DRenumPosDict &unicpos, DStringDict &unicriteria, const std::string &delimetr, const std::string &criteria) {
+RenumPos GetPos (DRenumPosDict &unicpos,
+                 DStringDict &unicriteria,
+                 const std::string &delimetr,
+                 const std::string &criteria) {
     RenumPos pos (1);
     while (unicpos[delimetr].count (pos.strpos) != 0) {
         pos.Add (1);
@@ -581,8 +602,8 @@ void ReNumOneRule (RenumRule &rule,
     if (!ElementsSeparation (rule, paramToReadelem, delimetrList, has_error))
         return;
 
-    DRenumPosDict unicpos; // Словарь соответствия позиции критерию
-    DStringDict unicriteria; // Словарь соответствия критерия поизции (обратный предыдущему)
+    DRenumPosDict unicpos;                  // Словарь соответствия позиции критерию
+    DStringDict unicriteria;                // Словарь соответствия критерия поизции (обратный предыдущему)
     std::map<std::string, RenumPos> maxpos; // Словарь максимальных позиций
     RenumPos maxposall;
     #if defined(TESTING)
