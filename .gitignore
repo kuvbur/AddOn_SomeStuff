@@ -374,3 +374,9 @@ Sources/AddOnResources/RINT/AddOn.grc
 Tools/build_ac.bat
 wiki/tools/test_compare.py
 wiki/tools/.env
+.clangd
+0
+compile_flags.txt
+generate_compile_flags.ps1
+IDEA.md
+REVIEW_SomeStuff.md
