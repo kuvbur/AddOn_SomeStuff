@@ -3,7 +3,7 @@
 #include "APIEnvir.h"
 #include "SyncSettings.hpp"
 
-static const Int32 PreferencesVersion = 1;
+static const Int32 PreferencesVersion = 3;
 
 GS::ClassInfo SyncSettings::classInfo ("SyncSettings",
                                        GS::Guid ("B45089A9-B372-460B-B145-80E6EBF107C3"),
@@ -41,7 +41,7 @@ GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
 
 static bool ReadSyncSettings (SyncSettings &syncSettings) {
     GSErrCode err = NoError;
-    Int32 version = 3;
+    Int32 version = PreferencesVersion;
     GSSize bytes = 0;
     err = ACAPI_GetPreferences (&version, &bytes, nullptr);
     if (err != NoError || version == 0 || bytes == 0) {
