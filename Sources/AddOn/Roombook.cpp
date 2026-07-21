@@ -131,7 +131,7 @@ namespace Roombook
     #endif
     #if defined(AC_28) || defined(AC_29)
                     API_Guid guid = cIt->key;
-                    GS::Array<API_Guid> zoneGuids = cIt->value;
+                    zoneGuids = cIt->value;
     #else
                     API_Guid guid = *cIt->key;
                     zoneGuids = *cIt->value;
@@ -441,9 +441,9 @@ namespace Roombook
                 if (otd.om_main.rawname.IsEmpty () && otd.om_main.rawname_bytype.IsEmpty ())
                     msg += "'some_stuff_fin_main_result' ";
                 if (otd.om_down.rawname.IsEmpty () && otd.om_down.rawname_bytype.IsEmpty ())
-                    msg += "'some_stuff_fin_column_result' ";
+                    msg += "'some_stuff_fin_down_result' ";
                 if (otd.om_column.rawname.IsEmpty () && otd.om_column.rawname_bytype.IsEmpty ())
-                    msg += "'some_stuff_fin_main_result' ";
+                    msg += "'some_stuff_fin_column_result' ";
                 if (otd.om_ceil.rawname.IsEmpty () && otd.om_ceil.rawname_bytype.IsEmpty ())
                     msg += "'some_stuff_fin_ceil_result' ";
                 if (!msg.IsEmpty ()) {
@@ -3295,7 +3295,11 @@ namespace Roombook
             if (!AutoTurnIn || otdw.base_composite.IsEmpty ()) {
                 nsl = bOverIn;
             } else {
-                nsl = otdw.base_composite.GetSize () - 1;
+                if (otdw.base_composite.GetSize () > 0) {
+                    nsl = otdw.base_composite.GetSize () - 1;
+                } else {
+                    nsl = 0;
+                }
             }
             if (nsl > 0 && !otdw.base_composite.IsEmpty ()) {
                 nsl = nsl - 1;
