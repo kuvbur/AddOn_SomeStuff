@@ -276,11 +276,11 @@ namespace FormatStringFunc {
             return *cached;
         }
         int n_zero = 3;
-        Int32 krat = 0;        // Крутность округления
-        double koeff = 1;      // Коэфф. увеличения
-        bool trim_zero = true; // Требуется образать нули после запятой
+        Int32 krat = 0;         // Крутность округления
+        double koeff = 1;       // Коэфф. увеличения
+        bool trim_zero = true;  // Требуется образать нули после запятой
         bool needround = false; // Требуется округлить численное значение для вычислений
-        bool forceRaw = false; // Использовать неокруглённое значение для записи
+        bool forceRaw = false;  // Использовать неокруглённое значение для записи
         bool delimetr_iscomma = true;
         FormatString format = {};
         format.stringformat = stringformat;
@@ -4674,10 +4674,8 @@ GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement &paramToWrite)
         ParamDictValue &params = *cIt->value;
         API_Guid elemGuid = *cIt->key;
 #endif
-        if (!params.IsEmpty ()) {
-            if (ParamHelpers::Write (elemGuid, params))
-                rereadelem.Push (elemGuid);
-        }
+        if (ParamHelpers::Write (elemGuid, params))
+            rereadelem.Push (elemGuid);
     }
 #if defined(TESTING)
     if (!rereadelem.IsEmpty ())
@@ -4722,7 +4720,7 @@ bool ParamHelpers::Write (const API_Guid &elemGuid, ParamDictValue &params) {
             } else {
                 ParamDictValue newDict;
                 newDict.Put (param.rawName, param);
-                paramByInx.Put (param.typeinx, newDict);
+                paramByInx.Put (param.typeinx, std::move (newDict));
             }
         }
     }
@@ -8963,7 +8961,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
     DBprnt ("        ComponentsProfileStructure");
     #endif
     ConstProfileVectorImageIterator profileDescriptionIt (profileDescription);
-    GS::HashTable<short, OrientedSegments> lines; // Для хранения точки начала сечения и линии сечения
+    GS::HashTable<short, OrientedSegments> lines;    // Для хранения точки начала сечения и линии сечения
     GS::HashTable<short, GS::Array<Sector>> segment; // Для хранения отрезков линий сечения и последующего объединения
     GS::HashTable<short, ParamComposite> param_composite; // Словарь составов для чтения
     GS::Array<ParamValueComposite> composite_all;
