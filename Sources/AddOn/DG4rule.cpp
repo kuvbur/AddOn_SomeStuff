@@ -94,6 +94,8 @@ void RuleSelectDialog::InitListBox () {
     if (ListBox.GetItemCount () != 0)
         ListBox.DeleteItem (DG::ListBox::AllItems);
     const DG::Icon &icon = DG::Icon (SysResModule, DG::ListBox::CheckedIcon);
+    const DG::Icon &unicon = DG::Icon (SysResModule, DG::ListBox::UncheckedIcon);
+
     for (const auto &rulename : rulelist.rules) {
 #if defined(AC_28) || defined(AC_29)
         const GS::UniString &rname = rulename.key;
@@ -101,7 +103,11 @@ void RuleSelectDialog::InitListBox () {
         const GS::UniString &rname = *rulename.key;
 #endif
         ListBox.AppendItem ();
-        ListBox.SetTabItemIcon (DG::ListBox::BottomItem, ChekboxTab, icon);
+        if (rulelist.rules[rname]) {
+            ListBox.SetTabItemIcon (DG::ListBox::BottomItem, ChekboxTab, icon);
+        } else {
+            ListBox.SetTabItemIcon (DG::ListBox::BottomItem, ChekboxTab, unicon);
+        }
         ListBox.SetTabItemText (DG::ListBox::BottomItem, NameTab, rname);
         if (!rulelist.qty_elements.ContainsKey (rname))
             continue;

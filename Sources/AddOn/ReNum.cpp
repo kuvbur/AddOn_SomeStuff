@@ -86,7 +86,7 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
     if (err != NoError) {
         msg_rep ("ReNumSelected", "ACAPI_Environment - APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
-        return err;
+        err = NoError;
     }
     if (!suspGrp)
         err = ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
@@ -94,15 +94,15 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     err = ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
     if (err != NoError) {
         msg_rep ("ReNumSelected", "ACAPI_Environment - APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
-        return err;
+        err = NoError;
     }
     if (!suspGrp)
         err = ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
         #endif
     #endif
     if (err != NoError) {
-        msg_rep ("ReNumSelected", "ACAPI_Environment - APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
-        return err;
+        msg_rep ("ReNumSelected", "ACAPI_Environment - APITool_SuspendGroups", err, APINULLGuid);
+        err = NoError;
     }
 
     #if defined(TESTING)
@@ -110,7 +110,7 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     #endif
     err = ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
         ParamHelpers::ElementsWrite (paramToWriteelem);
-        return err;
+        return NoError;
     });
     #if defined(TESTING)
     DBprnt ("Write end");
@@ -376,7 +376,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
             // Разбираем - что записано в свойстве с флагом
             // В нём должно быть имя свойства и, возможно, флаг добавления нулей
             GS::UniString paramName = definition.description.ToLowerCase ();
-            GS::Array<GS::UniString> partstring;
+            partstring.Clear ();
             if (StringSplt (paramName, BRACEEND, partstring, "enum_flag") > 0) {
                 paramName = partstring[0] + BRACEEND;
             }
@@ -454,7 +454,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         rulecritetia.delimetr = rawNamedelimetr;
                         rulecritetia.guid = definition.guid;
                         rulecritetia.rule_name = definition.description;
-                        GS::Array<GS::UniString> partstring = {};
+                        partstring.Clear ();
                         if (StringSplt (rulecritetia.rule_name, BRACEEND, partstring, "enum_flag") > 0) {
                             rulecritetia.rule_name = partstring[0] + BRACEEND;
                         }
