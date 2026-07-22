@@ -353,8 +353,11 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
     ParamDictValue &propertyParams = PROPERTYCACHE ().property;
     GS::Array<GS::UniString> partstring;
     GS::Array<GS::UniString> local_scratch;
+    ParamValue pvalue_position;
+    ParamValue pvalue_flag;
+    ParamValue pvalue_criteria;
+    ParamValue pvalue_delimetr;
     for (const API_PropertyDefinition &definition : definitions) {
-        bool flag = false;
         if (!definition.description.Contains (RENUMFLAG))
             continue;
         if (!definition.description.Contains (BRACESTART)) {
@@ -371,7 +374,8 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                      APINULLGuid);
             continue;
         }
-        if (!rules.ContainsKey (definition.guid)) {
+        RenumRule *rulecritetiaPtr = rules.GetPtr (definition.guid);
+        if (rulecritetiaPtr == nullptr) {
             RenumRule rulecritetia = {};
             // Разбираем - что записано в свойстве с флагом
             // В нём должно быть имя свойства и, возможно, флаг добавления нулей
@@ -424,7 +428,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                     }
                     ruleparamName = ruleparamName.ToLowerCase ().GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
                     GS::UniString rawNamecriteria = PVALPREFIX;
-                    GS::UniString rawNamedelimetr = "";
+                    GS::UniString rawNamedelimetr = EMPTYSTRING;
                     if (ruleparamName.Contains (SEMICOLON)) { // Есть указание на нули
                         partstring.Clear ();
                         int nparam = StringSplt (ruleparamName, SEMICOLON, partstring, true, &local_scratch);
@@ -444,7 +448,7 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         rulecritetia.state = true;
                         rulecritetia.oldalgoritm = false;
                         rulecritetia.position = rawNameposition;
-                        GS::UniString fname = "";
+                        GS::UniString fname = EMPTYSTRING;
                         GS::UniString rawName = PROPERTYNAMEPREFIX;
                         GetPropertyFullName (definition, fname);
                         rawName.Append (fname.ToLowerCase ());
@@ -464,7 +468,6 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                         rulecritetia.rule_name =
                             rulecritetia.rule_name.GetSubstring (CHARBSEMICOLON, CHARBSEMICOLON, 0);
                         rulecritetia.rule_name.Trim ();
-                        flag = true;
                     } else {
                         if (!propertyParams.ContainsKey (rawNamecriteria) &&
                             !error_propertyname.ContainsKey (rawNamecriteria))
@@ -500,31 +503,32 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                 if (!error_propertyname.ContainsKey (rawNameposition))
                     error_propertyname.Add (rawNameposition, false);
             }
-            rules.Add (definition.guid, rulecritetia);
-        } else {
-            flag = true; // Правило уже существует, просто добавим свойства в словарь чтения и id в правила
+            rules.Add (definition.guid, std::move (rulecritetia));
+            rulecritetiaPtr = rules.GetPtr (definition.guid);
         }
-        if (flag) {
-            RenumRule &rulecritetia = rules.Get (definition.guid);
-            if (rulecritetia.guid != APINULLGuid)
+        if (rulecritetiaPtr != nullptr) {
+
+            if (rulecritetiaPtr->guid != APINULLGuid)
                 hasRenum = true;
-            rulecritetia.elemts.Push (elemGuid);
-            ParamValue pvalue_position;
-            ParamValue pvalue_flag;
-            ParamValue pvalue_criteria;
-            ParamValue pvalue_delimetr;
+            rulecritetiaPtr->elemts.Push (elemGuid);
+
+            pvalue_position.Сlear ();
+            pvalue_flag.Сlear ();
+            pvalue_criteria.Сlear ();
+            pvalue_delimetr.Сlear ();
+
             bool has_position = false;
             bool has_flag = false;
             bool has_criteria = false;
             bool has_delimetr = false;
-            if (!rulecritetia.position.IsEmpty ())
-                has_position = ParamHelpers::GetParamValueFromCache (rulecritetia.position, pvalue_position);
-            if (!rulecritetia.flag.IsEmpty ())
-                has_flag = ParamHelpers::GetParamValueFromCache (rulecritetia.flag, pvalue_flag);
-            if (!rulecritetia.criteria.IsEmpty ())
-                has_criteria = ParamHelpers::GetParamValueFromCache (rulecritetia.criteria, pvalue_criteria);
-            if (!rulecritetia.delimetr.IsEmpty ())
-                has_delimetr = ParamHelpers::GetParamValueFromCache (rulecritetia.delimetr, pvalue_delimetr);
+            if (!rulecritetiaPtr->position.IsEmpty ())
+                has_position = ParamHelpers::GetParamValueFromCache (rulecritetiaPtr->position, pvalue_position);
+            if (!rulecritetiaPtr->flag.IsEmpty ())
+                has_flag = ParamHelpers::GetParamValueFromCache (rulecritetiaPtr->flag, pvalue_flag);
+            if (!rulecritetiaPtr->criteria.IsEmpty ())
+                has_criteria = ParamHelpers::GetParamValueFromCache (rulecritetiaPtr->criteria, pvalue_criteria);
+            if (!rulecritetiaPtr->delimetr.IsEmpty ())
+                has_delimetr = ParamHelpers::GetParamValueFromCache (rulecritetiaPtr->delimetr, pvalue_delimetr);
             pvalue_position.fromGuid = elemGuid;
             pvalue_flag.fromGuid = elemGuid;
             pvalue_criteria.fromGuid = elemGuid;

@@ -19,96 +19,7 @@
 #include "Propertycache.hpp"
 #include "VectorImageIterator.hpp"
 
-static const GS::UniString PROP_PREFIX = "@property:";
-static const GS::UniString PROP_SYNC_NAME = "@property:sync_name";
-static const GS::UniString PROP_ID = "@property:id";
-static const GS::UniString PROP_N = "@property:n";
-static const GS::UniString PROP_NS = "@property:ns";
-static const GS::UniString PROP_LAYER_THICKNESS = "@property:layer_thickness";
-static const GS::UniString PROP_TH = "@property:th";
-static const GS::UniString PROP_LAYER_MIN_THICKNESS = "@property:layer_min_thickness";
-static const GS::UniString PROP_TH_MIN = "@property:th_min";
-static const GS::UniString PROP_BMAT_INX = "@property:bmat_inx";
-static const GS::UniString PROP_CUTFILL_INX = "@property:cutfill_inx";
-static const GS::UniString PROP_SOME_STUFF_TH = "@property:some_stuff_th";
-static const GS::UniString PROP_SOME_STUFF_UNITS = "@property:some_stuff_units";
-static const GS::UniString PROP_UNIT = "@property:unit";
-static const GS::UniString PROP_KZAP = "@property:kzap";
-static const GS::UniString PROP_AREA = "@property:area";
-static const GS::UniString PROP_VOLUME = "@property:volume";
-static const GS::UniString PROP_QTY = "@property:qty";
-static const GS::UniString PROP_UNIT_PREFIX = "@property:unit_prefix";
-static const GS::UniString PROP_LENGTH = "@property:length";
-static const GS::UniString PROP_AREA_SECTION = "@property:area_section";
-static const GS::UniString PROP_WIDTH = "@property:width";
-static const GS::UniString MAT_BUILDING_MATERIAL_ID = "@property:BuildingMaterialProperties/Building Material ID";
-static const GS::UniString MAT_N = "@material:n";
-static const GS::UniString MAT_NS = "@material:ns";
-static const GS::UniString MAT_LAYER_THICKNESS = "@material:layer thickness";
-static const GS::UniString MAT_LAYER_MIN_THICKNESS = "@material:layer min thickness";
-static const GS::UniString MAT_BMAT_INX = "@material:bmat_inx";
-static const GS::UniString MAT_CUTFILL_INX = "@material:cutfill_inx";
-static const GS::UniString MAT_AREA = "@material:area";
-static const GS::UniString MAT_VOLUME = "@material:volume";
-static const GS::UniString MAT_QTY = "@material:qty";
-static const GS::UniString MAT_UNIT_PREFIX = "@material:unit_prefix";
-static const GS::UniString MAT_LENGTH = "@material:length";
-static const GS::UniString MAT_AREA_SECTION = "@material:area_section";
-static const GS::UniString MAT_WIDTH = "@material:width";
-
-static const GS::UniString MAT_BUILDING_MATERIAL_NAME = "@property:BuildingMaterialProperties/Building Material Name";
-static const GS::UniString MAT_BUILDING_MATERIAL_DESCRIPTION =
-    "@property:BuildingMaterialProperties/Building Material Description";
-static const GS::UniString MAT_BUILDING_MATERIAL_DENSITY =
-    "@property:BuildingMaterialProperties/Building Material Density";
-static const GS::UniString MAT_BUILDING_MATERIAL_MANUFACTURER =
-    "@property:BuildingMaterialProperties/Building Material Manufacturer";
-static const GS::UniString MAT_BUILDING_MATERIAL_CUTFILL =
-    "@property:BuildingMaterialProperties/Building Material CutFill";
-
-static const GS::Array<short> paramTypesList = {IDTYPEINX,
-                                                PROPERTYTYPEINX,
-                                                COORDTYPEINX,
-                                                GDLTYPEINX,
-                                                INFOTYPEINX,
-                                                IFCTYPEINX,
-                                                MORPHTYPEINX,
-                                                ATTRIBTYPEINX,
-                                                LISTDATATYPEINX,
-                                                MATERIALTYPEINX,
-                                                GLOBTYPEINX,
-                                                CLASSTYPEINX,
-                                                FILETYPEINX,
-                                                FORMULATYPEINX,
-                                                ELEMENTTYPEINX,
-                                                MEPTYPEINX};
-
-static const GS::UniString idRawname = "{@id:id}";
-static const GS::UniString attrlayerRawname = "{@attrib:layer}";
-static const GS::Array<short> paramTypesListWrite = {
-    PROPERTYTYPEINX, GDLTYPEINX, IDTYPEINX, CLASSTYPEINX, ATTRIBTYPEINX, COORDTYPEINX};
-
-int IsDummyModeOn () {
-    //    GS::Array<GS::ArrayFB<GS::UniString, 3> >	autotexts;
-    //    API_AutotextType	type = APIAutoText_Custom;
-    //    GSErrCode	err = NoError;
-    // #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-    //    err = ACAPI_AutoText_GetAutoTexts (&autotexts, type);
-    // #else
-    //    err = ACAPI_Goodies (APIAny_GetAutoTextsID, &autotexts, (void*) (GS::IntPtr) type);
-    // #endif
-    //    if (err != NoError) return false;
-    //    for (UInt32 i = 0; i < autotexts.GetSize (); i++) {
-    //        if (autotexts[i][0].ToLowerCase ().Contains ("somestuff_dummymode")) {
-    //            if (autotexts[i][2].ToLowerCase ().Contains ("on")) {
-    //                return DUMMY_MODE_ON;
-    //            } else {
-    //                return DUMMY_MODE_OFF;
-    //            }
-    //        }
-    //    }
-    return DUMMY_MODE_OFF;
-}
+int IsDummyModeOn () { return DUMMY_MODE_OFF; }
 
 namespace FormatStringFunc {
     FormatString GetFormatStringFromFormula (const GS::UniString &formula,
@@ -452,14 +363,20 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     return;
 #else
     UnicGuid unguid;
+    UnicGuid unguid_by_class;
+    ParamValue pvalue;
     GSErrCode err = NoError;
     GS::Array<API_Guid> elemGuids = {};
+    GS::Array<API_PropertyDefinition> propertyDefinitions;
+    GS::Array<API_Property> properties;
     for (const auto &cIt : definitions) {
     #if defined(AC_28) || defined(AC_29)
         const API_PropertyDefinition &definition = cIt.value;
     #else
         const API_PropertyDefinition &definition = *cIt.value;
     #endif
+        bool has_elems = false;
+        unguid_by_class.Clear ();
         for (const API_Guid &classificationItemGuid : definition.availability) {
             elemGuids.Clear ();
             err = ACAPI_Element_GetElementsWithClassification (classificationItemGuid, elemGuids);
@@ -468,11 +385,43 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
                     "GetElementForPropertyDefinition", "ACAPI_Element_GetElementsWithClassification", err, APINULLGuid);
                 continue;
             }
+            if (!elemGuids.IsEmpty ())
+                has_elems = true;
             for (const API_Guid &elemGuid : elemGuids) {
-                if (unguid.ContainsKey (elemGuid))
+                if (!unguid_by_class.ContainsKey (elemGuid))
+                    unguid_by_class.Put (elemGuid, true);
+            }
+        }
+        // Отсеиваем элементы с невалидным свойством
+        if (has_elems) {
+            propertyDefinitions.Clear ();
+            properties.Clear ();
+            propertyDefinitions.Push (definition);
+            guidArray.SetCapacity (guidArray.GetCapacity () + unguid_by_class.GetSize () + 1);
+            for (const auto &el : unguid_by_class) {
+    #if defined(AC_28) || defined(AC_29)
+                const API_Guid &elemGuid = el.key;
+    #else
+                const API_Guid &elemGuid = *el.key;
+    #endif
+                err = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
+                if (err != NoError) {
+                    msg_rep ("GetElementForPropertyDefinition", "ACAPI_Element_GetPropertyValues", err, elemGuid);
                     continue;
-                unguid.Put (elemGuid, true);
-                guidArray.Push (std::move (elemGuid));
+                }
+                for (const auto &prop : properties) {
+                    pvalue.Сlear ();
+                    if (!ParamHelpers::ConvertToParamValue (pvalue, prop)) {
+                        continue;
+                    }
+                    if (!pvalue.isValid) {
+                        continue;
+                    }
+                    if (!unguid.ContainsKey (elemGuid)) {
+                        unguid.Put (elemGuid, true);
+                        guidArray.Push (std::move (elemGuid));
+                    }
+                }
             }
         }
     }

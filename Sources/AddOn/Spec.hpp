@@ -22,8 +22,8 @@
 namespace Spec {
     struct GroupSpec {
         GS::Array<GS::UniString> unic_paramrawname = {}; // Массив имён уникальных параметров
-        GS::Array<GS::UniString> out_paramrawname = {}; // Массив имён параметров для передачи новым элементам
-        GS::Array<GS::UniString> sum_paramrawname = {}; // Массив имён параметров, которые требуется просуммировать
+        GS::Array<GS::UniString> out_paramrawname = {};  // Массив имён параметров для передачи новым элементам
+        GS::Array<GS::UniString> sum_paramrawname = {};  // Массив имён параметров, которые требуется просуммировать
         GS::UniString flag_paramrawname =
             ""; // Имя параметра-флага, определяющего - будет ли элемент учтён в спецификации
         bool is_Valid = true;
@@ -33,19 +33,19 @@ namespace Spec {
     };
 
     struct SpecRule {
-        GS::UniString rule_name = ""; // Имя свойства-правила для отображения во всплывающем окне
-        GS::Array<GroupSpec> groups = {};               // Массив с группами подэлементов
-        GS::Array<GS::UniString> out_paramrawname = {}; // Массив имён параметров новых элементов
+        GS::UniString rule_name = EMPTYSTRING;              // Имя свойства-правила для отображения во всплывающем окне
+        GS::Array<GroupSpec> groups = {};                   // Массив с группами подэлементов
+        GS::Array<GS::UniString> out_paramrawname = {};     // Массив имён параметров новых элементов
         GS::Array<GS::UniString> out_sum_paramrawname = {}; // Массив имён параметров сумм новых элементов
         GS::UniString subguid_paramrawname =
             ""; // Имя свойства для записи GUID созданных элементов (в описании должно содержатся Sync_GUID+Имя правила)
-        GS::UniString subguid_rulename = ""; // Имя свойства с правилом, на основании которого созданы элементы
-        GS::UniString subguid_rulevalue = "";
-        GS::Array<API_Guid> elements = {}; // Элементы, которые обрабатываются правилом
+        GS::UniString subguid_rulename = EMPTYSTRING; // Имя свойства с правилом, на основании которого созданы элементы
+        GS::UniString subguid_rulevalue = EMPTYSTRING;
+        GS::Array<API_Guid> elements = {};        // Элементы, которые обрабатываются правилом
         GS::Array<API_Guid> exsist_elements = {}; // Прежде созданные элементы для этого правила
         API_PropertyDefinition rule_definitions =
             {}; // Определение свойства с правилом для поиска элементов, в которых оно доступно
-        GS::UniString favorite_name = ""; // Имя элемента в избранном
+        GS::UniString favorite_name = EMPTYSTRING; // Имя элемента в избранном
         bool is_Valid = true;
         bool delete_old = false;
         bool stop_on_error = true;
@@ -59,12 +59,12 @@ namespace Spec {
         GS::Array<ParamValue> out_sum_param = {};
         GS::Array<GS::UniString> out_paramrawname;
         GS::Array<GS::UniString> out_sum_paramrawname;
-        GS::UniString subguid_paramrawname = "";
-        GS::UniString subguid_rulename = "";
-        GS::UniString subguid_rulevalue = "";
-        GS::UniString favorite_name = ""; // Имя элемента в избранном
-        GS::Array<API_Guid> elements = {}; // Элементы, которые обрабатываются правилом
-        API_Guid exs_guid = APINULLGuid; // GUID существующего элемента для перезаписи
+        GS::UniString subguid_paramrawname = EMPTYSTRING;
+        GS::UniString subguid_rulename = EMPTYSTRING;
+        GS::UniString subguid_rulevalue = EMPTYSTRING;
+        GS::UniString favorite_name = EMPTYSTRING; // Имя элемента в избранном
+        GS::Array<API_Guid> elements = {};         // Элементы, которые обрабатываются правилом
+        API_Guid exs_guid = APINULLGuid;           // GUID существующего элемента для перезаписи
     };
 
     typedef GS::HashTable<GS::UniString, Element>

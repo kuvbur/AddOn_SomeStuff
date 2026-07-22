@@ -55,10 +55,10 @@ namespace Roombook {
     }; // Проём в стене
 
     struct OtdMaterial {
-        short material = 0;                // Индекс материала
-        GS::UniString smaterial = "";      // Имя материала
-        GS::UniString rawname = "";        // Имя свойства для записи
-        GS::UniString rawname_bytype = ""; // Имя свойства для записи c разбивкой
+        short material = 0;                         // Индекс материала
+        GS::UniString smaterial = EMPTYSTRING;      // Имя материала
+        GS::UniString rawname = EMPTYSTRING;        // Имя свойства для записи
+        GS::UniString rawname_bytype = EMPTYSTRING; // Имя свойства для записи c разбивкой
     };
 
     struct OtdZoneSurfacePolygon {
@@ -76,7 +76,7 @@ namespace Roombook {
     };
 
     struct MatarialToFavorite {
-        GS::UniString name = "";                  // Имя избранного
+        GS::UniString name = EMPTYSTRING;         // Имя избранного
         API_ElemTypeID type = API_ZombieElemID;   // Тип элемента в избранном
         GS::Array<ParamValueComposite> composite; // Состав элемента (только отделочные слои)
         bool is_composite_read = false;
@@ -90,7 +90,7 @@ namespace Roombook {
         short floorInd = 0; // Этаж
         double height = 0;
         OtdMaterial material;
-        GS::UniString tip = "";                        // Тип потолка/пола из зоны
+        GS::UniString tip = EMPTYSTRING;               // Тип потолка/пола из зоны
         API_ElemTypeID base_type = API_ZombieElemID;   // Тип базового элемента
         API_ElemTypeID draw_type = API_SlabID;         // Тип отрисовываемого элемента
         API_Guid base_guid = APINULLGuid;              // GUID базового элемента
@@ -164,9 +164,9 @@ namespace Roombook {
         bool has_floor = true;
         bool ceil_by_slab = false;           // Создавать потолок только по перекрытиям
         bool floor_by_slab = false;          // Создавать потолок только по перекрытиям
-        GS::UniString tip_pot = "";          // Тип потолка для записи в аксессуар
-        GS::UniString tip_pol = "";          // Тип пола для записи в аксессуар
-        GS::UniString tip_otd = "";          // Тип отделки для разбивки
+        GS::UniString tip_pot = EMPTYSTRING; // Тип потолка для записи в аксессуар
+        GS::UniString tip_pol = EMPTYSTRING; // Тип пола для записи в аксессуар
+        GS::UniString tip_otd = EMPTYSTRING; // Тип отделки для разбивки
         API_Guid zone_guid = APINULLGuid;    // GUID базового элемента
         bool isValid = true;                 // Зона считана нормально
         bool create_all_elements = true;     // Создавать элементы отделки
@@ -204,8 +204,8 @@ namespace Roombook {
         double width_narow_space = 1;     // Ширина пробела
         GS::UniString no_breake_space = reinterpret_cast<const char *> (u8"\u2007");
         GS::UniString narow_space = reinterpret_cast<const char *> (u8"\u202F");
-        GS::UniString space_line = "";
-        GS::UniString delim_line = "";
+        GS::UniString space_line = EMPTYSTRING;
+        GS::UniString delim_line = EMPTYSTRING;
     };
 
     typedef GS::HashTable<GS::UniString, ColumnFormat> ColumnFormatDict;

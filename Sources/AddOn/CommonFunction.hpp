@@ -39,125 +39,11 @@
     #include <APIdefs_LibraryParts.h>
     #include <Definitions.hpp>
     #include <unordered_map>
-    #ifdef AC_22
-        #define API_AttributeIndex short
-        #define Vector2D Vector
-        #define Point2D Coord
-        #define API_BeamSegmentID API_BeamID
-        #define API_ColumnSegmentID API_ColumnID
-        #define API_OpeningID API_WindowID
-    #endif
 
-static const Int32 MeterStringID = 17;
-static const Int32 CMeterStringID = 18;
-static const Int32 DMeterStringID = 19;
+    #include "Constants.hpp"
 
-static const GS::UniString IDNAMEPREFIX = "{@id:";
-static const short IDTYPEINX = 1;
-static const GS::UniString PROPERTYNAMEPREFIX = "{@property:";
-static const short PROPERTYTYPEINX = 2;
-static const GS::UniString COORDNAMEPREFIX = "{@coord:";
-static const short COORDTYPEINX = 3;
-static const GS::UniString GDLNAMEPREFIX = "{@gdl:";
-static const short GDLTYPEINX = 4;
-static const GS::UniString GDLDESCNAMEPREFIX = "{@description:";
-static const short GDLDESCTYPEINX = 5;
-static const GS::UniString INFONAMEPREFIX = "{@info:";
-static const short INFOTYPEINX = 6;
-static const GS::UniString IFCNAMEPREFIX = "{@ifc:";
-static const short IFCTYPEINX = 7;
-static const GS::UniString MORPHNAMEPREFIX = "{@morph:";
-static const short MORPHTYPEINX = 8;
-static const GS::UniString ATTRIBNAMEPREFIX = "{@attrib:";
-static const short ATTRIBTYPEINX = 9;
-static const GS::UniString LISTDATANAMEPREFIX = "{@listdata:";
-static const short LISTDATATYPEINX = 10;
-static const GS::UniString MATERIALNAMEPREFIX = "{@material:";
-static const short MATERIALTYPEINX = 11;
-static const GS::UniString GLOBNAMEPREFIX = "{@glob:";
-static const short GLOBTYPEINX = 12;
-static const GS::UniString CLASSNAMEPREFIX = "{@class:";
-static const short CLASSTYPEINX = 13;
-static const GS::UniString FORMULANAMEPREFIX = "{@formula:";
-static const short FORMULATYPEINX = 14;
-static const GS::UniString ELEMENTNAMEPREFIX = "{@element:";
-static const short ELEMENTTYPEINX = 15;
-static const GS::UniString MEPNAMEPREFIX = "{@mep:";
-static const short MEPTYPEINX = 16;
-static const GS::UniString FILENAMEPREFIX = "{@file:";
-static const short FILETYPEINX = 17;
-
-static const GS::UniString DOT = ".";
-static const GS::UniString COMMA = ",";
-static const GS::UniChar CHARCOMMA = ',';
-static const GS::UniChar CHARDOT = ',';
-static const GS::UniString METERS = "m";
-static const GS::UniChar CHARMETERS = 'm';
-static const GS::UniString MMETERS = "mm";
-static const GS::UniString CMETERS = "cm";
-static const GS::UniString DMETERS = "dm";
-static const GS::UniString DSTRING = "d";
-static const GS::UniString CSTRING = "c";
-static const GS::UniString GSTRING = "g";
-static const GS::UniString KSTRING = "k";
-static const GS::UniString GMETERS = "gm";
-static const GS::UniString KMETERS = "km";
-static const GS::UniString DOTSET = "p";
-static const GS::UniString RDSET = "r";
-static const GS::UniString FSET = "f";
-static const GS::UniString EMPTYSTRING = "";
-static const GS::UniString ZEROSTRING = "0";
-static const GS::UniChar CHARZERO = '0';
-static const GS::UniString SPACESTRING = " ";
-static const GS::UniString MINUSSTRING = "-";
-static const GS::UniChar CHARFORMULASTART = '<';
-static const GS::UniChar CHARFORMULAEND = '>';
-static const GS::UniString STRFORMULASTART = "<";
-static const GS::UniString STRFORMULAEND = ">";
-static const GS::UniString BRACEEND = "}";
-static const GS::UniString BRACESTART = "{";
-static const GS::UniString SEMICOLON = ";";
-static const GS::UniChar CHARBSEMICOLON = ';';
-static const GS::UniChar CHARBRACEEND = '}';
-static const GS::UniChar CHARBRACESTART = '{';
-static const GS::UniString STRINGPROC = "%";
-static const GS::UniChar CHARPROC = '%';
-static const GS::UniChar CHARDQUT = '"';
-static const GS::UniString PVALPREFIX = "{@";
-static const GS::UniString RENUMFLAG = "Renum_flag";
-static const GS::UniString RENUM = "Renum";
-static const GS::UniString PROPERTYSTRING = "property";
-static const GS::UniString LINEBRAKE = "\n";
-static const GS::UniString LINEBRAKER = "\r";
-static const GS::UniString TABSTRING = "\t";
-static const GS::UniString SLASHEKR = "\\/";
-static const GS::UniString SLASH = "/";
-static const GS::UniString ATSIGN = "@";
-static const GS::UniString SYNCFLAG = "Sync_flag";
-static const GS::UniString SYNCCORRECTFLAG = "Sync_correct_flag";
-static const GS::UniString SYNCCLASSFLAG = "Sync_class_flag";
-static const GS::UniString SYNCGUID = "Sync_GUID";
-static const GS::UniString DEFULTREALFSTRING = ".3m";
-static const GS::UniString DEFULTLEGHTFSTRING = "1mm";
-static const GS::UniString DEFULTINTFSTRING = "0m";
-static const GS::UniString SYNCNAME = "sync_name";
-
-    #define ELEMSTR_LEN 256
-    // Типы операций по переводу значений массива гдл параметра в совйство
-    #define ARRAY_UNDEF 0
-    #define ARRAY_UNIC 1 // Вывод уникальных значений
-    #define ARRAY_SUM 2  // Вывод суммы (для текста - конкатенация)
-    #define ARRAY_MAX 3
-    #define ARRAY_MIN 4
-
-    #define FILE_LOOKUP 1
-
-static const GSCharCode GChCode = CC_Cyrillic;
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>>
     SortByName; // Словарь для сортировки наруальным алгоритмом
-
-const GS::Int32 max_group_mat = 50; // Максимальное количество материалов у одного элемента
-const GS::Int32 max_group_lib = 100; // Максимальное количество компонент у одного элемента
 
 struct Story {
     Story (short _index, double _level) : index (_index), level (_level) {}
@@ -170,16 +56,18 @@ using Stories = GS::Array<Story>; // Хранение информации об 
 
 // Структура для хранения формата перевода чисел в строку и округления чисел
 struct FormatString {
-    int n_zero = 3;                  // Количество нулей после запятой
-    GS::UniString stringformat = ""; // Формат строки (задаётся с помощью .mm или .0)
-    bool needRound = false; // Использовать в расчётах округлённые значения
-    Int32 krat = 0;         // Крутность округления
-    double koeff = 1;       // Коэфф. увеличения
-    bool trim_zero = true;  // Требуется образать нули после запятой
-    bool isRead = false;    // Строка успешно распарсена
-    bool isEmpty = true;    // Строка не задана
-    bool forceRaw = false;  // Использовать неокруглённое значение для записи
-    GS::UniString delimetr = ",";
+    int n_zero = 3;                           // Количество нулей после запятой
+    GS::UniString stringformat = EMPTYSTRING; // Формат строки (задаётся с помощью .mm или .0)
+    bool needRound = false;                   // Использовать в расчётах округлённые значения
+    Int32 krat = 0;                           // Крутность округления
+    double koeff = 1;                         // Коэфф. увеличения
+    bool trim_zero = true;                    // Требуется образать нули после запятой
+    bool isRead = false;                      // Строка успешно распарсена
+    bool isEmpty = true;                      // Строка не задана
+    bool forceRaw = false;                    // Использовать неокруглённое значение для записи
+    GS::UniString delimetr = COMMA;
+
+    void Clear () { *this = FormatString{}; }
 };
 
 // Словарь с форматированием и округлением
@@ -197,47 +85,51 @@ typedef GS::HashTable<API_Guid, UnicGuidString> UnicGuidByGuidString;
 struct ParamValueData {
     // Собственно значения
     API_VariantType type = API_PropertyUndefinedValueType; // Прочитанный тип данных
-    GS::UniString uniStringValue = "";
+    GS::UniString uniStringValue = EMPTYSTRING;
     GS::Int32 intValue = 0;
     bool boolValue = false;
     double doubleValue = 0.0;    // дробное значение, округлённое
     double rawDoubleValue = 0.0; // прочитанное значение
     API_Guid guidval = APINULLGuid;
-    bool canCalculate = false; // Может ли быть использован в формулах?
-    bool hasrawDouble = false; // Было ли записано неокругленное значение при чтении?
-    bool hasFormula = false; // В поле uniStringValue содержится выражение, которое надо вычислить
+    bool canCalculate = false;          // Может ли быть использован в формулах?
+    bool hasrawDouble = false;          // Было ли записано неокругленное значение при чтении?
+    bool hasFormula = false;            // В поле uniStringValue содержится выражение, которое надо вычислить
     FormatString formatstring;          // Формат строки (задаётся с помощью .mm или .0)
     int array_row_start = 0;            // Начальная строка массива
     int array_row_end = 0;              // Последняя строка массива
     int array_column_start = 0;         // Начальный столбец массива
     int array_column_end = 0;           // Последний столбец массива
     int array_format_out = ARRAY_UNDEF; // В каком виде выводить в свойство
+
+    void Clear () { *this = ParamValueData{}; }
 };
 
 // Структура для описания слоя в многослойной конструкции
 struct ParamValueComposite {
-    API_AttributeIndex inx = {}; // Индекс материала
-    double fillThick = 0.0;      // Толщина слоя
-    double fillThick_min = -1.0; // Толщина слоя
-    double rfromstart = 0.0; // Удаление от начальной точки (для определения порядка следования)
-    short structype = 0;     // Является ядром?
-    int num = 0;             // Номер слоя
-    GS::UniString val = "";  // Прочитанные свойства слоя
-    double area = 0;         // Площадь поверхности
-    double area_fill = 0;    // Площадь сечения
-    double volume = 0;       // Объём
-    double length = 0;       // Длина
-    double width = 0;        // Ширина
-    double kzap = 1;         // Коэфф. запаса
-    double qty = 0;          // Вывод количества на основе единиц измерения
-    GS::UniString unit = ""; // Единица измерения
-    GS::UniString pos = "";  // Позиция
+    API_AttributeIndex inx = {};      // Индекс материала
+    double fillThick = 0.0;           // Толщина слоя
+    double fillThick_min = -1.0;      // Толщина слоя
+    double rfromstart = 0.0;          // Удаление от начальной точки (для определения порядка следования)
+    short structype = 0;              // Является ядром?
+    int num = 0;                      // Номер слоя
+    GS::UniString val = EMPTYSTRING;  // Прочитанные свойства слоя
+    double area = 0;                  // Площадь поверхности
+    double area_fill = 0;             // Площадь сечения
+    double volume = 0;                // Объём
+    double length = 0;                // Длина
+    double width = 0;                 // Ширина
+    double kzap = 1;                  // Коэфф. запаса
+    double qty = 0;                   // Вывод количества на основе единиц измерения
+    GS::UniString unit = EMPTYSTRING; // Единица измерения
+    GS::UniString pos = EMPTYSTRING;  // Позиция
+
+    void Clear () { *this = ParamValueComposite{}; }
 };
 
 // Для хранения данных о составе конструкции, так как в многослойной конструкции может быть несколько слоёв, а также для
 // удобства передачи данных в функции записи в свойства и т.д.
 struct ParamComposite {
-    GS::UniString templatestring = "";
+    GS::UniString templatestring = EMPTYSTRING;
     GS::Array<ParamValueComposite> composite = {};
     API_ModelElemStructureType composite_type = API_BasicStructure;
     bool isValid = false;                     // Валидность (был считан без ошибок)
@@ -246,6 +138,8 @@ struct ParamComposite {
     short composite_pen = 0;
     bool hasFormula = false; // В поле tempstring содержится выражение, которое надо вычислить
     bool fromQuantity = false;
+
+    void Clear () { *this = ParamComposite{}; }
 };
 
 // Словарь с заранее вычисленными данными в пределах обного элемента
@@ -258,44 +152,47 @@ typedef GS::HashTable<API_Guid, ParamDictComposite> ParamDictCompositeElement;
 // Это позволяет свободно конвертировать и записывать данные в любое место
 struct ParamValue {
     API_VariantType type = API_PropertyUndefinedValueType; // Тип данных для записи
-    GS::UniString rawName = ""; // Имя для сопоставления в словаре - с указанием откуда взято
-    GS::UniString name = ""; // Очищенное имя для поиска
+    GS::UniString rawName = EMPTYSTRING;                   // Имя для сопоставления в словаре - с указанием откуда взято
+    GS::UniString name = EMPTYSTRING;                      // Очищенное имя для поиска
     ParamValueData val = {};
     bool isValid = false;                   // Валидность (был считан без ошибок)
     API_PropertyDefinition definition = {}; // Описание свойства, для упрощения чтения/записи
-    API_Property property = {}; // Само свойство, для упрощения чтения/записи
+    API_Property property = {};             // Само свойство, для упрощения чтения/записи
     API_ElemTypeID eltype = API_ZombieElemID;
     short composite_pen = 0;
-    short typeinx = 0; // Тип параметра на основе его префикса ({@ifc: и т.д.)
-    bool hasParamComposite = false; // Есть ли соответсвующий параметр состава конструкции (ParamComposite)
-    bool fromClassification = false; // Данные о классификаторе
-    bool fromGDLparam = false;       // Найден в гдл параметрах
-    bool fromGDLdescription = false; // Найден по описанию в гдл параметрах
-    bool fromProperty = false;       // Найден в свойствах
-    bool fromMorph = false;          // Найден свойствах морфа
-    bool fromInfo = false;           // Найден в инфо о проекте
-    bool fromGlob = false;           // Найден в глобальных переменных
-    bool fromIFCProperty = false;    // Найден в IFC свойствах
-    bool fromID = false;             // Найден в ID
-    bool fromCoord = false;          // Координаты
+    short typeinx = 0;                   // Тип параметра на основе его префикса ({@ifc: и т.д.)
+    bool hasParamComposite = false;      // Есть ли соответсвующий параметр состава конструкции (ParamComposite)
+    bool fromClassification = false;     // Данные о классификаторе
+    bool fromGDLparam = false;           // Найден в гдл параметрах
+    bool fromGDLdescription = false;     // Найден по описанию в гдл параметрах
+    bool fromProperty = false;           // Найден в свойствах
+    bool fromMorph = false;              // Найден свойствах морфа
+    bool fromInfo = false;               // Найден в инфо о проекте
+    bool fromGlob = false;               // Найден в глобальных переменных
+    bool fromIFCProperty = false;        // Найден в IFC свойствах
+    bool fromID = false;                 // Найден в ID
+    bool fromCoord = false;              // Координаты
     bool fromPropertyDefinition = false; // Задан определением свойства, искать не нужно
     bool fromMaterial = false;           // Взять инфо из состава конструкции
-    bool fromAttribDefinition = false; // Взять инфо из свойств аттрибута
-    bool fromAttribElement = false; // Взять инфо из аттрибута элемента (слой и т.д.)
-    bool fromQuantity = false;      // Взять инфо о количестве
-    bool fromElement = false; // Взять из информации об элементе (замена материала и т.д.)
-    bool fromMEP = false;      // Взять из информации МЕР
-    bool fromFile = false;     // Взять из txt файла
-    bool fromListData = false; // Взять из GDL команды COMPONENT
-    bool fromGDLArray = false; // Взять из массива
-    bool toQRCode = false;     // Результат вывести QR
-    bool needPreRead = false; // Необходимо прочитать значения диапазонов из параметров элемента
-    bool needResetToDef = false; // Сброс значения к значению по умолчанию
-    GS::UniString rawName_row_start = ""; // Имя параметра со значением начала диапазона чтения строк
-    GS::UniString rawName_row_end = ""; // Имя параметра со значением конца диапазона чтения строк
-    GS::UniString rawName_col_start = ""; // Имя параметра со значением начала диапазона чтения столбцов
-    GS::UniString rawName_col_end = ""; // Имя параметра со значением конца диапазона чтения столбцов
-    API_Guid fromGuid = APINULLGuid; // Из какого элемента прочитан
+    bool fromAttribDefinition = false;   // Взять инфо из свойств аттрибута
+    bool fromAttribElement = false;      // Взять инфо из аттрибута элемента (слой и т.д.)
+    bool fromQuantity = false;           // Взять инфо о количестве
+    bool fromElement = false;            // Взять из информации об элементе (замена материала и т.д.)
+    bool fromMEP = false;                // Взять из информации МЕР
+    bool fromFile = false;               // Взять из txt файла
+    bool fromListData = false;           // Взять из GDL команды COMPONENT
+    bool fromGDLArray = false;           // Взять из массива
+    bool toQRCode = false;               // Результат вывести QR
+    bool needPreRead = false;            // Необходимо прочитать значения диапазонов из параметров элемента
+    bool needResetToDef = false;         // Сброс значения к значению по умолчанию
+    GS::UniString rawName_row_start = EMPTYSTRING; // Имя параметра со значением начала диапазона чтения строк
+    GS::UniString rawName_row_end = EMPTYSTRING;   // Имя параметра со значением конца диапазона чтения строк
+    GS::UniString rawName_col_start = EMPTYSTRING; // Имя параметра со значением начала диапазона чтения столбцов
+    GS::UniString rawName_col_end = EMPTYSTRING;   // Имя параметра со значением конца диапазона чтения столбцов
+    API_Guid fromGuid = APINULLGuid;               // Из какого элемента прочитан
+
+    // Метод для очистки полей
+    void Сlear () { *this = ParamValue{}; }
 };
 
 // Словарь с заранее вычисленными данными в пределах одного элемента
@@ -592,7 +489,7 @@ namespace GDLHelpers {
         Int32 dim1 = 1;
         Int32 dim2 = 1;
         double num = 0;
-        GS::UniString str = "";
+        GS::UniString str = EMPTYSTRING;
     }; // Структура для чтения/записи в объекты
 
     typedef GS::HashTable<GS::UniString, Param> ParamDict;
