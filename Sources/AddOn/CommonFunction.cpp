@@ -12,8 +12,6 @@
     #include <xlocale.h>
 #endif
 
-static const Int32 VersionId = 49;
-
 // -----------------------------------------------------------------------------
 // Осталвяет в массиве только уникальные API_Guid
 // -----------------------------------------------------------------------------
@@ -33,7 +31,7 @@ void GetUnicGuid (GS::Array<API_Guid> &guidArray) {
 }
 
 GS::UniString GetDBName (API_DatabaseInfo &databaseInfo) {
-    GS::UniString рname = "";
+    GS::UniString рname = EMPTYSTRING;
     switch (databaseInfo.typeID) {
     case (APIWind_FloorPlanID):
         рname = "FloorPlan";
@@ -144,7 +142,7 @@ double GetzPos (const double bottomOffset, const short floorInd, const Stories &
 }
 
 GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl) {
-    GS::UniString qr_txt = "";
+    GS::UniString qr_txt = EMPTYSTRING;
     if (text.IsEmpty ())
         return qr_txt;
     qrcodegen::QrCode::Ecc lvl = qrcodegen::QrCode::Ecc::HIGH;
@@ -350,7 +348,7 @@ void msg_rep (const GS::UniString &modulename,
               const GSErrCode &err,
               const API_Guid &elemGuid,
               bool show) {
-    GS::UniString error_type = "";
+    GS::UniString error_type = EMPTYSTRING;
     if (err != NoError) {
         switch (err) {
         case APIERR_GENERAL:
@@ -634,7 +632,7 @@ void msg_rep (const GS::UniString &modulename,
             }
             if (elem_head.renovationFilterGuid != APINULLGuid)
                 error_type = error_type + " IN renovationFilter";
-            GS::UniString elemName = "";
+            GS::UniString elemName = EMPTYSTRING;
 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
 #else
@@ -651,7 +649,7 @@ void msg_rep (const GS::UniString &modulename,
             layer.header.index = elem_head.layer;
             if (ACAPI_Attribute_Get (&layer) == NoError)
                 error_type = error_type + " layer:" + layer.header.name;
-            GS::UniString infoString = "";
+            GS::UniString infoString = EMPTYSTRING;
             GSErrCode err = NoError;
 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
             if (ACAPI_Element_GetElementInfoString (&elem_head.guid, &infoString) == NoError)
@@ -857,7 +855,7 @@ bool check_accuracy (double rval, double tolerance) {
     double val = std::fabs (rval * 1000.0);
     if (val < std::numeric_limits<double>::epsilon ())
         return true;
-    double reciprocal = std::round ((1 / tolerance)); // Коэффицент домножения для заданной точности
+    double reciprocal = std::round ((1 / tolerance));              // Коэффицент домножения для заданной точности
     double val_round = std::round (val * reciprocal) / reciprocal; // Приведённое к заданной точности значение
     if (val_round < std::numeric_limits<double>::epsilon () && val > tolerance)
         return false;
@@ -997,7 +995,7 @@ void ReplaceCR (GS::UniString &val, bool clear) {
 void GetNumSymbSpase (GS::UniString &outstring, GS::UniChar symb, char charrepl) {
     // Ищем указание длины строки
     Int32 stringlen = 0;
-    GS::UniString part = "";
+    GS::UniString part = EMPTYSTRING;
     if (outstring.Contains (symb)) {
         part = outstring.GetSubstring (symb, ' ', 0);
         if (!part.IsEmpty () && part.GetLength () < 4)
@@ -1119,7 +1117,7 @@ GS::Array<GS::UniString> DelimTextLine (short font,
     }
 
     GS::Array<GS::UniString> parts;
-    GS::UniString currentPart = "";
+    GS::UniString currentPart = EMPTYSTRING;
 
     for (UIndex i = 0; i < var.GetLength (); ++i) {
         GS::UniChar ch = var[i];
@@ -1137,7 +1135,7 @@ GS::Array<GS::UniString> DelimTextLine (short font,
     }
 
     // Сборка строк с контролем ширины
-    GS::UniString currentLine = "";
+    GS::UniString currentLine = EMPTYSTRING;
     double currentLineWidth = 0.0;
     UInt32 npart = parts.GetSize ();
 
@@ -1319,7 +1317,7 @@ GS::UniString StringUnic (const GS::UniString &instring, const GS::UniString &de
     if (!instring.Contains (delim))
         return instring;
     GS::Array<GS::UniString> partstring;
-    GS::UniString outsting = "";
+    GS::UniString outsting = EMPTYSTRING;
     UInt32 n = StringSpltUnic (instring, delim, partstring);
     for (UInt32 i = 0; i < n; i++) {
         outsting.Append (partstring[i]);
