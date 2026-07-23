@@ -26,15 +26,15 @@ static const short SumToProperty = 1;
 static const short SumToInfo = 2;
 
 struct SumRule {
-    GS::UniString position = "";
-    GS::UniString value = "";
-    GS::UniString criteria = "";
+    GS::UniString position = EMPTYSTRING;
+    GS::UniString value = EMPTYSTRING;
+    GS::UniString criteria = EMPTYSTRING;
     std::string delimetr = "; ";
     std::string ignore_val = "";
     short sum_type = 0;
     short write_to = SumToProperty;
     GS::Array<API_Guid> elemts = {};
-    GS::UniString rule_name = ""; // Имя свойства-правила для отображения во всплывающем окне
+    GS::UniString rule_name = EMPTYSTRING; // Имя свойства-правила для отображения во всплывающем окне
     bool state = true;
     int n_ignore = 0;
     int n_write = 0;

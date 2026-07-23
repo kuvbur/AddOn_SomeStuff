@@ -15,14 +15,16 @@
         #include "APICommon28.h"
     #endif // AC_28
 
+    #include "Constants.hpp"
+
 namespace ClassificationFunc {
 
     struct ClassificationValues {
-        API_ClassificationSystem system; // Система
-        API_ClassificationItem item;     // Класс
-        GS::UniString parentname = "";   // Имя родиельского класса
-        GS::UniString itemname = "";     // Имя класса
-    };                                   // Структура для хранения класса
+        API_ClassificationSystem system;        // Система
+        API_ClassificationItem item;            // Класс
+        GS::UniString parentname = EMPTYSTRING; // Имя родиельского класса
+        GS::UniString itemname = EMPTYSTRING;   // Имя класса
+    }; // Структура для хранения класса
 
     typedef GS::HashTable<GS::UniString, ClassificationValues> ClassificationDict; // Словарь классов в системе
 
