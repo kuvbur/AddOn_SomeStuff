@@ -726,14 +726,15 @@ void ReNumOneRule (RenumRule &rule,
                 pos.FormatToMax (maxposdelim, rule.nulltype, rule.nullcount);
                 ParamValue posvalue = pos.ToParamValue (rawname_position);
                 for (const auto &elem : eleminpos) {
-                    if (!paramToReadelem.ContainsKey (elem.guid)) {
+                    const ParamDictValue *p = paramToReadelem.GetPtr (elem.guid);
+                    if (p == nullptr) {
                         continue;
                     }
-                    ParamDictValue &p = paramToReadelem.Get (elem.guid);
-                    if (!p.ContainsKey (rawname_position)) {
+                    const ParamValue *parampositionptr = p->GetPtr (rawname_position);
+                    if (parampositionptr == nullptr) {
                         continue;
                     }
-                    ParamValue paramposition = p.Get (rawname_position);
+                    ParamValue paramposition = *parampositionptr;
                     paramposition.isValid = true;
                     posvalue.val.type = paramposition.val.type;
                     if (paramposition != posvalue) {
@@ -763,16 +764,22 @@ bool ElementsSeparation (RenumRule &rule,
     bool flag = false;
     // Собираем значения свойств из criteria. Нам нужны только уникальные значения.
     for (const auto &guid : rule.elemts) {
-        if (!paramToReadelem.ContainsKey (guid))
-            continue;
+        const ParamDictValue *params = paramToReadelem.GetPtr (guid);
 
+        if (params == nullptr)
+            continue;
+        const ParamValue *paramflag = params->GetPtr (rule.flag);
+        const ParamValue *paramposition = params->GetPtr (rule.position);
         // Сразу проверим режим нумерации элемента
         short state = RENUM_SKIP;
         RenumPos pos;
-        const ParamDictValue &params = paramToReadelem.Get (guid);
-        if (params.ContainsKey (rule.flag) && params.ContainsKey (rule.position)) {
-            const ParamValue &paramflag = params.Get (rule.flag);
-            const ParamValue &paramposition = params.Get (rule.position);
+
+        const ParamValue *paramflagPtr = params->GetPtr (rule.flag);
+        const ParamValue *parampositionPtr = params->GetPtr (rule.position);
+
+        if (paramflagPtr != nullptr && parampositionPtr != nullptr) {
+            const ParamValue &paramflag = *paramflagPtr;
+            const ParamValue &paramposition = *parampositionPtr;
             if (!paramflag.isValid) {
                 msg_rep (
                     "ReNumSelected", "Skip element with not valid value in flag: " + rule.flag, APIERR_GENERAL, guid);
@@ -794,11 +801,11 @@ bool ElementsSeparation (RenumRule &rule,
 
         // Получаем разделитель, если он есть
         std::string delimetr = "";
-        if (params.ContainsKey (rule.delimetr)) {
-            const ParamValue &param = params.Get (rule.delimetr);
-            if (param.isValid) {
-                GSCharCode chcode = GetCharCode (param.val.uniStringValue);
-                delimetr = param.val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
+        const ParamValue *paramdelimetr = params->GetPtr (rule.flag);
+        if (paramdelimetr != nullptr) {
+            if (paramdelimetr->isValid) {
+                GSCharCode chcode = GetCharCode (paramdelimetr->val.uniStringValue);
+                delimetr = paramdelimetr->val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
             } else {
                 msg_rep ("ReNumSelected",
                          "Skip element with not valid value in delimetr: " + rule.delimetr,
@@ -811,10 +818,10 @@ bool ElementsSeparation (RenumRule &rule,
 
         // Получаем критерий, если он есть
         std::string criteria = "";
-        if (params.ContainsKey (rule.criteria)) {
-            const ParamValue &param = params.Get (rule.criteria);
-            if (param.isValid) {
-                if (param.val.uniStringValue.IsEmpty ()) {
+        const ParamValue *paramcriteria = params->GetPtr (rule.position);
+        if (paramcriteria != nullptr) {
+            if (paramcriteria->isValid) {
+                if (paramcriteria->val.uniStringValue.IsEmpty ()) {
                     msg_rep ("ReNumSelected",
                              "Skip element with empty value in criteria: " + rule.criteria,
                              APIERR_GENERAL,
