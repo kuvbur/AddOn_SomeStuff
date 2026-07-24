@@ -12,6 +12,68 @@ import zipfile
 import requests
 API_ENDPOINT = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={}'
 
+def GetLspGenerationParams(workspaceRootFolder, buildPath, devKitFolder, languageCode, optionalParams):
+    if shutil.which('clang-cl') is None:
+        raise Exception(
+            'clang-cl not found in PATH. Install LLVM (winget install LLVM.LLVM) '
+            'and make sure C:\\Program Files\\LLVM\\bin is in PATH.'
+        )
+    if shutil.which('ninja') is None:
+        raise Exception('Ninja not found in PATH. Install it (e.g. choco install ninja).')
+
+    lspParams = [
+        'cmake',
+        '-G', 'Ninja',
+        '-B', str(buildPath),
+        '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
+        '-DCMAKE_C_COMPILER=clang-cl',
+        '-DCMAKE_CXX_COMPILER=clang-cl',
+        '-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY',  # обходим sanity-check линковки exe
+        f'-DAC_API_DEVKIT_DIR={str(devKitFolder / "Support")}',
+    ]
+
+    if languageCode is not None:
+        lspParams.append(f'-DAC_ADDON_LANGUAGE={languageCode}')
+
+    if optionalParams is not None:
+        for key in optionalParams:
+            lspParams.append(f'-D{key}={optionalParams[key]}')
+
+    lspParams.append(str(workspaceRootFolder))
+    return lspParams
+
+
+def GenerateCompileCommands(configData, workspaceRootFolder, buildFolder, devKitFolderList):
+    if len(devKitFolderList) != 1:
+        raise Exception(
+            'Specify exactly one Archicad version with -v for --lsp mode '
+            '(compile_commands.json can only represent a single version/config).'
+        )
+
+    version = next(iter(devKitFolderList))
+    devKitFolder = devKitFolderList[version]
+
+    optionalParams = None
+    if 'addOnSpecificCMakeParameterEnvVars' in configData:
+        optionalParams = {}
+        for key in configData['addOnSpecificCMakeParameterEnvVars']:
+            value = os.environ.get(key)
+            if value is None:
+                raise Exception(f'{key} - Environment variable not found!')
+            optionalParams[key] = value
+
+    buildPath = buildFolder / 'LspCompileCommands' / version
+    lspParams = GetLspGenerationParams(
+        workspaceRootFolder, buildPath, devKitFolder, 'INT', optionalParams)
+
+    result = subprocess.call(lspParams)
+    if result != 0:
+        raise Exception('Failed to generate compile_commands.json!')
+
+    generated = buildPath / 'compile_commands.json'
+    target = workspaceRootFolder / 'compile_commands.json'
+    shutil.copy(generated, target)
+    print(f'compile_commands.json copied to {target}')
 
 def _extract_filename_yadisk_link(direct_link):
     for chunk in direct_link.strip().split('&'):
@@ -50,6 +112,8 @@ def ParseArguments():
                         action='store_true', help='Build in localized Release mode.')
     parser.add_argument('-p', '--package', dest='package', required=False,
                         action='store_true', help='Create zip archive.')
+    parser.add_argument('-L', '--lsp', dest='lsp', required=False,
+                        action='store_true', help='Generate compile_commands.json for clangd/LSP only, no full build.')
     args = parser.parse_args()
 
     if args.devKitPath is not None:
@@ -364,6 +428,11 @@ def Main():
         [workspaceRootFolder, buildFolder, packageRootFolder, devKitFolderList] = PrepareDirectories(
             args, configData, platformName, addOnName, acVersionList)
         os.chdir(workspaceRootFolder)
+
+        if args.lsp:
+            GenerateCompileCommands(configData, workspaceRootFolder, buildFolder, devKitFolderList)
+            print('LSP config generated!')
+            sys.exit(0)
 
         BuildAddOns(args, configData, platformName, languageList,
                     workspaceRootFolder, buildFolder, devKitFolderList)
