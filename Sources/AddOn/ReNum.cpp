@@ -786,16 +786,16 @@ bool ElementsSeparation (RenumRule &rule,
                 has_error = true;
                 state = RENUM_SKIP;
             } else {
-                state = ReNumGetFlag (*paramflag, *paramposition);
+                state = ReNumGetFlag (paramflag, paramposition);
             }
-            if (!paramposition->isValid) {
+            if (!paramposition.isValid) {
                 msg_rep (
                     "ReNumSelected", "Skip element with not valid position: " + rule.position, APIERR_GENERAL, guid);
                 has_error = true;
                 state = RENUM_SKIP;
             } else {
                 if (state != RENUM_SKIP)
-                    pos = RenumPos (*paramposition);
+                    pos = RenumPos (paramposition);
             }
         }
 
