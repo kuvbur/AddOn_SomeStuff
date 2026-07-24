@@ -8,6 +8,8 @@
 
 namespace TestFunc {
 
+    void TestStringSplt (); // forward declaration
+
     void Test () {
         DBprnt ("TEST", "start");
         TestFormatString ();
@@ -22,7 +24,75 @@ namespace TestFunc {
         TestCheckIgnoreVal ();
         TestReadProperty ();
         TestAddProperty ();
+        TestStringSplt ();
         DBprnt ("TEST", "end");
+    }
+
+    void TestStringSplt () {
+        DBprnt ("TEST", "TestStringSplt");
+        GS::Array<GS::UniString> parts;
+        UInt32 n;
+
+        // Simple delimiter: semicolon
+        parts.Clear ();
+        n = StringSplt ("a;b;c", ";", parts, true);
+        DBtest (n, (UInt32)3, "StringSplt semicolon 3 parts", true);
+        DBtest (parts.GetSize (), (UInt32)3, "StringSplt semicolon GetSize", true);
+        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0]", true);
+        DBtest (parts.Get (1), GS::UniString ("b"), "parts[1]", true);
+        DBtest (parts.Get (2), GS::UniString ("c"), "parts[2]", true);
+
+        // filter_empty = false — empty tokens preserved
+        parts.Clear ();
+        n = StringSplt ("a;;c", ";", parts, false);
+        DBtest (n, (UInt32)3, "StringSplt empty kept", true);
+        DBtest (parts.GetSize (), (UInt32)3, "StringSplt empty kept GetSize", true);
+        DBtest (parts.Get (1).IsEmpty (), true, "parts[1] is empty", true);
+
+        // filter_empty = true — empty tokens removed
+        parts.Clear ();
+        n = StringSplt ("a;;c", ";", parts, true);
+        DBtest (n, (UInt32)2, "StringSplt empty filtered", true);
+        DBtest (parts.GetSize (), (UInt32)2, "StringSplt empty filtered GetSize", true);
+        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0] after filter", true);
+        DBtest (parts.Get (1), GS::UniString ("c"), "parts[1] after filter", true);
+
+        // No delimiter found — whole string is a single element
+        parts.Clear ();
+        n = StringSplt ("hello", ";", parts, true);
+        DBtest (n, (UInt32)1, "StringSplt no delimiter returns 1", true);
+        DBtest (parts.GetSize (), (UInt32)1, "StringSplt no delimiter GetSize", true);
+        DBtest (parts.Get (0), GS::UniString ("hello"), "parts[0] no delimiter", true);
+
+        // Unicode delimiter (Cyrillic semicolon)
+        parts.Clear ();
+        n = StringSplt ("один;два;три", ";", parts, true);
+        DBtest (n, (UInt32)3, "StringSplt unicode 3 parts", true);
+        DBtest (parts.GetSize (), (UInt32)3, "StringSplt unicode GetSize", true);
+        DBtest (parts.Get (1), GS::UniString ("два"), "parts[1] unicode", true);
+
+        // Using scratch buffer (nullptr vs external)
+        parts.Clear ();
+        n = StringSplt ("x@y@z", "@", parts, true, nullptr);
+        DBtest (n, (UInt32)3, "StringSplt with nullptr scratch", true);
+        DBtest (parts.Get (1), GS::UniString ("y"), "parts[1] scratch nullptr", true);
+
+        // Scratch buffer passed externally
+        GS::Array<GS::UniString> scratch = {};
+        parts.Clear ();
+        n = StringSplt ("p;q;r", ";", parts, true, &scratch);
+        DBtest (n, (UInt32)3, "StringSplt with external scratch", true);
+        DBtest (parts.Get (2), GS::UniString ("r"), "parts[2] external scratch", true);
+
+        // Leading/trailing whitespace is trimmed
+        parts.Clear ();
+        n = StringSplt ("  a  ;  b  ", ";", parts, true);
+        DBtest (n, (UInt32)2, "StringSplt trim", true);
+        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0] trimmed", true);
+        DBtest (parts.Get (1), GS::UniString ("b"), "parts[1] trimmed", true);
+
+        DBprnt ("TEST", "TestStringSplt : done");
+        return;
     }
 
     void TestGetTextLineLength (GS::UniString &var) {
