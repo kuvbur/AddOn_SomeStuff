@@ -55,7 +55,23 @@ When looking for function definitions, classes, symbols, or architectural contex
 
 ---
 
+### Code Editing & Indentation Policy
+
+To prevent indentation errors and issues with patching tools:
+
+1. **Never rewrite large files entirely** just because of whitespace/indentation mismatches during patching.
+2. **Auto-format edited files:** Right after making any edits to a C++ file (`.cpp`, `.hpp`, `.h`), run `clang-format` via terminal to ensure perfect adherence to project style:
+   `clang-format -i path/to/edited_file.cpp`. Keep ALL changes produced by `clang-format` without manual rollback.
+3. **Pre-formatting before patching (Optional):** If a patch fails due to whitespace mismatches, run `clang-format -i` on the target file first, then re-apply the patch.
+4. **Trust `clang-format` on include ordering:** Do NOT manually revert or rearrange `#include` directives if `clang-format` modifies their order.
+   - Putting the paired header (e.g., `#include "TestFunc.hpp"` inside `TestFunc.cpp`) as the FIRST include is standard LLVM/Google/C++ behavior to verify header self-sufficiency.
+5. **Do NOT fight `clang-format`:** If `clang-format` reorganizes lines or includes, accept its output as the project truth. Do NOT treat `clang-format` changes as style violations or errors.
+
+---
+
 ## How to build (normal build)
+
+**Target Archicad Version:** Archicad 25 (AC25).
 
 Requires **Developer Command Prompt for VS** (provides `INCLUDE`/`LIB`/MSVC toolset).
 
