@@ -71,7 +71,7 @@ To prevent indentation errors and issues with patching tools:
 
 ## How to build (normal build)
 
-**Target Archicad Version:** Archicad 25 (AC25).
+**Example / default version for manual local builds:** Archicad 25 (AC25) — see "Archicad Version Handling" below for how to pick the right version for an actual task; this project supports AC 22–29, this is not a fixed target.
 
 Requires **Developer Command Prompt for VS** (provides `INCLUDE`/`LIB`/MSVC toolset).
 
@@ -95,6 +95,81 @@ AC version auto-detected from `ACAPinc.h` in DevKit (`DetectACVersion` in `CMake
 
 ---
 
+## Archicad Version Handling
+
+- This project has **no single default AC version** — it supports AC 22–29 with per-version C++ standard differences (C++14 <27, C++17 <29, C++20 ≥29) and two separate CI matrices (23-24 vs 25-29). Do not assume AC25 for a task just because it appears as the example in "How to build" above.
+- Before writing version-sensitive code (anything touching a C++17/20 feature, or an ACAPI symbol that differs across versions), establish which AC version(s) the current task targets: from the task/issue description, the relevant `Test_file/test_<version>.pln`, or by asking — do not guess silently.
+- If a change must behave differently across the supported range, guard it explicitly (e.g. `#if` on the detected version) rather than writing code that happens to work only on the version you tested against.
+
+---
+
+## Archicad API (ACAPI) Usage — Mandatory RAG Verification
+
+- Before writing or modifying any `ACAPI_*` call, query **LightRAG MCP** (via the sanctioned MCP tool call — never a raw `curl`/HTTP request to the LightRAG backend or any other service that already has a wrapped tool) against the indexed documentation, official examples, and this repo's own existing usage patterns. Do not rely on memorized/trained knowledge of the API alone.
+- This is mandatory verification, not a fallback. Unlike the Clangd-first / LightRAG-fallback ordering above — which is for navigating _this project's own_ symbols — an actual call into the Archicad SDK always goes through LightRAG first, regardless of whether Clangd can already resolve the symbol. Clangd confirms a function exists and its declared signature; only the documentation/example corpus confirms it's being called correctly, and for the right AC version (see "Archicad Version Handling" above — the ACAPI surface is versioned).
+- Query convention: same as the navigation rule above — concise English query naming the exact ACAPI function/struct/pattern, `mode: "hybrid"` unless told otherwise.
+- If RAG has no relevant coverage for a specific call, say so explicitly and ask rather than guessing from memory.
+- Known landmine already documented in this file (treat as pre-verified — no need to re-check): `ACAPI_Element_GetMemo` requires `BNZeroMemory(&memo, sizeof(memo))` first.
+
+---
+
+## Git & Checkpoint Discipline
+
+- **Clean tree before editing**: run `git status` before making any change. Uncommitted changes unrelated to the current task → stop and flag, don't build on top of them or silently commit/discard them.
+- **Checkpoint commits are mandatory**: commit, marked `WIP:`, after every verified sub-task — build succeeds, no new warnings/errors for the AC version(s) in scope. This is what makes autonomous execution safe: a mistake rolls back to the last checkpoint, not to the start of the task.
+- **Tip must build**: squash WIP commits into one clean commit once the task is done; never leave a non-building commit as the branch tip.
+- **Never destroy the rollback trail**: no `git clean -fdx`, no deleting untracked files, no deleting files outside the current task's scope.
+- **Never rewrite shared history**: no `git commit --amend`, `git rebase -i`, `git push --force` on any branch already reviewed or shared.
+- **Never stage blindly**: no `git add .` / `git add -A` without reading `git status`/`git diff` first — this repo's build/LSP artefacts (`compile_commands.json`, `Build/`) must never be staged.
+- Commit messages reference the task/issue (this project has no phase structure, unlike other repos this agent works in).
+
+---
+
+## Session State — `IDEA.md`
+
+This repo has no fixed implementation phases — work arrives as discrete tasks/bugs/features across many separate agent sessions with no shared memory between them. For any task expected to span more than one sitting, keep `IDEA.md` at the repo root (create if missing, same file name/role this agent uses in other projects — just task-keyed here instead of phase-keyed):
+
+```markdown
+# Current Task
+
+## Task
+
+[Short description / issue reference]
+
+## Current State & Resume Marker
+
+- **Status:** [IN_PROGRESS / WAITING_FOR_TEST / BLOCKED]
+- **Last Action Completed:** [...]
+- **Immediate Next Step:** [...]
+
+## Tactical Step-by-Step Plan
+
+- [x] Completed step
+- [/] Active step
+- [ ] Upcoming step
+
+## Execution Log & Decisions
+
+- [Step]: action taken, files touched, outcome.
+```
+
+Sync it before and after any significant step. If it isn't written down here, treat it as not done when resuming — this is the checkpoint unit the git checkpoint-commit rule above (and this agent's general checkpoint/rollback rules) refers to for this repo.
+
+---
+
+## Compiler flags & C++ versions (from CMakeCommon.cmake)
+
+| AC version | C++ std | MSVC toolset       |
+| ---------- | ------- | ------------------ |
+| < 27       | 14      | v140 / v141 / v142 |
+| < 29       | 17      | v142 / v143        |
+| ≥ 29       | 20      | v143               |
+
+`/W3 /WX /Zc:wchar_t- /EHsc /bigobj /wd4499 /wd5208 /wd4996 /wd4003` + many suppressed warnings.  
+macOS: `-Wall -Wextra -Werror -fvisibility=hidden` + long suppression list.
+
+---
+
 ## LSP (clangd) — NOT the same as normal build
 
 Normal build uses VS generator (multi-config) → **no `compile_commands.json`**.  
@@ -109,19 +184,6 @@ Also from **Developer Command Prompt**. Generates `Build/LspCompileCommands/<ver
 **Do NOT commit:** `compile_commands.json`, `Build/LspCompileCommands/`, `Build/DevKit/` — machine-specific artefacts.
 
 Regenerate after: AC version change, `CMakeCommon.cmake` edits, new `.cpp` files in `Sources/AddOn`.
-
----
-
-## Compiler flags & C++ versions (from CMakeCommon.cmake)
-
-| AC version | C++ std | MSVC toolset       |
-| ---------- | ------- | ------------------ |
-| < 27       | 14      | v140 / v141 / v142 |
-| < 29       | 17      | v142 / v143        |
-| ≥ 29       | 20      | v143               |
-
-`/W3 /WX /Zc:wchar_t- /EHsc /bigobj /wd4499 /wd5208 /wd4996 /wd4003` + many suppressed warnings.  
-macOS: `-Wall -Wextra -Werror -fvisibility=hidden` + long suppression list.
 
 ---
 
@@ -159,6 +221,8 @@ macOS: `-Wall -Wextra -Werror -fvisibility=hidden` + long suppression list.
 - ❌ Don't commit `compile_commands.json`, `Build/LspCompileCommands/`, `Build/DevKit/`
 - ❌ Don't re-enable suppressed `/wd####` warnings without reason
 - ❌ Don't call `ACAPI_Element_GetMemo` without `BNZeroMemory(&memo, sizeof(memo))` first
+- ❌ Don't call a service's raw HTTP/curl endpoint when a sanctioned MCP tool already wraps it (e.g. LightRAG) — use the tool, not a hand-rolled request
+- ❌ Don't assume AC25 as this repo's target version — see "Archicad Version Handling" above
 
 ---
 
