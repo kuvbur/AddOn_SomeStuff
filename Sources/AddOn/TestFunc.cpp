@@ -24,6 +24,7 @@ namespace TestFunc {
         TestCheckIgnoreVal ();
         TestReadProperty ();
         TestAddProperty ();
+        TestPropertyHelpersToString ();
         TestStringSplt ();
         DBprnt ("TEST", "end");
     }
@@ -1485,6 +1486,169 @@ namespace TestFunc {
                 true);
 
         DBprnt ("TEST", "TestAddProperty : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест PropertyHelpers::ToString (API_Property) - проверка строкового представления свойств
+    // -----------------------------------------------------------------------------
+    void TestPropertyHelpersToString () {
+        DBprnt ("TEST", "TestPropertyHelpersToString");
+        API_Property property;
+        FormatString fstring;
+
+        // ---- Integer: базовое значение ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = true;
+    #else
+        property.status = API_Property_HasValue;
+    #endif
+        property.definition.collectionType = API_PropertySingleCollectionType;
+        property.definition.valueType = API_PropertyIntegerValueType;
+        property.value.singleVariant.variant.type = API_PropertyIntegerValueType;
+        property.value.singleVariant.variant.intValue = 42;
+        GS::UniString intResult = PropertyHelpers::ToString (property);
+        DBtest (intResult, GS::UniString ("42"), "ToString(Property) : Integer 42", true);
+
+        // ---- Real: базовое значение ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = true;
+    #else
+        property.status = API_Property_HasValue;
+    #endif
+        property.definition.collectionType = API_PropertySingleCollectionType;
+        property.definition.valueType = API_PropertyRealValueType;
+        property.definition.measureType = API_PropertyUndefinedMeasureType;
+        property.value.singleVariant.variant.type = API_PropertyRealValueType;
+        property.value.singleVariant.variant.doubleValue = 3.14159;
+        GS::UniString realResult = PropertyHelpers::ToString (property);
+        // ToString для Real использует форматирование с точностью, проверяем что это число
+        DBtest (!realResult.IsEmpty (), "ToString(Property) : Real не пустая строка", true);
+        DBtest (realResult.Contains ("3.14") || realResult.Contains ("3,14"),
+                "ToString(Property) : Real содержит значение",
+                true);
+
+        // ---- Boolean: true ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = true;
+    #else
+        property.status = API_Property_HasValue;
+    #endif
+        property.definition.collectionType = API_PropertySingleCollectionType;
+        property.definition.valueType = API_PropertyBooleanValueType;
+        property.value.singleVariant.variant.type = API_PropertyBooleanValueType;
+        property.value.singleVariant.variant.boolValue = true;
+        GS::UniString boolTrueResult = PropertyHelpers::ToString (property);
+        DBtest (!boolTrueResult.IsEmpty (), "ToString(Property) : Boolean true не пустая", true);
+
+        // ---- Boolean: false ----
+        property.value.singleVariant.variant.boolValue = false;
+        GS::UniString boolFalseResult = PropertyHelpers::ToString (property);
+        DBtest (!boolFalseResult.IsEmpty (), "ToString(Property) : Boolean false не пустая", true);
+
+        // ---- String: обычное значение ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = true;
+    #else
+        property.status = API_Property_HasValue;
+    #endif
+        property.definition.collectionType = API_PropertySingleCollectionType;
+        property.definition.valueType = API_PropertyStringValueType;
+        property.value.singleVariant.variant.type = API_PropertyStringValueType;
+        property.value.singleVariant.variant.uniStringValue = "TestString";
+        GS::UniString strResult = PropertyHelpers::ToString (property);
+        DBtest (strResult, GS::UniString ("TestString"), "ToString(Property) : String значение", true);
+
+        // ---- String: пустая строка ----
+        property.value.singleVariant.variant.uniStringValue = "";
+        GS::UniString emptyStrResult = PropertyHelpers::ToString (property);
+        DBtest (emptyStrResult.IsEmpty (), "ToString(Property) : пустая строка -> пустой результат", true);
+
+        // ---- List: список Integer ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = true;
+    #else
+        property.status = API_Property_HasValue;
+    #endif
+        property.definition.collectionType = API_PropertyListCollectionType;
+        property.definition.valueType = API_PropertyIntegerValueType;
+        API_Variant v1 = {}, v2 = {}, v3 = {};
+        v1.type = API_PropertyIntegerValueType;
+        v1.intValue = 1;
+        v2.type = API_PropertyIntegerValueType;
+        v2.intValue = 2;
+        v3.type = API_PropertyIntegerValueType;
+        v3.intValue = 3;
+        property.value.listVariant.variants.Push (v1);
+        property.value.listVariant.variants.Push (v2);
+        property.value.listVariant.variants.Push (v3);
+        GS::UniString listResult = PropertyHelpers::ToString (property);
+        DBtest (listResult.Contains ("1"), "ToString(Property) : List содержит 1", true);
+        DBtest (listResult.Contains ("2"), "ToString(Property) : List содержит 2", true);
+        DBtest (listResult.Contains ("3"), "ToString(Property) : List содержит 3", true);
+        DBtest (listResult.Contains (";"), "ToString(Property) : List содержит разделитель", true);
+
+        // ---- List: список String ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = true;
+    #else
+        property.status = API_Property_HasValue;
+    #endif
+        property.definition.collectionType = API_PropertyListCollectionType;
+        property.definition.valueType = API_PropertyStringValueType;
+        API_Variant sv1 = {}, sv2 = {};
+        sv1.type = API_PropertyStringValueType;
+        sv1.uniStringValue = "apple";
+        sv2.type = API_PropertyStringValueType;
+        sv2.uniStringValue = "banana";
+        property.value.listVariant.variants.Push (sv1);
+        property.value.listVariant.variants.Push (sv2);
+        GS::UniString strListResult = PropertyHelpers::ToString (property);
+        DBtest (strListResult.Contains ("apple"), "ToString(Property) : String List содержит apple", true);
+        DBtest (strListResult.Contains ("banana"), "ToString(Property) : String List содержит banana", true);
+        DBtest (strListResult.Contains (";"), "ToString(Property) : String List содержит разделитель", true);
+
+        // ---- NotAvailable / NotEvaluated: должна вернуть пустую строку ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = false;
+    #else
+        property.status = API_Property_NotAvailable;
+    #endif
+        property.definition.collectionType = API_PropertySingleCollectionType;
+        property.definition.valueType = API_PropertyIntegerValueType;
+        GS::UniString notAvailResult = PropertyHelpers::ToString (property);
+        DBtest (notAvailResult.IsEmpty (), "ToString(Property) : NotAvailable -> пустая строка", true);
+
+        // ---- Default value (isDefault + NotEvaluated) ----
+        property = {};
+    #if defined(AC_22) || defined(AC_23)
+        property.isEvaluated = true;
+    #else
+        property.status = API_Property_NotEvaluated;
+        property.isDefault = true;
+    #endif
+        property.definition.collectionType = API_PropertySingleCollectionType;
+        property.definition.valueType = API_PropertyIntegerValueType;
+        property.definition.defaultValue.basicValue.singleVariant.variant.type = API_PropertyIntegerValueType;
+        property.definition.defaultValue.basicValue.singleVariant.variant.intValue = 999;
+        GS::UniString defaultResult = PropertyHelpers::ToString (property);
+        DBtest (defaultResult, GS::UniString ("999"), "ToString(Property) : Default value (999)", true);
+
+        // ---- Default value: Real ----
+        property.definition.defaultValue.basicValue.singleVariant.variant.type = API_PropertyRealValueType;
+        property.definition.defaultValue.basicValue.singleVariant.variant.doubleValue = 2.5;
+        property.definition.valueType = API_PropertyRealValueType;
+        GS::UniString defaultRealResult = PropertyHelpers::ToString (property);
+        DBtest (!defaultRealResult.IsEmpty (), "ToString(Property) : Default Real не пустая", true);
+
+        DBprnt ("TEST", "TestPropertyHelpersToString : done");
         return;
     }
 

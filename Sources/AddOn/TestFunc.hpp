@@ -29,6 +29,7 @@ namespace TestFunc {
     void TestCheckIgnoreVal ();
     void TestReadProperty ();
     void TestAddProperty ();
+    void TestPropertyHelpersToString ();
     void DumpAllBuiltInProperties ();
     void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray);
     void ResetSyncPropertyOne (const API_Guid &elemGuid);
