@@ -192,7 +192,7 @@ struct ParamValue {
     API_Guid fromGuid = APINULLGuid;               // Из какого элемента прочитан
 
     // Метод для очистки полей
-    void Сlear () { *this = ParamValue{}; }
+    void Clear () { *this = ParamValue{}; }
 };
 
 // Словарь с заранее вычисленными данными в пределах одного элемента
