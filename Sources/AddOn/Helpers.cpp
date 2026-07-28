@@ -335,6 +335,15 @@ namespace FormatStringFunc {
 // Если в массиве один элемент - будет произведён поиск по классификации
 // В этом случае в массив элементов будут добавлены элементы, у которых видны правила
 // -------------------------------------------------------------------------------
+// Ищет свойства с заданным флагом (name) среди выбранных элементов
+// Если выбран один элемент - ищет правило только в нём, затем заменяет guidArray на элементы, имеющие это свойство
+// Если выбрано несколько - ищет правила в каждом элементе
+// Параметры:
+//   guidArray - массив guid элементов (входной и, возможно, выходной)
+//   definitions - таблица найденных определений свойств (заполняется)
+//   name - имя флага для поиска (например, RENUMFLAG)
+//   check_bracket - проверять ли наличие скобок в описании свойства
+// Возвращает true, если найдено хотя бы одно свойство с флагом
 bool GetRuleFromSelected (GS::Array<API_Guid> &guidArray,
                           GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                           const GS::UniString &name,
@@ -410,7 +419,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
                     continue;
                 }
                 for (const auto &prop : properties) {
-                    pvalue.Сlear ();
+                    pvalue.Clear ();
                     if (!ParamHelpers::ConvertToParamValue (pvalue, prop)) {
                         continue;
                     }
@@ -658,7 +667,16 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
 }
 
 // -----------------------------------------------------------------------------
-// Получить массив Guid выбранных элементов в соответсвии с настройками обработки
+// Получить массив Guid выбранных элементов в соответствии с настройками обработки
+// Функция является обёрткой над ACAPI_Selection_Get, фильтрует элементы по настройкам SyncSettings
+// Параметры:
+//   assertIfNoSel - выводить ошибку, если ничего не выбрано
+//   onlyEditable - возвращать только редактируемые элементы
+//   syncSettings - настройки синхронизации (фильтры элементов)
+//   addSubelement - добавлять подэлементы (для размеров, заливок и т.д.)
+//   addZone - добавлять зоны
+//   addConnect - добавлять связанные элементы (например, стены для проёмов)
+// Возвращает массив guid выбранных элементов
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
                                          bool onlyEditable /*= true*/,
@@ -4608,6 +4626,9 @@ bool GetElemStateReverse (const API_Guid &elemGuid,
 // --------------------------------------------------------------------
 // Запись словаря параметров для множества элементов
 // --------------------------------------------------------------------
+// Запись значений свойств для множества элементов
+// Для каждого элемента в paramToWrite вызывает ParamHelpers::Write, записывая подготовленные значения свойств
+// Возвращает массив guid элементов, которые были успешно записаны (для последующего обновления/перечитывания)
 GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement &paramToWrite) {
     GS::Array<API_Guid> rereadelem = {};
     if (paramToWrite.IsEmpty ())
@@ -5443,6 +5464,10 @@ void ParamHelpers::WriteProperty (const API_Guid &elemGuid, ParamDictValue &para
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
+// Чтение значений свойств для множества элементов
+// Обёртка над полной версией ElementsRead (с составными свойствами и списками)
+// Читает значения свойств, подготовленные в paramToRead (заполненного через AddParamValue2ParamDictElement)
+// Результаты сохраняются в той же структуре paramToRead (поля val в ParamValue заполняются)
 void ParamHelpers::ElementsRead (ParamDictElement &paramToRead) {
     ParamDictCompositeElement paramCompositeToRead = {};
     ListData::LibElements paramListDataToRead = {};

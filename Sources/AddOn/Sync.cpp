@@ -429,6 +429,10 @@ void SyncSelected (const SyncSettings &syncSettings) {
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
 // -----------------------------------------------------------------------------
+// Синхронизирует массив элементов: читает свойства и записывает изменения
+// Для каждого элемента в guidArray вызывает SyncElement, который читает свойства и формирует paramToWrite
+// Если syncSettings.syncMon включён - привязывает элементы к мониторингу (AttachObserver)
+// Возвращает массив guid элементов, которые были обработаны (для обновления)
 GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_Guid> &guidArray) {
     GS::Array<API_Guid> rereadelem = {};
     if (guidArray.IsEmpty ())

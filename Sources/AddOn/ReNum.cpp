@@ -42,6 +42,15 @@
 // 3. Откидываем все с вфключенным флагом
 // 4. По количеству уникальных имён свойств-правил, взятых из Renum_flag{*имя свойства с правилом*}, разбиваем элементы
 // -----------------------------------------------------------------------------------------------------------------------
+// Основная функция перенумерации выбранных элементов
+// Алгоритм:
+// 1. Получаем выбранные элементы
+// 2. Ищем у них свойства с флагом Renum_flag{...} (указывают на правило нумерации)
+// 3. Собираем данные из свойств (позиция, флаг, критерий, разбивка)
+// 4. Показываем диалог выбора правил (RenumDG)
+// 5. Читаем значения свойств
+// 6. Распределяем позиции согласно правилам
+// 7. Записываем новые позиции
 GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     GS::UniString funcname ("Numbering");
     GS::Int32 nPhase = 1;
@@ -50,11 +59,15 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     clock_t start, finish;
     double duration;
     start = clock ();
+    // Получаем выбранные элементы (только видимые, только из модели)
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true, false, false);
     if (guidArray.IsEmpty ())
         return NoError;
+    // Если выбран только один элемент - правило берётся из него одного
     bool rule_from_one = (guidArray.GetSize () == 1);
+    // Таблица определений свойств-правил (заполняется в GetRuleFromSelected)
     GS::HashTable<API_Guid, API_PropertyDefinition> rule_definitions = {};
+    // Ищем свойства с флагом Renum_flag среди выбранных элементов
     if (!GetRuleFromSelected (guidArray, rule_definitions, RENUMFLAG, false)) {
         msg_rep ("ReNumSelected",
                  "No Num rule found.\nCheck that the description of the user property contains Renum_flag",
@@ -63,7 +76,9 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
                  true);
         return NoError;
     }
+    // Словарь для записи новых значений (guid элемента -> имя свойства -> новое значение)
     ParamDictElement paramToWriteelem = {};
+    // Основная обработка: сбор данных, диалог, чтение, распределение позиций
     if (!GetRenumElements (guidArray, paramToWriteelem, rule_definitions, rule_from_one)) {
         msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
         return NoError;
@@ -126,6 +141,9 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     return NoError;
 }
 
+// Диалог выбора правил нумерации пользователем
+// Показывает список найденных правил с количеством элементов для каждого
+// Возвращает true, если пользователь подтвердил выбор и есть активные правила
 bool RenumDG (Rules &renum_rules, bool &rule_from_one) {
     #if defined(TESTING)
     DBprnt ("Show DG start");
@@ -172,6 +190,15 @@ bool RenumDG (Rules &renum_rules, bool &rule_from_one) {
     return has_true_state;
 }
 
+// Основная функция сбора данных и распределения позиций
+// Алгоритм:
+// 1. Для каждого выбранного элемента ищем свойства с правилами нумерации
+// 2. Собираем значения свойств (позиция, флаг, критерий, разбивка) в paramToReadelem
+// 3. Показываем диалог выбора правил (RenumDG)
+// 4. Читаем значения свойств через ElementsRead
+// 5. Для каждого правила вызываем ReNumOneRule для распределения позиций
+// 6. Формируем paramToWriteelem с новыми позициями
+// Возвращает true, если есть данные для записи
 bool GetRenumElements (GS::Array<API_Guid> &guidArray,
                        ParamDictElement &paramToWriteelem,
                        GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
@@ -342,6 +369,14 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
+// Для каждого свойства элемента с флагом Renum_flag{...}:
+// 1. Парсит описание флага, извлекает имя свойства-позиции и настройки нулей
+// 2. Находит связанное свойство-правило (с описанием Renum{...})
+// 3. Из правила извлекает имя свойства-критерия и свойства-разбивки
+// 4. Создаёт или обновляет RenumRule в таблице rules
+// 5. Добавляет guid элемента в rule.elemts
+// 6. Подготавливает чтение значений свойств (позиция, флаг, критерий, разбивка) в paramToRead
+// Возвращает true, если найдено хотя бы одно правило нумерации
 // -----------------------------------------------------------------------------------------------------------------------
 bool ReNum_GetElement (const API_Guid &elemGuid,
                        ParamDictElement &paramToRead,
@@ -513,10 +548,10 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
                 hasRenum = true;
             rulecritetiaPtr->elemts.Push (elemGuid);
 
-            pvalue_position.Сlear ();
-            pvalue_flag.Сlear ();
-            pvalue_criteria.Сlear ();
-            pvalue_delimetr.Сlear ();
+            pvalue_position.Clear ();
+            pvalue_flag.Clear ();
+            pvalue_criteria.Clear ();
+            pvalue_delimetr.Clear ();
 
             bool has_position = false;
             bool has_flag = false;
@@ -547,8 +582,10 @@ bool ReNum_GetElement (const API_Guid &elemGuid,
     return hasRenum;
 }
 
-// Возвращает самое часто встречающееся значение позиции
-// Необходима для подбора элементов с одинаковым критерием, но разной позицией
+// Возвращает самое часто встречающееся значение позиции из массива
+// Используется для подбора элементов с одинаковым критерием, но разной позицией
+// Алгоритм: подсчитывает частоту каждой позиции, возвращает позицию с максимальным счётчиком
+// Если массив пустой - возвращает дефолтный RenumPos()
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos> &eleminpos) {
     if (eleminpos.IsEmpty ()) {
         return RenumPos ();
@@ -573,6 +610,10 @@ RenumPos GetMostFrequentPos (const GS::Array<RenumPos> &eleminpos) {
     return out;
 }
 
+// Генерирует новую уникальную позицию для заданного критерия и разбивки
+// Алгоритм: начинает с позиции 1, инкрементирует пока позиция не станет уникальной в unicpos[delimetr]
+// Записывает соответствие позиции -> критерий в unicpos и критерий -> позиция в unicriteria
+// Возвращает сгенерированную позицию
 RenumPos GetPos (DRenumPosDict &unicpos,
                  DStringDict &unicriteria,
                  const std::string &delimetr,
@@ -586,6 +627,13 @@ RenumPos GetPos (DRenumPosDict &unicpos,
     return pos;
 }
 
+// Основная функция распределения позиций для одного правила
+// Алгоритм:
+// 1. Вызывает ElementsSeparation для разделения элементов по разбивке, типу нумерации и критерию
+// 2. Стадия 1: определяет часто встречающиеся позиции для игнорируемых (RENUM_IGNORE) и добавляемых (RENUM_ADD) элементов
+// 3. Стадия 2: расставляет позиции для добавляемых и новых элементов, используя словари unicriteria/unicpos
+// 4. Стадия 3: записывает итоговые позиции в paramToWriteelem с учётом форматирования нулей/пробелов
+// Параметр has_error устанавливается в true при ошибках обработки
 void ReNumOneRule (RenumRule &rule,
                    ParamDictElement &paramToReadelem,
                    ParamDictElement &paramToWriteelem,
@@ -752,6 +800,13 @@ void ReNumOneRule (RenumRule &rule,
     return;
 }
 
+// Разделяет элементы правила по разбивке, типу нумерации и критерию
+// Алгоритм:
+// 1. Для каждого элемента в rule.elemts определяет режим нумерации через ReNumGetFlag
+// 2. Получает значение разбивки (delimetr) и критерия (criteria) из свойств элемента
+// 3. Группирует элементы в delimetrList[delimetr][state][criteria].elements
+// Типы нумерации (state): RENUM_SKIP, RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL
+// Возвращает true, если есть элементы для обработки (не RENUM_SKIP)
 bool ElementsSeparation (RenumRule &rule,
                          const ParamDictElement &paramToReadelem,
                          Delimetr &delimetrList,
@@ -863,7 +918,9 @@ bool ElementsSeparation (RenumRule &rule,
 }
 
 //------------------------------------------------------------------------------------------------------------
-// Проверяет - есть ли хоть одно описание флага
+// Проверяет - есть ли хоть одно описание флага Renum_flag в массиве определений свойств
+// Используется для быстрой проверки, есть ли у элемента свойства с правилами нумерации
+// Возвращает true, если найдено хотя бы одно свойство с Renum_flag в описании
 //------------------------------------------------------------------------------------------------------------
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions) {
     if (definitions.IsEmpty ())
@@ -879,7 +936,18 @@ bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions) {
 }
 
 // -----------------------------------------------------------------------------------------------------------------------
-// Функция возвращает режим нумерации (RENUM_IGNORE, RENUM_ADD, RENUM_NORMAL)
+// Функция возвращает режим нумерации элемента на основе значений свойств флага и позиции
+// Режимы:
+//   RENUM_SKIP (-1)    - исключить элемент из обработки
+//   RENUM_IGNORE (0)   - не менять позицию, но учитывать элемент при группировке
+//   RENUM_ADD (1)      - не менять позицию, если нет пропусков в нумерации
+//   RENUM_NORMAL (2)   - обычная нумерация/перенумерация
+// Логика для булевых свойств: true -> RENUM_NORMAL (если редактируемо), false -> RENUM_SKIP
+// Логика для строковых свойств:
+//   содержит "skip" -> RENUM_SKIP
+//   содержит "ignore" -> RENUM_IGNORE
+//   позиция не равна 0 -> RENUM_ADD
+//   иначе -> RENUM_NORMAL
 // -----------------------------------------------------------------------------------------------------------------------
 short ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition) {
     if (!paramflag.isValid)
