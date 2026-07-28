@@ -640,6 +640,7 @@ void ReNumOneRule (RenumRule &rule,
                    bool &has_error) {
 
     // Рассортируем элементы по разделителю, типу нумерации и критерию.
+    // delimetrList: [разбивка][тип_нумерации][критерий] -> массив позиций элементов
     Delimetr delimetrList;
     #if defined(TESTING)
     DBprnt ("    ReNumOneRule start");
@@ -647,14 +648,21 @@ void ReNumOneRule (RenumRule &rule,
     if (!ElementsSeparation (rule, paramToReadelem, delimetrList, has_error))
         return;
 
-    DRenumPosDict unicpos;                  // Словарь соответствия позиции критерию
-    DStringDict unicriteria;                // Словарь соответствия критерия поизции (обратный предыдущему)
-    std::map<std::string, RenumPos> maxpos; // Словарь максимальных позиций
-    RenumPos maxposall;
+    // Словари для отслеживания занятых позиций:
+    // unicpos: [разбивка][позиция] -> критерий (какой критерий занял эту позицию)
+    // unicriteria: [разбивка][критерий] -> позиция (какую позицию получил этот критерий)
+    // Это нужно, чтобы избежать конфликтов позиций между элементами с одинаковым критерием
+    DRenumPosDict unicpos;
+    DStringDict unicriteria;
+    // Словарь максимальных позиций для каждой разбивки (для форматирования нулей)
+    std::map<std::string, RenumPos> maxpos;
+    RenumPos maxposall; // Глобальный максимум по всем разбивкам
     #if defined(TESTING)
     DBprnt ("        stage 1");
     #endif
-    // Определим часто встречающиеся позиции для критериев. Ищем только в игнорируемых и добавленных
+    // СТАДИЯ 1: Определяем часто встречающиеся позиции для игнорируемых и добавляемых элементов
+    // Игнорируемые (RENUM_IGNORE) - их позиции нельзя занимать, они задают "якоря"
+    // Добавляемые (RENUM_ADD) - если у них нет подходящей позиции среди игнорируемых, создаём новую
     if (!rule.oldalgoritm) {
         for (Delimetr::iterator i = delimetrList.begin (); i != delimetrList.end (); ++i) {
             TypeValues &tv = i->second;
@@ -696,17 +704,19 @@ void ReNumOneRule (RenumRule &rule,
 
     // Предолагаемое поведение:
     // Игнорируемые позиции (RENUM_IGNORE) - не меняют значения.
-    //						Остальные элементы, при совпадении критерия, могут принимать значения
-    // подходящих игнорируемых. 						Позиции игнорируемых могут совпадать.
+    //		Остальные элементы, при совпадении критерия, могут принимать значения
+    // подходящих игнорируемых. Позиции игнорируемых могут совпадать.
     // Добавочные позиции (RENUM_ADD) - меняют значения в случаях:
-    //						Сначала проверяем по критерию ищем подходящую позацию среди
-    // игнорируемых. 						В качестве подходящей для назначения выбирается самая
+    //		Сначала проверяем по критерию ищем подходящую позацию среди
+    // игнорируемых. В качестве подходящей для назначения выбирается самая
     // часто встречающаяся позиция.
     // Новые позиции (RENUM_NORMAL)
-    //						Сначала идёт поиск по подходящим позициям предыдущих типов. Если не
+    //		Сначала идёт поиск по подходящим позициям предыдущих типов. Если не
     // нашли - ищем по-порядку свободную позицию.
     // Если критерий элемента совпадает с подходящим критерием игнорируемого - будет применена позиция игнорируемого
 
+    // СТАДИЯ 2: Распределяем позиции для добавляемых (RENUM_ADD) и новых (RENUM_NORMAL) элементов
+    // Логика: если для критерия уже есть позиция в unicriteria - используем её, иначе создаём новую через GetPos
     // Теперь последовательно идём по словарю c разделителями, вытаскиваем оттуда guid и нумеруем
     #if defined(TESTING)
     DBprnt ("        stage 2");
@@ -722,9 +732,10 @@ void ReNumOneRule (RenumRule &rule,
                 std::string criteria = k->first;
                 // Расставляем позиции для элементов, для которых есть подходящая по критериям позиция
                 if (unicriteria[delimetr].count (criteria) != 0) {
+                    // Критерий уже встречался среди игнорируемых - используем ту же позицию
                     delimetrList[delimetr][RENUM_ADD][criteria].mostFrequentPos = unicriteria[delimetr][criteria];
                 } else {
-                    // Если такой позиции нет (например, она занята) - создадим новую позицию
+                    // Критерий новый - генерируем уникальную позицию
                     RenumPos pos = GetPos (unicpos, unicriteria, delimetr, criteria);
                     delimetrList[delimetr][RENUM_ADD][criteria].mostFrequentPos = pos;
                     maxposdelim.SetToMax (pos);
@@ -740,7 +751,6 @@ void ReNumOneRule (RenumRule &rule,
                 if (unicriteria[delimetr].count (criteria) != 0) {
                     delimetrList[delimetr][RENUM_NORMAL][criteria].mostFrequentPos = unicriteria[delimetr][criteria];
                 } else {
-                    // Если такой позиции нет (например, она занята) - создадим новую позицию
                     RenumPos pos = GetPos (unicpos, unicriteria, delimetr, criteria);
                     delimetrList[delimetr][RENUM_NORMAL][criteria].mostFrequentPos = pos;
                     maxposdelim.SetToMax (pos);
@@ -753,6 +763,9 @@ void ReNumOneRule (RenumRule &rule,
     #if defined(TESTING)
     DBprnt ("        stage 3");
     #endif
+    // СТАДИЯ 3: Записываем итоговые позиции в paramToWriteelem
+    // Форматируем позиции с учётом настроек нулей/пробелов (nulltype, nullcount)
+    // Сравниваем новую позицию с текущей - если изменилась, добавляем в список на запись
     // Финишная прямая. Берём позиции из словаря и расставляем значения.
     GS::UniString rawname_position = rule.position;
     RenumPos maxposdelim;
@@ -761,9 +774,11 @@ void ReNumOneRule (RenumRule &rule,
 
     for (auto &i : delimetrList) {
         TypeValues &tv = i.second;
+        // Обрабатываем только добавляемые (RENUM_ADD) и новые (RENUM_NORMAL) элементы
         for (short renumType = RENUM_ADD; renumType <= RENUM_NORMAL; renumType++) {
             if (tv.count (renumType) == 0)
                 continue;
+            // Для ADDZEROS/ADDSPACE берём максимум позиций в текущей разбивке
             if (rule.nulltype == ADDZEROS || rule.nulltype == ADDSPACE) {
                 maxposdelim = maxpos[i.first];
             }
@@ -823,40 +838,45 @@ bool ElementsSeparation (RenumRule &rule,
 
         if (params == nullptr)
             continue;
+        
+        // Получаем указатели на нужные свойства элемента
+        // rule.flag - свойство-флаг (определяет режим нумерации)
+        // rule.position - свойство с текущей позицией
+        // rule.criteria - свойство-критерий (по которому группируем элементы)
+        // rule.delimetr - свойство-разбивка (опциональная группировка)
         const ParamValue *paramflag = params->GetPtr (rule.flag);
         const ParamValue *paramposition = params->GetPtr (rule.position);
+        const ParamValue *paramcriteria = params->GetPtr (rule.criteria);
+        const ParamValue *paramdelimetr = params->GetPtr (rule.delimetr);
+        
         // Сразу проверим режим нумерации элемента
         short state = RENUM_SKIP;
         RenumPos pos;
 
-        const ParamValue *paramflagPtr = params->GetPtr (rule.flag);
-        const ParamValue *parampositionPtr = params->GetPtr (rule.position);
-
-        if (paramflagPtr != nullptr && parampositionPtr != nullptr) {
-            const ParamValue &paramflag = *paramflagPtr;
-            const ParamValue &paramposition = *parampositionPtr;
-            if (!paramflag.isValid) {
+        if (paramflag != nullptr && paramposition != nullptr) {
+            const ParamValue &flag = *paramflag;
+            const ParamValue &position = *paramposition;
+            if (!flag.isValid) {
                 msg_rep (
                     "ReNumSelected", "Skip element with not valid value in flag: " + rule.flag, APIERR_GENERAL, guid);
                 has_error = true;
                 state = RENUM_SKIP;
             } else {
-                state = ReNumGetFlag (paramflag, paramposition);
+                state = ReNumGetFlag (flag, position);
             }
-            if (!paramposition.isValid) {
+            if (!position.isValid) {
                 msg_rep (
                     "ReNumSelected", "Skip element with not valid position: " + rule.position, APIERR_GENERAL, guid);
                 has_error = true;
                 state = RENUM_SKIP;
             } else {
                 if (state != RENUM_SKIP)
-                    pos = RenumPos (paramposition);
+                    pos = RenumPos (position);
             }
         }
 
-        // Получаем разделитель, если он есть
+        // Получаем разделитель (delimetr), если он задан в правиле
         std::string delimetr = "";
-        const ParamValue *paramdelimetr = params->GetPtr (rule.flag);
         if (paramdelimetr != nullptr) {
             if (paramdelimetr->isValid) {
                 GSCharCode chcode = GetCharCode (paramdelimetr->val.uniStringValue);
@@ -871,9 +891,8 @@ bool ElementsSeparation (RenumRule &rule,
             }
         }
 
-        // Получаем критерий, если он есть
+        // Получаем критерий (criteria), если он задан в правиле
         std::string criteria = "";
-        const ParamValue *paramcriteria = params->GetPtr (rule.position);
         if (paramcriteria != nullptr) {
             if (paramcriteria->isValid) {
                 if (paramcriteria->val.uniStringValue.IsEmpty ()) {
