@@ -4229,9 +4229,22 @@ namespace Roombook
             beammemo.beamSegments[0].assemblySegmentData.nominalHeight = edges.height;
 
     #if defined(AC_27) || defined(AC_28) || defined(AC_29)
-            API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
-    // beammemo.beamSegments[0].sidMat.hasValue = true;
-    // beammemo.beamSegments[0].refMat.value = ematerial;
+            // Материал горизонтального откоса: для AC_27+ структура API_BeamSegmentType содержит
+            // bottomMaterial, leftMaterial, rightMaterial, topMaterial, endsMaterial (AC_29+ extrusionMaterial)
+            beammemo.beamSegments[0].bottomMaterial.overridden = true;
+            beammemo.beamSegments[0].bottomMaterial.attributeIndex = edges.material.material;
+
+            beammemo.beamSegments[0].leftMaterial.overridden = true;
+            beammemo.beamSegments[0].leftMaterial.attributeIndex = edges.material.material;
+
+            beammemo.beamSegments[0].rightMaterial.overridden = true;
+            beammemo.beamSegments[0].rightMaterial.attributeIndex = edges.material.material;
+
+            beammemo.beamSegments[0].topMaterial.overridden = true;
+            beammemo.beamSegments[0].topMaterial.attributeIndex = edges.material.material;
+
+            beammemo.beamSegments[0].endsMaterial.overridden = true;
+            beammemo.beamSegments[0].endsMaterial.attributeIndex = edges.material.material;
     #else
             beammemo.beamSegments[0].bottomMaterial.overridden = true;
             beammemo.beamSegments[0].bottomMaterial.attributeIndex = edges.material.material;
