@@ -2253,7 +2253,17 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_
     return err;
 }
 
-void UnhideUnlockElementLayer (const API_Guid &elemGuid) {
+// --------------------------------------------------------------------
+    // Снимает скрытие и блокировку слоя элемента
+    // Назначение: если слой элемента скрыт или заблокирован - делает его видимым и разблокированным
+    // Параметры:
+    //   elemGuid - GUID элемента
+    // Алгоритм:
+    //   1. Проверяет, на видимом ли слое элемент (APIFilt_OnVisLayer)
+    //   2. Получает заголовок элемента
+    //   3. Вызывает перегрузку с заголовком
+    // --------------------------------------------------------------------
+    void UnhideUnlockElementLayer (const API_Guid &elemGuid) {
     GSErrCode err = NoError;
     if (ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer))
         return;
@@ -2267,7 +2277,17 @@ void UnhideUnlockElementLayer (const API_Guid &elemGuid) {
     UnhideUnlockElementLayer (elem_head);
 }
 
-void UnhideUnlockElementLayer (const API_Elem_Head &elem_head) {
+// --------------------------------------------------------------------
+    // Снимает скрытие и блокировку слоя элемента (по заголовку)
+    // Назначение: проверяет флаги заголовка, если слой заблокирован или скрыт - разблокирует/показывает
+    // Параметры:
+    //   elem_head - заголовок элемента
+    // Алгоритм:
+    //   1. Проверяет флаг floorInd & 0x8000 (заблокированный слой)
+    //   2. Проверяет layer.head.flags & 1 (скрытый слой)
+    //   3. При необходимости вызывает ACAPI_Attribute_Set для атрибута слоя
+    // --------------------------------------------------------------------
+    void UnhideUnlockElementLayer (const API_Elem_Head &elem_head) {
     API_ElemTypeID typeID = GetElemTypeID (elem_head);
     if (typeID == API_DoorID)
         return;
@@ -2278,7 +2298,18 @@ void UnhideUnlockElementLayer (const API_Elem_Head &elem_head) {
     UnhideUnlockElementLayer (elem_head.layer);
 }
 
-void UnhideUnlockElementLayer (const API_AttributeIndex &layer) {
+// --------------------------------------------------------------------
+    // Снимает скрытие и блокировку слоя (по индексу слоя)
+    // Назначение: если слой скрыт или заблокирован - меняет флаги атрибута
+    // Параметры:
+    //   layer - индекс атрибута слоя (API_AttributeIndex)
+    // Алгоритм:
+    //   1. Получает атрибут слоя через ACAPI_Attribute_Get
+    //   2. Проверяет attrib.layer.head.flags & 1 (скрытый)
+    //   3. Проверяет attrib.layer.head.flags & 2 (заблокированный)
+    //   4. Если нужно - сбрасывает флаги и вызывает ACAPI_Attribute_Set
+    // --------------------------------------------------------------------
+    void UnhideUnlockElementLayer (const API_AttributeIndex &layer) {
     API_Attribute attrib = {};
     GSErrCode err = NoError;
     attrib.header.typeID = API_LayerID;

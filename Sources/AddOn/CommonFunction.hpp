@@ -457,10 +457,15 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo &memo, Geomet
 
 GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_Polygon &poly, API_ElementMemo &memo);
 
+// --------------------------------------------------------------------
+// Снимает скрытие и блокировку слоя элемента (3 перегрузки)
+// Назначение: если слой скрыт или заблокирован - делает его видимым/разблокированным
+// 1. По GUID элемента -> получает заголовок -> вызывает #2
+// 2. По заголовку элемента -> пропускает двери/окна -> вызывает #3
+// 3. По индексу слоя -> ACAPI_Attribute_Get/Set (сбрасывает flags & 1 (hidden) и & 2 (locked))
+// --------------------------------------------------------------------
 void UnhideUnlockElementLayer (const API_Guid &elemGuid);
-
 void UnhideUnlockElementLayer (const API_Elem_Head &elem_head);
-
 void UnhideUnlockElementLayer (const API_AttributeIndex &layer);
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx);
