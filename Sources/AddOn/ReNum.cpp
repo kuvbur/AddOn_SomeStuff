@@ -630,7 +630,8 @@ RenumPos GetPos (DRenumPosDict &unicpos,
 // Основная функция распределения позиций для одного правила
 // Алгоритм:
 // 1. Вызывает ElementsSeparation для разделения элементов по разбивке, типу нумерации и критерию
-// 2. Стадия 1: определяет часто встречающиеся позиции для игнорируемых (RENUM_IGNORE) и добавляемых (RENUM_ADD) элементов
+// 2. Стадия 1: определяет часто встречающиеся позиции для игнорируемых (RENUM_IGNORE) и добавляемых (RENUM_ADD)
+// элементов
 // 3. Стадия 2: расставляет позиции для добавляемых и новых элементов, используя словари unicriteria/unicpos
 // 4. Стадия 3: записывает итоговые позиции в paramToWriteelem с учётом форматирования нулей/пробелов
 // Параметр has_error устанавливается в true при ошибках обработки
@@ -838,7 +839,7 @@ bool ElementsSeparation (RenumRule &rule,
 
         if (params == nullptr)
             continue;
-        
+
         // Получаем указатели на нужные свойства элемента
         // rule.flag - свойство-флаг (определяет режим нумерации)
         // rule.position - свойство с текущей позицией
@@ -846,13 +847,9 @@ bool ElementsSeparation (RenumRule &rule,
         // rule.delimetr - свойство-разбивка (опциональная группировка)
         const ParamValue *paramflag = params->GetPtr (rule.flag);
         const ParamValue *paramposition = params->GetPtr (rule.position);
-        const ParamValue *paramcriteria = params->GetPtr (rule.criteria);
-        const ParamValue *paramdelimetr = params->GetPtr (rule.delimetr);
-        
         // Сразу проверим режим нумерации элемента
         short state = RENUM_SKIP;
         RenumPos pos;
-
         if (paramflag != nullptr && paramposition != nullptr) {
             const ParamValue &flag = *paramflag;
             const ParamValue &position = *paramposition;
@@ -864,44 +861,52 @@ bool ElementsSeparation (RenumRule &rule,
             } else {
                 state = ReNumGetFlag (flag, position);
             }
-            if (!position.isValid) {
-                msg_rep (
-                    "ReNumSelected", "Skip element with not valid position: " + rule.position, APIERR_GENERAL, guid);
-                has_error = true;
-                state = RENUM_SKIP;
-            } else {
-                if (state != RENUM_SKIP)
-                    pos = RenumPos (position);
+            if (state != RENUM_SKIP) {
+                if (!position.isValid) {
+                    msg_rep ("ReNumSelected",
+                             "Skip element with not valid position: " + rule.position,
+                             APIERR_GENERAL,
+                             guid);
+                    has_error = true;
+                    state = RENUM_SKIP;
+                } else {
+                    if (state != RENUM_SKIP)
+                        pos = RenumPos (position);
+                }
             }
         }
 
         // Получаем разделитель (delimetr), если он задан в правиле
         std::string delimetr = "";
+        const ParamValue *paramdelimetr = params->GetPtr (rule.delimetr);
         if (paramdelimetr != nullptr) {
             if (paramdelimetr->isValid) {
                 GSCharCode chcode = GetCharCode (paramdelimetr->val.uniStringValue);
                 delimetr = paramdelimetr->val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
             } else {
-                msg_rep ("ReNumSelected",
-                         "Skip element with not valid value in delimetr: " + rule.delimetr,
-                         APIERR_GENERAL,
-                         guid);
+                has_error = (state != RENUM_SKIP);
+                if (has_error)
+                    msg_rep ("ReNumSelected",
+                             "Skip element with not valid value in delimetr: " + rule.delimetr,
+                             APIERR_GENERAL,
+                             guid);
                 state = RENUM_SKIP;
-                has_error = true;
             }
         }
 
         // Получаем критерий (criteria), если он задан в правиле
         std::string criteria = "";
+        const ParamValue *paramcriteria = params->GetPtr (rule.criteria);
         if (paramcriteria != nullptr) {
             if (paramcriteria->isValid) {
                 if (paramcriteria->val.uniStringValue.IsEmpty ()) {
-                    msg_rep ("ReNumSelected",
-                             "Skip element with empty value in criteria: " + rule.criteria,
-                             APIERR_GENERAL,
-                             guid);
+                    has_error = (state != RENUM_SKIP);
+                    if (has_error)
+                        msg_rep ("ReNumSelected",
+                                 "Skip element with empty value in criteria: " + rule.criteria,
+                                 APIERR_GENERAL,
+                                 guid);
                     state = RENUM_SKIP;
-                    has_error = true;
                 } else {
                     GSCharCode chcode = GetCharCode (paramcriteria->val.uniStringValue);
                     criteria = paramcriteria->val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();

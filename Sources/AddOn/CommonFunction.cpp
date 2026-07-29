@@ -1234,45 +1234,46 @@ bool EvalExpression (GS::UniString &unistring_expression) {
 
         UIndex formulaLength = endPos - startPos - 1;
         GS::UniString part = unistring_expression.GetSubstring (startPos + 1, formulaLength);
-
-        GS::UniString stringformat;
-        FormatString fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
-
-        // Конвертируем в std::string для безопасной посимвольной обработки
-        std::string expression_string (part.ToCStr (0, MaxUSize, chcode).Get ());
-        if (baddelim == COMMA && expression_string.length () > 2) {
-            for (size_t j = 1; j < expression_string.length () - 1; ++j) {
-                if (expression_string[j] == ',') {
-                    // Меняем на точку, ТОЛЬКО если слева И справа находятся чистые цифры
-                    if (std::isdigit (static_cast<unsigned char> (expression_string[j - 1])) &&
-                        std::isdigit (static_cast<unsigned char> (expression_string[j + 1]))) {
-                        expression_string[j] = '.';
+        GS::UniString stringformat = EMPTYSTRING;
+        GS::UniString rezult_txt = EMPTYSTRING;
+        FormatString fstring;
+        if (!part.IsEmpty ()) {
+            fstring = FormatStringFunc::GetFormatStringFromFormula (unistring_expression, part, stringformat);
+            if (!part.IsEmpty ()) {
+                // Конвертируем в std::string для безопасной посимвольной обработки
+                std::string expression_string (part.ToCStr (0, MaxUSize, chcode).Get ());
+                if (baddelim == COMMA && expression_string.length () > 2) {
+                    for (size_t j = 1; j < expression_string.length () - 1; ++j) {
+                        if (expression_string[j] == ',') {
+                            // Меняем на точку, ТОЛЬКО если слева И справа находятся чистые цифры
+                            if (std::isdigit (static_cast<unsigned char> (expression_string[j - 1])) &&
+                                std::isdigit (static_cast<unsigned char> (expression_string[j + 1]))) {
+                                expression_string[j] = '.';
+                            }
+                        }
                     }
                 }
-            }
-        }
 
-        // Вычисляем математическое выражение через ExprTk
-        typedef double T;
-        typedef exprtk::expression<T> expression_t;
-        typedef exprtk::parser<T> parser_t;
+                // Вычисляем математическое выражение через ExprTk
+                typedef double T;
+                typedef exprtk::expression<T> expression_t;
+                typedef exprtk::parser<T> parser_t;
 
-        expression_t expression;
-        parser_t parser;
-
-        GS::UniString rezult_txt;
-        if (parser.compile (expression_string, expression)) {
-            const T result = expression.value ();
-            if (!std::isnan (result)) {
-                rezult_txt = FormatStringFunc::NumToString (result, fstring);
-            }
-        }
+                expression_t expression;
+                parser_t parser;
+                if (parser.compile (expression_string, expression)) {
+                    const T result = expression.value ();
+                    if (!std::isnan (result)) {
+                        rezult_txt = FormatStringFunc::NumToString (result, fstring);
+                    }
+                }
 #if defined(TESTING)
-        else {
-            DBprnt ("ExprTk Compile Error in formula:", expression_string.c_str ());
-        }
+                else {
+                    DBprnt ("ExprTk Compile Error in formula:", expression_string.c_str ());
+                }
 #endif
-
+            }
+        }
         // Формируем токен для удаления
         GS::UniString totalToken = CHARFORMULASTART + part + CHARFORMULAEND + stringformat;
 
