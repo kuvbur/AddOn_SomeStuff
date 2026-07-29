@@ -4154,7 +4154,7 @@ namespace Roombook
                             Class_SetClass (otdslab, finclass);
                             group.Push (otdslab.otd_guid);
                         } else {
-                            msg_rep ("RoomBook", "otdwall.otd_guid == APINULLGuid", NoError, APINULLGuid);
+                            msg_rep ("RoomBook", "otdslab.otd_guid == APINULLGuid", NoError, APINULLGuid);
                         }
                     }
                 } else {
