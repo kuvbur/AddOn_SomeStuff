@@ -1,7 +1,9 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
-    #include "ACAPinc.h"
     #include "APIEnvir.h"
+
+    #include "ACAPinc.h"
+
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "TestFunc.hpp"

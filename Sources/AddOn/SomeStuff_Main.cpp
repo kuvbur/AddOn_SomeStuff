@@ -1,7 +1,9 @@
 //------------ kuvbur 2022 ------------
-#include "ACAPinc.h"
-#include "APIEnvir.h"
 #include <stdio.h>
+
+#include "APIEnvir.h"
+
+#include "ACAPinc.h"
 #ifdef TESTING
     #include "TestFunc.hpp"
 #endif
@@ -165,7 +167,8 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
     // tst.Append (SPACESTRING);
     // DBprnt ("ElementEvent", tst);
     // #endif
-    // Элементы из hotlink не обрабатываются, потому что они приходят как внешние ссылки и не доступны для локального редактирования.
+    // Элементы из hotlink не обрабатываются, потому что они приходят как внешние ссылки и не доступны для локального
+    // редактирования.
     if (elemType->elemHead.hotlinkGuid != APINULLGuid)
         return NoError;
     ACAPI_KeepInMemory (true);

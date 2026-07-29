@@ -1,11 +1,14 @@
 //------------ kuvbur 2022 ------------
-#include "ACAPinc.h"
+#include <map>
+
 #include "APIEnvir.h"
+
+#include "ACAPinc.h"
+
 #include "DG4rule.hpp"
 #include "Propertycache.hpp"
 #include "Summ.hpp"
 #include "Sync.hpp"
-#include <map>
 
 typedef std::unordered_map<std::string, SortInx> SumCriteria;
 

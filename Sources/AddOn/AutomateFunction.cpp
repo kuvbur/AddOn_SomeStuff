@@ -1,6 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifndef AC_22
     #include "ACAPinc.h"
+
     #include "AutomateFunction.hpp"
     #include "Helpers.hpp"
     #include "Model3D/MeshBody.hpp"
@@ -252,8 +253,10 @@ namespace AutoFunc {
     // Извлекает из морфа отрезки, сортирует их по удалению от startpos
     // Возвращает массив отрезков и ID морфа
     // -----------------------------------------------------------------------------
-    GSErrCode
-    GetSectLine (API_Guid &elemguid, GS::Array<SSectLine> &lines, GS::UniString &id, const Point2D &startpos) {
+    GSErrCode GetSectLine (API_Guid &elemguid,
+                           GS::Array<SSectLine> &lines,
+                           GS::UniString &id,
+                           const Point2D &startpos) {
         API_Element element = {};
         element.header.guid = elemguid;
         GSErrCode err = ACAPI_Element_Get (&element);

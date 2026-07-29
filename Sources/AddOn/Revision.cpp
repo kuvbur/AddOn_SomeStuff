@@ -1,10 +1,13 @@
 //------------ kuvbur 2022 ------------
-#include "ACAPinc.h"
-#include "APIEnvir.h"
-#include "Propertycache.hpp"
-#include "Revision.hpp"
 #include <stdlib.h> /* atoi */
 #include <time.h>
+
+#include "APIEnvir.h"
+
+#include "ACAPinc.h"
+
+#include "Propertycache.hpp"
+#include "Revision.hpp"
 
 namespace Revision {
     void SetRevision (void) {

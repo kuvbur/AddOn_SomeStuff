@@ -5,12 +5,13 @@
     #include "Helpers.hpp"
 
     #if defined(AC_29)
+        #include <ACAPI/MEPEnums.hpp>
+
         #include "ACAPI/MEPAdapter.hpp"
         #include "ACAPI/MEPPhysicalSystem.hpp"
         #include "ACAPI/MEPSystemGroup.hpp"
         #include "ACAPI/MEPUniqueID.hpp"
         #include "ACAPI/Result.hpp"
-        #include <ACAPI/MEPEnums.hpp>
     #endif
 
 // Кэш свойств и справочных данных проекта: свойства, атрибуты, классификации,
@@ -495,12 +496,11 @@ struct PropertyCache {
             if (info.ContainsKey (autotextkey)) {
                 GS::UniString autotext = info.Get (autotextkey).val.uniStringValue;
                 hasDimAutotext = DimReadPref (dimrules, autotext, hasLayerNameInDimRules);
-                if (hasDimAutotext) {
-                    msg_rep ("=PropertyCache= find dim rule ", autotext, NoError, APINULLGuid);
     #if defined(TESTING)
+                if (hasDimAutotext) {
                     DBprnt ("=PropertyCache= ReadInfo find dim rule " + autotext);
-    #endif
                 }
+    #endif
             }
         }
     #if defined(TESTING)

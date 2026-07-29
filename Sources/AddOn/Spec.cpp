@@ -1,7 +1,9 @@
 //------------ kuvbur 2022 ------------
-#include "Spec.hpp"
-#include "ACAPinc.h"
 #include "APIEnvir.h"
+
+#include "ACAPinc.h"
+
+#include "Spec.hpp"
 #include "Sync.hpp"
 #ifdef TESTING
     #include "TestFunc.hpp"

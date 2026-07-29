@@ -2,12 +2,12 @@
 #pragma once
 #ifndef HELPERS_HPP
     #define HELPERS_HPP
+    #include "basicgeometry.h"
     #include "ClassificationFunction.hpp"
     #include "CommonFunction.hpp"
     #include "Spec_libpart.hpp"
     #include "StringConversion.hpp"
     #include "SyncSettings.hpp"
-    #include "basicgeometry.h"
 
 struct SortGUID {
     GS::Array<API_Guid> guid = {};

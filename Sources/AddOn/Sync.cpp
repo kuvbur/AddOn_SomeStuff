@@ -1,13 +1,16 @@
 //------------ kuvbur 2022 ------------
-#include "ACAPinc.h"
+#include <string> // std::stoi
+#include <time.h>
+
 #include "APIEnvir.h"
+
+#include "ACAPinc.h"
+
 #include "Dimensions.hpp"
 #include "MEPv1.hpp"
 #include "Propertycache.hpp"
 #include "ResetProperty.hpp"
 #include "Sync.hpp"
-#include <string> // std::stoi
-#include <time.h>
 #ifdef TESTING
     #include "TestFunc.hpp"
 #endif
@@ -656,9 +659,9 @@ bool SyncData (const API_Guid &elemGuid,
     GS::Array<API_PropertyDefinition> definitions = {};
     GS::Array<WriteData> mainsyncRules = {};
     ParamDictValue subproperty = {};
-    ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
+    ParamDictElement paramToRead = {};       // Словарь с параметрами для чтения
     UnicGuidString property_write_guid = {}; // Словарь GUID свойств, в которые могла быть осуществлена запись
-    WriteDict syncRules = {}; // Словарь с правилами для каждого элемента
+    WriteDict syncRules = {};                // Словарь с правилами для каждого элемента
     API_ElemTypeID elementType;
     if (!IsElementEditable (elemGuid, syncSettings, true, elementType))
         return false;
@@ -792,7 +795,7 @@ void SyncCalcRule (const WriteDict &syncRules,
                    ParamDictElement &paramToWrite,
                    UnicGuidString &property_write_guid) {
     GS::HashSet<GS::UniString> resolvedProps; // Свойства, которые уже получили "полезное" значение
-    GS::HashSet<GS::UniString> propsToReset; // Свойства, которые кандидаты на сброс к дефолту
+    GS::HashSet<GS::UniString> propsToReset;  // Свойства, которые кандидаты на сброс к дефолту
     for (const API_Guid &elemGuid : subelemGuids) {
         const auto *writeSubs = syncRules.GetPtr (elemGuid);
         if (writeSubs == nullptr || writeSubs->IsEmpty ()) {
@@ -1104,8 +1107,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
         GS::UniString rawparamName = ""; // Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
         SkipValues ignorevals = {};      // Игнорируемые значения
         FormatString stringformat = {};
-        API_Guid elemGuidfrom = elemGuid; // Элемент, из которого читаем данные
-        API_Guid elemGuidto = elemGuid;   // Элемент, в котороый записываем данные
+        API_Guid elemGuidfrom = elemGuid;              // Элемент, из которого читаем данные
+        API_Guid elemGuidto = elemGuid;                // Элемент, в котороый записываем данные
         API_ElemTypeID elementType_from = elementType; // Тип элемента, из которого читаем данные
         // Копировать из другого элемента
         if (rulestring_one.Contains (FROMGUIDBR)) {
@@ -1950,9 +1953,9 @@ bool SyncString (const API_ElemTypeID &elementType,
             int array_column_start = 0;
             int array_column_end = 0;
             GS::UniString rawName_row_start = ""; // Имя параметра со значением начала диапазона чтения строк
-            GS::UniString rawName_row_end = ""; // Имя параметра со значением конца диапазона чтения строк
+            GS::UniString rawName_row_end = "";   // Имя параметра со значением конца диапазона чтения строк
             GS::UniString rawName_col_start = ""; // Имя параметра со значением начала диапазона чтения столбцов
-            GS::UniString rawName_col_end = ""; // Имя параметра со значением конца диапазона чтения столбцов
+            GS::UniString rawName_col_end = "";   // Имя параметра со значением конца диапазона чтения столбцов
             double p;
             if (params[1].Contains ("(")) {
                 GS::Array<GS::UniString> sr;

@@ -1,14 +1,5 @@
 //------------ kuvbur 2022 ------------
 #ifndef AC_22
-    #include "ACAPinc.h"
-    #include "CommonFunction.hpp"
-    #include "DG4rule.hpp"
-    #include "Helpers.hpp"
-    #include "Propertycache.hpp"
-    #include "ReNum.hpp"
-    #include "ResourceIds.hpp"
-    #include "Sync.hpp"
-    #include "SyncSettings.hpp"
     #include <API_Guid.hpp>
     #include <APIdefs_Elements.h>
     #include <APIdefs_Environment.h>
@@ -25,6 +16,17 @@
     #include <string>
     #include <UniString.hpp>
     #include <unordered_map>
+
+    #include "ACAPinc.h"
+
+    #include "CommonFunction.hpp"
+    #include "DG4rule.hpp"
+    #include "Helpers.hpp"
+    #include "Propertycache.hpp"
+    #include "ReNum.hpp"
+    #include "ResourceIds.hpp"
+    #include "Sync.hpp"
+    #include "SyncSettings.hpp"
 
 // -----------------------------------------------------------------------------------------------------------------------
 // 1. Получаем список объектов, в свойствах которых ищем

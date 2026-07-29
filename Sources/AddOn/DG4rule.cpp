@@ -1,9 +1,10 @@
 
-#include "DG4rule.hpp"
+#include "APIEnvir.h"
 
 #include "ACAPinc.h" // also includes APIdefs.h
+
 #include "APIdefs.h"
-#include "APIEnvir.h"
+#include "DG4rule.hpp"
 #include "Propertycache.hpp"
 #include "ResourceIds.hpp"
 

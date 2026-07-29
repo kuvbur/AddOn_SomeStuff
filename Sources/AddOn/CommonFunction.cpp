@@ -1,13 +1,15 @@
 //------------ kuvbur 2022 ------------
-#include "CommonFunction.hpp"
-#include "APIEnvir.h"
-#include "Propertycache.hpp"
-#include "qrcodegen.hpp"
 #include <APIdefs_Environment.h>
 #include <bitset>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
+
+#include "APIEnvir.h"
+
+#include "CommonFunction.hpp"
+#include "Propertycache.hpp"
+#include "qrcodegen.hpp"
 #if defined(_MAC)
     #include <xlocale.h>
 #endif
@@ -2274,6 +2276,52 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo &memo, Geomet
         Geometry::MultiPolygon2D multi;
         Geometry::ConvertPolygon2DDataToPolygon2D (multi, polygon2DData);
         poly = multi.PopLargest ();
+    }
+    Geometry::FreePolygon2DData (&polygon2DData);
+    return err;
+}
+
+GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_Polygon &poly, API_ElementMemo &memo) {
+    GSErrCode err = NoError;
+    BMhKill ((GSHandle *)&memo.coords);
+    BMhKill ((GSHandle *)&memo.pends);
+    BMhKill ((GSHandle *)&memo.vertexIDs);
+    BMhKill ((GSHandle *)&memo.parcs);
+    BNZeroMemory (&poly, sizeof (API_Polygon));
+
+    Geometry::Polygon2DData polygon2DData;
+    Geometry::InitPolygon2DData (&polygon2DData);
+    Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, polygon);
+
+    poly.nCoords = polygon2DData.nVertices;
+    poly.nSubPolys = polygon2DData.nContours;
+    poly.nArcs = polygon2DData.nArcs;
+
+    UInt32 vId = 1;
+    memo.coords =
+        reinterpret_cast<API_Coord **> (BMAllocateHandle ((poly.nCoords + 1) * sizeof (API_Coord), ALLOCATE_CLEAR, 0));
+    memo.pends =
+        reinterpret_cast<Int32 **> (BMAllocateHandle ((poly.nSubPolys + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
+    memo.parcs =
+        reinterpret_cast<API_PolyArc **> (BMAllocateHandle (poly.nArcs * sizeof (API_PolyArc), ALLOCATE_CLEAR, 0));
+    memo.vertexIDs =
+        reinterpret_cast<UInt32 **> (BMAllocateHandle ((poly.nCoords + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
+    if (memo.coords != nullptr && memo.pends != nullptr && polygon2DData.vertices != nullptr) {
+        static_assert (sizeof (API_Coord) == sizeof (Coord), "sizeof (API_Coord) != sizeof (Coord)");
+        BNCopyMemory (*memo.coords, *polygon2DData.vertices, (poly.nCoords + 1) * sizeof (API_Coord));
+        BNCopyMemory (*memo.pends, *polygon2DData.contourEnds, (poly.nSubPolys + 1) * sizeof (Int32));
+        (*memo.vertexIDs)[0] = poly.nCoords;
+        for (Int32 k = 1; k <= poly.nCoords; ++k) {
+            (*memo.vertexIDs)[vId] = vId;
+            vId++;
+        }
+        (*memo.vertexIDs)[0] = vId - 1;
+    } else {
+        err = APIERR_MEMFULL;
+    }
+    if (err == NoError && polygon2DData.arcs != nullptr && memo.parcs != nullptr) {
+        static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
+        BNCopyMemory (*memo.parcs, *polygon2DData.arcs, poly.nArcs * sizeof (API_PolyArc));
     }
     Geometry::FreePolygon2DData (&polygon2DData);
     return err;
