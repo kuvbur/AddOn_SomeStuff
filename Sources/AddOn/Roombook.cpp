@@ -1292,7 +1292,6 @@ namespace Roombook
         syncSettings.wallS = true;
         syncSettings.syncAll = true;
         syncSettings.syncMon = true;
-        syncSettings.wallS = true;
         syncSettings.widoS = true;
         syncSettings.objS = true;
         syncSettings.cwallS = true;
