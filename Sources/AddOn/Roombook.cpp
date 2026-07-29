@@ -2732,7 +2732,6 @@ namespace Roombook
         if (const auto *p = readparams.GetPtr (param_name)) {
             if (p->isValid) {
                 val = p->val;
-                val = readparams.Get (param_name).val;
                 roominfo.has_ceil = val.boolValue;
             }
         }
