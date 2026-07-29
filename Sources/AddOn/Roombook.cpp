@@ -4560,7 +4560,6 @@ namespace Roombook
         }
         windowelement.window.owner = wallelement.header.guid;
         if (op.has_reveal) {
-            // TODO Дописать определение толщины из откоса
             double th = wallelement.wall.thickness;
             double zUp_op = op.zBottom + op.height;
             double zUp_wall = zBottom + wallelement.wall.height;
