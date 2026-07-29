@@ -4779,17 +4779,19 @@ namespace Roombook
                 return;
         } else {
             slabobjelement.header.guid = otdslab.otd_guid;
+            API_Guid savedGuid_Get = otdslab.otd_guid; // Сохраняем GUID для логирования перед обнулением
             err = ACAPI_Element_Get (&slabobjelement);
             if (err != NoError) {
                 otdslab.otd_guid = APINULLGuid;
-                msg_rep ("Floor_Draw_Object", "ACAPI_Element_Get", err, otdslab.otd_guid);
+                msg_rep ("Floor_Draw_Object", "ACAPI_Element_Get", err, savedGuid_Get);
                 return;
             }
+            API_Guid savedGuid_GetMemo = otdslab.otd_guid; // Сохраняем GUID для логирования перед обнулением
             err = ACAPI_Element_GetMemo (otdslab.otd_guid, &slabobjmemo);
             if (err != NoError) {
                 otdslab.otd_guid = APINULLGuid;
                 ACAPI_DisposeElemMemoHdls (&slabobjmemo);
-                msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
+                msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, savedGuid_GetMemo);
                 return;
             }
         }
