@@ -1,17 +1,17 @@
 //------------ kuvbur 2022 ------------
-#include "Roombook.hpp"
 #include "ACAPinc.h"
-#include "APIEnvir.h"
 #include "Algorithms.hpp"
+#include "alphanum.h"
+#include "APIEnvir.h"
 #include "CommonFunction.hpp"
 #include "Helpers.hpp"
 #include "ProfileAdditionalInfo.hpp"
 #include "ProfileVectorImage.hpp"
 #include "ProfileVectorImageOperations.hpp"
 #include "Propertycache.hpp"
+#include "Roombook.hpp"
 #include "Sync.hpp"
 #include "VectorImageIterator.hpp"
-#include "alphanum.h"
 
 namespace Roombook
 
@@ -37,6 +37,7 @@ namespace Roombook
         start = clock ();
         GS::UniString funcname ("RoomBook");
         nPhase = 1;
+        // Окно прогресса помогает видеть, на каком этапе выполняется расчёт отделки.
         ProcessWindowGuard pwGuard (funcname, nPhase);
         GS::Array<API_Guid> zones;
         GSErrCode err = NoError;
@@ -78,14 +79,17 @@ namespace Roombook
         }
 
         funcname = GS::UniString::Printf ("Collect info from %d room(s)", zones.GetSize ());
-        // Подготовка параметров
+        // Подготовка параметров.
+        // Финальный словарь классов нужен для последующего назначения классов созданным элементам.
         ClassificationFunc::ClassificationDict finclass; // Словарь классов для отделочных стен
         UnicGuid finclassguids;
         Class_FindFinClass (finclass, finclassguids);
         Stories storyLevels = GetStories ();                     // Уровни этажей в проекте
         GS::Array<API_Guid> deletelist;                          // Массив устаревших элементов
         GS::HashTable<API_Guid, UnicGuidByBase> exsistot_byzone; // Словарь существующих элементов
-        // Чтение данных о зоне, создание словаря с элементами для чтения
+        // Сначала собирается информация по всем зонам, а затем по ней уже читаются свойства
+        // базовых элементов и строятся отделочные элементы. Такой порядок нужен, чтобы
+        // все зоны были готовы к последующей привязке стен, проёмов, полов и потолков.
         OtdRooms roomsinfo;              // Информация о всех зонах
         UnicElementByType elementToRead; // Список всех элементов в зоне
         ParamDictElement paramToRead;    // Прочитанные из элементов свойства
@@ -114,6 +118,8 @@ namespace Roombook
             }
         }
         guidselementToRead.Add (API_ZoneID, zones);
+        // После сбора всех связей необходимо очистить временные GUID зон, чтобы не держать
+        // устаревшие ссылки на элементы, уже обработанные в предыдущем проходе.
         ClearZoneGUID (elementToRead);
         GS::Array<API_Guid> zoneGuids;
         for (const API_ElemTypeID &typeelem : typeinzone) {
@@ -199,14 +205,14 @@ namespace Roombook
         ParamDictCompositeElement paramCompositeToRead;
         ListData::LibElements paramListDataToRead;
         ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, false);
-        // Словарь избранного
+        // Словарь избранного нужен для выбора подходящего шаблона отделки по материалу и типу поверхности.
         MatarialToFavoriteDict favdict = Favorite_GetDict ();
-        // Ищём существующие элементы и определяем их привязку к базовым
-        // конструкциям
+        // Ищём уже существующие элементы отделки и определяем, к каким базовым элементам они привязаны.
+        // Это нужно, чтобы не создавать дубли и правильно обновлять существующие элементы.
         bool has_base_element = false;
         UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
         exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
-        // Заполняем данные для элементов
+        // На этом этапе уже рассчитываются фактические отделочные элементы для каждой комнаты.
         funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
         GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
         for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -378,7 +384,8 @@ namespace Roombook
             } // Назначение избранного
             otd.otdwall = opw; // Заменяем на разбитые стены
         } // Обработка зон
-        // Получаем список существующих элементов отделки для обрабатываемых зон
+        // Получаем список уже существующих отделочных элементов для обработанных зон.
+        // Он понадобится для последующего удаления устаревших объектов.
         zones.Clear ();
         paramDict_favorite.Clear ();
         favdict.Clear ();
@@ -534,7 +541,8 @@ namespace Roombook
                 }
             }
         }
-        // Резервирование и открытие слоёв элементов отделки
+        // Перед обновлением элементов их слои временно разблокируются и резервируются.
+        // Это нужно, чтобы ArchiCAD позволил изменить существующие элементы без конфликтов.
         if (!reserv_elements.IsEmpty ()) {
     #if defined(AC_24) || defined(AC_23)
             GS::PagedArray<API_Guid> reserv;

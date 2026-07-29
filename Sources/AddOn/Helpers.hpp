@@ -2,12 +2,12 @@
 #pragma once
 #ifndef HELPERS_HPP
     #define HELPERS_HPP
-    #include "basicgeometry.h"
     #include "ClassificationFunction.hpp"
     #include "CommonFunction.hpp"
     #include "Spec_libpart.hpp"
     #include "StringConversion.hpp"
     #include "SyncSettings.hpp"
+    #include "basicgeometry.h"
 
 struct SortGUID {
     GS::Array<API_Guid> guid = {};
@@ -95,6 +95,7 @@ namespace FormatStringFunc {
 // классификации В этом случае в массив элементов будут добавлены элементы, у
 // которых видны правила
 // -------------------------------------------------------------------------------
+// Ищет правила по имени свойства среди выбранных элементов и возвращает подходящие GUID.
 bool GetRuleFromSelected (GS::Array<API_Guid> &guidArray,
                           GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                           const GS::UniString &name,
@@ -103,6 +104,7 @@ bool GetRuleFromSelected (GS::Array<API_Guid> &guidArray,
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция для выбора элементов, в которых видимо выбранное свойство
 // -----------------------------------------------------------------------------------------------------------------------
+// Собирает элементы, в которых доступно заданное определение свойства.
 void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                                       GS::Array<API_Guid> &guidArray);
 
@@ -110,6 +112,7 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
 // Функция получения словаря свойств, в описании которых есть name. Опционально
 // проверяет наличие скобок { }
 // -----------------------------------------------------------------------------------------------------------------------
+// Ищет правило по имени свойства в одном конкретном элементе.
 bool GetRuleFromSelected (const API_Guid &elemguid,
                           GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                           const GS::UniString &name,
@@ -118,17 +121,20 @@ bool GetRuleFromSelected (const API_Guid &elemguid,
 // -----------------------------------------------------------------------------
 // Добавление отслеживания (для разных версий)
 // -----------------------------------------------------------------------------
+// Подключает observer для отслеживания изменений конкретного объекта.
 GSErrCode AttachObserver (const API_Guid &objectId, const SyncSettings &syncSettings);
 
 // --------------------------------------------------------------------
 // Проверяет - попадает ли тип элемента в под настройки синхронизации
 // --------------------------------------------------------------------
+// Проверяет, попадает ли тип элемента в активные настройки синхронизации.
 bool CheckElementType (const API_ElemTypeID &elementType, const SyncSettings &syncSettings);
 
 // -----------------------------------------------------------------------------
 // Проверяет возможность редактирования объекта (не находится в модуле,
 // разблокирован, зарезервирован)
 // -----------------------------------------------------------------------------
+// Проверяет, доступен ли элемент для редактирования и синхронизации.
 bool IsElementEditable (const API_Guid &objectId, const SyncSettings &syncSettings, const bool needCheckElementType);
 
 bool IsElementEditable (const API_Elem_Head &tElemHead,
@@ -148,6 +154,7 @@ bool IsElementEditable (const API_Guid &objectId,
 // Получить массив Guid выбранных элементов
 // Настройки будут считаны при вызове функции
 // -----------------------------------------------------------------------------
+// Возвращает GUID выбранных элементов с возможностью включить связанные подэлементы.
 GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
                                          bool onlyEditable /*= true*/,
                                          bool addSubelement);
@@ -159,6 +166,7 @@ GS::Array<API_Guid> GetSelectedElements (
 // Получить массив Guid выбранных элементов в соответсвии с настройками
 // обработки
 // -----------------------------------------------------------------------------
+// Возвращает GUID выбранных элементов в соответствии с настройками обработки синхронизации.
 GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel,
                                          bool onlyEditable,
                                          const SyncSettings &syncSettings,
@@ -174,6 +182,7 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
 // -----------------------------------------------------------------------------
 // Возвращает GUID родительского элемента для API_SectElemType
 // -----------------------------------------------------------------------------
+// Возвращает GUID родительского элемента для секционного элемента ArchiCAD.
 void GetParentGUIDSectElem (const API_Guid &sectElemguid, API_Guid &parentguid, API_ElemTypeID &parentType);
 
 // -----------------------------------------------------------------------------
@@ -214,12 +223,14 @@ void test ();
 // По заданному углу поворота и глобальному углу направления на север возвращает
 // ориентацию объекта и текст с обозначением стороны света (RUS+ENG)
 // -----------------------------------------------------------------------------
+// По углу поворота и направлению на север возвращает ориентировку объекта и текст стороны света.
 void CoordNorthAngle (
     double north, double angz, double &angznorth, GS::UniString &angznorthtxt, GS::UniString &angznorthtxteng);
 
 // -----------------------------------------------------------------------------
 // Вычисляет уголв поворота элемента по координатам его начала и конца
 // -----------------------------------------------------------------------------
+// Вычисляет угол поворота элемента по координатам его начала и конца.
 void CoordRotAngle (double sx, double sy, double ex, double ey, bool isFliped, double &angz);
 
 // -----------------------------------------------------------------------------
@@ -233,6 +244,7 @@ bool CoordCorrectAngle (double angz,
 // -----------------------------------------------------------------------------
 // Получение имени внутренних свойств по русскому имени
 // -----------------------------------------------------------------------------
+// Возвращает английское имя свойства по его локализованному имени.
 GS::UniString GetPropertyENGName (GS::UniString &name);
 
 namespace PropertyHelpers {

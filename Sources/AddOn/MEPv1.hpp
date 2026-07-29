@@ -77,6 +77,7 @@
             #include <ACAPI/MEPEnums.hpp>
         #endif
 
+// Подсистема чтения и обработки данных MEP для Archicad 27+.
 namespace MEPv1 {
 
     static const GS::UniString rawnamephysicalsystemname = "{@mep:physical system name}";
@@ -97,11 +98,16 @@ namespace MEPv1 {
     static const GS::UniString rawnameelementsetname = "{@mep:element set name}";
     static const GS::UniString rawnamediametr = "{@mep:diametr}";
 
+    // Собирает подэлементы маршрутизации для заданного элемента MEP.
     void GetSubElementOfRouting (const API_Guid &elemGuid, GS::Array<API_Guid> &subelemGuid);
+
+    // Собирает все дочерние элементы, связанные с MEP-объектом.
     void GetSubElement (const API_Guid &elemGuid, GS::Array<API_Guid> &subelemGuid);
 
+    // Читает свойства MEP из заголовка элемента и сохраняет их в словарь параметров.
     bool ReadMEP (const API_Elem_Head &elem_head, ParamDictValue &paramByType);
 
+    // Очищает кэш подэлементов, чтобы повторно построить связи по свежим данным.
     void ClearRoutingSubelemCache ();
         #if defined(AC_28) || defined(AC_29)
     bool GetMEPData (const API_Elem_Head &elem_head, ParamDictValue &paramByType);

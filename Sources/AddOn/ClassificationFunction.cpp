@@ -7,10 +7,13 @@
 
 namespace ClassificationFunc {
 
-    const GS::UniString autoclassname = "@some_stuff_class@"; // Ключ автокласса
+    // Специальное имя, под которым в словаре хранится "автокласс".
+    // Он выбирается по описанию класса, содержащему some_stuff_class.
+    const GS::UniString autoclassname = "@some_stuff_class@";
 
     // -----------------------------------------------------------------------------
-    // Получение словаря со всеми классами во всех системах классифкации
+    // Загружает все классы из доступных систем классификации и складывает их в словарь.
+    // Важная часть логики — не дублировать данные для одной и той же системы и её редакции.
     // -----------------------------------------------------------------------------
     GSErrCode GetAllClassification (SystemDict &systemdict) {
 #if defined(TESTING)
@@ -37,6 +40,8 @@ namespace ClassificationFunc {
             bool has_systemname_full = systemdict.ContainsKey (systemname_full);
             bool has_autoclassname = systemdict.ContainsKey (autoclassname);
 
+            // Системы и версии могут быть добавлены в словарь только один раз.
+            // Если запись уже есть, повторная загрузка не требуется.
             if (!has_systemname || !has_systemname_full) {
                 GS::Array<API_ClassificationItem> allItems;
                 GS::Array<API_ClassificationItem> rootItems;
@@ -45,6 +50,7 @@ namespace ClassificationFunc {
                 if (err == NoError) {
                     for (const auto &item : rootItems) {
                         API_ClassificationItem parent = {};
+                        // Сначала добавляем корневой элемент, затем рекурсивно обходим его потомков.
                         AddClassificationItem (item, parent, classifications, system);
                         GatherAllDescendantOfClassification (item, classifications, system);
                     }
@@ -63,6 +69,8 @@ namespace ClassificationFunc {
                         systemdict.Put (systemname, classifications);
                     if (!has_systemname_full)
                         systemdict.Put (systemname_full, classifications);
+                    // Если среди загруженных классов найден автокласс, сохраняем его отдельно.
+                    // Это позволяет быстро назначать его элементам без повторного поиска по описаниям.
                     if (classifications.ContainsKey (autoclassname) && !has_autoclassname) {
                         ClassificationDict autoclassifications = {};
                         autoclassifications.Put (autoclassname, classifications.Get (autoclassname));
@@ -77,6 +85,9 @@ namespace ClassificationFunc {
         return err;
     }
 
+    // -----------------------------------------------------------------------------
+    // Рекурсивно обходит дерево классификации и добавляет всех потомков к словарю.
+    // -----------------------------------------------------------------------------
     void GatherAllDescendantOfClassification (const API_ClassificationItem &item,
                                               ClassificationDict &classifications,
                                               const API_ClassificationSystem &system) {
@@ -85,6 +96,8 @@ namespace ClassificationFunc {
         err = ACAPI_Classification_GetClassificationItemChildren (item.guid, directChildren);
         if (err == NoError) {
             for (const auto &children : directChildren) {
+                // Для каждого ребёнка сначала добавляем его как отдельный класс,
+                // затем продолжаем спускать рекурсию дальше по дереву.
                 AddClassificationItem (children, item, classifications, system);
                 GatherAllDescendantOfClassification (children, classifications, system);
             }
@@ -96,6 +109,10 @@ namespace ClassificationFunc {
         }
     }
 
+    // -----------------------------------------------------------------------------
+    // Добавляет один элемент классификации в словарь, если он ещё не присутствует.
+    // При этом отдельно отмечает классы, описание которых похоже на автокласс.
+    // -----------------------------------------------------------------------------
     void AddClassificationItem (const API_ClassificationItem &item,
                                 const API_ClassificationItem &parent,
                                 ClassificationDict &classifications,
@@ -113,6 +130,8 @@ namespace ClassificationFunc {
             classifications.Put (itemname, classificationitem);
         }
 
+        // Автокласс определяется не по идентификатору, а по описанию элемента.
+        // Поэтому здесь проверяется несколько возможных вариантов написания ключевой строки.
         if (desc.ToLowerCase ().Contains ("some_stuff_class") || desc.ToLowerCase ().Contains ("somestuff_class") ||
             desc.ToLowerCase ().Contains ("somestuffclass")) {
             ClassificationValues classificationitem = {};
@@ -125,7 +144,7 @@ namespace ClassificationFunc {
     }
 
     // -----------------------------------------------------------------------------
-    // Получение полного имени класса с чётом родительских классов
+    // Составляет полное имя класса с учётом родительских классов.
     // -----------------------------------------------------------------------------
     void GetFullName (const API_ClassificationItem &item,
                       const ClassificationDict &classifications,
@@ -137,6 +156,7 @@ namespace ClassificationFunc {
             } else {
                 fullname = classifications.Get (itemname).item.id + "/" + fullname;
             }
+            // Если у класса есть родитель, рекурсивно добавляем его имя перед текущим.
             GS::UniString parentname = classifications.Get (itemname).parentname;
             if (!parentname.IsEmpty () && classifications.ContainsKey (parentname)) {
                 GetFullName (classifications.Get (parentname).item, classifications, fullname);
@@ -144,6 +164,9 @@ namespace ClassificationFunc {
         }
     }
 
+    // -----------------------------------------------------------------------------
+    // Возвращает true, если словарь классификаций уже успешно загружен в кэш.
+    // -----------------------------------------------------------------------------
     bool ReadSystemDict () {
         auto &cache = PROPERTYCACHE ();
         if (cache.isClassification_OK)
@@ -154,7 +177,7 @@ namespace ClassificationFunc {
     }
 
     // -----------------------------------------------------------------------------
-    // Поиск класса по ID в заданной классификации, возвращает Guid класса
+    // Ищет класс по имени в конкретной системе и возвращает его GUID.
     // -----------------------------------------------------------------------------
     API_Guid FindClass (const GS::UniString &systemname, const GS::UniString &classname) {
         if (!ReadSystemDict ())
@@ -218,7 +241,8 @@ namespace ClassificationFunc {
     }
 
     // -----------------------------------------------------------------------------
-    // Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
+    // Назначает элементу автокласс, если у него ещё нет классификаций.
+    // Для этого сначала ищется нужный класс в кэше, затем он добавляется к элементу.
     // -----------------------------------------------------------------------------
     void SetAutoclass (const API_Guid elemGuid) {
         if (!ReadSystemDict ())
@@ -243,6 +267,8 @@ namespace ClassificationFunc {
             return;
         }
 
+        // Если у элемента ещё нет классификаций, добавляем нужный GUID.
+        // В противном случае ничего не меняем, чтобы не создавать дубликаты.
         if (systemItemPairs.IsEmpty ()) {
             err = ACAPI_Element_AddClassificationItem (elemGuid, targetGuid);
             if (err != NoError) {

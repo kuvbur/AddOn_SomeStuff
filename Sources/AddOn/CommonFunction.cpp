@@ -1,6 +1,6 @@
 //------------ kuvbur 2022 ------------
-#include "APIEnvir.h"
 #include "CommonFunction.hpp"
+#include "APIEnvir.h"
 #include "Propertycache.hpp"
 #include "qrcodegen.hpp"
 #include <APIdefs_Environment.h>
@@ -13,11 +13,18 @@
 #endif
 
 // -----------------------------------------------------------------------------
-// Осталвяет в массиве только уникальные API_Guid
+// Общие служебные функции для работы с проектом, этажами, строками, отладкой и QR-кодами.
+// Сборка этих утилит позволяет не дублировать базовую логику по всему addon.
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// Оставляет в массиве только уникальные API_Guid, сохраняя порядок первого появления.
 // -----------------------------------------------------------------------------
 void GetUnicGuid (GS::Array<API_Guid> &guidArray) {
     if (guidArray.GetSize () < 2)
         return;
+    // В словаре запоминаем уже встреченные GUID. При первом попадании элемент сохраняется,
+    // а последующие дубликаты отбрасываются без изменения порядка.
     UnicGuid seen = {};
     GS::Array<API_Guid> result = {};
     result.SetCapacity (guidArray.GetSize ());
@@ -27,11 +34,13 @@ void GetUnicGuid (GS::Array<API_Guid> &guidArray) {
             result.Push (guid);
         }
     }
+    // Заменяем исходный массив на новый, без повторов
     guidArray = std::move (result);
 }
 
 GS::UniString GetDBName (API_DatabaseInfo &databaseInfo) {
     GS::UniString рname = EMPTYSTRING;
+    // Определяем строковое имя базы данных по её типу
     switch (databaseInfo.typeID) {
     case (APIWind_FloorPlanID):
         рname = "FloorPlan";
@@ -75,6 +84,7 @@ GS::UniString GetDBName (API_DatabaseInfo &databaseInfo) {
     default:
         break;
     }
+    // Добавляем к имени пробел и заголовок окна
     рname = рname + SPACESTRING;
     рname = рname + databaseInfo.title;
     return рname;
@@ -90,9 +100,11 @@ Stories GetStories () {
 #endif
     if (err == NoError) {
         const short numberOfStories = storyInfo.lastStory - storyInfo.firstStory + 1;
+        // Создаём список этажей, полученный из настроек проекта
         for (short i = 0; i < numberOfStories; ++i) {
             stories.PushNew ((*storyInfo.data)[i].index, (*storyInfo.data)[i].level);
         }
+        // Освобождаем память, выделенную ArchiCAD для массива storyInfo.data
         BMKillHandle ((GSHandle *)&storyInfo.data);
     }
     return stories;
@@ -103,6 +115,8 @@ GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories
         return {0, zPos};
     }
 
+    // Проходим по этажам от нижнего к верхнему и выбираем последний этаж,
+    // уровень которого не выше заданной координаты Z.
     const Story *storyPtr = &stories[0];
     for (const auto &story : stories) {
         if (story.level > zPos) {
@@ -110,6 +124,7 @@ GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories
         }
         storyPtr = &story;
     }
+    // Возвращаем индекс этажа и относительное смещение от его уровня.
     return {storyPtr->index, zPos - storyPtr->level};
 }
 
@@ -138,13 +153,18 @@ double GetzPos (const double bottomOffset, const short floorInd, const Stories &
         }
         storyPtr = &story;
     }
+    // Если этаж не найден, возвращаем нулевое смещение, чтобы сохранить безопасный fallback.
     return 0;
 }
 
+// -----------------------------------------------------------------------------
+// Преобразует текст в QR-код заданного уровня коррекции ошибок
+// -----------------------------------------------------------------------------
 GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl) {
     GS::UniString qr_txt = EMPTYSTRING;
     if (text.IsEmpty ())
         return qr_txt;
+    // Определяем уровень коррекции ошибок QR-кода
     qrcodegen::QrCode::Ecc lvl = qrcodegen::QrCode::Ecc::HIGH;
     switch (error_lvl) {
     case 1:
@@ -166,6 +186,8 @@ GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl) {
     qr_txt = GS::UniString::Printf ("%d;", qr.getSize ());
     for (int x = 0; x < qr.getSize (); x++) {
         for (int y = 0; y < qr.getSize (); y += 4) {
+            // Группируем четыре соседних модуля QR-кода в один nibble и кодируем его
+            // в один символ для компактного представления данных.
             std::bitset<4> b1 (0);
             b1.set (0, qr.getModule (x, y));
             b1.set (1, qr.getModule (x, y + 1));
@@ -191,12 +213,18 @@ GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl) {
         }
         qr_txt.Append ("=");
     }
+    // Разделитель '=' отмечает конец строки данных для одной строки QR-кода.
     return qr_txt;
 }
 
+// -----------------------------------------------------------------------------
+// Преобразует текст в QR-код с автоматическим подбором уровня коррекции ошибок
+// -----------------------------------------------------------------------------
 GS::UniString TextToQRCode (const GS::UniString &text) {
     if (text.IsEmpty ())
         return "";
+    // Пробуем уровни коррекции от самого надёжного к самому лёгкому.
+    // Это помогает избежать ошибки, если исходный текст слишком длинный для выбранного уровня.
     for (int level = 4; level >= 1; --level) {
         try {
             return TextToQRCode (text, level);
@@ -207,8 +235,13 @@ GS::UniString TextToQRCode (const GS::UniString &text) {
     return "ERROR: data Too long";
 }
 
+// -----------------------------------------------------------------------------
+// Выводит числовое значение и дополнительное сообщение в отладочный вывод ArchiCAD.
+// Сообщения используются в режиме TESTING и помогают быстро локализовать проблему.
+// -----------------------------------------------------------------------------
 void DBprnt (double a, GS::UniString reportString) {
 #if defined(TESTING)
+    // Форматируем число и выводим отладочный префикс
     GS::UniString msg = GS::UniString::Printf ("%f", a);
     #if defined(AC_22)
     DBPrintf ("== SMSTF == ");
@@ -242,8 +275,12 @@ void DBprnt (double a, GS::UniString reportString) {
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Выводит строковое сообщение и дополнительный отчёт в отладочный вывод ArchiCAD
+// -----------------------------------------------------------------------------
 void DBprnt (GS::UniString msg, GS::UniString reportString) {
 #if defined(TESTING)
+    // Если хоть одно сообщение выглядит как ошибка, добавляем ERROR-префикс
     if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") ||
         reportString.Contains ("ERROR")) {
     #if defined(AC_22)
@@ -284,8 +321,12 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Логическая тестовая проверка: выводит результат и может выполнять assert
+// -----------------------------------------------------------------------------
 void DBtest (bool usl, GS::UniString reportString, bool asserton) {
 #if defined(TESTING)
+    // Сообщаем результат теста и при необходимости вызываем assert
     if (usl) {
         DBprnt (reportString, "ok");
     } else {
@@ -300,8 +341,12 @@ void DBtest (bool usl, GS::UniString reportString, bool asserton) {
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Тестирует равенство двух строк и выводит результат
+// -----------------------------------------------------------------------------
 void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton) {
 #if defined(TESTING)
+    // Сравниваем строки, выводим результат и при необходимости assert
     GS::UniString out = a + " = " + b;
     if (a.IsEqual (b)) {
         reportString = "test " + reportString + " ok";
@@ -320,8 +365,12 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Сравнивает два числовых значения с учётом точности и выводит результат
+// -----------------------------------------------------------------------------
 void DBtest (double a, double b, GS::UniString reportString, bool asserton) {
 #if defined(TESTING)
+    // Сравниваем числа с учётом точности и выводим результат
     GS::UniString out = GS::UniString::Printf ("%f = %f", a, b);
     if (is_equal (a, b)) {
         reportString = "test " + reportString + " ok";
@@ -348,6 +397,7 @@ void msg_rep (const GS::UniString &modulename,
               const GSErrCode &err,
               const API_Guid &elemGuid,
               bool show) {
+    // Формируем строковое описание ошибки для репорта
     GS::UniString error_type = EMPTYSTRING;
     if (err != NoError) {
         switch (err) {
@@ -845,7 +895,8 @@ bool GetElementTypeString (API_ElemTypeID typeID, char *elemStr) {
 #endif // !AC_26
 
 // --------------------------------------------------------------------
-// Проверка наличия дробной части, возвращает ЛОЖЬ если дробная часть есть
+// Проверяет, что значение уже приведено к нужной точности.
+// Используется как защитная проверка перед записью числовых значений.
 // --------------------------------------------------------------------
 bool check_accuracy (double rval, double tolerance) {
     if (std::isinf (rval) || std::isnan (rval))
@@ -855,6 +906,7 @@ bool check_accuracy (double rval, double tolerance) {
     double val = std::fabs (rval * 1000.0);
     if (val < std::numeric_limits<double>::epsilon ())
         return true;
+    // Для сравнения переводим значение в тысячные доли и округляем с учётом заданной точности.
     double reciprocal = std::round ((1 / tolerance));              // Коэффицент домножения для заданной точности
     double val_round = std::round (val * reciprocal) / reciprocal; // Приведённое к заданной точности значение
     if (val_round < std::numeric_limits<double>::epsilon () && val > tolerance)
@@ -867,7 +919,8 @@ bool check_accuracy (double rval, double tolerance) {
 }
 
 // --------------------------------------------------------------------
-// Сравнение double c учётом точности
+// Сравнение double с учётом допустимой погрешности.
+// Нужен для чисел, полученных из ArchiCAD и округлённых в разных местах.
 // --------------------------------------------------------------------
 bool is_equal (double x, double y) {
     if (x == y)
@@ -881,7 +934,8 @@ bool is_equal (double x, double y) {
 }
 
 // --------------------------------------------------------------------
-// Перевод строки в число
+// Переводит строку в число с поддержкой локали и разделителей, которые могут отличаться
+// от привычной точки (например, запятая в европейских форматах).
 // --------------------------------------------------------------------
 bool UniStringToDouble (const GS::UniString &var, double &x) {
     if (var.IsEmpty ())
@@ -895,6 +949,8 @@ bool UniStringToDouble (const GS::UniString &var, double &x) {
     char buf[64];
     size_t dstIdx = 0;
     const size_t maxDst = sizeof (buf) - 1;
+    // Считываем символы по одному и нормализуем разделители, чтобы строка корректно
+    // обрабатывалась функцией strtod/strtod_l даже при наличии пробелов и неразрывных пробелов.
     while (*src != '\0' && dstIdx < maxDst) {
         char ch = *src;
         if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') {
@@ -927,7 +983,8 @@ bool UniStringToDouble (const GS::UniString &var, double &x) {
 }
 
 // -----------------------------------------------------------------------------
-// Округление до заданного количества нулей
+// Округляет число до заданного количества знаков после запятой.
+// Используется в логике форматирования свойств и вывода значений в текст.
 // -----------------------------------------------------------------------------
 double round_nzero (double var, Int32 n_zero) {
     double scale = pow (10, n_zero);
@@ -972,7 +1029,8 @@ Int32 ceil_mod_classic (Int32 n, Int32 k) {
 Int32 DoubleM2IntMM (double value) { return static_cast<Int32> (std::round (value * 1000.0)); }
 
 // -----------------------------------------------------------------------------
-// Замена \n на перенос строки
+// Заменяет escape-последовательность \n на реальный перевод строки.
+// В режиме clear удаляет её полностью, что нужно для некоторых форматов текста.
 // -----------------------------------------------------------------------------
 void ReplaceCR (GS::UniString &val, bool clear) {
     GS::UniString p = "\\n";
@@ -990,7 +1048,8 @@ void ReplaceCR (GS::UniString &val, bool clear) {
 }
 
 // -----------------------------------------------------------------------------
-// Дополнение строки заданным количеством пробелов или табуляций
+// Добавляет к строке нужное количество пробелов или табуляций по шаблону вида ~3.
+// Это используется для выравнивания текстовых блоков перед записью в свойства.
 // -----------------------------------------------------------------------------
 void GetNumSymbSpase (GS::UniString &outstring, GS::UniChar symb, char charrepl) {
     // Ищем указание длины строки
@@ -1052,6 +1111,9 @@ short GetFontIndex (GS::UniString &fontname) {
     return inx;
 }
 
+// -----------------------------------------------------------------------------
+// Вычисляет ширину строки текста для заданного шрифта и размера
+// -----------------------------------------------------------------------------
 double GetTextWidth (short font, double fontsize, GS::UniString &var) {
     GSErrCode err = NoError;
     double width = 0.0;
@@ -1077,6 +1139,11 @@ double GetTextWidth (short font, double fontsize, GS::UniString &var) {
     return width;
 }
 
+// -----------------------------------------------------------------------------
+// Разбивает длинный текст на несколько строк с учётом ширины контейнера.
+// Внутри алгоритма специально заменяются обычные пробелы на неразрывные, чтобы строка
+// переносилась по смысловым блокам, а не ломалась внутри слова.
+// -----------------------------------------------------------------------------
 GS::Array<GS::UniString> DelimTextLine (short font,
                                         double fontsize,
                                         double width,
@@ -1093,7 +1160,7 @@ GS::Array<GS::UniString> DelimTextLine (short font,
         return str;
     }
 
-    // Заменяем обычные пробелы на неразрывные в исходном тексте
+    // Обычные пробелы заменяем на неразрывные, чтобы перенос происходил только между словами.
     var.ReplaceAll (SPACESTRING, no_break_space);
     double width_space = GetTextWidth (font, fontsize, narrow_space);
 
@@ -1123,7 +1190,8 @@ GS::Array<GS::UniString> DelimTextLine (short font,
         GS::UniChar ch = var[i];
         currentPart.Append (ch);
 
-        // Если символ является разделителем, текущий токен завершается прямо НА НЁМ
+        // Если символ является естественным разделителем, текущий блок завершается на нём.
+        // Это помогает не разрывать строку в середине выражения или числа.
         if (ch == ',' || ch == '.' || ch == ')' || ch == ':' || ch == '-' ||
             (!no_break_space.IsEmpty () && ch == no_break_space[0])) {
             parts.Push (currentPart);
@@ -1200,8 +1268,8 @@ GSErrCode IsTeamwork (bool &isteamwork, short &userid) {
 }
 
 // -----------------------------------------------------------------------------
-// Вычисление выражений, заключённых в < >
-// Что не может вычислить - заменит на пустоту
+// Вычисляет выражения, заключённые в угловые скобки, например <3+5>.
+// Если выражение не удалось вычислить, оно заменяется пустой строкой.
 // -----------------------------------------------------------------------------
 bool EvalExpression (GS::UniString &unistring_expression) {
     if (unistring_expression.IsEmpty ())
@@ -1210,7 +1278,7 @@ bool EvalExpression (GS::UniString &unistring_expression) {
     if (!unistring_expression.Contains (CHARFORMULASTART) || !unistring_expression.Contains (CHARFORMULAEND))
         return false;
 
-    // Определение правильного разделителя для расчётов
+    // В зависимости от локали выбираем, какой десятичный разделитель использовать.
     GS::UniString delim = DOT;
     GS::UniString baddelim = COMMA;
     GS::UniString delim_test = GS::UniString::Printf ("%.3f", 3.1456);
@@ -1245,7 +1313,8 @@ bool EvalExpression (GS::UniString &unistring_expression) {
                 if (baddelim == COMMA && expression_string.length () > 2) {
                     for (size_t j = 1; j < expression_string.length () - 1; ++j) {
                         if (expression_string[j] == ',') {
-                            // Меняем на точку, ТОЛЬКО если слева И справа находятся чистые цифры
+                            // Меняем запятую на точку только в том случае, если она действительно
+                            // разделяет целую и дробную части числа, а не служит просто символом.
                             if (std::isdigit (static_cast<unsigned char> (expression_string[j - 1])) &&
                                 std::isdigit (static_cast<unsigned char> (expression_string[j + 1]))) {
                                 expression_string[j] = '.';
@@ -1741,7 +1810,7 @@ Point2D GetWordPoint2DTM (const Point2D vtx, const API_Tranmat &tm) {
 }
 
 // -----------------------------------------------------------------------------
-// Ask the user to click a point
+// Просит пользователя указать точку и возвращает координаты
 // -----------------------------------------------------------------------------
 
 bool ClickAPoint (const char *prompt, Point2D *c) {
@@ -2162,6 +2231,9 @@ bool ClickAnElem (const char *prompt,
 } // ClickAnElem
 #endif
 
+// -----------------------------------------------------------------------------
+// Конструирует Geometry::Polygon2D из данных API_ElementMemo
+// -----------------------------------------------------------------------------
 GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo &memo, Geometry::Polygon2D &poly) {
     GSErrCode err = NoError;
     Geometry::Polygon2DData polygon2DData;
@@ -2207,63 +2279,17 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo &memo, Geomet
     return err;
 }
 
-GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_Polygon &poly, API_ElementMemo &memo) {
-    GSErrCode err = NoError;
-    BMhKill ((GSHandle *)&memo.coords);
-    BMhKill ((GSHandle *)&memo.pends);
-    BMhKill ((GSHandle *)&memo.vertexIDs);
-    BMhKill ((GSHandle *)&memo.parcs);
-    BNZeroMemory (&poly, sizeof (API_Polygon));
-
-    Geometry::Polygon2DData polygon2DData;
-    Geometry::InitPolygon2DData (&polygon2DData);
-    Geometry::ConvertPolygon2DToPolygon2DData (polygon2DData, polygon);
-
-    poly.nCoords = polygon2DData.nVertices;
-    poly.nSubPolys = polygon2DData.nContours;
-    poly.nArcs = polygon2DData.nArcs;
-
-    UInt32 vId = 1;
-    memo.coords =
-        reinterpret_cast<API_Coord **> (BMAllocateHandle ((poly.nCoords + 1) * sizeof (API_Coord), ALLOCATE_CLEAR, 0));
-    memo.pends =
-        reinterpret_cast<Int32 **> (BMAllocateHandle ((poly.nSubPolys + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
-    memo.parcs =
-        reinterpret_cast<API_PolyArc **> (BMAllocateHandle (poly.nArcs * sizeof (API_PolyArc), ALLOCATE_CLEAR, 0));
-    memo.vertexIDs =
-        reinterpret_cast<UInt32 **> (BMAllocateHandle ((poly.nCoords + 1) * sizeof (Int32), ALLOCATE_CLEAR, 0));
-    if (memo.coords != nullptr && memo.pends != nullptr && polygon2DData.vertices != nullptr) {
-        static_assert (sizeof (API_Coord) == sizeof (Coord), "sizeof (API_Coord) != sizeof (Coord)");
-        BNCopyMemory (*memo.coords, *polygon2DData.vertices, (poly.nCoords + 1) * sizeof (API_Coord));
-        BNCopyMemory (*memo.pends, *polygon2DData.contourEnds, (poly.nSubPolys + 1) * sizeof (Int32));
-        (*memo.vertexIDs)[0] = poly.nCoords;
-        for (Int32 k = 1; k <= poly.nCoords; ++k) {
-            (*memo.vertexIDs)[vId] = vId;
-            vId++;
-        }
-        (*memo.vertexIDs)[0] = vId - 1;
-    } else {
-        err = APIERR_MEMFULL;
-    }
-    if (err == NoError && polygon2DData.arcs != nullptr && memo.parcs != nullptr) {
-        static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
-        BNCopyMemory (*memo.parcs, *polygon2DData.arcs, poly.nArcs * sizeof (API_PolyArc));
-    }
-    Geometry::FreePolygon2DData (&polygon2DData);
-    return err;
-}
-
 // --------------------------------------------------------------------
-    // Снимает скрытие и блокировку слоя элемента
-    // Назначение: если слой элемента скрыт или заблокирован - делает его видимым и разблокированным
-    // Параметры:
-    //   elemGuid - GUID элемента
-    // Алгоритм:
-    //   1. Проверяет, на видимом ли слое элемент (APIFilt_OnVisLayer)
-    //   2. Получает заголовок элемента
-    //   3. Вызывает перегрузку с заголовком
-    // --------------------------------------------------------------------
-    void UnhideUnlockElementLayer (const API_Guid &elemGuid) {
+// Снимает скрытие и блокировку слоя элемента
+// Назначение: если слой элемента скрыт или заблокирован - делает его видимым и разблокированным
+// Параметры:
+//   elemGuid - GUID элемента
+// Алгоритм:
+//   1. Проверяет, на видимом ли слое элемент (APIFilt_OnVisLayer)
+//   2. Получает заголовок элемента
+//   3. Вызывает перегрузку с заголовком
+// --------------------------------------------------------------------
+void UnhideUnlockElementLayer (const API_Guid &elemGuid) {
     GSErrCode err = NoError;
     if (ACAPI_Element_Filter (elemGuid, APIFilt_OnVisLayer))
         return;
@@ -2278,16 +2304,16 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_
 }
 
 // --------------------------------------------------------------------
-    // Снимает скрытие и блокировку слоя элемента (по заголовку)
-    // Назначение: проверяет флаги заголовка, если слой заблокирован или скрыт - разблокирует/показывает
-    // Параметры:
-    //   elem_head - заголовок элемента
-    // Алгоритм:
-    //   1. Проверяет флаг floorInd & 0x8000 (заблокированный слой)
-    //   2. Проверяет layer.head.flags & 1 (скрытый слой)
-    //   3. При необходимости вызывает ACAPI_Attribute_Set для атрибута слоя
-    // --------------------------------------------------------------------
-    void UnhideUnlockElementLayer (const API_Elem_Head &elem_head) {
+// Снимает скрытие и блокировку слоя элемента (по заголовку)
+// Назначение: проверяет флаги заголовка, если слой заблокирован или скрыт - разблокирует/показывает
+// Параметры:
+//   elem_head - заголовок элемента
+// Алгоритм:
+//   1. Проверяет флаг floorInd & 0x8000 (заблокированный слой)
+//   2. Проверяет layer.head.flags & 1 (скрытый слой)
+//   3. При необходимости вызывает ACAPI_Attribute_Set для атрибута слоя
+// --------------------------------------------------------------------
+void UnhideUnlockElementLayer (const API_Elem_Head &elem_head) {
     API_ElemTypeID typeID = GetElemTypeID (elem_head);
     if (typeID == API_DoorID)
         return;
@@ -2299,17 +2325,17 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_
 }
 
 // --------------------------------------------------------------------
-    // Снимает скрытие и блокировку слоя (по индексу слоя)
-    // Назначение: если слой скрыт или заблокирован - меняет флаги атрибута
-    // Параметры:
-    //   layer - индекс атрибута слоя (API_AttributeIndex)
-    // Алгоритм:
-    //   1. Получает атрибут слоя через ACAPI_Attribute_Get
-    //   2. Проверяет attrib.layer.head.flags & 1 (скрытый)
-    //   3. Проверяет attrib.layer.head.flags & 2 (заблокированный)
-    //   4. Если нужно - сбрасывает флаги и вызывает ACAPI_Attribute_Set
-    // --------------------------------------------------------------------
-    void UnhideUnlockElementLayer (const API_AttributeIndex &layer) {
+// Снимает скрытие и блокировку слоя (по индексу слоя)
+// Назначение: если слой скрыт или заблокирован - меняет флаги атрибута
+// Параметры:
+//   layer - индекс атрибута слоя (API_AttributeIndex)
+// Алгоритм:
+//   1. Получает атрибут слоя через ACAPI_Attribute_Get
+//   2. Проверяет attrib.layer.head.flags & 1 (скрытый)
+//   3. Проверяет attrib.layer.head.flags & 2 (заблокированный)
+//   4. Если нужно - сбрасывает флаги и вызывает ACAPI_Attribute_Set
+// --------------------------------------------------------------------
+void UnhideUnlockElementLayer (const API_AttributeIndex &layer) {
     API_Attribute attrib = {};
     GSErrCode err = NoError;
     attrib.header.typeID = API_LayerID;
@@ -2335,6 +2361,9 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_
     }
 }
 
+// -----------------------------------------------------------------------------
+// Ищет индекс атрибута по имени или числовому значению
+// -----------------------------------------------------------------------------
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx) {
     BNZeroMemory (&attribinx, sizeof (API_AttributeIndex));
     if (type == API_ZombieAttrID)
@@ -2373,6 +2402,9 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &typ
     return false;
 }
 
+// -----------------------------------------------------------------------------
+// Получает количество избранных элементов заданного типа
+// -----------------------------------------------------------------------------
 GSErrCode Favorite_GetNum (const API_ElemTypeID &type,
                            short *count,
                            GS::Array<API_FavoriteFolderHierarchy> *folders,
@@ -2390,6 +2422,9 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID &type,
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Возвращает тип элемента по GUID элемента
+// -----------------------------------------------------------------------------
 API_ElemTypeID GetElemTypeID (const API_Guid &guid) {
     API_ElemTypeID eltype = API_ZombieElemID;
     API_Elem_Head elementHead = {};
@@ -2401,6 +2436,9 @@ API_ElemTypeID GetElemTypeID (const API_Guid &guid) {
     return eltype;
 }
 
+// -----------------------------------------------------------------------------
+// Возвращает тип элемента по заголовку API_Elem_Head
+// -----------------------------------------------------------------------------
 API_ElemTypeID GetElemTypeID (const API_Elem_Head &elementhead) {
     API_ElemTypeID eltype = API_ZombieElemID;
 #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -2411,6 +2449,9 @@ API_ElemTypeID GetElemTypeID (const API_Elem_Head &elementhead) {
     return eltype;
 }
 
+// -----------------------------------------------------------------------------
+// Возвращает тип элемента по структуре API_Element
+// -----------------------------------------------------------------------------
 API_ElemTypeID GetElemTypeID (const API_Element &element) {
     API_ElemTypeID eltype = API_ZombieElemID;
 #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -2421,6 +2462,9 @@ API_ElemTypeID GetElemTypeID (const API_Element &element) {
     return eltype;
 }
 
+// -----------------------------------------------------------------------------
+// Устанавливает тип элемента в заголовке API_Element
+// -----------------------------------------------------------------------------
 void SetElemTypeID (API_Element &element, const API_ElemTypeID eltype) {
 #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     element.header.type.typeID = eltype;
@@ -2429,6 +2473,9 @@ void SetElemTypeID (API_Element &element, const API_ElemTypeID eltype) {
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Устанавливает тип элемента в заголовке API_Elem_Head
+// -----------------------------------------------------------------------------
 void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
     elementhead.type.typeID = eltype;
@@ -2437,6 +2484,9 @@ void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 #endif
 }
 
+// -----------------------------------------------------------------------------
+// Находит элементы по описанию значения свойства внутри классификации
+// -----------------------------------------------------------------------------
 GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &definition, const GS::UniString value) {
     GSErrCode error = NoError;
     GS::Array<API_Guid> elements = {};

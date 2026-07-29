@@ -13,6 +13,8 @@
         #include <ACAPI/MEPEnums.hpp>
     #endif
 
+// Кэш свойств и справочных данных проекта: свойства, атрибуты, классификации,
+// геолокация, форматирование и данные MEP для последующего чтения без повторных запросов.
 typedef GS::HashTable<GS::Guid, bool> MEPDict;
 typedef GS::HashTable<GS::Guid, MEPDict> MEPDicts;
 
@@ -33,12 +35,16 @@ namespace ParamHelpers {
 
     GS::UniString GetLayerFromCache (const API_AttributeIndex &layerinx);
 
+    // Читает данные из внешнего файла библиотеки и возвращает их как табличный массив строк.
     bool ReadLibraryFile (const GS::UniString &fileName, GS::Array<GS::Array<GS::UniString>> &data);
 
+    // Записывает значение параметра из кэша в структуру ParamValue.
     void SetParamValueFromCache (const GS::UniString &rawname, ParamValue &pvalue);
 
+    // Возвращает значение параметра из кэша, если оно уже было прочитано ранее.
     bool GetParamValueFromCache (const GS::UniString &rawname, ParamValue &pvalue);
 
+    // Проверяет, есть ли в кэше значение для указанного raw-name.
     bool isCacheContainsParamValue (const GS::UniString &rawname);
 
     bool isPropertyDefinitionRead ();

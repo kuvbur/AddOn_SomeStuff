@@ -21,6 +21,7 @@ class RuleSelectDialog : public DG::ModalDialog,
                          public DG::CompoundItemObserver,
                          public DG::StaticTextObserver {
   public:
+    // Идентификаторы элементов диалога выбора правил спецификации.
     enum DialogResourceID { CloseButtonId = 1, OkButtonId = 2, ListBoxId = 3, TextId = 4 };
 
   private:
@@ -40,13 +41,28 @@ class RuleSelectDialog : public DG::ModalDialog,
     short itemCount = QtyTab;
 
   public:
+    // Обрабатывает нажатие на кнопку диалога.
     virtual void ButtonClicked (const DG::ButtonClickEvent &ev) override;
+
+    // Пересчитывает размеры элементов окна после изменения формы.
     virtual void PanelResized (const DG::PanelResizeEvent &ev) override;
+
+    // Обрабатывает выбор строки в списке правил.
     virtual void ListBoxClicked (const DG::ListBoxClickEvent &ev) override;
+
+    // Создаёт диалог выбора правил и связывает его с данными для отображения.
     RuleSelectDialog (RuleSelectData &rulelist);
+
+    // Освобождает ресурсы диалога.
     ~RuleSelectDialog ();
+
+    // Настраивает размеры и расположение элементов диалога.
     void SetSize ();
+
+    // Заполняет список доступных правил.
     void InitListBox ();
+
+    // Устанавливает иконку для выбранного элемента списка.
     void SetIcon (short dwListItem);
 };
 

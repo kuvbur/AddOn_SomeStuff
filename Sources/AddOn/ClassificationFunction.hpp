@@ -19,11 +19,13 @@
 
 namespace ClassificationFunc {
 
+    // Вспомогательная структура, описывающая один найденный класс классификации.
+    // Хранит как сам элемент классификации, так и его родителя и имя для быстрого поиска.
     struct ClassificationValues {
-        API_ClassificationSystem system;        // Система
-        API_ClassificationItem item;            // Класс
-        GS::UniString parentname = EMPTYSTRING; // Имя родиельского класса
-        GS::UniString itemname = EMPTYSTRING;   // Имя класса
+        API_ClassificationSystem system;        // Система классификации, из которой взят класс
+        API_ClassificationItem item;            // Сам класс
+        GS::UniString parentname = EMPTYSTRING; // Имя родительского класса в текущей иерархии
+        GS::UniString itemname = EMPTYSTRING;   // Уникальное имя класса для ключа словаря
     }; // Структура для хранения класса
 
     typedef GS::HashTable<GS::UniString, ClassificationValues> ClassificationDict; // Словарь классов в системе
@@ -31,36 +33,47 @@ namespace ClassificationFunc {
     typedef GS::HashTable<GS::UniString, ClassificationDict> SystemDict; // Словарь систем с вложенными классами
 
     // -----------------------------------------------------------------------------
-    // Получение словаря со всеми классами во всех системах классифкации
+    // Загружает все доступные классы из систем классификации и сохраняет их в словарь.
+    // Используется как подготовительный шаг для последующего поиска и назначения классов.
     // -----------------------------------------------------------------------------
     GSErrCode GetAllClassification (SystemDict &systemdict);
 
+    // Перебирает всех потомков заданного класса и добавляет их в словарь классификаций.
     void GatherAllDescendantOfClassification (const API_ClassificationItem &item,
                                               ClassificationDict &classifications,
                                               const API_ClassificationSystem &system);
+
+    // Добавляет один элемент классификации в словарь с привязкой к родителю и системе.
     void AddClassificationItem (const API_ClassificationItem &item,
                                 const API_ClassificationItem &parent,
                                 ClassificationDict &classifications,
                                 const API_ClassificationSystem &system);
 
     // -----------------------------------------------------------------------------
-    // Получение полного имени класса с чётом родительских классов
+    // Составляет полное имя класса с учётом его родительской иерархии.
     // -----------------------------------------------------------------------------
     void GetFullName (const API_ClassificationItem &item,
                       const ClassificationDict &classifications,
                       GS::UniString &fullname);
 
     // -----------------------------------------------------------------------------
-    // Поиск класса по ID в заданной классификации, возвращает Guid класса
+    // Ищет класс по имени в конкретной системе классификации и возвращает его GUID.
     // -----------------------------------------------------------------------------
     API_Guid FindClass (const GS::UniString &systemname, const GS::UniString &classname);
+
+    // Возвращает имя системы классификации по её GUID.
     GS::UniString GetSystemName (const API_Guid &systemguid);
+
+    // Ищет класс по паре GUID системы и GUID элемента классификации.
     API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid> &classitem);
+
     // -----------------------------------------------------------------------------
-    // Назначение автокласса (класса с описанием some_stuff_class) элементу без классификации
+    // Назначает элементу специальный автокласс, если у него ещё нет классификации.
+    // Автокласс определяется по описанию, содержащему some_stuff_class.
     // -----------------------------------------------------------------------------
     void SetAutoclass (const API_Guid elemGuid);
 
+    // Считывает словарь систем и классов из кэша или проекта.
     bool ReadSystemDict ();
 } // namespace ClassificationFunc
 

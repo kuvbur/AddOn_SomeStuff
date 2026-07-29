@@ -1,7 +1,7 @@
 //------------ kuvbur 2022 ------------
+#include "Spec.hpp"
 #include "ACAPinc.h"
 #include "APIEnvir.h"
-#include "Spec.hpp"
 #include "Sync.hpp"
 #ifdef TESTING
     #include "TestFunc.hpp"
@@ -26,6 +26,10 @@ namespace Spec {
     // Возвращает: true, если найдены элементы (даже если флаги выключены)
     // Примечание: для AC_22 всегда возвращает false
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Ищет правила спецификации в свойствах элемента по умолчанию.
+    // Это нужно, когда пользователь не выделил конкретные элементы и правила берутся из шаблона.
+    // -----------------------------------------------------------------------------
     bool GetRuleFromDefaultElem (SpecRuleDict &rules, API_DatabaseInfo &homedatabaseInfo, bool &has_elementspec) {
 #if defined(AC_22)
         return false;
@@ -96,6 +100,8 @@ namespace Spec {
                         flagfindspec = propertyflag.value.singleVariant.variant.boolValue;
                     }
     #endif
+                    // Здесь важно различать три состояния: свойство выключено, недоступно или не оценено.
+                    // Это влияет на то, будет ли элемент включён в спецификацию или отложен для сообщения пользователю.
                     if (flagfindspec) {
                         rule.elements.PushNew (elemGuid);
                         has_elementspec = true;
@@ -168,10 +174,9 @@ namespace Spec {
                 msg_rep ("Spec", "Create spec from all visible element", NoError, APINULLGuid);
             }
         }
-        // ИСПРАВЛЕНО: убрана проверка !hasrule || !has_elementspec
-        // Ранний выход допустим только если нет элементов для обработки
-        // Правила из default element могут существовать, но если флаг ни у одного элемента не включён,
-        // это не означает, что нужно прервать выполнение - возможно, правила будут получены из самих элементов
+        // Ранний выход допустим только если нет элементов для обработки.
+        // Даже если правила получены из элемента по умолчанию, это не означает, что нужно завершаться,
+        // потому что часть логики может быть взята из самих выбранных элементов.
         if (guidArray.IsEmpty ())
             return NoError;
         err = SpecArray (syncSettings, guidArray, rules, selected_elements);
@@ -181,6 +186,8 @@ namespace Spec {
     // --------------------------------------------------------------------
     // Фильтрация одного элемента
     // Назначение: исключает элементы определённых типов и элементы из других баз данных
+    // Отбрасывает элементы, которые не подходят для спецификации: размеры, тексты, линии и элементы
+    // из другой базы данных. В случае неподходящего элемента GUID заменяется на APINULLGuid.
     // Параметры:
     //   elemguid - GUID элемента (изменяется на APINULLGuid, если элемент не подходит)
     //   homedatabaseInfo - информация о текущей базе данных (этаж, разрез и т.д.)
@@ -331,6 +338,9 @@ namespace Spec {
     //   3. Формирует новый массив только из подходящих элементов
     // Примечание: исходный массив заменяется на отфильтрованный
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Отбрасывает из массива все неподходящие элементы и оставляет только те, что реально можно обработать.
+    // -----------------------------------------------------------------------------
     void SpecFilter (GS::Array<API_Guid> &guidArray, API_DatabaseInfo &homedatabaseInfo) {
         GSErrCode err = NoError;
         if (homedatabaseInfo.databaseUnId.elemSetId == APINULLGuid)
@@ -430,6 +440,10 @@ namespace Spec {
     // Возвращает: true, если пользователь выбрал хотя бы одно правило и нажал OK
     // Примечание: если пользователь отменил диалог - возвращает false
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Показывает пользователю диалог выбора активных правил спецификации.
+    // Важно: здесь не меняется сама логика правил, только их активность для текущего запуска.
+    // -----------------------------------------------------------------------------
     bool SpecDG (SpecRuleDict &spec_rules, bool &rule_from_one) {
         RuleSelectData rules = {};
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = spec_rules.EnumeratePairs (); cIt != NULL;
@@ -492,6 +506,10 @@ namespace Spec {
     //   9. Синхронизирует созданные элементы (SyncArray)
     // Возвращает: код ошибки (NoError при успехе)
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Основная функция создания спецификации из набора элементов.
+    // Здесь правила собираются, параметры читаются, элементы создаются/обновляются и затем записываются.
+    // -----------------------------------------------------------------------------
     GSErrCode SpecArray (const SyncSettings &syncSettings,
                          GS::Array<API_Guid> &guidArray,
                          SpecRuleDict &rules,
@@ -504,18 +522,18 @@ namespace Spec {
         GS::UniString subtitle = "";
         Int32 maxval = 1;
         short i = 1;
-        ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
+        ParamDictElement paramToRead = {};                   // Словарь с параметрами для чтения
         ParamDictCompositeElement paramCompositeToRead = {}; // Прочитанные составы конструкции
         ListData::LibElements paramListDataToRead = {};      // Прочитанные данные объектов
-        ParamDictValue paramToWrite = {}; // Словарь с параметрами для записи (с нулевым GUID)
-        GS::Array<ElementDict> elements_new = {}; // Массив со словарём создаваемых элементов
-        GS::Array<ElementDict> elements_mod = {}; // Массив со словарём модифицируемых элементов
-        GS::Array<API_Guid> elements_delete = {}; // Массив удаляемых элементов
-        ParamDictElement paramOut = {}; // Словарь свойств для записи в расставленные элементы
+        ParamDictValue paramToWrite = {};                    // Словарь с параметрами для записи (с нулевым GUID)
+        GS::Array<ElementDict> elements_new = {};            // Массив со словарём создаваемых элементов
+        GS::Array<ElementDict> elements_mod = {};            // Массив со словарём модифицируемых элементов
+        GS::Array<API_Guid> elements_delete = {};            // Массив удаляемых элементов
+        ParamDictElement paramOut = {};                      // Словарь свойств для записи в расставленные элементы
         GS::Array<API_Guid> guidArraysync = {}; // Список элементов, которые требуется синхронизировать (расставленные
                                                 // элементы)
         UnicGuid error_element = {};            // Элементы с ошибками
-        ParamDict error_name = {}; // Список имён, не найденных у избранного
+        ParamDict error_name = {};              // Список имён, не найденных у избранного
         GS::HashTable<GS::UniString, GS::HashTable<GS::UniString, GS::UniString>> paramdict_favorite =
             {}; // Словарь с именами параметров и описаниями свойств избранных элементов
 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
@@ -548,7 +566,7 @@ namespace Spec {
                 return APIERR_GENERAL;
             }
         }
-        // Теперь пройдём по прочитанным правилам и сформируем список параметров для чтения
+        // Теперь пройдём по правилам и соберём все нужные параметры для чтения из исходных элементов.
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28) || defined(AC_29)
             SpecRule &rule = cIt->value;
@@ -704,7 +722,7 @@ namespace Spec {
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemguid, paramDict, paramToRead);
             }
         }
-        // Если есть ненайденные параметры - останавливаем работу
+        // Если для размещаемого объекта не удалось найти нужные параметры, дальнейшая работа бессмысленна.
         if (!error_name.IsEmpty ()) {
             GS::UniString out = ":\n";
             for (auto &cIt : error_name) {
@@ -725,7 +743,8 @@ namespace Spec {
             ACAPI_WriteReport (SpecEmptyListdString + out, true);
             return APIERR_GENERAL;
         }
-        // Читаем данные из размещённых элементов
+        // Перед формированием итоговых элементов читаются данные уже размещённых объектов, чтобы их можно было сравнить
+        // с правилами.
         bool rule_from_one = false;
         if (!SpecDG (rules, rule_from_one)) {
             msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
@@ -1064,9 +1083,15 @@ namespace Spec {
     // Примечание: правило добавляется в словарь даже если оно невалидно (is_Valid=false),
     //             чтобы избежать повторной обработки
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Разбирает описание свойства и добавляет правило в словарь.
+    // Для сложных строк форматирования здесь выполняется нормализация, чтобы парсер видел понятный текст.
+    // -----------------------------------------------------------------------------
     void AddRule (const API_PropertyDefinition &definition, const API_Guid &elemguid, SpecRuleDict &rules) {
         // Чистим описание
         GS::UniString description = definition.description;
+        // Нормализуем описание: убираем переводы строк, лишние пробелы и приводим формат
+        // к виду, который проще разбить на группы и параметры.
         description.ReplaceAll (LINEBRAKE, EMPTYSTRING);
         description.ReplaceAll (LINEBRAKER, EMPTYSTRING);
         description.ReplaceAll (TABSTRING, EMPTYSTRING);
@@ -1145,6 +1170,10 @@ namespace Spec {
     //   4. Добавляет параметры для записи в paramToWrite
     // Примечание: параметры материалов и формул обрабатываются особым образом
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // На основе правила формирует список параметров, которые нужно прочитать из исходных элементов
+    // и список параметров, которые потом будут записаны в новые элементы.
+    // -----------------------------------------------------------------------------
     void GetParamToReadFromRule (SpecRule &rule, ParamDictElement &paramToRead, ParamDictValue &paramToWrite) {
         ParamDict params = {}; // Словарь с уникальными параметрами читаемых элементов
         for (const GroupSpec &group : rule.groups) {
@@ -1263,6 +1292,10 @@ namespace Spec {
     // Возвращает: true если значение успешно прочитано
     // Примечание: pvalue.isValid = true только при успешном чтении
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Читает одно значение параметра для конкретного элемента.
+    // Поддерживаются обычные свойства, формулы, материалы слоёв и данные из list-data.
+    // -----------------------------------------------------------------------------
     bool GetParamValue (const API_Guid &elemguid,
                         const GS::UniString &rawname,
                         const ParamDictElement &paramToRead,
@@ -1322,6 +1355,7 @@ namespace Spec {
 #endif
             return false;
         }
+        // Если параметр читался как материал из состава конструкции, берём значение из слоя.
         const ParamComposite &pcelem = pc.Get (rawname);
         if (pcelem.composite.IsEmpty ()) {
 #if defined(TESTING)
@@ -1392,6 +1426,10 @@ namespace Spec {
     // Возвращает: количество элементов для создания/модификации
     // Примечание: при stop_on_error = true и ошибке чтения возвращает 0
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Формирует набор элементов для создания или обновления на основе одного правила.
+    // Здесь важно не только собрать данные, но и правильно сгруппировать одинаковые элементы.
+    // -----------------------------------------------------------------------------
     Int32 GetElementsForRule (SpecRule &rule,
                               const ParamDictElement &paramToRead,
                               const ParamDictCompositeElement &paramCompositeToRead,
@@ -1756,8 +1794,12 @@ namespace Spec {
     // Возвращает: структуру SpecRule (заполненную на основе описания)
     // Формат: Spec_rule{КРИТЕРИЙ ;g(U1,U2,U3; P1,P2,P3; F; Q1,Q2) s(Pn1,Pn2,Pn3; Qn1,Qn2)}
     // --------------------------------------------------------------------
+    // -----------------------------------------------------------------------------
+    // Разбирает строку описания правила и превращает её в структуру SpecRule.
+    // Это наиболее сложная часть модуля, потому что здесь нужно распознать критерий, группы и поля записи.
+    // -----------------------------------------------------------------------------
     SpecRule GetRuleFromDescription (GS::UniString &description) {
-        // Получаем критерий
+        // Сначала извлекается критерий — имя избранного элемента или другой ключевой текст.
         SpecRule rule = {};
         GS::Array<GS::UniString> partstring = {};
         GS::UniString ldescription = description.ToLowerCase ();
@@ -1888,7 +1930,7 @@ namespace Spec {
             // P1,P2,P3 - параметры для чтения, part == 1
             // F1 - флаг, part == 2
             // Q1,Q2 - количество, part == 3
-            Int32 min_row = 0; // Количество строк, указанных для параметра-массива
+            Int32 min_row = 0;            // Количество строк, указанных для параметра-массива
             bool isUnicSameAsOut = false; // Совпадают ли уникальные параметры с параметрами для записи
             for (UInt32 part = 0; part < nrule_read; part++) {
                 GS::Array<GS::UniString> rulestring_param = {}; // Массив параметров
@@ -2383,12 +2425,13 @@ namespace Spec {
                         continue;
                     }
                     if (find_stor) {
-                                            element.header.floorInd = act_st;
-                                        }
-                                        // Снимает скрытие и блокировку слоя элемента перед созданием
-                                        // Проверяет floorInd & 0x8000 и layer.head.flags & 1, при необходимости вызывает ACAPI_Attribute_Set
-                                        UnhideUnlockElementLayer (element.header);
-                                        bool flag_find_row = GetSizePlaceElement (element, memo, dx, dy);
+                        element.header.floorInd = act_st;
+                    }
+                    // Снимает скрытие и блокировку слоя элемента перед созданием
+                    // Проверяет floorInd & 0x8000 и layer.head.flags & 1, при необходимости вызывает
+                    // ACAPI_Attribute_Set
+                    UnhideUnlockElementLayer (element.header);
+                    bool flag_find_row = GetSizePlaceElement (element, memo, dx, dy);
                     // Запись параметров
                     ParamDictValue param = {};
                     if (!el.subguid_paramrawname.IsEmpty ()) {

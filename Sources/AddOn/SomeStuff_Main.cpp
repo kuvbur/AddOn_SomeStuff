@@ -57,7 +57,8 @@ static GSErrCode __ACENV_CALL ReservationChangeHandler (const GS::HashTable<API_
 }
 
 // -----------------------------------------------------------------------------
-// Срабатывает при событиях проекта (открытие, сохранение)
+// Срабатывает при событиях проекта: открытие, закрытие, смена окна или этажа.
+// Здесь обновляется состояние меню, мониторинг и кэш свойств.
 // -----------------------------------------------------------------------------
 #if defined(AC_28) || defined(AC_29)
 static GSErrCode ProjectEventHandlerProc (API_NotifyEventID notifID, Int32 param) {
@@ -164,6 +165,7 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
     // tst.Append (SPACESTRING);
     // DBprnt ("ElementEvent", tst);
     // #endif
+    // Элементы из hotlink не обрабатываются, потому что они приходят как внешние ссылки и не доступны для локального редактирования.
     if (elemType->elemHead.hotlinkGuid != APINULLGuid)
         return NoError;
     ACAPI_KeepInMemory (true);
@@ -218,14 +220,16 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
     case APINotifyElement_Edit:
     case APINotifyElement_ClassificationChange:
         dummymode = IsDummyModeOn ();
+        // В dummy-режиме важно принудительно включить мониторинг и основные типы синхронизации,
+        // иначе обработка остановится на раннем шаге и не дойдёт до нужных подэлементов.
         if (dummymode == DUMMY_MODE_ON) {
             syncSettings.syncMon = true;
             syncSettings.wallS = true;
             syncSettings.widoS = true;
             syncSettings.objS = true;
         }
-        // Отключение обработки панелей навесных стен после изменения самой навесной стены
-        // Панели навесных стен обрабатываются далее, в функции SyncElement
+        // После изменения самой навесной стены панели не обрабатываются отдельно,
+        // потому что их синхронизация будет выполнена дальше через SyncElement.
         if (syncSettings.logMon && elementType != API_CurtainWallPanelID && elementType != API_CurtainWallSegmentID &&
             elementType != API_CurtainWallFrameID && elementType != API_CurtainWallJunctionID &&
             elementType != API_CurtainWallAccessoryID) {
@@ -243,6 +247,8 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         if (!paramToWrite.IsEmpty ()) {
             GS::Array<API_Guid> rereadelem = {};
             rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
+            // После первой синхронизации часть элементов может потребовать повторного перечитывания,
+            // поэтому выполняем второй проход по той же сущности и собираем дополнительно изменённые GUID.
             if (needresync) {
                 paramToWrite.Clear ();
                 needresync = SyncElement (elemType->elemHead.guid, syncSettings, paramToWrite, dummymode);
@@ -274,7 +280,8 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
 } // ElementEventHandlerProc
 
 // -----------------------------------------------------------------------------
-// Включение мониторинга
+// Включает или отключает наблюдение за изменениями элементов.
+// При включении регистрируются observers, при выключении — снимаются.
 // -----------------------------------------------------------------------------
 void Do_ElementMonitor (bool syncMon) {
     bool isteamwork = false;
@@ -316,7 +323,7 @@ void Do_ElementMonitor (bool syncMon) {
 } // Do_ElementMonitor
 
 // -----------------------------------------------------------------------------
-// Обновление отмеченных в меню пунктов
+// Синхронизирует состояние пунктов меню с текущими настройками синхронизации.
 // -----------------------------------------------------------------------------
 void MenuSetState (SyncSettings &syncSettings) {
     MenuItemCheckAC (Menu_MonAll, syncSettings.syncMon);
@@ -364,6 +371,8 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
 #endif
     const Int32 AddOnMenuID = ID_ADDON_MENU;
     PROPERTYCACHE ().Update ();
+    // Все команды add-on приходят через один обработчик меню, поэтому здесь
+    // выполняется маршрутизация по ID пункта меню.
     switch (menuParams->menuItemRef.menuResID) {
     case AddOnMenuID:
         switch (menuParams->menuItemRef.itemIndex) {
