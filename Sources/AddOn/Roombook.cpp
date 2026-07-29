@@ -1,17 +1,17 @@
 //------------ kuvbur 2022 ------------
+#include "Roombook.hpp"
 #include "ACAPinc.h"
-#include "Algorithms.hpp"
-#include "alphanum.h"
 #include "APIEnvir.h"
+#include "Algorithms.hpp"
 #include "CommonFunction.hpp"
 #include "Helpers.hpp"
 #include "ProfileAdditionalInfo.hpp"
 #include "ProfileVectorImage.hpp"
 #include "ProfileVectorImageOperations.hpp"
 #include "Propertycache.hpp"
-#include "Roombook.hpp"
 #include "Sync.hpp"
 #include "VectorImageIterator.hpp"
+#include "alphanum.h"
 
 namespace Roombook
 
@@ -4558,7 +4558,6 @@ namespace Roombook
         if (!Opening_GetDefult ("smstf window", windowelement, windowmemo)) {
             return;
         }
-        windowelement.window.objLoc = op.objLoc;
         windowelement.window.owner = wallelement.header.guid;
         if (op.has_reveal) {
             // TODO Дописать определение толщины из откоса
@@ -4582,6 +4581,8 @@ namespace Roombook
                 op.objLoc += th;
             }
         }
+        // objLoc присваиваем ПОСЛЕ коррекции откосов, чтобы центр проёма совпадал со скорректированными размерами
+        windowelement.window.objLoc = op.objLoc;
         if (op.width < min_dim || op.height < min_dim) {
             ACAPI_DisposeElemMemoHdls (&windowmemo);
             return;
