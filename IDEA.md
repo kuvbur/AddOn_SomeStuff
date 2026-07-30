@@ -236,3 +236,63 @@
 5. `ACAPI_CallUndoableCommand(name, lambda)` — обёртка для undo (подтверждено).
 6. `GS::SharedPtr` — копируемый умный указатель (подтверждено через LightRAG).
 7. `API_AddonCommand` выполняется в главном потоке → mutex отложен.
+
+---
+
+## Новая задача: MCP сервер для Archicad (2026-07-30)
+
+### Суть задачи
+Пользователь планирует создать свой MCP сервер для Archicad. Изучен пример реализации:
+- **tapir-archicad-MCP** — Python MCP сервер
+- **tapir-archicad-addon** — C++ аддон с JSON командами
+
+### Изученная архитектура
+1. **tapir-archicad-addon (C++):**
+   - `CommandBase` — базовый класс для JSON команд
+   - `API_AddOnCommand` — интерфейс ArchiCAD для регистрации команд
+   - Регистрация через `ACAPI_AddOnAddOnCommunication_InstallAddOnCommandHandler`
+   - Каждая команда: `GetName()`, `GetInputParametersSchema()`, `GetResponseSchema()`, `Execute()`
+
+2. **tapir-archicad-MCP (Python):**
+   - `fastmcp` — фреймворк для MCP сервера
+   - `multiconn-archicad` — библиотека для связи с Archicad
+   - `discover_tools` — семантический поиск по описаниям команд
+   - `call_tool` — выполнение конкретной команды
+
+### Разделение на части
+**Часть 1:** Отдельный Python процесс с интерфейсом (по аналогии с `archixml.py`)
+- HTTP сервер (ThreadingHTTPServer)
+- HTML/JS интерфейс (встроен в код или папка)
+- Прокси к Archicad JSON API
+- WebSocket/SSE для мгновенного отклика UI
+
+**Часть 2:** Взаимодействие с аддоном (JSON)
+- Создать базовый класс для JSON команд
+- Реализовать команды для работы с описанием свойств
+- Зарегистрировать команды в `SomeStuff_Main.cpp`
+
+### Фокус на Renum командах
+Изучена документация `Element-Renumbering-en.md` и реализация в `ReNum.cpp`:
+- Команды хранятся в описаниях свойств: `Renum_flag{...}` и `Renum{...}`
+- Парсинг происходит в `ReNum_GetElement()`
+- Константы определены в `Constants.hpp` (RENUMFLAG, RENUM, BRACESTART, BRACEEND и др.)
+
+### Найденные готовые файлы
+В папке `D:\SomeStuff_addon\Sources\AddOn\Commands\` уже созданы:
+- `CommandBase.hpp/cpp` — базовый класс (полностью подходит, повторяет структуру tapir)
+- `ExampleCommands.hpp/cpp` — примеры реализации
+- Готовая структура: `ReadOnlyCommand` и `ModifyCommand`
+
+### Следующие шаги
+1. Создать `ParsePropertyCommand` для парсинга команд Renum из описания свойств
+2. Использовать готовую структуру из `Commands/`
+3. Реализовать логику парсинга (используя код из `ReNum_GetElement`)
+4. Зарегистрировать команду в `SomeStuff_Main.cpp`
+5. Протестировать через Python интерфейс
+
+### Полезные пути для поиска
+- `D:\SomeStuff_addon\Code_Example\` — примеры реализации (tapir)
+- `D:\SomeStuff_addon\Sources\AddOn\Commands\` — готовая база для JSON команд
+- `D:\SomeStuff_addon\Sources\AddOn\ReNum.cpp` — логика парсинга Renum
+- `D:\SomeStuff_addon\Sources\AddOn\Constants.hpp` — константы (RENUMFLAG, RENUM и др.)
+- `D:\SomeStuff_addon\wiki\en\Element-Renumbering-en.md` — документация по Renum
