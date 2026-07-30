@@ -201,6 +201,9 @@ namespace FormatStringFunc {
         if (!stringformat.IsEmpty ()) {
             GS::UniString outstringformat = stringformat;
             if (stringformat.Contains (DOT)) {
+                // В строке формата точки используются как разделители между
+                // префиксом единицы измерения и остальным шаблоном, поэтому
+                // их нужно временно убрать для разбора.
                 outstringformat.ReplaceAll (DOT, EMPTYSTRING);
                 format.stringformat.ReplaceAll (DOT, EMPTYSTRING);
             }
@@ -240,18 +243,21 @@ namespace FormatStringFunc {
             }
             if (!outstringformat.IsEmpty ()) {
                 if (outstringformat.Contains (DOTSET)) {
+                    // Маркер DOTSET переключает разделитель на точку вместо запятой.
                     delimetr_iscomma = false;
                     outstringformat.ReplaceAll (DOTSET, EMPTYSTRING);
                 }
             }
             if (!outstringformat.IsEmpty ()) {
                 if (outstringformat.Contains (RDSET)) {
+                    // RDSET означает, что значение нужно округлить перед вычислением.
                     needround = true;
                     outstringformat.ReplaceAll (RDSET, EMPTYSTRING);
                 }
             }
             if (!outstringformat.IsEmpty ()) {
                 if (outstringformat.Contains (FSET)) {
+                    // FSET запрещает округление при записи, поэтому сохраняем сырое значение.
                     forceRaw = true;
                     outstringformat.ReplaceAll (FSET, EMPTYSTRING);
                 }
@@ -313,6 +319,8 @@ namespace FormatStringFunc {
         }
 
         if (sep_idx != -1 && stringformat.trim_zero) {
+            // Убираем лишние нули после разделителя, но оставляем хотя бы один
+            // символ перед точкой/запятой, чтобы строка не стала пустой.
             int back = len - 1;
             while (back > sep_idx && buf[back] == '0') {
                 buf[back] = '\0';
@@ -382,6 +390,8 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
     GS::Array<API_Property> properties;
     for (const auto &cIt : definitions) {
     #if defined(AC_28) || defined(AC_29)
+        // Для каждого определения свойства берём все элементы по его доступности
+        // через классификацию, а затем отсекаем те, у которых свойство невалидно.
         const API_PropertyDefinition &definition = cIt.value;
     #else
         const API_PropertyDefinition &definition = *cIt.value;
@@ -399,6 +409,8 @@ void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_Property
             if (!elemGuids.IsEmpty ())
                 has_elems = true;
             for (const API_Guid &elemGuid : elemGuids) {
+                // На этом шаге формируется временный набор элементов,
+                // который потом будет проверен на реальное наличие свойства.
                 if (!unguid_by_class.ContainsKey (elemGuid))
                     unguid_by_class.Put (elemGuid, true);
             }
@@ -463,6 +475,8 @@ bool GetRuleFromSelected (const API_Guid &elemguid,
     for (const auto &definition : definitions_) {
         if (definition.description.IsEmpty ())
             continue;
+        // Ищем только те свойства, у которых в описании присутствует нужный флаг.
+        // Дополнительная проверка по скобкам нужна, чтобы не брать случайные свойства.
         if (!definition.description.Contains (name))
             continue;
         if (check_bracket) {
@@ -1147,7 +1161,9 @@ void GetRelationsElement (const API_Guid &elemGuid,
 
 // -----------------------------------------------------------------------------
 // Получение размеров Морфа
-// Формирует словарь ParamDictValue& pdictvalue со значениями
+// Формирует словарь ParamDictValue& pdictvalue со значениями.
+// Используется при чтении геометрии морф-объектов и последующей передачи
+// значений в общий механизм параметров.
 // -----------------------------------------------------------------------------
 bool ParamHelpers::ReadMorphParam (const API_Guid &guid, ParamDictValue &pdictvaluemorph) {
 #if defined(TESTING)
@@ -5485,6 +5501,9 @@ void ParamHelpers::Read (const API_Guid &elemGuid, ParamDictValue &params) {
 // --------------------------------------------------------------------
 // Заполнение словаря параметров для множества элементов
 // --------------------------------------------------------------------
+// Полная версия массового чтения. Она собирает значения свойств, составные
+// конструкции, список данных и возвращает их в отдельные структуры для
+// последующей обработки вне этого метода.
 void ParamHelpers::ElementsRead (ParamDictElement &paramToRead,
                                  ParamDictCompositeElement &paramCompositeToRead,
                                  ListData::LibElements &paramListDataToRead,
@@ -5921,6 +5940,8 @@ bool ParamHelpers::ReadProperty (const API_Guid &elemGuid,
     if (propertyDefinitions.IsEmpty ())
         return false;
     GS::Array<API_Property> properties = {};
+    // Получаем актуальные значения свойств по списку определений.
+    // Это основная точка входа для чтения пользовательских свойств.
     GSErrCode error = ACAPI_Element_GetPropertyValues (elemGuid, propertyDefinitions, properties);
     if (error != NoError) {
         msg_rep ("ParamDictGetPropertyValues", "ACAPI_Element_GetPropertyValues", error, elemGuid);
@@ -6008,6 +6029,8 @@ bool ParamHelpers::ReadClassification (const API_Guid &elemGuid, ParamDictValue 
     GSErrCode err = NoError;
     GS::HashTable<GS::UniString, API_Guid> elementsystem = {};
     for (ParamDictValue::PairIterator cIt = paramByType.EnumeratePairs (); cIt != NULL; ++cIt) {
+        // Для каждого параметра, который должен быть связан с системой классификации,
+        // сначала ищем саму систему по имени параметра.
 #if defined(AC_28) || defined(AC_29)
         ParamValue &param = cIt->value;
 #else
@@ -6051,6 +6074,8 @@ bool ParamHelpers::ReadClassification (const API_Guid &elemGuid, ParamDictValue 
             }
             rawname = CLASSNAMEPREFIX + systemname + BRACEEND;
             if (paramByType.ContainsKey (rawname)) {
+                // Для GUID-классификации сохраняем как GUID, так и текстовое имя,
+                // чтобы дальше можно было работать и с одним, и с другим вариантом.
                 ParamValue &p = paramByType.Get (rawname);
                 p.isValid = true;
                 p.val.guidval = item.guid;
@@ -6078,6 +6103,8 @@ bool ParamHelpers::ReadAttributeValues (const API_Elem_Head &elem_head, ParamDic
 #endif
 
     auto *p = params.GetPtr (attrlayerRawname);
+    // Атрибут слоя читается не как обычное свойство, а как специальный
+    // параметр, который связан с индексом слоя элемента.
     if (p == nullptr)
         return false;
     p->isValid = true;
@@ -6121,6 +6148,8 @@ bool ParamHelpers::ReadID (const API_Elem_Head &elem_head, ParamDictValue &param
     DBprnt ("      ReadID");
 #endif
     auto *id = params.GetPtr (idRawname);
+    // ID элемента читается из строки информации объекта, поэтому здесь
+    // не используется обычный путь через свойства или GDL.
     if (id == nullptr)
         return false;
     GS::UniString infoString = "";
@@ -6166,7 +6195,8 @@ bool ParamHelpers::ReadGDL (const API_Element &element,
     DBprnt ("      ReadGDL");
 #endif
     API_ElemTypeID eltype = GetElemTypeID (elem_head);
-    // Обрабатываем только вложенные элементы иерархических структур (навесных стен и ограждений)
+    // Обрабатываем только вложенные элементы иерархических структур (навесных стен и ограждений).
+    // Для верхнеуровневых элементов этот путь не применяется.
     if (eltype == API_RailingID || eltype == API_CurtainWallID) {
         return false;
     }
@@ -6174,7 +6204,9 @@ bool ParamHelpers::ReadGDL (const API_Element &element,
     ParamDictValue paramByName = {};
     GS::HashTable<GS::UniString, GS::Array<GS::UniString>> paramnamearray = {};
 
-    // Если диапазоны массивов хранятся в параметра х - прочитаем сначала их
+    // Если значения массивов/диапазонов хранятся в отдельных параметрах,
+    // их нужно прочитать первыми, потому что они могут использоваться как
+    // зависимые входные данные для основного GDL-параметра.
     ParamDictValue paramdiap = {};
     for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
 #if defined(AC_28) || defined(AC_29)
@@ -7489,6 +7521,9 @@ void ParamHelpers::ReadMaterial_ReadAddParam (ParamDictValue &paramsAdd,
 // -----------------------------------------------------------------------------
 // Получение информации о материалах и составе конструкции
 // -----------------------------------------------------------------------------
+// Читает состав конструкции и связанные параметры материалов для элемента.
+// Эта функция служит мостом между сырой информацией ArchiCAD и внутренними
+// структурами ParamDictValue / ParamComposite, используемыми в Roombook.
 bool ParamHelpers::ReadMaterial (const API_Element &element,
                                  ParamDictValue &params,
                                  ParamDictComposite &paramcomposite,
