@@ -886,7 +886,7 @@ bool ElementsSeparation (RenumRule &rule,
                 GSCharCode chcode = GetCharCode (paramdelimetr->val.uniStringValue);
                 delimetr = paramdelimetr->val.uniStringValue.ToCStr (0, MaxUSize, chcode).Get ();
             } else {
-                has_error = (state != RENUM_SKIP);
+                has_error = has_error || (state != RENUM_SKIP);
                 if (has_error)
                     msg_rep ("ReNumSelected",
                              "Skip element with not valid value in delimetr: " + rule.delimetr,
@@ -902,7 +902,7 @@ bool ElementsSeparation (RenumRule &rule,
         if (paramcriteria != nullptr) {
             if (paramcriteria->isValid) {
                 if (paramcriteria->val.uniStringValue.IsEmpty ()) {
-                    has_error = (state != RENUM_SKIP);
+                    has_error = has_error || (state != RENUM_SKIP);
                     if (has_error)
                         msg_rep ("ReNumSelected",
                                  "Skip element with empty value in criteria: " + rule.criteria,
