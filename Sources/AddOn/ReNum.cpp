@@ -181,7 +181,7 @@ bool RenumDG (Rules &renum_rules, bool &rule_from_one) {
         if (!rule.state)
             continue;
         if (const auto *r = rules.rules.GetPtr (rule.rule_name)) {
-            rule.state = r;
+            rule.state = *r;
             if (rule.state)
                 has_true_state = true;
         }
