@@ -290,9 +290,21 @@
 4. Зарегистрировать команду в `SomeStuff_Main.cpp`
 5. Протестировать через Python интерфейс
 
+### Python интерфейс (Часть 1) — СОЗДАН
+Создан файл `D:\SomeStuff_addon\property_bridge.py`:
+- HTTP сервер на базе `ThreadingHTTPServer` (по аналогии с `archixml.py`)
+- HTML/JS интерфейс встроен в код
+- Кнопка "Получить свойства" и выпадающий список
+- Вызов к Archicad JSON API через `ac_post()`
+- Инструкции в `property_bridge_README.md`
+
+**Статус:** Python скрипт готов, синтаксис проверен. Ожидает регистрации команды `GetPropertyDefinitions` в аддоне.
+
 ### Полезные пути для поиска
 - `D:\SomeStuff_addon\Code_Example\` — примеры реализации (tapir)
 - `D:\SomeStuff_addon\Sources\AddOn\Commands\` — готовая база для JSON команд
 - `D:\SomeStuff_addon\Sources\AddOn\ReNum.cpp` — логика парсинга Renum
 - `D:\SomeStuff_addon\Sources\AddOn\Constants.hpp` — константы (RENUMFLAG, RENUM и др.)
 - `D:\SomeStuff_addon\wiki\en\Element-Renumbering-en.md` — документация по Renum
+- `D:\SomeStuff_addon\property_bridge.py` — Python интерфейс (НОВОЕ)
+- `D:\SomeStuff_addon\property_bridge_README.md` — инструкции по запуску (НОВОЕ)

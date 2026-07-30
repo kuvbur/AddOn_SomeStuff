@@ -10,6 +10,7 @@
 #include "APIdefs_Properties.h"
 #include "DGModule.hpp"
 #include "SomeStuff_Main.hpp"
+#include "JsonCommandRegistrar.hpp"
 #include "Sync.hpp"
 #include "UniString.hpp"
 #ifndef AC_22
@@ -517,10 +518,14 @@ GSErrCode __ACENV_CALL Initialize (void) {
                                               ProjectEventHandlerProc);
 #else
     ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New |
-                                        APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit |
-                                        APINotify_ChangeProjectDB,
+                                        APINotify_NewAndReset | APINotify_Open | APINotify_Close |
+                                        APINotify_Quit | APINotify_ChangeProjectDB,
                                     ProjectEventHandlerProc);
 #endif
+    
+    // Регистрация JSON команд
+    RegisterJsonCommands();
+    
     ACAPI_KeepInMemory (true);
 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
     return ACAPI_MenuItem_InstallMenuHandler (ID_ADDON_MENU, MenuCommandHandler);
