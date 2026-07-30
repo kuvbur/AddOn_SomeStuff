@@ -333,7 +333,9 @@ bool SyncByType (const API_ElemTypeID &elementType,
         GS::UniString::Printf ("Reading data from %d elements : ", guidArray.GetSize ()) + subtitle;
     bool flag_chanel = false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        SyncElement (guidArray[i], syncSettings, paramToWrite, dummymode, syncedelem);
+        // Захватываем возврат SyncElement (needResync) для короткого замыкания по группам типов
+        if (SyncElement (guidArray[i], syncSettings, paramToWrite, dummymode, syncedelem))
+            flag_chanel = true;
 #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         if (i % 10 == 0)
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -1994,7 +1996,8 @@ bool SyncString (const API_ElemTypeID &elementType,
                             rawName_row_start = paramNamePrefix;
                             rawName_row_start.Append (sr1);
                             rawName_row_start.Append (BRACEEND);
-                            rawName_row_end = rawName_col_start;
+                            // Исправлен copy-paste: конец диапазона для строк должен брать значение от row_start, а не col_start
+                            rawName_row_end = rawName_row_start;
                         }
                     }
                 }
@@ -2629,19 +2632,20 @@ bool SyncGetSubelement (const GS::Array<API_Guid> &guidArray,
                     API_Guid guid = APIGuidFromString (part.ToCStr (0, MaxUSize, GChCode));
                     if (guid == APINULLGuid)
                         continue;
-                    auto *un = parentGuid.GetPtr (subguid);
+                    // Внешний ключ — guid (родитель), внутренний ключ — subguid (дочерний элемент)
+                    auto *un = parentGuid.GetPtr (guid);
                     if (un == nullptr) {
                         UnicGuid u;
                         parentGuid.Put (guid, std::move (u));
-                        un = parentGuid.GetPtr (subguid);
+                        un = parentGuid.GetPtr (guid);
                         if (un == nullptr) {
                             continue;
                         }
                     }
-                    if (!un->ContainsKey (guid)) {
+                    if (!un->ContainsKey (subguid)) {
                         bool isvisible = ACAPI_Element_Filter (
                             subguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
-                        un->Put (guid, isvisible);
+                        un->Put (subguid, isvisible);
                     }
                 }
             }
