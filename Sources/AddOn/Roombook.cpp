@@ -33,6 +33,26 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Запись в зону информации об отделке
     // -----------------------------------------------------------------------------
+    // REFACTOR PLAN FOR NEXT AGENT:
+    // 1. Extract GetTargetZones() from the selection / fallback-to-all-zones block.
+    //    Keep the filter flags and error handling unchanged.
+    // 2. Extract PrepareRoomProcessingContext() for:
+    //    - finclass / finclassguids
+    //    - storyLevels
+    //    - roomsinfo / elementToRead / param containers
+    //    - slabsinzone
+    // 3. Extract BuildElementReadIndex() and ProcessElementsForRoomData() for the loop that
+    //    creates openings, walls and slabs from the collected elements.
+    // 4. Extract PrepareReadParams() and ReadElementParameters() for the parameter preparation loop.
+    // 5. Extract ProcessRoomFinishes() and split it into smaller helpers:
+    //    - ProcessSlabFinishes()
+    //    - ProcessWallFinishes()
+    //    - ApplyFavoriteAndMaterialData()
+    // 6. Extract BuildMaterialSummaryForRooms() and WriteRoomMaterialData() from the section that
+    //    calculates material areas and writes them back to the rooms.
+    // 7. Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from the cleanup block.
+    // 8. After each extraction, keep behavior identical and verify the build.
+    //    The goal is to make RoomBook() a thin orchestrator with small single-purpose helpers.
     void RoomBook () {
         clock_t start, finish;
         double duration;
@@ -44,6 +64,10 @@ namespace Roombook
         GS::Array<API_Guid> zones;
         GSErrCode err = NoError;
         API_SelectionInfo selectionInfo;
+        // REFACTOR TARGET:
+        // Extract a helper like GetTargetZones() from this block.
+        // It should decide between the current selection and the full editable-zone list,
+        // while keeping the filtering and error handling in one place.
         GS::Array<API_Neig> selNeigs;
         err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
         BMKillHandle ((GSHandle *)&selectionInfo.marquee.coords);
@@ -81,6 +105,13 @@ namespace Roombook
         }
 
         funcname = GS::UniString::Printf ("Collect info from %d room(s)", zones.GetSize ());
+        // REFACTOR TARGET:
+        // Extract a helper like PrepareRoomProcessingContext() for the setup below:
+        // - finclass / finclassguids
+        // - storyLevels
+        // - roomsinfo / elementToRead / param containers
+        // - slabsinzone
+        // This will make RoomBook() a thin orchestrator.
         // Подготовка параметров.
         // Финальный словарь классов нужен для последующего назначения классов созданным элементам.
         ClassificationFunc::ClassificationDict finclass; // Словарь классов для отделочных стен
@@ -120,6 +151,11 @@ namespace Roombook
             }
         }
         guidselementToRead.Add (API_ZoneID, zones);
+        // REFACTOR TARGET:
+        // Split this block into two helpers:
+        // 1) BuildElementReadIndex() - collect zone -> element relationships
+        // 2) ProcessElementsForRoomData() - create openings / walls / slabs from the collected elements
+        // The classification skip and the type-specific dispatch should stay here or move together.
         // После сбора всех связей необходимо очистить временные GUID зон, чтобы не держать
         // устаревшие ссылки на элементы, уже обработанные в предыдущем проходе.
         ClearZoneGUID (elementToRead);
@@ -169,6 +205,10 @@ namespace Roombook
                 }
             }
         }
+        // REFACTOR TARGET:
+        // Extract PrepareReadParams() + ReadElementParameters() from this block.
+        // The goal is to make RoomBook() only prepare the parameter sets and call one read routine
+        // for all element types instead of mixing setup and reading in the same loop.
         // Необходимые для чтения параметры и свойства
         ReadParams windowParams = Param_GetForWindowParams ();
         ReadParams roomParams = Param_GetForRooms ();
@@ -214,6 +254,12 @@ namespace Roombook
         bool has_base_element = false;
         UnicGuid reserv_elements; // Словарь незарезервированных или скрытых элементов
         exsistot_byzone = Otd_GetOtd_ByZone (zones, finclassguids, finclass, has_base_element, reserv_elements);
+        // REFACTOR TARGET:
+        // Extract ProcessRoomFinishes() and then split it further into:
+        // - ProcessSlabFinishes()
+        // - ProcessWallFinishes()
+        // - ApplyFavoriteAndMaterialData()
+        // Each helper should work with one room and one finish type to keep the logic readable.
         // На этом этапе уже рассчитываются фактические отделочные элементы для каждой комнаты.
         funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
         GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
@@ -386,6 +432,9 @@ namespace Roombook
             } // Назначение избранного
             otd.otdwall = opw; // Заменяем на разбитые стены
         } // Обработка зон
+        // REFACTOR TARGET:
+        // Extract BuildMaterialSummaryForRooms() and WriteRoomMaterialData() from this section.
+        // The current loop mixes room iteration, column-format preparation, area calculation and writeout.
         // Получаем список уже существующих отделочных элементов для обработанных зон.
         // Он понадобится для последующего удаления устаревших объектов.
         zones.Clear ();
@@ -506,6 +555,9 @@ namespace Roombook
             OtdData_WriteToRoom (columnFormat, otd.zone_guid, paramToWrite, paramToRead, dct, paramnamebytype);
         }
         paramToRead.Clear ();
+        // REFACTOR TARGET:
+        // Extract RemoveUnusedFinishingElements() and PrepareElementsForUpdate() from this block.
+        // This part is about cleanup and update preparation, not room calculation.
         // Проверка существования классов и свойств
         if (!zones.IsEmpty ()) {
             if (!Check (finclass, finclassguids))
