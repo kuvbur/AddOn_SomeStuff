@@ -85,10 +85,8 @@ GS::ObjectState GetPropertyDefinitionsCommand::Execute(const GS::ObjectState& /*
     
     response.Add("properties", propertiesArray);
     
-    // Добавляем количество свойств
-    char countStr[32];
-    sprintf(countStr, "%d", propertiesArray.GetSize());
-    response.Add("count", countStr);
+    // Добавляем количество свойств (простой вариант)
+    response.Add("count", propertiesArray.GetSize());
     response.Add("status", "ok");
     
     return response;
