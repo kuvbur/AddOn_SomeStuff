@@ -2,18 +2,6 @@
 #pragma once
 #if !defined(SUMM_HPP)
     #define SUMM_HPP
-    #ifdef AC_25
-        #include "api_headers/APICommon25.h"
-    #endif // AC_25
-    #ifdef AC_26
-        #include "api_headers/APICommon26.h"
-    #endif // AC_26
-    #if defined(AC_27)
-        #include "api_headers/APICommon27.h"
-    #endif // AC_27
-    #ifdef AC_28
-        #include "api_headers/APICommon28.h"
-    #endif // AC_28
     #include "DG.h"
     #include "Helpers.hpp"
 

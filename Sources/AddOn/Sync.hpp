@@ -3,8 +3,8 @@
 #if !defined(SYNC_HPP)
     #define SYNC_HPP
     #include "DG.h"
+    #include "dialogs/SyncSettings.hpp"
     #include "Helpers.hpp"
-    #include "SyncSettings.hpp"
 
 static const GS::UniString PROPERTYPREF = "Property:";
 static const GS::UniString MORPHPREF = "Morph:";

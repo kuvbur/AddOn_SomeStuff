@@ -18,7 +18,7 @@
 namespace Roombook
 
 {
-#if defined(AC_22) || defined(AC_23)
+#ifndef ServerMainVers_2400
     void RoomBook () { ACAPI_WriteReport ("Function not work in AC22 and AC23", true); }
 #else
     static const API_ElemTypeID typeinzone[] = {
@@ -74,7 +74,7 @@ namespace Roombook
         if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
             for (const API_Neig &neig : selNeigs) {
                 API_ElemTypeID elementType;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+    #ifdef ServerMainVers_2600
                 API_ElemType elementType_ = Neig_To_ElemID (neig.neigID);
                 elementType = elementType_.typeID;
     #else
@@ -136,7 +136,7 @@ namespace Roombook
         Floor_FindAll (slabsinzone, finclassguids, zones);
         for (const API_Guid &zoneGuid : zones) {
             nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
                 return;
@@ -164,7 +164,7 @@ namespace Roombook
             if (auto *elems = elementToRead.GetPtr (typeelem)) {
                 for (UnicElement::PairIterator cIt = (*elems).EnumeratePairs (); cIt != NULL; ++cIt) {
                     nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                     ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
                     if (ACAPI_ProcessWindow_IsProcessCanceled ())
                         return;
@@ -173,7 +173,7 @@ namespace Roombook
                     if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
                         return;
     #endif
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                     API_Guid guid = cIt->key;
                     zoneGuids = cIt->value;
     #else
@@ -234,7 +234,7 @@ namespace Roombook
         }
         funcname = GS::UniString::Printf ("Read data from %d elements(s)", paramToRead.GetSize ());
         nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ())
             return;
@@ -264,7 +264,7 @@ namespace Roombook
         funcname = GS::UniString::Printf ("Calculate finising elements for %d room(s)", roomsinfo.GetSize ());
         GS::HashTable<GS::UniString, GS::Int32> material_dict; // Словарь индексов покрытий
         for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             OtdRoom &otd = cIt->value;
             API_Guid zoneGuid = cIt->key;
     #else
@@ -272,7 +272,7 @@ namespace Roombook
             API_Guid zoneGuid = *cIt->key;
     #endif
             nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
                 return;
@@ -446,13 +446,13 @@ namespace Roombook
         GS::Array<API_Guid> zones_bytype;        // Зоны для записи отделки по типам
         funcname = GS::UniString::Printf ("Calculate material for %d room(s)", roomsinfo.GetSize ());
         for (OtdRooms::PairIterator cIt = roomsinfo.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             OtdRoom &otd = cIt->value;
     #else
             OtdRoom &otd = *cIt->value;
     #endif
             nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
                 return;
@@ -567,25 +567,25 @@ namespace Roombook
         for (GS::HashTable<API_Guid, UnicGuidByBase>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs ();
              cIt_1 != NULL;
              ++cIt_1) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             UnicGuidByBase byzone = cIt_1->value;
     #else
             UnicGuidByBase byzone = *cIt_1->value;
     #endif
             for (UnicGuidByBase::PairIterator cIt_21 = byzone.EnumeratePairs (); cIt_21 != NULL; ++cIt_21) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 UnicGuidByTypeOtd bytype = cIt_21->value;
     #else
                 UnicGuidByTypeOtd bytype = *cIt_21->value;
     #endif
                 for (UnicGuidByTypeOtd::PairIterator cIt_2 = bytype.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                     UnicGuid byparent = cIt_2->value;
     #else
                     UnicGuid byparent = *cIt_2->value;
     #endif
                     for (UnicGuid::PairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                         API_Guid guid = cIt_3->key;
     #else
                         API_Guid guid = *cIt_3->key;
@@ -598,14 +598,14 @@ namespace Roombook
         // Перед обновлением элементов их слои временно разблокируются и резервируются.
         // Это нужно, чтобы ArchiCAD позволил изменить существующие элементы без конфликтов.
         if (!reserv_elements.IsEmpty ()) {
-    #if defined(AC_24) || defined(AC_23)
+#ifndef ServerMainVers_2400
             GS::PagedArray<API_Guid> reserv;
     #else
             GS::Array<API_Guid> reserv;
     #endif
             GS::HashTable<API_Guid, short> conflicts;
             for (UnicGuid::PairIterator cIt_3 = reserv_elements.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 API_Guid guid = cIt_3->key;
     #else
                 API_Guid guid = *cIt_3->key;
@@ -613,12 +613,12 @@ namespace Roombook
                 UnhideUnlockElementLayer (guid);
                 reserv.Push (guid);
             }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             if (ACAPI_Teamwork_HasConnection () && !reserv.IsEmpty ()) {
     #else
             if (ACAPI_TeamworkControl_HasConnection () && !reserv.IsEmpty ()) {
     #endif
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 err = ACAPI_Teamwork_ReserveElements (reserv, &conflicts, true);
     #else
                 err = ACAPI_TeamworkControl_ReserveElements (reserv, &conflicts);
@@ -666,7 +666,7 @@ namespace Roombook
             return exsistot_byzone;
         }
         for (UnicGuidByGuid::PairIterator cIt = exsistotdelements.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             UnicGuid guids = cIt->value;
             API_Guid zoneguid = cIt->key;
     #else
@@ -676,7 +676,7 @@ namespace Roombook
             GS::HashTable<API_Guid, TypeOtd> otd_elements;
             // Список всех элементов отделки
             for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 API_Guid guid = cItt->key;
                 bool isvisible = cItt->value;
     #else
@@ -733,7 +733,7 @@ namespace Roombook
         UnicGuidByGuid parentdict; // Для считывания элементов
         GS::Array<API_Guid> otd_els;
         for (GS::HashTable<API_Guid, TypeOtd>::PairIterator cIt = otd_elements.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             API_Guid elems = cIt->key;
     #else
             API_Guid elems = *cIt->key;
@@ -765,7 +765,7 @@ namespace Roombook
             return exsistot_byparent;
         }
         for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentdict.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             const API_Guid &subguid = cIt->key;
             UnicGuid &parentels = cIt->value;
     #else
@@ -777,7 +777,7 @@ namespace Roombook
                 continue;
             TypeOtd t = *tPtr;
             for (UnicGuid::PairIterator cItt = parentels.EnumeratePairs (); cItt != NULL; ++cItt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 API_Guid parentguid = cItt->key;
     #else
                 API_Guid parentguid = *cItt->key;
@@ -966,7 +966,7 @@ namespace Roombook
         }
         OtdMaterialAreaDictByType &dct_to = dct_bytype.Get (otd.tip_otd);
         for (auto &cItt : dct) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             const OtdMaterialAreaDict dct_t = cItt.value;
             const TypeOtd typeotd = cItt.key;
     #else
@@ -974,7 +974,7 @@ namespace Roombook
             const TypeOtd typeotd = *cItt.key;
     #endif
             for (auto &cIt : dct_t) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 const double area = cIt.value;
                 const GS::UniString mat = cIt.key;
     #else
@@ -998,7 +998,7 @@ namespace Roombook
         GS::HashTable<GS::UniString, GS::Array<TypeOtd>> exsists_rawname; // словарь существующих свойств для типов
                                                                           // отделки
         for (auto &cItt : paramnamebytype) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             const GS::UniString rawname = cItt.value;
             const TypeOtd typeotd = cItt.key;
     #else
@@ -1017,7 +1017,7 @@ namespace Roombook
         }
 
         for (auto &cItt : exsists_rawname) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             GS::UniString rawname = cItt.key;
             GS::Array<TypeOtd> typeotd = cItt.value;
     #else
@@ -1042,7 +1042,7 @@ namespace Roombook
                         continue;
                     const OtdMaterialAreaDict &d = dct.Get (t);
                     for (auto &m : d) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                         const GS::UniString mat = m.key;
                         const double area = m.value;
     #else
@@ -1065,7 +1065,7 @@ namespace Roombook
                 // Сортировка по алфавиту
                 std::map<std::string, GS::UniString, doj::alphanum_less<std::string>> abc_material;
                 for (auto &cIt : dcta) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                     GS::UniString mat = cIt.key;
     #else
                     GS::UniString mat = *cIt.key;
@@ -1252,7 +1252,7 @@ namespace Roombook
                 // Получаем понятное имя покрытия (материала) из атрибутов проекта
                 API_Attribute attrib;
                 attrib.header.typeID = API_MaterialID;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 attrib.header.index = ACAPI_CreateAttributeIndex ((Int32)pgonComp.pgon.iumat);
     #else
                 attrib.header.index = (Int32)pgonComp.pgon.iumat;
@@ -1421,7 +1421,7 @@ namespace Roombook
         }
         OtdSlab otdslab;
         ConstructPolygon2DFromElementMemo (zonememo, otdslab.poly);
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         otdslab.material.material = zoneelement.zone.material.ToInt32_Deprecated ();
     #else
         otdslab.material.material = zoneelement.zone.material;
@@ -1443,12 +1443,12 @@ namespace Roombook
                 searchPars.loc.x = tedge.GetMidPoint ().x;
                 searchPars.loc.y = tedge.GetMidPoint ().y;
                 searchPars.z = roominfo.zBottom + roominfo.height;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+    #ifdef ServerMainVers_2600
                 searchPars.type.typeID = typeelem;
     #else
                 searchPars.typeID = typeelem;
     #endif
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 err = ACAPI_Element_SearchElementByCoord (&searchPars, &elGuid);
     #else
                 elGuid = APINULLGuid;
@@ -1490,7 +1490,7 @@ namespace Roombook
         // roominfo.niches = relData.niches;
         roominfo.zone_guid = zoneGuid;
         roominfo.isValid = flag;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         roominfo.om_zone.material = zoneelement.zone.material.ToInt32_Deprecated ();
     #else
         roominfo.om_zone.material = zoneelement.zone.material;
@@ -2200,7 +2200,7 @@ namespace Roombook
         if (zoneparams.IsEmpty ())
             return;
         for (const auto &p : zoneparams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             const ReadParam &param = p.value;
     #else
             const ReadParam &param = *p.value;
@@ -2281,7 +2281,7 @@ namespace Roombook
             return;
         ParamDictValue &propertyParams = PROPERTYCACHE ().property;
         for (auto &cItt : propertyParams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             ParamValue param = cItt.value;
     #else
             ParamValue param = *cItt.value;
@@ -2652,7 +2652,7 @@ namespace Roombook
         ParamDictValue &propertyParams = PROPERTYCACHE ().property;
         GS::Array<GS::UniString> valid_rawnames; // список проверенных имён параметров
         for (auto &p : zoneparams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             ReadParam &param = p.value;
             GS::UniString name = p.key;
     #else
@@ -2667,7 +2667,7 @@ namespace Roombook
                 } else {
                     bool flag_find = false;
                     for (auto &cItt : propertyParams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                         ParamValue &parameters = cItt.value;
     #else
                         ParamValue &parameters = *cItt.value;
@@ -2701,7 +2701,7 @@ namespace Roombook
         const auto *baseparam = paramToRead.GetPtr (elGuid);
 
         for (auto &p : zoneparams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             ReadParam &param = p.value;
     #else
             ReadParam &param = *p.value;
@@ -2738,13 +2738,13 @@ namespace Roombook
         } else {
             API_AttrTypeID type = API_MaterialID;
             API_AttributeIndex attribinx;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             attribinx = ACAPI_CreateAttributeIndex (val.intValue);
     #else
             attribinx = val.intValue;
     #endif
             API_AttributeIndexFindByName (val.uniStringValue, type, attribinx);
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             val.intValue = attribinx.ToInt32_Deprecated ();
     #else
             val.intValue = attribinx;
@@ -3227,7 +3227,7 @@ namespace Roombook
                 attrib.header.uniStringNamePtr = &attribname;
                 err = ACAPI_Attribute_Get (&attrib);
                 if (err == NoError) {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                     last.length = cutMaterial.ToInt32_Deprecated ();
     #else
                     last.length = cutMaterial;
@@ -3379,7 +3379,7 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Получение полигона зоны (в том числе стен, колонн)
     // -----------------------------------------------------------------------------
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
     void RoomReductionPolyProc (const API_RoomReductionPolyType *roomRed)
     #else
     static void __ACENV_CALL RoomRedProc (const API_RoomReductionPolyType *roomRed)
@@ -3447,7 +3447,7 @@ namespace Roombook
         RoomEdges rdges;
         reducededges = &rdges;
         GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Element_RoomReductions (&zoneelement.header.guid, RoomReductionPolyProc);
     #else
         err = ACAPI_Database (APIDb_RoomReductionsID, &zoneelement.header.guid, (void *)(GS::IntPtr)RoomRedProc);
@@ -3516,7 +3516,7 @@ namespace Roombook
                 continue;
             auto &elems = *elemsPtr;
             for (UnicElement::PairIterator cIt = elems.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 API_Guid guid = cIt->key;
                 const GS::Array<API_Guid> &zoneGuids_ = cIt->value;
     #else
@@ -3529,7 +3529,7 @@ namespace Roombook
                     zoneGuidsd.Add (zoneGuid, true);
                 }
                 for (UnicGuid::PairIterator cIt = zoneGuidsd.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                     const API_Guid &zoneGuid = cIt->key;
     #else
                     const API_Guid &zoneGuid = *cIt->key;
@@ -4026,7 +4026,7 @@ namespace Roombook
     void SetMaterialFinish (OtdMaterial &material, GS::Array<ParamValueComposite> &base_composite) {
         SetMaterialFinish_ByComposite (material, base_composite);
         ParamValueComposite p;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         p.inx = ACAPI_CreateAttributeIndex (material.material);
     #else
         p.inx = material.material;
@@ -4112,10 +4112,10 @@ namespace Roombook
         GSErrCode err = NoError;
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         GS::UniString UndoString = RSGetIndString (iseng, RoombookId, ACAPI_GetOwnResModule ());
-    #ifndef AC_22
+    #ifdef ServerMainVers_2300
         bool suspGrp = false;
         Int32 n_elem = 0;
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        #ifdef ServerMainVers_2700
         err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
         if (!suspGrp)
             ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
@@ -4137,13 +4137,13 @@ namespace Roombook
                 msg_rep ("RoomBook", "Obsolete finishing elements not found", NoError, APINULLGuid);
             }
             for (OtdRooms::PairIterator cIt = zoneelements.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 OtdRoom &otd = cIt->value;
     #else
             OtdRoom& otd = *cIt->value;
     #endif
                 nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
                 if (ACAPI_ProcessWindow_IsProcessCanceled ())
                     return NoError;
@@ -4224,12 +4224,12 @@ namespace Roombook
                 }
                 n_elem += group.GetSize ();
                 if (group.GetSize () > 1) {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                     err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
     #else
                 API_Guid groupGuid = APINULLGuid;
                 err = ACAPI_ElementGroup_Create (group, &groupGuid);
-        #ifndef AC_22
+        #ifdef ServerMainVers_2300
                 if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
         #endif
     #endif
@@ -4288,7 +4288,7 @@ namespace Roombook
             beammemo.beamSegments[0].assemblySegmentData.nominalWidth = edges.width;
             beammemo.beamSegments[0].assemblySegmentData.nominalHeight = edges.height;
 
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             // Материал горизонтального откоса: для AC_27+ структура API_BeamSegmentType содержит
             // bottomMaterial, leftMaterial, rightMaterial, topMaterial, endsMaterial (AC_29+ extrusionMaterial)
             beammemo.beamSegments[0].bottomMaterial.overridden = true;
@@ -4493,7 +4493,7 @@ namespace Roombook
         wallobjelement.object.angle = ang;
         wallobjelement.object.pos = edges.endC;
         wallobjelement.header.floorInd = edges.floorInd;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
         wallobjelement.object.mat = ematerial;
     #else
@@ -4560,7 +4560,7 @@ namespace Roombook
         wallelement.wall.height = edges.height;
         wallelement.header.floorInd = edges.floorInd;
         wallelement.wall.bottomOffset = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
         wallelement.wall.refMat.hasValue = true;
         wallelement.wall.sidMat.hasValue = true;
@@ -4605,7 +4605,7 @@ namespace Roombook
         wallelement.wall.zoneRel = APIZRel_None;
         wallelement.wall.referenceLineLocation = APIWallRefLine_Inside;
         wallelement.wall.flipped = false;
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2600
     #else
         wallelement.wall.refMat.overridden = true;
         wallelement.wall.oppMat.overridden = true;
@@ -4758,7 +4758,7 @@ namespace Roombook
         }
         slabelement.header.floorInd = otdslab.floorInd;
         slabelement.slab.level = GetOffsetFromStory (otdslab.zBottom, otdslab.floorInd, storyLevels);
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (otdslab.material.material);
         slabelement.slab.topMat.value = ematerial;
         slabelement.slab.sideMat.value = ematerial;
@@ -4771,13 +4771,13 @@ namespace Roombook
         slabelement.slab.sideMat.overridden = true;
     #endif
         if (otdslab.type == Ceil) {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             slabelement.slab.botMat.hasValue = true;
     #else
             slabelement.slab.botMat.overridden = true;
     #endif
         } else {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             slabelement.slab.topMat.hasValue = true;
     #else
             slabelement.slab.topMat.overridden = true;
@@ -5013,7 +5013,7 @@ namespace Roombook
         }
         slabelement.slab.offsetFromTop = 0;
         slabelement.slab.materialsChained = true;
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2600
     #else
         slabelement.slab.sideMat.overridden = true;
         slabelement.slab.topMat.overridden = true;
@@ -5157,7 +5157,7 @@ namespace Roombook
                  systemdict.EnumeratePairs ();
              cIt != NULL;
              ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             GS::UniString system = cIt->key;
             ClassificationFunc::ClassificationDict &classes = cIt->value;
     #else
@@ -5168,7 +5168,7 @@ namespace Roombook
                      classes.EnumeratePairs ();
                  cIt != NULL;
                  ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 GS::UniString clasname = cIt->key;
                 ClassificationFunc::ClassificationValues &clas = cIt->value;
     #else
@@ -5231,7 +5231,7 @@ namespace Roombook
                 continue;
             for (UnicElement::PairIterator cIt = subelementByparent.Get (typeelem).EnumeratePairs (); cIt != NULL;
                  ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 API_Guid guid = cIt->key;
                 const GS::Array<API_Guid> &subguids = cIt->value;
     #else
@@ -5240,7 +5240,7 @@ namespace Roombook
     #endif
 
                 nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
                 if (ACAPI_ProcessWindow_IsProcessCanceled ())
                     return;
@@ -5270,7 +5270,7 @@ namespace Roombook
             funcname = GS::UniString::Printf ("Write GUID base and GUID zone to %d finishing element(s)",
                                               paramToWrite.GetSize ());
             nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
                 return;
@@ -5280,7 +5280,7 @@ namespace Roombook
                 return;
     #endif
             bool suspGrp = false;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             ACAPI_View_IsSuspendGroupOn (&suspGrp);
             if (!suspGrp)
                 ACAPI_Grouping_Tool (syncguids, APITool_SuspendGroups, nullptr);
@@ -5298,7 +5298,7 @@ namespace Roombook
             return;
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
         nPhase += 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
         if (ACAPI_ProcessWindow_IsProcessCanceled ())
             return;
@@ -5307,7 +5307,7 @@ namespace Roombook
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
             return;
     #endif
-        SyncSettings syncSettings (false, false, true, true, true, true, false);
+        SyncSettings syncSettings (false, false, true, true, true, true, false, false);
         LoadSyncSettingsFromPreferences (syncSettings);
         GS::Array<API_Guid> rereadelem = SyncArray (syncSettings, syncguids);
         if (!rereadelem.IsEmpty ()) {
@@ -5663,7 +5663,7 @@ namespace Roombook
             return false;
         const ParamDictValue &propertyParams = PROPERTYCACHE ().property;
         for (const auto &cItt : propertyParams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             const ParamValue &param = cItt.value;
     #else
             const ParamValue &param = *cItt.value;
@@ -5676,7 +5676,7 @@ namespace Roombook
             }
         }
         for (GS::HashTable<API_Guid, bool>::PairIterator cIt = finclassguids.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             bool msg = cIt->value;
     #else
             bool msg = *cIt->value;
@@ -5692,7 +5692,7 @@ namespace Roombook
         // Проверка наличия свойств `Sync_GUID base`
         bool find = false;
         for (const auto &cItt : propertyParams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             const ParamValue &param = cItt.value;
     #else
             const ParamValue &param = *cItt.value;

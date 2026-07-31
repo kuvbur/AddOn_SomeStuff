@@ -2,7 +2,8 @@
 #pragma once
 #ifndef MEPV1_HPP
     #define MEPV1_HPP
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #include "ACAPinc.h"
+    #ifdef ServerMainVers_2700
         #include "ACAPI/MEPAdapter.hpp"
         #include "ACAPI/MEPElement.hpp"
         #include "ACAPI/MEPModifiableElement.hpp"
@@ -22,7 +23,7 @@
         #include "Definitions.hpp"
         #include "Helpers.hpp"
         #include "Propertycache.hpp"
-        #if defined(AC_29)
+        #ifdef ServerMainVers_2900
             #include "ACAPI/MEPElbow.hpp"
             #include "ACAPI/MEPElbowDefault.hpp"
             #include "ACAPI/MEPPhysicalSystem.hpp"
@@ -43,13 +44,13 @@
         #include "ACAPI/MEPUniqueID.hpp"
         #include "GSUnID.hpp"
 
-        #if defined(AC_27)
+        #ifdef ServerMainVers_2700
             #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
             #include "ACAPI/MEPDuctPreferenceTableContainer.hpp"
             #include "ACAPI/MEPPipePreferenceTableContainer.hpp"
             #include "ACAPI/MEPPreferenceTableBase.hpp"
         #endif
-        #if defined(AC_28) || defined(AC_29)
+        #ifdef ServerMainVers_2800
             #include "ACAPI/MEPCableCarrierSegmentPreferenceTable.hpp"
             #include "ACAPI/MEPCableCarrierSegmentPreferenceTableContainer.hpp"
             #include "ACAPI/MEPDuctBranchPreferenceTable.hpp"
@@ -109,7 +110,7 @@ namespace MEPv1 {
 
     // Очищает кэш подэлементов, чтобы повторно построить связи по свежим данным.
     void ClearRoutingSubelemCache ();
-        #if defined(AC_28) || defined(AC_29)
+        #ifdef ServerMainVers_2800
     bool GetMEPData (const API_Elem_Head &elem_head, ParamDictValue &paramByType);
     bool ReadTransitionData (const API_Guid &guid,
                              bool &flag,

@@ -1,14 +1,15 @@
 //------------ kuvbur 2022 ------------
-#include "api_headers/APIEnvir.h"
-
 #include "ACAPinc.h"
 
-#include "Spec.hpp"
+#include "api_headers/APIEnvir.h"
+
+#include "spec/Spec.hpp"
+
 #include "Sync.hpp"
 #ifdef TESTING
     #include "TestFunc.hpp"
 #endif
-#include "DG4rule.hpp"
+#include "dialogs/DG4rule.hpp"
 #include "Propertycache.hpp"
 
 namespace Spec {
@@ -38,7 +39,7 @@ namespace Spec {
 #else
         GSErrCode error = NoError;
         GS::Array<API_PropertyDefinition> definitions = {};
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+    #ifdef ServerMainVers_2600
         error = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (
             API_ObjectID, API_PropertyDefinitionFilter_UserDefined, definitions);
     #else
@@ -63,7 +64,7 @@ namespace Spec {
         bool has_element = false;
         ParamDict error_name = {};
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             SpecRule &rule = cIt->value;
     #else
             SpecRule &rule = *cIt->value;
@@ -83,7 +84,7 @@ namespace Spec {
                         msg_rep ("Spec", "ACAPI_Element_GetPropertyValue", error, elemGuid);
                         continue;
                     }
-    #if defined(AC_22) || defined(AC_23)
+    #ifndef ServerMainVers_2400
                     if (!propertyflag.isEvaluated) {
                         flagfindspec = true;
                     }
@@ -121,7 +122,7 @@ namespace Spec {
             GS::UniString SpecRuleNotFoundString = RSGetIndString (iseng, SpecFlagOff, ACAPI_GetOwnResModule ());
             if (!error_name.IsEmpty ()) {
                 for (auto &cIt : error_name) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                     GS::UniString s = cIt.key;
     #else
                     GS::UniString s = *cIt.key;
@@ -139,7 +140,7 @@ namespace Spec {
     GSErrCode SpecAll (const SyncSettings &syncSettings) {
         GSErrCode err = NoError;
         API_DatabaseInfo homedatabaseInfo = {};
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         err = ACAPI_Database_GetCurrentDatabase (&homedatabaseInfo);
 #else
         err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &homedatabaseInfo, nullptr);
@@ -309,7 +310,7 @@ namespace Spec {
         if (homedatabaseInfo.databaseUnId.elemSetId == APINULLGuid)
             return;
         API_DatabaseInfo elementdatabaseInfo = {};
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         err = ACAPI_Database_GetContainingDatabase (&elemguid, &elementdatabaseInfo);
 #else
         err = ACAPI_Database (APIDb_GetContainingDatabaseID, &elemguid, &elementdatabaseInfo);
@@ -406,7 +407,7 @@ namespace Spec {
             if (elementType == API_ChangeMarkerID)
                 continue;
             BNZeroMemory (&elementdatabaseInfo, sizeof (API_DatabaseInfo));
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             err = ACAPI_Database_GetContainingDatabase (&elemguid, &elementdatabaseInfo);
 #else
             err = ACAPI_Database (APIDb_GetContainingDatabaseID, &elemguid, &elementdatabaseInfo);
@@ -450,7 +451,7 @@ namespace Spec {
         RuleSelectData rules = {};
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = spec_rules.EnumeratePairs (); cIt != NULL;
              ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             const SpecRule &rule = cIt->value;
 #else
             const SpecRule &rule = *cIt->value;
@@ -472,7 +473,7 @@ namespace Spec {
         bool has_true_state = false;
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = spec_rules.EnumeratePairs (); cIt != NULL;
              ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             SpecRule &rule = cIt->value;
 #else
             SpecRule &rule = *cIt->value;
@@ -538,13 +539,13 @@ namespace Spec {
         ParamDict error_name = {};              // Список имён, не найденных у избранного
         GS::HashTable<GS::UniString, GS::HashTable<GS::UniString, GS::UniString>> paramdict_favorite =
             {}; // Словарь с именами параметров и описаниями свойств избранных элементов
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         bool showPercent = true;
 #endif
         ProcessWindowGuard pwGuard (funcname, nPhase);
         GSErrCode err = NoError;
         subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         maxval = 2;
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
@@ -570,7 +571,7 @@ namespace Spec {
         }
         // Теперь пройдём по правилам и соберём все нужные параметры для чтения из исходных элементов.
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             SpecRule &rule = cIt->value;
 #else
             SpecRule &rule = *cIt->value;
@@ -596,7 +597,7 @@ namespace Spec {
             return APIERR_GENERAL;
         }
         subtitle = GS::UniString::Printf ("Reading parameters from %d elements", paramToRead.GetSize ());
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         maxval = 2;
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
@@ -605,7 +606,7 @@ namespace Spec {
 #endif
         // Читаем свойства избранного
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             SpecRule &rule = cIt->value;
 #else
             SpecRule &rule = *cIt->value;
@@ -639,7 +640,7 @@ namespace Spec {
             GS::HashTable<GS::UniString, GS::UniString> &rule_favorite_name =
                 paramdict_favorite.Get (rule.favorite_name);
             for (const auto &cItt : rule_favorite_name) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                 const GS::UniString rawname = cItt.key;
                 const GS::UniString description = cItt.value;
 #else
@@ -728,7 +729,7 @@ namespace Spec {
         if (!error_name.IsEmpty ()) {
             GS::UniString out = ":\n";
             for (auto &cIt : error_name) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                 GS::UniString s = cIt.key;
 #else
                 GS::UniString s = *cIt.key;
@@ -757,7 +758,7 @@ namespace Spec {
         Int32 n_elements = 0; // Количество создаваемых элементов для отчёта
         bool has_v2 = false;
         for (GS::HashTable<GS::UniString, SpecRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             SpecRule &rule = cIt->value;
 #else
             SpecRule &rule = *cIt->value;
@@ -781,13 +782,13 @@ namespace Spec {
             if (rule.delete_old)
                 has_v2 = true;
         }
-#ifndef AC_22
+#ifdef ServerMainVers_2300
         if (!error_element.IsEmpty ()) {
             if (error_element.GetSize () < 20) {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 ACAPI_UserInput_ClearElementHighlight ();
     #else
-        #if defined(AC_26)
+        #ifdef ServerMainVers_2600
                 ACAPI_Interface_ClearElementHighlight ();
         #else
                 ACAPI_Interface (APIIo_HighlightElementsID);
@@ -797,7 +798,7 @@ namespace Spec {
                 API_RGBAColor hlColor = {1, 0.0, 0.0, 1};
                 GS::Array<API_Neig> error_elements = {};
                 for (const auto &cIt : error_element) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                     API_Guid el = cIt.key;
     #else
                     API_Guid el = *cIt.key;
@@ -805,16 +806,16 @@ namespace Spec {
                     hlElems.Add (el, hlColor);
                     error_elements.PushNew (el);
                 }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 ACAPI_UserInput_SetElementHighlight (hlElems);
     #else
-        #if defined(AC_26)
+        #ifdef ServerMainVers_2600
                 ACAPI_Interface_SetElementHighlight (hlElems);
         #else
                 ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
         #endif
     #endif
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 err = ACAPI_Selection_Select (error_elements, true);
                 if (err == NoError)
                     ACAPI_View_ZoomToSelected ();
@@ -833,10 +834,10 @@ namespace Spec {
         }
 #endif
         if (!elements_mod.IsEmpty ()) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             ACAPI_UserInput_ClearElementHighlight ();
 #else
-    #if defined(AC_26)
+    #ifdef ServerMainVers_2600
             ACAPI_Interface_ClearElementHighlight ();
     #else
             ACAPI_Interface (APIIo_HighlightElementsID);
@@ -846,7 +847,7 @@ namespace Spec {
             API_RGBAColor hlColor = {0.8, 0.0, 0.0, 0.5};
             for (const auto &eldict : elements_mod) {
                 for (auto &cIt : eldict) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                     Element el = cIt.value;
 #else
                     Element el = *cIt.value;
@@ -906,10 +907,10 @@ namespace Spec {
                     paramOut.Add (el.exs_guid, param);
                 }
             }
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             ACAPI_UserInput_SetElementHighlight (hlElems);
 #else
-    #if defined(AC_26)
+    #ifdef ServerMainVers_2600
             ACAPI_Interface_SetElementHighlight (hlElems);
     #else
             ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
@@ -917,7 +918,7 @@ namespace Spec {
 #endif
         }
         subtitle = GS::UniString::Printf ("Create %d elements", n_elements);
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         maxval = 3;
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
@@ -945,8 +946,8 @@ namespace Spec {
         }
         ACAPI_CallUndoableCommand ("Writing properties to created spec elements", [&] () -> GSErrCode {
             bool suspGrp = false;
-#ifndef AC_22
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2300
+    #ifdef ServerMainVers_2700
             err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
             if (!suspGrp)
                 ACAPI_Grouping_Tool (elements_delete, APITool_SuspendGroups, nullptr);
@@ -991,7 +992,7 @@ namespace Spec {
         }
 
         for (ParamDictElement::PairIterator cIt = paramOut.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             API_Guid elemGuid = cIt->key;
 #else
             API_Guid elemGuid = *cIt->key;
@@ -1043,7 +1044,7 @@ namespace Spec {
             // TODO Вынести это в отдельную функцию, убрать повторение в GetElemState
             API_Property propertyflag = {};
             if (ACAPI_Element_GetPropertyValue (elemguid, definitions[i].guid, propertyflag) == NoError) {
-#if defined(AC_22) || defined(AC_23)
+#ifndef ServerMainVers_2400
                 if (!propertyflag.isEvaluated) {
                     flagfindspec = true;
                 }
@@ -1204,7 +1205,7 @@ namespace Spec {
         }
         ParamDictValue paramDict = {}; // Словарь параметров для чтения для одного элемента
         for (const auto &cItt : params) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             const GS::UniString rawname = cItt.key;
 #else
             const GS::UniString rawname = *cItt.key;
@@ -1264,7 +1265,7 @@ namespace Spec {
         // Добавляем параметры для каждого элемента
         if (!paramswrite.IsEmpty ()) {
             for (const auto &cItt : paramswrite) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                 const GS::UniString rawname = cItt.key;
 #else
                 const GS::UniString rawname = *cItt.key;
@@ -1603,7 +1604,7 @@ namespace Spec {
                 ACAPI_WriteReport (SpecNotFoundParametersString, true);
                 GS::UniString out = "Not found param:";
                 for (auto &cIt : not_found_paramname) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                     GS::UniString s = cIt.key;
 #else
                     GS::UniString s = *cIt.key;
@@ -1624,7 +1625,7 @@ namespace Spec {
                 ACAPI_WriteReport (SpecNotFoundParametersString, true);
                 GS::UniString out = "Not found unic:";
                 for (auto &cIt : not_found_unic) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                     GS::UniString s = cIt.key;
 #else
                     GS::UniString s = *cIt.key;
@@ -2155,7 +2156,7 @@ namespace Spec {
         GSErrCode err = NoError;
         API_Element element = {};
         API_ElementMemo memo = {};
-#ifndef AC_22
+#ifdef ServerMainVers_2300
         if (!favorite_name.IsEmpty ()) {
             API_Favorite favorite (favorite_name);
             favorite.memo.New ();
@@ -2224,7 +2225,7 @@ namespace Spec {
         }
         ACAPI_DisposeElemMemoHdls (&memo);
         GS::Array<API_PropertyDefinition> definitions = {};
-#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+#ifdef ServerMainVers_2600
         err = ACAPI_Element_GetPropertyDefinitionsOfDefaultElem (
             element.header.type, API_PropertyDefinitionFilter_UserDefined, definitions);
 #else
@@ -2262,7 +2263,7 @@ namespace Spec {
     // --------------------------------------------------------------------
     GSErrCode GetElementForPlace (const GS::UniString &favorite_name, API_Element &element, API_ElementMemo &memo) {
         GSErrCode err = NoError;
-#ifndef AC_22
+#ifdef ServerMainVers_2300
         if (!favorite_name.IsEmpty ()) {
             API_Favorite favorite (favorite_name);
             favorite.memo.New ();
@@ -2396,7 +2397,7 @@ namespace Spec {
         double dx = 0;
         double dy = 0;
         API_StoryInfo storyInfo = {};
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
 #else
         err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);
@@ -2413,7 +2414,7 @@ namespace Spec {
             for (UInt32 i = 0; i < elementstocreate.GetSize (); i++) {
                 GS::Array<API_Guid> group = {};
                 for (auto &cIt : elementstocreate[i]) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                     Element el = cIt.value;
 #else
                 Element el = *cIt.value;
@@ -2529,7 +2530,7 @@ namespace Spec {
                                                 .Get ());
                                 break;
                             default:
-#ifndef AC_22
+#ifdef ServerMainVers_2300
                             case APIParT_Dictionary:
 #endif
                                 break;
@@ -2562,13 +2563,13 @@ namespace Spec {
                 pos.y += 2 * dy;
                 if (group.GetSize () > 1) {
                     API_Guid groupGuid = APINULLGuid;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
                     err = ACAPI_Grouping_CreateGroup (group, &groupGuid);
                     if (err != NoError)
                         err = ACAPI_Grouping_Tool (group, APITool_Group, nullptr);
 #else
                 err = ACAPI_ElementGroup_Create (group, &groupGuid);
-    #ifndef AC_22
+    #ifdef ServerMainVers_2300
                 if (err != NoError) err = ACAPI_Element_Tool (group, APITool_Group, nullptr);
     #endif
 #endif
@@ -2579,7 +2580,7 @@ namespace Spec {
             return NoError;
         });
         for (UInt32 i = 0; i < elemsheader.GetSize (); i++) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             err = ACAPI_LibraryManagement_RunGDLParScript (&elemsheader[i], 0);
 #else
             err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &elemsheader[i], 0);

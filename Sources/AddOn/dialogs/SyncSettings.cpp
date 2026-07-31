@@ -5,17 +5,17 @@
 
 #include "SyncSettings.hpp"
 
-static const Int32 PreferencesVersion = 3;
+static const Int32 PreferencesVersion = 4;
 
 GS::ClassInfo SyncSettings::classInfo ("SyncSettings",
                                        GS::Guid ("B45089A9-B372-460B-B145-80E6EBF107C3"),
                                        GS::ClassVersion (1, 0));
 
-SyncSettings::SyncSettings () : SyncSettings (false, false, true, true, true, true, false) {}
+SyncSettings::SyncSettings () : SyncSettings (false, false, true, true, true, true, false, false) {}
 
-SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon)
+SyncSettings::SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon, bool showpalette)
     : syncAll (syncAll), syncMon (syncMon), wallS (wallS), widoS (widoS), objS (objS), cwallS (cwallS),
-      logMon (logMon) {}
+      logMon (logMon), showpalette(showpalette) {}
 
 GSErrCode SyncSettings::Read (GS::IChannel &ic) {
     GS::InputFrame frame (ic, classInfo);
@@ -26,6 +26,7 @@ GSErrCode SyncSettings::Read (GS::IChannel &ic) {
     ic.Read (objS);
     ic.Read (cwallS);
     ic.Read (logMon);
+    ic.Read (showpalette);
     return ic.GetInputStatus ();
 }
 
@@ -38,6 +39,7 @@ GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
     oc.Write (objS);
     oc.Write (cwallS);
     oc.Write (logMon);
+    oc.Write (showpalette);
     return oc.GetOutputStatus ();
 }
 

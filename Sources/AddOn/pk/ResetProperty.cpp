@@ -1,17 +1,18 @@
 //------------ kuvbur 2022 ------------
+#include "ACAPinc.h"
+
 #include "api_headers/APIEnvir.h"
 
-#include "ACAPinc.h"
+#include "pk/ResetProperty.hpp"
 
 #include "Helpers.hpp"
 #include "Propertycache.hpp"
-#include "ResetProperty.hpp"
 
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств
 //--------------------------------------------------------------------------------------------------------------------------
 bool ResetProperty () {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     return false;
 #endif
     if (!ParamHelpers::isPropertyDefinitionRead ())
@@ -19,7 +20,7 @@ bool ResetProperty () {
     ParamDictValue &propertyParams = PROPERTYCACHE ().property;
     GS::Array<API_PropertyDefinition> definitions_to_reset;
     for (ParamDictValue::PairIterator cIt = propertyParams.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         ParamValue &param = cIt->value;
 #else
         ParamValue &param = *cIt->value;
@@ -45,7 +46,7 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition> &def
 
 // Сейчас будем переключаться между БД
 // Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_Navigator_GetCurrLayerComb (&layerCombIndex);
 #else
     err = ACAPI_Environment (APIEnv_GetCurrLayerCombID, &layerCombIndex);
@@ -81,7 +82,7 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition> &def
         flag_reset =
             flag_reset + ResetElementsInDB (
                              APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
 // err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
 #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &commandID, nullptr);
@@ -89,7 +90,7 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition> &def
         if (err != NoError) {
             msg_rep ("ResetPropertyElement2Defult", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
         }
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (err == NoError) {
             err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex);
         }
@@ -123,7 +124,7 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID,
 
     // Если чистим элементы в текущей БД - переключаться не нужно
     if (commandID == APIDb_GetCurrentDatabaseID) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (layerCombIndex.IsPositive ())
             err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex); // Устанавливаем комбинацию слоёв
 #else
@@ -148,7 +149,7 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID,
         return flag_reset;
     }
     GS::Array<API_DatabaseUnId> dbases;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     switch (commandID) {
     case APIDb_GetElevationDatabasesID:
         err = ACAPI_Database_GetElevationDatabases (nullptr, &dbases);
@@ -183,7 +184,7 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID,
         for (const auto &dbUnId : dbases) {
             API_DatabaseInfo dbPars = {};
             dbPars.databaseUnId = dbUnId;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             err = ACAPI_Window_GetDatabaseInfo (&dbPars);
 #else
             err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbPars);
@@ -191,7 +192,7 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID,
             if (err != NoError)
                 msg_rep ("ResetElementsInDB", "APIDb_GetDatabaseInfoID", err, APINULLGuid);
             if (err == NoError) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
                 err = ACAPI_Database_ChangeCurrentDatabase (&dbPars);
 #else
                 err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbPars, nullptr);
@@ -199,7 +200,7 @@ UInt32 ResetElementsInDB (const API_DatabaseID commandID,
                 if (err != NoError)
                     msg_rep ("ResetElementsInDB", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
                 if (err == NoError) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
                     if (layerCombIndex.IsPositive ())
                         err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex); // Устанавливаем комбинацию слоёв
 #else
@@ -353,7 +354,7 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId,
     GSErrCode err = NoError;
     GS::Array<API_Property> properties;
     GS::Array<API_Property> properties_to_reset;
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
     API_ElemType type;
     type.typeID = typeId;
     type.variationID = static_cast<API_ElemVariationID> (variationID);
@@ -376,7 +377,7 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId,
             }
         }
         if (properties_to_reset.GetSize () > 0) {
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
             err = ACAPI_Element_SetPropertiesOfDefaultElem (type, properties);
 #else
             err = ACAPI_Element_SetPropertiesOfDefaultElem (

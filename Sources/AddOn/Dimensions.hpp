@@ -3,8 +3,8 @@
 #ifndef DIM_HPP
     #define DIM_HPP
     #include "DG.h"
+    #include "dialogs/SyncSettings.hpp"
     #include "Helpers.hpp"
-    #include "SyncSettings.hpp"
 
 // Модуль округления размеров: правила форматирования, обработка текста размеров и привязка к типам элементов.
 // Обрабатывает один элемент и применяет к его размерам правила округления.
@@ -20,7 +20,7 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
 // Обрабатывает размер и решает - что с ним делать
 //	flag_change - менять текст размера, сбросить или не менять (DIM_CHANGE_ON, DIM_CHANGE_OFF, DIM_NOCHANGE)
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON, DIM_HIGHLIGHT_OFF,
-//DIM_NOCHANGE)
+// DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
 // Разбирает значение размера и формирует текст с учётом правил округления и форматирования.
 bool DimParse (const double &dimVal,

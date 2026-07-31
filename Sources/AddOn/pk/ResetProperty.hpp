@@ -8,15 +8,15 @@
     #ifdef AC_26
         #include "api_headers/APICommon26.h"
     #endif // AC_26
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         #include "api_headers/APICommon27.h"
     #endif // AC_27
     #ifdef AC_28
         #include "api_headers/APICommon28.h"
     #endif // AC_28
+    #include "CommonFunction.hpp"
     #include "DG.h"
-    #include "SyncSettings.hpp"
-
+    #include "dialogs/SyncSettings.hpp"
 // Модуль сброса пользовательских свойств к значениям по умолчанию или к базовым значениям элемента.
 //--------------------------------------------------------------------------------------------------------------------------
 // Сброс свойств

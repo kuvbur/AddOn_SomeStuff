@@ -71,7 +71,7 @@ IncludeCategories:
 
   # Сторонние библиотеки
   - Regex: '^"third_party/.*"'
-    Priority: -1
+    Priority: 1
 
   # Всё остальное
   - Regex: '.*'

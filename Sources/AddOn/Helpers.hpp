@@ -2,12 +2,14 @@
 #pragma once
 #ifndef HELPERS_HPP
     #define HELPERS_HPP
+    #include "ACAPinc.h"
+
     #include "basicgeometry.h"
     #include "ClassificationFunction.hpp"
     #include "CommonFunction.hpp"
-    #include "Spec_libpart.hpp"
+    #include "dialogs/SyncSettings.hpp"
+    #include "spec/Spec_libpart.hpp"
     #include "StringConversion.hpp"
-    #include "SyncSettings.hpp"
 
 struct SortGUID {
     GS::Array<API_Guid> guid = {};
@@ -439,7 +441,7 @@ namespace ParamHelpers {
     // -----------------------------------------------------------------------------
     // Получение значения IFC свойств в ParamDictValue
     // -----------------------------------------------------------------------------
-    #if !defined(AC_29)
+    #ifndef ServerMainVers_2900
     bool ReadIFC (const API_Guid &elemGuid, ParamDictValue &params);
     #endif
     // -----------------------------------------------------------------------------
@@ -600,13 +602,13 @@ namespace ParamHelpers {
     // -----------------------------------------------------------------------------
     // Конвертация API_IFCProperty в ParamValue
     // -----------------------------------------------------------------------------
-    #if !defined(AC_29)
+    #ifndef ServerMainVers_2900
     bool ConvertToParamValue (ParamValue &pvalue, const API_IFCProperty &property);
     #endif // !AC_29
 
     void ConvertByFormatString (ParamValue &pvalue);
 
-    #if !defined(AC_27) && !defined(AC_28) && !defined(AC_29)
+    #ifndef ServerMainVers_2700
     inline GSErrCode ACAPI_Attribute_GetAttributesByType (API_AttrTypeID typeID, GS::Array<API_Attribute> &attributes) {
         API_AttributeIndex count;
         GSErrCode err = ACAPI_Attribute_GetNum (typeID, &count);
@@ -770,7 +772,7 @@ bool operator== (const API_ListVariant &lhs, const API_ListVariant &rhs);
 
 bool operator== (const API_SingleEnumerationVariant &lhs, const API_SingleEnumerationVariant &rhs);
 
-    #if defined(AC_24)
+    #ifndef ServerMainVers_2500
 bool operator== (const API_MultipleEnumerationVariant &lhs, const API_MultipleEnumerationVariant &rhs);
     #endif
 

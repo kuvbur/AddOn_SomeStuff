@@ -4,7 +4,7 @@
     #define PROPERTYCACHE_HPP
     #include "Helpers.hpp"
 
-    #if defined(AC_29)
+    #ifdef ServerMainVers_2900
         #include <ACAPI/MEPEnums.hpp>
 
         #include "ACAPI/MEPAdapter.hpp"
@@ -56,7 +56,7 @@ namespace ParamHelpers {
 
     GS::UniString GetGDLRawName (const GS::UniString &name);
 
-    #if defined(AC_29)
+    #ifdef ServerMainVers_2900
     bool isMEPRead ();
 
     bool GetMEPSystemGroup (MEPDicts &mepdict);
@@ -181,7 +181,7 @@ struct PropertyCache {
     bool isFormatStringFormeasureTypeRead;
     bool isFormatStringFormeasureType_OK;
 
-    #if defined(AC_29)
+    #ifdef ServerMainVers_2900
     MEPDicts mepdict;
     bool isMEP_OK;       // Успешно прочитан
     bool isMEPRead_full; // Был запрошен
@@ -237,13 +237,13 @@ struct PropertyCache {
 
         hasLayerNameInDimRules = false;
 
-    #if defined(AC_29)
+    #ifdef ServerMainVers_2900
         mepdict.Clear ();
         isMEP_OK = false;
         isMEPRead_full = false;
     #endif
     }
-    #if defined(AC_29)
+    #ifdef ServerMainVers_2900
     void ReadMEP () {
         isMEPRead_full = true;
         isMEP_OK = ParamHelpers::GetMEPSystemGroup (mepdict);
@@ -253,7 +253,7 @@ struct PropertyCache {
     void ReadisEng () {
         GSErrCode err = NoError;
         API_ServerApplicationInfo AppInfo = {};
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_AddOnIdentification_Application (&AppInfo);
     #else
         err = ACAPI_Environment (APIEnv_ApplicationID, &AppInfo);
@@ -317,7 +317,7 @@ struct PropertyCache {
         ReadAttribute ();
         ReadInfo ();
         ReadFileFromDefinition ();
-    #if defined(AC_29)
+    #ifdef ServerMainVers_2900
         ReadMEP ();
     #endif
     #if defined(TESTING)
@@ -336,7 +336,7 @@ struct PropertyCache {
         isFormatStringFormeasureTypeRead = true;
         // Получаем данные об округлении и типе расчёта
         API_CalcUnitPrefs unitPrefs1 = {};
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         GSErrCode err = ACAPI_ProjectSetting_GetPreferences (&unitPrefs1, APIPrefs_CalcUnitsID);
     #else
         GSErrCode err = ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs1, (void *)APIPrefs_CalcUnitsID);
@@ -346,7 +346,7 @@ struct PropertyCache {
             return;
         }
         API_WorkingUnitPrefs unitPrefs = {};
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_ProjectSetting_GetPreferences (&unitPrefs, APIPrefs_WorkingUnitsID);
     #else
         err = ACAPI_Environment (APIEnv_GetPreferencesID, &unitPrefs, (void *)APIPrefs_WorkingUnitsID);
@@ -422,7 +422,7 @@ struct PropertyCache {
     }
 
     void ReadSurveyPointTransformation () {
-    #if defined(AC_22) || defined(AC_23) || defined(AC_24)
+    #ifndef ServerMainVers_2500
         isSurveyPointTransformationRead = true;
         isSurveyPointTransformation_OK = false;
         return;
@@ -432,7 +432,7 @@ struct PropertyCache {
         #endif
         isSurveyPointTransformationRead = true;
         GSErrCode err = NoError;
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        #ifdef ServerMainVers_2700
         err = ACAPI_SurveyPoint_GetSurveyPointTransformation (&surv_point_tm);
         #else
         err = ACAPI_Environment (APIEnv_GetSurveyPointTransformationID, &surv_point_tm);
@@ -548,7 +548,7 @@ struct PropertyCache {
             return;
         GS::Array<GS::UniString> loopScratch;
         for (const auto &cIt : property) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             const ParamValue &param = cIt.value;
     #else
             const ParamValue &param = *cIt.value;
@@ -587,7 +587,7 @@ struct PropertyCache {
             isClassification_OK = false;
         if (isClassification_OK) {
             for (ClassificationFunc::SystemDict::PairIterator cIt = systemdict.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                 ClassificationFunc::ClassificationDict &cd = cIt->value;
                 GS::UniString systemname = cIt->key;
     #else
@@ -606,7 +606,7 @@ struct PropertyCache {
                 }
                 for (ClassificationFunc::ClassificationDict::PairIterator cItt = cd.EnumeratePairs (); cItt != NULL;
                      ++cItt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
                     ClassificationFunc::ClassificationValues &cl = cItt->value;
                     GS::UniString classname = cItt->key;
     #else

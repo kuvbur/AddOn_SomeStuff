@@ -216,7 +216,7 @@ typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 // Автоматически открывает и закрывает процесс-окно, чтобы не оставлять его в случае исключения.
 struct ProcessWindowGuard {
     ProcessWindowGuard (GS::UniString &name, GS::Int32 &phase) {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_InitProcessWindow (&name, &phase);
     #else
         ACAPI_Interface (APIIo_InitProcessWindowID, &name, &phase);
@@ -224,7 +224,7 @@ struct ProcessWindowGuard {
     }
 
     ~ProcessWindowGuard () {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_CloseProcessWindow ();
     #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -310,7 +310,7 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID (const API_Guid &elemGuid, API_ElemTypeID &elementType);
 
-    #if defined AC_26 || defined AC_27 || defined AC_28
+#ifdef ServerMainVers_2600
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------

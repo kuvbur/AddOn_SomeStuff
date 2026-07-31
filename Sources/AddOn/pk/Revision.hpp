@@ -2,15 +2,6 @@
 #pragma once
 #if !defined(REVISION_HPP)
     #define REVISION_HPP
-    #ifdef AC_25
-        #include "api_headers/APICommon25.h"
-    #endif // AC_25
-    #ifdef AC_26
-        #include "api_headers/APICommon26.h"
-    #endif // AC_26
-    #ifdef AC_27
-        #include "api_headers/APICommon27.h"
-    #endif // AC_27
     #include "DG.h"
     #include "Helpers.hpp"
 

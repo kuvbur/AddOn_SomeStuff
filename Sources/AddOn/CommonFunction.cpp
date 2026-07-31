@@ -95,7 +95,7 @@ GS::UniString GetDBName (API_DatabaseInfo &databaseInfo) {
 Stories GetStories () {
     Stories stories;
     API_StoryInfo storyInfo = {};
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     GSErrCode err = ACAPI_ProjectSetting_GetStorySettings (&storyInfo);
 #else
     GSErrCode err = ACAPI_Environment (APIEnv_GetStorySettingsID, &storyInfo, nullptr);
@@ -550,7 +550,7 @@ void msg_rep (const GS::UniString &modulename,
         case APIERR_NOACCESSRIGHT:
             error_type = "Can’t access / create / modify / delete an item in a teamwork server.";
             break;
-#if defined(AC_22) || defined(AC_23)
+#ifndef ServerMainVers_2400
         case APIERR_BADPROPERTYFORELEM:
             error_type = "The property for the passed element or attribute is not available.";
             break;
@@ -685,10 +685,10 @@ void msg_rep (const GS::UniString &modulename,
             if (elem_head.renovationFilterGuid != APINULLGuid)
                 error_type = error_type + " IN renovationFilter";
             GS::UniString elemName = EMPTYSTRING;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             if (ACAPI_Element_GetElemTypeName (elem_head.type, elemName) == NoError) {
 #else
-    #ifdef AC_26
+    #ifdef ServerMainVers_2600
             if (ACAPI_Goodies_GetElemTypeName (elem_head.type, elemName) == NoError) {
     #else
             if (ACAPI_Goodies (APIAny_GetElemTypeNameID, (void *)elem_head.typeID, &elemName) == NoError) {
@@ -703,7 +703,7 @@ void msg_rep (const GS::UniString &modulename,
                 error_type = error_type + " layer:" + layer.header.name;
             GS::UniString infoString = EMPTYSTRING;
             GSErrCode err = NoError;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             if (ACAPI_Element_GetElementInfoString (&elem_head.guid, &infoString) == NoError)
                 error_type = error_type + " ID:" + infoString;
 #else
@@ -742,7 +742,7 @@ void MenuItemCheckAC (short itemInd, bool checked) {
     GSFlags itemFlags = 0;
     itemRef.menuResID = ID_ADDON_MENU;
     itemRef.itemIndex = itemInd;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
 #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -751,7 +751,7 @@ void MenuItemCheckAC (short itemInd, bool checked) {
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
 #else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -816,13 +816,13 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
         long time_start = clock ();
         GS::UniString subtitle ("working...");
         GS::Int32 nPhase = 1;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
 #endif
         ProcessWindowGuard pwGuard (funcname, nPhase);
         for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             if (i % 10 == 0)
                 ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
@@ -830,7 +830,7 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
                 ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
             function (guidArray[i]);
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
                 return;
 #else
@@ -863,14 +863,14 @@ GSErrCode GetTypeByGUID (const API_Guid &elemGuid, API_ElemTypeID &elementType) 
     return err;
 }
 
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------
 bool GetElementTypeString (API_ElemType elemType, char *elemStr) {
     GS::UniString ustr;
     GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
     err = ACAPI_Element_GetElemTypeName (elemType, ustr);
     #else
     err = ACAPI_Goodies_GetElemTypeName (elemType, ustr);
@@ -1080,7 +1080,7 @@ void GetNumSymbSpase (GS::UniString &outstring, GS::UniChar symb, char charrepl)
 void ReplaceSymbSpase (GS::UniString &outstring) {
     GetNumSymbSpase (outstring, '~', ' ');
     GetNumSymbSpase (outstring, '@', CharTAB);
-#if !defined(AC_29)
+#ifndef ServerMainVers_2900
     outstring.ReplaceAll ("\\TAB", reinterpret_cast<const char *> (u8"\u0009"));
     outstring.ReplaceAll ("\\CRLF", reinterpret_cast<const char *> (u8"\u000D\u000A"));
     outstring.ReplaceAll ("\\CR", reinterpret_cast<const char *> (u8"\u000D"));
@@ -1095,7 +1095,7 @@ void ReplaceSymbSpase (GS::UniString &outstring) {
 short GetFontIndex (GS::UniString &fontname) {
     GSErrCode err = NoError;
     short inx = 0;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     API_FontType font;
     BNZeroMemory (&font, sizeof (API_FontType));
     font.head.index = 0;
@@ -1128,7 +1128,7 @@ double GetTextWidth (short font, double fontsize, GS::UniString &var) {
     tlp.wFont = font;
     tlp.wSize = fontsize;
     tlp.wSlant = PI / 2.0;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_Element_GetTextLineLength (&tlp, &width);
 #else
     err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
@@ -1257,7 +1257,7 @@ GSErrCode IsTeamwork (bool &isteamwork, short &userid) {
     userid = 0;
     API_ProjectInfo projectInfo = {};
     GSErrCode err = NoError;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_ProjectOperation_Project (&projectInfo);
 #else
     err = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
@@ -1365,7 +1365,7 @@ bool MenuInvertItemMark (short menuResID, short itemIndex) {
     GSFlags itemFlags = 0;
     itemRef.menuResID = menuResID;
     itemRef.itemIndex = itemIndex;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
 #else
     ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -1374,7 +1374,7 @@ bool MenuInvertItemMark (short menuResID, short itemIndex) {
         itemFlags |= API_MenuItemChecked;
     else
         itemFlags &= ~API_MenuItemChecked;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
 #else
     ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
@@ -1642,7 +1642,7 @@ GSErrCode GetRElementsForCWall (const API_Guid &cwGuid, GS::Array<API_Guid> &ele
     const GSSize nPanels = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallPanels)) / sizeof (API_CWPanelType);
     if (nPanels > 0) {
         for (Int32 idx = 0; idx < nPanels; ++idx) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             err = ACAPI_CurtainWall_IsCWPanelDegenerate (&memo.cWallPanels[idx].head.guid, &isDegenerate);
 #else
             err =
@@ -1821,7 +1821,7 @@ bool ClickAPoint (const char *prompt, Point2D *c) {
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_UserInput_GetPoint (&pointInfo);
 #else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
@@ -1834,14 +1834,14 @@ bool ClickAPoint (const char *prompt, Point2D *c) {
     return true;
 } // ClickAPoint
 
-#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+#ifdef ServerMainVers_2600
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
 API_ElemType Neig_To_ElemID (API_NeigID neigID) {
     API_ElemType type;
     GSErrCode err;
-    #if defined(AC_26)
+    #ifndef ServerMainVers_2700
     err = ACAPI_Goodies_NeigIDToElemType (neigID, type);
     #else
     err = ACAPI_Element_NeigIDToElemType (neigID, type);
@@ -1870,7 +1870,7 @@ API_ElemTypeID Neig_To_ElemID (API_NeigID neigID) {
 // -----------------------------------------------------------------------------
 bool ElemHead_To_Neig (API_Neig *neig, const API_Elem_Head *elemHead) {
     API_ElemTypeID typeID = API_ZombieElemID;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+#ifdef ServerMainVers_2600
     *neig = {};
     neig->guid = elemHead->guid;
     API_ElemType type = elemHead->type;
@@ -2092,7 +2092,7 @@ bool ElemHead_To_Neig (API_Neig *neig, const API_Elem_Head *elemHead) {
 //	true:	the user clicked the correct element
 //	false:	the input is canceled or wrong type of element was clicked
 // -----------------------------------------------------------------------------
-#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+#ifdef ServerMainVers_2600
 bool ClickAnElem (const char *prompt,
                   const API_ElemType &needType,
                   API_Neig *neig /*= nullptr*/,
@@ -2107,7 +2107,7 @@ bool ClickAnElem (const char *prompt,
     CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
     pointInfo.changeFilter = false;
     pointInfo.changePlane = false;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
     err = ACAPI_UserInput_GetPoint (&pointInfo);
     #else
     err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
@@ -2124,7 +2124,7 @@ bool ClickAnElem (const char *prompt,
         pars.loc.y = pointInfo.pos.y;
         pars.z = 1.00E6;
         pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
     #else
         err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
@@ -2431,7 +2431,7 @@ bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &typ
     }
     double inx = 0;
     if (UniStringToDouble (name, inx)) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         attribinx = ACAPI_CreateAttributeIndex ((Int32)inx);
 #else
         attribinx = (Int32)inx;
@@ -2460,7 +2460,7 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID &type,
 #if defined AC_22
     return APIERR_GENERAL;
 #else
-    #if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2600
     API_ElemType type_;
     type_.typeID = type;
     return ACAPI_Favorite_GetNum (type, count, folders, names);
@@ -2489,7 +2489,7 @@ API_ElemTypeID GetElemTypeID (const API_Guid &guid) {
 // -----------------------------------------------------------------------------
 API_ElemTypeID GetElemTypeID (const API_Elem_Head &elementhead) {
     API_ElemTypeID eltype = API_ZombieElemID;
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
     eltype = elementhead.type.typeID;
 #else
     eltype = elementhead.typeID;
@@ -2502,7 +2502,7 @@ API_ElemTypeID GetElemTypeID (const API_Elem_Head &elementhead) {
 // -----------------------------------------------------------------------------
 API_ElemTypeID GetElemTypeID (const API_Element &element) {
     API_ElemTypeID eltype = API_ZombieElemID;
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
     eltype = element.header.type.typeID;
 #else
     eltype = element.header.typeID;
@@ -2514,7 +2514,7 @@ API_ElemTypeID GetElemTypeID (const API_Element &element) {
 // Устанавливает тип элемента в заголовке API_Element
 // -----------------------------------------------------------------------------
 void SetElemTypeID (API_Element &element, const API_ElemTypeID eltype) {
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
     element.header.type.typeID = eltype;
 #else
     element.header.typeID = eltype;
@@ -2525,7 +2525,7 @@ void SetElemTypeID (API_Element &element, const API_ElemTypeID eltype) {
 // Устанавливает тип элемента в заголовке API_Elem_Head
 // -----------------------------------------------------------------------------
 void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
     elementhead.type.typeID = eltype;
 #else
     elementhead.typeID = eltype;
@@ -2564,7 +2564,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &def
                 msg_rep ("GetElementByPropertyDescription", "ACAPI_Element_GetPropertyValue", error, elemGuid);
                 continue;
             }
-    #if defined(AC_22) || defined(AC_23)
+    #ifndef ServerMainVers_2400
             if (!propertyflag.isEvaluated)
                 continue;
             if (propertyflag.isDefault)

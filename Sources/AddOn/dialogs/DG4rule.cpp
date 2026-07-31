@@ -4,7 +4,7 @@
 #include "ACAPinc.h" // also includes APIdefs.h
 
 #include "APIdefs.h"
-#include "DG4rule.hpp"
+#include "dialogs/DG4rule.hpp"
 #include "Propertycache.hpp"
 #include "api_headers/ResourceIds.hpp"
 
@@ -98,7 +98,7 @@ void RuleSelectDialog::InitListBox () {
     const DG::Icon &unicon = DG::Icon (SysResModule, DG::ListBox::UncheckedIcon);
 
     for (const auto &rulename : rulelist.rules) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         const GS::UniString &rname = rulename.key;
 #else
         const GS::UniString &rname = *rulename.key;

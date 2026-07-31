@@ -2,19 +2,6 @@
 #pragma once
 #if !defined(CLASSIF_HPP)
     #define CLASSIF_HPP
-    #ifdef AC_25
-        #include "api_headers/APICommon25.h"
-    #endif // AC_25
-    #ifdef AC_26
-        #include "api_headers/APICommon26.h"
-    #endif // AC_26
-    #ifdef AC_27
-        #include "api_headers/APICommon27.h"
-    #endif // AC_27
-    #ifdef AC_28
-        #include "api_headers/APICommon28.h"
-    #endif // AC_28
-
     #include "Constants.hpp"
 
 namespace ClassificationFunc {

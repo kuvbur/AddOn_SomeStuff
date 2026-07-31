@@ -1,10 +1,11 @@
 //------------ kuvbur 2022 ------------
-#include "api_headers/APIEnvir.h"
-
 #include "ACAPinc.h"
 
+#include "api_headers/APIEnvir.h"
+
+#include "spec/Spec_libpart.hpp"
+
 #include "Helpers.hpp"
-#include "Spec_libpart.hpp"
 
 namespace ListData {
     GS::UniString GetSubposKey (const GS::UniString &subpos) {
@@ -294,7 +295,7 @@ namespace ListData {
         if (el.subpos.IsEmpty ())
             return keys;
         for (const auto &sub : el.subpos) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             const Subpos &subpos = sub.value;
             const GS::UniString subposkey = sub.key;
 #else
@@ -303,7 +304,7 @@ namespace ListData {
 #endif
             if (!subpos.arm.IsEmpty ()) {
                 for (const auto &arm : subpos.arm) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                     const GS::UniString k = arm.key;
 #else
                     const GS::UniString k = *arm.key;
@@ -313,7 +314,7 @@ namespace ListData {
             }
             if (!subpos.mat.IsEmpty ()) {
                 for (const auto &mat : subpos.mat) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                     const GS::UniString k = mat.key;
 #else
                     const GS::UniString k = *mat.key;
@@ -323,7 +324,7 @@ namespace ListData {
             }
             if (!subpos.prokat.IsEmpty ()) {
                 for (const auto &prokat : subpos.prokat) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                     const GS::UniString k = prokat.key;
 #else
                     const GS::UniString k = *prokat.key;

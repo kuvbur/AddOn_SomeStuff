@@ -59,7 +59,7 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
         GS::UniString layert = ParamHelpers::GetLayerFromCache (element.header.layer);
         for (GS::HashTable<GS::UniString, DimRule>::ConstPairIterator cIt = dimrules.EnumeratePairs (); cIt != NULL;
              ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             const GS::UniString &regexpstring = cIt->key;
             const DimRule &d = cIt->value;
 #else
@@ -86,7 +86,7 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     }
     API_Guid bef_elemGuid = (*memo.dimElems)[0].base.base.guid;
     API_ElemTypeID elementType = API_ZombieElemID;
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
     elementType = (*memo.dimElems)[0].base.base.type.typeID;
 #else
     elementType = (*memo.dimElems)[0].base.base.typeID;
@@ -108,7 +108,7 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
         const API_NoteContentType originalContentType = (*memo.dimElems)[k].note.contentType;
         UInt32 flag_change = DIM_NOCHANGE;
         UInt32 flag_highlight = DIM_NOCHANGE;
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
         elementType = (*memo.dimElems)[k].base.base.type.typeID;
 #else
         elementType = (*memo.dimElems)[k].base.base.typeID;
@@ -358,7 +358,7 @@ bool DimRoundByType (const API_ElemTypeID &typeID, const SyncSettings &syncSetti
         err = DimAutoRound (guid, syncSettings);
         if (err != NoError)
             msg_rep ("DimAutoRound", "DimAutoRound", err, guid);
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (ACAPI_ProcessWindow_IsProcessCanceled ())
             return true;
 #else

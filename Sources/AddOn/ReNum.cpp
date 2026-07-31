@@ -1,5 +1,6 @@
 //------------ kuvbur 2022 ------------
-#ifndef AC_22
+#include "ACAPinc.h"
+#ifdef ServerMainVers_2300
     #include <API_Guid.hpp>
     #include <APIdefs_Elements.h>
     #include <APIdefs_Environment.h>
@@ -17,16 +18,15 @@
     #include <UniString.hpp>
     #include <unordered_map>
 
-    #include "ACAPinc.h"
+    #include "api_headers/ResourceIds.hpp"
 
     #include "CommonFunction.hpp"
-    #include "DG4rule.hpp"
+    #include "dialogs/DG4rule.hpp"
+    #include "dialogs/SyncSettings.hpp"
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "ReNum.hpp"
-    #include "api_headers/ResourceIds.hpp"
     #include "Sync.hpp"
-    #include "SyncSettings.hpp"
 
 // -----------------------------------------------------------------------------------------------------------------------
 // 1. Получаем список объектов, в свойствах которых ищем
@@ -90,16 +90,16 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     UInt32 qtywrite = paramToWriteelem.GetSize ();
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite);
     short i = 2;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
     bool showPercent = false;
     Int32 maxval = 2;
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
     #endif
-    #ifndef AC_22
+    #ifdef ServerMainVers_2300
     bool suspGrp = false;
-        #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        #ifdef ServerMainVers_2700
     err = ACAPI_View_IsSuspendGroupOn (&suspGrp);
     if (err != NoError) {
         msg_rep ("ReNumSelected", "ACAPI_Environment - APIEnv_IsSuspendGroupOnID", err, APINULLGuid);
@@ -152,7 +152,7 @@ bool RenumDG (Rules &renum_rules, bool &rule_from_one) {
     #endif
     RuleSelectData rules = {};
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = renum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
         const RenumRule &rule = cIt->value;
     #else
         const RenumRule &rule = *cIt->value;
@@ -173,7 +173,7 @@ bool RenumDG (Rules &renum_rules, bool &rule_from_one) {
         return false;
     bool has_true_state = false;
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = renum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
         RenumRule &rule = cIt->value;
     #else
         RenumRule &rule = *cIt->value;
@@ -247,7 +247,7 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
         } else {
             hasDef = ReNumHasFlag (definitions);
         }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         bool showPercent = true;
         Int32 maxval = guidArray.GetSize ();
         ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -255,7 +255,7 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
         n_elem += 1;
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &n_elem);
     #endif
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         if (ACAPI_ProcessWindow_IsProcessCanceled ())
             return false;
     #else
@@ -270,7 +270,7 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     if (!error_propertyname.IsEmpty ()) {
         GS::UniString out = ":\n";
         for (auto &cIt : error_propertyname) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             GS::UniString s = cIt.key;
     #else
             GS::UniString s = *cIt.key;
@@ -312,7 +312,7 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
     GS::UniString ok_rule_name = "";
     // Теперь выясняем - какой режим нумерации у элементов и распределяем позиции
     for (GS::HashTable<API_Guid, RenumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
         RenumRule &rule = cIt->value;
     #else
         RenumRule &rule = *cIt->value;

@@ -2,6 +2,8 @@
 #if !defined(RENUM_HPP)
     #pragma once
     #define RENUM_HPP
+    #include "ACAPinc.h"
+
     #include "Helpers.hpp"
     #include "third_party/alphanum.h"
 

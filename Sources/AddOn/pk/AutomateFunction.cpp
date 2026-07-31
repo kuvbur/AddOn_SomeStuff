@@ -1,11 +1,10 @@
 //------------ kuvbur 2022 ------------
-#ifndef AC_22
-    #include "ACAPinc.h"
-
-    #include "AutomateFunction.hpp"
+#include "ACAPinc.h"
+#ifdef ServerMainVers_2300
     #include "Helpers.hpp"
     #include "Model3D/MeshBody.hpp"
     #include "Model3D/model.h"
+    #include "pk/AutomateFunction.hpp"
 
 namespace AutoFunc {
     // -----------------------------------------------------------------------------
@@ -35,7 +34,7 @@ namespace AutoFunc {
     GSErrCode GetCuplane (const SSectLine sline, API_3DCutPlanesInfo &cutInfo, const double &depth) {
         BNZeroMemory (&cutInfo, sizeof (API_3DCutPlanesInfo));
         GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_Get3DCuttingPlanes (&cutInfo);
     #else
         err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
@@ -145,7 +144,7 @@ namespace AutoFunc {
     GSErrCode Get3DProjectionInfo (API_3DProjectionInfo &proj3DInfo, const double &angz, const double &koeff) {
         BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
         GSErrCode err = NoError;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
     #else
         err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -157,7 +156,7 @@ namespace AutoFunc {
         proj3DInfo.isPersp = false;
         proj3DInfo.u.axono.azimuth = angz * RADDEG + 90;
         proj3DInfo.u.axono.projMod = 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
     #else
         err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -167,7 +166,7 @@ namespace AutoFunc {
             return err;
         }
         BNZeroMemory (&proj3DInfo, sizeof (API_3DProjectionInfo));
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_Get3DProjectionSets (&proj3DInfo);
     #else
         err = ACAPI_Environment (APIEnv_Get3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -182,7 +181,7 @@ namespace AutoFunc {
         proj3DInfo.u.axono.tranmat.tmx[4] = proj3DInfo.u.axono.tranmat.tmx[4] * koeff;
         proj3DInfo.u.axono.tranmat.tmx[1] = proj3DInfo.u.axono.tranmat.tmx[1] * koeff;
         proj3DInfo.u.axono.tranmat.tmx[5] = proj3DInfo.u.axono.tranmat.tmx[5] * koeff;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_Change3DProjectionSets (&proj3DInfo, nullptr);
     #else
         err = ACAPI_Environment (APIEnv_Change3DProjectionSetsID, &proj3DInfo, nullptr, nullptr);
@@ -205,7 +204,7 @@ namespace AutoFunc {
         GSErrCode err = NoError;
         GS::Array<API_DatabaseUnId> dbases;
 
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_GetDocumentFrom3DDatabases (nullptr, &dbases);
     #else
         err = ACAPI_Database (APIDb_GetDocumentFrom3DDatabasesID, nullptr, &dbases);
@@ -214,7 +213,7 @@ namespace AutoFunc {
             for (const auto &dbUnId : dbases) {
                 BNZeroMemory (&dbInfo, sizeof (API_DatabaseInfo));
                 dbInfo.databaseUnId = dbUnId;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 err = ACAPI_Window_GetDatabaseInfo (&dbInfo);
     #else
                 err = ACAPI_Database (APIDb_GetDatabaseInfoID, &dbInfo, nullptr);
@@ -237,7 +236,7 @@ namespace AutoFunc {
         dbInfo.typeID = APIWind_DocumentFrom3DID;
         GS::snuprintf (dbInfo.name, sizeof (dbInfo.name), name.ToUStr ().Get ());
         GS::snuprintf (dbInfo.ref, sizeof (dbInfo.ref), id.ToUStr ().Get ());
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_NewDatabase (&dbInfo);
     #else
         err = ACAPI_Database (APIDb_NewDatabaseID, &dbInfo);
@@ -393,7 +392,7 @@ namespace AutoFunc {
         // Назначение секущих плоскостей по краям отрезка
         API_3DCutPlanesInfo cutInfo;
         if (GetCuplane (sline, cutInfo, depth) == NoError) {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             err = ACAPI_View_Change3DCuttingPlanes (&cutInfo);
     #else
             err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
@@ -422,7 +421,7 @@ namespace AutoFunc {
         }
 
         API_DocumentFrom3DType documentFrom3DType;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_GetDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
     #else
         err = ACAPI_Environment (APIEnv_GetDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
@@ -446,7 +445,7 @@ namespace AutoFunc {
             }
         }
         documentFrom3DType.projectionSetting = proj3DInfo;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_ChangeDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
     #else
         err = ACAPI_Environment (APIEnv_ChangeDocumentFrom3DSettingsID, &dbInfo.databaseUnId, &documentFrom3DType);
@@ -472,7 +471,7 @@ namespace AutoFunc {
         API_DatabaseInfo dbInfo = {};
         windowInfo.typeID = APIWind_DocumentFrom3DID;
         windowInfo.databaseUnId = sline.databaseUnId;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Window_ChangeWindow (&windowInfo);
     #else
         err = ACAPI_Automate (APIDo_ChangeWindowID, &windowInfo, nullptr);
@@ -483,7 +482,7 @@ namespace AutoFunc {
         }
         dbInfo.typeID = APIWind_DocumentFrom3DID;
         dbInfo.databaseUnId = sline.databaseUnId;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
     #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
@@ -548,7 +547,7 @@ namespace AutoFunc {
         API_DatabaseInfo databasestart;
         API_WindowInfo windowstart;
         GS::IntPtr store = 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_StoreViewSettings (store);
     #else
         err = ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
@@ -563,7 +562,7 @@ namespace AutoFunc {
             BNZeroMemory (&elemline, sizeof (API_Element));
             API_AttributeIndex layer;
             SetElemTypeID (elemline, API_HotspotID);
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             layer = ACAPI_CreateAttributeIndex (1);
     #else
         layer = 1;
@@ -576,7 +575,7 @@ namespace AutoFunc {
             elemline.header.layer = layer;
             elemline.hotspot.pen = 143;
             BNZeroMemory (&databasestart, sizeof (API_DatabaseInfo));
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             err = ACAPI_Database_GetCurrentDatabase (&databasestart);
     #else
         err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
@@ -586,7 +585,7 @@ namespace AutoFunc {
                 return err;
             }
             BNZeroMemory (&windowstart, sizeof (API_WindowInfo));
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             err = ACAPI_Window_GetCurrentWindow (&windowstart);
     #else
         err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
@@ -612,7 +611,7 @@ namespace AutoFunc {
                 msg_rep ("ProfileByLine", "APIEnv_Change3DImageSetsID", err, APINULLGuid);
             }
     #endif
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             err = ACAPI_View_ShowAllIn3D ();
     #else
         err = ACAPI_Automate (APIDo_ShowAllIn3DID, nullptr, nullptr);
@@ -674,7 +673,7 @@ namespace AutoFunc {
             }
         }
     // Возвращение на исходную БД и окно
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
     #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
@@ -683,7 +682,7 @@ namespace AutoFunc {
             msg_rep ("ProfileByLine", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
             return;
         }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Window_ChangeWindow (&windowstart);
     #else
         err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
@@ -693,7 +692,7 @@ namespace AutoFunc {
             return;
         }
         API_3DCutPlanesInfo cutInfo = {};
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_Get3DCuttingPlanes (&cutInfo);
     #else
         err = ACAPI_Environment (APIEnv_Get3DCuttingPlanesID, &cutInfo, nullptr);
@@ -702,7 +701,7 @@ namespace AutoFunc {
             msg_rep ("ProfileByLine", "APIEnv_Get3DCuttingPlanesID", err, APINULLGuid);
         } else {
             cutInfo.isCutPlanes = false;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             err = ACAPI_View_Change3DCuttingPlanes (&cutInfo);
     #else
             err = ACAPI_Environment (APIEnv_Change3DCuttingPlanesID, &cutInfo, nullptr);
@@ -714,7 +713,7 @@ namespace AutoFunc {
         BMKillHandle ((GSHandle *)&(cutInfo.shapes));
         if (store == 1) {
             store = 0;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             ACAPI_View_StoreViewSettings (store);
     #else
             ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
@@ -746,7 +745,7 @@ namespace AutoFunc {
         API_DatabaseInfo dbInfo = {};
         dbInfo.typeID = APIWind_DrawingID;
         dbInfo.linkedElement = element.header.guid;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
     #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
@@ -768,7 +767,7 @@ namespace AutoFunc {
         API_Element hotspotelem;
         bool flag_find = false;
         API_AttributeIndex layer;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         layer = ACAPI_CreateAttributeIndex (1);
     #else
         layer = 1;
@@ -810,7 +809,7 @@ namespace AutoFunc {
             startpos.x = startpos.x + l * kscale;
         }
     // Возвращение на исходную БД и окно
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
     #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
@@ -819,7 +818,7 @@ namespace AutoFunc {
             msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
             return err;
         }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Window_ChangeWindow (&windowstart);
     #else
         err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
@@ -841,7 +840,7 @@ namespace AutoFunc {
         GS::Array<API_Guid> drawings = {};
         for (UInt32 i = 0; i < elems.GetSize (); i++) {
             BNZeroMemory (&drawingLinkInfo, sizeof (API_DrawingLinkInfo));
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             err = ACAPI_Drawing_GetDrawingLink (&(elems[i]), &drawingLinkInfo);
     #else
             err = ACAPI_Database (APIDb_GetDrawingLinkID, (void *)(&(elems[i])), &drawingLinkInfo);
@@ -880,7 +879,7 @@ namespace AutoFunc {
         API_Coord zeropos = startpos;
         // Запоминаем настройки отображения
         GS::IntPtr store = 1;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_View_StoreViewSettings (store);
     #else
         err = ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
@@ -891,7 +890,7 @@ namespace AutoFunc {
         }
         API_DatabaseInfo databasestart = {};
         API_WindowInfo windowstart = {};
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_GetCurrentDatabase (&databasestart);
     #else
         err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databasestart, nullptr);
@@ -900,7 +899,7 @@ namespace AutoFunc {
             msg_rep ("AlignDrawingsByPoints", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
             return;
         }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Window_GetCurrentWindow (&windowstart);
     #else
         err = ACAPI_Database (APIDb_GetCurrentWindowID, &windowstart, nullptr);
@@ -926,7 +925,7 @@ namespace AutoFunc {
             }
         }
     // Возвращение на исходную БД и окно
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
     #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
@@ -935,7 +934,7 @@ namespace AutoFunc {
             msg_rep ("AlignOneDrawingsByPoints", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
             return;
         }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         err = ACAPI_Window_ChangeWindow (&windowstart);
     #else
         err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
@@ -969,13 +968,13 @@ namespace AutoFunc {
         });
         if (store == 1) {
             store = 0;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
             ACAPI_View_StoreViewSettings (store);
     #else
             ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
     #endif
         }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         ACAPI_View_Zoom (nullptr, nullptr);
     #else
         ACAPI_Automate (APIDo_ZoomID, nullptr, nullptr);

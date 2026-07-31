@@ -15,7 +15,7 @@ class SyncSettings : public GS::Object {
     SyncSettings ();
 
     // Создаёт набор настроек синхронизации на основе выбранных флагов работы add-on.
-    SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon);
+    SyncSettings (bool syncAll, bool syncMon, bool wallS, bool widoS, bool objS, bool cwallS, bool logMon, bool showpalette);
 
     // Считывает настройки из канала памяти или предпочтений Archicad.
     virtual GSErrCode Read (GS::IChannel &ic) override;
@@ -30,6 +30,7 @@ class SyncSettings : public GS::Object {
     bool objS;
     bool cwallS;
     bool logMon;
+    bool showpalette;
 };
 
 #if defined(ServerMainVers_2500)

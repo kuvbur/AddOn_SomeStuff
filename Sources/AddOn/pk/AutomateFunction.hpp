@@ -2,6 +2,8 @@
 #pragma once
 #if !defined(AUTOMATE_HPP)
     #define AUTOMATE_HPP
+    #include "ACAPinc.h"
+
     #include "Helpers.hpp"
     #include "Sector2DData.h"
 

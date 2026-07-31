@@ -4,12 +4,12 @@
     #define ROOMBOOK_HPP
 
     #include "Helpers.hpp"
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         #define ACAPI_Element_Get3DInfo ACAPI_ModelAccess_Get3DInfo
         #define ACAPI_3D_GetComponent ACAPI_ModelAccess_GetComponent
     #endif
 namespace Roombook {
-    #if defined(AC_22) || defined(AC_23)
+    #ifndef ServerMainVers_2400
     void RoomBook ();
     #else
     enum TypeOtd {
