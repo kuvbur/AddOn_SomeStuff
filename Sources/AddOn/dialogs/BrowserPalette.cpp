@@ -7,7 +7,6 @@
 #include "dialogs/BrowserPalette.hpp"
 
 #include "CommonFunction.hpp"
-#include "dialogs/HTML_Pages.hpp" // Сгенерированный файл с HTML страницами
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
 
@@ -26,6 +25,18 @@ void ShowOrHideBrowserPalette () {
             BrowserPalette::CreateInstance ();
         BrowserPalette::GetInstance ().Show ();
     }
+}
+
+static GS::UniString LoadHtmlFromResource () {
+    GS::UniString resourceData;
+    const Int32 bisEng = ID_ADDON_HTML + isEng ();
+    GSHandle data = RSLoadResource ('DATA', ACAPI_GetOwnResModule (), bisEng);
+    GSSize handleSize = BMhGetSize (data);
+    if (data != nullptr) {
+        resourceData.Append (*data, handleSize);
+        BMhKill (&data);
+    }
+    return resourceData;
 }
 
 // --- Class definition: BrowserPalette ----------------------------------------
@@ -64,6 +75,7 @@ void BrowserPalette::Show () {
     syncSettings.showpalette = true;
     MenuItemCheckAC (Menu_Pallete, syncSettings.showpalette);
     WriteSyncSettingsToPreferences (syncSettings);
+    browser.ReloadIgnoreCache ();
 }
 
 void BrowserPalette::Hide () {
@@ -76,9 +88,8 @@ void BrowserPalette::Hide () {
 }
 
 void BrowserPalette::InitBrowserControl () {
-    // Загружаем HTML из сгенерированного заголовочного файла
-    GS::UniString html = GS::UniString (HTML_Pages_html);
-    browser.LoadHTML (html);
+    // Загружаем HTML
+    browser.LoadHTML (LoadHtmlFromResource ());
 
     // Регистрируем JavaScript объект для взаимодействия с ArchiCAD
     RegisterACAPIJavaScriptObject ();

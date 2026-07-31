@@ -12,6 +12,9 @@
 #define ID_ADDON_PROMT_ENG		33502
 #define ID_ADDON_STRINGS_ENG	33501
 
+#define ID_ADDON_HTML			1100
+#define ID_ADDON_HTML_ENG		2100
+
 // Идентификаторы ресурсов add-on: строки, меню, диалоги и сообщения интерфейса.
 #define ID_ADDON_RULE_DLG		32590
 #endif

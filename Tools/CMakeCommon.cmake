@@ -149,6 +149,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
             ${addOnResourcesFolder}/R${addOnLanguage}/*.grc
             ${addOnResourcesFolder}/RFIX/*.grc
             ${addOnResourcesFolder}/RFIX.win/*.rc2
+            ${addOnResourcesFolder}/RFIX/HTML/*.html
             ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/*.py
         )
     else ()
@@ -156,6 +157,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
             ${addOnResourcesFolder}/R${addOnLanguage}/*.grc
             ${addOnResourcesFolder}/RFIX/*.grc
             ${addOnResourcesFolder}/RFIX.mac/*.plist
+            ${addOnResourcesFolder}/RFIX/HTML/*.html
             ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/*.py
         )
     endif ()
