@@ -4,13 +4,13 @@
     #if !defined(TEST_HPP)
         #define TEST_HPP
         #ifdef AC_25
-            #include "APICommon25.h"
+            #include "api_headers/APICommon25.h"
         #endif // AC_25
         #ifdef AC_26
-            #include "APICommon26.h"
+            #include "api_headers/APICommon26.h"
         #endif // AC_26
         #ifdef AC_27
-            #include "APICommon27.h"
+            #include "api_headers/APICommon27.h"
         #endif // AC_26
 
 // Вспомогательные функции для локального тестирования и отладки add-on.

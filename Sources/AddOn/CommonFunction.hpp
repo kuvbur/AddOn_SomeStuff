@@ -3,42 +3,45 @@
 #if !defined(COMMON_HPP)
     #define COMMON_HPP
     #include "ACAPinc.h"
-    #include "APIEnvir.h"
+
+    #include "api_headers/APIEnvir.h"
     #ifdef AC_22
-        #include "APICommon22.h"
+        #include "api_headers/APICommon22.h"
     #endif // AC_25
     #ifdef AC_23
-        #include "APICommon23.h"
+        #include "api_headers/APICommon23.h"
     #endif // AC_25
     #ifdef AC_24
-        #include "APICommon24.h"
+        #include "api_headers/APICommon24.h"
     #endif // AC_25
     #ifdef AC_25
-        #include "APICommon25.h"
+        #include "api_headers/APICommon25.h"
     #endif // AC_25
     #ifdef AC_26
-        #include "APICommon26.h"
+        #include "api_headers/APICommon26.h"
     #endif // AC_26
     #ifdef AC_27
-        #include "APICommon27.h"
+        #include "api_headers/APICommon27.h"
     #endif // AC_27
     #ifdef AC_28
-        #include "APICommon28.h"
+        #include "api_headers/APICommon28.h"
     #endif // AC_28
     #ifdef AC_29
-        #include "APICommon29.h"
+        #include "api_headers/APICommon29.h"
     #endif // AC_29
-    #include "DG.h"
-    #include "Point2D.hpp"
-    #include "Polygon2DData.h"
-    #include "Polygon2DDataConv.h"
-    #include "ResourceIds.hpp"
-    #include "Sector2DData.h"
-    #include "alphanum.h"
-    #include "exprtk.h"
     #include <APIdefs_LibraryParts.h>
     #include <Definitions.hpp>
+    #include <DG.h>
+    #include <Point2D.hpp>
+    #include <Polygon2DData.h>
+    #include <Polygon2DDataConv.h>
+    #include <Sector2DData.h>
     #include <unordered_map>
+
+    #include "api_headers/ResourceIds.hpp"
+
+    #include "third_party/alphanum.h"
+    #include "third_party/exprtk.h"
 
     #include "Constants.hpp"
 

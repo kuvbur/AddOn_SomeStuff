@@ -1,7 +1,9 @@
 #include "ACAPinc.h"
 
-#include "GetPropertyDefinitionsCommand.hpp"
-#include "JsonCommandRegistrar.hpp"
+#include "json_commands/JsonCommandRegistrar.hpp"
+
+#include "json_commands/GetPropertyDefinitionsCommand.hpp"
+#include "json_commands/HealthCommand.hpp"
 
 void RegisterJsonCommands () {
     // Регистрация команды GetPropertyDefinitions
@@ -9,9 +11,20 @@ void RegisterJsonCommands () {
         GS::Owner<GetPropertyDefinitionsCommand> cmd = GS::NewOwned<GetPropertyDefinitionsCommand> ();
         GSErrCode err = ACAPI_Install_AddOnCommandHandler (cmd.Pass ());
         if (err != NoError) {
-            DBprnt ("Failed to register GetPropertyDefinitionsCommand");
+            DBprnt ("Failed to register GetPropertyDefinitionsCommand, error: " + GS::ValueToUniString (err));
         } else {
             DBprnt ("GetPropertyDefinitionsCommand registered successfully!");
+        }
+    }
+
+    // Регистрация команды Health
+    {
+        GS::Owner<HealthCommand> cmd = GS::NewOwned<HealthCommand> ();
+        GSErrCode err = ACAPI_Install_AddOnCommandHandler (cmd.Pass ());
+        if (err != NoError) {
+            DBprnt ("Failed to register HealthCommand, error: " + GS::ValueToUniString (err));
+        } else {
+            DBprnt ("HealthCommand registered successfully!");
         }
     }
 

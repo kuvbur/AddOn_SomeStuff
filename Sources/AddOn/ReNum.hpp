@@ -3,7 +3,7 @@
     #pragma once
     #define RENUM_HPP
     #include "Helpers.hpp"
-    #include "alphanum.h"
+    #include "third_party/alphanum.h"
 
 // Модуль перенумерации элементов по правилам, заданным в свойствах проекта.
 // Типы нумерации (см. RenumElement.state)

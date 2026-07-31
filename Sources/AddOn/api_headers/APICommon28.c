@@ -8,9 +8,9 @@
 
 #include	"GSSystem.h"
 
-#include	"APIEnvir.h"
+#include	"api_headers/APIEnvir.h"
 #include	"ACAPinc.h"
-#include	"APICommon28.h"
+#include	"api_headers/APICommon28.h"
 
 
 // =============================================================================

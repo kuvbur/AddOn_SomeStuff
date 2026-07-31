@@ -1,16 +1,38 @@
-// *****************************************************************************
+﻿// *****************************************************************************
 // Helper functions for Add-On development
+// API Development Kit 24; Mac/Win
+//
+// Namespaces:		Contact person:
+//		-None-
+//
+// [SG compatible] - Yes
 // *****************************************************************************
+
+#include "api_headers/APIEnvir.h"
+#define	_APICOMMON_TRANSL_
+
 
 // ---------------------------------- Includes ---------------------------------
 
+#include	<stdio.h>
 #include	<stdarg.h>
+#include	<math.h>
 
 #include	"GSSystem.h"
 
-#include	"APIEnvir.h"
 #include	"ACAPinc.h"
-#include	"APICommon27.h"
+#include	"APICommon.h"
+
+
+#define USE_DEBUG_WINDOW	1
+
+// ---------------------------------- Types ------------------------------------
+
+
+// ---------------------------------- Variables --------------------------------
+
+
+// ---------------------------------- Prototypes -------------------------------
 
 
 // =============================================================================
@@ -19,38 +41,97 @@
 //
 // =============================================================================
 
+
 // -----------------------------------------------------------------------------
-// Write an error into an alert dialog
+// Write formatted info into the report window
 // -----------------------------------------------------------------------------
 
-void	WriteReport_Err (const char* info, GSErrCode err)
+void CCALL	WriteReport (const char* format, ...)
+{
+	char		buffer [512];
+	va_list		argList;
+
+	va_start (argList, format);
+#if defined (macintosh)
+	vsnprintf (buffer, sizeof (buffer), format, argList);
+#else
+	vsnprintf_s (buffer, sizeof (buffer), _TRUNCATE, format, argList);
+#endif
+
+#if USE_DEBUG_WINDOW
+	GS::UniString bufferPercent (buffer);
+	bufferPercent.ReplaceAll ("%", "%%");
+	DBPrintf (bufferPercent.ToCStr ().Get ());
+	DBPrintf ("\n");
+#else
+	ACAPI_WriteReport (buffer, false);
+#endif
+
+	return;
+}		// WriteReport
+
+
+// -----------------------------------------------------------------------------
+// Write formatted info into the report window
+// Give an alert also (with the same content)
+// -----------------------------------------------------------------------------
+
+void CCALL	WriteReport_Alert (const char* format, ...)
+{
+	va_list		argList;
+
+	va_start (argList, format);
+	ACAPI_WriteReport (format, true, argList);
+	va_end (argList);
+
+	return;
+}		// WriteReport_Alert
+
+
+// -----------------------------------------------------------------------------
+// Write an error into the report window and display an alert
+// -----------------------------------------------------------------------------
+
+void CCALL	WriteReport_Err (const char* info, GSErrCode err)
 {
 	ACAPI_WriteReport ("%s: %s", true, info, ErrID_To_Name (err));
 }		// WriteReport_Err
 
 
 // -----------------------------------------------------------------------------
-// Write an end report into the report window
+// Write an end report
 // -----------------------------------------------------------------------------
 
-void	WriteReport_End (GSErrCode err)
+void CCALL	WriteReport_End (GSErrCode err)
 {
+#if USE_DEBUG_WINDOW
+	DBPrintf ("\n");
+	if (err == NoError) {
+		DBPrintf ("OK\n");
+	} else {
+		DBPrintf ("Error: %s\n", ErrID_To_Name (err));
+	}
+#else
 	if (err == NoError)
 		ACAPI_WriteReport ("OK", false);
 	else
 		ACAPI_WriteReport ("Error: %s", false, ErrID_To_Name (err));
+#endif
+
+	return;
 }		// WriteReport_End
 
 
 // -----------------------------------------------------------------------------
-// Write an error into an alert dialog and give beep
+// Write an error into the DebugMonitor and give beep in DEBUVERS
 // -----------------------------------------------------------------------------
 
-void	ErrorBeep (const char* info, GSErrCode err)
+void 	ErrorBeep (const char* info, GSErrCode err)
 {
-	WriteReport_Err (info, err);
+	DBPrintf ("%s: %s", info, ErrID_To_Name (err));
 	GSSysBeep ();
 }		// ErrorBeep
+
 
 
 // =============================================================================
@@ -58,21 +139,25 @@ void	ErrorBeep (const char* info, GSErrCode err)
 //	Conversions
 //
 // =============================================================================
+#ifdef __APPLE__
+#pragma mark -
+#endif
+
 
 // -----------------------------------------------------------------------------
 // Convert the NeigID to element type
 // -----------------------------------------------------------------------------
 
-API_ElemType	Neig_To_ElemID (API_NeigID neigID)
+API_ElemTypeID	Neig_To_ElemID (API_NeigID neigID)
 {
-	API_ElemType	type;
+	API_ElemTypeID	typeID;
 	GSErrCode		err;
 
-	err = ACAPI_Element_NeigIDToElemType (neigID, type);
+	err = ACAPI_Goodies (APIAny_NeigIDToElemTypeID, &neigID, &typeID);
 	if (err != NoError)
-		type = API_ZombieElemID;
+		typeID = API_ZombieElemID;
 
-	return type;
+	return typeID;
 }		// Neig_To_ElemID
 
 
@@ -83,18 +168,16 @@ API_ElemType	Neig_To_ElemID (API_NeigID neigID)
 bool	ElemHead_To_Neig (API_Neig				*neig,
 						  const API_Elem_Head	*elemHead)
 {
-	*neig = {};
+	BNZeroMemory (neig, sizeof (API_Neig));
+	API_Elem_Head* elemHeadNonConst = const_cast<API_Elem_Head*>(elemHead);
 	neig->guid = elemHead->guid;
-
-	API_ElemType type = elemHead->type;
-	if (type == API_ZombieElemID && neig->guid != APINULLGuid) {
-		API_Elem_Head elemHeadCopy = {};
-		elemHeadCopy.guid = elemHead->guid;
-		ACAPI_Element_GetHeader (&elemHeadCopy);
-		type = elemHeadCopy.type;
+	if (elemHeadNonConst->typeID == API_ZombieElemID && neig->guid != APINULLGuid) {
+		BNZeroMemory (elemHeadNonConst, sizeof (API_Elem_Head));
+		elemHeadNonConst->guid = neig->guid;
+		ACAPI_Element_GetHeader (elemHeadNonConst);
 	}
 
-	switch (type.typeID) {
+	switch (elemHeadNonConst->typeID) {
 		case API_WallID:					neig->neigID = APINeig_Wall;				neig->inIndex = 1;	break;
 		case API_ColumnID:					neig->neigID = APINeig_Colu;				neig->inIndex = 0;	break;
 		case API_BeamID:					neig->neigID = APINeig_Beam;				neig->inIndex = 1;	break;
@@ -142,48 +225,16 @@ bool	ElemHead_To_Neig (API_Neig				*neig,
 		case API_CurtainWallPanelID:		neig->neigID = APINeig_CWPanel;				neig->inIndex = 1;	break;
 		case API_CurtainWallJunctionID:		neig->neigID = APINeig_CWJunction;			neig->inIndex = 1;	break;
 		case API_CurtainWallAccessoryID:	neig->neigID = APINeig_CWAccessory;			neig->inIndex = 1;	break;
-
 		case API_ShellID:					neig->neigID = APINeig_Shell;				neig->inIndex = 1;	break;
 		case API_SkylightID:				neig->neigID = APINeig_SkylightHole;		neig->inIndex = 0;	break;
 		case API_MorphID:					neig->neigID = APINeig_Morph;				neig->inIndex = 1;	break;
 		case API_ChangeMarkerID:			neig->neigID = APINeig_ChangeMarker;		neig->inIndex = 1;	break;
-
-		case API_StairID:						neig->neigID = APINeig_Stair;			neig->inIndex = 1;	break;
-		case API_RiserID:						neig->neigID = APINeig_Riser;			neig->inIndex = 1;	break;
-		case API_TreadID:						neig->neigID = APINeig_Tread;			neig->inIndex = 1;	break;
-		case API_StairStructureID:				neig->neigID = APINeig_StairStructure;	neig->inIndex = 1;	break;
-
-		case API_RailingID:						neig->neigID = APINeig_Railing;						neig->inIndex = 1;	break;
-		case API_RailingToprailID:				neig->neigID = APINeig_RailingToprail;				neig->inIndex = 1;	break;
-		case API_RailingHandrailID:				neig->neigID = APINeig_RailingHandrail;				neig->inIndex = 1;	break;
-		case API_RailingRailID:					neig->neigID = APINeig_RailingRail;					neig->inIndex = 1;	break;
-		case API_RailingPostID:					neig->neigID = APINeig_RailingPost;					neig->inIndex = 1;	break;
-		case API_RailingInnerPostID:			neig->neigID = APINeig_RailingInnerPost;			neig->inIndex = 1;	break;
-		case API_RailingBalusterID:				neig->neigID = APINeig_RailingBaluster;				neig->inIndex = 1;	break;
-		case API_RailingPanelID:				neig->neigID = APINeig_RailingPanel;				neig->inIndex = 1;	break;
-		case API_RailingSegmentID:				return false;
-		case API_RailingNodeID:					return false;
-		case API_RailingBalusterSetID:			return false;
-		case API_RailingPatternID:				return false;
-		case API_RailingToprailEndID:			neig->neigID = APINeig_RailingToprailEnd;			neig->inIndex = 1;	break;
-		case API_RailingHandrailEndID:			neig->neigID = APINeig_RailingHandrailEnd;			neig->inIndex = 1;	break;
-		case API_RailingRailEndID:				neig->neigID = APINeig_RailingRailEnd;				neig->inIndex = 1;	break;
-		case API_RailingToprailConnectionID:	neig->neigID = APINeig_RailingToprailConnection;	neig->inIndex = 1;	break;
-		case API_RailingHandrailConnectionID:	neig->neigID = APINeig_RailingHandrailConnection;	neig->inIndex = 1;	break;
-		case API_RailingRailConnectionID:		neig->neigID = APINeig_RailingRailConnection;		neig->inIndex = 1;	break;
-		case API_RailingEndFinishID:			neig->neigID = APINeig_RailingEndFinish;			neig->inIndex = 1;	break;
-
-		case API_BeamSegmentID:					neig->neigID = APINeig_BeamSegment;					neig->inIndex = 1;	break;
-		case API_ColumnSegmentID:				neig->neigID = APINeig_ColumnSegment;				neig->inIndex = 1;	break;
-		case API_OpeningID:						return false;
 
 		case API_GroupID:
 		case API_HotlinkID:
 		default:
 				return false;
 	}
-
-	static_assert (API_LastElemType == API_OpeningID, "Do not forget to update ElemHead_To_Neig function after new element type was introduced!");
 
 	return true;
 }		// ElemHead_To_Neig
@@ -239,14 +290,14 @@ const char*		ErrID_To_Name (GSErrCode err)
 		case APIERR_REFERENCEEXIST:		str = "APIERR_REFERENCEEXIST";	break;
 		case APIERR_NAMEALREADYUSED:	str = "APIERR_NAMEALREADYUSED";	break;
 
-		case APIERR_ATTREXIST:			str = "APIERR_ATTREXIST";			break;
-		case APIERR_DELETED:			str = "APIERR_DELETED";				break;
-		case APIERR_LOCKEDLAY:			str = "APIERR_LOCKEDLAY";			break;
-		case APIERR_HIDDENLAY:			str = "APIERR_HIDDENLAY";			break;
-		case APIERR_INVALFLOOR:			str = "APIERR_INVALFLOOR";			break;
-		case APIERR_NOTMINE:			str = "APIERR_NOTMINE";				break;
-		case APIERR_NOACCESSRIGHT:		str = "APIERR_NOACCESSRIGHT";		break;
-		case APIERR_BADPROPERTY:		str = "APIERR_BADPROPERTY";			break;
+		case APIERR_ATTREXIST:					str = "APIERR_ATTREXIST";					break;
+		case APIERR_DELETED:					str = "APIERR_DELETED";						break;
+		case APIERR_LOCKEDLAY:					str = "APIERR_LOCKEDLAY";					break;
+		case APIERR_HIDDENLAY:					str = "APIERR_HIDDENLAY";					break;
+		case APIERR_INVALFLOOR:					str = "APIERR_INVALFLOOR";					break;
+		case APIERR_NOTMINE:					str = "APIERR_NOTMINE";						break;
+		case APIERR_NOACCESSRIGHT:				str = "APIERR_NOACCESSRIGHT";				break;
+		case APIERR_BADPROPERTY:			str = "APIERR_BADPROPERTY";			break;
 		case APIERR_BADCLASSIFICATION:	str = "APIERR_BADCLASSIFICATION";	break;
 
 		case APIERR_MODULNOTINSTALLED:			str = "APIERR_MODULNOTINSTALLED";			break;
@@ -282,7 +333,7 @@ const char*		ErrID_To_Name (GSErrCode err)
 
 		case APIERR_MISSINGCODE:		str = "APIERR_MISSINGCODE";		break;
 		case APIERR_MISSINGDEF:			str = "APIERR_MISSINGDEF";		break;
-		default:						str = "Unknown Error";			break;
+		default:						str = "???";					break;
 	}
 
 	return str;
@@ -314,14 +365,14 @@ const char*		LibID_To_Name (API_LibTypeID typeID)
 		"Macro",
 		"Pict",
 		"List Scheme",
-		"Skylight",
-		"Opening"
+		"Skylight"
 	};
 
-	if (DBERROR (typeID < API_ZombieLibID || typeID > APILib_OpeningSymbolID))
-		return "Unknown library part type";
+	if (typeID < API_ZombieLibID || typeID > APILib_SkylightID)
+		return "???";
 
 	return libNames[typeID];
+
 }		// LibID_To_Name
 
 
@@ -340,6 +391,7 @@ const char*		AttrID_To_Name (API_AttrTypeID typeID)
 		"Fill type",
 		"Composite Wall",
 		"Surface",
+		"City",
 		"Layer Combination",
 		"Zone Category",
 		"Font",
@@ -352,10 +404,8 @@ const char*		AttrID_To_Name (API_AttrTypeID typeID)
 		"Building Material",
 	};
 
-	static_assert (API_LastAttributeID == API_BuildingMaterialID, "Do not forget to update AttrID_To_Name function after new attribute type was introduced!");
-
 	if (typeID < API_ZombieAttrID || typeID > API_LastAttributeID)
-		return "Unknown attribute type";
+		return "???";
 
 	return attrNames[typeID];
 }		// AttrID_To_Name
@@ -365,11 +415,11 @@ const char*		AttrID_To_Name (API_AttrTypeID typeID)
 // Return a descriptive name for an element type
 // -----------------------------------------------------------------------------
 
-const GS::UniString		ElemID_To_Name (const API_ElemType& type)
+const GS::UniString		ElemID_To_Name (API_ElemTypeID typeID)
 {
 	GS::UniString	elemNameStr;
 
-	ACAPI_Element_GetElemTypeName (type, elemNameStr);
+	ACAPI_Goodies (APIAny_GetElemTypeNameID, (void*) typeID, &elemNameStr);
 
 	return elemNameStr;
 }		// ElemID_To_Name
@@ -381,6 +431,9 @@ const GS::UniString		ElemID_To_Name (const API_ElemType& type)
 //	Interface support
 //
 // =============================================================================
+#ifdef __APPLE__
+#pragma mark -
+#endif
 
 // -----------------------------------------------------------------------------
 // Convert an API_Coord3D to an API_Coord
@@ -405,12 +458,10 @@ bool	ClickAPoint (const char		*prompt,
 	CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
 	pointInfo.changeFilter = false;
 	pointInfo.changePlane  = false;
-	err = ACAPI_UserInput_GetPoint (&pointInfo);
+	err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
 	if (err != NoError) {
-		if (err != APIERR_CANCEL) {
-			WriteReport_Err ("Error in APIIo_GetPointID", err);
-		}
-
+		if (err != APIERR_CANCEL)
+			ACAPI_WriteReport ("Error in APIIo_GetPointID: %s", true, ErrID_To_Name (err));
 		return false;
 	}
 
@@ -437,41 +488,37 @@ bool	GetAnArc (const char*	prompt,
 	GSErrCode			err;
 
 	CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
-	err = ACAPI_UserInput_GetPoint (&pointInfo);
-	if (err != NoError) {
-		return false;
+	err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
+
+	if (err == NoError) {
+		CHTruncate (prompt, lineInfo.prompt, sizeof (lineInfo.prompt));
+		lineInfo.startCoord = pointInfo.pos;						// line starts with the clicked point
+		lineInfo.disableDefaultFeedback = false;					// draw the default thick rubber line
+
+		err = ACAPI_Interface (APIIo_GetLineID, &lineInfo, nullptr);
 	}
 
-	CHTruncate (prompt, lineInfo.prompt, sizeof (lineInfo.prompt));
-	lineInfo.startCoord = pointInfo.pos;						// line starts with the clicked point
-	lineInfo.disableDefaultFeedback = false;					// draw the default thick rubber line
-
-	err = ACAPI_UserInput_GetLine (&lineInfo);
-	if (err != NoError) {
-		return false;
+	if (err == NoError) {
+		CHTruncate (prompt, arcInfo.prompt, sizeof (arcInfo.prompt));
+		arcInfo.origo = lineInfo.startCoord;						// set arc origo
+		arcInfo.startCoord = lineInfo.pos;							// arc starts with the second clicked point
+		arcInfo.startCoordGiven = true;
+		arcInfo.disableDefaultFeedback = false;						// draw the default thick rubber line
+		err = ACAPI_Interface (APIIo_GetArcID, &arcInfo, nullptr);
 	}
 
-	CHTruncate (prompt, arcInfo.prompt, sizeof (arcInfo.prompt));
-	arcInfo.origo = lineInfo.startCoord;						// set arc origo
-	arcInfo.startCoord = lineInfo.pos;							// arc starts with the second clicked point
-	arcInfo.startCoordGiven = true;
-	arcInfo.disableDefaultFeedback = false;						// draw the default thick rubber line
-
-	err = ACAPI_UserInput_GetArc (&arcInfo);
-	if (err != NoError) {
-		return false;
+	if (err == NoError) {
+		if (origin != nullptr)
+			*origin = ToCoord (arcInfo.origo);
+		if (startPos != nullptr)
+			*startPos = ToCoord (arcInfo.startCoord);
+		if (endPos != nullptr)
+			*endPos = ToCoord (arcInfo.pos);
+		if (isArcNegative != nullptr)
+			*isArcNegative = arcInfo.negArc ? true : false;
 	}
 
-	if (origin != nullptr)
-		*origin = ToCoord (arcInfo.origo);
-	if (startPos != nullptr)
-		*startPos = ToCoord (arcInfo.startCoord);
-	if (endPos != nullptr)
-		*endPos = ToCoord (arcInfo.pos);
-	if (isArcNegative != nullptr)
-		*isArcNegative = arcInfo.negArc ? true : false;
-
-	return true;
+	return (err == NoError);
 }		// GetAnArc
 
 
@@ -485,41 +532,41 @@ bool	GetAnArc (const char*	prompt,
 //	false:	the input is canceled or wrong type of element was clicked
 // -----------------------------------------------------------------------------
 
-bool	ClickAnElem (const char*			prompt,
-					 const API_ElemType&	needType,
-					 API_Neig*				neig /*= nullptr*/,
-					 API_ElemType*			type /*= nullptr*/,
-					 API_Guid*				guid /*= nullptr*/,
-					 API_Coord3D*			c /*= nullptr*/,
-					 bool					ignorePartialSelection /*= true*/)
+bool	ClickAnElem (const char			*prompt,
+					 API_ElemTypeID		needTypeID,
+					 API_Neig			*neig /*= nullptr*/,
+					 API_ElemTypeID		*typeID /*= nullptr*/,
+					 API_Guid			*guid /*= nullptr*/,
+					 API_Coord3D		*c /*= nullptr*/,
+					 bool				ignorePartialSelection /*= true*/)
 {
 	API_GetPointType	pointInfo = {};
-	API_ElemType		clickedType;
+	API_ElemTypeID		clickedID;
 	GSErrCode			err;
 
 	CHTruncate (prompt, pointInfo.prompt, sizeof (pointInfo.prompt));
 	pointInfo.changeFilter = false;
 	pointInfo.changePlane  = false;
-	err = ACAPI_UserInput_GetPoint (&pointInfo);
+	err = ACAPI_Interface (APIIo_GetPointID, &pointInfo, nullptr);
 	if (err != NoError) {
-		if (err != APIERR_CANCEL) {
-			WriteReport_Err ("Error in APIIo_GetPointID", err);
-		}
-
+		if (err != APIERR_CANCEL)
+			ACAPI_WriteReport ("Error in APIIo_GetPointID: %s", true, ErrID_To_Name (err));
 		return false;
 	}
 
 	if (pointInfo.neig.neigID == APINeig_None) {		// try to find polygonal element clicked inside the polygon area
-		API_Elem_Head		elemHead = {};
-		API_ElemSearchPars	pars = {};
-		pars.type = needType;
+		API_Elem_Head elemHead;
+		BNZeroMemory (&elemHead, sizeof (API_Elem_Head));
+		API_ElemSearchPars	pars;
+		BNZeroMemory (&pars, sizeof (API_ElemSearchPars));
+		pars.typeID = needTypeID;
 		pars.loc.x = pointInfo.pos.x;
 		pars.loc.y = pointInfo.pos.y;
 		pars.z = 1.00E6;
 		pars.filterBits = APIFilt_OnVisLayer | APIFilt_OnActFloor;
-		err = ACAPI_Element_SearchElementByCoord (&pars, &elemHead.guid);
+		err = ACAPI_Goodies (APIAny_SearchElementByCoordID, &pars, &elemHead.guid);
 		if (err == NoError) {
-			elemHead.type = pars.type;
+			elemHead.typeID = pars.typeID;
 			ElemHead_To_Neig (&pointInfo.neig, &elemHead);
 		}
 	}
@@ -529,27 +576,28 @@ bool	ClickAnElem (const char*			prompt,
 		pointInfo.neig.elemPartIndex = 0;
 	}
 
-	clickedType = Neig_To_ElemID (pointInfo.neig.neigID);
+	clickedID = Neig_To_ElemID (pointInfo.neig.neigID);
 
 	if (neig != nullptr)
 		*neig = pointInfo.neig;
-	if (type != nullptr)
-		*type = clickedType;
+	if (typeID != nullptr)
+		*typeID = clickedID;
 	if (guid != nullptr)
 		*guid = pointInfo.neig.guid;
 	if (c != nullptr)
 		*c = pointInfo.pos;
 
-	if (clickedType == API_ZombieElemID)
+	if (clickedID == API_ZombieElemID)
 		return false;
 
-	bool good = (needType == API_ZombieElemID || needType == clickedType);
+	bool good = (needTypeID == API_ZombieElemID || needTypeID == clickedID);
 
-	if (!good && clickedType == API_SectElemID) {
-		API_Element element = {};
+	if (!good && clickedID == API_SectElemID) {
+		API_Element element;
+		BNZeroMemory (&element, sizeof (API_Element));
 		element.header.guid = pointInfo.neig.guid;
 		if (ACAPI_Element_Get (&element) == NoError)
-			good = (needType == element.sectElem.parentType);
+			good = (needTypeID == element.sectElem.parentID);
 	}
 
 	return good;
@@ -567,8 +615,13 @@ GS::Array<API_Neig>	ClickElements_Neig (const char		*prompt,
 	API_Neig			theNeig;
 	GS::Array<API_Neig> neigs;
 
-	while (ClickAnElem (prompt, needTypeID, &theNeig) && theNeig.neigID != APINeig_None) {
-		neigs.Push (theNeig);
+	while (true) {
+		if (ClickAnElem (prompt, needTypeID, &theNeig)) {
+			if (theNeig.neigID == APINeig_None)
+				break;
+			neigs.Push (theNeig);
+		} else
+			break;
 	}
 
 	return neigs;
@@ -583,7 +636,12 @@ GS::Array<API_Neig>	ClickElements_Neig (const char		*prompt,
 GS::Array<API_Guid>	ClickElements_Guid (const char		*prompt,
 										API_ElemTypeID	needTypeID)
 {
-	return ClickElements_Neig (prompt, needTypeID).Transform<API_Guid> ([] (const API_Neig& neig) { return neig.guid; });
+	GS::Array<API_Guid> elemGuids;
+	GS::Array<API_Neig> neigs = ClickElements_Neig (prompt, needTypeID);
+	for (const API_Neig& neig : neigs)
+		elemGuids.Push (neig.guid);
+
+	return elemGuids;
 }		// ClickElements_Guid
 
 
@@ -593,15 +651,17 @@ GS::Array<API_Guid>	ClickElements_Guid (const char		*prompt,
 
 bool		GetMenuItemMark (short menuResID, short itemIndex)
 {
-	API_MenuItemRef		itemRef = {};
-	GSFlags				itemFlags = 0;
+	API_MenuItemRef		itemRef;
+	GSFlags				itemFlags;
 
+	BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
 	itemRef.menuResID = menuResID;
 	itemRef.itemIndex = itemIndex;
+	itemFlags = 0;
 
-	ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
+	ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
 
-	return (itemFlags & API_MenuItemChecked) != 0;
+	return (bool) ((itemFlags & API_MenuItemChecked) != 0);
 }		// GetMenuItemMark
 
 
@@ -611,22 +671,24 @@ bool		GetMenuItemMark (short menuResID, short itemIndex)
 
 bool		InvertMenuItemMark (short menuResID, short itemIndex)
 {
-	API_MenuItemRef		itemRef = {};
-	GSFlags				itemFlags = 0;
+	API_MenuItemRef		itemRef;
+	GSFlags				itemFlags;
 
+	BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
 	itemRef.menuResID = menuResID;
 	itemRef.itemIndex = itemIndex;
+	itemFlags = 0;
 
-	ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
+	ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
 
 	if ((itemFlags & API_MenuItemChecked) == 0)
 		itemFlags |= API_MenuItemChecked;
 	else
 		itemFlags &= ~API_MenuItemChecked;
 
-	ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
+	ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
 
-	return (itemFlags & API_MenuItemChecked) != 0;
+	return (bool) ((itemFlags & API_MenuItemChecked) != 0);
 }		// InvertMenuItemMark
 
 
@@ -636,20 +698,22 @@ bool		InvertMenuItemMark (short menuResID, short itemIndex)
 
 void		DisableEnableMenuItem (short menuResID, short itemIndex, bool disable)
 {
-	API_MenuItemRef		itemRef = {};
-	GSFlags				itemFlags = 0;
+	API_MenuItemRef		itemRef;
+	GSFlags				itemFlags;
 
+	BNZeroMemory (&itemRef, sizeof (API_MenuItemRef));
 	itemRef.menuResID = menuResID;
 	itemRef.itemIndex = itemIndex;
+	itemFlags = 0;
 
-	ACAPI_MenuItem_GetMenuItemFlags (&itemRef, &itemFlags);
+	ACAPI_Interface (APIIo_GetMenuItemFlagsID, &itemRef, &itemFlags);
 
 	if (disable)
 		itemFlags |= API_MenuItemDisabled;
 	else
 		itemFlags &= ~API_MenuItemDisabled;
 
-	ACAPI_MenuItem_SetMenuItemFlags (&itemRef, &itemFlags);
+	ACAPI_Interface (APIIo_SetMenuItemFlagsID, &itemRef, &itemFlags);
 
 	return;
 }		// DisEnableMenuItem
@@ -660,6 +724,9 @@ void		DisableEnableMenuItem (short menuResID, short itemIndex, bool disable)
 //	Geometry support
 //
 // =============================================================================
+#ifdef __APPLE__
+#pragma mark -
+#endif
 
 // -----------------------------------------------------------------------------
 // Tell whether an arc starts from the given node in the polygon

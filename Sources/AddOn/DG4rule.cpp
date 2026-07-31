@@ -1,12 +1,12 @@
 
-#include "APIEnvir.h"
+#include "api_headers/APIEnvir.h"
 
 #include "ACAPinc.h" // also includes APIdefs.h
 
 #include "APIdefs.h"
 #include "DG4rule.hpp"
 #include "Propertycache.hpp"
-#include "ResourceIds.hpp"
+#include "api_headers/ResourceIds.hpp"
 
 RuleSelectDialog::RuleSelectDialog (RuleSelectData &rulelist)
     : DG::ModalDialog (ACAPI_GetOwnResModule (), ID_ADDON_RULE_DLG, ACAPI_GetOwnResModule ()),

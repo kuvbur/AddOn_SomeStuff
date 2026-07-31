@@ -13,11 +13,16 @@ Supported: AC 22–29, Windows / macOS. Bilingual UI (RUS/INT, auto-detected).
 
 ```
 Sources/AddOn/                # .cpp / .h sources (core + modules)  ← ALL SOURCE FILES ARE HERE
-Sources/AddOnResources/       # Resources (RFIX, R<LANG>/*.grc, images)
-  RFIX/Images/*.svg           # Menu icons
+  api_headers/                # Per-version APICommon headers (AC22–AC29)
+  json_commands/              # JSON API command handlers (CommandBase, GetPropertyDefinitions, Health, etc.)
+  third_party/                # Embedded third-party libs (exprtk, alphanum, qrcodegen)
+Sources/AddOnResources/       # Resources (RFIX, RINT, platform-specific)
+  RFIX/AddOnFix.grc           # Fixed resource definitions
+  RFIX/Images/*.svg           # Menu icons (18×18)
   RINT/AddOn.grc              # Generated from AddOn.grc.in (do NOT edit manually)
-  RINT/*.grc                  # String tables (generated)
-  RFIX.win/*.rc2 / RFIX.mac/*.plist
+  RFIX.win/*.rc2              # Windows resource scripts
+  RFIX.mac/*.plist            # macOS property lists
+Sources/MacDarkModeIcon/      # macOS dark mode icon assets
 Tools/
   CMakeCommon.cmake           # Shared CMake: AC version detect, compiler flags, libs
   BuildAddOn.py               # Python wrapper: downloads DevKit, configures CMake, builds, packages
@@ -29,7 +34,7 @@ config.json                   # BuildAddOn.py config: DevKit URLs per version/pl
 wiki/                         # Docs, images, example files
 ```
 
-> **⚠️ IMPORTANT**: All C++ source files (`.cpp` / `.h`) are located in `D:\SomeStuff_addon\Sources\AddOn\`.  
+> **⚠️ IMPORTANT**: All C++ source files (`.cpp` / `.h`) are located in `D:\\SomeStuff_addon\\Sources\\AddOn\\`.  
 > Always search/read there — NOT in the repo root or other folders.
 
 ## C++ Code Navigation & Context Rules

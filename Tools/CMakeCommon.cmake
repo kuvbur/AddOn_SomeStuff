@@ -183,10 +183,10 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         )
     endif ()
 
-    file (GLOB AddOnHeaderFiles CONFIGURE_DEPENDS
+    file (GLOB_RECURSE AddOnHeaderFiles CONFIGURE_DEPENDS
         ${addOnSourcesFolder}/*.h
     )
-    file (GLOB AddOnSourceFiles CONFIGURE_DEPENDS
+    file (GLOB_RECURSE AddOnSourceFiles CONFIGURE_DEPENDS
         ${addOnSourcesFolder}/*.cpp
     )
     set (
@@ -198,7 +198,10 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         ${ResourceStampFile}
     )
     
-    source_group ("Sources" FILES ${AddOnHeaderFiles} ${AddOnSourceFiles})
+    source_group (TREE ${CMAKE_CURRENT_LIST_DIR}/${addOnSourcesFolder}
+        PREFIX "Sources"
+        FILES ${AddOnHeaderFiles} ${AddOnSourceFiles}
+    )
     source_group ("Images" FILES ${AddOnImageFiles})
     source_group ("Resources" FILES ${AddOnResourceFiles})
     if (WIN32)

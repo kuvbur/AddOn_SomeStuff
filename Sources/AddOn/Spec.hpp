@@ -3,19 +3,19 @@
 #if !defined(SPEC_HPP)
     #define SPEC_HPP
     #ifdef AC_25
-        #include "APICommon25.h"
+        #include "api_headers/APICommon25.h"
     #endif // AC_25
     #ifdef AC_26
-        #include "APICommon26.h"
+        #include "api_headers/APICommon26.h"
     #endif // AC_26
     #ifdef AC_27
-        #include "APICommon27.h"
+        #include "api_headers/APICommon27.h"
     #endif // AC_27
     #ifdef AC_28
-        #include "APICommon28.h"
+        #include "api_headers/APICommon28.h"
     #endif // AC_28
     #ifdef AC_29
-        #include "APICommon29.h"
+        #include "api_headers/APICommon29.h"
     #endif // AC_28
     #include "Helpers.hpp"
 

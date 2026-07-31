@@ -57,13 +57,22 @@ IncludeBlocks: Regroup
 
 IncludeCategories:
   - Regex: '^<.*'
-    Priority: -4
+    Priority: -5
 
   - Regex: '^"APIEnvir\.h"'
-    Priority: -3
+    Priority: -4
 
   - Regex: '^"ACAPinc\.h"'
+    Priority: -3
+
+  # Хэдеры Archicad SDK
+  - Regex: '^"api_headers/.*"'
     Priority: -2
 
-  - Regex: '.*'
+  # Сторонние библиотеки
+  - Regex: '^"third_party/.*"'
     Priority: -1
+
+  # Всё остальное
+  - Regex: '.*'
+    Priority: 1

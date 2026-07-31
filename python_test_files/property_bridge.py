@@ -200,6 +200,44 @@ class PropertyBridgeHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 error_response = {"error": "Failed to call GetPropertyDefinitions", "details": str(body)[:500]}
                 self.wfile.write(json.dumps(error_response).encode("utf-8"))
+        elif self.path == "/api/health":
+            # Health check command
+            ok, body = ac_post(self.server.ac_port, {
+                "command": "API.ExecuteAddOnCommand",
+                "parameters": {
+                    "addOnCommandId": {
+                        "commandNamespace": "SomeStuffCommand",
+                        "commandName": "Health"
+                    },
+                    "addOnCommandParameters": {}
+                }
+            })
+            
+            print(f"[API] command=SomeStuffCommand.Health")
+            print(f"[API] ok={ok}, body_type={type(body).__name__}")
+            
+            if ok and body and isinstance(body, dict):
+                result = body.get("result", {})
+                response_data = result.get("addOnCommandResponse", {})
+                
+                if "status" in response_data:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(json.dumps(response_data).encode("utf-8"))))
+                    self.end_headers()
+                    self.wfile.write(json.dumps(response_data).encode("utf-8"))
+                else:
+                    self.send_response(500)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    error_response = {"error": "Invalid response format", "body": str(body)[:500]}
+                    self.wfile.write(json.dumps(error_response).encode("utf-8"))
+            else:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                error_response = {"error": "Failed to call Health", "details": str(body)[:500]}
+                self.wfile.write(json.dumps(error_response).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()

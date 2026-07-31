@@ -1,6 +1,6 @@
 ﻿// *****************************************************************************
 // Helper functions for Add-On development
-// API Development Kit 22; Mac/Win
+// API Development Kit 24; Mac/Win
 //
 // Namespaces:		Contact person:
 //		-None-
@@ -8,7 +8,7 @@
 // [SG compatible] - Yes
 // *****************************************************************************
 
-#include "APIEnvir.h"
+#include "api_headers/APIEnvir.h"
 #define	_APICOMMON_TRANSL_
 
 
@@ -21,7 +21,7 @@
 #include	"GSSystem.h"
 
 #include	"ACAPinc.h"
-#include	"APICommon.h"
+#include	"api_headers/APICommon25.h"
 
 
 #define USE_DEBUG_WINDOW	1
@@ -297,8 +297,8 @@ const char*		ErrID_To_Name (GSErrCode err)
 		case APIERR_INVALFLOOR:					str = "APIERR_INVALFLOOR";					break;
 		case APIERR_NOTMINE:					str = "APIERR_NOTMINE";						break;
 		case APIERR_NOACCESSRIGHT:				str = "APIERR_NOACCESSRIGHT";				break;
-		case APIERR_BADPROPERTYFORELEM:			str = "APIERR_BADPROPERTYFORELEM";			break;
-		case APIERR_BADCLASSIFICATIONFORELEM:	str = "APIERR_BADCLASSIFICATIONFORELEM";	break;
+		case APIERR_BADPROPERTY:			str = "APIERR_BADPROPERTY";			break;
+		case APIERR_BADCLASSIFICATION:	str = "APIERR_BADCLASSIFICATION";	break;
 
 		case APIERR_MODULNOTINSTALLED:			str = "APIERR_MODULNOTINSTALLED";			break;
 		case APIERR_MODULCMDMINE:				str = "APIERR_MODULCMDMINE";				break;
@@ -402,7 +402,6 @@ const char*		AttrID_To_Name (API_AttrTypeID typeID)
 		"MEP System",
 		"Operation Profile",
 		"Building Material",
-		"Markup Style"
 	};
 
 	if (typeID < API_ZombieAttrID || typeID > API_LastAttributeID)
@@ -610,71 +609,40 @@ bool	ClickAnElem (const char			*prompt,
 //	return the neigs
 // -----------------------------------------------------------------------------
 
-API_Neig**	ClickElements_Neig (const char		*prompt,
-								API_ElemTypeID	needTypeID,
-								Int32			*nItem)
+GS::Array<API_Neig>	ClickElements_Neig (const char		*prompt,
+										API_ElemTypeID	needTypeID)
 {
-	API_Neig	**items, theNeig;
-	Int32		n = 0;
+	API_Neig			theNeig;
+	GS::Array<API_Neig> neigs;
 
-	items = (API_Neig **) BMAllocateHandle (0, ALLOCATE_CLEAR, 0);
-
-	while (items != nullptr) {
+	while (true) {
 		if (ClickAnElem (prompt, needTypeID, &theNeig)) {
 			if (theNeig.neigID == APINeig_None)
 				break;
-			items = (API_Neig **) BMReallocHandle ((GSHandle) items, (n + 1) * sizeof (API_Neig), 0, 0);
-			if (items != nullptr) {
-				(*items) [n] = theNeig;
-				n ++;
-			}
+			neigs.Push (theNeig);
 		} else
 			break;
 	}
 
-	if (n == 0 && items != nullptr) {
-		BMKillHandle ((GSHandle *) &items);
-		items = nullptr;
-	}
-
-	if (nItem != nullptr)
-		*nItem = n;
-
-	return items;
+	return neigs;
 }		// ClickElements_Neig
 
 
 // -----------------------------------------------------------------------------
 // Ask the user to click several elements of the requested type
-//	return element headers
+//	return element guids
 // -----------------------------------------------------------------------------
 
-API_Elem_Head**	ClickElements_ElemHead (const char		*prompt,
-										API_ElemTypeID	needTypeID,
-										Int32			*nItem)
+GS::Array<API_Guid>	ClickElements_Guid (const char		*prompt,
+										API_ElemTypeID	needTypeID)
 {
-	API_Neig		**items;
-	API_Elem_Head	**elemHead;
-	Int32			i;
-	GSErrCode		err;
+	GS::Array<API_Guid> elemGuids;
+	GS::Array<API_Neig> neigs = ClickElements_Neig (prompt, needTypeID);
+	for (const API_Neig& neig : neigs)
+		elemGuids.Push (neig.guid);
 
-	items = ClickElements_Neig (prompt, needTypeID, nItem);
-	if (items == nullptr)
-		return nullptr;
-
-	elemHead = (API_Elem_Head **) BMAllocateHandle (*nItem * sizeof (API_Elem_Head), ALLOCATE_CLEAR, 0);
-	err = BMError ();
-	if (err == NoError) {
-		for (i = 0; i < *nItem; i++) {
-			(*elemHead)[i].guid	= (*items)[i].guid;
-		}
-	} else
-		*nItem = 0;
-
-	BMKillHandle ((GSHandle *) &items);
-
-	return elemHead;
-}		// ClickElements_ElemHead
+	return elemGuids;
+}		// ClickElements_Guid
 
 
 // -----------------------------------------------------------------------------

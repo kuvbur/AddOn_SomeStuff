@@ -24,7 +24,7 @@
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "ReNum.hpp"
-    #include "ResourceIds.hpp"
+    #include "api_headers/ResourceIds.hpp"
     #include "Sync.hpp"
     #include "SyncSettings.hpp"
 

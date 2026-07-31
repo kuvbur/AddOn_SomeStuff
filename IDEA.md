@@ -309,27 +309,27 @@
 
 В папке `D:\SomeStuff_addon` уже созданы:
 
-- `D:\SomeStuff_addon\Sources\AddOn\CommandBase.hpp/cpp` — базовый класс (полностью подходит, повторяет структуру tapir)
+- `D:\SomeStuff_addon\Sources\AddOn\json_commands\CommandBase.hpp/cpp` — базовый класс (полностью подходит, повторяет структуру tapir)
 - `D:\SomeStuff_addon\Code_Example\template_files_json_commands\ExampleCommands.hpp/cpp` — примеры реализации
 - Готовая структура: `ReadOnlyCommand` и `ModifyCommand`
 
 ### Следующие шаги
 
 1. Создать `ParsePropertyCommand` для парсинга команд Renum из описания свойств
-2. Использовать готовую структуру из `Commands/`
+2. Использовать готовую структуру из `json_commands/`
 3. Реализовать логику парсинга (используя код из `ReNum_GetElement`)
 4. Зарегистрировать команду в `SomeStuff_Main.cpp`
 5. Протестировать через Python интерфейс
 
 ### Python интерфейс (Часть 1) — СОЗДАН
 
-Создан файл `D:\SomeStuff_addon\property_bridge.py`:
+Создан файл `D:\SomeStuff_addon\python_test_files\property_bridge.py`:
 
 - HTTP сервер на базе `ThreadingHTTPServer` (по аналогии с `archixml.py`)
 - HTML/JS интерфейс встроен в код
 - Кнопка "Получить свойства" и выпадающий список
 - Вызов к Archicad JSON API через `ac_post()`
-- Инструкции в `property_bridge_README.md`
+- Инструкции в `D:\SomeStuff_addon\python_test_files\property_bridge_README.md`
 
 **Статус:** Python скрипт готов, синтаксис проверен. Ожидает регистрации команды `GetPropertyDefinitions` в аддоне.
 
@@ -340,14 +340,14 @@
 - `D:\SomeStuff_addon\Sources\AddOn\ReNum.cpp` — логика парсинга Renum
 - `D:\SomeStuff_addon\Sources\AddOn\Constants.hpp` — константы (RENUMFLAG, RENUM и др.)
 - `D:\SomeStuff_addon\wiki\en\Element-Renumbering-en.md` — документация по Renum
-- `D:\SomeStuff_addon\property_bridge.py` — Python интерфейс (НОВОЕ)
-- `D:\SomeStuff_addon\property_bridge_README.md` — инструкции по запуску (НОВОЕ)
+- `D:\SomeStuff_addon\python_test_files\property_bridge.py` — Python интерфейс (НОВОЕ)
+- `D:\SomeStuff_addon\python_test_files\property_bridge_README.md` — инструкции по запуску (НОВОЕ)
 
-#### JSON API Команды (новые файлы)
+### JSON API Команды (новые файлы)
 
-- `D:\SomeStuff_addon\Sources\AddOn\CommandBase.cpp` / `.hpp` — базовый класс для JSON команд
-- `D:\SomeStuff_addon\Sources\AddOn\GetPropertyDefinitionsCommand.cpp` / `.hpp` — команда получения определений свойств
-- `D:\SomeStuff_addon\Sources\AddOn\JsonCommandRegistrar.cpp` / `.hpp` — регистратор JSON команд
+- `D:\SomeStuff_addon\Sources\AddOn\json_commands\CommandBase.cpp` / `.hpp` — базовый класс для JSON команд
+- `D:\SomeStuff_addon\Sources\AddOn\json_commands\GetPropertyDefinitionsCommand.cpp` / `.hpp` — команда получения определений свойств
+- `D:\SomeStuff_addon\Sources\AddOn\json_commands\JsonCommandRegistrar.cpp` / `.hpp` — регистратор JSON команд
 
 ### Файлы примеров кода в `D:\SomeStuff_addon\Code_Example` (включая вложенные папки)
 

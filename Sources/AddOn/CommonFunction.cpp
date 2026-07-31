@@ -5,11 +5,11 @@
 #include <cstdlib>
 #include <limits>
 
-#include "APIEnvir.h"
+#include "api_headers/APIEnvir.h"
 
 #include "CommonFunction.hpp"
 #include "Propertycache.hpp"
-#include "qrcodegen.hpp"
+#include "third_party/qrcodegen.hpp"
 #if defined(_MAC)
     #include <xlocale.h>
 #endif
