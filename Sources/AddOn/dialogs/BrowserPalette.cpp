@@ -7,8 +7,10 @@
 #include "dialogs/BrowserPalette.hpp"
 
 #include "CommonFunction.hpp"
+#include "dialogs/HTML_Pages.hpp" // Сгенерированный файл с HTML страницами
 #include "dialogs/SyncSettings.hpp"
-static const char *siteURL = "http://home.sch.bme.hu/~lorantfyt/Selection_Test.html"; // ��������
+#include "Propertycache.hpp"
+
 static const GS::Guid paletteGuid ("{FEE27B6B-3873-5844-88B6-F0083AA4CD49}");
 
 GS::Ref<BrowserPalette> BrowserPalette::instance;
@@ -24,34 +26,6 @@ void ShowOrHideBrowserPalette () {
             BrowserPalette::CreateInstance ();
         BrowserPalette::GetInstance ().Show ();
     }
-}
-
-static GS::UniString GetStringFromJavaScriptVariable (GS::Ref<DG::JSBase> jsVariable) {
-    GS::Ref<DG::JSValue> jsValue = GS::DynamicCast<DG::JSValue> (jsVariable);
-    if (DBVERIFY (jsValue != nullptr && jsValue->GetType () == DG::JSValue::STRING))
-        return jsValue->GetString ();
-
-    return GS::EmptyUniString;
-}
-
-template <class Type> static GS::Ref<DG::JSBase> ConvertToJavaScriptVariable (const Type &cppVariable) {
-    return new DG::JSValue (cppVariable);
-}
-
-template <> GS::Ref<DG::JSBase> ConvertToJavaScriptVariable (const BrowserPalette::ElementInfo &elemInfo) {
-    GS::Ref<DG::JSArray> js = new DG::JSArray ();
-    js->AddItem (ConvertToJavaScriptVariable (elemInfo.guidStr));
-    js->AddItem (ConvertToJavaScriptVariable (elemInfo.typeName));
-    js->AddItem (ConvertToJavaScriptVariable (elemInfo.elemID));
-    return js;
-}
-
-template <class Type> static GS::Ref<DG::JSBase> ConvertToJavaScriptVariable (const GS::Array<Type> &cppArray) {
-    GS::Ref<DG::JSArray> newArray = new DG::JSArray ();
-    for (const Type &item : cppArray) {
-        newArray->AddItem (ConvertToJavaScriptVariable (item));
-    }
-    return newArray;
 }
 
 // --- Class definition: BrowserPalette ----------------------------------------
@@ -102,27 +76,49 @@ void BrowserPalette::Hide () {
 }
 
 void BrowserPalette::InitBrowserControl () {
-    browser.LoadURL (siteURL);
+    // Загружаем HTML из сгенерированного заголовочного файла
+    GS::UniString html = GS::UniString (HTML_Pages_html);
+    browser.LoadHTML (html);
+
+    // Регистрируем JavaScript объект для взаимодействия с ArchiCAD
     RegisterACAPIJavaScriptObject ();
-    // UpdateSelectedElementsOnHTML ();
 }
 
 void BrowserPalette::RegisterACAPIJavaScriptObject () {
     DG::JSObject *jsACAPI = new DG::JSObject ("ACAPI");
 
-    // jsACAPI->AddItem (new DG::JSFunction ("GetSelectedElements", [] (GS::Ref<DG::JSBase>) {
-    // 	return ConvertToJavaScriptVariable (GetSelectedElements ());
-    // }));
+    // Регистрируем функцию для получения свойств (вызывается из HTML кнопки)
+    jsACAPI->AddItem (new DG::JSFunction ("GetPropertyDefinitions", [] (GS::Ref<DG::JSBase>) {
+        // Получаем свойства из кэша аддона
+        if (!ParamHelpers::isPropertyDefinitionRead ()) {
+            DBprnt ("Property cache not loaded");
+            // Возвращаем пустой массив
+            GS::Ref<DG::JSArray> emptyArray = new DG::JSArray ();
+            return emptyArray;
+        }
 
-    // jsACAPI->AddItem (new DG::JSFunction ("AddElementToSelection", [] (GS::Ref<DG::JSBase> param) {
-    // 	ModifySelection (GetStringFromJavaScriptVariable (param), AddToSelection);
-    // 	return ConvertToJavaScriptVariable (true);
-    // }));
+        auto &cache = PROPERTYCACHE ();
 
-    // jsACAPI->AddItem (new DG::JSFunction ("RemoveElementFromSelection", [] (GS::Ref<DG::JSBase> param) {
-    // 	ModifySelection (GetStringFromJavaScriptVariable (param), RemoveFromSelection);
-    // 	return ConvertToJavaScriptVariable (true);
-    // }));
+        // Создаем JS массив для возврата свойств
+        GS::Ref<DG::JSArray> jsArray = new DG::JSArray ();
+
+        // Итерируем по свойствам в кэше (GS::HashTable возвращает пары указателей)
+        for (const auto &pair : cache.property) {
+            // pair.key и pair.value — это указатели, нужно разыменовать
+            const GS::UniString &rawName = *pair.key;
+            const ParamValue &paramValue = *pair.value;
+
+            // Добавляем имя свойства в массив
+            if (!paramValue.name.IsEmpty ()) {
+                jsArray->AddItem (new DG::JSValue (paramValue.name.ToCStr ().Get ()));
+            } else {
+                jsArray->AddItem (new DG::JSValue (rawName.ToCStr ().Get ()));
+            }
+        }
+
+        DBprnt ("GetPropertyDefinitions: returned " + GS::ValueToUniString (cache.property.GetSize ()) + " properties");
+        return jsArray;
+    }));
 
     browser.RegisterAsynchJSObject (jsACAPI);
 }

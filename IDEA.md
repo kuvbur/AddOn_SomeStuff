@@ -401,3 +401,215 @@
 #### Корневые файлы Code_Example
 
 - `D:\SomeStuff_addon\Code_Example\archixml.py` — Python скрипт HTTP сервера с HTML/JS интерфейсом (reference для property_bridge.py)
+
+---
+
+## Новая задача: Интерфейс редактора описаний свойств (2026-07-31)
+
+### Суть задачи
+
+Создать веб-интерфейс (встроенный в C++ через `html_to_hpp.py`) для работы с описаниями свойств аддона SomeStuff. Интерфейс заменяет текущий React-заглушку (`dialogs/index.html`) на рабочий UI с двумя разделами: отслеживание значений свойств и редактор описаний с конструктором команд.
+
+### Архитектура (существующая, не менять)
+
+| Компонент | Назначение |
+|-----------|------------|
+| `BrowserPalette` (C++) | `DG::Palette` + `DG::Browser`, загружает HTML из `HTML_Pages.hpp` |
+| `RegisterACAPIJavaScriptObject()` | Регистрирует `DG::JSObject("ACAPI")` с функциями для вызова из JS |
+| `html_to_hpp.py` | Конвертирует `index.html` → `HTML_Pages.hpp` (C++11 raw string literal) |
+| JSON Commands | `CommandBase` / `ReadOnlyCommand` / `ModifyCommand` для сложных операций |
+
+### Требования к интерфейсу
+
+**Без CSS:** Все стили — только `style="..."` атрибуты или JS `element.style.*`. Никаких внешних CSS файлов, никаких CSS-in-JS библиотек, никаких `<style>` тегов.
+
+**Без React/Vite/Webpack:** Один чистый `index.html` с vanilla HTML5 + ES6 JavaScript.
+
+**Без внешних шрифтов:** `font-family: system-ui, sans-serif`.
+
+### Структура интерфейса (2 раздела)
+
+#### Раздел 1. Отслеживание значений свойств (постоянный, сверху)
+
+| Элемент | Описание |
+|---------|----------|
+| Выпадающий список свойств | Заполняется из `ACAPI.GetPropertyDefinitions()` (уже реализовано) |
+| Поле «Текущее значение» | Показывает значение выбранного свойства для выделенного элемента |
+| Кнопка «Обновить» | Перечитывает значение из выделенного элемента |
+
+#### Раздел 2. Работа с описаниями (разворачиваемый, `<details>`)
+
+| Элемент | Описание |
+|---------|----------|
+| Выпадающий список свойств | Тот же, что в разделе 1 |
+| Текущее описание | `<textarea>` readonly, заполняется из `PROPERTYCACHE().property[...].definition.description` |
+| **Кнопки команд** | Иконки/текст: `Sync_from`, `Sync_to`, `Renum`, `Sum`, `Renum_flag`, `Spec_rule` и т.д. |
+| Редактор описания | `<textarea>` для ручной правки с подсветкой синтаксиса (опционально) |
+| Кнопка «Проверить синтаксис» | Вызывает `ACAPI.ParsePropertyDescription(description)` |
+| Кнопка «Записать в свойство» | Вызывает `ACAPI.SetPropertyDescription(name, desc)` |
+
+### Вкладки редактора описаний
+
+| Вкладка | Команды | Конструктор |
+|---------|---------|-------------|
+| **Синхронизация** | `Sync_from{...}`, `Sync_to{...}`, `Sync_from{Property:...}`, `Sync_from{description:...}`, `Sync_from{IFC:...}`, модификаторы `empty`/`trim_empty`/`def`, массивы `uniq`/`sum`/`max`/`min` | Форма: выбор типа команды → выпадающий список источника → поля параметров |
+| **Нумерация** | `Renum_flag{...}`, `Renum{...}`, `NULL`/`SPACE`/`ALLNULL`/`n_NULL` | Конструктор: свойство-флаг + свойство-позиция + режим заполнения |
+| **Суммирование** | `Sum{Property:...; Property:...}`, разделитель, `max`/`min` | Форма: суммируемое свойство → критерий → разделитель → режим (sum/max/min) |
+| **Спецификации** | `Spec_rule`, `Spec_rule_v2`, `Spec_rule_v3`, группы `g(...)` и `s(...)` | Конструктор групп: поля U, P, F, Q для `g(...)`; поля Pn, Qn для `s(...)` |
+
+### C++ API для вызова из JS (регистрируются в `RegisterACAPIJavaScriptObject`)
+
+| JS-функция | C++ реализация | Тип |
+|------------|----------------|-----|
+| `ACAPI.GetPropertyDefinitions()` | Уже есть — возвращает массив имён свойств из `PROPERTYCACHE()` | read |
+| `ACAPI.GetPropertyDescription(name)` | Найти в `PROPERTYCACHE().property` по имени, вернуть `definition.description` | read |
+| `ACAPI.GetPropertyValue(name)` | Получить значение свойства для выделенного элемента (через `ACAPI_Element_GetPropertyValue`) | read |
+| `ACAPI.ParsePropertyDescription(desc)` | Парсинг через `ReNum_GetElement` / `Sync_GetParamFromDescription` — возвращает `{ ok: true }` или `{ ok: false, error: "..." }` | read |
+| `ACAPI.SetPropertyDescription(name, desc)` | Запись через `ACAPI_Property_ChangeProperty` или `ACAPI_Property_ChangePropertyDefinition` — **not verified**, проверить в LightRAG/SDK | modify |
+
+### Изменения в проекте
+
+| Файл | Изменение |
+|------|-----------|
+| `dialogs/index.html` | **Полностью переписать** — удалить React/Figma мусор, оставить чистый HTML5 + vanilla JS без CSS |
+| `dialogs/BrowserPalette.cpp` | Добавить `DG::JSFunction` для `GetPropertyDescription`, `GetPropertyValue`, `ParsePropertyDescription`, `SetPropertyDescription` |
+| `dialogs/BrowserPalette.hpp` | Объявление новых методов |
+
+### Пример структуры index.html (стартовая точка)
+
+```html
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SomeStuff — Свойства</title>
+  <!-- Нет CSS — все стили inline или через JS -->
+</head>
+<body style="font-family: system-ui, sans-serif; font-size: 13px; line-height: 1.4; color: #333;">
+  
+  <!-- Раздел 1: Отслеживание значений -->
+  <div id="section-track">
+    <h3 style="margin: 0 0 8px 0; font-size: 14px;">Отслеживание значений</h3>
+    <select id="prop-track-select" style="width: 100%; padding: 4px; margin-bottom: 8px;"></select>
+    <div id="prop-track-value" style="padding: 6px; border: 1px solid #ccc; min-height: 30px; font-family: monospace;"></div>
+    <button onclick="refreshTrackValue()" style="margin-top: 8px; padding: 6px 12px;">Обновить</button>
+  </div>
+  
+  <hr style="margin: 16px 0;">
+  
+  <!-- Раздел 2: Редактор описаний -->
+  <details id="section-edit">
+    <summary style="cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 8px;">
+      Редактор описаний
+    </summary>
+    
+    <select id="prop-edit-select" style="width: 100%; padding: 4px; margin: 8px 0;"></select>
+    
+    <!-- Вкладки -->
+    <div id="tabs" style="margin: 12px 0;">
+      <button onclick="showTab('sync')" style="padding: 4px 8px; margin-right: 4px;">Синхронизация</button>
+      <button onclick="showTab('renum')" style="padding: 4px 8px; margin-right: 4px;">Нумерация</button>
+      <button onclick="showTab('sum')" style="padding: 4px 8px; margin-right: 4px;">Суммирование</button>
+      <button onclick="showTab('spec')" style="padding: 4px 8px;">Спецификации</button>
+    </div>
+    
+    <!-- Панели вкладок -->
+    <div id="tab-sync" style="display: block; padding: 8px; border: 1px solid #ccc;">
+      <!-- Конструктор команд синхронизации -->
+    </div>
+    <div id="tab-renum" style="display: none; padding: 8px; border: 1px solid #ccc;">
+      <!-- Конструктор команд нумерации -->
+    </div>
+    <div id="tab-sum" style="display: none; padding: 8px; border: 1px solid #ccc;">
+      <!-- Конструктор команд суммирования -->
+    </div>
+    <div id="tab-spec" style="display: none; padding: 8px; border: 1px solid #ccc;">
+      <!-- Конструктор команд спецификации -->
+    </div>
+    
+    <!-- Редактор -->
+    <div style="margin: 12px 0;">
+      <label style="display: block; margin-bottom: 4px;">Текущее описание:</label>
+      <textarea id="prop-desc-current" readonly style="width: 100%; height: 60px; padding: 4px; font-family: monospace; font-size: 12px;"></textarea>
+    </div>
+    
+    <div style="margin: 12px 0;">
+      <label style="display: block; margin-bottom: 4px;">Новое описание:</label>
+      <textarea id="prop-desc-new" style="width: 100%; height: 80px; padding: 4px; font-family: monospace; font-size: 12px;"></textarea>
+    </div>
+    
+    <!-- Кнопки действий -->
+    <div style="margin: 8px 0;">
+      <button onclick="insertCommand()" style="padding: 6px 12px; margin-right: 8px;">Вставить команду</button>
+      <button onclick="checkSyntax()" style="padding: 6px 12px; margin-right: 8px;">Проверить синтаксис</button>
+      <button onclick="saveDescription()" style="padding: 6px 12px; background: #0066cc; color: white;">Записать в свойство</button>
+    </div>
+    
+    <div id="status-message" style="margin-top: 8px; padding: 6px; font-family: monospace; font-size: 11px;"></div>
+  </details>
+  
+  <script>
+  // JS wrapper для вызова C++ функций
+  async function callACAPI(fn, ...args) {
+    return new Promise((resolve) => {
+      window.ACAPI[fn](...args, resolve);
+    });
+  }
+  
+  // Инициализация при загрузке
+  async function init() {
+    const props = await callACAPI('GetPropertyDefinitions');
+    fillSelect('prop-track-select', props);
+    fillSelect('prop-edit-select', props);
+  }
+  
+  function fillSelect(id, items) {
+    const sel = document.getElementById(id);
+    sel.innerHTML = items.map(p => `<option value="${p}">${p}</option>`).join('');
+  }
+  
+  function showTab(tabId) {
+    ['sync', 'renum', 'sum', 'spec'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === tabId ? 'block' : 'none';
+    });
+  }
+  
+  async function refreshTrackValue() {
+    const prop = document.getElementById('prop-track-select').value;
+    const val = await callACAPI('GetPropertyValue', prop);
+    document.getElementById('prop-track-value').textContent = val || '(пусто)';
+  }
+  
+  async function checkSyntax() {
+    const desc = document.getElementById('prop-desc-new').value;
+    const result = await callACAPI('ParsePropertyDescription', desc);
+    const status = document.getElementById('status-message');
+    status.style.color = result.ok ? '#2e7d32' : '#c62828';
+    status.textContent = result.ok ? '✓ Синтаксис корректен' : '✗ Ошибка: ' + result.error;
+  }
+  
+  async function saveDescription() {
+    const prop = document.getElementById('prop-edit-select').value;
+    const desc = document.getElementById('prop-desc-new').value;
+    const result = await callACAPI('SetPropertyDescription', prop, desc);
+    const status = document.getElementById('status-message');
+    status.style.color = result.ok ? '#2e7d32' : '#c62828';
+    status.textContent = result.ok ? '✓ Сохранено' : '✗ Ошибка: ' + result.error;
+  }
+  
+  init();
+  </script>
+</body>
+</html>
+```
+
+### Следующие шаги
+
+1. Верифицировать `ACAPI_Property_ChangeProperty` / `ACAPI_Property_ChangePropertyDefinition` через LightRAG
+2. Верифицировать `ACAPI_Element_GetPropertyValue` через LightRAG
+3. Переписать `dialogs/index.html` (удалить React, вставить чистый HTML/JS)
+4. Добавить новые `DG::JSFunction` в `BrowserPalette.cpp`
+5. Запустить `html_to_hpp.py` → `HTML_Pages.hpp`
+6. Собрать: `python Tools/BuildAddOn.py -c config.json -v 25`
+7. Проверить в Archicad 25
