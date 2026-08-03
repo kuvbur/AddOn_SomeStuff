@@ -8,7 +8,7 @@
 #   2. Закрыть Archicad, оставшийся от предыдущего запуска.
 #   3. Очистить временные файлы.
 #   4. Собрать Add-On.
-#   5. Запустить тестовый PLN с нужными флагами.
+#   5. Запустить ARCHICAD.exe с файлом PLN и сервисными флагами.
 #   6. Дождаться test_results.txt.
 #   7. Проанализировать результаты тестов.
 #   8. В ЛЮБОМ случае попытаться корректно завершить запущенный Archicad.
@@ -36,14 +36,14 @@ $EXIT_CLEANUP_FAILED           = 90
 
 
 # ==============================================================================
-# 2. НАСТРОЙКИ
+# 2. НАСТРОЙКИ (DEFAULTS)
 # ==============================================================================
 
 # Для выделенной тестовой машины / CI:
 $killExistingArchicad = $true
 
 # Время graceful shutdown.
-$gracefulCloseTimeoutSec = 20
+$gracefulCloseTimeoutSec = 30
 
 # Время ожидания после force kill.
 $forceCloseTimeoutSec = 15
@@ -58,20 +58,13 @@ $testResultTimeoutSec = 120
 $pollIntervalSec = 2
 
 # Пауза после подтверждённого завершения Archicad.
-$postCloseCleanupPauseSec = 3
+$postCloseCleanupPauseSec = 5
 
 # Retry удаления файлов.
 $fileDeleteRetries = 10
 
 # Задержка между retry удаления.
 $fileDeleteRetryDelayMs = 500
-
-# Аргументы запуска Archicad.
-$acArgs = @(
-    "-forceaccessdialog",
-    "-bringtofront",
-    "-DISABLERECOVERYDIALOG"
-)
 
 
 # ==============================================================================
@@ -108,7 +101,8 @@ function Write-Log {
 
 function Get-ArchicadProcesses {
     @(
-        Get-Process -Name "ARCHICAD*" -ErrorAction SilentlyContinue
+        Get-Process -Name "ARCHICAD*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.ProcessName -notlike "*server*" }
     )
 }
 
@@ -178,7 +172,6 @@ function Remove-FileWithRetry {
         try {
             Remove-Item -LiteralPath $Path -Force -ErrorAction Stop
             if (-not (Test-Path -LiteralPath $Path)) {
-                Write-Log "Removed: $Path" Green
                 return $true
             }
         }
@@ -206,17 +199,11 @@ function Stop-ArchicadProcessTree {
     if (-not (Test-ProcessExists -ProcessId $ProcessId)) {
         return
     }
-
-    Write-Log "Force terminating Archicad PID $ProcessId..." Red
-
     try {
         $output = & taskkill.exe /F /T /PID $ProcessId 2>&1
-        foreach ($line in $output) {
-            Write-Log "$line" DarkGray
-        }
     }
     catch {
-        Write-Log "taskkill failed for PID $ProcessId: $($_.Exception.Message)" DarkYellow
+        Write-Log "taskkill failed for PID ${ProcessId}: $($_.Exception.Message)" DarkYellow
     }
 
     try {
@@ -250,28 +237,23 @@ function Stop-TrackedArchicad {
     foreach ($processId in $ProcessIds) {
         $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
         if (-not $process) { continue }
-
-        Write-Log "Sending graceful close request to PID $processId..." Gray
-
         try {
             if ($process.MainWindowHandle -ne 0) {
                 $null = $process.CloseMainWindow()
             } else {
-                Write-Log "PID $processId has no main window." DarkYellow
+                Write-Log "PID ${processId} has no main window." DarkYellow
             }
         }
         catch {
-            Write-Log "Graceful close failed for PID $processId: $($_.Exception.Message)" DarkYellow
+            Write-Log "Graceful close failed for PID ${processId}: $($_.Exception.Message)" DarkYellow
         }
     }
 
     # 8.2. Ожидание завершения
     if (Wait-ArchicadProcessesExit -ProcessIds $ProcessIds -TimeoutSec $gracefulCloseTimeoutSec) {
-        Write-Log "Tracked Archicad process(es) closed gracefully." Green
         return $true
     }
 
-    Write-Log "Graceful shutdown timeout reached." Yellow
 
     # 8.3. Force kill
     foreach ($processId in $ProcessIds) {
@@ -282,7 +264,6 @@ function Stop-TrackedArchicad {
 
     # 8.4. Проверка force kill
     if (Wait-ArchicadProcessesExit -ProcessIds $ProcessIds -TimeoutSec $forceCloseTimeoutSec) {
-        Write-Log "Tracked Archicad process(es) terminated." Green
         return $true
     }
 
@@ -311,7 +292,6 @@ function Stop-ExistingArchicad {
     $processes = @(Get-ArchicadProcesses)
 
     if ($processes.Count -eq 0) {
-        Write-Log "No previous Archicad processes found." Cyan
         return $true
     }
 
@@ -349,8 +329,8 @@ function Stop-ExistingArchicad {
 
 function Wait-ForNewArchicad {
     param (
-        [Parameter(Mandatory = $true)]
-        [int[]]$PidsBefore,
+        [AllowEmptyCollection()]
+        [int[]]$PidsBefore = @(),
 
         [Parameter(Mandatory = $true)]
         [int]$TimeoutSec
@@ -371,7 +351,7 @@ function Wait-ForNewArchicad {
 
 
 # ==============================================================================
-# 11. РАЗБОР test_results.txt (С ЗАЩИТОЙ ОТ RACE CONDITION)
+# 11. РАЗБОР test_results.txt
 # ==============================================================================
 
 function Get-TestResultStatus {
@@ -384,7 +364,6 @@ function Get-TestResultStatus {
         return "MISSING"
     }
 
-    # Повторные попытки чтения файла на случай блокировки записью со стороны Archicad
     $lines = $null
     for ($attempt = 1; $attempt -le 5; $attempt++) {
         try {
@@ -403,7 +382,10 @@ function Get-TestResultStatus {
 
     $text = $lines -join "`n"
 
-    # Явный FAIL
+    if ($text -match "(?im)===\s*ERROR IN TEST\s*===") {
+        return "FAILED"
+    }
+
     if ($text -match "(?im)^\s*(FAIL|FAILED|ERROR)\s*$") {
         return "FAILED"
     }
@@ -411,8 +393,7 @@ function Get-TestResultStatus {
         return "FAILED"
     }
 
-    # Явный PASS
-    if ($text -match "(?im)^\s*(PASS|PASSED|SUCCESS|SUCCESSFUL)\s*$") {
+    if ($text -match "(?im)^\s*(PASS|PASSED|SUCCESS|SUCCESSFUL|ok)\s*$") {
         return "PASSED"
     }
     if ($text -match "(?im)TESTS\s+FAILED\s*:\s*0") {
@@ -443,7 +424,7 @@ $buildSucceeded      = $false
 
 try {
     # CONFIG
-    Write-Log "Loading configuration..." Cyan
+
 
     if (-not (Test-Path -LiteralPath $configPath)) {
         throw "config.json not found: $configPath"
@@ -454,11 +435,25 @@ try {
     }
 
     $config = Get-Content -Raw -LiteralPath $configPath -Encoding UTF8 | ConvertFrom-Json
-    $filePath = $config.filePath
+    
+    # Версия Archicad
+    $acVersion = if ($config.acVersion) { $config.acVersion } else { "25" }
 
+    # Поиск ARCHICAD.exe
+    $archicadExePath = $config.archicadExePath
+    if (-not $archicadExePath -or -not (Test-Path -LiteralPath $archicadExePath)) {
+        $archicadExePath = "C:\Program Files\GRAPHISOFT\ARCHICAD $acVersion\ARCHICAD.exe"
+    }
+
+    if (-not (Test-Path -LiteralPath $archicadExePath)) {
+        $runnerExitCode = $EXIT_CONFIG_ERROR
+        throw "ARCHICAD.exe not found at path: '$archicadExePath'. Check 'archicadExePath' or 'acVersion' in config.json."
+    }
+
+    # Файл тестового проекта PLN
+    $filePath = $config.filePath
     if (-not $filePath) {
-        $filePath = Join-Path $projectRoot "Test_file\test_25.pln"
-        Write-Log "config.filePath is empty. Using fallback: $filePath" Yellow
+        $filePath = Join-Path $projectRoot "Test_file\test_$acVersion.pln"
     }
 
     $filePath = [System.IO.Path]::GetFullPath($filePath)
@@ -467,10 +462,7 @@ try {
     if (-not (Test-Path -LiteralPath $filePath)) {
         throw "Test PLN not found: $filePath"
     }
-
-    Write-Log "Project root: $projectRoot" Gray
-    Write-Log "Test PLN:     $filePath" Gray
-    Write-Log "Results:      $testResultsPath" Gray
+    Write-Log "Results:       $testResultsPath" Gray
 
     # PREVIOUS ARCHICAD
     if (-not (Stop-ExistingArchicad)) {
@@ -481,7 +473,7 @@ try {
     Start-Sleep -Seconds $postCloseCleanupPauseSec
 
     # CLEANUP
-    Write-Log "Cleaning temporary files..." Cyan
+
 
     if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
         $runnerExitCode = $EXIT_CLEANUP_FAILED
@@ -500,12 +492,11 @@ try {
     $env:VSLANG               = "1033"
 
     # BUILD
-    Write-Log "Starting Add-On build..." Cyan
     $previousLocation = Get-Location
 
     try {
         Set-Location -LiteralPath $projectRoot
-        $buildOutput = @(& python $buildScriptPath --configFile config.json --acVersion 25 2>&1)
+        $buildOutput = @(& python $buildScriptPath --configFile config.json --acVersion $acVersion 2>&1)
         $buildExitCode = $LASTEXITCODE
     }
     catch {
@@ -535,11 +526,17 @@ try {
     # ARCHICAD START
     $pidsBefore = @(Get-ArchicadProcessIds)
 
-    Write-Log "Starting test PLN..." Green
-    Write-Log "File: $filePath" Gray
 
-    $startedProcess = Start-Process -FilePath $filePath -ArgumentList $acArgs -PassThru
-    Write-Log "Start-Process initiated (PID $($startedProcess.Id))." Gray
+
+    # Передаём файл PLN первым аргументом, затем сервисные флаги
+    $acArgs = @(
+        "`"$filePath`"",
+        "-forceaccessdialog",
+        "-bringToFront",
+        "-DISABLERECOVERYDIALOG"
+    )
+
+    $startedProcess = Start-Process -FilePath $archicadExePath -ArgumentList $acArgs -PassThru
     Write-Log "Waiting for Archicad startup (timeout ${archicadLaunchTimeoutSec}s)..." Cyan
 
     $newProcesses = Wait-ForNewArchicad -PidsBefore $pidsBefore -TimeoutSec $archicadLaunchTimeoutSec
@@ -552,7 +549,7 @@ try {
     $trackedArchicadPids = @($newProcesses | Select-Object -ExpandProperty Id)
     $archicadStarted     = $true
 
-    Write-Log "Tracked Archicad PID(s): $($trackedArchicadPids -join ', ')" Green
+
 
     # TEST WAITING
     Write-Log "Waiting for test_results.txt (timeout ${testResultTimeoutSec}s)..." Cyan
@@ -574,7 +571,6 @@ try {
 
         $elapsed = [int]((Get-Date).Subtract($deadline.AddSeconds(-$testResultTimeoutSec)).TotalSeconds)
         if ($elapsed -ne $lastElapsed) {
-            Write-Log "Waiting for test_results.txt... $elapsed/$testResultTimeoutSec sec" Gray
             $lastElapsed = $elapsed
         }
 
@@ -628,8 +624,6 @@ catch {
 # ==============================================================================
 
 if ($archicadStarted -and $trackedArchicadPids.Count -gt 0) {
-    Write-Log "Mandatory Archicad shutdown started..." Yellow
-
     $shutdownOk = Stop-TrackedArchicad -ProcessIds $trackedArchicadPids -Reason "post-test cleanup"
 
     if (-not $shutdownOk) {
@@ -673,8 +667,6 @@ if ($remainingArchicad.Count -gt 0) {
 # ==============================================================================
 # 16. FINAL CLEANUP
 # ==============================================================================
-
-Write-Log "Performing final cleanup..." Cyan
 
 if (@(Get-ArchicadProcesses).Count -eq 0) {
     if (Test-Path -LiteralPath $lckFilePath) {
