@@ -196,6 +196,22 @@ bool SyncString (const API_ElemTypeID &elementType,
                  bool syncclass);
 
 // -----------------------------------------------------------------------------
+// Парсит полное описание свойства, выделяя все команды (Sync, Renum, Sum, Spec)
+// Возвращает true, если описание содержит хотя бы одну распознанную команду
+// -----------------------------------------------------------------------------
+struct ParsedPropertyCommand {
+    GS::UniString commandType;  // "Sync", "Renum_flag", "Renum", "Sum", "Spec_rule"
+    GS::UniString fullCommand;  // Полная команда с фигурными скобками
+    GS::UniString parameters;   // Параметры внутри скобок
+    bool isValid = false;       // Успешно ли распарсилась команда
+    GS::UniString errorMessage; // Сообщение об ошибке, если isValid == false
+};
+
+bool ParsePropertyDescription (const GS::UniString &description,
+                               GS::Array<ParsedPropertyCommand> &commands,
+                               GS::UniString &remainingText);
+
+// -----------------------------------------------------------------------------
 // Связывает элементы, прописывая в основной элемент GUID привязанных элементов
 // -----------------------------------------------------------------------------
 // Связывает элементы с дочерними подэлементами, записывая GUID в соответствующие свойства.

@@ -2741,3 +2741,183 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid> &guidArray,
     ParamHelpers::ElementsRead (paramToRead);
     return !paramToRead.IsEmpty ();
 }
+
+// -----------------------------------------------------------------------------
+// Парсит полное описание свойства, выделяя все команды (Sync, Renum, Sum, Spec)
+// Возвращает true, если описание содержит хотя бы одну распознанную команду
+// -----------------------------------------------------------------------------
+bool ParsePropertyDescription (const GS::UniString &description,
+                               GS::Array<ParsedPropertyCommand> &commands,
+                               GS::UniString &remainingText) {
+    commands.Clear ();
+    remainingText = description;
+
+    if (description.IsEmpty ()) {
+        return false;
+    }
+
+    // Список известных команд для поиска
+    struct CommandPrefix {
+        GS::UniString prefix;      // Префикс команды (например, "Sync_from{")
+        GS::UniString commandType; // Тип команды для классификации
+    };
+
+    GS::Array<CommandPrefix> knownCommands;
+    knownCommands.Push ({SYNCFROMSTRING, "Sync"});
+    knownCommands.Push ({SYNCTOSTRING, "Sync"});
+    knownCommands.Push ({SYNCFROMSUBSTRING, "Sync"});
+    knownCommands.Push ({SYNCTOSUBSTRING, "Sync"});
+    knownCommands.Push ({FROMGUIDBR, "Sync"});
+    knownCommands.Push ({TOGUIDBR, "Sync"});
+
+    // Добавляем Renum команды
+    knownCommands.Push ({GS::UniString ("Renum_flag{"), "Renum_flag"});
+    knownCommands.Push ({GS::UniString ("Renum{"), "Renum"});
+    knownCommands.Push ({GS::UniString ("renum_flag{"), "Renum_flag"});
+    knownCommands.Push ({GS::UniString ("renum{"), "Renum"});
+
+    // Добавляем Sum команды
+    knownCommands.Push ({GS::UniString ("Sum{"), "Sum"});
+    knownCommands.Push ({GS::UniString ("sum{"), "Sum"});
+
+    // Добавляем Spec команды
+    knownCommands.Push ({GS::UniString ("Spec_rule{"), "Spec_rule"});
+    knownCommands.Push ({GS::UniString ("spec_rule{"), "Spec_rule"});
+    knownCommands.Push ({GS::UniString ("Spec_rule_v2{"), "Spec_rule"});
+    knownCommands.Push ({GS::UniString ("spec_rule_v2{"), "Spec_rule"});
+    knownCommands.Push ({GS::UniString ("Spec_rule_v3{"), "Spec_rule"});
+    knownCommands.Push ({GS::UniString ("spec_rule_v3{"), "Spec_rule"});
+
+    // Ищем все вхождения команд в описании
+    GS::Array<std::pair<UIndex, CommandPrefix>> foundCommands;
+
+    for (UIndex i = 0; i < description.GetLength (); ++i) {
+        for (const auto &cmd : knownCommands) {
+            UIndex foundPos = description.FindFirst (cmd.prefix, i);
+            if (foundPos == i) {
+                foundCommands.Push ({i, cmd});
+                i += cmd.prefix.GetLength () - 1;
+                break;
+            }
+        }
+    }
+
+    // Если команды не найдены, возвращаем всё как оставшийся текст
+    if (foundCommands.IsEmpty ()) {
+        remainingText = description;
+        return false;
+    }
+
+    // Обрабатываем найденные команды
+    GS::UniString processedText;
+
+    for (UIndex idx = 0; idx < foundCommands.GetSize (); ++idx) {
+        UIndex startPos = foundCommands[idx].first;
+        const CommandPrefix &cmdPrefix = foundCommands[idx].second;
+
+        // Добавляем текст перед командой в remainingText
+        if (startPos > 0) {
+            GS::UniString beforeCmd = description.GetSubstring (0, startPos);
+            if (!beforeCmd.IsEmpty ()) {
+                processedText.Append (beforeCmd);
+            }
+        }
+
+        // Ищем закрывающую скобку для этой команды
+        UIndex braceStart = startPos + cmdPrefix.prefix.GetLength ();
+        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
+
+        if (braceEnd == MaxUSize) {
+            // Закрывающая скобка не найдена - команда некорректна
+            ParsedPropertyCommand cmd;
+            cmd.commandType = cmdPrefix.commandType;
+            cmd.fullCommand = description.GetSubstring (startPos, description.GetLength () - 1);
+            cmd.parameters = "";
+            cmd.isValid = false;
+            cmd.errorMessage = "Не найдена закрывающая скобка }";
+            commands.Push (std::move (cmd));
+            continue;
+        }
+
+        // Извлекаем полную команду и параметры
+        GS::UniString fullCommand = description.GetSubstring (startPos, braceEnd);
+        GS::UniString parameters = description.GetSubstring (braceStart, braceEnd - 1);
+
+        ParsedPropertyCommand cmd;
+        cmd.commandType = cmdPrefix.commandType;
+        cmd.fullCommand = cmdPrefix.prefix + parameters + BRACEEND;
+        cmd.parameters = parameters;
+        cmd.isValid = true;
+        cmd.errorMessage = "";
+
+        // Дополнительная валидация для Sync команд
+        if (cmdPrefix.commandType == "Sync") {
+            SyncMode syncdirection = SYNC_NO;
+            ParamValue param;
+            SkipValues ignorevals;
+            FormatString stringformat;
+            API_ElemTypeID elementType = API_ObjectID;
+
+            GS::UniString ruleString = cmd.fullCommand;
+            if (!SyncString (
+                    elementType, ruleString, syncdirection, param, ignorevals, stringformat, true, false, false)) {
+                cmd.isValid = false;
+                cmd.errorMessage = "SyncString не смог распарсить команду";
+            }
+        }
+
+        commands.Push (std::move (cmd));
+    }
+
+    // Оставшийся текст - это всё, что не вошло в команды
+    // Берём текст после последней обработанной команды
+    if (!foundCommands.IsEmpty ()) {
+        UIndex lastEnd = foundCommands[foundCommands.GetSize () - 1].first;
+        const CommandPrefix &lastCmd = foundCommands[foundCommands.GetSize () - 1].second;
+        UIndex braceStart = lastEnd + lastCmd.prefix.GetLength ();
+        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
+        if (braceEnd != MaxUSize) {
+            remainingText = description.GetSubstring (braceEnd + 1, description.GetLength () - 1);
+        } else {
+            remainingText = "";
+        }
+    }
+
+    // Удаляем обработанные команды из remainingText (оставляем только текст между командами)
+    GS::UniString cleanRemaining;
+    UIndex prevEnd = 0;
+
+    for (UIndex idx = 0; idx < foundCommands.GetSize (); ++idx) {
+        UIndex startPos = foundCommands[idx].first;
+        const CommandPrefix &cmdPrefix = foundCommands[idx].second;
+        UIndex braceStart = startPos + cmdPrefix.prefix.GetLength ();
+        UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
+
+        if (braceEnd != MaxUSize) {
+            // Добавляем текст между предыдущей командой и этой
+            if (startPos > prevEnd) {
+                GS::UniString between = description.GetSubstring (prevEnd, startPos - 1);
+                if (!between.IsEmpty ()) {
+                    if (!cleanRemaining.IsEmpty ())
+                        cleanRemaining.Append (" ");
+                    cleanRemaining.Append (between);
+                }
+            }
+            prevEnd = braceEnd + 1;
+        }
+    }
+
+    // Добавляем текст после последней команды
+    if (prevEnd < description.GetLength ()) {
+        GS::UniString afterLast = description.GetSubstring (prevEnd, description.GetLength () - 1);
+        if (!afterLast.IsEmpty ()) {
+            if (!cleanRemaining.IsEmpty ())
+                cleanRemaining.Append (" ");
+            cleanRemaining.Append (afterLast);
+        }
+    }
+
+    remainingText = cleanRemaining;
+
+    return !commands.IsEmpty ();
+}

@@ -36,6 +36,7 @@ namespace TestFunc {
         TestSyncString ();
         TestSyncStringRealRules ();
         TestParsePrefixes ();
+        TestParsePropertyDescription ();
         DBprnt ("TEST", "end");
     }
 
@@ -2218,6 +2219,116 @@ namespace TestFunc {
         DBtest (DEFULTINTFSTRING, GS::UniString ("0m"), "DEFULTINTFSTRING");
 
         DBprnt ("TEST", "TestParsePrefixes : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест парсинга описания свойства с командами Sync, Renum, Sum, Spec
+    // -----------------------------------------------------------------------------
+    void TestParsePropertyDescription () {
+        DBprnt ("TEST", "TestParsePropertyDescription");
+
+        ParamValue param;
+        SkipValues ignorevals;
+        FormatString stringformat;
+        SyncMode syncdirection = SYNC_NO;
+        API_ElemTypeID elementType = API_ObjectID;
+
+        // Тест 1: Описание только с Sync_from
+        {
+            GS::UniString desc = "Sync_from{Property:TestProperty}";
+            bool ok =
+                SyncString (elementType, desc, syncdirection, param, ignorevals, stringformat, true, false, false);
+            DBtest (ok, "ParseDesc Sync_only -> true");
+            DBtest (param.fromProperty, "ParseDesc Sync_only -> fromProperty");
+        }
+
+        // Тест 2: Описание с несколькими Sync командами через разделитель
+        {
+            GS::UniString desc = "Sync_from{Property:Prop1}Sync_to{Property:Prop2}";
+            GS::Array<GS::UniString> parts;
+            GS::Array<GS::UniString> scratch;
+            UInt32 n = StringSpltFilter (desc, SYNCPART, parts, BRACESTART, &scratch);
+            DBtest (n, (UInt32)2, "ParseDesc MultiSync -> 2 parts");
+        }
+
+        // Тест 3: Описание с Renum_flag
+        {
+            GS::UniString desc = "Renum_flag{Property:RenumRule; NULL}";
+            GS::UniString ldesc = desc.ToLowerCase ();
+            DBtest (ldesc.Contains (RENUMFLAG.ToLowerCase ()), "ParseDesc Renum_flag -> contains Renum_flag");
+        }
+
+        // Тест 4: Описание с Renum
+        {
+            GS::UniString desc = "Renum{Property:Criteria; Property:Delimetr}";
+            GS::UniString ldesc = desc.ToLowerCase ();
+            DBtest (ldesc.Contains (RENUM.ToLowerCase ()), "ParseDesc Renum -> contains Renum");
+        }
+
+        // Тест 5: Описание с Sum
+        {
+            GS::UniString desc = "Sum{Property:SumProp1; Property:SumProp2; max}";
+            GS::UniString ldesc = desc.ToLowerCase ();
+            DBtest (ldesc.Contains ("sum{"), "ParseDesc Sum -> contains Sum");
+        }
+
+        // Тест 6: Описание с Spec_rule
+        {
+            GS::UniString desc = "Spec_rule{g(U, P, F, Q)}{s(Pn, Qn)}";
+            GS::UniString ldesc = desc.ToLowerCase ();
+            DBtest (ldesc.Contains ("spec_rule"), "ParseDesc Spec_rule -> contains Spec_rule");
+        }
+
+        // Тест 7: Комбинированное описание (Sync + Renum)
+        {
+            GS::UniString desc = "Sync_from{Property:Source}Renum_flag{Property:RenumRule}";
+            GS::Array<GS::UniString> parts;
+            GS::Array<GS::UniString> scratch;
+            UInt32 n = StringSpltFilter (desc, SYNCPART, parts, BRACESTART, &scratch);
+            DBtest (n >= 1, "ParseDesc Combined -> at least 1 sync part");
+            GS::UniString ldesc = desc.ToLowerCase ();
+            DBtest (ldesc.Contains (RENUMFLAG.ToLowerCase ()), "ParseDesc Combined -> contains Renum_flag");
+        }
+
+        // Тест 8: Описание с игнорируемыми значениями
+        {
+            GS::UniString desc = "Sync_from{Property:TestProperty; empty; trim_empty}";
+            bool ok =
+                SyncString (elementType, desc, syncdirection, param, ignorevals, stringformat, true, false, false);
+            DBtest (ok, "ParseDesc IgnoreVals -> true");
+            DBtest (ignorevals.skip_empty, "ParseDesc IgnoreVals -> skip_empty");
+            DBtest (ignorevals.skip_trim_empty, "ParseDesc IgnoreVals -> skip_trim_empty");
+        }
+
+        // Тест 9: Описание с форматом
+        {
+            GS::UniString desc = "Sync_from{Property:TestProperty.3m}";
+            bool ok =
+                SyncString (elementType, desc, syncdirection, param, ignorevals, stringformat, true, false, false);
+            DBtest (ok, "ParseDesc Format .3m -> true");
+            DBtest (!stringformat.stringformat.IsEmpty (), "ParseDesc Format -> format not empty");
+        }
+
+        // Тест 10: Описание с Formula
+        {
+            GS::UniString desc = "Sync_from{<2*2>.3m}";
+            bool ok =
+                SyncString (elementType, desc, syncdirection, param, ignorevals, stringformat, true, false, false);
+            DBtest (ok, "ParseDesc Formula -> true");
+            DBtest (param.val.hasFormula, "ParseDesc Formula -> hasFormula");
+        }
+
+        // Тест 11: Пустое описание
+        {
+            GS::UniString desc = "";
+            GS::Array<GS::UniString> parts;
+            GS::Array<GS::UniString> scratch;
+            UInt32 n = StringSpltFilter (desc, SYNCPART, parts, BRACESTART, &scratch);
+            DBtest (n, (UInt32)0, "ParseDesc Empty -> 0 parts");
+        }
+
+        DBprnt ("TEST", "TestParsePropertyDescription : done");
         return;
     }
 

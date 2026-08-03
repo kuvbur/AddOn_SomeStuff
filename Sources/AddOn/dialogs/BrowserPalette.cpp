@@ -9,6 +9,7 @@
 #include "CommonFunction.hpp"
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
+#include "Sync.hpp"
 
 static const GS::Guid paletteGuid ("{FEE27B6B-3873-5844-88B6-F0083AA4CD49}");
 
@@ -129,6 +130,70 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
         DBprnt ("GetPropertyDefinitions: returned " + GS::ValueToUniString (cache.property.GetSize ()) + " properties");
         return jsArray;
+    }));
+
+    // Регистрируем функцию для парсинга описания свойства
+    jsACAPI->AddItem (new DG::JSFunction ("ParsePropertyDescription", [] (GS::Ref<DG::JSBase> args) {
+        // args[0] = description string
+        if (args == nullptr) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("Invalid arguments: expected array with description string"));
+            return errorObj;
+        }
+
+        // Проверяем, что args - это JSArray
+        GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
+        if (argsArray == nullptr) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("First argument must be an array"));
+            return errorObj;
+        }
+
+        const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
+        if (argsItems.GetSize () < 1) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("Missing description argument"));
+            return errorObj;
+        }
+
+        // Получаем строку из JSValue
+        GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+        if (descValue == nullptr) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("First argument must be a string"));
+            return errorObj;
+        }
+
+        GS::UniString description = descValue->GetString ();
+
+        // Парсим описание
+        GS::Array<ParsedPropertyCommand> commands;
+        GS::UniString remainingText;
+        bool hasCommands = ParsePropertyDescription (description, commands, remainingText);
+
+        // Формируем результат
+        GS::Ref<DG::JSObject> result = new DG::JSObject ();
+        result->AddItem ("ok", new DG::JSValue (true));
+        result->AddItem ("hasCommands", new DG::JSValue (hasCommands));
+        result->AddItem ("remainingText", new DG::JSValue (remainingText.ToCStr ().Get ()));
+
+        GS::Ref<DG::JSArray> commandsArray = new DG::JSArray ();
+        for (const auto &cmd : commands) {
+            GS::Ref<DG::JSObject> cmdObj = new DG::JSObject ();
+            cmdObj->AddItem ("commandType", new DG::JSValue (cmd.commandType.ToCStr ().Get ()));
+            cmdObj->AddItem ("fullCommand", new DG::JSValue (cmd.fullCommand.ToCStr ().Get ()));
+            cmdObj->AddItem ("parameters", new DG::JSValue (cmd.parameters.ToCStr ().Get ()));
+            cmdObj->AddItem ("isValid", new DG::JSValue (cmd.isValid));
+            cmdObj->AddItem ("errorMessage", new DG::JSValue (cmd.errorMessage.ToCStr ().Get ()));
+            commandsArray->AddItem (cmdObj);
+        }
+        result->AddItem ("commands", commandsArray);
+
+        return result;
     }));
 
     browser.RegisterAsynchJSObject (jsACAPI);
