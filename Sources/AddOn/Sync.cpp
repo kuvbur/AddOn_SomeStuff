@@ -1,17 +1,21 @@
 //------------ kuvbur 2022 ------------
-#include "ACAPinc.h"
-#include "APIEnvir.h"
-#include "Dimensions.hpp"
-#include "MEPv1.hpp"
-#include "Propertycache.hpp"
-#include "ResetProperty.hpp"
-#include "Sync.hpp"
 #include <string> // std::stoi
 #include <time.h>
+
+#include "ACAPinc.h"
+
+#include "api_headers/APIEnvir.h"
+
+#include "Sync.hpp"
+
+#include "Dimensions.hpp"
+#include "MEPv1.hpp"
+#include "pk/ResetProperty.hpp"
+#include "Propertycache.hpp"
 #ifdef TESTING
     #include "TestFunc.hpp"
 #endif
-#if defined(AC_28)
+#ifdef ServerMainVers_2800
     #include <ACAPI/MEPAdapter.hpp>
 #endif
 Int32 nLib = 0;
@@ -58,7 +62,7 @@ bool IsElementThrottled (const API_Guid &guid) {
 // Подключение мониторинга
 // -----------------------------------------------------------------------------
 void MonAll (SyncSettings &syncSettings) {
-    if (!syncSettings.syncMon)
+    if (!syncSettings.GetSyncMon())
         return;
 #if defined(TESTING)
     DBprnt ("MonAll start");
@@ -85,7 +89,7 @@ void MonAll (SyncSettings &syncSettings) {
     for (const auto &type : monTypes) {
         if (!MonByType (type, syncSettings))
             return;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (ACAPI_ProcessWindow_IsProcessCanceled ())
             return;
 #else
@@ -93,7 +97,7 @@ void MonAll (SyncSettings &syncSettings) {
             return;
 #endif
     }
-#if defined(AC_28)
+#ifdef ServerMainVers_2800
     MonByType (API_ExternalElemID, syncSettings);
 #endif
     if (PROPERTYCACHE ().hasDimAutotext)
@@ -128,7 +132,7 @@ bool MonByType (const API_ElemTypeID &elementType, const SyncSettings &syncSetti
             msg_rep ("MonByType", "AttachObserver", err, guid);
             continue;
         }
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (ACAPI_ProcessWindow_IsProcessCanceled ())
             return false;
 #else
@@ -136,7 +140,7 @@ bool MonByType (const API_ElemTypeID &elementType, const SyncSettings &syncSetti
             return false;
 #endif
         // Получаем список связанных элементов
-        if (!syncSettings.cwallS)
+        if (!syncSettings.GetCwallS())
             continue;
         subelemGuids.Clear ();
         GetRelationsElement (guid, elementType, syncSettings, subelemGuids, true, true);
@@ -148,7 +152,7 @@ bool MonByType (const API_ElemTypeID &elementType, const SyncSettings &syncSetti
                 msg_rep ("MonByType", "AttachObserver", err, subelemGuid);
                 continue;
             }
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             if (ACAPI_ProcessWindow_IsProcessCanceled ())
                 return false;
 #else
@@ -179,7 +183,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
     start = clock ();
     int dummymode = IsDummyModeOn ();
     UnicGuid syncedelem = {};
-    if (!flag_chanel && syncSettings.objS) {
+    if (!flag_chanel && syncSettings.GetObjS()) {
         static const API_ElemTypeID objTypes[] = {
             API_ObjectID, API_LampID, API_StairID, API_RiserID, API_TreadID, API_StairStructureID, API_ZoneID};
         for (const auto &type : objTypes) {
@@ -190,7 +194,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
                 break;
         }
     }
-    if (!flag_chanel && syncSettings.wallS) {
+    if (!flag_chanel && syncSettings.GetWallS()) {
         static const API_ElemTypeID wallTypes[] = {
             API_WallID, API_SlabID, API_ColumnID, API_BeamID, API_RoofID, API_ShellID, API_MorphID};
         for (const auto &type : wallTypes) {
@@ -201,7 +205,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
                 break;
         }
     }
-    if (!flag_chanel && syncSettings.widoS) {
+    if (!flag_chanel && syncSettings.GetWidoS()) {
         static const API_ElemTypeID widoTypes[] = {API_WindowID, API_DoorID, API_SkylightID};
         for (const auto &type : widoTypes) {
             nPhase = nPhase + 1;
@@ -211,7 +215,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
                 break;
         }
     }
-    if (!flag_chanel && syncSettings.cwallS) {
+    if (!flag_chanel && syncSettings.GetCwallS()) {
         static const API_ElemTypeID cwallTypes[] = {API_RailingID, API_CurtainWallID};
         for (const auto &type : cwallTypes) {
             nPhase = nPhase + 1;
@@ -223,8 +227,8 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
     }
     if (!flag_chanel && PROPERTYCACHE ().hasDimAutotext)
         flag_chanel = SyncByType (API_DimensionID, syncSettings, nPhase, paramToWrite, dummymode, syncedelem);
-#if defined(AC_28) || defined(AC_29)
-    if (!flag_chanel && syncSettings.objS)
+#ifdef ServerMainVers_2800
+    if (!flag_chanel && syncSettings.GetObjS())
         flag_chanel = SyncByType (API_ExternalElemID, syncSettings, nPhase, paramToWrite, dummymode, syncedelem);
 #endif
     finish = clock ();
@@ -240,7 +244,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
             short i = 1;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             bool showPercent = false;
             Int32 maxval = 2;
             ACAPI_ProcessWindow_SetNextProcessPhase (&title, &maxval, &showPercent);
@@ -248,8 +252,8 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &title, &i);
 #endif
             bool suspGrp = false;
-#ifndef AC_22
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2300
+    #ifdef ServerMainVers_2700
             ACAPI_View_IsSuspendGroupOn (&suspGrp);
             if (!suspGrp)
                 ACAPI_Grouping_Tool (rereadelem, APITool_SuspendGroups, nullptr);
@@ -302,7 +306,7 @@ bool SyncByType (const API_ElemTypeID &elementType,
     start = clock ();
     ACAPI_Element_GetElemList (
         elementType, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
     if (elementType == API_ExternalElemID) {
         MEPv1::ClearRoutingSubelemCache ();
         guidArray = ACAPI::MEP::CollectAllMEPElements ();
@@ -313,10 +317,10 @@ bool SyncByType (const API_ElemTypeID &elementType,
 // #ifdef TESTING
 // TestFunc::ResetSyncPropertyArray (guidArray);
 // #endif
-#if defined(AC_26) || defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2600
     API_ElemType elemType;
     elemType.typeID = elementType;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
     bool showPercent = true;
     Int32 maxval = guidArray.GetSize ();
     ACAPI_Element_GetElemTypeName (elemType, subtitle);
@@ -330,15 +334,17 @@ bool SyncByType (const API_ElemTypeID &elementType,
         GS::UniString::Printf ("Reading data from %d elements : ", guidArray.GetSize ()) + subtitle;
     bool flag_chanel = false;
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
-        SyncElement (guidArray[i], syncSettings, paramToWrite, dummymode, syncedelem);
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+        // Захватываем возврат SyncElement (needResync) для короткого замыкания по группам типов
+        if (SyncElement (guidArray[i], syncSettings, paramToWrite, dummymode, syncedelem))
+            flag_chanel = true;
+#ifdef ServerMainVers_2700
         if (i % 10 == 0)
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
         if (i % 10 == 0)
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (ACAPI_ProcessWindow_IsProcessCanceled ())
             return true;
 #else
@@ -429,6 +435,10 @@ void SyncSelected (const SyncSettings &syncSettings) {
 // -----------------------------------------------------------------------------
 // Запускает обработку переданного массива
 // -----------------------------------------------------------------------------
+// Синхронизирует массив элементов: читает свойства и записывает изменения
+// Для каждого элемента в guidArray вызывает SyncElement, который читает свойства и формирует paramToWrite
+// Если syncSettings.GetSyncMon() включён - привязывает элементы к мониторингу (AttachObserver)
+// Возвращает массив guid элементов, которые были обработаны (для обновления)
 GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_Guid> &guidArray) {
     GS::Array<API_Guid> rereadelem = {};
     if (guidArray.IsEmpty ())
@@ -438,10 +448,10 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
     GS::UniString subtitle = GS::UniString::Printf ("Reading data from %d elements", guidArray.GetSize ());
     GS::Int32 nPhase = 1;
     int dummymode = IsDummyModeOn ();
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
     MEPv1::ClearRoutingSubelemCache ();
 #endif
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     bool showPercent = true;
     Int32 maxval = guidArray.GetSize ();
 #endif
@@ -454,14 +464,14 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
     for (UInt32 i = 0; i < guidArray.GetSize (); i++) {
         if (SyncElement (guidArray[i], syncSettings, paramToWrite, dummymode, syncedelem))
             rereadelem.Push (guidArray[i]);
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (i % 10 == 0)
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
         if (i % 10 == 0)
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         if (ACAPI_ProcessWindow_IsProcessCanceled ()) {
 #else
         if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) {
@@ -469,7 +479,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
             return rereadelem;
         }
         // Если включён мониторинг - привязываем элемент к отслеживанию
-        if (syncSettings.syncMon)
+        if (syncSettings.GetSyncMon())
             AttachObserver (guidArray[i], syncSettings);
     }
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
@@ -485,7 +495,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
             start = clock ();
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
             short i = 1;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -518,7 +528,7 @@ void RunParamSelected (const SyncSettings &syncSettings) {
     API_AttributeIndex layerCombIndex = {};
     API_DatabaseInfo databaseInfo = {};
     GSErrCode err = NoError;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_Navigator_GetCurrLayerComb (&layerCombIndex);
 #else
     err = ACAPI_Environment (APIEnv_GetCurrLayerCombID, &layerCombIndex);
@@ -527,7 +537,7 @@ void RunParamSelected (const SyncSettings &syncSettings) {
         msg_rep (fmane, "APIEnv_GetCurrLayerCombID", err, APINULLGuid);
         return;
     }
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
 #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
@@ -539,7 +549,7 @@ void RunParamSelected (const SyncSettings &syncSettings) {
     }
     CallOnSelectedElemSettings (RunParam, false, true, syncSettings, fmane, false);
     SyncSelected (syncSettings);
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     if (layerCombIndex.IsPositive ())
         err = ACAPI_Navigator_ChangeCurrLayerComb (&layerCombIndex); // Устанавливаем комбинацию слоёв
     err = ACAPI_Database_ChangeCurrentDatabase (&databaseInfo);
@@ -568,14 +578,14 @@ void RunParam (const API_Guid &elemGuid, const SyncSettings &syncSettings) {
         return;
     API_DatabaseInfo databaseInfo;
     API_DatabaseInfo dbInfo;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_Database_GetContainingDatabase (&tElemHead.guid, &dbInfo);
 #else
     err = ACAPI_Database (APIDb_GetContainingDatabaseID, &tElemHead.guid, &dbInfo);
 #endif
     if (err != NoError)
         return;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_Database_GetCurrentDatabase (&databaseInfo);
 #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &databaseInfo, nullptr);
@@ -583,7 +593,7 @@ void RunParam (const API_Guid &elemGuid, const SyncSettings &syncSettings) {
     if (err != NoError)
         return;
     if (dbInfo.databaseUnId != databaseInfo.databaseUnId) {
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
         err = ACAPI_Database_ChangeCurrentDatabase (&dbInfo);
 #else
         err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &dbInfo, nullptr);
@@ -600,7 +610,7 @@ void RunParam (const API_Guid &elemGuid, const SyncSettings &syncSettings) {
         msg_rep ("RunParam", "APIAny_RunGDLParScriptID", err, elemGuid);
         return;
     }
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     err = ACAPI_LibraryManagement_RunGDLParScript (&tElemHead, 0);
 #else
     err = ACAPI_Goodies (APIAny_RunGDLParScriptID, &tElemHead, 0);
@@ -619,7 +629,7 @@ bool SyncRelationsElement (const API_ElemTypeID &elementType, const SyncSettings
     switch (elementType) {
     case API_WindowID:
     case API_DoorID:
-        if (syncSettings.widoS)
+        if (syncSettings.GetWidoS())
             flag_sync = true;
         break;
     case API_CurtainWallSegmentID:
@@ -628,11 +638,11 @@ bool SyncRelationsElement (const API_ElemTypeID &elementType, const SyncSettings
     case API_CurtainWallAccessoryID:
     case API_CurtainWallPanelID:
     case API_CurtainWallID:
-        if (syncSettings.cwallS)
+        if (syncSettings.GetCwallS())
             flag_sync = true;
         break;
     default:
-        if (syncSettings.wallS)
+        if (syncSettings.GetWallS())
             flag_sync = true;
         break;
     }
@@ -652,9 +662,9 @@ bool SyncData (const API_Guid &elemGuid,
     GS::Array<API_PropertyDefinition> definitions = {};
     GS::Array<WriteData> mainsyncRules = {};
     ParamDictValue subproperty = {};
-    ParamDictElement paramToRead = {}; // Словарь с параметрами для чтения
+    ParamDictElement paramToRead = {};       // Словарь с параметрами для чтения
     UnicGuidString property_write_guid = {}; // Словарь GUID свойств, в которые могла быть осуществлена запись
-    WriteDict syncRules = {}; // Словарь с правилами для каждого элемента
+    WriteDict syncRules = {};                // Словарь с правилами для каждого элемента
     API_ElemTypeID elementType;
     if (!IsElementEditable (elemGuid, syncSettings, true, elementType))
         return false;
@@ -740,7 +750,7 @@ bool SyncNeedResync (ParamDictElement &paramToRead, UnicGuidString property_writ
     GS::Array<GS::UniString> partstring;
     GS::Array<GS::UniString> local_scratch;
     for (ParamDictElement::PairIterator cIt = paramToRead.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         ParamDictValue &params = cIt->value;
         API_Guid elemGuid = cIt->key;
 #else
@@ -750,7 +760,7 @@ bool SyncNeedResync (ParamDictElement &paramToRead, UnicGuidString property_writ
         if (params.IsEmpty ())
             continue;
         for (ParamDictValue::PairIterator cItt = params.EnumeratePairs (); cItt != NULL; ++cItt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             ParamValue &param = cItt->value;
 #else
             ParamValue &param = *cItt->value;
@@ -788,7 +798,7 @@ void SyncCalcRule (const WriteDict &syncRules,
                    ParamDictElement &paramToWrite,
                    UnicGuidString &property_write_guid) {
     GS::HashSet<GS::UniString> resolvedProps; // Свойства, которые уже получили "полезное" значение
-    GS::HashSet<GS::UniString> propsToReset; // Свойства, которые кандидаты на сброс к дефолту
+    GS::HashSet<GS::UniString> propsToReset;  // Свойства, которые кандидаты на сброс к дефолту
     for (const API_Guid &elemGuid : subelemGuids) {
         const auto *writeSubs = syncRules.GetPtr (elemGuid);
         if (writeSubs == nullptr || writeSubs->IsEmpty ()) {
@@ -981,7 +991,7 @@ bool ParseSyncString (const API_Guid &elemGuid,
     }
 
 // Если указан сброс данных - синхронизировать не будем
-#ifndef AC_27
+#ifndef ServerMainVers_2700
     if (description_string.Contains ("Sync_reset")) {
         return false;
     }
@@ -1100,8 +1110,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
         GS::UniString rawparamName = ""; // Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
         SkipValues ignorevals = {};      // Игнорируемые значения
         FormatString stringformat = {};
-        API_Guid elemGuidfrom = elemGuid; // Элемент, из которого читаем данные
-        API_Guid elemGuidto = elemGuid;   // Элемент, в котороый записываем данные
+        API_Guid elemGuidfrom = elemGuid;              // Элемент, из которого читаем данные
+        API_Guid elemGuidto = elemGuid;                // Элемент, в котороый записываем данные
         API_ElemTypeID elementType_from = elementType; // Тип элемента, из которого читаем данные
         // Копировать из другого элемента
         if (rulestring_one.Contains (FROMGUIDBR)) {
@@ -1946,9 +1956,9 @@ bool SyncString (const API_ElemTypeID &elementType,
             int array_column_start = 0;
             int array_column_end = 0;
             GS::UniString rawName_row_start = ""; // Имя параметра со значением начала диапазона чтения строк
-            GS::UniString rawName_row_end = ""; // Имя параметра со значением конца диапазона чтения строк
+            GS::UniString rawName_row_end = "";   // Имя параметра со значением конца диапазона чтения строк
             GS::UniString rawName_col_start = ""; // Имя параметра со значением начала диапазона чтения столбцов
-            GS::UniString rawName_col_end = ""; // Имя параметра со значением конца диапазона чтения столбцов
+            GS::UniString rawName_col_end = "";   // Имя параметра со значением конца диапазона чтения столбцов
             double p;
             if (params[1].Contains ("(")) {
                 GS::Array<GS::UniString> sr;
@@ -1987,7 +1997,9 @@ bool SyncString (const API_ElemTypeID &elementType,
                             rawName_row_start = paramNamePrefix;
                             rawName_row_start.Append (sr1);
                             rawName_row_start.Append (BRACEEND);
-                            rawName_row_end = rawName_col_start;
+                            // Исправлен copy-paste: конец диапазона для строк должен брать значение от row_start, а не
+                            // col_start
+                            rawName_row_end = rawName_row_start;
                         }
                     }
                 }
@@ -2117,7 +2129,7 @@ void SyncSetSubelement (SyncSettings &syncSettings) {
 
     API_Element parentelement = {}; // Родительский элемент
     API_ElemTypeID parentelementtype = API_ZombieElemID;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29) || defined(AC_26)
+#ifdef ServerMainVers_2600
     if (!ClickAnElem ("Click an parent elem",
                       API_ZombieElemID,
                       nullptr,
@@ -2217,7 +2229,7 @@ bool SyncSetSubelementScope (const API_Elem_Head &parentelementhead,
         if (ParamDictValue *subparams = paramToRead.GetPtr (subguid)) {
             bool flag_write = false;
             for (ParamDictValue::PairIterator cIt = subparams->EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
                 ParamValue &param = cIt->value;
 #else
                 ParamValue &param = *cIt->value;
@@ -2261,7 +2273,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
     start = clock ();
     GS::UniString fmane = "";
     GSErrCode err = NoError;
-#ifndef AC_22
+#ifdef ServerMainVers_2300
     GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false, false, false);
     GS::Array<API_Guid> guidArray = {};
     guidArray.SetCapacity (guidArray_all.GetSize ());
@@ -2307,7 +2319,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
     API_DatabaseInfo elementdatabaseInfo = {};
     bool checkdb = false;
     bool isfloorplan = false;
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
     err = ACAPI_Database_GetCurrentDatabase (&homedatabaseInfo);
     #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &homedatabaseInfo, nullptr);
@@ -2325,13 +2337,13 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
     int count_del = 0;
     API_Elem_Head tElemHead = {};
     for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentGuid.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
         UnicGuid guids = cIt->value;
     #else
         UnicGuid guids = *cIt->value;
     #endif
         for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
             API_Guid guid = cItt->key;
             bool isvisible = cItt->value;
     #else
@@ -2382,7 +2394,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
             }
             if (checkdb) {
                 BNZeroMemory (&elementdatabaseInfo, sizeof (API_DatabaseInfo));
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
                 err = ACAPI_Database_GetContainingDatabase (&guid, &elementdatabaseInfo);
     #else
                 err = ACAPI_Database (APIDb_GetContainingDatabaseID, &guid, &elementdatabaseInfo);
@@ -2442,7 +2454,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
             ACAPI_WriteReport (errmsg, true);
         return;
     }
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
     err = ACAPI_Selection_Select (selNeigs, true);
     if (err == NoError && errmsg.IsEmpty ())
         ACAPI_View_ZoomToSelected ();
@@ -2485,7 +2497,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
     ParamDictValue &propertyParams = PROPERTYCACHE ().property;
     GS::HashTable<API_Guid, GS::Array<API_Guid>> classificationforread; // классификация найденных элементов
     for (auto &cItt : propertyParams) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
         ParamValue param = cItt.value;
     #else
         ParamValue param = *cItt.value;
@@ -2524,7 +2536,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
     GS::Array<GS::UniString> rulestring_param;
     GS::Array<GS::UniString> local_scratch;
     for (const auto &cls : classificationforread) {
-    #if defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2800
         const API_Guid &classificationItemGuid = cls.key;
         const GS::Array<API_Guid> &propertyDefinitions = cls.value;
     #else
@@ -2546,7 +2558,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
                 continue;
             }
             for (const auto &prop : properties) {
-    #if defined(AC_22) || defined(AC_23)
+    #ifndef ServerMainVers_2400
                 if (!prop.isEvaluated)
                     continue;
     #else
@@ -2602,7 +2614,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid> &guidArray,
     GS::Array<GS::UniString> rulestring_param;
     GS::Array<GS::UniString> local_scratch;
     for (const auto &cIt : paramToRead) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         API_Guid subguid = cIt.key;
         const ParamDictValue &params = cIt.value;
 #else
@@ -2610,7 +2622,7 @@ bool SyncGetSubelement (const GS::Array<API_Guid> &guidArray,
         const ParamDictValue &params = *cIt.value;
 #endif
         for (auto &cItt : params) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
             ParamValue param = cItt.value;
 #else
             ParamValue param = *cItt.value;
@@ -2622,19 +2634,20 @@ bool SyncGetSubelement (const GS::Array<API_Guid> &guidArray,
                     API_Guid guid = APIGuidFromString (part.ToCStr (0, MaxUSize, GChCode));
                     if (guid == APINULLGuid)
                         continue;
-                    auto *un = parentGuid.GetPtr (subguid);
+                    // Внешний ключ — guid (родитель), внутренний ключ — subguid (дочерний элемент)
+                    auto *un = parentGuid.GetPtr (guid);
                     if (un == nullptr) {
                         UnicGuid u;
                         parentGuid.Put (guid, std::move (u));
-                        un = parentGuid.GetPtr (subguid);
+                        un = parentGuid.GetPtr (guid);
                         if (un == nullptr) {
                             continue;
                         }
                     }
-                    if (!un->ContainsKey (guid)) {
+                    if (!un->ContainsKey (subguid)) {
                         bool isvisible = ACAPI_Element_Filter (
                             subguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
-                        un->Put (guid, isvisible);
+                        un->Put (subguid, isvisible);
                     }
                 }
             }
@@ -2654,7 +2667,7 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid> &guidArray,
     ParamDictValue paramDict = {};
     const ParamDictValue &propertyParams = PROPERTYCACHE ().property;
     for (const auto &cItt : propertyParams) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         const ParamValue &param = cItt.value;
 #else
         const ParamValue &param = *cItt.value;

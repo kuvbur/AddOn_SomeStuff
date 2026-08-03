@@ -2,17 +2,21 @@
 #if !defined(RENUM_HPP)
     #pragma once
     #define RENUM_HPP
-    #include "alphanum.h"
+    #include "ACAPinc.h"
+
     #include "Helpers.hpp"
-    // Типы нумерации (см. RenumElement.state)
+    #include "third_party/alphanum.h"
+
+// Модуль перенумерации элементов по правилам, заданным в свойствах проекта.
+// Типы нумерации (см. RenumElement.state)
     #define RENUM_SKIP -1  // Исключить из обработки
     #define RENUM_IGNORE 0 // Не менять позмцию, но добавлять похожие элементы
     #define RENUM_ADD 1    // Не менять позицию, если нет пропусков
     #define RENUM_NORMAL 2 // Обычная нумерация/перенумерация
 
     // Типы простановки нулей для СТРОКОВОГО (API_PropertyStringValueType) свойства (см. RenumRule.nulltype)
-    #define NOZEROS 0  // Не добавлять нули в текстовое свойство
-    #define ADDZEROS 1 // Добавлять нули с учётом разбивки
+    #define NOZEROS 0     // Не добавлять нули в текстовое свойство
+    #define ADDZEROS 1    // Добавлять нули с учётом разбивки
     #define ADDMAXZEROS 2 // Добавлять нули по максимальному количеству без учёта разбивки
     #define ADDSPACE 3    // Добавлять пробелы с учётом разбивки
     #define ADDMAXSPACE 4 // Добавлять пробелы по максимальному количеству без учёта разбивки
@@ -154,14 +158,14 @@ struct RenumElem {
 struct RenumRule {
     bool state = false;
     bool oldalgoritm = true;
-    GS::UniString flag = "";     // Описание свойства, в которое ставим позицию
-    GS::UniString position = ""; // Описание свойства, в которое ставим позицию
-    GS::UniString criteria = ""; // Описание свойства-критерия
-    GS::UniString delimetr = ""; // Описание свойства-разбивки
-    short nulltype = NOZEROS;    // Тип постановки нулей в позиции
-    int nullcount = 0; // Количество нулей, если задано жёское количество
-    GS::Array<API_Guid> elemts;  // Массив элементов
-    API_Guid guid = APINULLGuid; // GUID свойства с правилом
+    GS::UniString flag = "";      // Описание свойства, в которое ставим позицию
+    GS::UniString position = "";  // Описание свойства, в которое ставим позицию
+    GS::UniString criteria = "";  // Описание свойства-критерия
+    GS::UniString delimetr = "";  // Описание свойства-разбивки
+    short nulltype = NOZEROS;     // Тип постановки нулей в позиции
+    int nullcount = 0;            // Количество нулей, если задано жёское количество
+    GS::Array<API_Guid> elemts;   // Массив элементов
+    API_Guid guid = APINULLGuid;  // GUID свойства с правилом
     GS::UniString rule_name = ""; // Имя свойства-правила для отображения во всплывающем окне
     int n_ignore = 0;
     int n_skip = 0;
@@ -181,29 +185,47 @@ typedef std::map<std::string, std::string, doj::alphanum_less<std::string>> Renu
 typedef std::map<std::string, RenumPosDict, doj::alphanum_less<std::string>> DRenumPosDict;
 
 typedef GS::HashTable<API_Guid, RenumRule> Rules; // Таблица правил
+// Запускает перенумерацию выбранных элементов по правилам, заданным в свойствах.
 GSErrCode ReNumSelected (SyncSettings &syncSettings);
 
+// Формирует список правил, доступных для диалогового выбора, и проверяет наличие правила для одного элемента.
 bool RenumDG (Rules &renum_rules, bool &rule_from_one);
 
+// Собирает элементы, которые должны участвовать в перенумерации, и подготавливает параметры для записи.
 bool GetRenumElements (GS::Array<API_Guid> &guidArray,
                        ParamDictElement &paramToWriteelem,
                        GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
                        bool &rule_from_one);
 
+// Проверяет, есть ли у правил переключатель флага перенумерации.
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
+
+// Возвращает состояние флага перенумерации по данным параметров.
 short ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition);
+
+// Обрабатывает один элемент и применяет к нему правила перенумерации.
 bool ReNum_GetElement (const API_Guid &elemGuid,
                        ParamDictElement &paramToRead,
                        Rules &rules,
                        GS::HashTable<GS::UniString, bool> &error_propertyname,
                        const GS::Array<API_PropertyDefinition> &definitions);
+
+// Выбирает наиболее частую позицию среди вариантов для одного правила.
 RenumPos GetMostFrequentPos (const GS::Array<RenumPos> &eleminpos);
-RenumPos
-GetPos (DRenumPosDict &unicpos, DStringDict &unicriteria, const std::string &delimetr, const std::string &criteria);
+
+// Возвращает позицию для заданной группы элементов по критерию и разделителю.
+RenumPos GetPos (DRenumPosDict &unicpos,
+                 DStringDict &unicriteria,
+                 const std::string &delimetr,
+                 const std::string &criteria);
+
+// Разделяет элементы правила по группам на основании критериев и разделителя.
 bool ElementsSeparation (RenumRule &rule,
                          const ParamDictElement &paramToReadelem,
                          Delimetr &delimetrList,
                          bool &has_error);
+
+// Применяет одно правило перенумерации к набору элементов.
 void ReNumOneRule (RenumRule &rule,
                    ParamDictElement &paramToReadelem,
                    ParamDictElement &paramToWriteelem,

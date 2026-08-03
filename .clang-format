@@ -51,3 +51,28 @@ Standard: Latest
 AlwaysBreakAfterReturnType: None
 
 PenaltyReturnTypeOnItsOwnLine: 1000
+
+SortIncludes: CaseInsensitive
+IncludeBlocks: Regroup
+
+IncludeCategories:
+  - Regex: '^<.*'
+    Priority: -5
+
+  - Regex: '^"APIEnvir\.h"'
+    Priority: -4
+
+  - Regex: '^"ACAPinc\.h"'
+    Priority: -3
+
+  # Хэдеры Archicad SDK
+  - Regex: '^"api_headers/.*"'
+    Priority: -2
+
+  # Сторонние библиотеки
+  - Regex: '^"third_party/.*"'
+    Priority: 1
+
+  # Всё остальное
+  - Regex: '.*'
+    Priority: 1

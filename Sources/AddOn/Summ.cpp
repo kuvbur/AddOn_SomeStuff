@@ -1,11 +1,14 @@
 //------------ kuvbur 2022 ------------
+#include <map>
+
+#include "api_headers/APIEnvir.h"
+
 #include "ACAPinc.h"
-#include "APIEnvir.h"
-#include "DG4rule.hpp"
+
+#include "dialogs/DG4rule.hpp"
 #include "Propertycache.hpp"
 #include "Summ.hpp"
 #include "Sync.hpp"
-#include <map>
 
 typedef std::unordered_map<std::string, SortInx> SumCriteria;
 
@@ -28,7 +31,7 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
     start = clock ();
     GS::UniString funcname = "Summation";
     GS::Int32 nPhase = 1;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     bool showPercent = true;
     Int32 maxval = 6;
 #endif
@@ -43,7 +46,7 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
     }
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", paramToWriteelem.GetSize ());
     short i = 6;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -53,8 +56,8 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
     UInt32 qtywrite = 0;
     ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
         bool suspGrp = false;
-#ifndef AC_22
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2300
+    #ifdef ServerMainVers_2700
         ACAPI_View_IsSuspendGroupOn (&suspGrp);
         if (!suspGrp)
             ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
@@ -81,7 +84,7 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
 bool SumDG (SumRules &sum_rules, bool &rule_from_one) {
     RuleSelectData rules = {};
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = sum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         const SumRule &rule = cIt->value;
 #else
         const SumRule &rule = *cIt->value;
@@ -104,7 +107,7 @@ bool SumDG (SumRules &sum_rules, bool &rule_from_one) {
         return false;
     bool has_true_state = false;
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = sum_rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         SumRule &rule = cIt->value;
 #else
         SumRule &rule = *cIt->value;
@@ -126,7 +129,7 @@ bool GetSumValuesOfElements (GS::Array<API_Guid> &guidArray, ParamDictElement &p
     ParamDictElement paramToRead = {};
     GS::UniString subtitle = GS::UniString::Printf ("Get rule from %d elements", guidArray.GetSize ());
     short i = 6;
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     bool showPercent = true;
     Int32 maxval = 6;
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
@@ -144,7 +147,7 @@ bool GetSumValuesOfElements (GS::Array<API_Guid> &guidArray, ParamDictElement &p
         return false;
     }
     subtitle = GS::UniString::Printf ("Calc rule from %d elements", guidArray.GetSize ());
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
@@ -162,21 +165,21 @@ bool GetSumValuesOfElements (GS::Array<API_Guid> &guidArray, ParamDictElement &p
         return false;
     }
     subtitle = GS::UniString::Printf ("Read data from %d elements", guidArray.GetSize ());
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
     ParamHelpers::ElementsRead (paramToRead);
     subtitle = GS::UniString::Printf ("Sum data from %d elements", paramToRead.GetSize ());
-#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2700
     ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
 #endif
     // Суммируем, заполняе словарь для записи
     for (GS::HashTable<API_Guid, SumRule>::PairIterator cIt = rules.EnumeratePairs (); cIt != NULL; ++cIt) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         SumRule &rule = cIt->value;
 #else
         SumRule &rule = *cIt->value;
@@ -198,7 +201,7 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
                      ParamDictElement &paramToRead,
                      SumRules &rules) {
     for (const auto &cIt : rule_definitions) {
-#if defined(AC_28) || defined(AC_29)
+#ifdef ServerMainVers_2800
         const API_PropertyDefinition definition = cIt.value;
 #else
         const API_PropertyDefinition definition = *cIt.value;

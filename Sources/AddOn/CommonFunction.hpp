@@ -3,48 +3,54 @@
 #if !defined(COMMON_HPP)
     #define COMMON_HPP
     #include "ACAPinc.h"
-    #include "APIEnvir.h"
+
+    #include "api_headers/APIEnvir.h"
     #ifdef AC_22
-        #include "APICommon22.h"
+        #include "api_headers/APICommon22.h"
     #endif // AC_25
     #ifdef AC_23
-        #include "APICommon23.h"
+        #include "api_headers/APICommon23.h"
     #endif // AC_25
     #ifdef AC_24
-        #include "APICommon24.h"
+        #include "api_headers/APICommon24.h"
     #endif // AC_25
     #ifdef AC_25
-        #include "APICommon25.h"
+        #include "api_headers/APICommon25.h"
     #endif // AC_25
     #ifdef AC_26
-        #include "APICommon26.h"
+        #include "api_headers/APICommon26.h"
     #endif // AC_26
     #ifdef AC_27
-        #include "APICommon27.h"
+        #include "api_headers/APICommon27.h"
     #endif // AC_27
     #ifdef AC_28
-        #include "APICommon28.h"
+        #include "api_headers/APICommon28.h"
     #endif // AC_28
     #ifdef AC_29
-        #include "APICommon29.h"
+        #include "api_headers/APICommon29.h"
     #endif // AC_29
-    #include "DG.h"
-    #include "Point2D.hpp"
-    #include "Polygon2DData.h"
-    #include "Polygon2DDataConv.h"
-    #include "ResourceIds.hpp"
-    #include "Sector2DData.h"
-    #include "alphanum.h"
-    #include "exprtk.h"
     #include <APIdefs_LibraryParts.h>
     #include <Definitions.hpp>
+    #include <DG.h>
+    #include <Point2D.hpp>
+    #include <Polygon2DData.h>
+    #include <Polygon2DDataConv.h>
+    #include <Sector2DData.h>
     #include <unordered_map>
+
+    #include "api_headers/ResourceIds.hpp"
+
+    #include "third_party/alphanum.h"
+    #include "third_party/exprtk.h"
 
     #include "Constants.hpp"
 
+// Общие вспомогательные структуры и функции для чтения/записи свойств,
+// работы с этажами, форматированием значений и базовыми преобразованиями данных.
 typedef std::map<std::string, API_Guid, doj::alphanum_less<std::string>>
-    SortByName; // Словарь для сортировки наруальным алгоритмом
+    SortByName; // Словарь для сортировки естественным образом по имени.
 
+// Представление одного этажа проекта: индекс этажа и его абсолютная высота по Z.
 struct Story {
     Story (short _index, double _level) : index (_index), level (_level) {}
 
@@ -54,7 +60,8 @@ struct Story {
 
 using Stories = GS::Array<Story>; // Хранение информации об этажах в формате Индекс - Уровень
 
-// Структура для хранения формата перевода чисел в строку и округления чисел
+// Параметры форматирования числовых значений при чтении и записи свойств.
+// Используются для согласованного округления, приведения к единицам измерения и вывода строк.
 struct FormatString {
     int n_zero = 3;                           // Количество нулей после запятой
     GS::UniString stringformat = EMPTYSTRING; // Формат строки (задаётся с помощью .mm или .0)
@@ -81,7 +88,7 @@ typedef GS::HashTable<API_Guid, UnicGuid> UnicGuidByGuid;
 typedef GS::HashTable<API_Guid, GS::UniString> UnicGuidString;
 typedef GS::HashTable<API_Guid, UnicGuidString> UnicGuidByGuidString;
 
-// Хранение данных параметра
+// Единое представление значения параметра после чтения из свойства, GDL, IFC или других источников.
 struct ParamValueData {
     // Собственно значения
     API_VariantType type = API_PropertyUndefinedValueType; // Прочитанный тип данных
@@ -104,7 +111,7 @@ struct ParamValueData {
     void Clear () { *this = ParamValueData{}; }
 };
 
-// Структура для описания слоя в многослойной конструкции
+// Описание одного слоя в многослойной конструкции: толщина, материал, позиция и расчётные величины.
 struct ParamValueComposite {
     API_AttributeIndex inx = {};      // Индекс материала
     double fillThick = 0.0;           // Толщина слоя
@@ -126,8 +133,8 @@ struct ParamValueComposite {
     void Clear () { *this = ParamValueComposite{}; }
 };
 
-// Для хранения данных о составе конструкции, так как в многослойной конструкции может быть несколько слоёв, а также для
-// удобства передачи данных в функции записи в свойства и т.д.
+// Состав конструкции в целом: набор слоёв, шаблон строки и метаданные источника чтения.
+// Используется для передачи данных между функциями чтения и записи свойств.
 struct ParamComposite {
     GS::UniString templatestring = EMPTYSTRING;
     GS::Array<ParamValueComposite> composite = {};
@@ -148,8 +155,8 @@ typedef GS::HashTable<GS::UniString, ParamComposite> ParamDictComposite;
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictComposite> ParamDictCompositeElement;
 
-// Все данные - из свойств, из GDL параметров и т.д. хранятся в структуре ParamValue
-// Это позволяет свободно конвертировать и записывать данные в любое место
+// Унифицированное описание параметра, которое собирает информацию о его происхождении и формате.
+// Это позволяет последовательно преобразовывать значение и писать его в нужное место без дублирования логики.
 struct ParamValue {
     API_VariantType type = API_PropertyUndefinedValueType; // Тип данных для записи
     GS::UniString rawName = EMPTYSTRING;                   // Имя для сопоставления в словаре - с указанием откуда взято
@@ -192,7 +199,7 @@ struct ParamValue {
     API_Guid fromGuid = APINULLGuid;               // Из какого элемента прочитан
 
     // Метод для очистки полей
-    void Сlear () { *this = ParamValue{}; }
+    void Clear () { *this = ParamValue{}; }
 };
 
 // Словарь с заранее вычисленными данными в пределах одного элемента
@@ -205,9 +212,11 @@ typedef GS::HashTable<GS::UniString, bool> ParamDict;
 // Словарь с параметрами для элементов
 typedef GS::HashTable<API_Guid, ParamDictValue> ParamDictElement;
 
+// RAII-обёртка для окна прогресса ArchiCAD.
+// Автоматически открывает и закрывает процесс-окно, чтобы не оставлять его в случае исключения.
 struct ProcessWindowGuard {
     ProcessWindowGuard (GS::UniString &name, GS::Int32 &phase) {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_InitProcessWindow (&name, &phase);
     #else
         ACAPI_Interface (APIIo_InitProcessWindowID, &name, &phase);
@@ -215,7 +224,7 @@ struct ProcessWindowGuard {
     }
 
     ~ProcessWindowGuard () {
-    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_CloseProcessWindow ();
     #else
         ACAPI_Interface (APIIo_CloseProcessWindowID, nullptr, nullptr);
@@ -224,29 +233,31 @@ struct ProcessWindowGuard {
 };
 
 // -----------------------------------------------------------------------------
-// Осталвяет в массиве только уникальные API_Guid
+// Оставляет в массиве только уникальные API_Guid, сохраняя порядок первого появления.
 // -----------------------------------------------------------------------------
 void GetUnicGuid (GS::Array<API_Guid> &guidArray);
 
+// Возвращает человекочитаемое имя базы данных по типу окна ArchiCAD.
 GS::UniString GetDBName (API_DatabaseInfo &databaseInfo);
 
 // -----------------------------------------------------------------------------
-// Читает информацию об этажах в проекте
+// Читает информацию об этажах проекта из настроек ArchiCAD.
 // -----------------------------------------------------------------------------
 Stories GetStories ();
 
 // -----------------------------------------------------------------------------
-// Переводит абсолютную координату z в индекс этажа и относительный отступ низа
+// Переводит абсолютную координату Z в индекс этажа и относительное смещение от его уровня.
+// Это удобно для работы с геометрией элементов, привязанной к этажам.
 // -----------------------------------------------------------------------------
 GS::Pair<short, double> GetFloorIndexAndOffset (const double zPos, const Stories &stories);
 
 // -----------------------------------------------------------------------------
-// Возвращает относительный отступ от заданного этажа при заданной абсолютной координате z
+// Возвращает относительное смещение от заданного этажа при известной абсолютной координате Z.
 // -----------------------------------------------------------------------------
 double GetOffsetFromStory (const double zPos, const short floorInd, const Stories &stories);
 
 // -----------------------------------------------------------------------------
-// Переводит индекс этажа и относительный отступ низа в абсолютную координату z
+// Переводит индекс этажа и относительное смещение снизу в абсолютную координату Z.
 // -----------------------------------------------------------------------------
 double GetzPos (const double bottomOffset, const short floorInd, const Stories &stories);
 
@@ -279,15 +290,14 @@ void msg_rep (const GS::UniString &modulename,
 void MenuItemCheckAC (short itemInd, bool checked);
 
 // -----------------------------------------------------------------------------
-// Получить массив Guid выбранных элементов
-// Версия без чтения настроек
+// Получает массив GUID выбранных элементов без чтения настроек синхронизации.
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid> GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/);
 
 // -----------------------------------------------------------------------------
-// Вызов функции для выбранных элементов
-//	(функция должна принимать в качетве аргумента API_Guid)
-//  Версия без чтения настроек
+// Вызывает переданную функцию для каждого выбранного элемента.
+// Функция должна принимать в качестве аргумента API_Guid.
+// Версия без чтения настроек.
 // -----------------------------------------------------------------------------
 void CallOnSelectedElem2 (void (*function) (const API_Guid &),
                           bool assertIfNoSel /* = true*/,
@@ -296,11 +306,11 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
                           bool addSubelement);
 
 // -----------------------------------------------------------------------------
-// Получение типа объекта по его API_Guid
+// Получает тип объекта по его API_Guid.
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID (const API_Guid &elemGuid, API_ElemTypeID &elementType);
 
-    #if defined AC_26 || defined AC_27 || defined AC_28
+#ifdef ServerMainVers_2600
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------
@@ -457,10 +467,15 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo &memo, Geomet
 
 GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_Polygon &poly, API_ElementMemo &memo);
 
+// --------------------------------------------------------------------
+// Снимает скрытие и блокировку слоя элемента (3 перегрузки)
+// Назначение: если слой скрыт или заблокирован - делает его видимым/разблокированным
+// 1. По GUID элемента -> получает заголовок -> вызывает #2
+// 2. По заголовку элемента -> пропускает двери/окна -> вызывает #3
+// 3. По индексу слоя -> ACAPI_Attribute_Get/Set (сбрасывает flags & 1 (hidden) и & 2 (locked))
+// --------------------------------------------------------------------
 void UnhideUnlockElementLayer (const API_Guid &elemGuid);
-
 void UnhideUnlockElementLayer (const API_Elem_Head &elem_head);
-
 void UnhideUnlockElementLayer (const API_AttributeIndex &layer);
 
 bool API_AttributeIndexFindByName (GS::UniString name, const API_AttrTypeID &type, API_AttributeIndex &attribinx);

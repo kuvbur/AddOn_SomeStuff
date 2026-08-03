@@ -2,18 +2,6 @@
 #pragma once
 #if !defined(SUMM_HPP)
     #define SUMM_HPP
-    #ifdef AC_25
-        #include "APICommon25.h"
-    #endif // AC_25
-    #ifdef AC_26
-        #include "APICommon26.h"
-    #endif // AC_26
-    #if defined(AC_27)
-        #include "APICommon27.h"
-    #endif // AC_27
-    #ifdef AC_28
-        #include "APICommon28.h"
-    #endif // AC_28
     #include "DG.h"
     #include "Helpers.hpp"
 
@@ -25,6 +13,7 @@ static const short MaxSum = 4;
 static const short SumToProperty = 1;
 static const short SumToInfo = 2;
 
+// Правило суммирования значений элементов и записи результата в свойство или информацию проекта.
 struct SumRule {
     GS::UniString position = EMPTYSTRING;
     GS::UniString value = EMPTYSTRING;
@@ -42,20 +31,25 @@ struct SumRule {
 
 typedef GS::HashTable<API_Guid, SumRule> SumRules;
 
+// Запускает суммирование значений свойств для выбранных элементов.
 GSErrCode SumSelected (SyncSettings &syncSettings);
 
+// Собирает значения свойств из массива элементов и готовит их к суммированию.
 bool GetSumValuesOfElements (GS::Array<API_Guid> &guidArray, ParamDictElement &paramToWriteelem);
 
 // ----------------------------------------------------------------------------
 // Функция распределяет элемент в таблицу с правилами нумерации
 // ----------------------------------------------------------------------------
+// Разбирает свойства элементов и распределяет их по правилам суммирования.
 bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
                      const GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
                      ParamDictElement &paramToRead,
                      SumRules &rules);
 
+// Разбирает описание свойства и формирует правило суммирования.
 bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype);
 
+// Выполняет суммирование по одному правилу и пишет результат в целевые свойства.
 void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem);
 
 #endif
