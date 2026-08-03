@@ -81,6 +81,9 @@ namespace TestFunc {
     // Проверяет парсинг описания свойства с командами Sync, Renum, Sum, Spec.
     void TestParsePropertyDescription ();
 
+    // Проверяет независимый вызов ParseSyncString (Этап 2 TDD).
+    void TestParseSyncStringIndependent ();
+
     // Выводит все встроенные свойства в отладочный журнал.
     void DumpAllBuiltInProperties ();
 

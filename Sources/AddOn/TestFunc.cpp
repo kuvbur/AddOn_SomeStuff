@@ -37,6 +37,7 @@ namespace TestFunc {
         TestSyncStringRealRules ();
         TestParsePrefixes ();
         TestParsePropertyDescription ();
+        TestParseSyncStringIndependent ();
         DBprnt ("TEST", "end");
     }
 
@@ -2329,6 +2330,134 @@ namespace TestFunc {
         }
 
         DBprnt ("TEST", "TestParsePropertyDescription : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест независимого вызова ParseSyncString (Этап 2 TDD)
+    // -----------------------------------------------------------------------------
+    void TestParseSyncStringIndependent () {
+        DBprnt ("TEST", "TestParseSyncStringIndependent");
+
+        // Подготовка тестовых данных
+        API_Guid elemGuid = APINULLGuid;
+        API_ElemTypeID elementType = API_ObjectID;
+        API_PropertyDefinition definition = {};
+        definition.description = "Sync_from{Property:TestProperty}";
+        GS::Array<WriteData> syncRules;
+        ParamDictElement paramToRead;
+        bool hasSub = false;
+        bool syncall = true;
+        bool synccoord = false;
+        bool syncclass = false;
+        ParamDictValue subproperty;
+
+        // Тест: ParseSyncString должен возвращать true для корректного описания
+        bool result = ParseSyncString (elemGuid,
+                                       elementType,
+                                       definition,
+                                       syncRules,
+                                       paramToRead,
+                                       hasSub,
+                                       syncall,
+                                       synccoord,
+                                       syncclass,
+                                       subproperty);
+        DBtest (result, "ParseSyncString basic -> true");
+
+        // Тест: синхронизация правила должна быть добавлена в syncRules
+        DBtest (syncRules.GetSize () > 0, "ParseSyncString -> syncRules not empty");
+
+        // Тест: hasSub должен быть false для правила без from_sub/to_sub
+        DBtest (!hasSub, "ParseSyncString -> hasSub false");
+
+        // Тест: пустое описание -> false
+        definition.description = "";
+        syncRules.Clear ();
+        result = ParseSyncString (elemGuid,
+                                  elementType,
+                                  definition,
+                                  syncRules,
+                                  paramToRead,
+                                  hasSub,
+                                  syncall,
+                                  synccoord,
+                                  syncclass,
+                                  subproperty);
+        DBtest (!result, "ParseSyncString empty -> false");
+
+        // Тест: описание с Sync_flag -> false (это флаг, не правило)
+        definition.description = "Sync_flag";
+        result = ParseSyncString (elemGuid,
+                                  elementType,
+                                  definition,
+                                  syncRules,
+                                  paramToRead,
+                                  hasSub,
+                                  syncall,
+                                  synccoord,
+                                  syncclass,
+                                  subproperty);
+        DBtest (!result, "ParseSyncString Sync_flag -> false");
+
+        // Тест: описание с SYNCCORRECTFLAG -> true (добавляет служебный параметр)
+        definition.description = "Sync_correct_flag";
+        result = ParseSyncString (elemGuid,
+                                  elementType,
+                                  definition,
+                                  syncRules,
+                                  paramToRead,
+                                  hasSub,
+                                  syncall,
+                                  synccoord,
+                                  syncclass,
+                                  subproperty);
+        DBtest (result, "ParseSyncString Sync_correct_flag -> true");
+
+        // Тест: описание без SYNCPART -> false
+        definition.description = "Property:TestProperty";
+        syncRules.Clear ();
+        result = ParseSyncString (elemGuid,
+                                  elementType,
+                                  definition,
+                                  syncRules,
+                                  paramToRead,
+                                  hasSub,
+                                  syncall,
+                                  synccoord,
+                                  syncclass,
+                                  subproperty);
+        DBtest (!result, "ParseSyncString no SYNCPART -> false");
+
+        // Тест: описание без BRACESTART -> false
+        definition.description = "Sync_from Property:TestProperty";
+        result = ParseSyncString (elemGuid,
+                                  elementType,
+                                  definition,
+                                  syncRules,
+                                  paramToRead,
+                                  hasSub,
+                                  syncall,
+                                  synccoord,
+                                  syncclass,
+                                  subproperty);
+        DBtest (!result, "ParseSyncString no BRACESTART -> false");
+
+        // Тест: описание без BRACEEND -> false
+        definition.description = "Sync_from{Property:TestProperty";
+        result = ParseSyncString (elemGuid,
+                                  elementType,
+                                  definition,
+                                  syncRules,
+                                  paramToRead,
+                                  hasSub,
+                                  syncall,
+                                  synccoord,
+                                  syncclass,
+                                  subproperty);
+        DBtest (!result, "ParseSyncString no BRACEEND -> false");
+
+        DBprnt ("TEST", "TestParseSyncStringIndependent : done");
         return;
     }
 
