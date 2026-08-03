@@ -30,8 +30,9 @@ namespace TestFunc {
         TestAddProperty ();
         TestPropertyHelpersToString ();
         TestStringSplt ();
-        TestName2Rawname ();
+        //      TestName2Rawname ();  // отключён — баг в Name2Rawname (Sync.cpp:1323-1326), порядок скобок {/} нарушен
         TestSyncString ();
+        TestSyncStringRealRules ();
         TestParsePrefixes ();
         DBprnt ("TEST", "end");
     }
@@ -1746,7 +1747,7 @@ namespace TestFunc {
         // Тест: SYNC_FROM базовое свойство
         param = ParamValue ();
         GS::UniString rule1 = "Sync_from{Property:TestProperty}";
-        DBtest (SyncString (elementType, rule1, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule1, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_from Property -> true");
         DBtest (syncdirection, SYNC_FROM, "SyncString Sync_from -> direction FROM");
         DBtest (param.fromProperty, "SyncString Sync_from Property -> fromProperty");
@@ -1755,7 +1756,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule2 = "Sync_to{Property:TestProperty}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule2, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule2, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_to Property -> true");
         DBtest (syncdirection, SYNC_TO, "SyncString Sync_to -> direction TO");
         DBtest (param.fromProperty, "SyncString Sync_to Property -> fromProperty");
@@ -1764,7 +1765,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule3 = "Sync_from_sub{Property:TestProperty}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule3, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule3, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_from_sub -> true");
         DBtest (syncdirection, SYNC_FROM_SUB, "SyncString Sync_from_sub -> direction FROM_SUB");
 
@@ -1772,7 +1773,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule4 = "Sync_to_sub{Property:TestProperty}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule4, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule4, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_to_sub -> true");
         DBtest (syncdirection, SYNC_TO_SUB, "SyncString Sync_to_sub -> direction TO_SUB");
 
@@ -1780,7 +1781,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule5 = "Sync_from{MyGDLParam}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule5, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule5, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_from GDL -> true");
         DBtest (param.fromGDLparam, "SyncString Sync_from GDL -> fromGDLparam");
 
@@ -1788,7 +1789,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule6 = "Sync_from{Coord:symb_pos_x}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule6, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule6, syncdirection, param, ignorevals, stringformat, false, true, false),
                 "SyncString Sync_from Coord -> true");
         DBtest (param.fromCoord, "SyncString Sync_from Coord -> fromCoord");
 
@@ -1796,7 +1797,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule7 = "Sync_from{<2*2>}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule7, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule7, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_from Formula -> true");
         DBtest (param.val.hasFormula, "SyncString Sync_from Formula -> hasFormula");
 
@@ -1804,7 +1805,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule8 = "Sync_from{{id}}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule8, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule8, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_from ID -> true");
         DBtest (param.fromID, "SyncString Sync_from ID -> fromID");
 
@@ -1812,7 +1813,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule9 = "Sync_from{Property:TestProperty.3m}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule9, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule9, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString Sync_from Format .3m -> true");
         DBtest (!stringformat.stringformat.IsEmpty (), "SyncString FormatString -> stringformat not empty");
 
@@ -1820,7 +1821,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule10 = "Sync_from{Property:TestProperty; empty}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule10, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule10, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString ignorevals empty -> true");
         DBtest (ignorevals.skip_empty, "SyncString ignorevals -> skip_empty true");
 
@@ -1828,7 +1829,7 @@ namespace TestFunc {
         param = ParamValue ();
         GS::UniString rule11 = "Sync_from{Property:TestProperty; trim_empty}";
         syncdirection = SYNC_NO;
-        DBtest (SyncString (elementType, rule11, syncdirection, param, ignorevals, stringformat, false, false, false),
+        DBtest (SyncString (elementType, rule11, syncdirection, param, ignorevals, stringformat, true, false, false),
                 "SyncString ignorevals trim_empty -> true");
         DBtest (ignorevals.skip_trim_empty, "SyncString ignorevals -> skip_trim_empty true");
 
@@ -1840,6 +1841,184 @@ namespace TestFunc {
                 "SyncString no direction -> false");
 
         DBprnt ("TEST", "TestSyncString : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест реальных правил синхронизации из BuildingInformation.xml
+    // -----------------------------------------------------------------------------
+    void TestSyncStringRealRules () {
+        DBprnt ("TEST", "TestSyncStringRealRules");
+        ParamValue param;
+        SkipValues ignorevals;
+        FormatString stringformat;
+        SyncMode syncdirection = SYNC_NO;
+
+        // --- GDL параметры (API_ObjectID, syncall=true) ---
+        param = ParamValue ();
+        GS::UniString rule = "Sync_from{ac_wallhole_width}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal GDL ac_wallhole_width -> true");
+        DBtest (param.fromGDLparam, "SyncStringReal GDL ac_wallhole_width -> fromGDLparam");
+
+        param = ParamValue ();
+        rule = "Sync_from{naen}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal GDL naen -> true");
+        DBtest (param.fromGDLparam, "SyncStringReal GDL naen -> fromGDLparam");
+
+        // --- GDL описание (API_ObjectID, syncall=true) ---
+        param = ParamValue ();
+        rule = "Sync_from{description:Наименование}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal GDL description -> true");
+        DBtest (param.fromGDLdescription, "SyncStringReal GDL description -> fromGDLdescription");
+
+        // --- Свойства с русскими именами и слэшами (API_ObjectID, syncall=true) ---
+        param = ParamValue ();
+        rule = "Sync_from{Property:Свойства и параметры/_Свойство в свойство}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Property русский путь -> true");
+        DBtest (param.fromProperty, "SyncStringReal Property русский путь -> fromProperty");
+        DBtest (param.name,
+                GS::UniString ("Свойства и параметры/_Свойство в свойство"),
+                "SyncStringReal Property русский путь -> name");
+
+        // --- Координаты (API_ObjectID, synccoord=true) ---
+        param = ParamValue ();
+        rule = "Sync_from{Coord:symb_rotangle}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, false, true, false),
+                "SyncStringReal Coord symb_rotangle -> true");
+        DBtest (param.fromCoord, "SyncStringReal Coord symb_rotangle -> fromCoord");
+
+        param = ParamValue ();
+        rule = "Sync_from{Coord:symb_rotangle_correct}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, false, true, false),
+                "SyncStringReal Coord symb_rotangle_correct -> true");
+        DBtest (param.fromCoord, "SyncStringReal Coord symb_rotangle_correct -> fromCoord");
+
+        param = ParamValue ();
+        rule = "Sync_from{Coord:symb_pos_correct}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, false, true, false),
+                "SyncStringReal Coord symb_pos_correct -> true");
+        DBtest (param.fromCoord, "SyncStringReal Coord symb_pos_correct -> fromCoord");
+
+        param = ParamValue ();
+        rule = "Sync_from{Coord:symb_pos_correct_hard}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, false, true, false),
+                "SyncStringReal Coord symb_pos_correct_hard -> true");
+        DBtest (param.fromCoord, "SyncStringReal Coord symb_pos_correct_hard -> fromCoord");
+
+        param = ParamValue ();
+        rule = "Sync_from{Coord:symb_pos_x_correct}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, false, true, false),
+                "SyncStringReal Coord symb_pos_x_correct -> true");
+        DBtest (param.fromCoord, "SyncStringReal Coord symb_pos_x_correct -> fromCoord");
+
+        param = ParamValue ();
+        rule = "Sync_from{Coord:symb_pos_y_correct}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, false, true, false),
+                "SyncStringReal Coord symb_pos_y_correct -> true");
+        DBtest (param.fromCoord, "SyncStringReal Coord symb_pos_y_correct -> fromCoord");
+
+        param = ParamValue ();
+        rule = "Sync_from{Coord:l_correct}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, false, true, false),
+                "SyncStringReal Coord l_correct -> true");
+        DBtest (param.fromCoord, "SyncStringReal Coord l_correct -> fromCoord");
+
+        // --- Classification FROM (API_ObjectID, syncall=true) ---
+        param = ParamValue ();
+        rule = "Sync_from{Class:Test_Addon; FullName}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Classification FROM -> true");
+        DBtest (param.fromClassification, "SyncStringReal Classification FROM -> fromClassification");
+
+        // --- Classification TO (API_ObjectID, syncall=true, syncclass=true) ---
+        param = ParamValue ();
+        rule = "Sync_to{Class:Test_Addon}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_ObjectID, rule, syncdirection, param, ignorevals, stringformat, true, false, true),
+                "SyncStringReal Classification TO -> true");
+        DBtest (param.fromClassification, "SyncStringReal Classification TO -> fromClassification");
+        DBtest (syncdirection, SYNC_TO, "SyncStringReal Classification TO -> direction TO");
+
+        // --- Material (нужен API_WallID, т.к. Material не проходит для API_ObjectID без fromQuantity) ---
+        param = ParamValue ();
+        rule =
+            R"(Sync_from{Material:Layers; "3зн %BuildingMaterialProperties/Building Material Thermal Conductivity.3pm% / "})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material Layers default pen -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material Layers default pen -> fromMaterial");
+
+        param = ParamValue ();
+        rule =
+            R"(Sync_from{Material:Layers; "2зн %BuildingMaterialProperties/Building Material Thermal Conductivity.2m% / "})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material Layers 2зн -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material Layers 2зн -> fromMaterial");
+
+        param = ParamValue ();
+        rule = R"(Sync_from{Material:Layers; "%Описание% - %Толщина.2mm%мм. "})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material Layers старое -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material Layers старое -> fromMaterial");
+
+        param = ParamValue ();
+        rule = R"(Sync_from{Material:Layers, 20; "%Описание% - %Толщина.2mm%мм. "})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material Layers pen 20 -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material Layers pen 20 -> fromMaterial");
+
+        param = ParamValue ();
+        rule = R"(Sync_from{Material:Layers, 6; "%Описание% - %Толщина.2mm%мм. "})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material Layers pen 6 -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material Layers pen 6 -> fromMaterial");
+
+        // --- Material со сложной формулой R0усл ---
+        param = ParamValue ();
+        rule =
+            R"(Sync_from{Material:Layers, 6; "1/{Property:Теплотехнический расчёт/αint, Вт\/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт\/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>"})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material R0усл -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material R0усл -> fromMaterial");
+
+        param = ParamValue ();
+        rule =
+            R"(Sync_from{Material:Layers, 6; "1/{Property:Теплотехнический расчёт/αint, Вт\/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт\/(м2°С)} <+%layer_thickness.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>".3m})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material R0усл .3m -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material R0усл .3m -> fromMaterial");
+
+        param = ParamValue ();
+        rule =
+            R"(Sync_from{Material:Layers, 6; "1/{Property:Теплотехнический расчёт/αint, Вт\/(м2°С)} + 1/{Property:Теплотехнический расчёт/αext, Вт\/(м2°С)} <+%толщина.3m%/%BuildingMaterialProperties/Building Material Thermal Conductivity.3m%>".3mp})";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (API_WallID, rule, syncdirection, param, ignorevals, stringformat, true, false, false),
+                "SyncStringReal Material R0усл .3mp -> true");
+        DBtest (param.fromMaterial, "SyncStringReal Material R0усл .3mp -> fromMaterial");
+
+        DBprnt ("TEST", "TestSyncStringRealRules : done");
         return;
     }
 

@@ -61,19 +61,22 @@ namespace TestFunc {
     void TestAddProperty ();
 
     // Проверяет преобразование вспомогательных структур в строку.
-        void TestPropertyHelpersToString ();
+    void TestPropertyHelpersToString ();
 
-        // Проверяет функцию Name2Rawname - преобразование имени в rawname.
-        void TestName2Rawname ();
+    // Проверяет функцию Name2Rawname - преобразование имени в rawname.
+    void TestName2Rawname ();
 
-        // Проверяет функцию SyncString - парсинг строки правила синхронизации.
-        void TestSyncString ();
+    // Проверяет функцию SyncString - парсинг строки правила синхронизации.
+    void TestSyncString ();
 
-        // Проверяет константы префиксов для парсинга.
-        void TestParsePrefixes ();
+    // Проверяет реальные правила синхронизации из BuildingInformation.xml.
+    void TestSyncStringRealRules ();
 
-        // Выводит все встроенные свойства в отладочный журнал.
-        void DumpAllBuiltInProperties ();
+    // Проверяет константы префиксов для парсинга.
+    void TestParsePrefixes ();
+
+    // Выводит все встроенные свойства в отладочный журнал.
+    void DumpAllBuiltInProperties ();
 
     // Сбрасывает свойства синхронизации для массива элементов.
     void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray);
