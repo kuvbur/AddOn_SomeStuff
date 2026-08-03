@@ -269,9 +269,7 @@ void DBprnt (double a, GS::UniString reportString);
 void DBprnt (GS::UniString msg, GS::UniString reportString = "");
 
 void DBtest (bool usl, GS::UniString reportString);
-
 void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString);
-
 void DBtest (double a, double b, GS::UniString reportString);
 
 // -----------------------------------------------------------------------------

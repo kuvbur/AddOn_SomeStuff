@@ -359,7 +359,6 @@ void DBtest (bool usl, GS::UniString reportString) {
     }
 #else
     UNUSED_VARIABLE (usl);
-    UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
 #endif
 }
@@ -381,7 +380,6 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString) {
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
-    UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
 #endif
 }
@@ -403,7 +401,6 @@ void DBtest (double a, double b, GS::UniString reportString) {
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
-    UNUSED_VARIABLE (asserton);
     UNUSED_VARIABLE (reportString);
 #endif
 }
