@@ -1,7 +1,7 @@
 #include "api_headers/ResourceIds.hpp"
 
 'DATA' ID_ADDON_HTML "Browser Control Html" {
-	"Interface_simple.html"
+	"Interface_ru.html"
 }
 
 'DATA' ID_ADDON_HTML_ENG "Browser Control Html" {
