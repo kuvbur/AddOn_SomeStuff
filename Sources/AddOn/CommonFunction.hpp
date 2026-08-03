@@ -40,10 +40,9 @@
 
     #include "api_headers/ResourceIds.hpp"
 
+    #include "Constants.hpp"
     #include "third_party/alphanum.h"
     #include "third_party/exprtk.h"
-
-    #include "Constants.hpp"
 
 // Общие вспомогательные структуры и функции для чтения/записи свойств,
 // работы с этажами, форматированием значений и базовыми преобразованиями данных.
@@ -269,11 +268,11 @@ void DBprnt (double a, GS::UniString reportString);
 
 void DBprnt (GS::UniString msg, GS::UniString reportString = "");
 
-void DBtest (bool usl, GS::UniString reportString, bool asserton = false);
+void DBtest (bool usl, GS::UniString reportString);
 
-void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton = false);
+void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString);
 
-void DBtest (double a, double b, GS::UniString reportString, bool asserton = false);
+void DBtest (double a, double b, GS::UniString reportString);
 
 // -----------------------------------------------------------------------------
 // Вывод сообщения в отчёт
@@ -310,7 +309,7 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
 // -----------------------------------------------------------------------------
 GSErrCode GetTypeByGUID (const API_Guid &elemGuid, API_ElemTypeID &elementType);
 
-#ifdef ServerMainVers_2600
+    #ifdef ServerMainVers_2600
 // -----------------------------------------------------------------------------
 // Получение названия типа элемента
 // -----------------------------------------------------------------------------

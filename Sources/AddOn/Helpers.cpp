@@ -2,9 +2,9 @@
 #include <cmath>
 #include <limits>
 
-#include "api_headers/APIEnvir.h"
-
 #include "ACAPinc.h"
+
+#include "api_headers/APIEnvir.h"
 #ifdef ServerMainVers_2700
     #include "MEPv1.hpp"
 #endif // AC_27
@@ -60,17 +60,13 @@ namespace FormatStringFunc {
             stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
 #ifdef TESTING
             DBtest (!stringformat.Contains (CHARDQUT),
-                    "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat,
-                    false);
+                    "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat);
             DBtest (!stringformat.Contains (CHARFORMULAEND),
-                    "GetFormatStringFromFormula : stringformat.Contains(CHARFORMULAEND) " + stringformat,
-                    false);
+                    "GetFormatStringFromFormula : stringformat.Contains(CHARFORMULAEND) " + stringformat);
             DBtest (!stringformat.Contains (CHARPROC),
-                    "GetFormatStringFromFormula : stringformat.Contains(CHARPROC) " + stringformat,
-                    false);
+                    "GetFormatStringFromFormula : stringformat.Contains(CHARPROC) " + stringformat);
             DBtest (!stringformat.Contains (CHARBRACEEND),
-                    "GetFormatStringFromFormula : stringformat.Contains(CHARBRACEEND) " + stringformat,
-                    false);
+                    "GetFormatStringFromFormula : stringformat.Contains(CHARBRACEEND) " + stringformat);
 #endif
             stringformat.Trim (CHARDQUT);
             stringformat.Trim (CHARFORMULAEND);
@@ -7093,9 +7089,9 @@ void ParamHelpers::ReadQuantities (const API_Elem_Head &elemhead,
                 pcPtr->area_fill += p.area_fill;
                 pcPtr->fillThick += p.fillThick;
 #if defined(TESTING)
-                DBtest (is_equal (p.area, 0), "is_equal(p.area)", true);
-                DBtest (is_equal (p.volume, 0), "is_equal(p.volume)", true);
-                DBtest (!is_equal (p.fillThick, 0), "!is_equal(p.fillThick)", true);
+                DBtest (is_equal (p.area, 0), "is_equal(p.area)");
+                DBtest (is_equal (p.volume, 0), "is_equal(p.volume)");
+                DBtest (!is_equal (p.fillThick, 0), "!is_equal(p.fillThick)");
 #endif
             } else {
                 composites_quantity_param.Put (p.inx, p);

@@ -97,7 +97,7 @@ bool SumDG (SumRules &sum_rules, bool &rule_from_one) {
             continue;
         rules.rules.Add (rule.rule_name, true);
         rules.qty_elements.Add (rule.rule_name, GS::UniString::Printf ("%d", rule.elemts.GetSize ()));
-        if (rule.write_to == SumToInfo)
+        if (rule.write_to == SUM_TO_INFO)
             rules.color.Add (rule.rule_name, Gfx::Color::Blue);
     }
     rules.is_warn = rule_from_one;
@@ -227,7 +227,7 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
             has_value = ParamHelpers::GetParamValueFromCache (paramtype.value, pvalue_value);
         if (!paramtype.criteria.IsEmpty ())
             has_criteria = ParamHelpers::GetParamValueFromCache (paramtype.criteria, pvalue_criteria);
-        if (paramtype.write_to == SumToInfo) {
+        if (paramtype.write_to == SUM_TO_INFO) {
             GS::HashTable<API_Guid, API_PropertyDefinition> definitions = {};
             definitions.Add (definition.guid, definition);
             GS::Array<API_Guid> _guidArray = {};
@@ -278,7 +278,7 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
 
 // -----------------------------------------------------------------------------------------------------------------------
 // Функция возвращает заполненное правило суммирования SumRule
-// SumRule.sum_type - тип суммирования (TextSum / NumSum)
+// SumRule.sum_type - тип суммирования (TEXT_SUM / NUM_SUM)
 // SumRule.value - имя свойства в формате rawname
 // SumRule.criteria - критерий суммирования (разбивки)
 // SumRule.delimetr - разделитель для текстовой суммы (конкатенации)
@@ -287,11 +287,11 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
 bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype) {
     // По типу данных свойства определим тим суммирования
     // Если строковый тип - объединяем уникальные значения, если тип числовой - суммируем
-    paramtype.sum_type = 0;
+    paramtype.sum_type = static_cast<SumMode> (0);
     if (definition.valueType == API_PropertyStringValueType)
-        paramtype.sum_type = TextSum;
+        paramtype.sum_type = TEXT_SUM;
     if (definition.valueType == API_PropertyRealValueType || definition.valueType == API_PropertyIntegerValueType)
-        paramtype.sum_type = NumSum;
+        paramtype.sum_type = NUM_SUM;
     if (!paramtype.sum_type)
         return false;
     GS::UniString paramName = definition.description;
@@ -315,7 +315,7 @@ bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype) {
         if (key.Contains (INFONAMEPREFIX)) {
             if (ParamHelpers::isCacheContainsParamValue (rawName_rule))
                 paramtype.value = rawName_rule;
-            paramtype.write_to = SumToInfo;
+            paramtype.write_to = SUM_TO_INFO;
             paramtype.position = key;
             paramtype.value = rawName_rule;
         } else {
@@ -333,28 +333,28 @@ bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype) {
     // Ищём определение свойства-критерия
     if (nparam > 1) {
         GS::UniString key = PVALPREFIX + partstring[1] + BRACEEND;
-        if (ParamHelpers::isCacheContainsParamValue (key) && paramtype.write_to != SumToInfo) {
+        if (ParamHelpers::isCacheContainsParamValue (key) && paramtype.write_to != SUM_TO_INFO) {
             paramtype.criteria = key;
         } else {
-            if (partstring[1].Contains ("min") && paramtype.sum_type == NumSum)
-                paramtype.sum_type = MinSum;
-            if (partstring[1].Contains ("max") && paramtype.sum_type == NumSum)
-                paramtype.sum_type = MaxSum;
-            if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum)
+            if (partstring[1].Contains ("min") && paramtype.sum_type == NUM_SUM)
+                paramtype.sum_type = MIN_SUM;
+            if (partstring[1].Contains ("max") && paramtype.sum_type == NUM_SUM)
+                paramtype.sum_type = MAX_SUM;
+            if (paramtype.sum_type == NUM_SUM || paramtype.sum_type == TEXT_SUM)
                 paramtype.delimetr = partstring[1].ToCStr ().Get ();
         }
     }
     // Если задан и разделитель - пропишем его
     if (nparam > 2) {
         GS::UniString key = PVALPREFIX + partstring[2] + BRACEEND;
-        if (ParamHelpers::isCacheContainsParamValue (key) && paramtype.write_to != SumToInfo) {
+        if (ParamHelpers::isCacheContainsParamValue (key) && paramtype.write_to != SUM_TO_INFO) {
             paramtype.criteria = key;
         } else {
-            if (partstring[2].Contains ("min") && paramtype.sum_type == NumSum)
-                paramtype.sum_type = MinSum;
-            if (partstring[2].Contains ("max") && paramtype.sum_type == NumSum)
-                paramtype.sum_type = MaxSum;
-            if (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum) {
+            if (partstring[2].Contains ("min") && paramtype.sum_type == NUM_SUM)
+                paramtype.sum_type = MIN_SUM;
+            if (partstring[2].Contains ("max") && paramtype.sum_type == NUM_SUM)
+                paramtype.sum_type = MAX_SUM;
+            if (paramtype.sum_type == NUM_SUM || paramtype.sum_type == TEXT_SUM) {
                 if (paramtype.delimetr.empty ()) {
                     paramtype.delimetr = partstring[2].ToCStr ().Get ();
                 } else {
@@ -365,11 +365,11 @@ bool Sum_Rule (const API_PropertyDefinition &definition, SumRule &paramtype) {
     }
     // Если заданы игнорируемые значения
     if (nparam > 3) {
-        if (partstring[3].Contains ("min") && paramtype.sum_type == NumSum)
-            paramtype.sum_type = MinSum;
-        if (partstring[3].Contains ("max") && paramtype.sum_type == NumSum)
-            paramtype.sum_type = MaxSum;
-        if (paramtype.ignore_val.empty () && (paramtype.sum_type == NumSum || paramtype.sum_type == TextSum))
+        if (partstring[3].Contains ("min") && paramtype.sum_type == NUM_SUM)
+            paramtype.sum_type = MIN_SUM;
+        if (partstring[3].Contains ("max") && paramtype.sum_type == NUM_SUM)
+            paramtype.sum_type = MAX_SUM;
+        if (paramtype.ignore_val.empty () && (paramtype.sum_type == NUM_SUM || paramtype.sum_type == TEXT_SUM))
             paramtype.ignore_val = partstring[3].ToCStr ().Get ();
     }
     return true;
@@ -416,35 +416,35 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
                 rule.n_ignore += 1;
                 continue;
             }
-            if (rule.write_to == SumToInfo) {
+            if (rule.write_to == SUM_TO_INFO) {
                 summ.type = paramvalue->type;
                 summ.val.type = paramvalue->val.type;
             }
-            if (rule.sum_type == TextSum) {
+            if (rule.sum_type == TEXT_SUM) {
                 summ.val.uniStringValue = summ.val.uniStringValue + paramvalue->val.uniStringValue;
                 if (j < eleminpos.GetSize () - 1)
                     summ.val.uniStringValue = summ.val.uniStringValue + delimetr;
             } else {
-                if (rule.sum_type == NumSum) {
+                if (rule.sum_type == NUM_SUM) {
                     summ.val.doubleValue = summ.val.doubleValue + paramvalue->val.doubleValue;
                     summ.val.rawDoubleValue = summ.val.rawDoubleValue + paramvalue->val.rawDoubleValue;
                     summ.val.intValue = summ.val.intValue + paramvalue->val.intValue;
                     summ.val.boolValue = summ.val.boolValue && paramvalue->val.boolValue;
                 } else {
-                    if (!has_sum && (rule.sum_type == MinSum || rule.sum_type == MaxSum)) {
+                    if (!has_sum && (rule.sum_type == MIN_SUM || rule.sum_type == MAX_SUM)) {
                         summ.val.doubleValue = paramvalue->val.doubleValue;
                         summ.val.rawDoubleValue = paramvalue->val.rawDoubleValue;
                         summ.val.intValue = paramvalue->val.intValue;
                         summ.val.boolValue = paramvalue->val.boolValue;
                     } else {
-                        if (rule.sum_type == MinSum) {
+                        if (rule.sum_type == MIN_SUM) {
                             summ.val.doubleValue = fmin (summ.val.doubleValue, paramvalue->val.doubleValue);
                             summ.val.rawDoubleValue = fmin (summ.val.rawDoubleValue, paramvalue->val.rawDoubleValue);
                             summ.val.intValue = summ.val.intValue > paramvalue->val.intValue ? paramvalue->val.intValue
                                                                                              : summ.val.intValue;
                             summ.val.boolValue = summ.val.boolValue || paramvalue->val.boolValue;
                         }
-                        if (rule.sum_type == MaxSum) {
+                        if (rule.sum_type == MAX_SUM) {
                             summ.val.doubleValue = fmax (summ.val.doubleValue, paramvalue->val.doubleValue);
                             summ.val.rawDoubleValue = fmax (summ.val.rawDoubleValue, paramvalue->val.rawDoubleValue);
                             summ.val.intValue = summ.val.intValue < paramvalue->val.intValue ? paramvalue->val.intValue
@@ -462,7 +462,7 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
             continue;
         }
         // Для конкатенации текста определим уникальные значения
-        if (rule.sum_type == TextSum) {
+        if (rule.sum_type == TEXT_SUM) {
             GS::UniString unic = StringUnic (summ.val.uniStringValue, delimetr);
             summ.val.uniStringValue = unic;
         }
@@ -477,9 +477,9 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
                 continue;
             ParamValue paramposition = *parampositionPtr;
             paramposition.isValid = true;
-            if (rule.write_to != SumToInfo)
+            if (rule.write_to != SUM_TO_INFO)
                 summ.val.type = paramposition.val.type;
-            if (rule.sum_type != TextSum) {
+            if (rule.sum_type != TEXT_SUM) {
                 summ.val.formatstring = paramposition.val.formatstring;
                 summ.val.uniStringValue = ParamHelpers::ToString (summ);
             }
@@ -491,7 +491,7 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
             }
             // Если нужно записать в информацию о проекте - то достаточно записать один раз, так как свойство для записи
             // будет одинаковое для всех элементов
-            if (rule.write_to == SumToInfo) {
+            if (rule.write_to == SUM_TO_INFO) {
                 rule.n_write = (int)eleminpos.GetSize ();
                 break;
             }

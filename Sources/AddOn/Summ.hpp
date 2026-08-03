@@ -5,27 +5,31 @@
     #include "DG.h"
     #include "Helpers.hpp"
 
-static const short TextSum = 1;
-static const short NumSum = 2;
-static const short MinSum = 3;
-static const short MaxSum = 4;
-
-static const short SumToProperty = 1;
-static const short SumToInfo = 2;
-
 // Правило суммирования значений элементов и записи результата в свойство или информацию проекта.
 struct SumRule {
+    // Свойство, куда будет записан результат суммирования.
     GS::UniString position = EMPTYSTRING;
+    // Свойство с исходными значениями для суммирования.
     GS::UniString value = EMPTYSTRING;
+    // Свойство-критерий для группировки элементов.
     GS::UniString criteria = EMPTYSTRING;
+    // Разделитель для текстовой конкатенации.
     std::string delimetr = "; ";
+    // Значения, которые следует игнорировать при суммировании.
     std::string ignore_val = "";
-    short sum_type = 0;
-    short write_to = SumToProperty;
+    // Тип суммирования: текст, число, минимум или максимум.
+    SumMode sum_type = NUM_SUM;
+    // Место записи результата: в свойство элемента или в информацию проекта.
+    SumTarget write_to = SUM_TO_PROPERTY;
+    // Список элементов, участвующих в правиле.
     GS::Array<API_Guid> elemts = {};
-    GS::UniString rule_name = EMPTYSTRING; // Имя свойства-правила для отображения во всплывающем окне
+    // Имя свойства-правила для отображения во всплывающем окне.
+    GS::UniString rule_name = EMPTYSTRING;
+    // Признак активного правила.
     bool state = true;
+    // Количество значений, пропущенных при обработке.
     int n_ignore = 0;
+    // Количество записанных значений.
     int n_write = 0;
 };
 

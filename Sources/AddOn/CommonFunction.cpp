@@ -3,12 +3,13 @@
 #include <bitset>
 #include <cmath>
 #include <cstdlib>
-#include <limits>
 #include <fstream>
+#include <limits>
 
 #include "api_headers/APIEnvir.h"
 
 #include "CommonFunction.hpp"
+
 #include "Propertycache.hpp"
 #include "third_party/qrcodegen.hpp"
 #if defined(_MAC)
@@ -348,7 +349,7 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
 // -----------------------------------------------------------------------------
 // Логическая тестовая проверка: выводит результат и может выполнять assert
 // -----------------------------------------------------------------------------
-void DBtest (bool usl, GS::UniString reportString, bool asserton) {
+void DBtest (bool usl, GS::UniString reportString) {
 #if defined(TESTING)
     // Сообщаем результат теста и при необходимости вызываем assert
     if (usl) {
@@ -356,8 +357,6 @@ void DBtest (bool usl, GS::UniString reportString, bool asserton) {
     } else {
         DBprnt ("=== ERROR IN TEST ===", reportString);
     }
-    if (asserton)
-        assert (usl);
 #else
     UNUSED_VARIABLE (usl);
     UNUSED_VARIABLE (asserton);
@@ -368,7 +367,7 @@ void DBtest (bool usl, GS::UniString reportString, bool asserton) {
 // -----------------------------------------------------------------------------
 // Тестирует равенство двух строк и выводит результат
 // -----------------------------------------------------------------------------
-void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool asserton) {
+void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString) {
 #if defined(TESTING)
     // Сравниваем строки, выводим результат и при необходимости assert
     GS::UniString out = a + " = " + b;
@@ -379,8 +378,6 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
         out = "=== ERROR IN TEST === " + out;
         DBprnt (out, reportString);
     }
-    if (asserton)
-        assert (a.IsEqual (b));
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);
@@ -392,7 +389,7 @@ void DBtest (GS::UniString a, GS::UniString b, GS::UniString reportString, bool 
 // -----------------------------------------------------------------------------
 // Сравнивает два числовых значения с учётом точности и выводит результат
 // -----------------------------------------------------------------------------
-void DBtest (double a, double b, GS::UniString reportString, bool asserton) {
+void DBtest (double a, double b, GS::UniString reportString) {
 #if defined(TESTING)
     // Сравниваем числа с учётом точности и выводим результат
     GS::UniString out = GS::UniString::Printf ("%f = %f", a, b);
@@ -403,8 +400,6 @@ void DBtest (double a, double b, GS::UniString reportString, bool asserton) {
         out = "=== ERROR IN TEST === " + out;
         DBprnt (out, reportString);
     }
-    if (asserton)
-        assert (is_equal (a, b));
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (b);

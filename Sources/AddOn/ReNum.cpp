@@ -778,7 +778,8 @@ void ReNumOneRule (RenumRule &rule,
     for (auto &i : delimetrList) {
         TypeValues &tv = i.second;
         // Обрабатываем только добавляемые (RENUM_ADD) и новые (RENUM_NORMAL) элементы
-        for (RenumMode renumType = RENUM_ADD; renumType <= RENUM_NORMAL; renumType++) {
+        for (int renumTypeInt = RENUM_ADD; renumTypeInt <= RENUM_NORMAL; renumTypeInt++) {
+        RenumMode renumType = static_cast<RenumMode> (renumTypeInt);
             if (tv.count (renumType) == 0)
                 continue;
             // Для ADDZEROS/ADDSPACE берём максимум позиций в текущей разбивке

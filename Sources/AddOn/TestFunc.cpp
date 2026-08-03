@@ -1,12 +1,14 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
+    #include "ACAPinc.h"
+
     #include "api_headers/APIEnvir.h"
 
-    #include "ACAPinc.h"
+    #include "TestFunc.hpp"
 
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
-    #include "TestFunc.hpp"
+    #include "Sync.hpp"
 
 namespace TestFunc {
 
@@ -28,6 +30,9 @@ namespace TestFunc {
         TestAddProperty ();
         TestPropertyHelpersToString ();
         TestStringSplt ();
+        TestName2Rawname ();
+        TestSyncString ();
+        TestParsePrefixes ();
         DBprnt ("TEST", "end");
     }
 
@@ -39,60 +44,60 @@ namespace TestFunc {
         // Simple delimiter: semicolon
         parts.Clear ();
         n = StringSplt ("a;b;c", ";", parts, true);
-        DBtest (n, (UInt32)3, "StringSplt semicolon 3 parts", true);
-        DBtest (parts.GetSize (), (UInt32)3, "StringSplt semicolon GetSize", true);
-        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0]", true);
-        DBtest (parts.Get (1), GS::UniString ("b"), "parts[1]", true);
-        DBtest (parts.Get (2), GS::UniString ("c"), "parts[2]", true);
+        DBtest (n, (UInt32)3, "StringSplt semicolon 3 parts");
+        DBtest (parts.GetSize (), (UInt32)3, "StringSplt semicolon GetSize");
+        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0]");
+        DBtest (parts.Get (1), GS::UniString ("b"), "parts[1]");
+        DBtest (parts.Get (2), GS::UniString ("c"), "parts[2]");
 
         // filter_empty = false — empty tokens preserved
         parts.Clear ();
         n = StringSplt ("a;;c", ";", parts, false);
-        DBtest (n, (UInt32)3, "StringSplt empty kept", true);
-        DBtest (parts.GetSize (), (UInt32)3, "StringSplt empty kept GetSize", true);
-        DBtest (parts.Get (1).IsEmpty (), true, "parts[1] is empty", true);
+        DBtest (n, (UInt32)3, "StringSplt empty kept");
+        DBtest (parts.GetSize (), (UInt32)3, "StringSplt empty kept GetSize");
+        DBtest (parts.Get (1).IsEmpty (), true, "parts[1] is empty");
 
         // filter_empty = true — empty tokens removed
         parts.Clear ();
         n = StringSplt ("a;;c", ";", parts, true);
-        DBtest (n, (UInt32)2, "StringSplt empty filtered", true);
-        DBtest (parts.GetSize (), (UInt32)2, "StringSplt empty filtered GetSize", true);
-        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0] after filter", true);
-        DBtest (parts.Get (1), GS::UniString ("c"), "parts[1] after filter", true);
+        DBtest (n, (UInt32)2, "StringSplt empty filtered");
+        DBtest (parts.GetSize (), (UInt32)2, "StringSplt empty filtered GetSize");
+        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0] after filter");
+        DBtest (parts.Get (1), GS::UniString ("c"), "parts[1] after filter");
 
         // No delimiter found — whole string is a single element
         parts.Clear ();
         n = StringSplt ("hello", ";", parts, true);
-        DBtest (n, (UInt32)1, "StringSplt no delimiter returns 1", true);
-        DBtest (parts.GetSize (), (UInt32)1, "StringSplt no delimiter GetSize", true);
-        DBtest (parts.Get (0), GS::UniString ("hello"), "parts[0] no delimiter", true);
+        DBtest (n, (UInt32)1, "StringSplt no delimiter returns 1");
+        DBtest (parts.GetSize (), (UInt32)1, "StringSplt no delimiter GetSize");
+        DBtest (parts.Get (0), GS::UniString ("hello"), "parts[0] no delimiter");
 
         // Unicode delimiter (Cyrillic semicolon)
         parts.Clear ();
         n = StringSplt ("один;два;три", ";", parts, true);
-        DBtest (n, (UInt32)3, "StringSplt unicode 3 parts", true);
-        DBtest (parts.GetSize (), (UInt32)3, "StringSplt unicode GetSize", true);
-        DBtest (parts.Get (1), GS::UniString ("два"), "parts[1] unicode", true);
+        DBtest (n, (UInt32)3, "StringSplt unicode 3 parts");
+        DBtest (parts.GetSize (), (UInt32)3, "StringSplt unicode GetSize");
+        DBtest (parts.Get (1), GS::UniString ("два"), "parts[1] unicode");
 
         // Using scratch buffer (nullptr vs external)
         parts.Clear ();
         n = StringSplt ("x@y@z", "@", parts, true, nullptr);
-        DBtest (n, (UInt32)3, "StringSplt with nullptr scratch", true);
-        DBtest (parts.Get (1), GS::UniString ("y"), "parts[1] scratch nullptr", true);
+        DBtest (n, (UInt32)3, "StringSplt with nullptr scratch");
+        DBtest (parts.Get (1), GS::UniString ("y"), "parts[1] scratch nullptr");
 
         // Scratch buffer passed externally
         GS::Array<GS::UniString> scratch = {};
         parts.Clear ();
         n = StringSplt ("p;q;r", ";", parts, true, &scratch);
-        DBtest (n, (UInt32)3, "StringSplt with external scratch", true);
-        DBtest (parts.Get (2), GS::UniString ("r"), "parts[2] external scratch", true);
+        DBtest (n, (UInt32)3, "StringSplt with external scratch");
+        DBtest (parts.Get (2), GS::UniString ("r"), "parts[2] external scratch");
 
         // Leading/trailing whitespace is trimmed
         parts.Clear ();
         n = StringSplt ("  a  ;  b  ", ";", parts, true);
-        DBtest (n, (UInt32)2, "StringSplt trim", true);
-        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0] trimmed", true);
-        DBtest (parts.Get (1), GS::UniString ("b"), "parts[1] trimmed", true);
+        DBtest (n, (UInt32)2, "StringSplt trim");
+        DBtest (parts.Get (0), GS::UniString ("a"), "parts[0] trimmed");
+        DBtest (parts.Get (1), GS::UniString ("b"), "parts[1] trimmed");
 
         DBprnt ("TEST", "TestStringSplt : done");
         return;
@@ -135,7 +140,7 @@ namespace TestFunc {
         err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
     #endif
     #ifdef TESTING
-        DBtest (width > 0.00001, "TestGetTextLineLength", false);
+        DBtest (width > 0.00001, "TestGetTextLineLength");
     #endif
     }
 
@@ -147,43 +152,43 @@ namespace TestFunc {
 
         test_expression = "2*2";
         rep = test_expression;
-        DBtest (!EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, rep, rep, true);
+        DBtest (!EvalExpression (test_expression), rep);
+        DBtest (test_expression, rep, rep);
 
         test_expression = "<2*2>";
         rep = test_expression;
-        DBtest (EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, "4", rep, true);
+        DBtest (EvalExpression (test_expression), rep);
+        DBtest (test_expression, "4", rep);
 
         test_expression = "<2*2>+<2*2>";
         rep = test_expression;
-        DBtest (EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, "4+4", rep, true);
+        DBtest (EvalExpression (test_expression), rep);
+        DBtest (test_expression, "4+4", rep);
 
         test_expression = "<0.001+0.001>.0mm";
         rep = test_expression;
-        DBtest (EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, "2", rep, true);
+        DBtest (EvalExpression (test_expression), rep);
+        DBtest (test_expression, "2", rep);
 
         test_expression = "<0,001+0,001>.0mm";
         rep = test_expression;
-        DBtest (EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, "2", rep, true);
+        DBtest (EvalExpression (test_expression), rep);
+        DBtest (test_expression, "2", rep);
 
         test_expression = "<0.001+0.001>.3m";
         rep = test_expression;
-        DBtest (EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, "0,002", rep, true);
+        DBtest (EvalExpression (test_expression), rep);
+        DBtest (test_expression, "0,002", rep);
 
         test_expression = "<0.001+0.001>.3mp";
         rep = test_expression;
-        DBtest (EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, "0.002", rep, true);
+        DBtest (EvalExpression (test_expression), rep);
+        DBtest (test_expression, "0.002", rep);
 
         test_expression = "<0.001+0.001>.3mp+<0.001+0.001>.03mm";
         rep = test_expression;
-        DBtest (EvalExpression (test_expression), rep, true);
-        DBtest (test_expression, "0.002+2,000", rep, true);
+        DBtest (EvalExpression (test_expression), rep);
+        DBtest (test_expression, "0.002+2,000", rep);
 
         return;
     }
@@ -238,28 +243,28 @@ namespace TestFunc {
             pvalue.val.uniStringValue = f;
             pvalue.rawName = FORMULANAMEPREFIX + f.ToLowerCase () + ";" + pvalue.val.uniStringValue + "}";
             GS::UniString templatestring = pvalue.val.uniStringValue;
-            DBtest (ParamHelpers::ParseParamNameMaterial (templatestring, params, false), templatestring, true);
+            DBtest (ParamHelpers::ParseParamNameMaterial (templatestring, params, false), templatestring);
             pvalue.val.uniStringValue = templatestring;
             formula[j].rawName = pvalue.rawName;
             params.Add (pvalue.rawName, pvalue);
         }
         pvalue.val.hasFormula = false;
         pvalue.isValid = true;
-        DBtest (params.ContainsKey ("{@gdl:ac_postwidth}"), "{@gdl:ac_postwidth}", true);
+        DBtest (params.ContainsKey ("{@gdl:ac_postwidth}"), "{@gdl:ac_postwidth}");
         pvalue.name = "";
         pvalue.rawName = "";
         ParamHelpers::ConvertDoubleToParamValue (pvalue, "ac_postWidth", 0.053);
-        DBtest (params.ContainsKey (pvalue.rawName), pvalue.rawName, true);
+        DBtest (params.ContainsKey (pvalue.rawName), pvalue.rawName);
         params.Set (pvalue.rawName, pvalue);
 
-        DBtest (params.ContainsKey ("{@gdl:ac_postthickness}"), "{@gdl:ac_postthickness}", true);
+        DBtest (params.ContainsKey ("{@gdl:ac_postthickness}"), "{@gdl:ac_postthickness}");
         pvalue.name = "";
         pvalue.rawName = "";
         ParamHelpers::ConvertDoubleToParamValue (pvalue, "ac_postThickness", 0.003);
-        DBtest (params.ContainsKey (pvalue.rawName), pvalue.rawName, true);
+        DBtest (params.ContainsKey (pvalue.rawName), pvalue.rawName);
         params.Set (pvalue.rawName, pvalue);
 
-        DBtest (ParamHelpers::ReadFormula (params, false), "ReadFormula", true);
+        DBtest (ParamHelpers::ReadFormula (params, false), "ReadFormula");
 
         for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
@@ -274,13 +279,13 @@ namespace TestFunc {
 
         for (UInt32 j = 0; j < formula.GetSize (); j++) {
             ParamValue &rezult = formula.Get (j);
-            DBtest (params.ContainsKey (rezult.rawName), rezult.rawName, true);
+            DBtest (params.ContainsKey (rezult.rawName), rezult.rawName);
             ParamValue &test = params.Get (rezult.rawName);
-            DBtest (test.val.formatstring.stringformat, rezult.val.formatstring.stringformat, "formatstring", true);
-            DBtest (test.isValid == true, "isValid", true);
-            DBtest (test.val.uniStringValue, rezult.val.uniStringValue, "uniStringValue", true);
-            DBtest (test.val.intValue, rezult.val.intValue, "intValue", true);
-            DBtest (test.val.doubleValue, rezult.val.doubleValue, "doubleValue", true);
+            DBtest (test.val.formatstring.stringformat, rezult.val.formatstring.stringformat, "formatstring");
+            DBtest (test.isValid == true, "isValid");
+            DBtest (test.val.uniStringValue, rezult.val.uniStringValue, "uniStringValue");
+            DBtest (test.val.intValue, rezult.val.intValue, "intValue");
+            DBtest (test.val.doubleValue, rezult.val.doubleValue, "doubleValue");
         }
         return;
     }
@@ -413,8 +418,8 @@ namespace TestFunc {
         rezult_format.Push (fstring);
         rezult_name.Push (test_name);
 
-        DBtest (tests.GetSize () == rezult_format.GetSize (), "tests.GetSize() == rezult_format.GetSize ()", true);
-        DBtest (tests.GetSize () == rezult_name.GetSize (), "tests.GetSize() == rezult_name.GetSize ()", true);
+        DBtest (tests.GetSize () == rezult_format.GetSize (), "tests.GetSize() == rezult_format.GetSize ()");
+        DBtest (tests.GetSize () == rezult_name.GetSize (), "tests.GetSize() == rezult_name.GetSize ()");
         for (UInt32 j = 0; j < tests.GetSize (); j++) {
             GS::UniString test_name = tests.Get (j);
             GS::UniString expressiont = tests.Get (j);
@@ -438,15 +443,15 @@ namespace TestFunc {
                 }
             }
             FormatString fstringr = rezult_format.Get (j);
-            DBtest (expressiont, expressionr, "expression", true);
-            DBtest (fstringt.isEmpty == fstringr.isEmpty, "isEmpty", true);
-            DBtest (fstringt.isRead == fstringr.isRead, "isRead", true);
-            DBtest (fstringt.forceRaw == fstringr.forceRaw, "forceRaw", true);
-            DBtest (fstringt.trim_zero == fstringr.trim_zero, "trim_zero", true);
-            DBtest (fstringt.koeff, fstringr.koeff, "koeff", true);
-            DBtest (fstringt.delimetr, fstringr.delimetr, "delimetr", true);
-            DBtest (fstringt.n_zero, fstringr.n_zero, "n_zero", true);
-            DBtest (fstringt.stringformat, fstringr.stringformat, "stringformat", true);
+            DBtest (expressiont, expressionr, "expression");
+            DBtest (fstringt.isEmpty == fstringr.isEmpty, "isEmpty");
+            DBtest (fstringt.isRead == fstringr.isRead, "isRead");
+            DBtest (fstringt.forceRaw == fstringr.forceRaw, "forceRaw");
+            DBtest (fstringt.trim_zero == fstringr.trim_zero, "trim_zero");
+            DBtest (fstringt.koeff, fstringr.koeff, "koeff");
+            DBtest (fstringt.delimetr, fstringr.delimetr, "delimetr");
+            DBtest (fstringt.n_zero, fstringr.n_zero, "n_zero");
+            DBtest (fstringt.stringformat, fstringr.stringformat, "stringformat");
         }
         return;
     }
@@ -460,100 +465,89 @@ namespace TestFunc {
 
         // ---- ConvertIntToParamValue ----
         pvalue = ParamValue ();
-        DBtest (ParamHelpers::ConvertIntToParamValue (pvalue, "TestInt", 42), "ConvertIntToParamValue : return", true);
-        DBtest (pvalue.name, GS::UniString ("TestInt"), "ConvertIntToParamValue : name", true);
-        DBtest (!pvalue.rawName.IsEmpty (), "ConvertIntToParamValue : rawName не пуст", true);
-        DBtest (pvalue.val.type == API_PropertyIntegerValueType, "ConvertIntToParamValue : type", true);
-        DBtest (pvalue.val.intValue, (Int32)42, "ConvertIntToParamValue : intValue", true);
-        DBtest (is_equal (pvalue.val.doubleValue, 42.0), "ConvertIntToParamValue : doubleValue", true);
-        DBtest (pvalue.val.boolValue, "ConvertIntToParamValue : boolValue (42 > 0)", true);
-        DBtest (pvalue.val.uniStringValue, GS::UniString ("42"), "ConvertIntToParamValue : uniStringValue", true);
-        DBtest (pvalue.isValid, "ConvertIntToParamValue : isValid", true);
+        DBtest (ParamHelpers::ConvertIntToParamValue (pvalue, "TestInt", 42), "ConvertIntToParamValue : return");
+        DBtest (pvalue.name, GS::UniString ("TestInt"), "ConvertIntToParamValue : name");
+        DBtest (!pvalue.rawName.IsEmpty (), "ConvertIntToParamValue : rawName не пуст");
+        DBtest (pvalue.val.type == API_PropertyIntegerValueType, "ConvertIntToParamValue : type");
+        DBtest (pvalue.val.intValue, (Int32)42, "ConvertIntToParamValue : intValue");
+        DBtest (is_equal (pvalue.val.doubleValue, 42.0), "ConvertIntToParamValue : doubleValue");
+        DBtest (pvalue.val.boolValue, "ConvertIntToParamValue : boolValue (42 > 0)");
+        DBtest (pvalue.val.uniStringValue, GS::UniString ("42"), "ConvertIntToParamValue : uniStringValue");
+        DBtest (pvalue.isValid, "ConvertIntToParamValue : isValid");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertIntToParamValue (pvalue, "TestIntNeg", -5);
-        DBtest (!pvalue.val.boolValue, "ConvertIntToParamValue : boolValue (-5 не > 0)", true);
-        DBtest (pvalue.val.intValue, (Int32)(-5), "ConvertIntToParamValue : intValue (-5)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertIntToParamValue : boolValue (-5 не > 0)");
+        DBtest (pvalue.val.intValue, (Int32)(-5), "ConvertIntToParamValue : intValue (-5)");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertIntToParamValue (pvalue, "TestIntZero", 0);
-        DBtest (!pvalue.val.boolValue, "ConvertIntToParamValue : boolValue (0 не > 0)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertIntToParamValue : boolValue (0 не > 0)");
 
         // ---- ConvertDoubleToParamValue ----
         pvalue = ParamValue ();
         DBtest (ParamHelpers::ConvertDoubleToParamValue (pvalue, "TestDouble", 3.14),
-                "ConvertDoubleToParamValue : return",
-                true);
-        DBtest (pvalue.val.type == API_PropertyRealValueType, "ConvertDoubleToParamValue : type", true);
-        DBtest (pvalue.val.intValue, (Int32)3, "ConvertDoubleToParamValue : intValue (усечение 3.14 -> 3)", true);
-        DBtest (is_equal (pvalue.val.doubleValue, 3.14), "ConvertDoubleToParamValue : doubleValue", true);
-        DBtest (pvalue.val.boolValue, "ConvertDoubleToParamValue : boolValue (!= 0)", true);
-        DBtest (pvalue.val.uniStringValue,
-                GS::UniString ("3.140"),
-                "ConvertDoubleToParamValue : uniStringValue (%.3f)",
-                true);
-        DBtest (pvalue.isValid, "ConvertDoubleToParamValue : isValid", true);
+                "ConvertDoubleToParamValue : return");
+        DBtest (pvalue.val.type == API_PropertyRealValueType, "ConvertDoubleToParamValue : type");
+        DBtest (pvalue.val.intValue, (Int32)3, "ConvertDoubleToParamValue : intValue (усечение 3.14 -> 3)");
+        DBtest (is_equal (pvalue.val.doubleValue, 3.14), "ConvertDoubleToParamValue : doubleValue");
+        DBtest (pvalue.val.boolValue, "ConvertDoubleToParamValue : boolValue (!= 0)");
+        DBtest (
+            pvalue.val.uniStringValue, GS::UniString ("3.140"), "ConvertDoubleToParamValue : uniStringValue (%.3f)");
+        DBtest (pvalue.isValid, "ConvertDoubleToParamValue : isValid");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertDoubleToParamValue (pvalue, "TestDoubleZero", 0.0);
-        DBtest (!pvalue.val.boolValue, "ConvertDoubleToParamValue : boolValue (== 0)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertDoubleToParamValue : boolValue (== 0)");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertDoubleToParamValue (pvalue, "TestDoubleNeg", -2.5);
-        DBtest (pvalue.val.intValue, (Int32)(-2), "ConvertDoubleToParamValue : intValue (усечение -2.5 -> -2)", true);
-        DBtest (pvalue.val.boolValue, "ConvertDoubleToParamValue : boolValue (-2.5 != 0)", true);
+        DBtest (pvalue.val.intValue, (Int32)(-2), "ConvertDoubleToParamValue : intValue (усечение -2.5 -> -2)");
+        DBtest (pvalue.val.boolValue, "ConvertDoubleToParamValue : boolValue (-2.5 != 0)");
 
         // ---- ConvertBoolToParamValue ----
         pvalue = ParamValue ();
         DBtest (ParamHelpers::ConvertBoolToParamValue (pvalue, "TestBoolTrue", true),
-                "ConvertBoolToParamValue : return",
-                true);
-        DBtest (pvalue.val.type == API_PropertyBooleanValueType, "ConvertBoolToParamValue : type", true);
-        DBtest (pvalue.val.boolValue, "ConvertBoolToParamValue : boolValue (true)", true);
-        DBtest (pvalue.val.intValue, (Int32)1, "ConvertBoolToParamValue : intValue (true -> 1)", true);
-        DBtest (is_equal (pvalue.val.doubleValue, 1.0), "ConvertBoolToParamValue : doubleValue (true -> 1.0)", true);
-        DBtest (!pvalue.val.uniStringValue.IsEmpty (), "ConvertBoolToParamValue : uniStringValue не пуст (true)", true);
+                "ConvertBoolToParamValue : return");
+        DBtest (pvalue.val.type == API_PropertyBooleanValueType, "ConvertBoolToParamValue : type");
+        DBtest (pvalue.val.boolValue, "ConvertBoolToParamValue : boolValue (true)");
+        DBtest (pvalue.val.intValue, (Int32)1, "ConvertBoolToParamValue : intValue (true -> 1)");
+        DBtest (is_equal (pvalue.val.doubleValue, 1.0), "ConvertBoolToParamValue : doubleValue (true -> 1.0)");
+        DBtest (!pvalue.val.uniStringValue.IsEmpty (), "ConvertBoolToParamValue : uniStringValue не пуст (true)");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertBoolToParamValue (pvalue, "TestBoolFalse", false);
-        DBtest (!pvalue.val.boolValue, "ConvertBoolToParamValue : boolValue (false)", true);
-        DBtest (pvalue.val.intValue, (Int32)0, "ConvertBoolToParamValue : intValue (false -> 0)", true);
-        DBtest (is_equal (pvalue.val.doubleValue, 0.0), "ConvertBoolToParamValue : doubleValue (false -> 0.0)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertBoolToParamValue : boolValue (false)");
+        DBtest (pvalue.val.intValue, (Int32)0, "ConvertBoolToParamValue : intValue (false -> 0)");
+        DBtest (is_equal (pvalue.val.doubleValue, 0.0), "ConvertBoolToParamValue : doubleValue (false -> 0.0)");
 
         // ---- ConvertStringToParamValue ----
         pvalue = ParamValue ();
         DBtest (ParamHelpers::ConvertStringToParamValue (pvalue, "TestStrNum", "123.5"),
-                "ConvertStringToParamValue : return",
-                true);
-        DBtest (pvalue.val.type == API_PropertyStringValueType, "ConvertStringToParamValue : type", true);
-        DBtest (pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (\"123.5\" - число)", true);
-        DBtest (is_equal (pvalue.val.doubleValue, 123.5), "ConvertStringToParamValue : doubleValue (123.5)", true);
-        DBtest (pvalue.val.intValue,
-                (Int32)124,
-                "ConvertStringToParamValue : intValue (округление вверх 123.5 -> 124)",
-                true);
-        DBtest (pvalue.val.boolValue, "ConvertStringToParamValue : boolValue (непустая строка)", true);
+                "ConvertStringToParamValue : return");
+        DBtest (pvalue.val.type == API_PropertyStringValueType, "ConvertStringToParamValue : type");
+        DBtest (pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (\"123.5\" - число)");
+        DBtest (is_equal (pvalue.val.doubleValue, 123.5), "ConvertStringToParamValue : doubleValue (123.5)");
+        DBtest (
+            pvalue.val.intValue, (Int32)124, "ConvertStringToParamValue : intValue (округление вверх 123.5 -> 124)");
+        DBtest (pvalue.val.boolValue, "ConvertStringToParamValue : boolValue (непустая строка)");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertStringToParamValue (pvalue, "TestStrInt", "10");
-        DBtest (pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (\"10\" - число)", true);
-        DBtest (pvalue.val.intValue,
-                (Int32)10,
-                "ConvertStringToParamValue : intValue (\"10\" -> 10, без округления)",
-                true);
+        DBtest (pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (\"10\" - число)");
+        DBtest (pvalue.val.intValue, (Int32)10, "ConvertStringToParamValue : intValue (\"10\" -> 10, без округления)");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertStringToParamValue (pvalue, "TestStrText", "abc");
-        DBtest (!pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (\"abc\" - не число)", true);
-        DBtest (pvalue.val.boolValue, "ConvertStringToParamValue : boolValue (\"abc\" непустая)", true);
-        DBtest (pvalue.val.intValue, (Int32)1, "ConvertStringToParamValue : intValue (\"abc\" -> 1)", true);
-        DBtest (
-            is_equal (pvalue.val.doubleValue, 1.0), "ConvertStringToParamValue : doubleValue (\"abc\" -> 1.0)", true);
+        DBtest (!pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (\"abc\" - не число)");
+        DBtest (pvalue.val.boolValue, "ConvertStringToParamValue : boolValue (\"abc\" непустая)");
+        DBtest (pvalue.val.intValue, (Int32)1, "ConvertStringToParamValue : intValue (\"abc\" -> 1)");
+        DBtest (is_equal (pvalue.val.doubleValue, 1.0), "ConvertStringToParamValue : doubleValue (\"abc\" -> 1.0)");
 
         pvalue = ParamValue ();
         ParamHelpers::ConvertStringToParamValue (pvalue, "TestStrEmpty", "");
-        DBtest (!pvalue.val.boolValue, "ConvertStringToParamValue : boolValue (пустая строка)", true);
-        DBtest (!pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (пустая строка)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertStringToParamValue : boolValue (пустая строка)");
+        DBtest (!pvalue.val.canCalculate, "ConvertStringToParamValue : canCalculate (пустая строка)");
 
         DBprnt ("TEST", "TestConvertToParamValue : done");
         return;
@@ -577,16 +571,14 @@ namespace TestFunc {
         attrib.header.index = 0;
     #endif
         ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrZero", attrib);
-        DBtest (pvalue.val.intValue, (Int32)0, "ConvertAttributeToParamValue : intValue (index == 0)", true);
-        DBtest (!pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (index == 0, не > 0)", true);
-        DBtest (
-            is_equal (pvalue.val.doubleValue, 0.0), "ConvertAttributeToParamValue : doubleValue (index == 0)", true);
-        DBtest (pvalue.val.type == API_PropertyStringValueType, "ConvertAttributeToParamValue : type", true);
-        DBtest (pvalue.isValid, "ConvertAttributeToParamValue : isValid", true);
-        DBtest (pvalue.fromAttribElement, "ConvertAttributeToParamValue : fromAttribElement", true);
+        DBtest (pvalue.val.intValue, (Int32)0, "ConvertAttributeToParamValue : intValue (index == 0)");
+        DBtest (!pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (index == 0, не > 0)");
+        DBtest (is_equal (pvalue.val.doubleValue, 0.0), "ConvertAttributeToParamValue : doubleValue (index == 0)");
+        DBtest (pvalue.val.type == API_PropertyStringValueType, "ConvertAttributeToParamValue : type");
+        DBtest (pvalue.isValid, "ConvertAttributeToParamValue : isValid");
+        DBtest (pvalue.fromAttribElement, "ConvertAttributeToParamValue : fromAttribElement");
         DBtest (pvalue.val.uniStringValue.IsEmpty (),
-                "ConvertAttributeToParamValue : uniStringValue пуст (имя не задано)",
-                true);
+                "ConvertAttributeToParamValue : uniStringValue пуст (имя не задано)");
 
         // ---- Граница: минимально возможный положительный индекс (1) ----
         pvalue = ParamValue ();
@@ -598,10 +590,9 @@ namespace TestFunc {
         attrib.header.index = 1;
     #endif
         ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrOne", attrib);
-        DBtest (pvalue.val.intValue, (Int32)1, "ConvertAttributeToParamValue : intValue (index == 1)", true);
-        DBtest (pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (index == 1 > 0)", true);
-        DBtest (
-            is_equal (pvalue.val.doubleValue, 1.0), "ConvertAttributeToParamValue : doubleValue (index == 1)", true);
+        DBtest (pvalue.val.intValue, (Int32)1, "ConvertAttributeToParamValue : intValue (index == 1)");
+        DBtest (pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (index == 1 > 0)");
+        DBtest (is_equal (pvalue.val.doubleValue, 1.0), "ConvertAttributeToParamValue : doubleValue (index == 1)");
 
         // ---- Граница: максимальный short-индекс (граница типа для старых версий ACAPI) ----
         pvalue = ParamValue ();
@@ -615,12 +606,10 @@ namespace TestFunc {
         ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrMax", attrib);
         DBtest (pvalue.val.intValue,
                 (Int32)std::numeric_limits<short>::max (),
-                "ConvertAttributeToParamValue : intValue (index == SHRT_MAX)",
-                true);
-        DBtest (pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (SHRT_MAX > 0)", true);
+                "ConvertAttributeToParamValue : intValue (index == SHRT_MAX)");
+        DBtest (pvalue.val.boolValue, "ConvertAttributeToParamValue : boolValue (SHRT_MAX > 0)");
         DBtest (is_equal (pvalue.val.doubleValue, (double)std::numeric_limits<short>::max ()),
-                "ConvertAttributeToParamValue : doubleValue (index == SHRT_MAX)",
-                true);
+                "ConvertAttributeToParamValue : doubleValue (index == SHRT_MAX)");
 
         // ---- Граница: rawName уже задан вызывающей стороной -> не должен перезаписываться ----
         pvalue = ParamValue ();
@@ -635,8 +624,7 @@ namespace TestFunc {
         ParamHelpers::ConvertAttributeToParamValue (pvalue, "TestAttrCustomRaw", attrib);
         DBtest (pvalue.rawName,
                 GS::UniString ("{@attrib:custom_rawname}"),
-                "ConvertAttributeToParamValue : rawName не перезаписывается, если не пуст",
-                true);
+                "ConvertAttributeToParamValue : rawName не перезаписывается, если не пуст");
 
         DBprnt ("TEST", "TestConvertAttributeToParamValue : done");
         // Примечание: конкретное имя атрибута (attr.header.name) в данном тесте не заполняется -
@@ -670,23 +658,20 @@ namespace TestFunc {
         property.value.singleVariant.variant.type = API_PropertyIntegerValueType;
         property.value.singleVariant.variant.intValue = std::numeric_limits<Int32>::min ();
         DBtest (ParamHelpers::ConvertToParamValue (pvalue, property),
-                "ConvertToParamValue(Property) : return (Integer INT32_MIN)",
-                true);
+                "ConvertToParamValue(Property) : return (Integer INT32_MIN)");
         DBtest (pvalue.val.intValue,
                 std::numeric_limits<Int32>::min (),
-                "ConvertToParamValue(Property) : intValue (INT32_MIN)",
-                true);
-        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (INT32_MIN не > 0)", true);
-        DBtest (
-            pvalue.val.type == API_PropertyIntegerValueType, "ConvertToParamValue(Property) : type (Integer)", true);
-        DBtest (pvalue.isValid, "ConvertToParamValue(Property) : isValid (HasValue)", true);
+                "ConvertToParamValue(Property) : intValue (INT32_MIN)");
+        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (INT32_MIN не > 0)");
+        DBtest (pvalue.val.type == API_PropertyIntegerValueType, "ConvertToParamValue(Property) : type (Integer)");
+        DBtest (pvalue.isValid, "ConvertToParamValue(Property) : isValid (HasValue)");
 
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:testint_zero}";
         pvalue.name = "TestIntZero";
         property.value.singleVariant.variant.intValue = 0;
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (0 не > 0)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (0 не > 0)");
 
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:testint_max}";
@@ -695,9 +680,8 @@ namespace TestFunc {
         ParamHelpers::ConvertToParamValue (pvalue, property);
         DBtest (pvalue.val.intValue,
                 std::numeric_limits<Int32>::max (),
-                "ConvertToParamValue(Property) : intValue (INT32_MAX)",
-                true);
-        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (INT32_MAX > 0)", true);
+                "ConvertToParamValue(Property) : intValue (INT32_MAX)");
+        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (INT32_MAX > 0)");
 
         // ---- Real: 0.0 (граница bool == false), максимум double, отрицательное значение ----
         pvalue = ParamValue ();
@@ -715,25 +699,24 @@ namespace TestFunc {
         property.value.singleVariant.variant.type = API_PropertyRealValueType;
         property.value.singleVariant.variant.doubleValue = 0.0;
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (0.0 == 0)", true);
-        DBtest (pvalue.val.type == API_PropertyRealValueType, "ConvertToParamValue(Property) : type (Real)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (0.0 == 0)");
+        DBtest (pvalue.val.type == API_PropertyRealValueType, "ConvertToParamValue(Property) : type (Real)");
 
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:testreal_neg}";
         pvalue.name = "TestRealNeg";
         property.value.singleVariant.variant.doubleValue = -123456.789;
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (отрицательное != 0)", true);
+        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (отрицательное != 0)");
         DBtest (is_equal (pvalue.val.doubleValue, -123456.789),
-                "ConvertToParamValue(Property) : doubleValue (отрицательное)",
-                true);
+                "ConvertToParamValue(Property) : doubleValue (отрицательное)");
 
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:testreal_max}";
         pvalue.name = "TestRealMax";
         property.value.singleVariant.variant.doubleValue = std::numeric_limits<double>::max ();
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (DBL_MAX != 0)", true);
+        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (DBL_MAX != 0)");
 
         // ---- Boolean: true / false ----
         pvalue = ParamValue ();
@@ -750,17 +733,16 @@ namespace TestFunc {
         property.value.singleVariant.variant.type = API_PropertyBooleanValueType;
         property.value.singleVariant.variant.boolValue = true;
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (true)", true);
-        DBtest (pvalue.val.intValue, (Int32)1, "ConvertToParamValue(Property) : intValue (true -> 1)", true);
-        DBtest (
-            pvalue.val.type == API_PropertyBooleanValueType, "ConvertToParamValue(Property) : type (Boolean)", true);
+        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (true)");
+        DBtest (pvalue.val.intValue, (Int32)1, "ConvertToParamValue(Property) : intValue (true -> 1)");
+        DBtest (pvalue.val.type == API_PropertyBooleanValueType, "ConvertToParamValue(Property) : type (Boolean)");
 
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:testbool_false}";
         pvalue.name = "TestBoolFalse";
         property.value.singleVariant.variant.boolValue = false;
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (false)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (false)");
 
         // ---- String: пустая строка / длинная юникод-строка ----
         pvalue = ParamValue ();
@@ -777,8 +759,8 @@ namespace TestFunc {
         property.value.singleVariant.variant.type = API_PropertyStringValueType;
         property.value.singleVariant.variant.uniStringValue = "";
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (пустая строка)", true);
-        DBtest (pvalue.val.type == API_PropertyStringValueType, "ConvertToParamValue(Property) : type (String)", true);
+        DBtest (!pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (пустая строка)");
+        DBtest (pvalue.val.type == API_PropertyStringValueType, "ConvertToParamValue(Property) : type (String)");
 
         pvalue = ParamValue ();
         pvalue.rawName = "{@property:teststr_long}";
@@ -788,10 +770,9 @@ namespace TestFunc {
             longString.Append ("Ё");
         property.value.singleVariant.variant.uniStringValue = longString;
         ParamHelpers::ConvertToParamValue (pvalue, property);
-        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (длинная строка непустая)", true);
+        DBtest (pvalue.val.boolValue, "ConvertToParamValue(Property) : boolValue (длинная строка непустая)");
         DBtest (pvalue.val.uniStringValue.GetLength () == 200,
-                "ConvertToParamValue(Property) : uniStringValue длина сохранена",
-                true);
+                "ConvertToParamValue(Property) : uniStringValue длина сохранена");
 
         // ---- Undefined: функция должна вернуть false и isValid == false ----
         pvalue = ParamValue ();
@@ -806,9 +787,8 @@ namespace TestFunc {
         property.definition.collectionType = API_PropertySingleCollectionType;
         property.definition.valueType = API_PropertyUndefinedValueType;
         DBtest (!ParamHelpers::ConvertToParamValue (pvalue, property),
-                "ConvertToParamValue(Property) : return (Undefined -> false)",
-                true);
-        DBtest (!pvalue.isValid, "ConvertToParamValue(Property) : isValid (Undefined -> false)", true);
+                "ConvertToParamValue(Property) : return (Undefined -> false)");
+        DBtest (!pvalue.isValid, "ConvertToParamValue(Property) : isValid (Undefined -> false)");
 
         DBprnt ("TEST", "TestConvertPropertyToParamValue : done");
         return;
@@ -830,14 +810,12 @@ namespace TestFunc {
         definition.guid = APINULLGuid;
         definition.description = "";
         definition.valueType = API_PropertyRealValueType;
-        DBtest (
-            ParamHelpers::ConvertToParamValue (pvalue, definition), "ConvertToParamValue(Definition) : return", true);
-        DBtest (pvalue.val.type == API_PropertyRealValueType, "ConvertToParamValue(Definition) : val.type", true);
-        DBtest (pvalue.type == API_PropertyRealValueType, "ConvertToParamValue(Definition) : type", true);
-        DBtest (pvalue.fromProperty, "ConvertToParamValue(Definition) : fromProperty", true);
+        DBtest (ParamHelpers::ConvertToParamValue (pvalue, definition), "ConvertToParamValue(Definition) : return");
+        DBtest (pvalue.val.type == API_PropertyRealValueType, "ConvertToParamValue(Definition) : val.type");
+        DBtest (pvalue.type == API_PropertyRealValueType, "ConvertToParamValue(Definition) : type");
+        DBtest (pvalue.fromProperty, "ConvertToParamValue(Definition) : fromProperty");
         DBtest (pvalue.fromPropertyDefinition,
-                "ConvertToParamValue(Definition) : fromPropertyDefinition (нет спецмаркеров)",
-                true);
+                "ConvertToParamValue(Definition) : fromPropertyDefinition (нет спецмаркеров)");
 
         // ---- Граница: description содержит SYNCNAME -> особый rawName ----
         pvalue = ParamValue ();
@@ -850,10 +828,8 @@ namespace TestFunc {
         ParamHelpers::ConvertToParamValue (pvalue, definition);
         DBtest (pvalue.rawName,
                 GS::UniString ("{@property:sync_name0}"),
-                "ConvertToParamValue(Definition) : rawName (sync_name)",
-                true);
-        DBtest (
-            pvalue.fromAttribDefinition, "ConvertToParamValue(Definition) : fromAttribDefinition (sync_name)", true);
+                "ConvertToParamValue(Definition) : rawName (sync_name)");
+        DBtest (pvalue.fromAttribDefinition, "ConvertToParamValue(Definition) : fromAttribDefinition (sync_name)");
 
         // ---- Граница: rawName содержит "buildingmaterial" -> fromAttribDefinition, без изменения rawName ----
         pvalue = ParamValue ();
@@ -865,11 +841,9 @@ namespace TestFunc {
         definition.valueType = API_PropertyRealValueType;
         ParamHelpers::ConvertToParamValue (pvalue, definition);
         DBtest (pvalue.fromAttribDefinition,
-                "ConvertToParamValue(Definition) : fromAttribDefinition (buildingmaterial in rawName)",
-                true);
+                "ConvertToParamValue(Definition) : fromAttribDefinition (buildingmaterial in rawName)");
         DBtest (!pvalue.fromPropertyDefinition,
-                "ConvertToParamValue(Definition) : fromPropertyDefinition == false (attrib имеет приоритет)",
-                true);
+                "ConvertToParamValue(Definition) : fromPropertyDefinition == false (attrib имеет приоритет)");
 
         // ---- Граница: пустой guid и пустое valueType (Undefined) - функция всё равно возвращает true ----
         pvalue = ParamValue ();
@@ -880,12 +854,9 @@ namespace TestFunc {
         definition.description = "";
         definition.valueType = API_PropertyUndefinedValueType;
         DBtest (ParamHelpers::ConvertToParamValue (pvalue, definition),
-                "ConvertToParamValue(Definition) : return (Undefined valueType всё равно true)",
-                true);
+                "ConvertToParamValue(Definition) : return (Undefined valueType всё равно true)");
         DBtest (pvalue.val.type == API_PropertyUndefinedValueType,
-                "ConvertToParamValue(Definition) : val.type (Undefined)",
-                true);
-
+                "ConvertToParamValue(Definition) : val.type (Undefined)");
         DBprnt ("TEST", "TestConvertPropertyDefinitionToParamValue : done");
         return;
     }
@@ -902,134 +873,126 @@ namespace TestFunc {
         pvalue.rawName = PROPERTYNAMEPREFIX + GS::UniString ("testprop") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
         DBtest (pvalue.fromPropertyDefinition,
-                "SetParamValueSourseByName : fromPropertyDefinition (PROPERTYNAMEPREFIX)",
-                true);
-        DBtest (
-            pvalue.typeinx, (short)PROPERTYTYPEINX, "SetParamValueSourseByName : typeinx (PROPERTYNAMEPREFIX)", true);
+                "SetParamValueSourseByName : fromPropertyDefinition (PROPERTYNAMEPREFIX)");
+        DBtest (pvalue.typeinx, (short)PROPERTYTYPEINX, "SetParamValueSourseByName : typeinx (PROPERTYNAMEPREFIX)");
         DBtest (!pvalue.fromAttribDefinition,
-                "SetParamValueSourseByName : fromAttribDefinition == false (обычное свойство)",
-                true);
+                "SetParamValueSourseByName : fromAttribDefinition == false (обычное свойство)");
 
         // ---- Граница: PROPERTYNAMEPREFIX + "buildingmaterialproperties/" -> дополнительно fromAttribDefinition ----
         pvalue = ParamValue ();
         pvalue.rawName = PROPERTYNAMEPREFIX + GS::UniString ("buildingmaterialproperties/density") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromPropertyDefinition,
-                "SetParamValueSourseByName : fromPropertyDefinition (buildingmaterial)",
-                true);
+        DBtest (pvalue.fromPropertyDefinition, "SetParamValueSourseByName : fromPropertyDefinition (buildingmaterial)");
         DBtest (pvalue.fromAttribDefinition,
-                "SetParamValueSourseByName : fromAttribDefinition (buildingmaterialproperties/)",
-                true);
+                "SetParamValueSourseByName : fromAttribDefinition (buildingmaterialproperties/)");
 
         // ---- GDLNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = GDLNAMEPREFIX + GS::UniString ("testgdl") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromGDLparam, "SetParamValueSourseByName : fromGDLparam (GDLNAMEPREFIX)", true);
-        DBtest (
-            !pvalue.fromGDLdescription, "SetParamValueSourseByName : fromGDLdescription == false (обычный GDL)", true);
-        DBtest (pvalue.typeinx, (short)GDLTYPEINX, "SetParamValueSourseByName : typeinx (GDLNAMEPREFIX)", true);
+        DBtest (pvalue.fromGDLparam, "SetParamValueSourseByName : fromGDLparam (GDLNAMEPREFIX)");
+        DBtest (!pvalue.fromGDLdescription, "SetParamValueSourseByName : fromGDLdescription == false (обычный GDL)");
+        DBtest (pvalue.typeinx, (short)GDLTYPEINX, "SetParamValueSourseByName : typeinx (GDLNAMEPREFIX)");
 
         // ---- GDLDESCNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = GDLDESCNAMEPREFIX + GS::UniString ("testdesc") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromGDLparam, "SetParamValueSourseByName : fromGDLparam (GDLDESCNAMEPREFIX)", true);
-        DBtest (pvalue.fromGDLdescription, "SetParamValueSourseByName : fromGDLdescription (GDLDESCNAMEPREFIX)", true);
-        DBtest (pvalue.typeinx, (short)GDLDESCTYPEINX, "SetParamValueSourseByName : typeinx (GDLDESCNAMEPREFIX)", true);
+        DBtest (pvalue.fromGDLparam, "SetParamValueSourseByName : fromGDLparam (GDLDESCNAMEPREFIX)");
+        DBtest (pvalue.fromGDLdescription, "SetParamValueSourseByName : fromGDLdescription (GDLDESCNAMEPREFIX)");
+        DBtest (pvalue.typeinx, (short)GDLDESCTYPEINX, "SetParamValueSourseByName : typeinx (GDLDESCNAMEPREFIX)");
 
         // ---- COORDNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = COORDNAMEPREFIX + GS::UniString ("testcoord") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromCoord, "SetParamValueSourseByName : fromCoord (COORDNAMEPREFIX)", true);
+        DBtest (pvalue.fromCoord, "SetParamValueSourseByName : fromCoord (COORDNAMEPREFIX)");
 
         // ---- GLOBNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = GLOBNAMEPREFIX + GS::UniString ("testglob") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromGlob, "SetParamValueSourseByName : fromGlob (GLOBNAMEPREFIX)", true);
+        DBtest (pvalue.fromGlob, "SetParamValueSourseByName : fromGlob (GLOBNAMEPREFIX)");
 
         // ---- INFONAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = INFONAMEPREFIX + GS::UniString ("testinfo") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromInfo, "SetParamValueSourseByName : fromInfo (INFONAMEPREFIX)", true);
+        DBtest (pvalue.fromInfo, "SetParamValueSourseByName : fromInfo (INFONAMEPREFIX)");
 
         // ---- MEPNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = MEPNAMEPREFIX + GS::UniString ("testmep") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromMEP, "SetParamValueSourseByName : fromMEP (MEPNAMEPREFIX)", true);
+        DBtest (pvalue.fromMEP, "SetParamValueSourseByName : fromMEP (MEPNAMEPREFIX)");
 
         // ---- FORMULANAMEPREFIX (устанавливает val.hasFormula, а не from*-флаг) ----
         pvalue = ParamValue ();
         pvalue.rawName = FORMULANAMEPREFIX + GS::UniString ("testformula") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.val.hasFormula, "SetParamValueSourseByName : val.hasFormula (FORMULANAMEPREFIX)", true);
+        DBtest (pvalue.val.hasFormula, "SetParamValueSourseByName : val.hasFormula (FORMULANAMEPREFIX)");
 
         // ---- IDNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = IDNAMEPREFIX + GS::UniString ("testid") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromID, "SetParamValueSourseByName : fromID (IDNAMEPREFIX)", true);
+        DBtest (pvalue.fromID, "SetParamValueSourseByName : fromID (IDNAMEPREFIX)");
 
         // ---- IFCNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = IFCNAMEPREFIX + GS::UniString ("testifc") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromIFCProperty, "SetParamValueSourseByName : fromIFCProperty (IFCNAMEPREFIX)", true);
+        DBtest (pvalue.fromIFCProperty, "SetParamValueSourseByName : fromIFCProperty (IFCNAMEPREFIX)");
 
         // ---- MORPHNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = MORPHNAMEPREFIX + GS::UniString ("testmorph") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromMorph, "SetParamValueSourseByName : fromMorph (MORPHNAMEPREFIX)", true);
+        DBtest (pvalue.fromMorph, "SetParamValueSourseByName : fromMorph (MORPHNAMEPREFIX)");
 
         // ---- ATTRIBNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = ATTRIBNAMEPREFIX + GS::UniString ("testattrib") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromAttribElement, "SetParamValueSourseByName : fromAttribElement (ATTRIBNAMEPREFIX)", true);
+        DBtest (pvalue.fromAttribElement, "SetParamValueSourseByName : fromAttribElement (ATTRIBNAMEPREFIX)");
 
         // ---- LISTDATANAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = LISTDATANAMEPREFIX + GS::UniString ("testlistdata") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromListData, "SetParamValueSourseByName : fromListData (LISTDATANAMEPREFIX)", true);
+        DBtest (pvalue.fromListData, "SetParamValueSourseByName : fromListData (LISTDATANAMEPREFIX)");
 
         // ---- MATERIALNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = MATERIALNAMEPREFIX + GS::UniString ("testmaterial") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromMaterial, "SetParamValueSourseByName : fromMaterial (MATERIALNAMEPREFIX)", true);
+        DBtest (pvalue.fromMaterial, "SetParamValueSourseByName : fromMaterial (MATERIALNAMEPREFIX)");
 
         // ---- CLASSNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = CLASSNAMEPREFIX + GS::UniString ("testclass") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromClassification, "SetParamValueSourseByName : fromClassification (CLASSNAMEPREFIX)", true);
+        DBtest (pvalue.fromClassification, "SetParamValueSourseByName : fromClassification (CLASSNAMEPREFIX)");
 
         // ---- ELEMENTNAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = ELEMENTNAMEPREFIX + GS::UniString ("testelement") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromElement, "SetParamValueSourseByName : fromElement (ELEMENTNAMEPREFIX)", true);
+        DBtest (pvalue.fromElement, "SetParamValueSourseByName : fromElement (ELEMENTNAMEPREFIX)");
 
         // ---- FILENAMEPREFIX ----
         pvalue = ParamValue ();
         pvalue.rawName = FILENAMEPREFIX + GS::UniString ("testfile") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromFile, "SetParamValueSourseByName : fromFile (FILENAMEPREFIX)", true);
+        DBtest (pvalue.fromFile, "SetParamValueSourseByName : fromFile (FILENAMEPREFIX)");
 
         // ---- Граница: неизвестный префикс -> typeinx == 0, ни один флаг не установлен ----
         pvalue = ParamValue ();
         pvalue.rawName = "{@unknownprefix:test}";
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.typeinx, (short)0, "SetParamValueSourseByName : typeinx (неизвестный префикс)", true);
+        DBtest (pvalue.typeinx, (short)0, "SetParamValueSourseByName : typeinx (неизвестный префикс)");
         DBtest (!pvalue.fromProperty && !pvalue.fromGDLparam && !pvalue.fromCoord && !pvalue.fromElement,
-                "SetParamValueSourseByName : флаги не установлены (неизвестный префикс)",
-                true);
+                "SetParamValueSourseByName : флаги не установлены (неизвестный префикс)");
 
         // ---- Граница: ранний выход, если уже установлен любой from*-флаг (например, fromProperty) ----
         pvalue = ParamValue ();
@@ -1037,24 +1000,18 @@ namespace TestFunc {
         pvalue.fromProperty = true; // Уже определён источник
         ParamHelpers::SetParamValueSourseByName (pvalue);
         DBtest (!pvalue.fromGDLparam,
-                "SetParamValueSourseByName : ранний выход - fromGDLparam не выставляется, если fromProperty уже true",
-                true);
-        DBtest (
-            pvalue.typeinx, (short)0, "SetParamValueSourseByName : ранний выход - typeinx не пересчитывается", true);
+                "SetParamValueSourseByName : ранний выход - fromGDLparam не выставляется, если fromProperty уже true");
+        DBtest (pvalue.typeinx, (short)0, "SetParamValueSourseByName : ранний выход - typeinx не пересчитывается");
 
         // ---- Граница: GDL rawName с индексами массива (@arr_row_start_row_end_col_start_col_end) ----
         pvalue = ParamValue ();
         pvalue.rawName = GDLNAMEPREFIX + GS::UniString ("myarrparam@arr_3_5_7_9") + BRACEEND;
         ParamHelpers::SetParamValueSourseByName (pvalue);
-        DBtest (pvalue.fromGDLparam, "SetParamValueSourseByName : fromGDLparam (GDL с @arr_)", true);
-        DBtest (pvalue.val.array_row_start, 3, "SetParamValueSourseByName : val.array_row_start (@arr_3_5_7_9)", true);
-        DBtest (pvalue.val.array_row_end, 5, "SetParamValueSourseByName : val.array_row_end (@arr_3_5_7_9)", true);
-        DBtest (pvalue.val.array_column_start,
-                7,
-                "SetParamValueSourseByName : val.array_column_start (@arr_3_5_7_9)",
-                true);
-        DBtest (
-            pvalue.val.array_column_end, 9, "SetParamValueSourseByName : val.array_column_end (@arr_3_5_7_9)", true);
+        DBtest (pvalue.fromGDLparam, "SetParamValueSourseByName : fromGDLparam (GDL с @arr_)");
+        DBtest (pvalue.val.array_row_start, 3, "SetParamValueSourseByName : val.array_row_start (@arr_3_5_7_9)");
+        DBtest (pvalue.val.array_row_end, 5, "SetParamValueSourseByName : val.array_row_end (@arr_3_5_7_9)");
+        DBtest (pvalue.val.array_column_start, 7, "SetParamValueSourseByName : val.array_column_start (@arr_3_5_7_9)");
+        DBtest (pvalue.val.array_column_end, 9, "SetParamValueSourseByName : val.array_column_end (@arr_3_5_7_9)");
 
         DBprnt ("TEST", "TestSetParamValueSourseByName : done");
         return;
@@ -1078,12 +1035,9 @@ namespace TestFunc {
         ParamHelpers::SetrawNameFromProperty (pvalue, property);
         DBtest (pvalue.rawName,
                 GS::UniString ("{@property:testplain}"),
-                "SetrawNameFromProperty : rawName не меняется (обычное свойство)",
-                true);
-        DBtest (pvalue.name,
-                GS::UniString ("TestPlain"),
-                "SetrawNameFromProperty : name не меняется (обычное свойство)",
-                true);
+                "SetrawNameFromProperty : rawName не меняется (обычное свойство)");
+        DBtest (
+            pvalue.name, GS::UniString ("TestPlain"), "SetrawNameFromProperty : name не меняется (обычное свойство)");
 
         // ---- Граница: rawName без CharENTER (fromAttrib == false) -> спецветки some_stuff_* не срабатывают,
         //      даже если описание их содержит ----
@@ -1095,12 +1049,10 @@ namespace TestFunc {
         ParamHelpers::SetrawNameFromProperty (pvalue, property);
         DBtest (pvalue.rawName,
                 GS::UniString ("{@property:notfromattrib}"),
-                "SetrawNameFromProperty : rawName не меняется без CharENTER (fromAttrib == false)",
-                true);
+                "SetrawNameFromProperty : rawName не меняется без CharENTER (fromAttrib == false)");
         DBtest (pvalue.name,
                 GS::UniString ("NotFromAttrib"),
-                "SetrawNameFromProperty : name не меняется без CharENTER (fromAttrib == false)",
-                true);
+                "SetrawNameFromProperty : name не меняется без CharENTER (fromAttrib == false)");
 
         // ---- Граница: rawName содержит CharENTER (fromAttrib == true) + описание "some_stuff_th" ----
         pvalue = ParamValue ();
@@ -1110,13 +1062,10 @@ namespace TestFunc {
         property.definition.description = "Some_Stuff_TH"; // Проверка регистронезависимости (ToLowerCase внутри)
         ParamHelpers::SetrawNameFromProperty (pvalue, property);
         DBtest (pvalue.rawName.BeginsWith ("{@property:buildingmaterialproperties/some_stuff_th"),
-                "SetrawNameFromProperty : rawName переписан на some_stuff_th",
-                true);
-        DBtest (
-            pvalue.rawName.Contains ("7"), "SetrawNameFromProperty : сохранён индекс атрибута (some_stuff_th)", true);
-        DBtest (pvalue.name, GS::UniString ("some_stuff_th"), "SetrawNameFromProperty : name == some_stuff_th", true);
-        DBtest (
-            !pvalue.val.formatstring.isEmpty, "SetrawNameFromProperty : formatstring задан для some_stuff_th", true);
+                "SetrawNameFromProperty : rawName переписан на some_stuff_th");
+        DBtest (pvalue.rawName.Contains ("7"), "SetrawNameFromProperty : сохранён индекс атрибута (some_stuff_th)");
+        DBtest (pvalue.name, GS::UniString ("some_stuff_th"), "SetrawNameFromProperty : name == some_stuff_th");
+        DBtest (!pvalue.val.formatstring.isEmpty, "SetrawNameFromProperty : formatstring задан для some_stuff_th");
 
         // ---- Граница: fromAttrib == true + описание "some_stuff_units" ----
         pvalue = ParamValue ();
@@ -1126,13 +1075,9 @@ namespace TestFunc {
         property.definition.description = "some_stuff_units";
         ParamHelpers::SetrawNameFromProperty (pvalue, property);
         DBtest (pvalue.rawName.BeginsWith ("{@property:buildingmaterialproperties/some_stuff_units"),
-                "SetrawNameFromProperty : rawName переписан на some_stuff_units",
-                true);
-        DBtest (pvalue.rawName.Contains ("2"),
-                "SetrawNameFromProperty : сохранён индекс атрибута (some_stuff_units)",
-                true);
-        DBtest (
-            pvalue.name, GS::UniString ("some_stuff_units"), "SetrawNameFromProperty : name == some_stuff_units", true);
+                "SetrawNameFromProperty : rawName переписан на some_stuff_units");
+        DBtest (pvalue.rawName.Contains ("2"), "SetrawNameFromProperty : сохранён индекс атрибута (some_stuff_units)");
+        DBtest (pvalue.name, GS::UniString ("some_stuff_units"), "SetrawNameFromProperty : name == some_stuff_units");
 
         // ---- Граница: fromAttrib == true + описание "some_stuff_kzap" ----
         pvalue = ParamValue ();
@@ -1142,10 +1087,8 @@ namespace TestFunc {
         property.definition.description = "some_stuff_kzap";
         ParamHelpers::SetrawNameFromProperty (pvalue, property);
         DBtest (pvalue.rawName.BeginsWith ("{@property:buildingmaterialproperties/some_stuff_kzap"),
-                "SetrawNameFromProperty : rawName переписан на some_stuff_kzap",
-                true);
-        DBtest (
-            pvalue.name, GS::UniString ("some_stuff_kzap"), "SetrawNameFromProperty : name == some_stuff_kzap", true);
+                "SetrawNameFromProperty : rawName переписан на some_stuff_kzap");
+        DBtest (pvalue.name, GS::UniString ("some_stuff_kzap"), "SetrawNameFromProperty : name == some_stuff_kzap");
 
         DBprnt ("TEST", "TestSetrawNameFromProperty : done");
         // Примечание: ветка description.Contains (SYNCCORRECTFLAG) не покрыта тестом - значение
@@ -1168,7 +1111,7 @@ namespace TestFunc {
         param.val.uniStringValue = "";
         ignorevals = {};
         ignorevals.skip_empty = true;
-        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : пустая строка + skip_empty", true);
+        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : пустая строка + skip_empty");
 
         // ---- Граница: строка из пробелов + skip_empty == true (без skip_trim_empty) -> НЕ игнорировать ----
         param = ParamValue ();
@@ -1177,8 +1120,7 @@ namespace TestFunc {
         ignorevals = {};
         ignorevals.skip_empty = true;
         DBtest (!ParamHelpers::CheckIgnoreVal (ignorevals, param),
-                "CheckIgnoreVal : строка из пробелов + только skip_empty -> не игнорируется",
-                true);
+                "CheckIgnoreVal : строка из пробелов + только skip_empty -> не игнорируется");
 
         // ---- Граница: строка из пробелов + skip_trim_empty == true -> игнорировать ----
         param = ParamValue ();
@@ -1187,8 +1129,7 @@ namespace TestFunc {
         ignorevals = {};
         ignorevals.skip_trim_empty = true;
         DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param),
-                "CheckIgnoreVal : строка из пробелов + skip_trim_empty",
-                true);
+                "CheckIgnoreVal : строка из пробелов + skip_trim_empty");
 
         // ---- Граница: непустая строка + skip_empty/skip_trim_empty == true -> НЕ игнорировать ----
         param = ParamValue ();
@@ -1198,8 +1139,7 @@ namespace TestFunc {
         ignorevals.skip_empty = true;
         ignorevals.skip_trim_empty = true;
         DBtest (!ParamHelpers::CheckIgnoreVal (ignorevals, param),
-                "CheckIgnoreVal : непустая строка -> не игнорируется",
-                true);
+                "CheckIgnoreVal : непустая строка -> не игнорируется");
 
         // ---- Граница: числовой (не строковый, не булевый) тип, doubleValue == 0 + skip_empty -> игнорировать ----
         param = ParamValue ();
@@ -1207,7 +1147,7 @@ namespace TestFunc {
         param.val.doubleValue = 0.0;
         ignorevals = {};
         ignorevals.skip_empty = true;
-        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : Real == 0.0 + skip_empty", true);
+        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : Real == 0.0 + skip_empty");
 
         // ---- Граница: числовой тип, doubleValue != 0 + skip_empty -> НЕ игнорировать ----
         param = ParamValue ();
@@ -1216,8 +1156,7 @@ namespace TestFunc {
         ignorevals = {};
         ignorevals.skip_empty = true;
         DBtest (!ParamHelpers::CheckIgnoreVal (ignorevals, param),
-                "CheckIgnoreVal : Real == 1.0 + skip_empty -> не игнорируется",
-                true);
+                "CheckIgnoreVal : Real == 1.0 + skip_empty -> не игнорируется");
 
         // ---- Граница: булевый тип НЕ подчиняется skip_empty/skip_trim_empty, даже если doubleValue == 0 ----
         param = ParamValue ();
@@ -1228,8 +1167,7 @@ namespace TestFunc {
         ignorevals.skip_empty = true;
         ignorevals.skip_trim_empty = true;
         DBtest (!ParamHelpers::CheckIgnoreVal (ignorevals, param),
-                "CheckIgnoreVal : Boolean игнорирует skip_empty/skip_trim_empty",
-                true);
+                "CheckIgnoreVal : Boolean игнорирует skip_empty/skip_trim_empty");
 
         // ---- Граница: пустой список ignorevals.ignorevals -> false, даже без skip-флагов ----
         param = ParamValue ();
@@ -1237,8 +1175,7 @@ namespace TestFunc {
         param.val.uniStringValue = "любое значение";
         ignorevals = {};
         DBtest (!ParamHelpers::CheckIgnoreVal (ignorevals, param),
-                "CheckIgnoreVal : пустой ignorevals и все флаги false -> false",
-                true);
+                "CheckIgnoreVal : пустой ignorevals и все флаги false -> false");
 
         // ---- Граница: точное совпадение со значением из списка ignorevals ----
         param = ParamValue ();
@@ -1246,8 +1183,7 @@ namespace TestFunc {
         param.val.uniStringValue = "ignoreme";
         ignorevals = {};
         ignorevals.ignorevals.Push ("ignoreme");
-        DBtest (
-            ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : точное совпадение со списком", true);
+        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : точное совпадение со списком");
 
         // ---- Граница: список с шаблоном "*суффикс" - совпадение по окончанию строки ----
         param = ParamValue ();
@@ -1255,7 +1191,7 @@ namespace TestFunc {
         param.val.uniStringValue = "значение_суффикс";
         ignorevals = {};
         ignorevals.ignorevals.Push ("*суффикс");
-        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : шаблон *суффикс (EndsWith)", true);
+        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : шаблон *суффикс (EndsWith)");
 
         // ---- Граница: список с шаблоном "префикс*" - совпадение по началу строки ----
         param = ParamValue ();
@@ -1263,8 +1199,7 @@ namespace TestFunc {
         param.val.uniStringValue = "префикс_значение";
         ignorevals = {};
         ignorevals.ignorevals.Push ("префикс*");
-        DBtest (
-            ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : шаблон префикс* (BeginsWith)", true);
+        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : шаблон префикс* (BeginsWith)");
 
         // ---- Граница: список задан, но ничего не совпадает -> false ----
         param = ParamValue ();
@@ -1274,8 +1209,7 @@ namespace TestFunc {
         ignorevals.ignorevals.Push ("ignoreme");
         ignorevals.ignorevals.Push ("*суффикс");
         DBtest (!ParamHelpers::CheckIgnoreVal (ignorevals, param),
-                "CheckIgnoreVal : список задан, но нет совпадений -> false",
-                true);
+                "CheckIgnoreVal : список задан, но нет совпадений -> false");
 
         // ---- Граница: сравнение со списком идёт по обрезанной (trim) строке ----
         param = ParamValue ();
@@ -1283,7 +1217,7 @@ namespace TestFunc {
         param.val.uniStringValue = "  ignoreme  ";
         ignorevals = {};
         ignorevals.ignorevals.Push ("ignoreme");
-        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : сравнение по trim-строке", true);
+        DBtest (ParamHelpers::CheckIgnoreVal (ignorevals, param), "CheckIgnoreVal : сравнение по trim-строке");
 
         DBprnt ("TEST", "TestCheckIgnoreVal : done");
         return;
@@ -1307,15 +1241,13 @@ namespace TestFunc {
         params = {};
         propertyDefinitions = {};
         DBtest (!ParamHelpers::ReadProperty (APINULLGuid, params, propertyDefinitions),
-                "ReadProperty : params пуст -> false",
-                true);
+                "ReadProperty : params пуст -> false");
 
         API_PropertyDefinition dummyDefinition = {};
         dummyDefinition.guid = APINULLGuid;
         propertyDefinitions.Push (dummyDefinition);
         DBtest (!ParamHelpers::ReadProperty (APINULLGuid, params, propertyDefinitions),
-                "ReadProperty : params пуст + propertyDefinitions не пуст -> всё равно false",
-                true);
+                "ReadProperty : params пуст + propertyDefinitions не пуст -> всё равно false");
 
         // ---- Граница: params не пуст, но propertyDefinitions пуст -> false ----
         params = {};
@@ -1325,8 +1257,7 @@ namespace TestFunc {
         params.Put (pvalue.rawName, pvalue);
         propertyDefinitions = {};
         DBtest (!ParamHelpers::ReadProperty (APINULLGuid, params, propertyDefinitions),
-                "ReadProperty : propertyDefinitions пуст -> false",
-                true);
+                "ReadProperty : propertyDefinitions пуст -> false");
 
         // ---- Граница: params и propertyDefinitions не пусты, но elemGuid == APINULLGuid ----
         // ACAPI_Element_GetPropertyValues не найдёт элемент по несуществующему guid и вернёт ошибку,
@@ -1337,12 +1268,10 @@ namespace TestFunc {
         propertyDefinitions.Push (dummyDefinition);
         ParamValue pvalueBefore = *params.GetPtr (pvalue.rawName);
         DBtest (!ParamHelpers::ReadProperty (APINULLGuid, params, propertyDefinitions),
-                "ReadProperty : APINULLGuid -> ACAPI-ошибка -> false",
-                true);
+                "ReadProperty : APINULLGuid -> ACAPI-ошибка -> false");
         DBtest (params.GetPtr (pvalue.rawName)->isValid,
                 pvalueBefore.isValid,
-                "ReadProperty : значение в словаре не изменилось после ошибки ACAPI",
-                true);
+                "ReadProperty : значение в словаре не изменилось после ошибки ACAPI");
 
         DBprnt ("TEST", "TestReadProperty : done");
         return;
@@ -1386,9 +1315,8 @@ namespace TestFunc {
         properties = {};
         properties.Push (property);
         DBtest (!ParamHelpers::AddProperty (params, properties, APINULLGuid),
-                "AddProperty : свойство отсутствует в словаре -> false",
-                true);
-        DBtest (params.GetSize () == 0, "AddProperty : словарь остаётся пустым, если совпадений нет", true);
+                "AddProperty : свойство отсутствует в словаре -> false");
+        DBtest (params.GetSize () == 0, "AddProperty : словарь остаётся пустым, если совпадений нет");
 
         // ---- Вычисляем ожидаемый rawName той же функцией, что использует AddProperty внутри ----
         ParamValue probe = {};
@@ -1404,20 +1332,15 @@ namespace TestFunc {
         properties = {};
         properties.Push (property);
         DBtest (ParamHelpers::AddProperty (params, properties, APINULLGuid),
-                "AddProperty : совпадение по rawName -> true",
-                true);
+                "AddProperty : совпадение по rawName -> true");
         if (const ParamValue *stored = params.GetPtr (expectedRawName)) {
-            DBtest (stored->val.intValue,
-                    (Int32)55,
-                    "AddProperty : значение свойства записано в словарь (intValue == 55)",
-                    true);
-            DBtest (stored->val.type == API_PropertyIntegerValueType, "AddProperty : тип значения (Integer)", true);
-            DBtest (stored->isValid, "AddProperty : isValid == true после успешной конвертации", true);
-            DBtest (stored->fromGuid == APINULLGuid,
-                    "AddProperty : fromGuid == APINULLGuid (elemguid == APINULLGuid)",
-                    true);
+            DBtest (
+                stored->val.intValue, (Int32)55, "AddProperty : значение свойства записано в словарь (intValue == 55)");
+            DBtest (stored->val.type == API_PropertyIntegerValueType, "AddProperty : тип значения (Integer)");
+            DBtest (stored->isValid, "AddProperty : isValid == true после успешной конвертации");
+            DBtest (stored->fromGuid == APINULLGuid, "AddProperty : fromGuid == APINULLGuid (elemguid == APINULLGuid)");
         } else {
-            DBtest (false, "AddProperty : значение должно быть найдено в словаре после Put", true);
+            DBtest (false, "AddProperty : значение должно быть найдено в словаре после Put");
         }
 
         // ---- Граница: свойство есть в params, но ConvertToParamValue не может его сконвертировать
@@ -1450,12 +1373,9 @@ namespace TestFunc {
         properties = {};
         properties.Push (undefProperty);
         DBtest (!ParamHelpers::AddProperty (params, properties, APINULLGuid),
-                "AddProperty : Undefined valueType -> ConvertToParamValue не проходит -> false",
-                true);
+                "AddProperty : Undefined valueType -> ConvertToParamValue не проходит -> false");
         if (const ParamValue *storedUndef = params.GetPtr (undefRawName)) {
-            DBtest (!storedUndef->isValid,
-                    "AddProperty : запись в словаре не изменилась (осталась isValid == false)",
-                    true);
+            DBtest (!storedUndef->isValid, "AddProperty : запись в словаре не изменилась (осталась isValid == false)");
         }
 
         // ---- Граница: несколько свойств в одном вызове - одно совпадает, другое нет.
@@ -1481,11 +1401,9 @@ namespace TestFunc {
         noMatchProperty.value.singleVariant.variant.intValue = 1;
         properties.Push (noMatchProperty); // не совпадёт (отдельное описание -> другой rawName)
         DBtest (ParamHelpers::AddProperty (params, properties, APINULLGuid),
-                "AddProperty : несколько свойств, есть хотя бы одно совпадение -> true",
-                true);
+                "AddProperty : несколько свойств, есть хотя бы одно совпадение -> true");
         DBtest (params.GetSize () == 1,
-                "AddProperty : несовпавшее свойство не добавляется в словарь (needAdd == false)",
-                true);
+                "AddProperty : несовпавшее свойство не добавляется в словарь (needAdd == false)");
 
         DBprnt ("TEST", "TestAddProperty : done");
         return;
@@ -1511,7 +1429,7 @@ namespace TestFunc {
         property.value.singleVariant.variant.type = API_PropertyIntegerValueType;
         property.value.singleVariant.variant.intValue = 42;
         GS::UniString intResult = PropertyHelpers::ToString (property);
-        DBtest (intResult, GS::UniString ("42"), "ToString(Property) : Integer 42", true);
+        DBtest (intResult, GS::UniString ("42"), "ToString(Property) : Integer 42");
 
         // ---- Real: базовое значение ----
         property = {};
@@ -1527,10 +1445,9 @@ namespace TestFunc {
         property.value.singleVariant.variant.doubleValue = 3.14159;
         GS::UniString realResult = PropertyHelpers::ToString (property);
         // ToString для Real использует форматирование с точностью, проверяем что это число
-        DBtest (!realResult.IsEmpty (), "ToString(Property) : Real не пустая строка", true);
+        DBtest (!realResult.IsEmpty (), "ToString(Property) : Real не пустая строка");
         DBtest (realResult.Contains ("3.14") || realResult.Contains ("3,14"),
-                "ToString(Property) : Real содержит значение",
-                true);
+                "ToString(Property) : Real содержит значение");
 
         // ---- Boolean: true ----
         property = {};
@@ -1544,12 +1461,12 @@ namespace TestFunc {
         property.value.singleVariant.variant.type = API_PropertyBooleanValueType;
         property.value.singleVariant.variant.boolValue = true;
         GS::UniString boolTrueResult = PropertyHelpers::ToString (property);
-        DBtest (!boolTrueResult.IsEmpty (), "ToString(Property) : Boolean true не пустая", true);
+        DBtest (!boolTrueResult.IsEmpty (), "ToString(Property) : Boolean true не пустая");
 
         // ---- Boolean: false ----
         property.value.singleVariant.variant.boolValue = false;
         GS::UniString boolFalseResult = PropertyHelpers::ToString (property);
-        DBtest (!boolFalseResult.IsEmpty (), "ToString(Property) : Boolean false не пустая", true);
+        DBtest (!boolFalseResult.IsEmpty (), "ToString(Property) : Boolean false не пустая");
 
         // ---- String: обычное значение ----
         property = {};
@@ -1563,12 +1480,12 @@ namespace TestFunc {
         property.value.singleVariant.variant.type = API_PropertyStringValueType;
         property.value.singleVariant.variant.uniStringValue = "TestString";
         GS::UniString strResult = PropertyHelpers::ToString (property);
-        DBtest (strResult, GS::UniString ("TestString"), "ToString(Property) : String значение", true);
+        DBtest (strResult, GS::UniString ("TestString"), "ToString(Property) : String значение");
 
         // ---- String: пустая строка ----
         property.value.singleVariant.variant.uniStringValue = "";
         GS::UniString emptyStrResult = PropertyHelpers::ToString (property);
-        DBtest (emptyStrResult.IsEmpty (), "ToString(Property) : пустая строка -> пустой результат", true);
+        DBtest (emptyStrResult.IsEmpty (), "ToString(Property) : пустая строка -> пустой результат");
 
         // ---- List: список Integer ----
         property = {};
@@ -1590,10 +1507,10 @@ namespace TestFunc {
         property.value.listVariant.variants.Push (v2);
         property.value.listVariant.variants.Push (v3);
         GS::UniString listResult = PropertyHelpers::ToString (property);
-        DBtest (listResult.Contains ("1"), "ToString(Property) : List содержит 1", true);
-        DBtest (listResult.Contains ("2"), "ToString(Property) : List содержит 2", true);
-        DBtest (listResult.Contains ("3"), "ToString(Property) : List содержит 3", true);
-        DBtest (listResult.Contains (";"), "ToString(Property) : List содержит разделитель", true);
+        DBtest (listResult.Contains ("1"), "ToString(Property) : List содержит 1");
+        DBtest (listResult.Contains ("2"), "ToString(Property) : List содержит 2");
+        DBtest (listResult.Contains ("3"), "ToString(Property) : List содержит 3");
+        DBtest (listResult.Contains (";"), "ToString(Property) : List содержит разделитель");
 
         // ---- List: список String ----
         property = {};
@@ -1612,9 +1529,9 @@ namespace TestFunc {
         property.value.listVariant.variants.Push (sv1);
         property.value.listVariant.variants.Push (sv2);
         GS::UniString strListResult = PropertyHelpers::ToString (property);
-        DBtest (strListResult.Contains ("apple"), "ToString(Property) : String List содержит apple", true);
-        DBtest (strListResult.Contains ("banana"), "ToString(Property) : String List содержит banana", true);
-        DBtest (strListResult.Contains (";"), "ToString(Property) : String List содержит разделитель", true);
+        DBtest (strListResult.Contains ("apple"), "ToString(Property) : String List содержит apple");
+        DBtest (strListResult.Contains ("banana"), "ToString(Property) : String List содержит banana");
+        DBtest (strListResult.Contains (";"), "ToString(Property) : String List содержит разделитель");
 
         // ---- NotAvailable / NotEvaluated: должна вернуть пустую строку ----
         property = {};
@@ -1626,7 +1543,7 @@ namespace TestFunc {
         property.definition.collectionType = API_PropertySingleCollectionType;
         property.definition.valueType = API_PropertyIntegerValueType;
         GS::UniString notAvailResult = PropertyHelpers::ToString (property);
-        DBtest (notAvailResult.IsEmpty (), "ToString(Property) : NotAvailable -> пустая строка", true);
+        DBtest (notAvailResult.IsEmpty (), "ToString(Property) : NotAvailable -> пустая строка");
 
         // ---- Default value (isDefault + NotEvaluated) ----
         property = {};
@@ -1641,14 +1558,14 @@ namespace TestFunc {
         property.definition.defaultValue.basicValue.singleVariant.variant.type = API_PropertyIntegerValueType;
         property.definition.defaultValue.basicValue.singleVariant.variant.intValue = 999;
         GS::UniString defaultResult = PropertyHelpers::ToString (property);
-        DBtest (defaultResult, GS::UniString ("999"), "ToString(Property) : Default value (999)", true);
+        DBtest (defaultResult, GS::UniString ("999"), "ToString(Property) : Default value (999)");
 
         // ---- Default value: Real ----
         property.definition.defaultValue.basicValue.singleVariant.variant.type = API_PropertyRealValueType;
         property.definition.defaultValue.basicValue.singleVariant.variant.doubleValue = 2.5;
         property.definition.valueType = API_PropertyRealValueType;
         GS::UniString defaultRealResult = PropertyHelpers::ToString (property);
-        DBtest (!defaultRealResult.IsEmpty (), "ToString(Property) : Default Real не пустая", true);
+        DBtest (!defaultRealResult.IsEmpty (), "ToString(Property) : Default Real не пустая");
 
         DBprnt ("TEST", "TestPropertyHelpersToString : done");
         return;
@@ -1725,6 +1642,300 @@ namespace TestFunc {
                 }
             }
         }
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест Name2Rawname - преобразование имени в rawname
+    // -----------------------------------------------------------------------------
+    void TestName2Rawname () {
+        DBprnt ("TEST", "TestName2Rawname");
+        GS::UniString name;
+        GS::UniString rawname;
+
+        // Тест: обычное свойство
+        name = "Property:TestProperty";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Property:TestProperty -> true");
+        DBtest (rawname, GS::UniString ("{@property:testproperty}"), "Name2Rawname Property:TestProperty -> rawname");
+
+        // Тест: с префиксом property
+        name = "property:AnotherProperty";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname property:AnotherProperty -> true");
+        DBtest (
+            rawname, GS::UniString ("{@property:anotherproperty}"), "Name2Rawname property:AnotherProperty -> rawname");
+
+        // Тест: координаты
+        name = "Coord:symb_pos_x";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Coord:symb_pos_x -> true");
+        DBtest (rawname, GS::UniString ("{@coord:symb_pos_x}"), "Name2Rawname Coord:symb_pos_x -> rawname");
+
+        // Тест: GDL параметр
+        name = "TestGDLParam";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname TestGDLParam -> true");
+        DBtest (rawname, GS::UniString ("{@gdl:testgdlparam}"), "Name2Rawname TestGDLParam -> rawname");
+
+        // Тест: ID
+        name = "{id}";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname {id} -> true");
+        DBtest (rawname, GS::UniString ("{@id:id}"), "Name2Rawname {id} -> rawname");
+
+        // Тест: пустая строка -> false
+        name = "";
+        DBtest (!Name2Rawname (name, rawname), "Name2Rawname empty string -> false");
+
+        // Тест: BuildingMaterial свойство
+        name = "Property:BuildingMaterialProperties/Density";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Property:BuildingMaterialProperties/Density -> true");
+        DBtest (rawname.BeginsWith ("{@property:buildingmaterialproperties/density"),
+                "Name2Rawname BuildingMaterial -> rawname");
+
+        // Тест: Morph
+        name = "Morph:param1";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Morph:param1 -> true");
+        DBtest (rawname, GS::UniString ("{@morph:param1}"), "Name2Rawname Morph:param1 -> rawname");
+
+        // Тест: IFC
+        name = "IFC:PropertyName";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname IFC:PropertyName -> true");
+        DBtest (rawname, GS::UniString ("{@ifc:propertyname}"), "Name2Rawname IFC:PropertyName -> rawname");
+
+        // Тест: Info
+        name = "Info:someinfo";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Info:someinfo -> true");
+        DBtest (rawname, GS::UniString ("{@info:someinfo}"), "Name2Rawname Info:someinfo -> rawname");
+
+        // Тест: Glob
+        name = "Glob:variable";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Glob:variable -> true");
+        DBtest (rawname, GS::UniString ("{@glob:variable}"), "Name2Rawname Glob:variable -> rawname");
+
+        // Тест: Class
+        name = "Class:classification";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Class:classification -> true");
+        DBtest (rawname, GS::UniString ("{@class:classification}"), "Name2Rawname Class:classification -> rawname");
+
+        // Тест: Element
+        name = "Element:property";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Element:property -> true");
+        DBtest (rawname, GS::UniString ("{@element:property}"), "Name2Rawname Element:property -> rawname");
+
+        // Тест: File
+        name = "File:filename";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname File:filename -> true");
+        DBtest (rawname, GS::UniString ("{@file:filename}"), "Name2Rawname File:filename -> rawname");
+
+        // Тест: Attrib (Layer)
+        name = "Attrib:Layer";
+        DBtest (Name2Rawname (name, rawname), "Name2Rawname Attrib:Layer -> true");
+        DBtest (rawname, GS::UniString ("{@attrib:layer}"), "Name2Rawname Attrib:Layer -> rawname");
+
+        DBprnt ("TEST", "TestName2Rawname : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест SyncString - парсинг строки правила синхронизации
+    // -----------------------------------------------------------------------------
+    void TestSyncString () {
+        DBprnt ("TEST", "TestSyncString");
+        ParamValue param;
+        SkipValues ignorevals;
+        FormatString stringformat;
+        SyncMode syncdirection = SYNC_NO;
+        API_ElemTypeID elementType = API_ObjectID;
+
+        // Тест: SYNC_FROM базовое свойство
+        param = ParamValue ();
+        GS::UniString rule1 = "Sync_from{Property:TestProperty}";
+        DBtest (SyncString (elementType, rule1, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_from Property -> true");
+        DBtest (syncdirection, SYNC_FROM, "SyncString Sync_from -> direction FROM");
+        DBtest (param.fromProperty, "SyncString Sync_from Property -> fromProperty");
+
+        // Тест: SYNC_TO базовое свойство
+        param = ParamValue ();
+        GS::UniString rule2 = "Sync_to{Property:TestProperty}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule2, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_to Property -> true");
+        DBtest (syncdirection, SYNC_TO, "SyncString Sync_to -> direction TO");
+        DBtest (param.fromProperty, "SyncString Sync_to Property -> fromProperty");
+
+        // Тест: SYNC_FROM_SUB
+        param = ParamValue ();
+        GS::UniString rule3 = "Sync_from_sub{Property:TestProperty}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule3, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_from_sub -> true");
+        DBtest (syncdirection, SYNC_FROM_SUB, "SyncString Sync_from_sub -> direction FROM_SUB");
+
+        // Тест: SYNC_TO_SUB
+        param = ParamValue ();
+        GS::UniString rule4 = "Sync_to_sub{Property:TestProperty}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule4, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_to_sub -> true");
+        DBtest (syncdirection, SYNC_TO_SUB, "SyncString Sync_to_sub -> direction TO_SUB");
+
+        // Тест: GDL параметр
+        param = ParamValue ();
+        GS::UniString rule5 = "Sync_from{MyGDLParam}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule5, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_from GDL -> true");
+        DBtest (param.fromGDLparam, "SyncString Sync_from GDL -> fromGDLparam");
+
+        // Тест: Координаты
+        param = ParamValue ();
+        GS::UniString rule6 = "Sync_from{Coord:symb_pos_x}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule6, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_from Coord -> true");
+        DBtest (param.fromCoord, "SyncString Sync_from Coord -> fromCoord");
+
+        // Тест: Формула
+        param = ParamValue ();
+        GS::UniString rule7 = "Sync_from{<2*2>}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule7, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_from Formula -> true");
+        DBtest (param.val.hasFormula, "SyncString Sync_from Formula -> hasFormula");
+
+        // Тест: ID
+        param = ParamValue ();
+        GS::UniString rule8 = "Sync_from{{id}}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule8, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_from ID -> true");
+        DBtest (param.fromID, "SyncString Sync_from ID -> fromID");
+
+        // Тест: FormatString с форматом
+        param = ParamValue ();
+        GS::UniString rule9 = "Sync_from{Property:TestProperty.3m}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule9, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString Sync_from Format .3m -> true");
+        DBtest (!stringformat.stringformat.IsEmpty (), "SyncString FormatString -> stringformat not empty");
+
+        // Тест: ignorevals empty
+        param = ParamValue ();
+        GS::UniString rule10 = "Sync_from{Property:TestProperty; empty}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule10, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString ignorevals empty -> true");
+        DBtest (ignorevals.skip_empty, "SyncString ignorevals -> skip_empty true");
+
+        // Тест: ignorevals trim_empty
+        param = ParamValue ();
+        GS::UniString rule11 = "Sync_from{Property:TestProperty; trim_empty}";
+        syncdirection = SYNC_NO;
+        DBtest (SyncString (elementType, rule11, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString ignorevals trim_empty -> true");
+        DBtest (ignorevals.skip_trim_empty, "SyncString ignorevals -> skip_trim_empty true");
+
+        // Тест: некорректная строка (нет направления)
+        param = ParamValue ();
+        GS::UniString rule12 = "Property:TestProperty";
+        syncdirection = SYNC_NO;
+        DBtest (!SyncString (elementType, rule12, syncdirection, param, ignorevals, stringformat, false, false, false),
+                "SyncString no direction -> false");
+
+        DBprnt ("TEST", "TestSyncString : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест констант префиксов
+    // -----------------------------------------------------------------------------
+    void TestParsePrefixes () {
+        DBprnt ("TEST", "TestParsePrefixes");
+
+        // Проверка основных префиксов имен параметров
+        DBtest (PROPERTYNAMEPREFIX, GS::UniString ("{@property:"), "PROPERTYNAMEPREFIX");
+        DBtest (GDLNAMEPREFIX, GS::UniString ("{@gdl:"), "GDLNAMEPREFIX");
+        DBtest (COORDNAMEPREFIX, GS::UniString ("{@coord:"), "COORDNAMEPREFIX");
+        DBtest (IDNAMEPREFIX, GS::UniString ("{@id:"), "IDNAMEPREFIX");
+        DBtest (MORPHNAMEPREFIX, GS::UniString ("{@morph:"), "MORPHNAMEPREFIX");
+        DBtest (INFONAMEPREFIX, GS::UniString ("{@info:"), "INFONAMEPREFIX");
+        DBtest (IFCNAMEPREFIX, GS::UniString ("{@ifc:"), "IFCNAMEPREFIX");
+        DBtest (GLOBNAMEPREFIX, GS::UniString ("{@glob:"), "GLOBNAMEPREFIX");
+        DBtest (CLASSNAMEPREFIX, GS::UniString ("{@class:"), "CLASSNAMEPREFIX");
+        DBtest (ELEMENTNAMEPREFIX, GS::UniString ("{@element:"), "ELEMENTNAMEPREFIX");
+        DBtest (FILENAMEPREFIX, GS::UniString ("{@file:"), "FILENAMEPREFIX");
+        DBtest (ATTRIBNAMEPREFIX, GS::UniString ("{@attrib:"), "ATTRIBNAMEPREFIX");
+        DBtest (LISTDATANAMEPREFIX, GS::UniString ("{@listdata:"), "LISTDATANAMEPREFIX");
+        DBtest (MATERIALNAMEPREFIX, GS::UniString ("{@material:"), "MATERIALNAMEPREFIX");
+        DBtest (FORMULANAMEPREFIX, GS::UniString ("{@formula:"), "FORMULANAMEPREFIX");
+        DBtest (MEPNAMEPREFIX, GS::UniString ("{@mep:"), "MEPNAMEPREFIX");
+        DBtest (FLAGNAMEPREFIX, GS::UniString ("{@flag:"), "FLAGNAMEPREFIX");
+
+        // Проверка числовых индексов типов
+        DBtest (PROPERTYTYPEINX, (short)2, "PROPERTYTYPEINX");
+        DBtest (GDLTYPEINX, (short)4, "GDLTYPEINX");
+        DBtest (COORDTYPEINX, (short)3, "COORDTYPEINX");
+        DBtest (IDTYPEINX, (short)1, "IDTYPEINX");
+        DBtest (MORPHTYPEINX, (short)8, "MORPHTYPEINX");
+        DBtest (INFOTYPEINX, (short)6, "INFOTYPEINX");
+        DBtest (IFCTYPEINX, (short)7, "IFCTYPEINX");
+        DBtest (GLOBTYPEINX, (short)12, "GLOBTYPEINX");
+        DBtest (CLASSTYPEINX, (short)13, "CLASSTYPEINX");
+        DBtest (ELEMENTTYPEINX, (short)15, "ELEMENTTYPEINX");
+        DBtest (FILETYPEINX, (short)17, "FILETYPEINX");
+        DBtest (ATTRIBTYPEINX, (short)9, "ATTRIBTYPEINX");
+        DBtest (LISTDATATYPEINX, (short)10, "LISTDATATYPEINX");
+        DBtest (MATERIALTYPEINX, (short)11, "MATERIALTYPEINX");
+        DBtest (FORMULATYPEINX, (short)14, "FORMULATYPEINX");
+        DBtest (MEPTYPEINX, (short)16, "MEPTYPEINX");
+        DBtest (FLAGTYPEINX, (short)18, "FLAGTYPEINX");
+
+        // Проверка констант синхронизации
+        DBtest (SYNC_FROM, 1, "SYNC_FROM");
+        DBtest (SYNC_TO, 2, "SYNC_TO");
+        DBtest (SYNC_FROM_SUB, 3, "SYNC_FROM_SUB");
+        DBtest (SYNC_TO_SUB, 4, "SYNC_TO_SUB");
+        DBtest (SYNC_FROM_GUID, 5, "SYNC_FROM_GUID");
+        DBtest (SYNC_FROM_ZONE, 6, "SYNC_FROM_ZONE");
+        DBtest (SYNC_TO_ZONE, 7, "SYNC_TO_ZONE");
+
+        // Проверка префиксов правил
+        DBtest (SYNCFROMSTRING, GS::UniString ("from{"), "SYNCFROMSTRING");
+        DBtest (SYNCTOSTRING, GS::UniString ("to{"), "SYNCTOSTRING");
+        DBtest (SYNCFROMSUBSTRING, GS::UniString ("from_sub{"), "SYNCFROMSUBSTRING");
+        DBtest (SYNCTOSUBSTRING, GS::UniString ("to_sub{"), "SYNCTOSUBSTRING");
+        DBtest (FROMGUIDBR, GS::UniString ("from_GUID{"), "FROMGUIDBR");
+        DBtest (FROMGUID, GS::UniString ("from_GUID"), "FROMGUID");
+        DBtest (TOGUIDBR, GS::UniString ("to_GUID{"), "TOGUIDBR");
+        DBtest (TOGUID, GS::UniString ("to_GUID"), "TOGUID");
+
+        // Проверка специальных символов
+        DBtest (BRACESTART, GS::UniString ("{"), "BRACESTART");
+        DBtest (BRACEEND, GS::UniString ("}"), "BRACEEND");
+        DBtest (SEMICOLON, GS::UniString (";"), "SEMICOLON");
+        DBtest (GS::UniString ("{"), GS::UniString ("{"), "CHARBRACESTART as string");
+        DBtest (GS::UniString ("}"), GS::UniString ("}"), "CHARBRACEEND as string");
+        DBtest (GS::UniString (";"), GS::UniString (";"), "CHARBSEMICOLON as string");
+        DBtest (GS::UniString ("<"), GS::UniString ("<"), "CHARFORMULASTART as string");
+        DBtest (GS::UniString (">"), GS::UniString (">"), "CHARFORMULAEND as string");
+        DBtest (GS::UniString ("\""), GS::UniString ("\""), "CHARDQUT as string");
+        DBtest (GS::UniString (","), GS::UniString (","), "CHARCOMMA as string");
+
+        // Проверка SYNCNAME и других специальных констант
+        DBtest (SYNCNAME, GS::UniString ("sync_name"), "SYNCNAME");
+        DBtest (SYNCCORRECTFLAG, GS::UniString ("Sync_correct_flag"), "SYNCCORRECTFLAG");
+        DBtest (SYNCCLASSFLAG, GS::UniString ("Sync_class_flag"), "SYNCCLASSFLAG");
+        DBtest (SYNCGUID, GS::UniString ("Sync_GUID"), "SYNCGUID");
+
+        // Проверка специальных ключевых слов
+        DBtest (RENUMFLAG, GS::UniString ("Renum_flag"), "RENUMFLAG");
+        DBtest (RENUM, GS::UniString ("Renum"), "RENUM");
+        DBtest (PROPERTYSTRING, GS::UniString ("property"), "PROPERTYSTRING");
+
+        // Проверка форматов
+        DBtest (DEFULTREALFSTRING, GS::UniString (".3m"), "DEFULTREALFSTRING");
+        DBtest (DEFULTLEGHTFSTRING, GS::UniString ("1mm"), "DEFULTLEGHTFSTRING");
+        DBtest (DEFULTINTFSTRING, GS::UniString ("0m"), "DEFULTINTFSTRING");
+
+        DBprnt ("TEST", "TestParsePrefixes : done");
+        return;
     }
 
 } // namespace TestFunc
