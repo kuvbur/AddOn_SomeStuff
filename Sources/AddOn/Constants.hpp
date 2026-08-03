@@ -157,6 +157,85 @@ static const GS::UniString MAT_SOME_STUFF_KZAP = // Путь к свойству
 const GS::Int32 max_group_mat = 50;  // Максимальное количество материалов у одного элемента
 const GS::Int32 max_group_lib = 100; // Максимальное количество библиотечных компонентов у одного элемента
 
+
+// Префикс для свойств, читаемых из параметров элемента.
+static const GS::UniString PROPERTYPREF = "Property:";
+// Префикс для значений, связанных с морфами.
+static const GS::UniString MORPHPREF = "Morph:";
+// Префикс для координат.
+static const GS::UniString COORDPREF = "Coord:";
+// Префикс для свойств проекта
+static const GS::UniString INFOPREF = "Info:";
+// Префикс для IFC-атрибутов.
+static const GS::UniString IFCPREF = "IFC:";
+// Префикс для глобальных параметров.
+static const GS::UniString GLOBPREF = "Glob:";
+// Префикс для параметров класса.
+static const GS::UniString CLASSPREF = "Class:";
+// Префикс для атрибутов элемента.
+static const GS::UniString ATTRIBPREF = "Attribute:";
+// Префикс для свойств элемента как объекта.
+static const GS::UniString ELEMENTPREF = "Element:";
+// Префикс для MEP-данных.
+static const GS::UniString MEPPREF = "MEP:";
+// Префикс для данных из файлов.
+static const GS::UniString FILEPREF = "File:";
+// Префикс для данных из списков.
+static const GS::UniString LISTDATAPREF = "Listdata:";
+// Префикс для QR-кодов.
+static const GS::UniString QRPREF = "QRCode:";
+// Префикс для материалов.
+static const GS::UniString MATERIALPREF = "Material:";
+// Шаблон для правила синхронизации с GUID-входом.
+static const GS::UniString FROMGUIDBR = "from_GUID{";
+// Ключевое имя правила синхронизации с GUID-входом.
+static const GS::UniString FROMGUID = "from_GUID";
+// Шаблон для правила синхронизации с GUID-выходом.
+static const GS::UniString TOGUIDBR = "to_GUID{";
+// Ключевое имя правила синхронизации с GUID-выходом.
+static const GS::UniString TOGUID = "to_GUID";
+// Префикс для имен правил синхронизации.
+static const GS::UniString SYNCPART = "Sync_";
+// Маркер правила чтения значения из источника.
+static const GS::UniString SYNCFROMSTRING = "from{";
+// Маркер правила чтения значения из дочерних элементов.
+static const GS::UniString SYNCFROMSUBSTRING = "from_sub{";
+// Маркер правила записи значения в целевой объект.
+static const GS::UniString SYNCTOSTRING = "to{";
+// Маркер правила записи значения в дочерние элементы.
+static const GS::UniString SYNCTOSUBSTRING = "to_sub{";
+
+// Модуль синхронизации свойств и связанных элементов между различными источниками данных.
+// Тип синхронизации
+enum SyncMode {
+    SYNC_NO = 0,        // Не синхронизировать
+    SYNC_FROM = 1,      // Взять значение свойства из другого места
+    SYNC_TO = 2,        // Записать значение свойства в другое место
+    SYNC_TO_SUB = 3,    // Записать значение свойства в дочерние элементы
+    SYNC_FROM_SUB = 4,  // Взять значение свойства из дочерних элементов
+    SYNC_FROM_GUID = 5, // Взять значение свойства из другого объекта
+    SYNC_FROM_ZONE = 6, // Взять значение свойства из Зоны, в которой находится элемент
+    SYNC_TO_ZONE = 7    // Записать значение свойства в Зону, в которой находится элемент
+};
+
+// Модуль перенумерации элементов по правилам, заданным в свойствах проекта.
+// Типы нумерации (см. RenumElement.state)
+enum RenumMode {
+    RENUM_SKIP = -1,   // Исключить из обработки
+    RENUM_IGNORE = 0,  // Не менять позицию, но добавлять похожие элементы
+    RENUM_ADD = 1,     // Не менять позицию, если нет пропусков
+    RENUM_NORMAL = 2   // Обычная нумерация/перенумерация
+};
+
+// Типы простановки нулей для СТРОКОВОГО (API_PropertyStringValueType) свойства (см. RenumRule.nulltype)
+enum ZeroPaddingMode {
+    NOZEROS = 0,       // Не добавлять нули в текстовое свойство
+    ADDZEROS = 1,      // Добавлять нули с учётом разбивки
+    ADDMAXZEROS = 2,   // Добавлять нули по максимальному количеству без учёта разбивки
+    ADDSPACE = 3,      // Добавлять пробелы с учётом разбивки
+    ADDMAXSPACE = 4    // Добавлять пробелы по максимальному количеству без учёта разбивки
+};
+
 // --- Префиксы и цифровые индексы типов тегов/параметров для парсинга ---
 static const GS::UniString IDNAMEPREFIX = "{@id:"; // Префикс тега ID элемента
 static const short IDTYPEINX = 1;                  // Индекс типа: ID элемента

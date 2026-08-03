@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <limits>
+#include <fstream>
 
 #include "api_headers/APIEnvir.h"
 
@@ -245,13 +246,9 @@ void DBprnt (double a, GS::UniString reportString) {
 #if defined(TESTING)
     // Форматируем число и выводим отладочный префикс
     GS::UniString msg = GS::UniString::Printf ("%f", a);
-    #ifndef ServerMainVers_2300
-    DBPrintf ("== SMSTF == ");
-    #else
-    DBPrint ("== SMSTF == ");
-    #endif
+    std::string reportString_str = "";
     if (!reportString.IsEmpty ()) {
-        std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
+        reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
     #ifndef ServerMainVers_2300
         DBPrintf (reportString_str.c_str ());
         DBPrintf (" : ");
@@ -262,15 +259,33 @@ void DBprnt (double a, GS::UniString reportString) {
     }
     std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
     #ifndef ServerMainVers_2300
+    DBPrintf ("== SMSTF == ");
+    if (!reportString_str.empty ()) {
+        DBPrintf (reportString_str.c_str ());
+        DBPrintf (" : ");
+    }
     DBPrintf (var_str.c_str ());
-    #else
-    DBPrint (var_str.c_str ());
-    #endif
-    #ifndef ServerMainVers_2300
     DBPrintf ("\n");
     #else
+    DBPrint ("== SMSTF == ");
+    if (!reportString_str.empty ()) {
+        DBPrint (reportString_str.c_str ());
+        DBPrint (" : ");
+    }
+    DBPrint (var_str.c_str ());
     DBPrint ("\n");
     #endif
+
+    // Запись в файл test_results.txt
+    std::ofstream testFile ("test_results.txt", std::ios::app);
+    if (testFile.is_open ()) {
+        testFile << "== SMSTF == ";
+        if (!reportString_str.empty ()) {
+            testFile << reportString_str << " : ";
+        }
+        testFile << var_str << std::endl;
+        testFile.close ();
+    }
 #else
     UNUSED_VARIABLE (a);
     UNUSED_VARIABLE (reportString);
@@ -291,19 +306,10 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
         DBPrint ("== ERROR == ");
     #endif
     }
-    #ifndef ServerMainVers_2300
-    DBPrintf ("== SMSTF == ");
-    #else
-    DBPrint ("== SMSTF == ");
-    #endif
     std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
-    #ifndef ServerMainVers_2300
-    DBPrintf (var_str.c_str ());
-    #else
-    DBPrint (var_str.c_str ());
-    #endif
+    std::string reportString_str = "";
     if (!reportString.IsEmpty ()) {
-        std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
+        reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
     #ifndef ServerMainVers_2300
         DBPrintf (" : ");
         DBPrintf (reportString_str.c_str ());
@@ -313,10 +319,26 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
     #endif
     }
     #ifndef ServerMainVers_2300
+    DBPrintf ("== SMSTF == ");
+    DBPrintf (var_str.c_str ());
     DBPrintf ("\n");
     #else
+    DBPrint ("== SMSTF == ");
+    DBPrint (var_str.c_str ());
     DBPrint ("\n");
     #endif
+
+    // Запись в файл test_results.txt
+    std::ofstream testFile ("test_results.txt", std::ios::app);
+    if (testFile.is_open ()) {
+        testFile << "== SMSTF == ";
+        testFile << var_str;
+        if (!reportString_str.empty ()) {
+            testFile << " : " << reportString_str;
+        }
+        testFile << std::endl;
+        testFile.close ();
+    }
 #else
     UNUSED_VARIABLE (msg);
     UNUSED_VARIABLE (reportString);

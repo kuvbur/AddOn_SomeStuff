@@ -119,7 +119,10 @@ All C++ source files (`.cpp` / `.h`) live in:
 D:\SomeStuff_addon\Sources\AddOn\
 ```
 
-Always search and read files there. Do NOT look in the repo root or any other folder for source code.
+- Always search and read files there. Do NOT look in the repo root or any other folder for source code.
+- ALWAYS construct relative file paths starting from the repository root.
+- NEVER query C++ source or header files by filename alone (e.g., NEVER use `TestFunc.cpp`).
+- ALWAYS prepend `Sources/AddOn/` when accessing any `.cpp`, `.hpp`, or `.h` file (e.g., `Sources/AddOn/Test
 
 ---
 

@@ -778,7 +778,7 @@ void ReNumOneRule (RenumRule &rule,
     for (auto &i : delimetrList) {
         TypeValues &tv = i.second;
         // Обрабатываем только добавляемые (RENUM_ADD) и новые (RENUM_NORMAL) элементы
-        for (short renumType = RENUM_ADD; renumType <= RENUM_NORMAL; renumType++) {
+        for (RenumMode renumType = RENUM_ADD; renumType <= RENUM_NORMAL; renumType++) {
             if (tv.count (renumType) == 0)
                 continue;
             // Для ADDZEROS/ADDSPACE берём максимум позиций в текущей разбивке
@@ -850,7 +850,7 @@ bool ElementsSeparation (RenumRule &rule,
         const ParamValue *paramflag = params->GetPtr (rule.flag);
         const ParamValue *paramposition = params->GetPtr (rule.position);
         // Сразу проверим режим нумерации элемента
-        short state = RENUM_SKIP;
+        RenumMode state = RENUM_SKIP;
         RenumPos pos;
         if (paramflag != nullptr && paramposition != nullptr) {
             const ParamValue &flag = *paramflag;
@@ -975,7 +975,7 @@ bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions) {
 //   позиция не равна 0 -> RENUM_ADD
 //   иначе -> RENUM_NORMAL
 // -----------------------------------------------------------------------------------------------------------------------
-short ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition) {
+RenumMode ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition) {
     if (!paramflag.isValid)
         return RENUM_SKIP;
     SyncSettings syncSettings;

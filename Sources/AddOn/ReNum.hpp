@@ -7,19 +7,6 @@
     #include "Helpers.hpp"
     #include "third_party/alphanum.h"
 
-// Модуль перенумерации элементов по правилам, заданным в свойствах проекта.
-// Типы нумерации (см. RenumElement.state)
-    #define RENUM_SKIP -1  // Исключить из обработки
-    #define RENUM_IGNORE 0 // Не менять позмцию, но добавлять похожие элементы
-    #define RENUM_ADD 1    // Не менять позицию, если нет пропусков
-    #define RENUM_NORMAL 2 // Обычная нумерация/перенумерация
-
-    // Типы простановки нулей для СТРОКОВОГО (API_PropertyStringValueType) свойства (см. RenumRule.nulltype)
-    #define NOZEROS 0     // Не добавлять нули в текстовое свойство
-    #define ADDZEROS 1    // Добавлять нули с учётом разбивки
-    #define ADDMAXZEROS 2 // Добавлять нули по максимальному количеству без учёта разбивки
-    #define ADDSPACE 3    // Добавлять пробелы с учётом разбивки
-    #define ADDMAXSPACE 4 // Добавлять пробелы по максимальному количеству без учёта разбивки
 
 class RenumPos {
   public:
@@ -68,7 +55,7 @@ class RenumPos {
         this->setStr ();
     }
 
-    void FormatToMax (RenumPos &pos, short nulltype, int nullcount) {
+    void FormatToMax (RenumPos &pos, ZeroPaddingMode nulltype, int nullcount) {
         // Длина от начала строки до конца числа должна быть как у pos
         // Для заполнения используем либо нули, либо пробелы
         if (nulltype == NOZEROS)
@@ -162,7 +149,7 @@ struct RenumRule {
     GS::UniString position = "";  // Описание свойства, в которое ставим позицию
     GS::UniString criteria = "";  // Описание свойства-критерия
     GS::UniString delimetr = "";  // Описание свойства-разбивки
-    short nulltype = NOZEROS;     // Тип постановки нулей в позиции
+    ZeroPaddingMode nulltype = NOZEROS; // Тип постановки нулей в позиции
     int nullcount = 0;            // Количество нулей, если задано жёское количество
     GS::Array<API_Guid> elemts;   // Массив элементов
     API_Guid guid = APINULLGuid;  // GUID свойства с правилом
@@ -174,7 +161,7 @@ struct RenumRule {
 
 typedef std::map<std::string, RenumElem, doj::alphanum_less<std::string>> Values; // Словарь элементов по критериям
 
-typedef std::unordered_map<short, Values> TypeValues; // Словарь по типам нумерации
+typedef std::unordered_map<RenumMode, Values> TypeValues; // Словарь по типам нумерации
 
 typedef std::unordered_map<std::string, TypeValues> Delimetr; // Словарь по разделителю
 
@@ -201,7 +188,7 @@ bool GetRenumElements (GS::Array<API_Guid> &guidArray,
 bool ReNumHasFlag (const GS::Array<API_PropertyDefinition> definitions);
 
 // Возвращает состояние флага перенумерации по данным параметров.
-short ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition);
+RenumMode ReNumGetFlag (const ParamValue &paramflag, const ParamValue &paramposition);
 
 // Обрабатывает один элемент и применяет к нему правила перенумерации.
 bool ReNum_GetElement (const API_Guid &elemGuid,

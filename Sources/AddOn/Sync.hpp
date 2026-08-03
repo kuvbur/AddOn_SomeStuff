@@ -6,69 +6,53 @@
     #include "dialogs/SyncSettings.hpp"
     #include "Helpers.hpp"
 
-static const GS::UniString PROPERTYPREF = "Property:";
-static const GS::UniString MORPHPREF = "Morph:";
-static const GS::UniString COORDPREF = "Coord:";
-static const GS::UniString INFOPREF = "Info:";
-static const GS::UniString IFCPREF = "IFC:";
-static const GS::UniString GLOBPREF = "Glob:";
-static const GS::UniString CLASSPREF = "Class:";
-static const GS::UniString ATTRIBPREF = "Attribute:";
-static const GS::UniString ELEMENTPREF = "Element:";
-static const GS::UniString MEPPREF = "MEP:";
-static const GS::UniString FILEPREF = "File:";
-static const GS::UniString LISTDATAPREF = "Listdata:";
-static const GS::UniString QRPREF = "QRCode:";
-static const GS::UniString MATERIALPREF = "Material:";
-static const GS::UniString FROMGUIDBR = "from_GUID{";
-static const GS::UniString FROMGUID = "from_GUID";
-static const GS::UniString TOGUIDBR = "to_GUID{";
-static const GS::UniString TOGUID = "to_GUID";
-static const GS::UniString SYNCPART = "Sync_";
-static const GS::UniString SYNCFROMSTRING = "from{";
-static const GS::UniString SYNCFROMSUBSTRING = "from_sub{";
-static const GS::UniString SYNCTOSTRING = "to{";
-static const GS::UniString SYNCTOSUBSTRING = "to_sub{";
-
-// Модуль синхронизации свойств и связанных элементов между различными источниками данных.
-// Тип синхронизации
-    #define SYNC_NO 0        // Не синхронизировать
-    #define SYNC_FROM 1      // Взять значение свойства из другого места
-    #define SYNC_TO 2        // Записать значение свойства в другое место
-    #define SYNC_TO_SUB 3    // Записать значение свойства в дочерние элементы
-    #define SYNC_FROM_SUB 4  // Взять значение свойства из дочерних элементов
-    #define SYNC_FROM_GUID 5 // Взять значение свойства из другого объекта
-    #define SYNC_FROM_ZONE 6 // Взять значение свойства из Зоны, в которой находится элемент
-    #define SYNC_TO_ZONE 7   // Записать значение свойства в Зону, в которой находится элемент
-
 // --------------------------------------------------------------------
 // Структура для хранения одного правила
 // Заполнение см. SyncString
 // --------------------------------------------------------------------
 struct SyncRule {
+    // Имя исходного параметра или свойства.
     GS::UniString paramNameFrom = "";
+    // Описание исходного свойства для синхронизации.
     API_PropertyDefinition paramFrom = {};
+    // Имя целевого параметра или свойства.
     GS::UniString paramNameTo = "";
+    // Описание целевого свойства для синхронизации.
     API_PropertyDefinition paramTo = {};
+    // Набор значений, которые следует игнорировать.
     SkipValues ignorevals = {};
+    // Шаблон строки форматирования для преобразования значения.
     GS::UniString templatestring = "";
-    int synctype = 0;
-    int syncdirection = 0;
+    // Тип выполняемой синхронизации.
+    SyncMode synctype = SYNC_NO;
+    // Направление синхронизации.
+    SyncMode syncdirection = SYNC_NO;
 };
 
 struct WriteData {
+    // GUID целевого элемента для записи.
     API_Guid guidTo = APINULLGuid;
+    // GUID исходного элемента для чтения.
     API_Guid guidFrom = APINULLGuid;
+    // Значение параметра, полученное из исходного источника.
     ParamValue paramFrom = {};
+    // Значение параметра, которое будет записано в целевой объект.
     ParamValue paramTo = {};
+    // Значения, которые нужно пропустить при записи.
     SkipValues ignorevals = {};
-    FormatString formatstring = {}; // Формат строки (задаётся с помощью #mm или #0)
+    // Формат строки для преобразования значения (например, #mm или #0).
+    FormatString formatstring = {};
+    // Признак записи в дочерние элементы.
     bool toSub = false;
+    // Признак чтения из дочерних элементов.
     bool fromSub = false;
 };
 
+// Специальное значение для игнорирования пустых строк.
 const GS::UniString ignorevals_emp = reinterpret_cast<const char *> ("empty");
+// Специальное значение для игнорирования пустых строк после обрезки.
 const GS::UniString ignorevals_trim_emp = reinterpret_cast<const char *> ("trim_empty");
+// Специальное значение для игнорирования значений по умолчанию.
 const GS::UniString ignorevals_def = reinterpret_cast<const char *> ("def");
 
 // Словарь с параметрами для записи
@@ -203,7 +187,7 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname);
 // -----------------------------------------------------------------------------
 bool SyncString (const API_ElemTypeID &elementType,
                  GS::UniString rulestring_one,
-                 int &syncdirection,
+                 SyncMode &syncdirection,
                  ParamValue &param,
                  SkipValues &ignorevals,
                  FormatString &stringformat,

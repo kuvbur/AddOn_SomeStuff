@@ -1121,7 +1121,7 @@ bool ParseSyncString (const API_Guid &elemGuid,
     GS::Array<GS::UniString> params;
     for (auto &rulestring_one : rulestring) {
         ParamValue param;
-        int syncdirection = SYNC_NO;     // Направление синхронизации
+        SyncMode syncdirection = SYNC_NO; // Направление синхронизации
         GS::UniString rawparamName = ""; // Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
         SkipValues ignorevals = {};      // Игнорируемые значения
         FormatString stringformat = {};
@@ -1449,7 +1449,7 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
 // -----------------------------------------------------------------------------
 bool SyncString (const API_ElemTypeID &elementType,
                  GS::UniString rulestring_one,
-                 int &syncdirection,
+                 SyncMode &syncdirection,
                  ParamValue &param,
                  SkipValues &ignorevals,
                  FormatString &stringformat,
