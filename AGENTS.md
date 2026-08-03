@@ -1,447 +1,694 @@
-# AGENTS.md — AddOn_SomeStuff (ArchiCAD C++ Add-On)
+# AGENTS.md — AddOn_SomeStuff
 
-This file defines mandatory rules for any AI agent working on this repository.
-Follow every rule literally. Do not skip, reorder, or reinterpret steps marked as mandatory.
+Mandatory repository rules for AI agents working on this ArchiCAD C++ Add-On.
 
-If any instruction in this file conflicts with your general defaults, this file wins.
-If any instruction in this file is unclear or two rules seem to conflict, **stop and ask the user** — do not guess.
-
-**Relationship to SOUL.md:** this repo is also governed by a separate `SOUL.md`, which sets global agent behavior — output language, verification discipline, autonomy/rollback rules, confidence markers, anti-sycophancy, OpenViking memory. Where the two overlap, `SOUL.md` sets the general rule (e.g. "verify before answering") and this file supplies the repo-specific mechanics (which tool to verify with, what a checkpoint means here). This file is in English for token efficiency — that does not override SOUL.md's rule that user-facing answers and code comments are in Russian.
+**SOUL.md defines global agent behavior. This file defines repository-specific rules.**
 
 ---
 
-## 0. Quick Reference — Golden Rules
+## 1. Project
 
-Read this list first. It summarizes the most critical rules in this file. Every item is explained in full further below.
+- Project: `SomeStuff` — ArchiCAD C++ Add-On.
+- ArchiCAD versions: **22–29**.
+- Platforms: Windows, macOS.
+- SDK: ArchiCAD DevKit.
+- Main C++ source directory:
 
-1. All C++ source code lives in `Sources/AddOn/`. Never look for or edit source files elsewhere.
-2. Never edit files under `Sources/AddOnResources/`.
-3. For C++ symbol lookup: try **Clangd MCP first**, then **LightRAG** if that fails (Section 5).
-4. For any `ACAPI_*` call: check **LightRAG first**, always, no exceptions (Section 10).
-5. After editing any `.cpp`/`.hpp`/`.h` file, immediately run `clang-format -i` on it (Section 6).
-6. Before any `WIP:` commit, run the full 3-step Verification Cascade (Section 7). No step may be skipped.
-7. Never assume ArchiCAD version 25 as the task's target — this project supports AC 22–29 (Section 9).
-8. Never run `git add .`, `git commit --amend`, `git rebase -i`, or `git push --force` (Section 11).
-9. For any task spanning more than one session, keep `IDEA.md` at the repo root up to date (Section 12).
-10. If you are missing information needed to proceed safely (AC version, tool unavailable, ambiguous scope) — **ask the user**. Do not guess, do not proceed on an assumption.
-
----
-
-## Table of Contents
-
-1. Project Overview
-2. Glossary
-3. Repository Structure
-4. HTML UI (BrowserPalette)
-5. C++ Code Navigation Rules
-6. Code Editing & Indentation Policy
-7. Mandatory Verification Cascade
-8. LSP (clangd) Configuration
-9. ArchiCAD Version Handling
-10. ArchiCAD API (ACAPI) Usage — Mandatory RAG Verification
-11. Git & Checkpoint Discipline
-12. Session State File — `IDEA.md`
-13. Session Bootstrap Checklist
-14. Key Source Files & Responsibilities
-15. Prohibited Actions
-16. Debug Workflow
-17. Pre-PR Checklist
-18. Tool Unavailability Fallback
-19. Useful Links
-
----
-
-## 1. Project Overview
-
-- **Name:** SomeStuff
-- **Type:** ArchiCAD Add-On (C++, ACAPI SDK, GPL-3.0)
-- **Repository:** https://github.com/kuvbur/AddOn_SomeStuff
-- **Supported ArchiCAD versions:** 22–29
-- **Supported OS:** Windows, macOS
-- **UI languages:** Russian, International (auto-detected)
-
-**Features:** GDL ↔ Property sync, flexible numbering, structure layer composition export, value summation, coordinates/angles, dimension tools, IFC property copy, project info, morph length, auto-classification, composite decomposition, MEP data, layout tracking, finish schedule with QR codes.
-
----
-
-## 2. Glossary
-
-Read this before the rest of the file if any of these terms are unfamiliar.
-
-| Term           | Meaning                                                                                                                                                                                 |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ACAPI**      | ArchiCAD's C++ API — the SDK this add-on is built against. Functions are prefixed `ACAPI_*`.                                                                                            |
-| **Add-On**     | A compiled plugin (`.apx` on Windows, `.bundle` on macOS) that ArchiCAD loads at startup.                                                                                               |
-| **DevKit**     | ArchiCAD's official SDK package for a specific version, containing headers/libs needed to build an add-on. Downloaded automatically by `BuildAddOn.py` unless a local copy is supplied. |
-| **GDL**        | Geometric Description Language — ArchiCAD's scripting language for parametric library parts (objects, doors, windows).                                                                  |
-| **LSP**        | Language Server Protocol — used here by `clangd` to give code intelligence (go-to-definition, diagnostics) in editors/agents.                                                           |
-| **MCP**        | Model Context Protocol — the mechanism exposing `clangd-mcp` tools to the agent.                                                                                                        |
-| **OpenViking** | The agent's cross-session memory store, defined in `SOUL.md`. Must be checked for prior relevant entries before any other verification step (see Sections 5 and 10 of this file).       |
-| **PLN**        | ArchiCAD project file format (`.pln`). Test files live in `Test_file/`.                                                                                                                 |
-| **RAG**        | Retrieval-Augmented Generation — here, the LightRAG knowledge base of the ArchiCAD SDK (docs, examples, past decisions).                                                                |
-| **WIP commit** | "Work In Progress" — a mandatory checkpoint commit made after each verified sub-task (see Section 11).                                                                                  |
-| **MEP**        | Mechanical, Electrical, Plumbing — a category of building elements/data (AC28+ feature area in this add-on).                                                                            |
-| **IFC**        | Industry Foundation Classes — an open BIM data exchange format; this add-on has IFC property copy functionality.                                                                        |
-
----
-
-## 3. Repository Structure
-
-```
-Sources/AddOn/                 # .cpp / .h source files (core + modules) ← ALL SOURCE CODE IS HERE
-  api_headers/                 # Per-version APICommon headers (AC22–AC29)
-  json_commands/                # JSON API command handlers (CommandBase, GetPropertyDefinitions, Health, etc.)
-  third_party/                  # Embedded third-party libraries (exprtk, alphanum, qrcodegen)
-Sources/AddOnResources/         # Resources (RFIX, RINT, platform-specific)
-  RFIX/AddOnFix.grc             # Fixed resource definitions
-  RFIX/HTML/                    # HTML UI for BrowserPalette (loaded directly, see Section 4)
-  RFIX/Images/*.svg             # Menu icons (18×18)
-  RINT/AddOn.grc                # Generated from AddOn.grc.in — do NOT edit manually
-  RFIX.win/*.rc2                # Windows resource scripts
-  RFIX.mac/*.plist              # macOS property lists
-Sources/MacDarkModeIcon/        # macOS dark mode icon assets
-Tools/
-  CMakeCommon.cmake             # Shared CMake config: AC version detection, compiler flags, libraries
-  BuildAddOn.py                 # Python wrapper: downloads DevKit, configures CMake, builds, packages
-  CompileResources.py           # Resource compiler wrapper
-Test_file/                      # Test .pln files per version (test_25.pln … test_29.pln)
-CMakeLists.txt                  # Entry point: version, name, language; includes CMakeCommon
-config.json                     # BuildAddOn.py config: DevKit URLs per version/platform, languages
-.github/workflows/               # CI: build_25+.yml (AC 25–29), build_23-24.yml (AC 23–24)
-wiki/                             # Docs, images, example files
+```text
+Sources/AddOn/
 ```
 
-### RULE: Source file location
+### Critical source-location rule
 
-All C++ source files (`.cpp` / `.h`) live in:
+**For C++ source files, never search outside `Sources/AddOn/`.**
 
+Do not use recursive filesystem searches from the repository root or disk root to find C++ source files.
+
+Do not search outside `Sources/AddOn/` unless the task explicitly requires:
+
+- build configuration;
+- resources;
+- tests;
+- documentation;
+- scripts;
+- or another specifically named file.
+
+Never edit:
+
+```text
+Sources/AddOnResources/
 ```
-D:\SomeStuff_addon\Sources\AddOn\
+
+unless the task explicitly requires a resource change.
+
+---
+
+## 2. Repository Structure
+
+```text
+Sources/AddOn/                  C++ source code
+Sources/AddOn/api_headers/      ArchiCAD API headers
+Sources/AddOn/json_commands/    JSON command handlers
+Sources/AddOn/third_party/      Embedded third-party libraries
+
+Sources/AddOnResources/         Resources
+Sources/MacDarkModeIcon/        macOS assets
+
+Tools/BuildAddOn.py             Build/configuration script
+Tools/CMakeCommon.cmake         CMake configuration
+Tools/CompileResources.py       Resource compiler
+
+Test_file/                      ArchiCAD test PLN files
+CMakeLists.txt                  Main CMake entry
+config.json                     Build configuration
+IDEA.md                         Multi-session task state
 ```
 
-- Always search and read files there. Do NOT look in the repo root or any other folder for source code.
-- ALWAYS construct relative file paths starting from the repository root.
-- NEVER query C++ source or header files by filename alone (e.g., NEVER use `TestFunc.cpp`).
-- ALWAYS prepend `Sources/AddOn/` when accessing any `.cpp`, `.hpp`, or `.h` file (e.g., `Sources/AddOn/Test
+---
+
+## 3. Mandatory Workflow
+
+For a non-trivial task use this order:
+
+```text
+OpenViking
+→ Inspect relevant files
+→ Determine AC version(s)
+→ Verify APIs / architecture
+→ Diagnose root cause
+→ Make minimal change
+→ clang-format
+→ Validate
+→ Review diff
+→ Checkpoint
+→ OpenViking memory
+→ Answer
+```
+
+Do not skip verification because a solution looks obvious.
+
+Do not fix symptoms before understanding the root cause.
+
+Prefer:
+
+- minimal changes;
+- existing project patterns;
+- deterministic behavior;
+- simple solutions;
+- small diffs.
+
+Do not perform unrelated refactoring.
 
 ---
 
-## 4. HTML UI (BrowserPalette)
+## 4. OpenViking
 
-### 4.1 Architecture
+**OpenViking is mandatory and has no fallback.**
 
-- `BrowserPalette` (C++) combines `DG::Palette` and `DG::Browser`.
-- The HTML file is loaded **directly from disk** via `DG::Browser::LoadURL()`:
-  `Sources/AddOnResources/RFIX/HTML/Interface_ru.html`
-- The add-on registers a JavaScript object `DG::JSObject("ACAPI")` that exposes C++ functions to the HTML/JS front end.
+Before investigating:
 
-### 4.2 RULE: Do NOT use these files
+- an error;
+- a non-trivial bug;
+- an unfamiliar symbol;
+- an `ACAPI_*` call;
+- an architectural decision;
 
-- `html_to_hpp.py` — an HTML→C++ raw-string-literal converter. Not used in this project.
-- `HTML_Pages.hpp` — a generated header file. Not used in this project.
+search OpenViking first.
 
-### 4.3 Key files
+If OpenViking is unavailable, follow the mandatory OpenViking rules from `SOUL.md`. Do not silently treat the search as completed.
 
-| File                                                 | Purpose                                                 |
-| ---------------------------------------------------- | ------------------------------------------------------- |
-| `Sources/AddOnResources/RFIX/HTML/Interface_ru.html` | Main HTML interface (vanilla JS, no separate CSS files) |
-| `Sources/AddOn/dialogs/BrowserPalette.cpp`           | Loads the HTML file; registers the `ACAPI` JS object    |
-| `Sources/AddOn/dialogs/BrowserPalette.hpp`           | Declarations for the above                              |
-
-### 4.4 JS functions exposed on the `ACAPI` object
-
-| Function                                   | Purpose                                                       |
-| ------------------------------------------ | ------------------------------------------------------------- |
-| `ACAPI.GetPropertyDefinitions()`           | Returns an array of properties from `PROPERTYCACHE()`         |
-| `ACAPI.GetPropertyDescription(name)`       | Returns a property's description from the cache               |
-| `ACAPI.GetPropertyValue(name)`             | Returns a property's value for the currently selected element |
-| `ACAPI.ParsePropertyDescription(desc)`     | Parses a description string (Renum/Sync/Spec)                 |
-| `ACAPI.SetPropertyDescription(name, desc)` | Writes a property description                                 |
+After resolving a non-trivial problem, save the useful conclusion to OpenViking according to `SOUL.md`.
 
 ---
 
-## 5. C++ Code Navigation Rules (MANDATORY ORDER)
+## 5. C++ Navigation
 
-When you need to find a function definition, class, symbol, or architectural context in C++, follow this exact priority order. Do not skip a step.
+For C++ symbol navigation:
 
-### Step 0 — OpenViking (per SOUL.md, always first)
+1. Search OpenViking first.
+2. Use **Clangd MCP** for exact source locations, definitions and references.
+3. Use LightRAG when additional SDK or architectural context is needed.
 
-Check OpenViking for prior entries about this symbol, file, or area of the codebase before doing anything else. If a matching entry exists, apply it and state that you did. This does not replace Steps 1–2 below — it only tells you whether the answer, or a shortcut to it, is already known.
+For C++ source files, search only inside:
 
-### Step 1 — Clangd MCP (always try first among the live-lookup tools)
+```text
+Sources/AddOn/
+```
 
-Use `clangd-mcp` tools (`workspace_symbol_search`, `find_definition`, `find_references`) to find exact C++ symbols. This gives exact AST-based locations with no noise.
+Do not search the entire disk or repository for source copies.
 
-### Step 2 — LightRAG (fallback, only if Step 1 fails or more context is needed)
-
-If Clangd cannot locate the symbol, OR the request needs higher-level architectural context, relationships, or conceptual understanding:
-
-- Call the **LightRAG** skill BEFORE writing your response.
-- **query:** a concise English description of the function/class name, module/file, or concept (e.g. threading, memory, system architecture).
-- **mode:** `"hybrid"` unless explicitly told otherwise.
-
-### Step 3 — Constraints (apply at all times)
-
-1. If Clangd or LightRAG returned real context, treat it as ground truth.
-2. Never invent architecture, function signatures, or APIs that are not confirmed by retrieved context.
-3. If neither tool provides enough context, explicitly state what is missing and ask the user for clarification. Do not guess.
-4. Never answer a C++ navigation or architecture question without first attempting Clangd, then LightRAG if Clangd was insufficient. This rule has no exceptions.
+If symbol information cannot be established, do not guess.
 
 ---
 
-## 6. Code Editing & Indentation Policy
+## 6. ArchiCAD API — Mandatory LightRAG
 
-1. Never rewrite an entire file just to fix whitespace or indentation mismatches. Make the minimal edit instead.
-2. After editing any `.cpp`, `.hpp`, or `.h` file, immediately run:
-   ```bash
-   clang-format -i path/to/edited_file.cpp
-   ```
-   Keep every change `clang-format` produces. Do not manually revert any part of it.
-3. If a patch fails to apply due to whitespace mismatches, run `clang-format -i` on the target file first, then re-apply the patch.
-4. If `clang-format` reorders `#include` directives, do not revert the order. Placing the paired header (e.g. `#include "TestFunc.hpp"` inside `TestFunc.cpp`) first is standard LLVM/Google C++ style and verifies header self-sufficiency.
-5. Never treat a `clang-format` change as a style violation or an error. Its output is the project's ground truth for formatting.
+**LightRAG is the authoritative SDK knowledge source for this project.**
 
----
+It contains the project's indexed:
 
-## 7. Mandatory Verification Cascade
+- ArchiCAD SDK;
+- SDK documentation;
+- SDK examples;
+- relevant API information.
 
-Before creating a `WIP:` checkpoint commit, or declaring any C++ change complete, you **MUST** run the following 3 steps in this exact order. No step may be skipped, reordered, or bypassed.
+### Every `ACAPI_*` call
 
-### Step 1 — LSP Static Analysis (clangd)
+Always follow:
 
-- Inspect every modified `.cpp` and `.hpp` file for diagnostic errors, syntax issues, missing symbols, and type mismatches via clangd.
-- **Pass condition:** zero errors and zero unhandled diagnostics.
-- If you added new `.cpp`/`.hpp` files, changed `#include` directives, or changed CMake targets, regenerate the compilation database immediately:
-  ```bash
-  python Tools\BuildAddOn.py -c config.json -v 25 --lsp
-  ```
+```text
+OpenViking
+→ LightRAG
+→ project source / headers / call sites when needed
+```
 
-### Step 2 — Full Add-On Compilation
+LightRAG is **mandatory and is not a fallback**.
 
-- Compile for the target ArchiCAD version (default `25`, or the version specified by the task):
-  ```bash
-  python Tools\BuildAddOn.py -c config.json -v 25
-  ```
-- **Pass condition:** process exit code is `0`.
-- `/WX` (warnings-as-errors) is enabled: zero warnings and zero errors are allowed.
-- If the build fails, **stop immediately**. Do not attempt to run the add-on on a broken build.
+Do not rely on:
 
-### Step 3 — Runtime / End-to-End Test
+- model memory;
+- generic C++ knowledge;
+- another ArchiCAD version;
+- Revit;
+- AutoCAD;
+- another IFC library.
 
-- For any change that touches runtime execution logic, run:
-  ```powershell
-  "D:\SomeStuff_addon\Tools\restart_archicad_for_test.ps1"
-  ```
-  This script builds the add-on and launches ArchiCAD with the test project file.
-- **Pass conditions:**
-  1. ArchiCAD boots and loads the add-on with no crashes and no memory faults.
-  2. No `DBASSERT` failures and no unhandled exceptions appear in the ArchiCAD Report Window (`DBprnt` output).
-- Never mark a feature or fix complete without verifying its actual runtime behavior in ArchiCAD.
+If LightRAG does not provide enough information, write:
 
-### Failure & Rollback Protocol
+```text
+not verified
+```
 
-If any step in the cascade fails:
+Do not invent missing API behavior.
 
-1. **Halt immediately.** Do not proceed to the next step.
-2. Identify and fix the root cause locally.
-3. Restart the cascade from Step 1.
-4. **Never** run `git commit`, stage files, or declare a sub-task complete while any verification step is failing or has been skipped.
+### Verify when relevant
 
-### Build script reference (`BuildAddOn.py`)
+Before using or modifying an SDK API, verify:
 
-| Flag           | Effect                                                                                        |
-| -------------- | --------------------------------------------------------------------------------------------- |
-| `-v <version>` | Target AC version, e.g. `25`, `27`; multiple versions space-separated                         |
-| (no flag)      | Debug build, single version, no language selection                                            |
-| `--release`    | RelWithDebInfo build for all languages in `config.json` (or use `-l <LANG>` for one language) |
-| `--package`    | Packages the build into `.apx`/`.bundle` under `Build/Package`                                |
-| `-d <path>`    | Use a local DevKit instead of auto-downloading (requires `-v` to be a single version)         |
+- signature;
+- parameters;
+- return value;
+- ownership;
+- lifetime;
+- pointer/reference validity;
+- memo memory;
+- iterator validity;
+- transaction/undo requirements;
+- redraw/notification requirements;
+- version-specific behavior.
 
-DevKit is auto-downloaded to `Build/DevKit/APIDevKit-<version>` unless `-d` is given.
+Pay particular attention to:
 
-### AC version → C++ standard / toolset (auto-detected from `ACAPinc.h` via `DetectACVersion` in `CMakeCommon.cmake`)
+```text
+API_Element
+API_ElementMemo
+ACAPI_Element_GetMemo
+GetPtr
+GS::* containers
+GS::* iterators
+SDK-managed memory
+```
 
-| AC version | C++ standard | MSVC toolset       |
-| ---------- | ------------ | ------------------ |
-| < 27       | C++14        | v140 / v141 / v142 |
-| < 29       | C++17        | v142               |
-| ≥ 29       | C++20        | v143               |
+### Critical landmine
 
-- `/WX` (warnings-as-errors) is ON. Many `/wd####` warnings are intentionally suppressed — do not re-enable any without a documented reason.
-- Precompiled header: `AddOn.hpp` via `target_precompile_headers`.
+Before calling:
 
-### Compiler flags
+```cpp
+ACAPI_Element_GetMemo(...)
+```
 
-- **Windows:** `/W3 /WX /Zc:wchar_t- /EHsc /bigobj /wd4499 /wd5208 /wd4996 /wd4003` (plus additional suppressed warnings)
-- **macOS:** `-Wall -Wextra -Werror -fvisibility=hidden` (plus a long suppression list)
+zero-initialize the memo:
+
+```cpp
+BNZeroMemory(&memo, sizeof(memo));
+```
+
+Do not remove this initialization without verified SDK/project evidence.
 
 ---
 
-## 8. LSP (clangd) Configuration — Different From the Normal Build
+## 7. ArchiCAD Versions
 
-The normal build uses the Visual Studio generator (multi-config), which does **not** produce a `compile_commands.json`.
+This project supports:
 
-For LSP, a separate Ninja + `clang-cl` configuration is used instead, because MSVC's `cl.exe` cannot extract system includes for clangd.
+```text
+AC 22–29
+```
+
+There is **no default ArchiCAD version**.
+
+Before version-sensitive changes, determine the target version(s) from:
+
+1. task requirements;
+2. build configuration;
+3. existing source conditionals;
+4. relevant test files;
+5. user clarification if still necessary.
+
+Never silently assume AC25.
+
+For version-specific behavior:
+
+- inspect existing `#if` branches;
+- follow existing project patterns;
+- verify the actual build configuration.
+
+Do not introduce language features unsupported by the target compiler.
+
+---
+
+## 8. C++ Editing
+
+Generate compilable C++ only. Never pseudocode.
+
+Preserve:
+
+- architecture;
+- naming;
+- formatting;
+- APIs;
+- project conventions.
+
+Do not introduce libraries unless required.
+
+Do not change public APIs unless necessary.
+
+### No unrequested refactoring
+
+Do not refactor code merely because it:
+
+- looks old;
+- is duplicated;
+- could be shorter;
+- could use newer C++ style.
+
+Modify existing code only when it is:
+
+- directly related to the task;
+- the confirmed root cause;
+- a confirmed correctness/safety problem;
+- necessary for the requested implementation.
+
+---
+
+## 9. Formatting
+
+After **every modification** of:
+
+```text
+.cpp
+.hpp
+.h
+```
+
+immediately run:
+
+```bash
+clang-format -i path/to/file.cpp
+```
+
+Keep the formatter's result.
+
+Do not manually fight `clang-format`.
+
+Do not manually restore indentation or include ordering after formatting.
+
+Do not rewrite an entire file merely to format it.
+
+---
+
+## 10. Code Comments
+
+All new or changed C++ comments must be **in Russian**.
+
+Comment:
+
+- non-obvious logic;
+- purpose;
+- important assumptions;
+- algorithmic decisions;
+- important ownership/lifetime constraints.
+
+Do not comment obvious syntax or trivial lines.
+
+---
+
+## 11. Validation
+
+Use the validation level appropriate to the task.
+
+### LSP
+
+For C++ changes, inspect modified files with Clangd.
+
+If the compilation database must be regenerated:
 
 ```bash
 python Tools\BuildAddOn.py -c config.json -v <version> --lsp
 ```
 
-This must be run from a **Developer Command Prompt**. It generates `Build/LspCompileCommands/<version>/compile_commands.json` and copies it to the repo root.
+Do not commit:
 
-**Do NOT commit:** `compile_commands.json`, `Build/LspCompileCommands/`, `Build/DevKit/` — these are machine-specific artefacts.
+```text
+compile_commands.json
+Build/LspCompileCommands/
+Build/DevKit/
+```
 
-**Regenerate this after:**
+### Build
 
-- Changing the target AC version
-- Editing `CMakeCommon.cmake`
-- Adding new `.cpp` files to `Sources/AddOn`
+Build the actual target version(s):
 
-### Related script
+```bash
+python Tools\BuildAddOn.py -c config.json -v <version>
+```
 
-`D:\SomeStuff_addon\Tools\restart_archicad_for_test.ps1` — builds the add-on and launches ArchiCAD with the test project file. (Also referenced in Section 7, Step 3.)
+Only claim `compiled` after an actual successful build.
 
----
+### Runtime
 
-## 9. ArchiCAD Version Handling
+For changes affecting runtime behavior, execute the relevant test.
 
-- This project has **no single default AC version**. It supports AC 22–29, with different C++ standards per version (Section 7) and two separate CI matrices (23–24 and 25–29).
-- Do not assume AC 25 is the target for a task just because it appears as the example version in build commands throughout this file.
-- Before writing any version-sensitive code (anything using a C++17/20 feature, or an ACAPI symbol that differs across versions), determine which AC version(s) the current task targets. Sources, in order of preference:
-  1. The task/issue description
-  2. The relevant `Test_file/test_<version>.pln`
-  3. Ask the user directly
-     Do not guess silently.
-- If behavior must differ across supported versions, guard it explicitly (e.g. with `#if` on the detected version). Do not write code that happens to work only on the version you tested against.
+Standard ArchiCAD test launcher:
 
----
+```powershell
+"D:\SomeStuff_addon\Tools\restart_archicad_for_test.ps1"
+```
 
-## 10. ArchiCAD API (ACAPI) Usage — Mandatory RAG Verification
+Only claim `tested` when the changed behavior was actually executed and observed.
 
-- **First, check OpenViking** for a prior entry on this exact `ACAPI_*` call. If one exists, apply it and say so — but still do the LightRAG check below if the entry is incomplete or the AC version differs.
-- Before writing or modifying any `ACAPI_*` call, search the ArchiCAD SDK knowledge base (functions, types, examples, past decisions) via the LightRAG skill. This is **mandatory**, not a fallback — unlike Section 5's Clangd-first order (which is for navigating this project's _own_ symbols), calls into the Archicad SDK always go through LightRAG first, regardless of whether Clangd can already resolve the symbol:
-  - Clangd confirms the function exists and its declared signature.
-  - Only LightRAG confirms the call is correct and valid for the target AC version (Section 9 — the ACAPI surface is versioned).
-- Query convention: same as Section 5 — concise English query naming the exact function/struct/pattern, `mode: "hybrid"` unless told otherwise.
-- No relevant LightRAG coverage → say so and ask the user. Do not guess from memory.
-- **Pre-verified landmine:** `ACAPI_Element_GetMemo` requires `BNZeroMemory(&memo, sizeof(memo))` first.
+Always distinguish:
 
----
+```text
+Verified: ...
+Compiled: yes / not performed
+Tested: yes / not performed
+```
 
-## 11. Git & Checkpoint Discipline
-
-SOUL.md's "Autonomy & Checkpoint Safety Net" defines _when_ to commit, roll back, and escalate, and lists the hard stops that apply everywhere. The rules below are this repo's specific mechanics for satisfying that: what a checkpoint means here, and repo-specific constraints on top of the general ones.
-
-1. **Check before editing:** run `git status` before making any change. If there are uncommitted changes unrelated to the current task, stop and flag them. Do not build on top of them, commit them, or discard them silently.
-2. **Checkpoint commits are mandatory:** after every verified sub-task (build succeeds, no new warnings/errors for the AC version(s) in scope), commit with a `WIP:` prefix. This makes autonomous work safe — a mistake only rolls back to the last checkpoint, not to the start of the task. A `WIP:` commit is a valid rollback point even mid-task; it does not need to be the task's final commit.
-3. **The branch tip must always build:** once the task is done, squash the `WIP:` commits into one clean commit. Never leave a non-building commit as the tip of the branch.
-4. **Never destroy the rollback trail:** do not run `git clean -fdx`, do not delete untracked files, do not delete files outside the current task's scope.
-5. **Never rewrite shared history:** do not run `git commit --amend`, `git rebase -i`, or `git push --force` on any branch that has already been reviewed or shared.
-6. **Never stage blindly:** do not run `git add .` or `git add -A` without first reading `git status` and `git diff`. Build/LSP artefacts (`compile_commands.json`, `Build/`) must never be staged.
-7. Commit messages must reference the relevant task/issue. (This project has no phase structure, unlike other repos.)
+The exact definitions of these states are defined by `SOUL.md`.
 
 ---
 
-## 12. Session State File — `IDEA.md`
+## 12. Tests
 
-This repo has no fixed implementation phases. Work arrives as discrete tasks/bugs/features across many separate agent sessions, with no shared memory between sessions.
+Test files:
 
-For any task expected to span more than one session, maintain `IDEA.md` at the repo root (create it if missing — same file name/role used in other projects, but task-keyed here instead of phase-keyed):
+```text
+Sources/AddOn/TestFunc.cpp
+Sources/AddOn/TestFunc.hpp
+```
+
+`TestFunc` is active under `TESTING`.
+
+### Testing-task rule
+
+When the task is specifically to write or fix tests:
+
+**Production code is READ-ONLY.**
+
+Production code may be inspected but not modified.
+
+If a test exposes a production bug:
+
+1. stop;
+2. report the exact bug;
+3. identify file and function;
+4. explain why the test exposes it;
+5. treat the production fix as a separate task.
+
+Do not modify:
+
+```text
+Test_file/*.pln
+```
+
+as part of a normal code-testing task.
+
+---
+
+## 13. Git Safety
+
+Before modifying files:
+
+```bash
+git status
+```
+
+**Never overwrite or discard uncommitted user changes.**
+
+If unrelated uncommitted changes are present, do not modify or reset them.
+
+Never use:
+
+```text
+git clean -fdx
+git commit --amend
+git rebase -i
+git push --force
+```
+
+Never use:
+
+```text
+git add .
+git add -A
+```
+
+without first inspecting `git status` and `git diff`.
+
+Never stage:
+
+```text
+Build/
+compile_commands.json
+Build/LspCompileCommands/
+Build/DevKit/
+```
+
+Do not delete files outside the task scope.
+
+Do not overwrite or discard checkpoint/commit history.
+
+---
+
+## 14. Checkpoints
+
+Follow the checkpoint policy from `SOUL.md`.
+
+For this repository, create a checkpoint only after a completed tactical step when:
+
+- the intended change is complete;
+- the relevant build succeeds;
+- no new compile/LSP errors were introduced;
+- the working tree contains only intended changes.
+
+Never create a checkpoint for a known broken state.
+
+Do not start another change on top of an unverified broken state.
+
+---
+
+## 15. IDEA.md
+
+Use `IDEA.md` for tasks spanning multiple sessions.
+
+Keep it short and operational:
 
 ```markdown
 # Current Task
 
 ## Task
 
-[Short description / issue reference]
+...
 
-## Current State & Resume Marker
+## Status
 
-- **Status:** [IN_PROGRESS / WAITING_FOR_TEST / BLOCKED]
-- **Last Action Completed:** [...]
-- **Immediate Next Step:** [...]
+IN_PROGRESS / WAITING_FOR_TEST / BLOCKED
 
-## Tactical Step-by-Step Plan
+## Last Completed
 
-- [x] Completed step
-- [/] Active step
-- [ ] Upcoming step
+...
 
-## Execution Log & Decisions
+## Next Step
 
-- [Step]: action taken, files touched, outcome.
+...
+
+## Plan
+
+- [x] ...
+- [ ] ...
+
+## Decisions
+
+- ...
 ```
 
-**Rule:** Update this file before and after every significant step. If a step is not recorded here, treat it as not done when resuming a session. This file is the checkpoint unit referenced by the Git checkpoint rule in Section 11.
+Update it when a significant step is completed or the resume point changes.
+
+Do not turn `IDEA.md` into a transcript of every tool call.
 
 ---
 
-## 13. Session Bootstrap Checklist
+## 16. Important Project Areas
 
-Run through this checklist at the **start of every new session**, before writing or editing any code. This consolidates checks that are individually mandated elsewhere in this file (Sections 9, 11, 12) into one ordered sequence.
+Use these only as navigation hints. Inspect the actual code before making decisions.
 
-1. **Check OpenViking** (per SOUL.md) for prior entries relevant to the task at hand, in addition to `IDEA.md` below — they serve different purposes: `IDEA.md` tracks _this specific task's_ progress, OpenViking holds lessons from _past_ tasks that may apply here.
-2. **Read `IDEA.md`** at the repo root, if it exists. If it shows `Status: IN_PROGRESS` or `WAITING_FOR_TEST`, resume from its "Immediate Next Step" — do not restart the task from scratch.
-3. **Run `git status`.** If there are uncommitted changes unrelated to the current task, stop and flag them to the user (Section 11, Rule 1).
-4. **Determine the target ArchiCAD version(s)** for the task, per Section 9. Check the task/issue description first, then `IDEA.md`, then ask the user. Never default to AC 25 silently.
-5. **Confirm required tools are reachable**: `clangd-mcp` and the LightRAG skill. If either is unavailable, follow Section 18 before proceeding.
-6. Only after steps 1–5 are complete, begin the task.
+| File                         | Main responsibility                             |
+| ---------------------------- | ----------------------------------------------- |
+| `SomeStuff_Main.cpp/hpp`     | Add-On entry point, interface, menu, observers  |
+| `Helpers.cpp/hpp`            | Core helpers, properties, selection, parameters |
+| `Propertycache.cpp/hpp`      | Property/classification/attribute/project cache |
+| `Sync.cpp/hpp`               | Property synchronization and monitoring         |
+| `Roombook.cpp`               | Finish schedule                                 |
+| `Spec.cpp`                   | Specification rules                             |
+| `Summ.cpp`                   | Property summation                              |
+| `ReNum.cpp`                  | Renumbering                                     |
+| `Revision.cpp`               | Revision markers                                |
+| `Dimensions.cpp`             | Dimensions                                      |
+| `ClassificationFunction.cpp` | Auto-classification                             |
+| `ResetProperty.cpp`          | Property reset                                  |
+| `AutomateFunction.cpp`       | Automation/alignment                            |
+| `MEPv1.cpp`                  | MEP functionality                               |
+| `CommonFunction.cpp`         | Common element/utility functions                |
 
----
-
-## 14. Key Source Files & Responsibilities (`Sources/AddOn/`)
-
-| File                         | LOC   | Role                                                                                                                                                                                                                                                                                                                                                                          |
-| ---------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SomeStuff_Main.cpp/hpp`     | 528   | Entry point: `CheckEnvironment`, `RegisterInterface`, `Initialize`, `FreeData`; menu dispatcher (`MenuCommandHandler`); observers (`ElementEventHandlerProc`, `ProjectEventHandlerProc`, `ReservationChangeHandler`, `SelectionChangeHandlerProc`); `Do_ElementMonitor`; menu state sync                                                                                      |
-| `Helpers.cpp/hpp`            | 9,877 | **Core engine.** `ParamHelpers` namespace: property read/write (`ElementsRead`/`ElementsWrite`/`WriteProperty`), `ParamValue`/`ParamDictElement`/`ParamDictValue` (internal property currency), format-string parsing (`FormatStringFunc`), element selection/filtering, coordinate/angle helpers, QR-code generation, classification, attribute cache, GDL parameter parsing |
-| `Propertycache.cpp/hpp`      | 1,102 | Singleton `PropertyCache`: caches property definitions, classifications, attributes, project info, geo-location, MEP (AC29+), format strings, composite layer data; `Update()` refreshes all                                                                                                                                                                                  |
-| `Sync.cpp/hpp`               | 2,685 | `SyncAndMonAll`, `SyncSelected`, `MonAll`/`MonByType` (reactive observer attach), `SyncByType` per element type; throttling via a 500 ms dedup cache                                                                                                                                                                                                                          |
-| `Roombook.cpp`               | 5,656 | Finish schedule: zone-based collection of walls/columns/slabs/doors/windows → composite layers → material lookup → favourite matching → element create/update                                                                                                                                                                                                                 |
-| `Spec.cpp`                   | 2,316 | Specification rules from property descriptions (`Spec_rule{…}`); classification filtering; writes list data to properties                                                                                                                                                                                                                                                     |
-| `Summ.cpp`                   | 504   | Sums property values across elements into a target property or project info field                                                                                                                                                                                                                                                                                             |
-| `ReNum.cpp`                  | 933   | Renumbering by property criteria (alternative to the ID Manager)                                                                                                                                                                                                                                                                                                              |
-| `Revision.cpp`               | 1,044 | Revision markers / change clouds                                                                                                                                                                                                                                                                                                                                              |
-| `Dimensions.cpp`             | 368   | Dimension rounding, formula writing (e.g. `6×100=600`)                                                                                                                                                                                                                                                                                                                        |
-| `ClassificationFunction.cpp` | 254   | Auto-classification by property values                                                                                                                                                                                                                                                                                                                                        |
-| `ResetProperty.cpp`          | 390   | Resets properties to default / clears them                                                                                                                                                                                                                                                                                                                                    |
-| `AutomateFunction.cpp`       | 987   | Profile-by-line, drawing alignment                                                                                                                                                                                                                                                                                                                                            |
-| `MEPv1.cpp`                  | 1,202 | MEP system/group/description output (AC28+)                                                                                                                                                                                                                                                                                                                                   |
-| `DG4rule.cpp`                | 163   | DG rules for dialogs                                                                                                                                                                                                                                                                                                                                                          |
-| `TestFunc.cpp`               | 1,495 | Debug helpers, active only under `TESTING`                                                                                                                                                                                                                                                                                                                                    |
-| `qrcodegen.cpp`              | 829   | QR code generation (used by the finish schedule)                                                                                                                                                                                                                                                                                                                              |
-| `Spec_libpart.cpp`           | 553   | Spec string parsing                                                                                                                                                                                                                                                                                                                                                           |
-| `SyncSettings.cpp/hpp`       | 101   | Settings serialization to Add-On Preferences (`ACAPI_Get/SetPreferences`)                                                                                                                                                                                                                                                                                                     |
-| `CommonFunction.cpp`         | 2,543 | Element selection helpers, story handling, QR utilities, debug print (`DBprnt`)                                                                                                                                                                                                                                                                                               |
+The repository may change. Do not blindly trust this table.
 
 ---
 
-## 15. Prohibited Actions
+## 17. Root-Cause Debugging
 
-- ❌ Do not use C++17/20 syntax in code compiled for AC < 27 / AC < 29 — this is a hard compiler error.
-- ❌ Do not edit files under `Sources/AddOnResources/`.
-- ❌ Do not commit `compile_commands.json`, `Build/LspCompileCommands/`, or `Build/DevKit/`.
-- ❌ Do not re-enable a suppressed `/wd####` warning without a documented reason.
-- ❌ Do not call `ACAPI_Element_GetMemo` without first calling `BNZeroMemory(&memo, sizeof(memo))`.
-- ❌ Do not query LightRAG any way other than `bash_tool` with `curl`. Read the LightRAG skill for details.
-- ❌ Do not assume AC 25 is this repo's target version — see Section 9, "ArchiCAD Version Handling."
+When debugging:
+
+1. Search OpenViking.
+2. Inspect the relevant source and call sites.
+3. For `ACAPI_*`, query LightRAG.
+4. Determine the root cause.
+5. Make the smallest correct fix.
+6. Run `clang-format` on changed C++ files.
+7. Validate.
+8. Review the diff.
+9. Save important conclusions to OpenViking.
+
+Classify the root cause when useful:
+
+```text
+SDK limitation
+API/IFC limitation
+implementation bug
+wrong assumption
+architecture problem
+input-data problem
+call-site problem
+```
+
+Do not add a workaround without understanding what it bypasses.
 
 ---
 
-## 16. Debug Workflow
+## 18. Diff Review
 
-- A Debug build copies `Test_file/test_<version>.pln` into the build directory.
-- The Visual Studio debugger launches ArchiCAD with that `.pln` file (`VS_DEBUGGER_COMMAND` is set in `CMakeCommon.cmake`).
-- `DBprnt` / `msg_rep` output appears in the ArchiCAD Report Window, only in Debug builds or when `TESTING` is defined.
+Before declaring a code change complete:
+
+```bash
+git diff
+git status
+```
+
+Check:
+
+- only intended files changed;
+- no accidental formatting damage;
+- no unrelated refactoring;
+- no debug leftovers;
+- no generated files;
+- no user changes were overwritten;
+- formatter changes are intentional.
+
+For code-review findings use:
+
+```text
+[code] -> [problem] -> [minimal fix]
+```
+
+When useful, add:
+
+```text
+[evidence]
+```
+
+If no issue exists:
+
+```text
+No issues found in inspected scope
+```
 
 ---
 
-## 17. Pre-PR Checklist
+## 19. BrowserPalette / HTML
 
-Before opening a pull request, confirm all of the following:
+BrowserPalette loads HTML directly from disk.
 
-- [ ] Build passes locally for the target AC version(s), e.g. `-v 25 27 29`
-- [ ] No C++17/20 syntax exists in code paths compiled for AC < 27 / AC < 29
-- [ ] Any new `.cpp` files are picked up by CMake's `file(GLOB …)` automatically, or added manually if not
-- [ ] `--lsp` was run once after adding new files, so `clangd` can see them
-- [ ] Both CI workflows (23–24 and 25–29) run on push
+Main interface:
+
+```text
+Sources/AddOnResources/RFIX/HTML/Interface_ru.html
+```
+
+C++ implementation:
+
+```text
+Sources/AddOn/dialogs/BrowserPalette.cpp
+Sources/AddOn/dialogs/BrowserPalette.hpp
+```
+
+Do not use:
+
+```text
+html_to_hpp.py
+HTML_Pages.hpp
+```
+
+They are not used by this project.
+
+Do not edit `Sources/AddOnResources/` unless the task explicitly requires a resource change.
+
+---
+
+## 20. Pre-PR Checklist
+
+Before a PR/review handoff:
+
+- [ ] Only intended files changed.
+- [ ] No user changes were overwritten or discarded.
+- [ ] Target AC version(s) are known.
+- [ ] Every `ACAPI_*` usage was checked through LightRAG.
+- [ ] Modified C++ files were formatted with `clang-format`.
+- [ ] LSP checked where applicable.
+- [ ] Build performed for relevant version(s).
+- [ ] Runtime test performed where applicable.
+- [ ] `verified / compiled / tested` reported correctly.
+- [ ] No generated build files are staged.
+- [ ] No unrelated refactoring was introduced.
+- [ ] OpenViking memory updated when required by `SOUL.md`.
+
+---
+
+## 21. Golden Rules for Weak LLMs
+
+When uncertain, follow this exact order:
+
+```text
+1. Do not guess.
+2. Search OpenViking.
+3. Find the actual source in Sources/AddOn/.
+4. For ACAPI_* → query LightRAG.
+5. Check the actual ArchiCAD version.
+6. Inspect call sites and surrounding code.
+7. Make the smallest correct fix.
+8. clang-format every changed C++ file.
+9. Build/test when required.
+10. Review git diff.
+11. Never destroy user changes.
+```
+
+**Verified project information and LightRAG SDK information take priority over model memory.**

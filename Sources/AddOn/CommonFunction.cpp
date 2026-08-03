@@ -249,7 +249,7 @@ void DBprnt (double a, GS::UniString reportString) {
     GS::UniString msg = GS::UniString::Printf ("%f", a);
     std::string reportString_str = "";
     if (!reportString.IsEmpty ()) {
-        reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
+        reportString_str = reportString.ToCStr (0, MaxUSize, CC_UTF8).Get ();
     #ifndef ServerMainVers_2300
         DBPrintf (reportString_str.c_str ());
         DBPrintf (" : ");
@@ -258,7 +258,7 @@ void DBprnt (double a, GS::UniString reportString) {
         DBPrint (" : ");
     #endif
     }
-    std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
+    std::string var_str = msg.ToCStr (0, MaxUSize, CC_UTF8).Get ();
     #ifndef ServerMainVers_2300
     DBPrintf ("== SMSTF == ");
     if (!reportString_str.empty ()) {
@@ -307,10 +307,10 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
         DBPrint ("== ERROR == ");
     #endif
     }
-    std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
+    std::string var_str = msg.ToCStr (0, MaxUSize, CC_UTF8).Get ();
     std::string reportString_str = "";
     if (!reportString.IsEmpty ()) {
-        reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
+        reportString_str = reportString.ToCStr (0, MaxUSize, CC_UTF8).Get ();
     #ifndef ServerMainVers_2300
         DBPrintf (" : ");
         DBPrintf (reportString_str.c_str ());
