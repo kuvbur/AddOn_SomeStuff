@@ -45,8 +45,10 @@ namespace FormatStringFunc {
         UInt32 n_start = texpression.FindFirst (tpart) + tpart.GetLength (); // Индекс начала поиска строки-формата
         GS::UniString stringformat_ =
             texpression.GetSubstring (CHARFORMULAEND, CHARMETERS, n_start) + METERS; // Предположительно, строка-формат
-        if (stringformat_.IsEmpty ())
+        // Если формула содержит кавычки, пробуем найти формат между кавычкой и "m"
+        if (stringformat_.IsEmpty () && texpression.Contains (CHARDQUT)) {
             stringformat_ = texpression.GetSubstring (CHARDQUT, CHARMETERS, n_start) + METERS;
+        }
         if (stringformat_.Contains (DOT) && !stringformat_.Contains (SPACESTRING)) {
             // Проверим, не обрезали ли лишнюю m
             n_start = texpression.FindFirst (stringformat_) - 1;
@@ -58,9 +60,14 @@ namespace FormatStringFunc {
                 }
             }
             stringformat = texpression_.GetSubstring (n_start + 1, n_end - n_start);
+            stringformat.Trim (CHARDQUT);
+            stringformat.Trim (CHARFORMULAEND);
+            stringformat.Trim (CHARPROC);
+            stringformat.Trim (CHARBRACEEND);
+            stringformat.Trim ();
 #ifdef TESTING
             DBtest (!stringformat.Contains (CHARDQUT),
-                    "GetFormatStringFromFormula : stringformat.Contains('\"') " + stringformat);
+                    "GetFormatStringFromFormula : stringformat.Contains('\\\"') " + stringformat);
             DBtest (!stringformat.Contains (CHARFORMULAEND),
                     "GetFormatStringFromFormula : stringformat.Contains(CHARFORMULAEND) " + stringformat);
             DBtest (!stringformat.Contains (CHARPROC),
@@ -68,11 +75,6 @@ namespace FormatStringFunc {
             DBtest (!stringformat.Contains (CHARBRACEEND),
                     "GetFormatStringFromFormula : stringformat.Contains(CHARBRACEEND) " + stringformat);
 #endif
-            stringformat.Trim (CHARDQUT);
-            stringformat.Trim (CHARFORMULAEND);
-            stringformat.Trim (CHARPROC);
-            stringformat.Trim (CHARBRACEEND);
-            stringformat.Trim ();
             f = FormatStringFunc::ParseFormatString (stringformat);
         }
         return f;
