@@ -18,7 +18,7 @@ Sources/AddOn/                # .cpp / .h sources (core + modules)  ← ALL SOUR
   third_party/                # Embedded third-party libs (exprtk, alphanum, qrcodegen)
 Sources/AddOnResources/       # Resources (RFIX, RINT, platform-specific)
   RFIX/AddOnFix.grc           # Fixed resource definitions
-  RFIX/HTML/Interface_ru.html # **HTML UI для BrowserPalette (подгружается напрямую)**
+  RFIX/HTML/                  # **HTML UI для BrowserPalette (подгружается напрямую)**
   RFIX/Images/*.svg           # Menu icons (18×18)
   RINT/AddOn.grc              # Generated from AddOn.grc.in (do NOT edit manually)
   RFIX.win/*.rc2              # Windows resource scripts
@@ -43,11 +43,13 @@ wiki/                         # Docs, images, example files
 ## HTML UI Interface (BrowserPalette)
 
 **Architecture:**
+
 - `BrowserPalette` (C++) — `DG::Palette` + `DG::Browser`
 - HTML загружается **напрямую из файла**: `Sources/AddOnResources/RFIX/HTML/Interface_ru.html` через `DG::Browser::LoadURL()`
 - Регистрирует `DG::JSObject("ACAPI")` с функциями для вызова из JS
 
 **Важно:** НЕ используются:
+
 - `html_to_hpp.py` — конвертер HTML → C++ raw string literal
 - `HTML_Pages.hpp` — сгенерированный заголовочный файл
 
@@ -59,6 +61,7 @@ wiki/                         # Docs, images, example files
 | `Sources/AddOn/dialogs/BrowserPalette.hpp` | Объявления методов |
 
 **JS функции в `ACAPI` объект:**
+
 - `ACAPI.GetPropertyDefinitions()` — возвращает массив свойств из `PROPERTYCACHE()`
 - `ACAPI.GetPropertyDescription(name)` — описание свойства из кэша
 - `ACAPI.GetPropertyValue(name)` — значение свойства для выделенного элемента
@@ -74,9 +77,9 @@ When looking for function definitions, classes, symbols, or architectural contex
 1. **First Choice: Clangd MCP**
    Always attempt to find exact C++ symbols, definitions, and declarations using `clangd-mcp` tools first (`workspace_symbol_search`, `find_definition`, `find_references`). It provides exact AST-based locations without context noise.
 
-2. **Second Choice (Fallback / Context Search): LightRAG MCP**
+2. **Second Choice (Fallback / Context Search): LightRAG**
    If `clangd-mcp` fails to locate the symbol, or if the request requires higher-level architectural context, relationships, or conceptual understanding:
-   - Call the **LightRAG MCP** tool **BEFORE** forming your response.
+   - Call the **LightRAG** skill **BEFORE** forming your response.
    - **query**: Formulate a concise query in English describing the function/class names, modules/files, or key concepts (e.g., threading, memory, system architecture).
    - **mode**: `"hybrid"` (unless explicitly instructed otherwise).
 
@@ -84,7 +87,7 @@ When looking for function definitions, classes, symbols, or architectural contex
    - **Base responses on retrieved context:** If retrieved context or code exists from Clangd/LightRAG, use it as the ground truth.
    - **No Hallucinations:** Do NOT invent architecture, function signatures, or APIs if they exist in the codebase/context.
    - **Acknowledge Gaps:** If neither tool yields sufficient context, explicitly state what is missing and ask for clarification.
-   - **Zero Bypass Rule:** NEVER answer C++ code navigation or architectural questions without attempting symbol search via Clangd MCP first, followed by LightRAG MCP if needed. When in doubt, search first.
+   - **Zero Bypass Rule:** NEVER answer C++ code navigation or architectural questions without attempting symbol search via Clangd MCP first, followed by LightRAG skill if needed. When in doubt, search first.
 
 ---
 
@@ -138,7 +141,7 @@ AC version auto-detected from `ACAPinc.h` in DevKit (`DetectACVersion` in `CMake
 
 ## Archicad API (ACAPI) Usage — Mandatory RAG Verification
 
-- Before writing or modifying any `ACAPI_*` call, query **LightRAG MCP** (via the sanctioned MCP tool call — never a raw `curl`/HTTP request to the LightRAG backend or any other service that already has a wrapped tool) against the indexed documentation, official examples, and this repo's own existing usage patterns. Do not rely on memorized/trained knowledge of the API alone.
+- Before writing or modifying any `ACAPI_*` call, Search the ArchiCAD C++ SDK knowledge base: functions, types, code examples, past decisions via lightrag skill.
 - This is mandatory verification, not a fallback. Unlike the Clangd-first / LightRAG-fallback ordering above — which is for navigating _this project's own_ symbols — an actual call into the Archicad SDK always goes through LightRAG first, regardless of whether Clangd can already resolve the symbol. Clangd confirms a function exists and its declared signature; only the documentation/example corpus confirms it's being called correctly, and for the right AC version (see "Archicad Version Handling" above — the ACAPI surface is versioned).
 - Query convention: same as the navigation rule above — concise English query naming the exact ACAPI function/struct/pattern, `mode: "hybrid"` unless told otherwise.
 - If RAG has no relevant coverage for a specific call, say so explicitly and ask rather than guessing from memory.
@@ -254,7 +257,7 @@ Regenerate after: AC version change, `CMakeCommon.cmake` edits, new `.cpp` files
 - ❌ Don't commit `compile_commands.json`, `Build/LspCompileCommands/`, `Build/DevKit/`
 - ❌ Don't re-enable suppressed `/wd####` warnings without reason
 - ❌ Don't call `ACAPI_Element_GetMemo` without `BNZeroMemory(&memo, sizeof(memo))` first
-- ❌ Don't call a service's raw HTTP/curl endpoint when a sanctioned MCP tool already wraps it (e.g. LightRAG) — use the tool, not a hand-rolled request
+- ❌ The only way to query LightRAG is bash_tool with curl. Read lightrag skill for details.
 - ❌ Don't assume AC25 as this repo's target version — see "Archicad Version Handling" above
 
 ---

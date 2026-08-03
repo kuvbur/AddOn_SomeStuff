@@ -972,13 +972,20 @@ bool ParseSyncString (const API_Guid &elemGuid,
                       bool synccoord,
                       bool syncclass,
                       ParamDictValue &subproperty) {
+    // Разбирает текстовое описание пользовательского свойства и превращает его в набор
+    // правил синхронизации. Для каждого правила определяется источник и назначение данных,
+    // а также собираются параметры, которые нужно прочитать заранее.
     GS::UniString description_string = definition.description;
     if (description_string.IsEmpty ()) {
         return false;
     }
+    // Свойство-флаг синхронизации само по себе не является правилом обмена данными,
+    // поэтому пропускаем его сразу.
     if (description_string.Contains (SYNCFLAG)) {
         return false;
     }
+    // Специальный флаг корректировки координат добавляет в словарь параметров
+    // служебный параметр для последующей обработки, но не создает обычное правило.
     if (description_string.Contains (SYNCCORRECTFLAG)) {
         ParamDictValue paramDict = {};
         ParamValue paramdef = {}; // Свойство, из которого получено правило
@@ -997,6 +1004,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
     }
 #endif
 
+    // Правило синхронизации должно содержать маркер разделения правил, а также
+    // открывающую и закрывающую фигурные скобки, иначе разбирать нечего.
     if (!description_string.Contains (SYNCPART))
         return false;
     if (!description_string.Contains (BRACESTART))
@@ -1029,8 +1038,10 @@ bool ParseSyncString (const API_Guid &elemGuid,
         return true;
     };
 
-    // Проверяет "ключевое_слово" + любое число пробелов (0 и более) + "{".
-    // consumed - сколько символов всего "съедено" от idx (ключевое слово + пробелы + сама "{").
+    // Вспомогательная функция проверяет, находится ли в текущей позиции ключевое слово,
+    // после которого может следовать произвольное число пробелов и открывающая скобка.
+    // Это нужно для корректной замены слов "from", "to", "from_sub" и т.п. на
+    // внутренние маркеры, понятные функции SyncString.
     auto matchesKeywordBrace = [&] (UIndex idx, const char *kw, USize kwLen, UIndex &consumed) -> bool {
         if (!matchesStr (idx, kw, kwLen))
             return false;
@@ -1090,14 +1101,18 @@ bool ParseSyncString (const API_Guid &elemGuid,
         }
         dst.Append (description_string[i]);
     }
+    // После прохода по тексту все служебные слова и указатели на внешние элементы
+    // заменяются на внутренние маркеры, а затем строка готова к разбиению на отдельные правила.
     description_string = std::move (dst);
     GS::Array<GS::UniString> rulestring;
     GS::Array<GS::UniString> local_scratch;
     ParamValue paramdef = {}; // Свойство, из которого получено правило
     ParamHelpers::ConvertToParamValue (paramdef, definition);
     paramdef.fromGuid = elemGuid;
-    // Проходим по каждому правилу и извлекаем из него правило синхронизации (WriteDict syncRules)
-    // и словарь уникальных параметров для чтения/записи (ParamDictElement paramToRead)
+    // Далее описание разбивается на отдельные правила. Для каждого правила:
+    // - при необходимости определяется другой источник/получатель по GUID;
+    // - вызывается SyncString для распознавания типа данных и направления обмена;
+    // - собирается WriteData и добавляются параметры в словарь для последующего чтения.
     StringSpltFilter (description_string,
                       SYNCPART,
                       rulestring,
@@ -1113,7 +1128,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
         API_Guid elemGuidfrom = elemGuid;              // Элемент, из которого читаем данные
         API_Guid elemGuidto = elemGuid;                // Элемент, в котороый записываем данные
         API_ElemTypeID elementType_from = elementType; // Тип элемента, из которого читаем данные
-        // Копировать из другого элемента
+        // Если правило ссылается на другой элемент через from_GUID, извлекаем GUID из
+        // подстановочного свойства и подменяем исходный элемент на найденный.
         if (rulestring_one.Contains (FROMGUIDBR)) {
             params.Clear ();
             rulestring_one.ReplaceAll (FROMGUID, EMPTYSTRING);
@@ -1155,7 +1171,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
                 continue;
             }
         } else {
-            // Копировать в другой элемент
+            // Аналогично для to_GUID — правило будет применено к другому элементу, который
+            // указан в подстановочном свойстве.
             if (rulestring_one.Contains (TOGUIDBR)) {
                 params.Clear ();
                 rulestring_one.ReplaceAll (TOGUID, EMPTYSTRING);
@@ -1192,6 +1209,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
                 }
             }
         }
+        // После подготовки контекста разбираем сам текст правила. SyncString определит,
+        // откуда брать данные, куда писать и какого типа это свойство.
         if (!SyncString (elementType_from,
                          rulestring_one,
                          syncdirection,
@@ -1204,6 +1223,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
             continue;
         hasRule = true;
         WriteData writeOne = {};
+        // Для каждого успешно распознанного правила формируется объект WriteData и
+        // добавляется в список правил для последующей обработки.
         writeOne.formatstring = stringformat;
         writeOne.ignorevals = ignorevals;
         if (param.fromCoord) {
@@ -1213,7 +1234,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
             }
         }
-        // Если требуется чтение из файла - добавим параметры для подбора
+        // Если правило связано с чтением из файла, в словарь параметров добавляются
+        // все вспомогательные параметры, которые нужны для выбора нужной строки/столбца.
         if (param.fromFile) {
             ParamDictValue paramDict = {};
             if (!param.val.uniStringValue.Contains (CHARDQUT))
@@ -1228,7 +1250,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
                 ParamHelpers::ParseParamNameMaterial (param.rawName_row_start, paramDict);
             ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
         }
-        // Вытаскиваем параметры для материалов, если такие есть
+        // Для правил материалов извлекаются параметры, которые участвуют в формировании
+        // шаблона или в вычислении количества/единиц.
         if (param.fromMaterial) {
             ParamDictValue paramDict = {};
             GS::UniString templatestring = param.val.uniStringValue; // Строка с форматом числа
@@ -1248,6 +1271,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
             }
         }
+        // Формульные правила тоже могут зависеть от других параметров, поэтому их
+        // выражения добавляются в список параметров для предварительного чтения.
         if (!param.fromMaterial && param.val.hasFormula) {
             ParamDictValue paramDict = {};
             GS::UniString templatestring = param.val.uniStringValue; // Строка с форматом числа
@@ -1257,6 +1282,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
                 ParamHelpers::AddParamDictValue2ParamDictElement (elemGuidfrom, paramDict, paramToRead);
             }
         }
+        // В зависимости от направления обмена формируется либо запись в целевой элемент,
+        // либо чтение из исходного элемента.
         if (syncdirection == SYNC_TO || syncdirection == SYNC_TO_SUB) {
             if (syncdirection == SYNC_TO_SUB) {
                 hasSub = true;
@@ -1283,6 +1310,7 @@ bool ParseSyncString (const API_Guid &elemGuid,
             writeOne.paramTo = paramdef;
             writeOne.paramFrom = param;
         }
+        // Финальный шаг — правило добавляется в общий список для последующей обработки.
         syncRules.Push (std::move (writeOne));
     }
     return hasRule;
@@ -1428,6 +1456,14 @@ bool SyncString (const API_ElemTypeID &elementType,
                  bool syncall,
                  bool synccoord,
                  bool syncclass) {
+    // Разбирает одно правило синхронизации и заполняет структуру ParamValue.
+    // Функция последовательно:
+    // 1. Определяет направление обмена по префиксам SYNC_FROM/SYNC_TO и их подвариантам.
+    // 2. Нормализует строку правила, убирая служебные символы и распознавая специальные источники
+    //    данных: GDL-параметры, свойства, координаты, материалы, формулы, IFC, MEP и др.
+    // 3. Проверяет совместимость правила с типом текущего элемента и с активными режимами
+    //    syncall/synccoord/syncclass.
+    // 4. Разбирает имя параметра, параметры массива и список значений, которые нужно игнорировать.
     syncdirection = SYNC_NO;
     // Выбор направления синхронизации
     // Копировать в субэлементы или из субэлементов
@@ -1451,6 +1487,8 @@ bool SyncString (const API_ElemTypeID &elementType,
         return false;
     GS::UniString paramNamePrefix = "";
     bool synctypefind = false;
+    // Нормализуем входную строку правила: убираем переносы строк, табуляцию и другие
+    // служебные символы, чтобы они не мешали последующему разбору префиксов и параметров.
     if (rulestring_one.Contains (LINEBRAKE))
         rulestring_one.ReplaceAll (LINEBRAKE, EMPTYSTRING);
     if (rulestring_one.Contains (LINEBRAKER))
@@ -1468,6 +1506,8 @@ bool SyncString (const API_ElemTypeID &elementType,
         rulestring_one.ReplaceAll (QRPREF, EMPTYSTRING);
         param.toQRCode = true;
     }
+    // Сначала пытаемся распознать источник данных по специальным префиксам и шаблонам.
+    // Для каждого типа источника выставляются соответствующие флаги и префикс имени параметра.
     if (synctypefind == false) {
         if (rulestring_one.Contains ("{id}") || rulestring_one.Contains ("{ID}")) {
             paramNamePrefix = IDNAMEPREFIX;
@@ -1830,7 +1870,8 @@ bool SyncString (const API_ElemTypeID &elementType,
         return false;
     param.eltype = elementType;
 
-    // Проверка допустимости правила для типа элемента
+    // Проверяем, что правило действительно применимо к текущему типу элемента.
+    // Некоторые источники данных доступны только для объектов, стен, slabs, morph и т.д.
     if (param.fromGDLparam) {
         if (elementType == API_WallID || elementType == API_SlabID || elementType == API_ColumnID ||
             elementType == API_BeamID || elementType == API_RoofID || elementType == API_ShellID ||
@@ -1878,6 +1919,8 @@ bool SyncString (const API_ElemTypeID &elementType,
     if (synctypefind == false)
         return false;
 
+    // Извлекаем имя целевого параметра и его дополнительные параметры из строки правила.
+    // Например: {param_name;uniq(1,2)} или {param_name;"ignore"}.
     GS::UniString tparamName = rulestring_one.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     GS::Array<GS::UniString> params = {};
     GS::Array<GS::UniString> local_scratch;
@@ -1950,6 +1993,9 @@ bool SyncString (const API_ElemTypeID &elementType,
         }
         if (hasArray && !param.fromListData && !param.fromGDLparam && !param.fromGDLdescription && !param.fromGDLArray)
             hasArray = false;
+        // Если правило описывает массив, разбираем диапазоны строк и столбцов.
+        // Для каждого диапазона можно либо использовать числовые значения, либо ссылаться на
+        // другие параметры/свойства, которые будут прочитаны заранее.
         if (hasArray) {
             int array_row_start = 0;
             int array_row_end = 0;
@@ -2081,7 +2127,8 @@ bool SyncString (const API_ElemTypeID &elementType,
             param.rawName.Append (BRACEEND);
             start_ignore = 2;
         }
-        // Обработка игнорируемых значений
+        // Обработка игнорируемых значений: значения, которые должны пропускаться
+        // при чтении/записи, а также специальные маркеры для пустых/обнулённых случаев.
         if (nparam > start_ignore) {
             for (UInt32 j = start_ignore; j < nparam; j++) {
                 GS::UniString ignoreval = "";
@@ -2486,7 +2533,7 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
                            UnicGuidByGuid &parentGuid,
                            const GS::UniString &suffix,
                            int &errcode) {
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     return false;
 #else
     GSErrCode err = NoError;

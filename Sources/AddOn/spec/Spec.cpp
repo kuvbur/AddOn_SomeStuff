@@ -34,7 +34,7 @@ namespace Spec {
     // Это нужно, когда пользователь не выделил конкретные элементы и правила берутся из шаблона.
     // -----------------------------------------------------------------------------
     bool GetRuleFromDefaultElem (SpecRuleDict &rules, API_DatabaseInfo &homedatabaseInfo, bool &has_elementspec) {
-#if defined(AC_22)
+#ifndef ServerMainVers_2300
         return false;
 #else
         GSErrCode error = NoError;
@@ -2201,7 +2201,7 @@ namespace Spec {
         }
 #endif
         SetElemTypeID (element, API_ObjectID);
-#ifdef AC_22
+#ifndef ServerMainVers_2300
         element.header.variationID = APIVarId_Object;
 #endif
         msg_rep ("Spec", "Read the default settings of the object", err, APINULLGuid);
@@ -2279,7 +2279,7 @@ namespace Spec {
         }
 #endif
         SetElemTypeID (element, API_ObjectID);
-#ifdef AC_22
+#ifndef ServerMainVers_2300
         element.header.variationID = APIVarId_Object;
 #endif
         err = ACAPI_Element_GetDefaults (&element, &memo);

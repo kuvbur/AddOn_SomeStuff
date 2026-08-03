@@ -5375,7 +5375,7 @@ namespace Roombook
 
     API_ElemTypeID Favorite_GetType (const GS::UniString &favorite_name) {
         GSErrCode err = NoError;
-    #ifdef AC_22
+    #ifndef ServerMainVers_2300
         return API_ZombieElemID;
     #else
         if (favorite_name.IsEmpty ())
@@ -5597,7 +5597,7 @@ namespace Roombook
 
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element) {
         GSErrCode err = NoError;
-    #ifdef AC_22
+    #ifndef ServerMainVers_2300
         return false;
     #else
         if (favorite_name.IsEmpty ())
@@ -5615,7 +5615,7 @@ namespace Roombook
 
     bool Favorite_GetByName (const GS::UniString &favorite_name, API_Element &element, API_ElementMemo &memo) {
         GSErrCode err = NoError;
-    #ifdef AC_22
+    #ifndef ServerMainVers_2300
         return false;
     #else
         if (favorite_name.IsEmpty ())

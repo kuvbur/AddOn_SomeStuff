@@ -245,14 +245,14 @@ void DBprnt (double a, GS::UniString reportString) {
 #if defined(TESTING)
     // Форматируем число и выводим отладочный префикс
     GS::UniString msg = GS::UniString::Printf ("%f", a);
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
     DBPrintf ("== SMSTF == ");
     #else
     DBPrint ("== SMSTF == ");
     #endif
     if (!reportString.IsEmpty ()) {
         std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
         DBPrintf (reportString_str.c_str ());
         DBPrintf (" : ");
     #else
@@ -261,12 +261,12 @@ void DBprnt (double a, GS::UniString reportString) {
     #endif
     }
     std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
     DBPrintf (var_str.c_str ());
     #else
     DBPrint (var_str.c_str ());
     #endif
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
     DBPrintf ("\n");
     #else
     DBPrint ("\n");
@@ -285,26 +285,26 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
     // Если хоть одно сообщение выглядит как ошибка, добавляем ERROR-префикс
     if (msg.Contains ("err") || msg.Contains ("ERROR") || reportString.Contains ("err") ||
         reportString.Contains ("ERROR")) {
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
         DBPrintf ("== ERROR == ");
     #else
         DBPrint ("== ERROR == ");
     #endif
     }
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
     DBPrintf ("== SMSTF == ");
     #else
     DBPrint ("== SMSTF == ");
     #endif
     std::string var_str = msg.ToCStr (0, MaxUSize, GChCode).Get ();
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
     DBPrintf (var_str.c_str ());
     #else
     DBPrint (var_str.c_str ());
     #endif
     if (!reportString.IsEmpty ()) {
         std::string reportString_str = reportString.ToCStr (0, MaxUSize, GChCode).Get ();
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
         DBPrintf (" : ");
         DBPrintf (reportString_str.c_str ());
     #else
@@ -312,7 +312,7 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
         DBPrint (reportString_str.c_str ());
     #endif
     }
-    #if defined(AC_22)
+    #ifndef ServerMainVers_2300
     DBPrintf ("\n");
     #else
     DBPrint ("\n");
@@ -767,7 +767,7 @@ GS::Array<API_Guid> GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
     GSErrCode err;
     API_SelectionInfo selectionInfo;
     GS::UniString errorString = "Empty";
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     API_Neig **selNeigs;
 #else
     GS::Array<API_Neig> selNeigs;
@@ -780,13 +780,13 @@ GS::Array<API_Guid> GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
         }
     }
     if (err != NoError) {
-#ifdef AC_22
+#ifndef ServerMainVers_2300
         BMKillHandle ((GSHandle *)&selNeigs);
 #endif // AC_22
         return GS::Array<API_Guid> ();
     }
     GS::Array<API_Guid> guidArray;
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     USize nSel = BMGetHandleSize ((GSHandle)selNeigs) / sizeof (API_Neig);
     for (USize i = 0; i < nSel; i++) {
         guidArray.Push ((*selNeigs)[i].guid);
@@ -2457,7 +2457,7 @@ GSErrCode Favorite_GetNum (const API_ElemTypeID &type,
                            short *count,
                            GS::Array<API_FavoriteFolderHierarchy> *folders,
                            GS::Array<GS::UniString> *names) {
-#if defined AC_22
+#ifndef ServerMainVers_2300
     return APIERR_GENERAL;
 #else
     #ifdef ServerMainVers_2600
@@ -2538,7 +2538,7 @@ void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &definition, const GS::UniString value) {
     GSErrCode error = NoError;
     GS::Array<API_Guid> elements = {};
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     return elements;
 #else
     GS::Array<API_Guid> elemGuids = {};

@@ -44,7 +44,7 @@ static const Int32 Pallete_CommandID = 18;    // ID команды открыт�
 static const UInt32 MENU_ITEM_COUNT = 17;     // Количество элементов меню
 
     // --- Адаптация типов под старые версии Archicad (Archicad 22) ---
-    #ifdef AC_22
+    #ifndef ServerMainVers_2300
         #define API_AttributeIndex short         // Тип индекса атрибута в Archicad 22
         #define Vector2D Vector                  // Псевдоним двумерного вектора
         #define Point2D Coord                    // Псевдоним двухмерных координат

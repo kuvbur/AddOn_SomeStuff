@@ -5,7 +5,7 @@
     #include "ACAPinc.h"
 
     #include "api_headers/APIEnvir.h"
-    #ifdef AC_22
+    #ifndef ServerMainVers_2300
         #include "api_headers/APICommon22.h"
     #endif // AC_25
     #ifdef AC_23

@@ -378,7 +378,7 @@ bool GetRuleFromSelected (GS::Array<API_Guid> &guidArray,
 // -------------------------------------------------------------------------------
 void GetElementForPropertyDefinition (const GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                                       GS::Array<API_Guid> &guidArray) {
-#if defined(AC_22)
+#ifndef ServerMainVers_2300
     return;
 #else
     UnicGuid unguid;
@@ -458,7 +458,7 @@ bool GetRuleFromSelected (const API_Guid &elemguid,
                           GS::HashTable<API_Guid, API_PropertyDefinition> &definitions,
                           const GS::UniString &name,
                           bool check_bracket) {
-#if defined(AC_22)
+#ifndef ServerMainVers_2300
     return false;
 #else
     GS::Array<API_PropertyDefinition> definitions_;
@@ -508,7 +508,7 @@ bool GetRuleFromSelected (const API_Guid &elemguid,
 // -----------------------------------------------------------------------------
 GSErrCode AttachObserver (const API_Guid &objectId, const SyncSettings &syncSettings) {
     GSErrCode err = NoError;
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     API_Elem_Head elemHead;
     elemHead.guid = objectId;
     err = ACAPI_Element_AttachObserver (&elemHead, 0);
@@ -704,7 +704,7 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
     API_SelectionInfo selectionInfo = {};
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString errorString = RSGetIndString (iseng, ErrorSelectID, ACAPI_GetOwnResModule ());
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     API_Neig **selNeigs;
 #else
     GS::Array<API_Neig> selNeigs;
@@ -717,13 +717,13 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
         }
     }
     if (err != NoError) {
-#ifdef AC_22
+#ifndef ServerMainVers_2300
         BMKillHandle ((GSHandle *)&selNeigs);
 #endif // AC_22
         return GS::Array<API_Guid> ();
     }
     GS::Array<API_Guid> guidArray;
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     USize nSel = BMGetHandleSize ((GSHandle)selNeigs) / sizeof (API_Neig);
     for (USize i = 0; i < nSel; i++) {
         guidArray.Push ((*selNeigs)[i].guid);
@@ -1078,7 +1078,7 @@ void GetRelationsElement (const API_Guid &elemGuid,
             GS::Array<API_ElemTypeID> typeinzone;
             err = ACAPI_Element_GetRelations (elemGuid, API_ZombieElemID, &relData);
             if (err == NoError) {
-#if defined(AC_23) || defined(AC_22)
+#ifndef ServerMainVers_2400
                 for (Int32 i = 0; i < relData.nObject; i++) {
                     API_Guid elGuid = (*relData.objects)[i];
                     subelemGuid.Push (elGuid);
@@ -2463,7 +2463,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
         x = element.column.origoPos.x + offx;
         y = element.column.origoPos.y + offy;
         slantDirectionAngle = element.column.slantDirectionAngle;
-#ifdef AC_22
+#ifndef ServerMainVers_2300
         axisRotationAngle = element.column.angle;
 #else
         axisRotationAngle = element.column.axisRotationAngle;
@@ -4833,7 +4833,7 @@ bool ParamHelpers::WriteClassification (const API_Guid &elemGuid, ParamDictValue
 // Запись ParamDictValue в ID
 // --------------------------------------------------------------------
 void ParamHelpers::WriteID (const API_Guid &elemGuid, ParamDictValue &params) {
-#ifdef AC_22
+#ifndef ServerMainVers_2300
     msg_rep ("WriteID - ID", "Write ID not work in AC 22", NoError, elemGuid);
 #else
     if (params.IsEmpty ())
@@ -8967,7 +8967,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
                                                double &width,
                                                double &length,
                                                bool &needReadQuantities) {
-#if !defined(AC_22) && !defined(AC_23)
+#ifndef ServerMainVers_2400
     #if defined(TESTING)
     DBprnt ("        ComponentsProfileStructure");
     #endif
@@ -9344,7 +9344,7 @@ bool ParamHelpers::Components (const API_Element &element,
         break;
 #endif
     case API_ColumnID:
-#ifdef AC_22
+#ifndef ServerMainVers_2300
         constrinx = element.column.buildingMaterial;
 #else
         if (element.header.guid == APINULLGuid) {
@@ -9382,7 +9382,7 @@ bool ParamHelpers::Components (const API_Element &element,
 #endif
         break;
     case API_BeamID:
-#ifdef AC_22
+#ifndef ServerMainVers_2300
         constrinx = element.beam.buildingMaterial;
 #else
         if (element.header.guid == APINULLGuid) {
