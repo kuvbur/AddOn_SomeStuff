@@ -1,10 +1,10 @@
 ﻿# ==============================================================================
 # НАСТРОЙКИ ПАУЗ И ТАЙМ-АУТОВ (в секундах)
 # ==============================================================================
-$processCloseTimeoutSec      = 15  # Время ожидания мягкого закрытия Archicad (сек)
-$postCloseCleanupPauseSec    = 15  # Пауза после закрытия перед очисткой и сборкой (сек)
-$initialLaunchWaitSec        = 10   # Пауза сразу после запуска Archicad перед проверкой процесса (сек)
-$testResultTimeoutSec        = 20  # Дополнительный таймаут ожидания создания test_results.txt (сек)
+$processCloseTimeoutSec      = 5   # Время ожидания мягкого закрытия Archicad (сек)
+$postCloseCleanupPauseSec    = 10  # Пауза после закрытия перед очисткой и сборкой (сек)
+$initialLaunchWaitSec        = 5   # Пауза сразу после запуска Archicad перед проверкой процесса (сек)
+$testResultTimeoutSec        = 60  # Дополнительный таймаут ожидания создания test_results.txt (сек)
 $testResultCheckIntervalSec = 2   # Интервал проверки появления файла test_results.txt (сек)
 
 # ==============================================================================
@@ -30,26 +30,35 @@ if (-not $filePath) {
 $lckFilePath = "$filePath.lck"
 $fileName    = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
 
+# Функция для жесткого убийства дерева процессов по PID
+function Kill-ProcessTree ([int]$targetProcId) {
+    if (Get-Process -Id $targetProcId -ErrorAction SilentlyContinue) {
+        Write-Host "Force killing process tree for PID $targetProcId via taskkill..." -ForegroundColor Red
+        taskkill.exe /F /T /PID $targetProcId 2>&1 | Out-Null
+    }
+}
+
 # ==============================================================================
 # 1. ПОИСК И ЗАКРЫТИЕ ПРЕДЫДУЩЕГО ARCHICAD
 # ==============================================================================
-$runningProcesses = Get-Process -Name "ARCHICAD*" -ErrorAction SilentlyContinue | Where-Object {
-    $procId = $_.Id
-    $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $procId").CommandLine
-    return ($cmdLine -like "*$fileName*") -or ($_.MainWindowTitle -like "*$fileName*")
+$runningProcesses = Get-CimInstance Win32_Process -Filter "Name LIKE 'ARCHICAD%'" -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -like "*$fileName*"
 }
 
 if ($runningProcesses) {
     Write-Host "Found running Archicad with '$fileName'. Closing..." -ForegroundColor Yellow
     
     foreach ($proc in $runningProcesses) {
-        $null = $proc.CloseMainWindow()
+        $procIdToKill = $proc.ProcessId
+        $psProc = Get-Process -Id $procIdToKill -ErrorAction SilentlyContinue
         
-        # Переводим секунды в миллисекунды для WaitForExit
-        if (-not $proc.WaitForExit($processCloseTimeoutSec * 1000)) {
-            Write-Host "Process did not respond in time. Force stopping..." -ForegroundColor Red
-            Stop-Process -Id $proc.Id -Force
+        if ($psProc) {
+            $null = $psProc.CloseMainWindow()
+            Start-Sleep -Seconds $processCloseTimeoutSec
         }
+        
+        # Если не закрылся мягко — убиваем принудительно
+        Kill-ProcessTree -targetProcId $procIdToKill
     }
     
     Write-Host "Waiting $postCloseCleanupPauseSec seconds before cleaning up..." -ForegroundColor Cyan
@@ -111,16 +120,14 @@ Write-Host "Starting $filePath..." -ForegroundColor Green
 Start-Process -FilePath $filePath
 
 # ==============================================================================
-# 5. ПРОВЕРКА ЗАПУСКА, ОЖИДАНИЕ ТЕСТОВ И ЗАКРЫТИЕ ARCHICAD
+# 5. ПРОВЕРКА ЗАПУСКА, ОЖИДАНИЕ ТЕСТОВ И ГАРАНТИРОВАННОЕ ЗАКРЫТИЕ ARCHICAD
 # ==============================================================================
 Write-Host "Waiting $initialLaunchWaitSec seconds for Archicad process to start..." -ForegroundColor Cyan
 Start-Sleep -Seconds $initialLaunchWaitSec
 
-# Проверяем, появился ли процесс Archicad
-$checkLaunched = Get-Process -Name "ARCHICAD*" -ErrorAction SilentlyContinue | Where-Object {
-    $procId = $_.Id
-    $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $procId").CommandLine
-    return ($cmdLine -like "*$fileName*") -or ($_.MainWindowTitle -like "*$fileName*")
+# Находим процессы Archicad, запущенные с нашим файлом, и жестко фиксируем их PID
+$checkLaunched = Get-CimInstance Win32_Process -Filter "Name LIKE 'ARCHICAD%'" -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -like "*$fileName*"
 }
 
 if (-not $checkLaunched) {
@@ -128,8 +135,8 @@ if (-not $checkLaunched) {
     exit 1
 }
 
-$pidList = ($checkLaunched | Select-Object -ExpandProperty Id) -join ", "
-Write-Host "[SUCCESS] Archicad process verified (PID: $pidList)." -ForegroundColor Green
+$launchedPids = @($checkLaunched | Select-Object -ExpandProperty ProcessId)
+Write-Host "[SUCCESS] Archicad process verified (PID: $($launchedPids -join ', '))." -ForegroundColor Green
 
 # Ожидание создания файла test_results.txt
 Write-Host "Waiting for test_results.txt (Timeout: ${testResultTimeoutSec}s)..." -ForegroundColor Cyan
@@ -150,14 +157,33 @@ if (Test-Path -Path $testResultsPath) {
     Write-Host "`n[WARNING] Timeout reached (${testResultTimeoutSec}s)! test_results.txt was not created." -ForegroundColor Yellow
 }
 
-# Закрытие запущенного процесса Archicad
-Write-Host "Closing launched Archicad process..." -ForegroundColor Yellow
-foreach ($proc in $checkLaunched) {
-    $null = $proc.CloseMainWindow()
-    
-    if (-not $proc.WaitForExit($processCloseTimeoutSec * 1000)) {
-        Write-Host "Process did not close in time. Force stopping..." -ForegroundColor Red
-        Stop-Process -Id $proc.Id -Force
+# ------------------------------------------------------------------------------
+# ГАРАНТИРОВАННОЕ ЗАКРЫТИЕ ARCHICAD (ЧЕРЕЗ TASKKILL)
+# ------------------------------------------------------------------------------
+Write-Host "Closing launched Archicad process(es)..." -ForegroundColor Yellow
+
+# Попытка 1: Мягкое закрытие окон
+foreach ($targetProcId in $launchedPids) {
+    $psProc = Get-Process -Id $targetProcId -ErrorAction SilentlyContinue
+    if ($psProc) {
+        $null = $psProc.CloseMainWindow()
     }
 }
+
+Start-Sleep -Seconds $processCloseTimeoutSec
+
+# Попытка 2: Принудительное уничтожение через taskkill /F /T
+foreach ($targetProcId in $launchedPids) {
+    Kill-ProcessTree -targetProcId $targetProcId
+}
+
+# Попытка 3: Страховочная подчистка по командной строке (если PID изменились)
+$remainingProcs = Get-CimInstance Win32_Process -Filter "Name LIKE 'ARCHICAD%'" -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -like "*$fileName*"
+}
+
+foreach ($proc in $remainingProcs) {
+    Kill-ProcessTree -targetProcId $proc.ProcessId
+}
+
 Write-Host "[SUCCESS] Archicad successfully closed." -ForegroundColor Green
