@@ -76,13 +76,13 @@ namespace TestFunc {
     void TestSyncStringRealRules ();
 
     // Проверяет константы префиксов для парсинга.
-        void TestParsePrefixes ();
+    void TestParsePrefixes ();
 
-        // Проверяет парсинг описания свойства с командами Sync, Renum, Sum, Spec.
-        void TestParsePropertyDescription ();
+    // Проверяет парсинг описания свойства с командами Sync, Renum, Sum, Spec.
+    void TestParsePropertyDescription ();
 
-        // Выводит все встроенные свойства в отладочный журнал.
-        void DumpAllBuiltInProperties ();
+    // Выводит все встроенные свойства в отладочный журнал.
+    void DumpAllBuiltInProperties ();
 
     // Сбрасывает свойства синхронизации для массива элементов.
     void ResetSyncPropertyArray (GS::Array<API_Guid> guidArray);

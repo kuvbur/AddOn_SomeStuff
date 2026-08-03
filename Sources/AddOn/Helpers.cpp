@@ -8965,7 +8965,7 @@ bool ParamHelpers::ComponentsProfileStructure (ProfileVectorImage &profileDescri
                                                double &width,
                                                double &length,
                                                bool &needReadQuantities) {
-#ifndef ServerMainVers_2400
+#ifdef ServerMainVers_2400
     #if defined(TESTING)
     DBprnt ("        ComponentsProfileStructure");
     #endif

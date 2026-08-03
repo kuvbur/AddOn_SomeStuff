@@ -11,9 +11,7 @@
 #   5. Запустить ARCHICAD.exe с файлом PLN и сервисными флагами.
 #   6. Дождаться test_results.txt.
 #   7. Проанализировать результаты тестов.
-#   8. В ЛЮБОМ случае попытаться корректно завершить запущенный Archicad.
-#   9. При необходимости принудительно завершить процесс (tree kill).
-#  10. Проверить, что Archicad действительно завершён.
+#   8. Оставить Archicad открытым для работы/отладки.
 # ==============================================================================
 
 $ErrorActionPreference = "Stop"
@@ -254,7 +252,6 @@ function Stop-TrackedArchicad {
         return $true
     }
 
-
     # 8.3. Force kill
     foreach ($processId in $ProcessIds) {
         if (Test-ProcessExists -ProcessId $processId) {
@@ -424,8 +421,6 @@ $buildSucceeded      = $false
 
 try {
     # CONFIG
-
-
     if (-not (Test-Path -LiteralPath $configPath)) {
         throw "config.json not found: $configPath"
     }
@@ -473,8 +468,6 @@ try {
     Start-Sleep -Seconds $postCloseCleanupPauseSec
 
     # CLEANUP
-
-
     if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
         $runnerExitCode = $EXIT_CLEANUP_FAILED
         throw "Unable to remove Archicad lock file."
@@ -526,8 +519,6 @@ try {
     # ARCHICAD START
     $pidsBefore = @(Get-ArchicadProcessIds)
 
-
-
     # Передаём файл PLN первым аргументом, затем сервисные флаги
     $acArgs = @(
         "`"$filePath`"",
@@ -549,13 +540,10 @@ try {
     $trackedArchicadPids = @($newProcesses | Select-Object -ExpandProperty Id)
     $archicadStarted     = $true
 
-
-
     # TEST WAITING
     Write-Log "Waiting for test_results.txt (timeout ${testResultTimeoutSec}s)..." Cyan
 
     $deadline = (Get-Date).AddSeconds($testResultTimeoutSec)
-    $lastElapsed = -1
 
     while ((Get-Date) -lt $deadline) {
         if (Test-Path -LiteralPath $testResultsPath) {
@@ -567,11 +555,6 @@ try {
         if ($aliveTracked.Count -eq 0) {
             $runnerExitCode = $EXIT_RUNTIME_ERROR
             throw "Tracked Archicad process terminated unexpectedly before test_results.txt was created."
-        }
-
-        $elapsed = [int]((Get-Date).Subtract($deadline.AddSeconds(-$testResultTimeoutSec)).TotalSeconds)
-        if ($elapsed -ne $lastElapsed) {
-            $lastElapsed = $elapsed
         }
 
         Start-Sleep -Seconds $pollIntervalSec
@@ -620,72 +603,6 @@ catch {
 
 
 # ==============================================================================
-# 14. FINALLY / MANDATORY ARCHICAD SHUTDOWN
-# ==============================================================================
-
-if ($archicadStarted -and $trackedArchicadPids.Count -gt 0) {
-    $shutdownOk = Stop-TrackedArchicad -ProcessIds $trackedArchicadPids -Reason "post-test cleanup"
-
-    if (-not $shutdownOk) {
-        Write-Log "CRITICAL: tracked Archicad process could not be terminated." Red
-        $runnerExitCode = $EXIT_AC_SHUTDOWN_FAILED
-    }
-}
-
-
-# ==============================================================================
-# 15. GLOBAL ARCHICAD VERIFICATION
-# ==============================================================================
-
-Start-Sleep -Seconds $postCloseCleanupPauseSec
-$remainingArchicad = @(Get-ArchicadProcesses)
-
-if ($remainingArchicad.Count -gt 0) {
-    Write-Log "CRITICAL: Archicad process(es) remain after shutdown." Red
-
-    foreach ($process in $remainingArchicad) {
-        try {
-            Write-Log "Remaining PID=$($process.Id), Name=$($process.ProcessName), Window='$($process.MainWindowTitle)'" Red
-        }
-        catch {
-            Write-Log "Remaining PID=$($process.Id)" Red
-        }
-    }
-
-    $remainingIds = @($remainingArchicad | Select-Object -ExpandProperty Id)
-    foreach ($processId in $remainingIds) {
-        Stop-ArchicadProcessTree -ProcessId $processId
-    }
-
-    if (-not (Wait-ArchicadProcessesExit -ProcessIds $remainingIds -TimeoutSec $forceCloseTimeoutSec)) {
-        Write-Log "CRITICAL: Archicad is STILL RUNNING after final force kill." Red
-        $runnerExitCode = $EXIT_AC_SHUTDOWN_FAILED
-    }
-}
-
-
-# ==============================================================================
-# 16. FINAL CLEANUP
-# ==============================================================================
-
-if (@(Get-ArchicadProcesses).Count -eq 0) {
-    if (Test-Path -LiteralPath $lckFilePath) {
-        if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
-            Write-Log "WARNING: Archicad lock file could not be removed." Yellow
-            if ($runnerExitCode -eq $EXIT_SUCCESS) {
-                $runnerExitCode = $EXIT_CLEANUP_FAILED
-            }
-        }
-    }
-} else {
-    Write-Log "Skipping lock-file cleanup because Archicad is still running." Red
-    if ($runnerExitCode -eq $EXIT_SUCCESS) {
-        $runnerExitCode = $EXIT_AC_SHUTDOWN_FAILED
-    }
-}
-
-
-# ==============================================================================
 # 17. FINAL STATUS & EXIT
 # ==============================================================================
 
@@ -696,7 +613,7 @@ if ($runnerExitCode -eq $EXIT_SUCCESS) {
     Write-Log "AUTOMATED TEST RUNNER: SUCCESS" Green
     Write-Log "Build:    $buildSucceeded" Green
     Write-Log "Tests:    $testResultStatus" Green
-    Write-Log "Archicad: terminated" Green
+    Write-Log "Archicad: running" Green
     Write-Log "Exit:     0" Green
     Write-Log "==================================================" Green
 } else {
@@ -705,12 +622,7 @@ if ($runnerExitCode -eq $EXIT_SUCCESS) {
     Write-Log "Exit code: $runnerExitCode" Red
     Write-Log "Build:    $buildSucceeded" Red
     Write-Log "Tests:    $testResultStatus" Red
-
-    if (@(Get-ArchicadProcesses).Count -eq 0) {
-        Write-Log "Archicad: terminated" Red
-    } else {
-        Write-Log "Archicad: STILL RUNNING" Red
-    }
+    Write-Log "Archicad: running" Yellow
     Write-Log "==================================================" Red
 }
 
