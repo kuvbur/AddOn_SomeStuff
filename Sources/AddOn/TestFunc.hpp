@@ -66,6 +66,9 @@ namespace TestFunc {
     // Проверяет функцию Name2Rawname - преобразование имени в rawname.
     void TestName2Rawname ();
 
+    // Проверяет функцию Name2Rawname с уже обёрнутыми скобками (временное решение до исправления бага).
+    void TestName2RawnameWithBrackets ();
+
     // Проверяет функцию SyncString - парсинг строки правила синхронизации.
     void TestSyncString ();
 

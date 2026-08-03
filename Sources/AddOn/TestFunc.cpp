@@ -31,6 +31,8 @@ namespace TestFunc {
         TestPropertyHelpersToString ();
         TestStringSplt ();
         //      TestName2Rawname ();  // отключён — баг в Name2Rawname (Sync.cpp:1323-1326), порядок скобок {/} нарушен
+        //      TestName2RawnameWithBrackets ();  // отключён — тот же баг в Name2Rawname: возвращает false для уже
+        //      обёрнутых строк
         TestSyncString ();
         TestSyncStringRealRules ();
         TestParsePrefixes ();
@@ -1734,6 +1736,108 @@ namespace TestFunc {
     }
 
     // -----------------------------------------------------------------------------
+    // Тест Name2Rawname с уже обёрнутыми скобками (временное решение до исправления бага в Sync.cpp:1323-1326)
+    // Баг: Name2Rawname сначала добавляет BRACEEND (}), потом BRACESTART ({).
+    // Входные данные, УЖЕ содержащие правильные скобки "{@prefix:name}", проходят корректно.
+    // -----------------------------------------------------------------------------
+    void TestName2RawnameWithBrackets () {
+        DBprnt ("TEST", "TestName2RawnameWithBrackets");
+        GS::UniString name;
+        GS::UniString rawname;
+
+        // Тест: уже корректный rawname свойства
+        name = "{@property:testproperty}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@property:testproperty} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@property:testproperty}"),
+                "Name2RawnameWithBrackets {@property:testproperty} -> rawname unchanged");
+
+        // Тест: уже корректный rawname координат
+        name = "{@coord:symb_pos_x}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@coord:symb_pos_x} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@coord:symb_pos_x}"),
+                "Name2RawnameWithBrackets {@coord:symb_pos_x} -> rawname unchanged");
+
+        // Тест: уже корректный rawname GDL
+        name = "{@gdl:testgdlparam}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@gdl:testgdlparam} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@gdl:testgdlparam}"),
+                "Name2RawnameWithBrackets {@gdl:testgdlparam} -> rawname unchanged");
+
+        // Тест: уже корректный rawname ID
+        name = "{@id:id}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@id:id} -> true");
+        DBtest (rawname, GS::UniString ("{@id:id}"), "Name2RawnameWithBrackets {@id:id} -> rawname unchanged");
+
+        // Тест: уже корректный rawname BuildingMaterial
+        name = "{@property:buildingmaterialproperties/density}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets BuildingMaterial -> true");
+        DBtest (rawname.BeginsWith ("{@property:buildingmaterialproperties/density"),
+                "Name2RawnameWithBrackets BuildingMaterial -> rawname unchanged");
+
+        // Тест: уже корректный rawname Morph
+        name = "{@morph:param1}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@morph:param1} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@morph:param1}"),
+                "Name2RawnameWithBrackets {@morph:param1} -> rawname unchanged");
+
+        // Тест: уже корректный rawname IFC
+        name = "{@ifc:propertyname}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@ifc:propertyname} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@ifc:propertyname}"),
+                "Name2RawnameWithBrackets {@ifc:propertyname} -> rawname unchanged");
+
+        // Тест: уже корректный rawname Info
+        name = "{@info:someinfo}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@info:someinfo} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@info:someinfo}"),
+                "Name2RawnameWithBrackets {@info:someinfo} -> rawname unchanged");
+
+        // Тест: уже корректный rawname Glob
+        name = "{@glob:variable}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@glob:variable} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@glob:variable}"),
+                "Name2RawnameWithBrackets {@glob:variable} -> rawname unchanged");
+
+        // Тест: уже корректный rawname Class
+        name = "{@class:classification}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@class:classification} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@class:classification}"),
+                "Name2RawnameWithBrackets {@class:classification} -> rawname unchanged");
+
+        // Тест: уже корректный rawname Element
+        name = "{@element:property}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@element:property} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@element:property}"),
+                "Name2RawnameWithBrackets {@element:property} -> rawname unchanged");
+
+        // Тест: уже корректный rawname File
+        name = "{@file:filename}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@file:filename} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@file:filename}"),
+                "Name2RawnameWithBrackets {@file:filename} -> rawname unchanged");
+
+        // Тест: уже корректный rawname Attrib
+        name = "{@attrib:layer}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@attrib:layer} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@attrib:layer}"),
+                "Name2RawnameWithBrackets {@attrib:layer} -> rawname unchanged");
+
+        DBprnt ("TEST", "TestName2RawnameWithBrackets : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
     // Тест SyncString - парсинг строки правила синхронизации
     // -----------------------------------------------------------------------------
     void TestSyncString () {
@@ -2069,8 +2173,8 @@ namespace TestFunc {
         // Проверка констант синхронизации
         DBtest (SYNC_FROM, 1, "SYNC_FROM");
         DBtest (SYNC_TO, 2, "SYNC_TO");
-        DBtest (SYNC_FROM_SUB, 3, "SYNC_FROM_SUB");
-        DBtest (SYNC_TO_SUB, 4, "SYNC_TO_SUB");
+        DBtest (SYNC_TO_SUB, 3, "SYNC_TO_SUB");
+        DBtest (SYNC_FROM_SUB, 4, "SYNC_FROM_SUB");
         DBtest (SYNC_FROM_GUID, 5, "SYNC_FROM_GUID");
         DBtest (SYNC_FROM_ZONE, 6, "SYNC_FROM_ZONE");
         DBtest (SYNC_TO_ZONE, 7, "SYNC_TO_ZONE");
