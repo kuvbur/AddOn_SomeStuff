@@ -321,17 +321,16 @@
 4. Зарегистрировать команду в `SomeStuff_Main.cpp`
 5. Протестировать через Python интерфейс
 
-### Python интерфейс (Часть 1) — СОЗДАН
+### Python интерфейс (Часть 1) — УСТАРЕЛО (не используется)
 
-Создан файл `D:\SomeStuff_addon\python_test_files\property_bridge.py`:
-
+Ранее создавался файл `D:\\SomeStuff_addon\\python_test_files\\property_bridge.py`:
 - HTTP сервер на базе `ThreadingHTTPServer` (по аналогии с `archixml.py`)
 - HTML/JS интерфейс встроен в код
 - Кнопка "Получить свойства" и выпадающий список
 - Вызов к Archicad JSON API через `ac_post()`
-- Инструкции в `D:\SomeStuff_addon\python_test_files\property_bridge_README.md`
+- Инструкции в `D:\\SomeStuff_addon\\python_test_files\\property_bridge_README.md`
 
-**Статус:** Python скрипт готов, синтаксис проверен. Ожидает регистрации команды `GetPropertyDefinitions` в аддоне.
+**Статус:** **Не используется**. Работа ведётся через встроенный HTML интерфейс, подгружаемый напрямую из файловой системы.
 
 ### Полезные пути для поиска
 
@@ -340,14 +339,9 @@
 - `D:\SomeStuff_addon\Sources\AddOn\ReNum.cpp` — логика парсинга Renum
 - `D:\SomeStuff_addon\Sources\AddOn\Constants.hpp` — константы (RENUMFLAG, RENUM и др.)
 - `D:\SomeStuff_addon\wiki\en\Element-Renumbering-en.md` — документация по Renum
-- `D:\SomeStuff_addon\python_test_files\property_bridge.py` — Python интерфейс (НОВОЕ)
-- `D:\SomeStuff_addon\python_test_files\property_bridge_README.md` — инструкции по запуску (НОВОЕ)
-
-### JSON API Команды (новые файлы)
-
-- `D:\SomeStuff_addon\Sources\AddOn\json_commands\CommandBase.cpp` / `.hpp` — базовый класс для JSON команд
-- `D:\SomeStuff_addon\Sources\AddOn\json_commands\GetPropertyDefinitionsCommand.cpp` / `.hpp` — команда получения определений свойств
-- `D:\SomeStuff_addon\Sources\AddOn\json_commands\JsonCommandRegistrar.cpp` / `.hpp` — регистратор JSON команд
+- `D:\SomeStuff_addon\Sources\AddOnResources\RFIX\HTML\Interface_ru.html` — **основной HTML интерфейс** (подгружается напрямую)
+- `D:\SomeStuff_addon\Sources\AddOn\dialogs\BrowserPalette.cpp` — загрузка HTML и регистрация JS объектов
+- `D:\SomeStuff_addon\Sources\AddOn\json_commands\` — реализация JSON команд
 
 ### Файлы примеров кода в `D:\SomeStuff_addon\Code_Example` (включая вложенные папки)
 
@@ -408,16 +402,19 @@
 
 ### Суть задачи
 
-Создать веб-интерфейс (встроенный в C++ через `html_to_hpp.py`) для работы с описаниями свойств аддона SomeStuff. Интерфейс заменяет текущий React-заглушку (`dialogs/index.html`) на рабочий UI с двумя разделами: отслеживание значений свойств и редактор описаний с конструктором команд.
+Создать веб-интерфейс для работы с описаниями свойств аддона SomeStuff. Интерфейс заменяет текущий React-заглушку на рабочий UI с двумя разделами: отслеживание значений свойств и редактор описаний с конструктором команд.
+
+**HTML подгружается напрямую из файла:** `D:\SomeStuff_addon\Sources\AddOnResources\RFIX\HTML\Interface_ru.html` (не через `html_to_hpp.py` и `HTML_Pages.hpp`).
 
 ### Архитектура (существующая, не менять)
 
 | Компонент | Назначение |
 |-----------|------------|
-| `BrowserPalette` (C++) | `DG::Palette` + `DG::Browser`, загружает HTML из `HTML_Pages.hpp` |
+| `BrowserPalette` (C++) | `DG::Palette` + `DG::Browser`, загружает HTML напрямую из файла `D:\SomeStuff_addon\Sources\AddOnResources\RFIX\HTML\Interface_ru.html` через `DG::Browser::LoadURL()` |
 | `RegisterACAPIJavaScriptObject()` | Регистрирует `DG::JSObject("ACAPI")` с функциями для вызова из JS |
-| `html_to_hpp.py` | Конвертирует `index.html` → `HTML_Pages.hpp` (C++11 raw string literal) |
 | JSON Commands | `CommandBase` / `ReadOnlyCommand` / `ModifyCommand` для сложных операций |
+
+**Важно:** Не используется `html_to_hpp.py` и `HTML_Pages.hpp`. HTML загружается напрямую из файловой системы.
 
 ### Требования к интерфейсу
 
@@ -471,7 +468,7 @@
 
 | Файл | Изменение |
 |------|-----------|
-| `dialogs/index.html` | **Полностью переписать** — удалить React/Figma мусор, оставить чистый HTML5 + vanilla JS без CSS |
+| `Sources\AddOnResources\RFIX\HTML\Interface_ru.html` | **Полностью переписать** — удалить React/Figma мусор, оставить чистый HTML5 + vanilla JS без CSS |
 | `dialogs/BrowserPalette.cpp` | Добавить `DG::JSFunction` для `GetPropertyDescription`, `GetPropertyValue`, `ParsePropertyDescription`, `SetPropertyDescription` |
 | `dialogs/BrowserPalette.hpp` | Объявление новых методов |
 
