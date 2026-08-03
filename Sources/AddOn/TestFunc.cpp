@@ -1,9 +1,7 @@
 //------------ kuvbur 2022 ------------
 #ifdef TESTING
-    #include "api_headers/APIEnvir.h"
-
     #include "ACAPinc.h"
-
+    #include "APIEnvir.h"
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "TestFunc.hpp"
@@ -105,7 +103,7 @@ namespace TestFunc {
         short font_inx = 0;
         double width = 0.0;
         API_TextLinePars tlp = {};
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         API_FontType font;
         BNZeroMemory (&font, sizeof (API_FontType));
         font.head.index = 0;
@@ -129,7 +127,7 @@ namespace TestFunc {
         tlp.wFont = font_inx;
         tlp.wSize = fontsize;
         tlp.wSlant = PI / 2.0;
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Element_GetTextLineLength (&tlp, &width);
     #else
         err = ACAPI_Goodies (APIAny_GetTextLineLengthID, &tlp, &width);
@@ -262,7 +260,7 @@ namespace TestFunc {
         DBtest (ParamHelpers::ReadFormula (params, false), "ReadFormula", true);
 
         for (ParamDictValue::PairIterator cIt = params.EnumeratePairs (); cIt != NULL; ++cIt) {
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
             ParamValue &param = cIt->value;
     #else
             ParamValue &param = *cIt->value;
@@ -571,7 +569,7 @@ namespace TestFunc {
         pvalue = ParamValue ();
         attrib = {};
         attrib.header.typeID = API_LayerID;
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         attrib.header.index = ACAPI_CreateAttributeIndex (0);
     #else
         attrib.header.index = 0;
@@ -592,7 +590,7 @@ namespace TestFunc {
         pvalue = ParamValue ();
         attrib = {};
         attrib.header.typeID = API_LayerID;
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         attrib.header.index = ACAPI_CreateAttributeIndex (1);
     #else
         attrib.header.index = 1;
@@ -607,7 +605,7 @@ namespace TestFunc {
         pvalue = ParamValue ();
         attrib = {};
         attrib.header.typeID = API_LayerID;
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         attrib.header.index = ACAPI_CreateAttributeIndex (std::numeric_limits<short>::max ());
     #else
         attrib.header.index = std::numeric_limits<short>::max ();
@@ -627,7 +625,7 @@ namespace TestFunc {
         pvalue.rawName = "{@attrib:custom_rawname}";
         attrib = {};
         attrib.header.typeID = API_LayerID;
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         attrib.header.index = ACAPI_CreateAttributeIndex (5);
     #else
         attrib.header.index = 5;
@@ -660,7 +658,7 @@ namespace TestFunc {
         pvalue.name = "TestIntMin";
         property = {};
         property.isDefault = false;
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -704,7 +702,7 @@ namespace TestFunc {
         pvalue.rawName = "{@property:testreal_zero}";
         pvalue.name = "TestRealZero";
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -740,7 +738,7 @@ namespace TestFunc {
         pvalue.rawName = "{@property:testbool_true}";
         pvalue.name = "TestBoolTrue";
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -767,7 +765,7 @@ namespace TestFunc {
         pvalue.rawName = "{@property:teststr_empty}";
         pvalue.name = "TestStrEmpty";
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -798,7 +796,7 @@ namespace TestFunc {
         pvalue.rawName = "{@property:testundef}";
         pvalue.name = "TestUndefined";
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1373,7 +1371,7 @@ namespace TestFunc {
         API_Property property = {};
         property.definition = definition;
         property.isDefault = false;
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1431,7 +1429,7 @@ namespace TestFunc {
 
         API_Property undefProperty = {};
         undefProperty.definition = undefDefinition;
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         undefProperty.isEvaluated = true;
     #else
         undefProperty.status = API_Property_HasValue;
@@ -1472,7 +1470,7 @@ namespace TestFunc {
         noMatchDefinition.collectionType = API_PropertySingleCollectionType;
         noMatchDefinition.valueType = API_PropertyIntegerValueType;
         noMatchProperty.definition = noMatchDefinition;
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         noMatchProperty.isEvaluated = true;
     #else
         noMatchProperty.status = API_Property_HasValue;
@@ -1501,7 +1499,7 @@ namespace TestFunc {
 
         // ---- Integer: базовое значение ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1515,7 +1513,7 @@ namespace TestFunc {
 
         // ---- Real: базовое значение ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1534,7 +1532,7 @@ namespace TestFunc {
 
         // ---- Boolean: true ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1553,7 +1551,7 @@ namespace TestFunc {
 
         // ---- String: обычное значение ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1572,7 +1570,7 @@ namespace TestFunc {
 
         // ---- List: список Integer ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1597,7 +1595,7 @@ namespace TestFunc {
 
         // ---- List: список String ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_HasValue;
@@ -1618,7 +1616,7 @@ namespace TestFunc {
 
         // ---- NotAvailable / NotEvaluated: должна вернуть пустую строку ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = false;
     #else
         property.status = API_Property_NotAvailable;
@@ -1630,7 +1628,7 @@ namespace TestFunc {
 
         // ---- Default value (isDefault + NotEvaluated) ----
         property = {};
-    #ifndef ServerMainVers_2400
+    #if defined(AC_22) || defined(AC_23)
         property.isEvaluated = true;
     #else
         property.status = API_Property_NotEvaluated;

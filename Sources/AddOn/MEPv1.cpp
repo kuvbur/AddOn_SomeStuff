@@ -1,25 +1,24 @@
 //------------ kuvbur 2022 ------------
-#include "ACAPinc.h"
-#ifdef ServerMainVers_2700
-    #include "api_headers/APIEnvir.h"
-
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
+    #include "ACAPinc.h"
+    #include "APIEnvir.h"
     #include "MEPv1.hpp"
 using namespace ACAPI::MEP;
 
 API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid &routingElemClassID) {
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
     #endif
         return ACAPI::MEP::VentilationRigidSegmentID;
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
     #endif
         return ACAPI::MEP::PipingRigidSegmentID;
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
@@ -30,34 +29,34 @@ API_Guid GetRigidSegmentClassIDFromRoutingElemClassID (const API_Guid &routingEl
 }
 
 API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid &routingElemClassID) {
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
     #endif
-    #ifdef ServerMainVers_2900
+    #if defined(AC_29)
         return ACAPI::MEP::VentilationElbowID;
     #else
         return ACAPI::MEP::VentilationBendID;
     #endif
 
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
     #endif
-    #ifdef ServerMainVers_2900
+    #if defined(AC_29)
         return ACAPI::MEP::PipingElbowID;
     #else
         return ACAPI::MEP::PipingBendID;
     #endif
 
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
     #endif
-    #ifdef ServerMainVers_2900
+    #if defined(AC_29)
         return ACAPI::MEP::CableCarrierElbowID;
     #else
         return ACAPI::MEP::CableCarrierBendID;
@@ -66,21 +65,21 @@ API_Guid GetBendClassIDFromRoutingElemClassID (const API_Guid &routingElemClassI
 }
 
 API_Guid GetTransitionClassIDFromRoutingElemClassID (const API_Guid &routingElemClassID) {
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::VentilationRoutingID)
     #endif
         return ACAPI::MEP::VentilationTransitionID;
 
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::PipingRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::PipingRoutingID)
     #endif
         return ACAPI::MEP::PipingTransitionID;
 
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingElementID)
     #else
     if (routingElemClassID == ACAPI::MEP::CableCarrierRoutingID)
@@ -141,7 +140,7 @@ namespace MEPv1 {
                     z1 = pt.z;
                 }
             }
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
             ACAPI::Result<ACAPI::MEP::UniqueID> tableID_ = element->GetBranchPreferenceTableId ();
             if (tableID_.IsOk ())
                 data.branchTableID = tableID_.Unwrap ();
@@ -170,7 +169,7 @@ namespace MEPv1 {
     }
 
     bool ReadMEP (const API_Elem_Head &elem_head, ParamDictValue &paramByType) {
-    #ifndef ServerMainVers_2800
+    #if !defined(AC_28) && !defined(AC_29)
         return false;
     #else
         return GetMEPData (elem_head, paramByType);
@@ -200,7 +199,7 @@ namespace MEPv1 {
             }
             API_Guid rguid = GSGuid2APIGuid (node.GetGuid ());
             subelemGuid.Push (rguid);
-    #ifdef ServerMainVers_2900
+    #if defined(AC_29)
             std::vector<ACAPI::MEP::UniqueID> bendsIds = routingNode->GetElbowIds ();
     #else
             std::vector<ACAPI::MEP::UniqueID> bendsIds = routingNode->GetBendIds ();
@@ -266,7 +265,7 @@ namespace MEPv1 {
         if (IsTransition (elem_head.type.classID)) {
             return;
         }
-    #ifdef ServerMainVers_2900
+    #if defined(AC_29)
         if (IsElbow (elem_head.type.classID)) {
             ACAPI::Result<Elbow> bendElement = Elbow::Get (Adapter::UniqueID (elemGuid));
     #else
@@ -296,10 +295,10 @@ namespace MEPv1 {
             return;
         }
     }
-    #ifdef ServerMainVers_2800
+    #if defined(AC_28) || defined(AC_29)
     bool GetMEPData (const API_Elem_Head &elem_head, ParamDictValue &paramByType) {
         bool flag = false;
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
         ParamValue pvalue; // Для записи систем
         ParamValue *pval_systname = paramByType.GetPtr (rawnamephysicalsystemname);
         ParamValue *pval_systgroupname = paramByType.GetPtr (rawnamephysicalsystemgroupname);
@@ -428,7 +427,7 @@ namespace MEPv1 {
                     return flag;
                 return flag;
             }
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
             if (IsElbow (elem_head.type.classID)) {
         #else
             if (IsBend (elem_head.type.classID)) {
@@ -477,7 +476,7 @@ namespace MEPv1 {
                     return flag;
                 return flag;
             }
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
             if (IsElbow (elem_head.type.classID)) {
         #else
             if (IsBend (elem_head.type.classID)) {
@@ -619,7 +618,7 @@ namespace MEPv1 {
             ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, "IsBend");
             flag = pval->isValid;
         }
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
         ACAPI::Result<Elbow> element = Elbow::Get (Adapter::UniqueID (guid));
         #else
         ACAPI::Result<Bend> element = Bend::Get (Adapter::UniqueID (guid));
@@ -810,7 +809,7 @@ namespace MEPv1 {
                 flag = pval->isValid;
             }
             if (ParamValue *pval = paramByType.GetPtr (rawnamedescription)) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                 ACAPI::Result<GS::UniString> val = table->GetDescription (refid);
         #else
                 ACAPI::Result<GS::UniString> val = table->GetDescription (refid);
@@ -833,13 +832,13 @@ namespace MEPv1 {
                 ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, table->GetName ());
                 flag = true;
             }
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
             if (table->IsRowValidByKey (refid).IsOk ()) {
         #else
             if (table->IsRowValidByReferenceId (refid).IsOk ()) {
         #endif
                 if (ParamValue *pval = paramByType.GetPtr (rawnamedescription)) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                     ACAPI::Result<GS::UniString> val = table->GetDescriptionByKey (refid);
         #else
                     ACAPI::Result<GS::UniString> val = table->GetDescriptionByReferenceId (refid);
@@ -853,7 +852,7 @@ namespace MEPv1 {
                     }
                 }
                 if (ParamValue *pval = paramByType.GetPtr (rawnamediametr)) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                     ACAPI::Result<double> val = table->GetDiameterByKey (refid);
         #else
                     ACAPI::Result<double> val = table->GetDiameterByReferenceId (refid);
@@ -865,7 +864,7 @@ namespace MEPv1 {
                 }
                 if (ParamValue *pval = paramByType.GetPtr (rawnamewallthickness)) {
                     if (!pval->isValid) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                         ACAPI::Result<double> val = table->GetWallThicknessByKey (refid);
         #else
                         ACAPI::Result<double> val = table->GetWallThicknessByReferenceId (refid);
@@ -897,13 +896,13 @@ namespace MEPv1 {
             ParamHelpers::ConvertStringToParamValue (*pval, EMPTYSTRING, table->GetName ());
             flag = true;
         }
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
         if (table->IsRowValidByKey (refid).IsOk ()) {
         #else
         if (table->IsRowValidByReferenceId (refid).IsOk ()) {
         #endif
             if (ParamValue *pval = paramByType.GetPtr (rawnamedescription)) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                 ACAPI::Result<GS::UniString> val = table->GetDescriptionByKey (refid);
         #else
                 ACAPI::Result<GS::UniString> val = table->GetDescriptionByReferenceId (refid);
@@ -917,7 +916,7 @@ namespace MEPv1 {
                 }
             }
             if (ParamValue *pval = paramByType.GetPtr (rawnamediametr)) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                 ACAPI::Result<double> val = table->GetDiameterByKey (refid);
         #else
                 ACAPI::Result<double> val = table->GetDiameterByReferenceId (refid);
@@ -931,7 +930,7 @@ namespace MEPv1 {
             if (ParamValue *pval = paramByType.GetPtr (rawnamewallthickness)) {
 
                 if (!pval->isValid) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                     ACAPI::Result<double> val = table->GetWallThicknessByKey (refid);
         #else
                     ACAPI::Result<double> val = table->GetWallThicknessByReferenceId (refid);
@@ -964,7 +963,7 @@ namespace MEPv1 {
             flag = true;
         }
         uint32_t refid = 0;
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
         DuctElbowPreferenceTable::Key key;
         #endif
         bool flag_find = false;
@@ -985,7 +984,7 @@ namespace MEPv1 {
                 refid = rf.Unwrap ();
                 flag_find = true;
             }
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
             ACAPI::Result<double> ang = table->GetAngle (i);
             if (ang.IsOk ()) {
                 angval = ang.Unwrap ();
@@ -998,7 +997,7 @@ namespace MEPv1 {
         }
         if (!flag_find)
             return false;
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
         ACAPI::Result<bool> b = table->IsRowValidByKey (key);
         #else
         ACAPI::Result<bool> b = table->IsRowValidByReferenceId (refid);
@@ -1010,7 +1009,7 @@ namespace MEPv1 {
             return false;
         if (ParamValue *pval = paramByType.GetPtr (rawnamedescription)) {
 
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
             ACAPI::Result<GS::UniString> val = table->GetDescriptionByKey (key);
         #else
             ACAPI::Result<GS::UniString> val = table->GetDescriptionByReferenceId (refid);
@@ -1024,7 +1023,7 @@ namespace MEPv1 {
             }
         }
         if (ParamValue *pval = paramByType.GetPtr (rawnamediametr)) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
             ACAPI::Result<double> val = table->GetDiameterByKey (key);
         #else
             ACAPI::Result<double> val = table->GetDiameterByReferenceId (refid);
@@ -1036,7 +1035,7 @@ namespace MEPv1 {
         }
         if (ParamValue *pval = paramByType.GetPtr (rawnamebendradius)) {
             if (!pval->isValid) {
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
                 ACAPI::Result<double> val = table->GetRadiusByKey (key);
         #else
                 ACAPI::Result<double> val = table->GetRadiusByReferenceId (refid);
@@ -1089,7 +1088,7 @@ namespace MEPv1 {
         }
         if (!flag_find)
             return false;
-        #ifndef ServerMainVers_2900
+        #if !defined(AC_29)
         ACAPI::Result<bool> b = table->IsRowValidByReferenceId (refid);
         if (b.IsErr ())
             return false;

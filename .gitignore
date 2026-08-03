@@ -378,8 +378,8 @@ wiki/tools/.env
 0
 compile_flags.txt
 generate_compile_flags.ps1
+IDEA.md
 REVIEW_SomeStuff.md
 /.hermes
 ARCHITECTURE.md
 compile_commands.json
-/Code_Example

@@ -1,12 +1,4 @@
-#include "api_headers/ResourceIds.hpp"
-
-'DATA' ID_ADDON_HTML "Browser Control Html" {
-	"Interface_ru.html"
-}
-
-'DATA' ID_ADDON_HTML_ENG "Browser Control Html" {
-	"Interface_ru.html"
-}
+#include "ResourceIds.hpp"
 
 'STR#' ID_ADDON_INFO "Add-on Name and Description" {
 /* [  1] */		"SomeStuff"
@@ -32,7 +24,6 @@
 /* [  15] */	"Ведомость отделки^E3^ES^EE^ED^EW^EL^32621"
 /* [  16] */	"Построить профиль по линии^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  17] */	"Выровнять выделенные чертежи^E3^ES^EE^ED^EW^EL^S^R^T^32616"
-/* [  18] */	"Show Somestuff Palette^ES^EE^EI^ED^EW^E3^EL"
 }
 
 'STR#' ID_ADDON_PROMT "Strings for the Menu" {
@@ -54,7 +45,6 @@
 /* [  15] */	"Ведомость отделки"
 /* [  16] */	"Построить профиль по линии"
 /* [  17] */	"Выровнять выделенные чертежи"
-/* [  18] */	"Show Somestuff Palette"
 }
 
 'STR#' ID_ADDON_STRINGS "Add-On Strings" {
@@ -164,7 +154,6 @@
 /* [  15] */	"Create finishing elements for the zones^E3^ES^EE^ED^EW^EL^32621"
 /* [  16] */	"Build Profile Along Line^E3^ES^EE^ED^EW^EL^S^R^T^32615"
 /* [  17] */	"Align Selected Drawings by Hotspot^E3^ES^EE^ED^EW^EL^S^R^T^32616"
-/* [  18] */	"Show Somestuff Palette^ES^EE^EI^ED^EW^E3^EL"
 }
 
 'STR#' ID_ADDON_PROMT_ENG "Strings for the Menu" {
@@ -186,7 +175,6 @@
 /* [  15] */	"Create finishing elements for the zones"
 /* [  16] */	"Build Profile Along Line"
 /* [  17] */	"Align Selected Drawings by Hotspot"
-/* [  18] */	"Show Somestuff Palette"
 }
 
 'STR#' ID_ADDON_STRINGS_ENG "Add-On Strings" {
@@ -284,16 +272,6 @@
 2	""							Button_1
 3	""							MultiSelList_0
 4	""							CenterText_0
-}
-
-/* --- Dockable browser palette ----------------------------------------------*/
-
-'GDLG'  32580    Palette | topCaption | close | grow   0   0  450  150  "Somestuff @ADDON_VERSION@ @ADDON_SUBVERSION@"  {
-/* [  1] */ Browser			0   0  450  150
-}
-
-'DLGH'  32580  DLG_32580_Browser_Palette {
-1	"Browser Control"		Browser_0
 }
 
 'GICN' 32500 "Sync" {

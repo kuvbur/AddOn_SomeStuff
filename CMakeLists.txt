@@ -20,7 +20,7 @@ message (STATUS "Archicad Version: ${ACVersion}")
 SetGlobalCompilerDefinitions (${ACVersion})
 
 project (${AC_ADDON_NAME})
-set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set (AddOnSourcesFolder Sources/AddOn)
 set (AddOnResourcesFolder Sources/AddOnResources)
 

@@ -47,8 +47,6 @@ class ResourceCompiler (object):
     def RunResConv(self, platformSign, codepage, inputFilePath, nativeResourceFileExtenion):
         imageResourcesFolder = os.path.join(
             self.resourcesPath, 'RFIX', 'Images')
-        htmlResourcesFolder = os.path.join(
-            self.resourcesPath, 'RFIX', 'HTML')   
         inputFileBaseName = os.path.splitext(
             os.path.split(inputFilePath)[1])[0]
         nativeResourceFilePath = os.path.join(
@@ -62,18 +60,15 @@ class ResourceCompiler (object):
             '-T', platformSign,             # target platform
             '-q', 'utf8', codepage,         # code page conversion
             '-w', '2',                      # HiDPI image size list
-            '-p', ";".join([imageResourcesFolder, htmlResourcesFolder]),     # image search path
+            '-p', imageResourcesFolder,     # image search path
             '-i', inputFilePath,            # input path
             '-o', nativeResourceFilePath    # output path
         ]
         if devkit_main_version >= 29:
              call_params.extend (['-py', sys.executable])        # python executable
              call_params.extend (['-sc', colorChangeScriptPath]) # SVG color change script path for generating Dark Mode icons
-        completed_process = subprocess.run(call_params, capture_output=True, text=True)
-        if completed_process.returncode != 0:
-            print(f"Ошибка выполнения: {completed_process.stderr}")
-            print (inputFileBaseName)
-            print (nativeResourceFilePath)
+        result = subprocess.call (call_params)
+        if result != 0:
             return False
         return True
 

@@ -2,8 +2,7 @@
 #pragma once
 #ifndef MEPV1_HPP
     #define MEPV1_HPP
-    #include "ACAPinc.h"
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         #include "ACAPI/MEPAdapter.hpp"
         #include "ACAPI/MEPElement.hpp"
         #include "ACAPI/MEPModifiableElement.hpp"
@@ -23,7 +22,7 @@
         #include "Definitions.hpp"
         #include "Helpers.hpp"
         #include "Propertycache.hpp"
-        #ifdef ServerMainVers_2900
+        #if defined(AC_29)
             #include "ACAPI/MEPElbow.hpp"
             #include "ACAPI/MEPElbowDefault.hpp"
             #include "ACAPI/MEPPhysicalSystem.hpp"
@@ -44,13 +43,13 @@
         #include "ACAPI/MEPUniqueID.hpp"
         #include "GSUnID.hpp"
 
-        #ifdef ServerMainVers_2700
+        #if defined(AC_27)
             #include "ACAPI/MEPCableCarrierPreferenceTableContainer.hpp"
             #include "ACAPI/MEPDuctPreferenceTableContainer.hpp"
             #include "ACAPI/MEPPipePreferenceTableContainer.hpp"
             #include "ACAPI/MEPPreferenceTableBase.hpp"
         #endif
-        #ifdef ServerMainVers_2800
+        #if defined(AC_28) || defined(AC_29)
             #include "ACAPI/MEPCableCarrierSegmentPreferenceTable.hpp"
             #include "ACAPI/MEPCableCarrierSegmentPreferenceTableContainer.hpp"
             #include "ACAPI/MEPDuctBranchPreferenceTable.hpp"
@@ -78,7 +77,6 @@
             #include <ACAPI/MEPEnums.hpp>
         #endif
 
-// Подсистема чтения и обработки данных MEP для Archicad 27+.
 namespace MEPv1 {
 
     static const GS::UniString rawnamephysicalsystemname = "{@mep:physical system name}";
@@ -99,18 +97,13 @@ namespace MEPv1 {
     static const GS::UniString rawnameelementsetname = "{@mep:element set name}";
     static const GS::UniString rawnamediametr = "{@mep:diametr}";
 
-    // Собирает подэлементы маршрутизации для заданного элемента MEP.
     void GetSubElementOfRouting (const API_Guid &elemGuid, GS::Array<API_Guid> &subelemGuid);
-
-    // Собирает все дочерние элементы, связанные с MEP-объектом.
     void GetSubElement (const API_Guid &elemGuid, GS::Array<API_Guid> &subelemGuid);
 
-    // Читает свойства MEP из заголовка элемента и сохраняет их в словарь параметров.
     bool ReadMEP (const API_Elem_Head &elem_head, ParamDictValue &paramByType);
 
-    // Очищает кэш подэлементов, чтобы повторно построить связи по свежим данным.
     void ClearRoutingSubelemCache ();
-        #ifdef ServerMainVers_2800
+        #if defined(AC_28) || defined(AC_29)
     bool GetMEPData (const API_Elem_Head &elem_head, ParamDictValue &paramByType);
     bool ReadTransitionData (const API_Guid &guid,
                              bool &flag,

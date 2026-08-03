@@ -1,6 +1,5 @@
 //------------ kuvbur 2026 ------------
 #include "ACAPinc.h"
-
 #include "CommonFunction.hpp"
 #include "File.hpp"
 #include "Helpers.hpp"
@@ -24,7 +23,7 @@ namespace ParamHelpers {
         // Поиск файла
         GS::ucscpy (settingsText.file_UName,
                     fileName.ToUStr (0, GS::Min (fileName.GetLength (), (USize)API_UniLongNameLen)).Get ());
-#ifdef ServerMainVers_2700
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_LibraryPart_Search (&settingsText, false, false);
 #else
         err = ACAPI_LibPart_Search (&settingsText, false, false);
@@ -106,7 +105,7 @@ namespace ParamHelpers {
         return cache.isAttribute_OK;
     }
 
-#ifdef ServerMainVers_2900
+#if defined(AC_29)
     bool isMEPRead () {
         auto &cache = PROPERTYCACHE ();
         if (!cache.isMEPRead_full)
@@ -118,7 +117,7 @@ namespace ParamHelpers {
     GS::UniString GetLayerFromCache (const API_AttributeIndex &layerinx) {
         auto &cache = PROPERTYCACHE ();
         if (cache.isAttributeRead && cache.isAttribute_OK) {
-#ifdef ServerMainVers_2700
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
             GS::UniString rawName = "layer_inx_" + GS::UniString::Printf ("%d", layerinx.ToInt32_Deprecated ());
 #else
             GS::UniString rawName = "layer_inx_" + GS::UniString::Printf ("%d", layerinx);
@@ -333,7 +332,7 @@ namespace ParamHelpers {
         }
     }
 
-#ifdef ServerMainVers_2900
+#if defined(AC_29)
     bool GetMEPSystemGroup (MEPDicts &mepdict) {
         const ACAPI::Result<std::vector<ACAPI::MEP::UniqueID>> systemGroupIDs{ACAPI::MEP::GetSystemGroupIDs ()};
         if (systemGroupIDs.IsErr ())
@@ -365,7 +364,7 @@ namespace ParamHelpers {
     // Получение списка глобальных переменных о местоположении проекта, солнца
     // --------------------------------------------------------------------
     bool GetGeoLocationToParamDict (ParamDictValue &propertyParams) {
-#ifndef ServerMainVers_2500
+#if defined(AC_22) || defined(AC_23) || defined(AC_24)
         return false;
 #else
     #if defined(TESTING)
@@ -376,7 +375,7 @@ namespace ParamHelpers {
         ParamValue pvalue = {};
         GSErrCode err = NoError;
         API_GeoLocation apiGeoLocation = {};
-    #ifdef ServerMainVers_2700
+    #if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_GeoLocation_GetGeoLocation (&apiGeoLocation);
     #else
         err = ACAPI_Environment (APIEnv_GetGeoLocationID, &apiGeoLocation);
@@ -475,7 +474,7 @@ namespace ParamHelpers {
         ParamValue pvalue = {};
         API_PlaceInfo placeInfo = {};
         GSErrCode err = NoError;
-#ifdef ServerMainVers_2700
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_GeoLocation_GetPlaceSets (&placeInfo);
 #else
         err = ACAPI_Environment (APIEnv_GetPlaceSetsID, &placeInfo, nullptr);
@@ -552,7 +551,7 @@ namespace ParamHelpers {
         API_Coord3D locOrigin = {};
         API_Coord offset = {};
         GSErrCode err = NoError;
-#ifdef ServerMainVers_2700
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_Database_GetLocOrigo (&locOrigin);
 #else
         err = ACAPI_Database (APIDb_GetLocOrigoID, &locOrigin);
@@ -561,7 +560,7 @@ namespace ParamHelpers {
             msg_rep ("GetLocOriginToParamDict", "APIDb_GetLocOrigoID", err, APINULLGuid);
             return false;
         }
-#ifdef ServerMainVers_2700
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_ProjectSetting_GetOffset (&offset);
 #else
         err = ACAPI_Database (APIDb_GetOffsetID, &offset);
@@ -624,7 +623,7 @@ namespace ParamHelpers {
         GS::Array<GS::ArrayFB<GS::UniString, 3>> autotexts = {};
         API_AutotextType type = APIAutoText_Custom;
         GSErrCode err = NoError;
-#ifdef ServerMainVers_2700
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
         err = ACAPI_AutoText_GetAutoTexts (&autotexts, type);
 #else
         err = ACAPI_Goodies (APIAny_GetAutoTextsID, &autotexts, (void *)(GS::IntPtr)type);
@@ -681,7 +680,7 @@ namespace ParamHelpers {
                 propertyParams.Add (pvalue.rawName, pvalue);
                 pvalue.name = EMPTYSTRING;
                 pvalue.rawName = EMPTYSTRING;
-#ifdef ServerMainVers_2700
+#if defined(AC_27) || defined(AC_28) || defined(AC_29)
                 rawName = "layer_inx_" + GS::UniString::Printf ("%d", attrib.header.index.ToInt32_Deprecated ());
 #else
                 rawName = "layer_inx_" + GS::UniString::Printf ("%d", attrib.header.index);
@@ -719,13 +718,13 @@ namespace ParamHelpers {
         // Созданим словарь с определением всех свойств
         GS::Array<API_PropertyDefinition> definitions = {};
         for (const auto &cIt : cache.propertygroups) {
-#ifdef ServerMainVers_2800
+#if defined(AC_28) || defined(AC_29)
             const API_PropertyGroup &group = cIt.value;
 #else
             const API_PropertyGroup &group = *cIt.value;
 #endif
             bool filter = true;
-#ifdef ServerMainVers_2800
+#if defined(AC_28) || defined(AC_29)
             GS::UniString strguid = APIGuidToString (group.guid);
             filter = (strguid.IsEqual ("3CF63E55-AA52-4AB4-B1C3-0920B2F352BF") ||
                       strguid.IsEqual ("6EE946D2-E840-4909-8EF1-F016AE905C52") ||
@@ -786,7 +785,7 @@ namespace ParamHelpers {
                 flag_add = true;
                 continue;
             }
-#ifdef ServerMainVers_2800
+#if defined(AC_28) || defined(AC_29)
             name = GetPropertyNameByGUID (definision.guid);
             if (name.IsEmpty ()) {
                 name = group.name;
@@ -869,7 +868,7 @@ GS::UniString CountUnreadGDLParams () {
         return out;
     for (GS::HashTable<Int32, ParamDict>::PairIterator cIt = cache.unreadedgdlparams.EnumeratePairs (); cIt != NULL;
          ++cIt) {
-#ifdef ServerMainVers_2800
+#if defined(AC_28) || defined(AC_29)
         ParamDict &param = cIt->value;
 #else
         ParamDict &param = *cIt->value;
@@ -928,7 +927,7 @@ GSErrCode GetPropertyFullName (const API_PropertyDefinition &definision, GS::Uni
     if (definision.name.Contains ("ync_name")) {
         name = definision.name;
     } else {
-#ifdef ServerMainVers_2800
+#if defined(AC_28) || defined(AC_29)
         name = GetPropertyNameByGUID (definision.guid);
         if (!name.IsEmpty ()) {
             if (definision.name.Contains (CharENTER)) {
