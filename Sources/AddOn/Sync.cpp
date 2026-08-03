@@ -62,7 +62,7 @@ bool IsElementThrottled (const API_Guid &guid) {
 // Подключение мониторинга
 // -----------------------------------------------------------------------------
 void MonAll (SyncSettings &syncSettings) {
-    if (!syncSettings.GetSyncMon())
+    if (!syncSettings.GetSyncMon ())
         return;
 #if defined(TESTING)
     DBprnt ("MonAll start");
@@ -140,7 +140,7 @@ bool MonByType (const API_ElemTypeID &elementType, const SyncSettings &syncSetti
             return false;
 #endif
         // Получаем список связанных элементов
-        if (!syncSettings.GetCwallS())
+        if (!syncSettings.GetCwallS ())
             continue;
         subelemGuids.Clear ();
         GetRelationsElement (guid, elementType, syncSettings, subelemGuids, true, true);
@@ -183,7 +183,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
     start = clock ();
     int dummymode = IsDummyModeOn ();
     UnicGuid syncedelem = {};
-    if (!flag_chanel && syncSettings.GetObjS()) {
+    if (!flag_chanel && syncSettings.GetObjS ()) {
         static const API_ElemTypeID objTypes[] = {
             API_ObjectID, API_LampID, API_StairID, API_RiserID, API_TreadID, API_StairStructureID, API_ZoneID};
         for (const auto &type : objTypes) {
@@ -194,7 +194,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
                 break;
         }
     }
-    if (!flag_chanel && syncSettings.GetWallS()) {
+    if (!flag_chanel && syncSettings.GetWallS ()) {
         static const API_ElemTypeID wallTypes[] = {
             API_WallID, API_SlabID, API_ColumnID, API_BeamID, API_RoofID, API_ShellID, API_MorphID};
         for (const auto &type : wallTypes) {
@@ -205,7 +205,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
                 break;
         }
     }
-    if (!flag_chanel && syncSettings.GetWidoS()) {
+    if (!flag_chanel && syncSettings.GetWidoS ()) {
         static const API_ElemTypeID widoTypes[] = {API_WindowID, API_DoorID, API_SkylightID};
         for (const auto &type : widoTypes) {
             nPhase = nPhase + 1;
@@ -215,7 +215,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
                 break;
         }
     }
-    if (!flag_chanel && syncSettings.GetCwallS()) {
+    if (!flag_chanel && syncSettings.GetCwallS ()) {
         static const API_ElemTypeID cwallTypes[] = {API_RailingID, API_CurtainWallID};
         for (const auto &type : cwallTypes) {
             nPhase = nPhase + 1;
@@ -228,7 +228,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
     if (!flag_chanel && PROPERTYCACHE ().hasDimAutotext)
         flag_chanel = SyncByType (API_DimensionID, syncSettings, nPhase, paramToWrite, dummymode, syncedelem);
 #ifdef ServerMainVers_2800
-    if (!flag_chanel && syncSettings.GetObjS())
+    if (!flag_chanel && syncSettings.GetObjS ())
         flag_chanel = SyncByType (API_ExternalElemID, syncSettings, nPhase, paramToWrite, dummymode, syncedelem);
 #endif
     finish = clock ();
@@ -479,7 +479,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
             return rereadelem;
         }
         // Если включён мониторинг - привязываем элемент к отслеживанию
-        if (syncSettings.GetSyncMon())
+        if (syncSettings.GetSyncMon ())
             AttachObserver (guidArray[i], syncSettings);
     }
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
@@ -629,7 +629,7 @@ bool SyncRelationsElement (const API_ElemTypeID &elementType, const SyncSettings
     switch (elementType) {
     case API_WindowID:
     case API_DoorID:
-        if (syncSettings.GetWidoS())
+        if (syncSettings.GetWidoS ())
             flag_sync = true;
         break;
     case API_CurtainWallSegmentID:
@@ -638,11 +638,11 @@ bool SyncRelationsElement (const API_ElemTypeID &elementType, const SyncSettings
     case API_CurtainWallAccessoryID:
     case API_CurtainWallPanelID:
     case API_CurtainWallID:
-        if (syncSettings.GetCwallS())
+        if (syncSettings.GetCwallS ())
             flag_sync = true;
         break;
     default:
-        if (syncSettings.GetWallS())
+        if (syncSettings.GetWallS ())
             flag_sync = true;
         break;
     }
@@ -1122,8 +1122,8 @@ bool ParseSyncString (const API_Guid &elemGuid,
     for (auto &rulestring_one : rulestring) {
         ParamValue param;
         SyncMode syncdirection = SYNC_NO; // Направление синхронизации
-        GS::UniString rawparamName = ""; // Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
-        SkipValues ignorevals = {};      // Игнорируемые значения
+        GS::UniString rawparamName = "";  // Имя параметра/свойства с указанием типа синхронизации, для ключа словаря
+        SkipValues ignorevals = {};       // Игнорируемые значения
         FormatString stringformat = {};
         API_Guid elemGuidfrom = elemGuid;              // Элемент, из которого читаем данные
         API_Guid elemGuidto = elemGuid;                // Элемент, в котороый записываем данные
@@ -1467,17 +1467,18 @@ bool SyncString (const API_ElemTypeID &elementType,
     syncdirection = SYNC_NO;
     // Выбор направления синхронизации
     // Копировать в субэлементы или из субэлементов
-    if (rulestring_one.Contains (SYNCFROMSTRING)) {
-        syncdirection = SYNC_FROM;
+    // Сначала проверяем более длинные префиксы, чтобы from_sub не попадал в from
+    if (rulestring_one.Contains (SYNCFROMSUBSTRING)) {
+        syncdirection = SYNC_FROM_SUB;
     } else {
-        if (rulestring_one.Contains (SYNCTOSTRING)) {
-            syncdirection = SYNC_TO;
+        if (rulestring_one.Contains (SYNCTOSUBSTRING)) {
+            syncdirection = SYNC_TO_SUB;
         } else {
-            if (rulestring_one.Contains (SYNCFROMSUBSTRING)) {
-                syncdirection = SYNC_FROM_SUB;
+            if (rulestring_one.Contains (SYNCFROMSTRING)) {
+                syncdirection = SYNC_FROM;
             } else {
-                if (rulestring_one.Contains (SYNCTOSUBSTRING))
-                    syncdirection = SYNC_TO_SUB;
+                if (rulestring_one.Contains (SYNCTOSTRING))
+                    syncdirection = SYNC_TO;
             }
         }
     }
@@ -1897,9 +1898,6 @@ bool SyncString (const API_ElemTypeID &elementType,
         if (elementType != API_MorphID)
             synctypefind = false;
     }
-
-    if (syncdirection == SYNC_FROM_SUB && elementType == API_ObjectID)
-        synctypefind = false;
 
     // Проверка включенных флагов
     if (!syncall) {
