@@ -18,6 +18,7 @@ Sources/AddOn/                # .cpp / .h sources (core + modules)  ← ALL SOUR
   third_party/                # Embedded third-party libs (exprtk, alphanum, qrcodegen)
 Sources/AddOnResources/       # Resources (RFIX, RINT, platform-specific)
   RFIX/AddOnFix.grc           # Fixed resource definitions
+  RFIX/HTML/Interface_ru.html # **HTML UI для BrowserPalette (подгружается напрямую)**
   RFIX/Images/*.svg           # Menu icons (18×18)
   RINT/AddOn.grc              # Generated from AddOn.grc.in (do NOT edit manually)
   RFIX.win/*.rc2              # Windows resource scripts
@@ -37,9 +38,36 @@ wiki/                         # Docs, images, example files
 > **⚠️ IMPORTANT**: All C++ source files (`.cpp` / `.h`) are located in `D:\\SomeStuff_addon\\Sources\\AddOn\\`.  
 > Always search/read there — NOT in the repo root or other folders.
 
-## C++ Code Navigation & Context Rules
+---
 
-### Primary Navigation Flow
+## HTML UI Interface (BrowserPalette)
+
+**Architecture:**
+- `BrowserPalette` (C++) — `DG::Palette` + `DG::Browser`
+- HTML загружается **напрямую из файла**: `Sources/AddOnResources/RFIX/HTML/Interface_ru.html` через `DG::Browser::LoadURL()`
+- Регистрирует `DG::JSObject("ACAPI")` с функциями для вызова из JS
+
+**Важно:** НЕ используются:
+- `html_to_hpp.py` — конвертер HTML → C++ raw string literal
+- `HTML_Pages.hpp` — сгенерированный заголовочный файл
+
+**Ключевые файлы:**
+| Файл | Назначение |
+|------|------------|
+| `Sources/AddOnResources/RFIX/HTML/Interface_ru.html` | Основной HTML интерфейс (vanilla JS, без CSS файлов) |
+| `Sources/AddOn/dialogs/BrowserPalette.cpp` | Загрузка HTML, регистрация `ACAPI` JS объекта |
+| `Sources/AddOn/dialogs/BrowserPalette.hpp` | Объявления методов |
+
+**JS функции в `ACAPI` объект:**
+- `ACAPI.GetPropertyDefinitions()` — возвращает массив свойств из `PROPERTYCACHE()`
+- `ACAPI.GetPropertyDescription(name)` — описание свойства из кэша
+- `ACAPI.GetPropertyValue(name)` — значение свойства для выделенного элемента
+- `ACAPI.ParsePropertyDescription(desc)` — парсинг описания (Renum/Sync/Spec)
+- `ACAPI.SetPropertyDescription(name, desc)` — запись описания свойства
+
+---
+
+## C++ Code Navigation & Context Rules
 
 When looking for function definitions, classes, symbols, or architectural context in C++, you MUST follow this strict priority order:
 
