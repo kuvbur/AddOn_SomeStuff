@@ -1,11 +1,20 @@
 ﻿# ==============================================================================
-# ПУТИ И НАСТРОЙКИ
-# Скрипт и BuildAddOn.py находятся в папке \Tools
+# НАСТРОЙКИ ПАУЗ И ТАЙМ-АУТОВ (в секундах)
+# ==============================================================================
+$processCloseTimeoutSec      = 15  # Время ожидания мягкого закрытия Archicad (сек)
+$postCloseCleanupPauseSec    = 15  # Пауза после закрытия перед очисткой и сборкой (сек)
+$initialLaunchWaitSec        = 10   # Пауза сразу после запуска Archicad перед проверкой процесса (сек)
+$testResultTimeoutSec        = 20  # Дополнительный таймаут ожидания создания test_results.txt (сек)
+$testResultCheckIntervalSec = 2   # Интервал проверки появления файла test_results.txt (сек)
+
+# ==============================================================================
+# ПУТИ И КОНФИГУРАЦИЯ
 # ==============================================================================
 $scriptDir       = $PSScriptRoot
 $projectRoot     = Split-Path -Parent $scriptDir
 $configPath      = Join-Path -Path $projectRoot -ChildPath "config.json"
 $buildScriptPath = Join-Path -Path $scriptDir -ChildPath "BuildAddOn.py"
+$testResultsPath = Join-Path -Path $projectRoot -ChildPath "test_results.txt"
 
 # Считываем путь к тестовому файлу из config.json
 if (Test-Path -Path $configPath) {
@@ -22,7 +31,7 @@ $lckFilePath = "$filePath.lck"
 $fileName    = [System.IO.Path]::GetFileNameWithoutExtension($filePath)
 
 # ==============================================================================
-# 1. ПОИСК И ЗАКРЫТИЕ ЗАПУЩЕННОГО ARCHICAD
+# 1. ПОИСК И ЗАКРЫТИЕ ПРЕДЫДУЩЕГО ARCHICAD
 # ==============================================================================
 $runningProcesses = Get-Process -Name "ARCHICAD*" -ErrorAction SilentlyContinue | Where-Object {
     $procId = $_.Id
@@ -36,24 +45,30 @@ if ($runningProcesses) {
     foreach ($proc in $runningProcesses) {
         $null = $proc.CloseMainWindow()
         
-        if (-not $proc.WaitForExit(10000)) {
+        # Переводим секунды в миллисекунды для WaitForExit
+        if (-not $proc.WaitForExit($processCloseTimeoutSec * 1000)) {
             Write-Host "Process did not respond in time. Force stopping..." -ForegroundColor Red
             Stop-Process -Id $proc.Id -Force
         }
     }
     
-    Write-Host "Waiting 10 seconds before cleaning up..." -ForegroundColor Cyan
-    Start-Sleep -Seconds 10
+    Write-Host "Waiting $postCloseCleanupPauseSec seconds before cleaning up..." -ForegroundColor Cyan
+    Start-Sleep -Seconds $postCloseCleanupPauseSec
 } else {
     Write-Host "Archicad with '$fileName' is not running." -ForegroundColor Cyan
 }
 
 # ==============================================================================
-# 2. УДАЛЕНИЕ .LCK ФАЙЛА
+# 2. УДАЛЕНИЕ ВРЕМЕННЫХ ФАЙЛОВ (.LCK и test_results.txt)
 # ==============================================================================
 if (Test-Path -Path $lckFilePath) {
     Write-Host "Removing lock file: $lckFilePath" -ForegroundColor Yellow
     Remove-Item -Path $lckFilePath -Force -ErrorAction SilentlyContinue
+}
+
+if (Test-Path -Path $testResultsPath) {
+    Write-Host "Removing old test results: $testResultsPath" -ForegroundColor Yellow
+    Remove-Item -Path $testResultsPath -Force -ErrorAction SilentlyContinue
 }
 
 # ==============================================================================
@@ -65,8 +80,7 @@ Write-Host "Starting build via Tools\BuildAddOn.py..." -ForegroundColor Cyan
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding           = [System.Text.Encoding]::UTF8
 $env:PYTHONIOENCODING     = "utf-8"
-
-$env:VSLANG = "1033"
+$env:VSLANG               = "1033"
 
 $previousLocation = Get-Location
 Set-Location -Path $projectRoot
@@ -95,3 +109,55 @@ Write-Host "`n[SUCCESS] Build completed successfully." -ForegroundColor Green
 # ==============================================================================
 Write-Host "Starting $filePath..." -ForegroundColor Green
 Start-Process -FilePath $filePath
+
+# ==============================================================================
+# 5. ПРОВЕРКА ЗАПУСКА, ОЖИДАНИЕ ТЕСТОВ И ЗАКРЫТИЕ ARCHICAD
+# ==============================================================================
+Write-Host "Waiting $initialLaunchWaitSec seconds for Archicad process to start..." -ForegroundColor Cyan
+Start-Sleep -Seconds $initialLaunchWaitSec
+
+# Проверяем, появился ли процесс Archicad
+$checkLaunched = Get-Process -Name "ARCHICAD*" -ErrorAction SilentlyContinue | Where-Object {
+    $procId = $_.Id
+    $cmdLine = (Get-CimInstance Win32_Process -Filter "ProcessId = $procId").CommandLine
+    return ($cmdLine -like "*$fileName*") -or ($_.MainWindowTitle -like "*$fileName*")
+}
+
+if (-not $checkLaunched) {
+    Write-Host "`n[ERROR] Failed to verify Archicad startup. Process with '$fileName' was not found!" -ForegroundColor Red
+    exit 1
+}
+
+$pidList = ($checkLaunched | Select-Object -ExpandProperty Id) -join ", "
+Write-Host "[SUCCESS] Archicad process verified (PID: $pidList)." -ForegroundColor Green
+
+# Ожидание создания файла test_results.txt
+Write-Host "Waiting for test_results.txt (Timeout: ${testResultTimeoutSec}s)..." -ForegroundColor Cyan
+$elapsed = 0
+
+while (-not (Test-Path -Path $testResultsPath) -and ($elapsed -lt $testResultTimeoutSec)) {
+    Start-Sleep -Seconds $testResultCheckIntervalSec
+    $elapsed += $testResultCheckIntervalSec
+    Write-Host "Still waiting for test_results.txt (${elapsed}/${testResultTimeoutSec}s)..." -ForegroundColor Gray
+}
+
+# Вывод результатов
+if (Test-Path -Path $testResultsPath) {
+    Write-Host "`n------------------- TEST RESULTS -------------------" -ForegroundColor Cyan
+    Get-Content -Path $testResultsPath -Encoding UTF8 | ForEach-Object { Write-Host $_ }
+    Write-Host "----------------------------------------------------`n" -ForegroundColor Cyan
+} else {
+    Write-Host "`n[WARNING] Timeout reached (${testResultTimeoutSec}s)! test_results.txt was not created." -ForegroundColor Yellow
+}
+
+# Закрытие запущенного процесса Archicad
+Write-Host "Closing launched Archicad process..." -ForegroundColor Yellow
+foreach ($proc in $checkLaunched) {
+    $null = $proc.CloseMainWindow()
+    
+    if (-not $proc.WaitForExit($processCloseTimeoutSec * 1000)) {
+        Write-Host "Process did not close in time. Force stopping..." -ForegroundColor Red
+        Stop-Process -Id $proc.Id -Force
+    }
+}
+Write-Host "[SUCCESS] Archicad successfully closed." -ForegroundColor Green
