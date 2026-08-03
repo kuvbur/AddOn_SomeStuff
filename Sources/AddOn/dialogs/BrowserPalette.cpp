@@ -7,6 +7,7 @@
 #include "dialogs/BrowserPalette.hpp"
 
 #include "CommonFunction.hpp"
+#include "dialogs/CommandHelpers.hpp"
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
 #include "Sync.hpp"
@@ -192,6 +193,118 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             commandsArray->AddItem (cmdObj);
         }
         result->AddItem ("commands", commandsArray);
+
+        return result;
+    }));
+
+    // Регистрируем функцию для парсинга описания свойства с привязкой к элементу
+    jsACAPI->AddItem (new DG::JSFunction ("ParsePropertyForElement", [] (GS::Ref<DG::JSBase> args) {
+        // args[0] = description string, args[1] = elemGuid string
+        if (args == nullptr) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error",
+                               new DG::JSValue ("Invalid arguments: expected array with [description, elemGuid]"));
+            return errorObj;
+        }
+
+        // Проверяем, что args - это JSArray
+        GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
+        if (argsArray == nullptr) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("First argument must be an array"));
+            return errorObj;
+        }
+
+        const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
+        if (argsItems.GetSize () < 2) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("Missing arguments: expected [description, elemGuid]"));
+            return errorObj;
+        }
+
+        // Получаем строку описания
+        GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+        if (descValue == nullptr) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("First argument must be a string (description)"));
+            return errorObj;
+        }
+
+        // Получаем GUID элемента
+        GS::Ref<DG::JSValue> guidValue = GS::DynamicCast<DG::JSValue> (argsItems[1]);
+        if (guidValue == nullptr) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("Second argument must be a string (elemGuid)"));
+            return errorObj;
+        }
+
+        GS::UniString description = descValue->GetString ();
+        GS::UniString elemGuidStr = guidValue->GetString ();
+        API_Guid elemGuid = APIGuidFromString (elemGuidStr.ToCStr (0, MaxUSize, GChCode));
+
+        if (elemGuid == APINULLGuid) {
+            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+            errorObj->AddItem ("ok", new DG::JSValue (false));
+            errorObj->AddItem ("error", new DG::JSValue ("Invalid GUID format"));
+            return errorObj;
+        }
+
+        // Парсим описание через новую функцию
+        ParsePropertyResult parseResult = ParsePropertyDescriptionToRules (description);
+
+        // Формируем результат
+        GS::Ref<DG::JSObject> result = new DG::JSObject ();
+        result->AddItem ("ok", new DG::JSValue (true));
+        result->AddItem ("hasSyncRules", new DG::JSValue (parseResult.hasSyncRules));
+        result->AddItem ("hasOtherCommands", new DG::JSValue (parseResult.hasOtherCommands));
+        result->AddItem ("remainingText", new DG::JSValue (parseResult.remainingText.ToCStr ().Get ()));
+
+        // syncRules массив
+        GS::Ref<DG::JSArray> syncRulesArray = new DG::JSArray ();
+        for (const auto &rule : parseResult.syncRules) {
+            GS::Ref<DG::JSObject> ruleObj = new DG::JSObject ();
+            ruleObj->AddItem ("commandType", new DG::JSValue (rule.commandType.ToCStr ().Get ()));
+            ruleObj->AddItem ("fullCommand", new DG::JSValue (rule.fullCommand.ToCStr ().Get ()));
+            ruleObj->AddItem ("parameters", new DG::JSValue (rule.parameters.ToCStr ().Get ()));
+            ruleObj->AddItem ("sourceType", new DG::JSValue (rule.sourceType.ToCStr ().Get ()));
+            ruleObj->AddItem ("sourceName", new DG::JSValue (rule.sourceName.ToCStr ().Get ()));
+            ruleObj->AddItem ("targetType", new DG::JSValue (rule.targetType.ToCStr ().Get ()));
+            ruleObj->AddItem ("targetName", new DG::JSValue (rule.targetName.ToCStr ().Get ()));
+            ruleObj->AddItem ("formatString", new DG::JSValue (rule.formatString.ToCStr ().Get ()));
+            ruleObj->AddItem ("isValid", new DG::JSValue (rule.isValid));
+            ruleObj->AddItem ("errorMessage", new DG::JSValue (rule.errorMessage.ToCStr ().Get ()));
+            ruleObj->AddItem ("hasSub", new DG::JSValue (rule.hasSub));
+            ruleObj->AddItem ("hasGUID", new DG::JSValue (rule.hasGUID));
+            ruleObj->AddItem ("guidSourceProperty", new DG::JSValue (rule.guidSourceProperty.ToCStr ().Get ()));
+
+            // ignoreVals
+            GS::Ref<DG::JSArray> ignoreValsArray = new DG::JSArray ();
+            for (const auto &iv : rule.ignoreVals) {
+                ignoreValsArray->AddItem (new DG::JSValue (iv.ToCStr ().Get ()));
+            }
+            ruleObj->AddItem ("ignoreVals", ignoreValsArray);
+
+            syncRulesArray->AddItem (ruleObj);
+        }
+        result->AddItem ("syncRules", syncRulesArray);
+
+        // otherCommands массив
+        GS::Ref<DG::JSArray> otherCommandsArray = new DG::JSArray ();
+        for (const auto &cmd : parseResult.otherCommands) {
+            GS::Ref<DG::JSObject> cmdObj = new DG::JSObject ();
+            cmdObj->AddItem ("commandType", new DG::JSValue (cmd.commandType.ToCStr ().Get ()));
+            cmdObj->AddItem ("fullCommand", new DG::JSValue (cmd.fullCommand.ToCStr ().Get ()));
+            cmdObj->AddItem ("parameters", new DG::JSValue (cmd.parameters.ToCStr ().Get ()));
+            cmdObj->AddItem ("isValid", new DG::JSValue (cmd.isValid));
+            cmdObj->AddItem ("errorMessage", new DG::JSValue (cmd.errorMessage.ToCStr ().Get ()));
+            otherCommandsArray->AddItem (cmdObj);
+        }
+        result->AddItem ("otherCommands", otherCommandsArray);
 
         return result;
     }));
