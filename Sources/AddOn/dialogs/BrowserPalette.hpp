@@ -13,6 +13,8 @@
 
 #include "DGModule.hpp"
 
+#include "Sync.hpp"
+
 #define BrowserPaletteResId 32580
 #define BrowserPaletteMenuResId 32580
 
@@ -21,7 +23,7 @@
 // -----------------------------------------------------------------------------
 void ShowOrHideBrowserPalette ();
 
-// --- Class declaration: BrowserPalette ------------------------------------------
+// --- Class definition: BrowserPalette ----------------------------------------
 
 class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
   public:
@@ -40,6 +42,7 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
 
     void InitBrowserControl ();
     void RegisterACAPIJavaScriptObject ();
+    void UpdateSelectionInfoInUI ();
     void Command_Helth ();
 
     virtual void PanelResized (const DG::PanelResizeEvent &ev) override;

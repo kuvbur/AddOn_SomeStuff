@@ -48,7 +48,9 @@ BrowserPalette::BrowserPalette ()
       browser (GetReference (), BrowserId) {
     Attach (*this);
     BeginEventProcessing ();
+    DBprnt ("BrowserPalette::BrowserPalette () — calling InitBrowserControl");
     InitBrowserControl ();
+    DBprnt ("BrowserPalette::BrowserPalette () — InitBrowserControl done");
 }
 
 BrowserPalette::~BrowserPalette () {
@@ -71,6 +73,7 @@ BrowserPalette &BrowserPalette::GetInstance () {
 }
 
 void BrowserPalette::Show () {
+    DBprnt ("BrowserPalette::Show () called");
     DG::Palette::Show ();
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
@@ -78,6 +81,9 @@ void BrowserPalette::Show () {
     MenuItemCheckAC (Menu_Pallete, syncSettings.GetShowPalette ());
     WriteSyncSettingsToPreferences (syncSettings);
     browser.ReloadIgnoreCache ();
+    DBprnt ("BrowserPalette::Show () — after ReloadIgnoreCache");
+    // Обновляем информацию о выделении после загрузки страницы
+    // onLoadingStateChange вызовет RegisterACAPIJavaScriptObject и UpdateSelectionInfoInUI
 }
 
 void BrowserPalette::Hide () {
@@ -89,15 +95,43 @@ void BrowserPalette::Hide () {
     WriteSyncSettingsToPreferences (syncSettings);
 }
 
+void BrowserPalette::UpdateSelectionInfoInUI () {
+    GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+    Int32 count = (Int32)selectedElements.GetSize ();
+    DBprnt ("UpdateSelectionInfoInUI: count=" + GS::ValueToUniString (count));
+    // Пушим данные в JS через ExecuteJS
+    GS::UniString jsCall = GS::UniString ("if (typeof refreshSelectionInfoText === 'function') refreshSelectionInfoText(") +
+                                         GS::ValueToUniString (count) + GS::UniString (");");
+    browser.ExecuteJS (jsCall.ToCStr ().Get ());
+    DBprnt ("UpdateSelectionInfoInUI: executed JS: " + jsCall);
+}
+
 void BrowserPalette::InitBrowserControl () {
+    DBprnt ("BrowserPalette::InitBrowserControl () — loading HTML");
     // Загружаем HTML
     browser.LoadHTML (LoadHtmlFromResource ());
+    DBprnt ("BrowserPalette::InitBrowserControl () — HTML load started");
 
-    // Регистрируем JavaScript объект для взаимодействия с ArchiCAD
-    RegisterACAPIJavaScriptObject ();
+    // Подписываемся на событие завершения загрузки страницы
+    // Используем event notifier браузера
+    browser.onLoadingStateChange +=
+        [this] (const DG::BrowserBase & /*source*/, const DG::BrowserLoadingStateChangeArg &eventArg) {
+            DBprnt ("BrowserPalette::onLoadingStateChange () — isLoading=" + GS::ValueToUniString (eventArg.isLoading) +
+                    " canGoBack=" + GS::ValueToUniString (eventArg.canGoBack) +
+                    " canGoForward=" + GS::ValueToUniString (eventArg.canGoForward));
+
+            // Когда загрузка завершена — регистрируем JS-объект
+            if (!eventArg.isLoading) {
+                DBprnt ("BrowserPalette::onLoadingStateChange () — page loaded, registering JS");
+                RegisterACAPIJavaScriptObject ();
+                // Сразу обновляем информацию о выделении
+                UpdateSelectionInfoInUI ();
+            }
+        };
 }
 
 void BrowserPalette::RegisterACAPIJavaScriptObject () {
+    DBprnt ("BrowserPalette::RegisterACAPIJavaScriptObject () — starting");
     DG::JSObject *jsACAPI = new DG::JSObject ("ACAPI");
 
     // Регистрируем функцию для получения свойств (вызывается из HTML кнопки)
@@ -135,15 +169,32 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
     // Регистрируем функцию для получения количества выделенных элементов
     jsACAPI->AddItem (new DG::JSFunction ("GetSelectionInfo", [] (GS::Ref<DG::JSBase>) {
-        // Получаем GUID-ы всех выделенных элементов
+        DBprnt ("GetSelectionInfo: function called from JS");
         GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
-
-        // Формируем JS-объект с результатом
+        Int32 count = (Int32)selectedElements.GetSize ();
+        DBprnt ("GetSelectionInfo: GetSelectedElements2 returned " + GS::ValueToUniString (count) + " elements");
         GS::Ref<DG::JSObject> result = new DG::JSObject ();
-        result->AddItem ("count", new DG::JSValue ((Int32)selectedElements.GetSize ()));
-
-        DBprnt ("GetSelectionInfo: " + GS::ValueToUniString (selectedElements.GetSize ()) + " selected elements");
+        result->AddItem ("count", new DG::JSValue (count));
+        DBprnt ("GetSelectionInfo: returning count=" + GS::ValueToUniString (count));
         return result;
+    }));
+
+    // Отладочная функция — проверяет, что JS-мост работает
+    jsACAPI->AddItem (new DG::JSFunction ("Ping", [] (GS::Ref<DG::JSBase>) {
+        DBprnt ("Ping: JavaScript Bridge is working!");
+        GS::Ref<DG::JSObject> result = new DG::JSObject ();
+        result->AddItem ("ok", new DG::JSValue (true));
+        result->AddItem ("message", new DG::JSValue ("Bridge is alive"));
+        return result;
+    }));
+
+    // Обновление количества выделенных элементов в UI (вызывается из JS)
+    jsACAPI->AddItem (new DG::JSFunction ("RefreshSelectionInfoUI", [this] (GS::Ref<DG::JSBase>) {
+        DBprnt ("RefreshSelectionInfoUI: called from JS");
+        // Обновляем UI через push (ExecuteJS)
+        UpdateSelectionInfoInUI ();
+        // Возвращаем пустое значение, так как UI уже обновлён
+        return GS::Ref<DG::JSBase> (nullptr);
     }));
 
     // Регистрируем функцию для парсинга описания свойства

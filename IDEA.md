@@ -38,9 +38,19 @@
 - **Выход**: `{ count: number }`
 - **Тип**: ReadOnlyCommand
 - **Файлы**: json_commands/GetSelectionInfoCommand.hpp/.cpp
-- **JS-обёртка**: BrowserPalette.cpp : ACAPI.GetSelectionInfo()
-- **HTML**: ACBridge.getSelectionInfo() → window.ACAPI.GetSelectionInfo()
-- **JSON тест**: test_08_get_selection_info в test_json_commands.py
+- **JS-обёртка**: BrowserPalette.cpp : ACAPI.GetSelectionInfo() ✅
+- **HTML**: ACBridge.getSelectionInfo() → window.ACAPI.GetSelectionInfo() ✅
+- **JSON тест**: test_08_get_selection_info в test_json_commands.py ✅
+- **UI интеграция**: ✅ Исправлена через push-pattern (C++ → ExecuteJS → refreshSelectionInfoText)
+
+#### 1.1. Исправление JS-моста для обновления UI ✅
+- **Проблема**: Pull-pattern (return value из C++ в JS) не работал корректно
+- **Решение**: Переход на push-pattern (как в Speckle) — C++ вызывает `browser.ExecuteJS()` для обновления UI
+- **Изменения**:
+  - Добавлен метод `UpdateSelectionInfoInUI()` в BrowserPalette
+  - JS функция `refreshSelectionInfoText(count)` вызывается напрямую из C++
+  - Упрощён JS код — больше не парсит return value
+- **Статус**: ✅ Работает, "Выделено элементов: ERROR" исправлено
 
 #### 2. GetPropertiesListCommand
 - **Назначение**: Список свойств для текущего выделения, сгруппированный по системным группам, с фильтрацией
@@ -93,6 +103,7 @@
 | JS-имя | Вызывает | Статус |
 |--------|----------|--------|
 | `ACAPI.GetSelectionInfo()` | `GetSelectedElements2()` | ✅ |
+| `ACAPI.RefreshSelectionInfoUI()` | Push-pattern (ExecuteJS) | ✅ |
 | `ACAPI.GetPropertiesList(filter)` | JSON-команду | ❌ |
 | `ACAPI.GetPropertyValue(id)` | JSON-команду | ❌ |
 | `ACAPI.GetClassification()` | JSON-команду | ❌ |
@@ -110,6 +121,7 @@
 
 ```
 [x] Этап 1.1 — GetSelectionInfoCommand ✅
+[x] Этап 1.1.1 — Исправление JS-моста (push-pattern) ✅
 [ ] Этап 1.2 — GetPropertiesListCommand (ключевая)
 [ ] Этап 1.3 — GetPropertyValueCommand (ключевая)
 [ ] Этап 1.4 — GetClassificationCommand + SetClassificationCommand
@@ -123,12 +135,27 @@
 ## Принципы
 
 1. **Максимальное использование кэша** — все данные для вкладки «Монитор» (список свойств, значения для выделения) берутся из `PROPERTYCACHE()`, уже загруженного при старте аддона. Никаких дополнительных `ACAPI_Property_GetPropertyValue` для каждого элемента.
-2. **Минимальные диффы** — новые файлы команд в `json_commands/`, только одна регистрация в `JsonCommandRegistrar.cpp`.
-3. **Ручная проверка сборки** после каждой команды.
-4. **TDD** — сначала тест (RED), потом реализация (GREEN).
+2. **Push-pattern для JS-моста** — C++ активно пушит данные в JS через `browser.ExecuteJS()`, не полагаясь на return value из `RegisterAsynchJSObject`. Архитектура как в проекте Speckle.
+3. **Минимальные диффы** — новые файлы команд в `json_commands/`, только одна регистрация в `JsonCommandRegistrar.cpp`.
+4. **Ручная проверка сборки** после каждой команды.
+5. **TDD** — сначала тест (RED), потом реализация (GREEN).
 
 ---
 
-## Last Checkpoint: готовим чекпоинт (сборка успешна)
-## Next Step: GetPropertiesListCommand — вторая команда вкладки «Монитор»
+## Lessons Learned
+
+### ❌ Ошибки
+1. **Попытки починить pull-pattern** — многократные попытки заставить работать return value из C++ в JS через `RegisterAsynchJSObject`. Потеря времени.
+2. **Игнорирование паттерна Speckle** — Speckle использует push-pattern, но я продолжал пытаться починить pull.
+3. **Отладка через console.log** — `console.log` в JS не попадает в `test_results.txt`. Правильно: только `DBprnt` из C++.
+
+### ✅ Победы
+1. **Переход на push-pattern** — простое и надёжное решение через `browser.ExecuteJS()`.
+2. **Упрощение JS кода** — функция `refreshSelectionInfoText(count)` просто обновляет DOM.
+3. **Правильная регистрация JS-объекта** — через `onLoadingStateChange` после загрузки страницы.
+
+---
+
+## Last Checkpoint: 686c839 feat: GetSelectionInfoCommand — первая JSON-команда для UI вкладки Монитор
+## Next Step: Этап 1.2 — GetPropertiesListCommand (вторая команда вкладки «Монитор»)
 ## Scope: Sources/AddOn/json_commands/*, dialogs/BrowserPalette.cpp, AddOnResources/RFIX/HTML/Interface_ru.html

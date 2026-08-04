@@ -160,21 +160,21 @@ const ACBridge = (function () {
    * @returns {Promise<{count:number}>}
    */
   function getSelectionInfo() {
-    return new Promise(function (resolve) {
+    // Пробуем вызвать C++ JS-мост
+    console.log("getSelectionInfo called");
+    try {
       if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetSelectionInfo) {
-        // Прямой синхронный вызов (DG::JSFunction возвращает результат сразу)
-        try {
-          var result = window.ACAPI.GetSelectionInfo();
-          resolve({ count: result.count });
-        } catch (e) {
-          console.error("ACAPI.GetSelectionInfo error:", e);
-          resolve({ count: 0 });
-        }
+        console.log("ACAPI.GetSelectionInfo exists, calling...");
+        var r = window.ACAPI.GetSelectionInfo();
+        console.log("ACAPI.GetSelectionInfo returned:", r);
+        return Promise.resolve({ count: (r && typeof r.count === 'number') ? r.count : MOCK_SELECTED_COUNT });
       } else {
-        console.warn("ACAPI.GetSelectionInfo not available, using mock.");
-        resolve({ count: MOCK_SELECTED_COUNT });
+        console.warn("window.ACAPI.GetSelectionInfo not available");
       }
-    });
+    } catch (e) {
+      console.error("ACAPI.GetSelectionInfo error:", e);
+    }
+    return Promise.resolve({ count: MOCK_SELECTED_COUNT });
   }
 
   /**
@@ -545,6 +545,25 @@ function renderPlaceholderTab(container) {
   ]));
 }
 
+// Глобальная функция обновления количества выделенных элементов
+// Вызывается из C++ через ExecuteJS при изменении выделения
+function refreshSelectionInfoText(count) {
+  var textEl = document.getElementById("selection-info-text");
+  if (textEl) textEl.textContent = "Выделено элементов: " + count;
+}
+
+// Функция для ручного обновления (по клику на кнопку ↻)
+// Теперь просто вызывает C++ функцию, которая сама обновит UI через ExecuteJS
+function refreshSelectionInfo() {
+  if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
+    // Вызываем C++ функцию — она сама обновит UI через ExecuteJS
+    window.ACAPI.RefreshSelectionInfoUI();
+  } else {
+    var textEl = document.getElementById("selection-info-text");
+    if (textEl) textEl.textContent = "Выделено элементов: ERROR: bridge not ready";
+  }
+}
+
 /* =====================================================================================
    5. ВКЛАДКА «МОНИТОР»
    ===================================================================================== */
@@ -555,8 +574,23 @@ function renderMonitorTab(container) {
   const root = h("div", { style: "display:flex;flex-direction:column;height:100%;overflow:hidden;" });
 
   const selectionLine = h("div", {
-    style: "padding:0.6rem 0.75rem 0.2rem;color:var(--ac-text-secondary);font-size:0.72rem;"
-  }, [ h("span", { text: "Загрузка выделения…" }) ]);
+    style: "padding:0.6rem 0.75rem 0.2rem;color:var(--ac-text-secondary);font-size:0.72rem;" +
+           "display:flex;align-items:center;gap:0.4rem;"
+  }, [
+    h("span", { text: "Загрузка выделения…", attrs: { id: "selection-info-text" } }),
+    h("button", {
+      text: "↻",
+      attrs: { title: "Обновить количество выделенных элементов", id: "refresh-selection-btn" },
+      style: "margin-left:auto;flex:0 0 auto;border:none;background:transparent;" +
+             "cursor:pointer;font-size:0.85rem;color:var(--ac-text-tertiary);" +
+             "padding:0.1rem 0.3rem;border-radius:0.2rem;",
+      on: {
+        click: function () { refreshSelectionInfo(); },
+        mouseenter: function (e) { e.target.style.color = "var(--ac-accent)"; },
+        mouseleave: function (e) { e.target.style.color = "var(--ac-text-tertiary)"; }
+      }
+    })
+  ]);
 
   const classificationBlock = h("div", {
     style: "padding:0.4rem 0.75rem 0.6rem;border-bottom:1px solid var(--ac-divider);" +
@@ -580,8 +614,7 @@ function renderMonitorTab(container) {
   container.appendChild(root);
 
   ACBridge.getSelectionInfo().then(function (info) {
-    selectionLine.textContent = "";
-    selectionLine.appendChild(h("span", { text: "Выделено элементов: " + info.count }));
+    refreshSelectionInfoText(info.count);
   });
 
   renderClassificationBlock(classificationBlock);
