@@ -284,6 +284,31 @@ def test_06_mon_all(port):
         return print_result(False, f"Ответ: {addon_resp}")
 
 
+def test_08_get_selection_info(port):
+    """
+    Команда: GetSelectionInfo
+    Назначение: Получение количества выделенных элементов.
+    Ожидаемый ответ: {"count": N}
+    """
+    print_test_header("GetSelectionInfoCommand — информация о выделении")
+    
+    response = call_addon_command(port, "GetSelectionInfo")
+    
+    if "error" in response:
+        return print_result(False, f"Ошибка вызова: {response['error']}")
+    
+    addon_resp = extract_response(response)
+    
+    if "count" in addon_resp:
+        count = addon_resp["count"]
+        if isinstance(count, int) and count >= 0:
+            return print_result(True, f"Выделено элементов: {count}")
+        else:
+            return print_result(False, f"Некорректное значение count: {count}")
+    else:
+        return print_result(False, f"Отсутствует поле count в ответе: {addon_resp}")
+
+
 def test_07_parse_property_for_element(port):
     """
     Команда: ParsePropertyForElement
@@ -368,6 +393,7 @@ def run_all_tests(port, test_filter=None):
         ("05_SyncAll", test_05_sync_all),
         ("06_MonAll", test_06_mon_all),
         ("07_ParsePropertyForElement", test_07_parse_property_for_element),
+        ("08_GetSelectionInfo", test_08_get_selection_info),
     ]
     
     # Фильтрация

@@ -133,6 +133,19 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         return jsArray;
     }));
 
+    // Регистрируем функцию для получения количества выделенных элементов
+    jsACAPI->AddItem (new DG::JSFunction ("GetSelectionInfo", [] (GS::Ref<DG::JSBase>) {
+        // Получаем GUID-ы всех выделенных элементов
+        GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+
+        // Формируем JS-объект с результатом
+        GS::Ref<DG::JSObject> result = new DG::JSObject ();
+        result->AddItem ("count", new DG::JSValue ((Int32)selectedElements.GetSize ()));
+
+        DBprnt ("GetSelectionInfo: " + GS::ValueToUniString (selectedElements.GetSize ()) + " selected elements");
+        return result;
+    }));
+
     // Регистрируем функцию для парсинга описания свойства
     jsACAPI->AddItem (new DG::JSFunction ("ParsePropertyDescription", [] (GS::Ref<DG::JSBase> args) {
         // args[0] = description string

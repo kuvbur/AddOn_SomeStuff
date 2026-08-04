@@ -1,712 +1,1232 @@
 <!DOCTYPE html>
-<html lang="ru">
+<!--
+  =====================================================================================
+  Archicad — Панель «Редактор описаний свойств»
+  =====================================================================================
+  Реализовано строго по ТЗ:
+    - Один файл dialogs/index.html
+    - Только Vanilla HTML / Vanilla JS
+    - Только inline-стили (style="..."). Тег <style> и CSS-файлы НЕ используются.
+      Тема (свет/тьма) реализована через CSS custom properties (--ac-*), которые
+      объявлены в inline style корневого <html> и используются как var(--ac-...)
+      внутри инлайновых style="" каждого элемента. Формально это остаётся
+      "инлайн-стилями" — блока <style> нигде нет, просто значение переменной
+      меняется в одном месте (html.style) и мгновенно применяется по всему дереву.
+    - Адаптивная резиновая вёрстка, левая колонка вкладок фиксированной логической
+      ширины (в rem — масштабируется вместе с DPI автоматически браузером).
+    - Реального моста с Archicad нет: весь обмен данными идёт через объект
+      ACBridge (см. раздел "МОСТ С ARCHICAD (МОК)" ниже). Каждая функция помечена
+      комментарием "AGENT TODO" с описанием того, что она должна делать и что
+      обязана возвращать в реальной интеграции — заменить тело функции на
+      настоящий вызов нативного моста (например window.chrome.webview.postMessage
+      или собственный JS-мост C++ панели), сохранив сигнатуру и формат Promise.
+  =====================================================================================
+-->
+<html lang="ru" style="
+  box-sizing:border-box;
+  font-size:16px;
+  --ac-transition:160ms ease;
+">
 <head>
-    <meta charset="UTF-8">
-    <title>Редактор описаний свойств Archicad</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Archicad — Редактор описаний свойств</title>
 </head>
-<body id="appBody" style="margin: 0; padding: 12px; font-family: system-ui, -apple-system, sans-serif; font-size: 13px; background-color: #1e1e1e; color: #cccccc; box-sizing: border-box;">
+<body style="margin:0;padding:0;height:100vh;width:100%;overflow:hidden;
+  font-family:'Segoe UI', -apple-system, Arial, sans-serif;
+  -webkit-font-smoothing:antialiased;">
 
-    <!-- ШАПКА И ПЕРЕКЛЮЧЕНИЕ ТЕМЫ -->
-    <div id="headerBar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #3c3c3c;">
-        <span style="font-weight: bold; font-size: 14px; color: #ffffff;" id="headerTitle">Редактор описаний свойств</span>
-        <button id="themeToggleBtn" onclick="app.toggleTheme()" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 12px;">
-            ☀️ Светлая тема
-        </button>
-    </div>
+  <!-- Корневой контейнер: левая навигация + рабочая область -->
+  <div id="app" style="display:flex;flex-direction:row;height:100%;width:100%;overflow:hidden;"></div>
 
-    <!-- ПАНЕЛЬ СОСТОЯНИЯ КОМАНД (14 иконок) -->
-    <div id="commandBar" style="background-color: #252526; border: 1px solid #3c3c3c; border-radius: 4px; padding: 8px; margin-bottom: 12px;">
-        <div data-type="label" style="font-weight: bold; margin-bottom: 6px; color: #569cd6; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-            Состояния команд
-        </div>
-        <div id="cmdIconsContainer" style="display: flex; flex-wrap: wrap; gap: 4px;">
-            <!-- Иконки генерируются из файлов *.svg -->
-        </div>
-    </div>
+<script>
+"use strict";
+/* =====================================================================================
+   0. НАСТРОЙКИ / КОНСТАНТЫ
+   ===================================================================================== */
 
-    <!-- РАЗДЕЛ 1: Отслеживание значений свойств -->
-    <div id="section1" style="background-color: #252526; border: 1px solid #3c3c3c; border-radius: 4px; padding: 10px; margin-bottom: 12px;">
-        <div data-type="label" style="font-weight: bold; margin-bottom: 8px; color: #569cd6; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-            1. Отслеживание значения свойства
-        </div>
-        
-        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-            <label style="width: 130px; font-weight: 500;">Выбор свойства:</label>
-            <select id="propSelect1" onchange="app.onSelectProperty(this.value)" style="flex: 1; background-color: #3c3c3c; color: #ffffff; border: 1px solid #555555; padding: 5px; border-radius: 3px; font-size: 12px;">
-                <option value="">-- Загрузка свойств... --</option>
-            </select>
-        </div>
+// Количество "выделенных элементов" для демонстрационных данных.
+// AGENT TODO: реальное значение должно приходить из ACBridge.GetSelectionInfo()
+// (будет заменено на window.ACAPI.GetSelectionInfo() после интеграции JS-моста)
+const MOCK_SELECTED_COUNT = 5;
 
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="width: 130px; font-weight: 500;">Текущее значение:</label>
-            <input type="text" id="currentValueInput" readonly placeholder="Значение выделенного элемента..." style="flex: 1; background-color: #2d2d2d; color: #9cdcfe; border: 1px solid #444444; padding: 5px; border-radius: 3px; font-size: 12px; font-family: monospace;">
-            <button id="btnRefreshVal" onclick="app.refreshPropertyValue()" style="background-color: #0e639c; color: #ffffff; border: none; padding: 5px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">
-                Обновить
-            </button>
-        </div>
-    </div>
+/* =====================================================================================
+   1. ТЕМА (светлая / тёмная)
+   ---------------------------------------------------------------------------------
+   Все цвета вынесены в CSS custom properties на элементе <html>. Каждый визуальный
+   элемент интерфейса ссылается на них через var(--ac-...) внутри собственного
+   inline style. Переключение темы = однократная перезапись набора переменных на
+   <html> — дерево обновляется целиком и мгновенно, без "залипших" тёмных участков.
+   ===================================================================================== */
+const THEMES = {
+  light: {
+    "--ac-bg-nav":            "#F3F4F7",
+    "--ac-bg-workspace":      "#FFFFFF",
+    "--ac-bg-elevated":       "#F8F9FB",
+    "--ac-bg-hover":          "#EEF1F6",
+    "--ac-bg-input":          "#FFFFFF",
+    "--ac-text-primary":      "#1A1D23",
+    "--ac-text-secondary":    "#5B6472",
+    "--ac-text-tertiary":     "#8A93A2",
+    "--ac-text-inverse":      "#FFFFFF",
+    "--ac-border":            "#E1E4EA",
+    "--ac-divider":           "#ECEEF2",
+    "--ac-accent":            "#2F6FED",
+    "--ac-accent-soft":       "#E7EFFD",
+    "--ac-accent-contrast":   "#FFFFFF",
+    "--ac-warn":              "#B4690E",
+    "--ac-warn-soft":         "#FBF0E1",
+    "--ac-danger":            "#D0333F",
+    "--ac-shadow-color":      "rgba(20,22,26,0.10)",
+    "--ac-code-bg":           "#F6F7F9",
+    "--ac-code-command":      "#7C3AED",
+    "--ac-code-namespace":    "#2F6FED",
+    "--ac-code-keyword":      "#B4690E",
+    "--ac-code-bracket":      "#9AA3B2",
+    "--ac-code-string":       "#1F9254",
+    "--ac-code-expr":         "#D9720C",
+    "--ac-code-range":        "#9AA3B2"
+  },
+  dark: {
+    "--ac-bg-nav":            "#1B1E24",
+    "--ac-bg-workspace":      "#14161A",
+    "--ac-bg-elevated":       "#1F222A",
+    "--ac-bg-hover":          "#262A33",
+    "--ac-bg-input":          "#1A1D23",
+    "--ac-text-primary":      "#EDEFF3",
+    "--ac-text-secondary":    "#A7AFBD",
+    "--ac-text-tertiary":     "#6B7280",
+    "--ac-text-inverse":      "#14161A",
+    "--ac-border":            "#2C3038",
+    "--ac-divider":           "#262A33",
+    "--ac-accent":            "#5B8DEF",
+    "--ac-accent-soft":       "#23324D",
+    "--ac-accent-contrast":   "#0B0D10",
+    "--ac-warn":              "#E3A75E",
+    "--ac-warn-soft":         "#332815",
+    "--ac-danger":            "#F1666B",
+    "--ac-shadow-color":      "rgba(0,0,0,0.45)",
+    "--ac-code-bg":           "#1A1D23",
+    "--ac-code-command":      "#B18CF2",
+    "--ac-code-namespace":    "#5B8DEF",
+    "--ac-code-keyword":      "#E3A75E",
+    "--ac-code-bracket":      "#5C6472",
+    "--ac-code-string":       "#4FCB84",
+    "--ac-code-expr":         "#F0A93D",
+    "--ac-code-range":        "#5C6472"
+  }
+};
 
-    <!-- РАЗДЕЛ 2: Работа с описаниями -->
-    <details id="section2" open style="background-color: #252526; border: 1px solid #3c3c3c; border-radius: 4px; padding: 10px;">
-        <summary style="font-weight: bold; color: #569cd6; cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; outline: none; margin-bottom: 8px;">
-            2. Работа с описаниями (Редактор)
-        </summary>
+const STATE = {
+  theme: "light",              // по умолчанию светлая тема (задано заказчиком)
+  activeTab: "monitor",
+  monitorFilter: "",
+  monitorSelectedPropertyId: null,
+  numberingOpenBlocks: { flag: false, ruleEditor: false }, // блок 1 всегда открыт, остальные — по клику
+  numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
+                      criterionProperty: null, splitProperty: null }
+};
 
-        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px; margin-bottom: 8px;">
-            <label style="width: 130px; font-weight: 500;">Выбранное свойство:</label>
-            <select id="propSelect2" onchange="app.onSelectProperty(this.value)" style="flex: 1; background-color: #3c3c3c; color: #ffffff; border: 1px solid #555555; padding: 5px; border-radius: 3px; font-size: 12px;">
-                <option value="">-- Загрузка свойств... --</option>
-            </select>
-        </div>
+function applyTheme(name) {
+  STATE.theme = name;
+  const vars = THEMES[name];
+  const root = document.documentElement;
+  for (const key in vars) root.style.setProperty(key, vars[key]);
+  root.style.setProperty("--ac-color-scheme", name);
+  const toggle = document.getElementById("theme-toggle-icon");
+  if (toggle) toggle.textContent = name === "light" ? "\u263D" : "\u2600"; // ☾ / ☀
+}
 
-        <div style="margin-bottom: 8px;">
-            <label style="display: block; font-weight: 500; margin-bottom: 4px;">Текущее описание (PropertyCache):</label>
-            <textarea id="currentDescArea" readonly rows="2" style="width: 100%; box-sizing: border-box; background-color: #2d2d2d; color: #ce9178; border: 1px solid #444444; padding: 5px; border-radius: 3px; font-size: 11px; font-family: monospace; resize: vertical;"></textarea>
-        </div>
+/* =====================================================================================
+   2. МОСТ С ARCHICAD (МОК)
+   ---------------------------------------------------------------------------------
+   В реальном плагине этот раздел заменяется на настоящий JS-мост, который
+   отправляет запросы в C++ часть Add-On'а (например через
+   window.chrome.webview.postMessage(...) + window.chrome.webview.addEventListener,
+   либо через window.acPanelBridge, который выставляет C++ сторона) и возвращает
+   Promise, резолвящийся ответом от Archicad.
+   Каждая функция ниже уже имеет ПРАВИЛЬНУЮ сигнатуру и формат возвращаемых данных —
+   агенту, который будет подключать реальный API, нужно просто заменить тело
+   функции, сохранив контракт (что принимает / что возвращает).
+   ===================================================================================== */
+const ACBridge = (function () {
 
-        <!-- ВКЛАДКИ КОМАНД -->
-        <div style="margin-bottom: 8px;">
-            <div id="tabHeaders" style="display: flex; border-bottom: 1px solid #3c3c3c; background-color: #1e1e1e; border-top-left-radius: 3px; border-top-right-radius: 3px;">
-                <button onclick="app.switchTab('tabSync')" id="btnTabSync" style="padding: 6px 12px; border: none; background-color: #0e639c; color: #ffffff; cursor: pointer; font-size: 12px; font-weight: 500;">Синхронизация</button>
-                <button onclick="app.switchTab('tabRenum')" id="btnTabRenum" style="padding: 6px 12px; border: none; background-color: transparent; color: #cccccc; cursor: pointer; font-size: 12px;">Нумерация</button>
-                <button onclick="app.switchTab('tabSum')" id="btnTabSum" style="padding: 6px 12px; border: none; background-color: transparent; color: #cccccc; cursor: pointer; font-size: 12px;">Суммирование</button>
-                <button onclick="app.switchTab('tabSpec')" id="btnTabSpec" style="padding: 6px 12px; border: none; background-color: transparent; color: #cccccc; cursor: pointer; font-size: 12px;">Спецификации</button>
-            </div>
+  // Имитация сетевой/межпроцессной задержки моста.
+  function delay(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
 
-            <div id="tabContainer" style="background-color: #2d2d2d; border: 1px solid #3c3c3c; border-top: none; padding: 8px; border-bottom-left-radius: 3px; border-bottom-right-radius: 3px;">
-                <!-- Вкладка 1: Синхронизация -->
-                <div id="tabSync" style="display: block;">
-                    <div data-type="label" style="margin-bottom: 6px; font-size: 11px; color: #888888;">Шаблоны синхронизации и модификаторы:</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                        <button data-btn-type="template" onclick="app.insertText('Sync_from{}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Sync_from{}</button>
-                        <button data-btn-type="template" onclick="app.insertText('Sync_to{}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Sync_to{}</button>
-                        <button data-btn-type="template" onclick="app.insertText('Sync_from{Property:...}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Sync_from{Property:...}</button>
-                        <button data-btn-type="template" onclick="app.insertText('Sync_from{description:...}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Sync_from{description:...}</button>
-                        <button data-btn-type="template" onclick="app.insertText('Sync_from{IFC:...}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Sync_from{IFC:...}</button>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-                        <button data-btn-type="modifier" onclick="app.insertText('empty')" style="background-color: #252526; color: #dcdcaa; border: 1px solid #555555; padding: 2px 5px; border-radius: 2px; cursor: pointer; font-size: 10px;">empty</button>
-                        <button data-btn-type="modifier" onclick="app.insertText('trim_empty')" style="background-color: #252526; color: #dcdcaa; border: 1px solid #555555; padding: 2px 5px; border-radius: 2px; cursor: pointer; font-size: 10px;">trim_empty</button>
-                        <button data-btn-type="modifier" onclick="app.insertText('def')" style="background-color: #252526; color: #dcdcaa; border: 1px solid #555555; padding: 2px 5px; border-radius: 2px; cursor: pointer; font-size: 10px;">def</button>
-                        <button data-btn-type="modifier" onclick="app.insertText('uniq')" style="background-color: #252526; color: #4ec9b0; border: 1px solid #555555; padding: 2px 5px; border-radius: 2px; cursor: pointer; font-size: 10px;">uniq</button>
-                        <button data-btn-type="modifier" onclick="app.insertText('sum')" style="background-color: #252526; color: #4ec9b0; border: 1px solid #555555; padding: 2px 5px; border-radius: 2px; cursor: pointer; font-size: 10px;">sum</button>
-                        <button data-btn-type="modifier" onclick="app.insertText('max')" style="background-color: #252526; color: #4ec9b0; border: 1px solid #555555; padding: 2px 5px; border-radius: 2px; cursor: pointer; font-size: 10px;">max</button>
-                        <button data-btn-type="modifier" onclick="app.insertText('min')" style="background-color: #252526; color: #4ec9b0; border: 1px solid #555555; padding: 2px 5px; border-radius: 2px; cursor: pointer; font-size: 10px;">min</button>
-                    </div>
-                </div>
-
-                <!-- Вкладка 2: Нумерация -->
-                <div id="tabRenum" style="display: none;">
-                    <div style="display: flex; gap: 4px; margin-bottom: 6px;">
-                        <button data-btn-type="template" onclick="app.insertText('Renum_flag{}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Renum_flag{}</button>
-                        <button data-btn-type="template" onclick="app.insertText('Renum{}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Renum{}</button>
-                    </div>
-                    <div data-type="constructor-box" style="background-color: #1e1e1e; padding: 6px; border-radius: 3px; border: 1px solid #444444;">
-                        <div data-type="label" style="font-size: 10px; color: #888888; margin-bottom: 4px;">Конструктор Renum:</div>
-                        <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                            <span data-type="label" style="font-size: 11px; width: 60px;">Режим:</span>
-                            <select id="renumMode" style="background-color: #3c3c3c; color: #fff; border: 1px solid #555; font-size: 11px; flex: 1;">
-                                <option value="NULL">NULL</option>
-                                <option value="SPACE">SPACE</option>
-                                <option value="ALLNULL">ALLNULL</option>
-                                <option value="n_NULL">n_NULL</option>
-                            </select>
-                        </div>
-                        <button data-btn-type="action" onclick="app.buildRenum()" style="background-color: #0e639c; color: #fff; border: none; padding: 3px 8px; border-radius: 2px; cursor: pointer; font-size: 11px; width: 100%;">Вставить Renum</button>
-                    </div>
-                </div>
-
-                <!-- Вкладка 3: Суммирование -->
-                <div id="tabSum" style="display: none;">
-                    <div data-type="constructor-box" style="background-color: #1e1e1e; padding: 6px; border-radius: 3px; border: 1px solid #444444;">
-                        <div data-type="label" style="font-size: 10px; color: #888888; margin-bottom: 4px;">Конструктор Sum:</div>
-                        <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                            <span data-type="label" style="font-size: 11px; width: 70px;">Разделитель:</span>
-                            <input type="text" id="sumSep" value="; " style="background-color: #3c3c3c; color: #fff; border: 1px solid #555; font-size: 11px; width: 50px; padding: 2px;">
-                        </div>
-                        <div style="display: flex; gap: 4px;">
-                            <button data-btn-type="template" onclick="app.insertText('Sum{Property:Prop1; Property:Prop2}')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px; flex: 1;">Sum{Prop1; Prop2}</button>
-                            <button data-btn-type="template" onclick="app.insertText('max')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">+ max</button>
-                            <button data-btn-type="template" onclick="app.insertText('min')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">+ min</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Вкладка 4: Спецификации -->
-                <div id="tabSpec" style="display: none;">
-                    <div style="display: flex; gap: 4px; margin-bottom: 6px;">
-                        <button data-btn-type="template" onclick="app.insertText('Spec_rule')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Spec_rule</button>
-                        <button data-btn-type="template" onclick="app.insertText('Spec_rule_v2')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Spec_rule_v2</button>
-                        <button data-btn-type="template" onclick="app.insertText('Spec_rule_v3')" style="background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 3px 6px; border-radius: 2px; cursor: pointer; font-size: 11px;">Spec_rule_v3</button>
-                    </div>
-                    <div data-type="constructor-box" style="background-color: #1e1e1e; padding: 6px; border-radius: 3px; border: 1px solid #444444;">
-                        <div data-type="label" style="font-size: 10px; color: #888888; margin-bottom: 4px;">Конструктор групп Spec:</div>
-                        <div style="display: flex; gap: 4px; margin-bottom: 4px;">
-                            <button data-btn-type="template" onclick="app.insertText('g(U:...; P:...; F:...; Q:...; Pn:...; Qn1:...;)')" style="background-color: #3a3d41; color: #dcdcaa; border: 1px solid #555; padding: 3px 6px; border-radius: 2px; font-size: 10px; flex: 1;">Группа g(...)</button>
-                            <button data-btn-type="template" onclick="app.insertText('s(U:...; P:...; F:...; Q:...; Pn:...; Qn1:...;)')" style="background-color: #3a3d41; color: #dcdcaa; border: 1px solid #555; padding: 3px 6px; border-radius: 2px; font-size: 10px; flex: 1;">Подгруппа s(...)</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- РЕДАКТОР ОПИСАНИЯ -->
-        <div style="margin-bottom: 8px;">
-            <label style="display: block; font-weight: 500; margin-bottom: 4px;">Редактор описания:</label>
-            <textarea id="editorDescArea" rows="6" placeholder="Вводите синтаксис или используйте кнопки быстрой вставки выше..." style="width: 100%; box-sizing: border-box; background-color: #1e1e1e; color: #d4d4d4; border: 1px solid #555555; padding: 6px; border-radius: 3px; font-size: 12px; font-family: Consolas, Monaco, monospace; resize: vertical;"></textarea>
-        </div>
-
-        <!-- КНОПКИ ДЕЙСТВИЙ -->
-        <div style="display: flex; gap: 8px;">
-            <button id="btnParseSyntax" onclick="app.parseSyntax()" style="flex: 1; background-color: #3a3d41; color: #ffffff; border: 1px solid #555555; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                Проверить синтаксис
-            </button>
-            <button id="btnSaveProperty" onclick="app.savePropertyDescription()" style="flex: 1; background-color: #0e639c; color: #ffffff; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: 500;">
-                Записать в свойство
-            </button>
-        </div>
-
-        <!-- БЛОК ВЫВОДА СТАТУСА/ОШИБОК -->
-        <div id="statusOutput" style="display: none; margin-top: 8px; padding: 8px; border-radius: 3px; font-size: 11px; font-family: monospace; white-space: pre-wrap;"></div>
-    </details>
-
-    <!-- VANILLA ES5 JAVASCRIPT LOGIC -->
-    <script>
-        // Инициализация мока ACAPI
-        if (!window.ACAPI) {
-            window.ACAPI = {
-                GetPropertyDefinitions: function(callback) {
-                    setTimeout(function() {
-                        callback([
-                            { guid: 'guid-1', name: 'Имя элемента (General.ElementName)', description: 'Sync_from{Property:Hotlink.Name}' },
-                            { guid: 'guid-2', name: 'Маркировка (Custom.Mark)', description: 'Renum{NULL}' },
-                            { guid: 'guid-3', name: 'Спецификация (Spec.Group)', description: 'Spec_rule_v2{g(U:1; P:Name;)}' }
-                        ]);
-                    }, 100);
-                },
-                GetElementPropertyValue: function(guid, callback) {
-                    setTimeout(function() {
-                        callback('Пример значения [' + guid + ']');
-                    }, 100);
-                },
-                ParsePropertyDescription: function(desc, callback) {
-                    setTimeout(function() {
-                        if (desc.indexOf('Error') !== -1) {
-                            callback({ status: 'error', message: 'Синтаксическая ошибка' });
-                        } else {
-                            callback({ status: 'ok', message: 'Синтаксис корректен' });
-                        }
-                    }, 100);
-                },
-                SetPropertyDescription: function(guid, desc, callback) {
-                    setTimeout(function() {
-                        callback({ status: 'ok', message: 'Описание записано!' });
-                    }, 100);
-                },
-                GetCommandStates: function(callback) {
-                    setTimeout(function() {
-                        callback({ 1: true, 2: false, 3: false, 4: true, 5: true, 6: false, 7: false, 8: false, 9: false, 10: false, 11: false, 12: false, 13: false, 14: false });
-                    }, 100);
-                },
-                ToggleCommandState: function(cmdId, state, callback) {
-                    setTimeout(function() {
-                        callback({ status: 'ok', id: cmdId, state: state });
-                    }, 50);
-                }
-            };
+  /**
+   * Получает количество выделенных элементов через JS-мост с ArchiCAD.
+   * Вызывает window.ACAPI.GetSelectionInfo() и возвращает Promise с результатом.
+   * @returns {Promise<{count:number}>}
+   */
+  function getSelectionInfo() {
+    return new Promise(function (resolve) {
+      if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetSelectionInfo) {
+        // Прямой синхронный вызов (DG::JSFunction возвращает результат сразу)
+        try {
+          var result = window.ACAPI.GetSelectionInfo();
+          resolve({ count: result.count });
+        } catch (e) {
+          console.error("ACAPI.GetSelectionInfo error:", e);
+          resolve({ count: 0 });
         }
-
-        // Глобальный объект приложения
-        window.app = {
-            currentTheme: 'dark',
-            activeTabId: 'tabSync',
-            propertiesList: [],
-            selectedGuid: '',
-
-            // Маппинг 14 команд с именами файлов иконок *.svg
-            commands: [
-                { id: 1,  name: 'Отслеживать', active: false, iconFile: 'MonAllIcon_18x18.svg' },
-                { id: 2,  name: 'Синхронизировать все', active: false, iconFile: 'SyncAllIcon_18x18.svg' },
-                { id: 3,  name: 'Синхронизировать выделенные', active: false, iconFile: 'SyncSelectIcon_18x18.svg' },
-                { id: 4,  name: 'Обрабатывать стены/перекрытия', active: false, iconFile: 'SyncWall_18x18.svg' },
-                { id: 5,  name: 'Обрабатывать окна/двери', active: false, iconFile: 'SyncWindow_18x18.svg' },
-                { id: 6,  name: 'Обрабатывать объекты/зоны', active: false, iconFile: 'SyncObject_18x18.svg' },
-                { id: 7,  name: 'Обрабатывать элементы навесных стен и ограждений', active: false, iconFile: 'SynccWallIcon_18x18.svg' },
-                { id: 8,  name: 'Перенумеровать выделенные', active: false, iconFile: 'ReNumIcon_18x18.svg' },
-                { id: 9,  name: 'Просуммировать выделенные', active: false, iconFile: 'SumAllIcon_18x18.svg' },
-                { id: 10, name: 'Запустить скрипт параметров выделенных', active: false, iconFile: 'RunParamIcon_18x18.svg' },
-                { id: 11, name: 'Создать элементы', active: false, iconFile: 'CreateFinishIcon_18x18.svg' },
-                { id: 12, name: 'Показать связанные элементы', active: false, iconFile: 'ShowGUIDIcon_18x18.svg' },
-                { id: 13, name: 'Заполнение изменений на макетах', active: false, iconFile: 'LauoutIcon_18x18.svg' },
-                { id: 14, name: 'Привязать элементы к выделенному', active: false, iconFile: 'SetGUIDIcon_18x18.svg' }
-            ],
-
-            init: function() {
-                this.renderCommandIcons();
-                this.loadCommandStates();
-                this.loadProperties();
-            },
-
-            // Генерация 14 кнопок с подгрузкой файлов SVG
-            renderCommandIcons: function() {
-                var container = document.getElementById('cmdIconsContainer');
-                container.innerHTML = '';
-
-                for (var i = 0; i < this.commands.length; i++) {
-                    var cmd = this.commands[i];
-                    var btn = document.createElement('button');
-                    btn.id = 'cmdBtn_' + cmd.id;
-                    btn.title = '[' + cmd.id + '] ' + cmd.name;
-                    btn.setAttribute('data-cmd-id', cmd.id);
-                    btn.setAttribute('onclick', 'app.toggleCommand(' + cmd.id + ')');
-                    btn.style.width = '28px';
-                    btn.style.height = '28px';
-                    btn.style.display = 'flex';
-                    btn.style.alignItems = 'center';
-                    btn.style.justifyContent = 'center';
-                    btn.style.border = '1px solid #555555';
-                    btn.style.borderRadius = '3px';
-                    btn.style.cursor = 'pointer';
-                    btn.style.padding = '2px';
-                    btn.style.boxSizing = 'border-box';
-
-                    var img = document.createElement('img');
-                    img.id = 'cmdImg_' + cmd.id;
-                    img.src = 'icons/' + cmd.iconFile; // Пред полагается путь icons/*.svg
-                    img.width = 18;
-                    img.height = 18;
-                    img.style.pointerEvents = 'none';
-
-                    btn.appendChild(img);
-                    container.appendChild(btn);
-                }
-                this.updateCommandIconsStyles();
-            },
-
-            loadCommandStates: function() {
-                var self = this;
-                if (window.ACAPI && window.ACAPI.GetCommandStates) {
-                    window.ACAPI.GetCommandStates(function(statesMap) {
-                        if (statesMap) {
-                            for (var i = 0; i < self.commands.length; i++) {
-                                var id = self.commands[i].id;
-                                if (statesMap[id] !== undefined) {
-                                    self.commands[i].active = !!statesMap[id];
-                                }
-                            }
-                            self.updateCommandIconsStyles();
-                        }
-                    });
-                }
-            },
-
-            toggleCommand: function(cmdId) {
-                var cmdObj = null;
-                for (var i = 0; i < this.commands.length; i++) {
-                    if (this.commands[i].id === cmdId) {
-                        cmdObj = this.commands[i];
-                        break;
-                    }
-                }
-                if (!cmdObj) return;
-
-                var newState = !cmdObj.active;
-                cmdObj.active = newState;
-                this.updateCommandIconsStyles();
-
-                if (window.ACAPI && window.ACAPI.ToggleCommandState) {
-                    window.ACAPI.ToggleCommandState(cmdId, newState, function(res) {});
-                }
-            },
-
-            // Обновление стилей и инверсия цвета SVG-иконок для Темной / Светлой темы
-            updateCommandIconsStyles: function() {
-                var isDark = (this.currentTheme === 'dark');
-
-                for (var i = 0; i < this.commands.length; i++) {
-                    var cmd = this.commands[i];
-                    var btn = document.getElementById('cmdBtn_' + cmd.id);
-                    var img = document.getElementById('cmdImg_' + cmd.id);
-                    if (!btn || !img) continue;
-
-                    if (cmd.active) {
-                        btn.style.backgroundColor = '#0e639c';
-                        btn.style.borderColor = '#1177bb';
-                        img.style.filter = 'brightness(0) invert(1)'; // Белая иконка для активной кнопки
-                    } else {
-                        btn.style.backgroundColor = isDark ? '#3a3d41' : '#e1e1e1';
-                        btn.style.borderColor = isDark ? '#555555' : '#cccccc';
-                        // При неактивном состоянии настраиваем инверсию векторных линий под тему
-                        img.style.filter = isDark ? 'brightness(0) invert(0.85)' : 'none';
-                    }
-                }
-            },
-
-            toggleTheme: function() {
-                var isDark = (this.currentTheme === 'dark');
-                this.currentTheme = isDark ? 'light' : 'dark';
-
-                var body = document.getElementById('appBody');
-                var headerBar = document.getElementById('headerBar');
-                var headerTitle = document.getElementById('headerTitle');
-                var themeBtn = document.getElementById('themeToggleBtn');
-                var cmdBar = document.getElementById('commandBar');
-                var sec1 = document.getElementById('section1');
-                var sec2 = document.getElementById('section2');
-                var select1 = document.getElementById('propSelect1');
-                var select2 = document.getElementById('propSelect2');
-                var valInput = document.getElementById('currentValueInput');
-                var descArea = document.getElementById('currentDescArea');
-                var editorArea = document.getElementById('editorDescArea');
-                var tabHeaders = document.getElementById('tabHeaders');
-                var tabContainer = document.getElementById('tabContainer');
-                var btnParse = document.getElementById('btnParseSyntax');
-
-                if (this.currentTheme === 'light') {
-                    body.style.backgroundColor = '#f3f3f3';
-                    body.style.color = '#333333';
-                    headerBar.style.borderColor = '#cccccc';
-                    headerTitle.style.color = '#000000';
-                    themeBtn.style.backgroundColor = '#e1e1e1';
-                    themeBtn.style.color = '#333333';
-                    themeBtn.style.borderColor = '#cccccc';
-                    themeBtn.innerHTML = '🌙 Тёмная тема';
-
-                    cmdBar.style.backgroundColor = '#ffffff';
-                    cmdBar.style.borderColor = '#cccccc';
-                    sec1.style.backgroundColor = '#ffffff';
-                    sec1.style.borderColor = '#cccccc';
-                    sec2.style.backgroundColor = '#ffffff';
-                    sec2.style.borderColor = '#cccccc';
-
-                    select1.style.backgroundColor = '#ffffff';
-                    select1.style.color = '#000000';
-                    select1.style.borderColor = '#cccccc';
-
-                    select2.style.backgroundColor = '#ffffff';
-                    select2.style.color = '#000000';
-                    select2.style.borderColor = '#cccccc';
-
-                    valInput.style.backgroundColor = '#f8f8f8';
-                    valInput.style.color = '#0000ff';
-                    valInput.style.borderColor = '#cccccc';
-
-                    descArea.style.backgroundColor = '#f8f8f8';
-                    descArea.style.color = '#a31515';
-                    descArea.style.borderColor = '#cccccc';
-
-                    editorArea.style.backgroundColor = '#ffffff';
-                    editorArea.style.color = '#000000';
-                    editorArea.style.borderColor = '#cccccc';
-
-                    tabHeaders.style.backgroundColor = '#e8e8e8';
-                    tabHeaders.style.borderColor = '#cccccc';
-                    tabContainer.style.backgroundColor = '#f8f8f8';
-                    tabContainer.style.borderColor = '#cccccc';
-
-                    btnParse.style.backgroundColor = '#e1e1e1';
-                    btnParse.style.color = '#333333';
-                    btnParse.style.borderColor = '#cccccc';
-                } else {
-                    body.style.backgroundColor = '#1e1e1e';
-                    body.style.color = '#cccccc';
-                    headerBar.style.borderColor = '#3c3c3c';
-                    headerTitle.style.color = '#ffffff';
-                    themeBtn.style.backgroundColor = '#3a3d41';
-                    themeBtn.style.color = '#ffffff';
-                    themeBtn.style.borderColor = '#555555';
-                    themeBtn.innerHTML = '☀️ Светлая тема';
-
-                    cmdBar.style.backgroundColor = '#252526';
-                    cmdBar.style.borderColor = '#3c3c3c';
-                    sec1.style.backgroundColor = '#252526';
-                    sec1.style.borderColor = '#3c3c3c';
-                    sec2.style.backgroundColor = '#252526';
-                    sec2.style.borderColor = '#3c3c3c';
-
-                    select1.style.backgroundColor = '#3c3c3c';
-                    select1.style.color = '#ffffff';
-                    select1.style.borderColor = '#555555';
-
-                    select2.style.backgroundColor = '#3c3c3c';
-                    select2.style.color = '#ffffff';
-                    select2.style.borderColor = '#555555';
-
-                    valInput.style.backgroundColor = '#2d2d2d';
-                    valInput.style.color = '#9cdcfe';
-                    valInput.style.borderColor = '#444444';
-
-                    descArea.style.backgroundColor = '#2d2d2d';
-                    descArea.style.color = '#ce9178';
-                    descArea.style.borderColor = '#444444';
-
-                    editorArea.style.backgroundColor = '#1e1e1e';
-                    editorArea.style.color = '#d4d4d4';
-                    editorArea.style.borderColor = '#555555';
-
-                    tabHeaders.style.backgroundColor = '#1e1e1e';
-                    tabHeaders.style.borderColor = '#3c3c3c';
-                    tabContainer.style.backgroundColor = '#2d2d2d';
-                    tabContainer.style.borderColor = '#3c3c3c';
-
-                    btnParse.style.backgroundColor = '#3a3d41';
-                    btnParse.style.color = '#ffffff';
-                    btnParse.style.borderColor = '#555555';
-                }
-
-                this.switchTab(this.activeTabId);
-                this.updateTabStyles();
-                this.updateCommandIconsStyles();
-            },
-
-            updateTabStyles: function() {
-                var isDark = (this.currentTheme === 'dark');
-                var container = document.getElementById('tabContainer');
-                if (!container) return;
-
-                var divs = container.getElementsByTagName('div');
-                for (var i = 0; i < divs.length; i++) {
-                    if (divs[i].getAttribute('data-type') === 'constructor-box') {
-                        divs[i].style.backgroundColor = isDark ? '#1e1e1e' : '#ffffff';
-                        divs[i].style.borderColor = isDark ? '#444444' : '#cccccc';
-                    }
-                }
-
-                var buttons = container.getElementsByTagName('button');
-                for (var j = 0; j < buttons.length; j++) {
-                    var btn = buttons[j];
-                    var btnType = btn.getAttribute('data-btn-type');
-
-                    if (btnType === 'template') {
-                        btn.style.backgroundColor = isDark ? '#3a3d41' : '#ffffff';
-                        btn.style.color = isDark ? '#ffffff' : '#000000';
-                        btn.style.borderColor = isDark ? '#555555' : '#cccccc';
-                    } else if (btnType === 'modifier') {
-                        btn.style.backgroundColor = isDark ? '#252526' : '#ffffff';
-                        btn.style.color = isDark ? '#dcdcaa' : '#795e26';
-                        btn.style.borderColor = isDark ? '#555555' : '#cccccc';
-                    } else if (btnType === 'action') {
-                        btn.style.backgroundColor = '#0e639c';
-                        btn.style.color = '#ffffff';
-                    }
-                }
-
-                var inputs = container.getElementsByTagName('input');
-                for (var k = 0; k < inputs.length; k++) {
-                    inputs[k].style.backgroundColor = isDark ? '#3c3c3c' : '#ffffff';
-                    inputs[k].style.color = isDark ? '#ffffff' : '#000000';
-                    inputs[k].style.borderColor = isDark ? '#555555' : '#cccccc';
-                }
-
-                var selects = container.getElementsByTagName('select');
-                for (var m = 0; m < selects.length; m++) {
-                    selects[m].style.backgroundColor = isDark ? '#3c3c3c' : '#ffffff';
-                    selects[m].style.color = isDark ? '#ffffff' : '#000000';
-                    selects[m].style.borderColor = isDark ? '#555555' : '#cccccc';
-                }
-
-                var labels = container.getElementsByTagName('span');
-                for (var n = 0; n < labels.length; n++) {
-                    labels[n].style.color = isDark ? '#cccccc' : '#333333';
-                }
-                var labelDivs = document.querySelectorAll('div[data-type="label"]');
-                for (var p = 0; p < labelDivs.length; p++) {
-                    labelDivs[p].style.color = isDark ? '#569cd6' : '#0066b8';
-                }
-            },
-
-            loadProperties: function() {
-                var self = this;
-                window.ACAPI.GetPropertyDefinitions(function(props) {
-                    self.propertiesList = props || [];
-                    self.renderPropertyDropdowns();
-                });
-            },
-
-            renderPropertyDropdowns: function() {
-                var sel1 = document.getElementById('propSelect1');
-                var sel2 = document.getElementById('propSelect2');
-
-                sel1.innerHTML = '';
-                sel2.innerHTML = '';
-
-                if (this.propertiesList.length === 0) {
-                    var emptyOpt = document.createElement('option');
-                    emptyOpt.text = 'Свойства не найдены';
-                    sel1.add(emptyOpt);
-                    sel2.add(emptyOpt.cloneNode(true));
-                    return;
-                }
-
-                for (var i = 0; i < this.propertiesList.length; i++) {
-                    var item = this.propertiesList[i];
-                    
-                    var opt1 = document.createElement('option');
-                    opt1.value = item.guid;
-                    opt1.text = item.name;
-                    sel1.add(opt1);
-
-                    var opt2 = document.createElement('option');
-                    opt2.value = item.guid;
-                    opt2.text = item.name;
-                    sel2.add(opt2);
-                }
-
-                if (this.propertiesList.length > 0) {
-                    this.onSelectProperty(this.propertiesList[0].guid);
-                }
-            },
-
-            onSelectProperty: function(guid) {
-                this.selectedGuid = guid;
-                document.getElementById('propSelect1').value = guid;
-                document.getElementById('propSelect2').value = guid;
-
-                this.refreshPropertyValue();
-
-                var propObj = null;
-                for (var i = 0; i < this.propertiesList.length; i++) {
-                    if (this.propertiesList[i].guid === guid) {
-                        propObj = this.propertiesList[i];
-                        break;
-                    }
-                }
-
-                var descArea = document.getElementById('currentDescArea');
-                var editorArea = document.getElementById('editorDescArea');
-
-                if (propObj) {
-                    descArea.value = propObj.description || '';
-                    editorArea.value = propObj.description || '';
-                } else {
-                    descArea.value = '';
-                    editorArea.value = '';
-                }
-
-                this.hideStatus();
-            },
-
-            refreshPropertyValue: function() {
-                if (!this.selectedGuid) return;
-                var input = document.getElementById('currentValueInput');
-                input.value = 'Загрузка...';
-
-                window.ACAPI.GetElementPropertyValue(this.selectedGuid, function(val) {
-                    input.value = (val !== undefined && val !== null) ? val : '<Пусто>';
-                });
-            },
-
-            switchTab: function(tabId) {
-                this.activeTabId = tabId;
-                var tabs = ['tabSync', 'tabRenum', 'tabSum', 'tabSpec'];
-                var btns = ['btnTabSync', 'btnTabRenum', 'btnTabSum', 'btnTabSpec'];
-                var isDark = (this.currentTheme === 'dark');
-
-                for (var i = 0; i < tabs.length; i++) {
-                    var el = document.getElementById(tabs[i]);
-                    var btn = document.getElementById(btns[i]);
-                    
-                    if (tabs[i] === tabId) {
-                        el.style.display = 'block';
-                        btn.style.backgroundColor = '#0e639c';
-                        btn.style.color = '#ffffff';
-                        btn.style.fontWeight = '500';
-                    } else {
-                        el.style.display = 'none';
-                        btn.style.backgroundColor = 'transparent';
-                        btn.style.color = isDark ? '#cccccc' : '#555555';
-                        btn.style.fontWeight = 'normal';
-                    }
-                }
-            },
-
-            insertText: function(text) {
-                var area = document.getElementById('editorDescArea');
-                area.focus();
-
-                if (document.selection) {
-                    var sel = document.selection.createRange();
-                    sel.text = text;
-                } else if (area.selectionStart || area.selectionStart === 0) {
-                    var startPos = area.selectionStart;
-                    var endPos = area.selectionEnd;
-                    area.value = area.value.substring(0, startPos) + text + area.value.substring(endPos, area.value.length);
-                    area.selectionStart = startPos + text.length;
-                    area.selectionEnd = startPos + text.length;
-                } else {
-                    area.value += text;
-                }
-            },
-
-            buildRenum: function() {
-                var mode = document.getElementById('renumMode').value;
-                this.insertText('Renum{' + mode + '}');
-            },
-
-            parseSyntax: function() {
-                var desc = document.getElementById('editorDescArea').value;
-                var self = this;
-
-                window.ACAPI.ParsePropertyDescription(desc, function(result) {
-                    if (result && result.status === 'ok') {
-                        self.showStatus('✔ ' + result.message, false);
-                    } else {
-                        self.showStatus('❌ ' + (result ? result.message : 'Ошибка валидации'), true);
-                    }
-                });
-            },
-
-            savePropertyDescription: function() {
-                if (!this.selectedGuid) {
-                    this.showStatus('❌ Свойство не выбрано', true);
-                    return;
-                }
-
-                var desc = document.getElementById('editorDescArea').value;
-                var self = this;
-
-                window.ACAPI.SetPropertyDescription(this.selectedGuid, desc, function(result) {
-                    if (result && result.status === 'ok') {
-                        self.showStatus('✔ ' + result.message, false);
-                        for (var i = 0; i < self.propertiesList.length; i++) {
-                            if (self.propertiesList[i].guid === self.selectedGuid) {
-                                self.propertiesList[i].description = desc;
-                                document.getElementById('currentDescArea').value = desc;
-                                break;
-                            }
-                        }
-                    } else {
-                        self.showStatus('❌ Ошибка записи: ' + (result ? result.message : 'Неизвестный сбой'), true);
-                    }
-                });
-            },
-
-            showStatus: function(msg, isError) {
-                var out = document.getElementById('statusOutput');
-                out.style.display = 'block';
-                out.innerText = msg;
-
-                if (isError) {
-                    out.style.backgroundColor = (this.currentTheme === 'light') ? '#fde8e8' : '#5a1d1d';
-                    out.style.color = (this.currentTheme === 'light') ? '#9c0000' : '#f88080';
-                    out.style.border = '1px solid ' + ((this.currentTheme === 'light') ? '#f8b7b7' : '#802020');
-                } else {
-                    out.style.backgroundColor = (this.currentTheme === 'light') ? '#e8f8e8' : '#1d4a1d';
-                    out.style.color = (this.currentTheme === 'light') ? '#006000' : '#80f880';
-                    out.style.border = '1px solid ' + ((this.currentTheme === 'light') ? '#b7f8b7' : '#208020');
-                }
-            },
-
-            hideStatus: function() {
-                var out = document.getElementById('statusOutput');
-                out.style.display = 'none';
-                out.innerText = '';
+      } else {
+        console.warn("ACAPI.GetSelectionInfo not available, using mock.");
+        resolve({ count: MOCK_SELECTED_COUNT });
+      }
+    });
+  }
+
+  /**
+   * AGENT TODO: запросить дерево классификаций для текущего выделения.
+   * Ожидаемое поведение реального моста:
+   *  - обходит все выделенные элементы, находит их классификации в указанной
+   *    системе классификации по умолчанию (или во всех активных системах);
+   *  - если у всех элементов классификация совпадает — common:true и commonPath
+   *    содержит полный путь (например ["IFC 4", "Строительные элементы", "Стены", "Наружная"]);
+   *  - если классификации различаются — common:false, commonPath содержит только
+   *    ту часть пути, что совпадает у всех, а differing перечисляет каждый элемент
+   *    с его конкретным (различающимся) значением;
+   *  - options — список классификаций, которые можно назначить всем выделенным
+   *    элементам одним действием (для выпадающего списка "Применить ко всем").
+   * @returns {Promise<{common:boolean, commonPath:string[],
+   *                     differing:{elementName:string, value:string}[],
+   *                     options:string[]}>}
+   */
+  function getClassification() {
+    return delay(80).then(function () {
+      return {
+        common: false,
+        commonPath: ["IFC 4", "Строительные элементы", "Стены"],
+        differing: [
+          { elementName: "Стена наружная — Эт.1", value: "IfcWall — Наружная несущая" },
+          { elementName: "Стена наружная — Эт.2", value: "IfcWall — Наружная несущая" },
+          { elementName: "Стена внутренняя — Эт.1", value: "IfcWall — Внутренняя перегородка" },
+          { elementName: "Стена подвал — Эт.0", value: "IfcWallStandardCase — Несущая" },
+          { elementName: "Парапет — Кровля", value: "IfcWall — Парапет" }
+        ],
+        options: [
+          "IfcWall — Наружная несущая",
+          "IfcWall — Внутренняя перегородка",
+          "IfcWallStandardCase — Несущая",
+          "IfcWall — Парапет"
+        ]
+      };
+    });
+  }
+
+  /**
+   * AGENT TODO: назначить единую классификацию всем выделенным элементам.
+   * @param {string} classificationValue — значение из options (см. getClassification)
+   * @returns {Promise<{success:boolean}>}
+   */
+  function setClassificationForSelection(classificationValue) {
+    return delay(150).then(function () { return { success: true }; });
+  }
+
+  /**
+   * AGENT TODO: вернуть список преднастроенных фильтров свойств (хранятся
+   * в конфигурации плагина / шаблоне). Каждый фильтр — либо обычная подстрока,
+   * либо регулярное выражение в формате "/шаблон/".
+   * @returns {Promise<{label:string, query:string}[]>}
+   */
+  function getFilterPresets() {
+    return delay(40).then(function () {
+      return [
+        { label: "Все свойства", query: "" },
+        { label: "Только IFC", query: "/^IFC:/" },
+        { label: "Только геометрия", query: "/^(Coord|Geo):/" },
+        { label: "Незаполненные", query: "/пусто|empty/" }
+      ];
+    });
+  }
+
+  /**
+   * AGENT TODO: запросить у Archicad список свойств для текущего выделения,
+   * сгруппированный по системным группам (как в инспекторе свойств Archicad).
+   * Для каждого свойства нужно вернуть, есть ли оно у ВСЕХ выделенных элементов
+   * (allHave) и у скольких из них оно фактически присутствует (countWithProperty).
+   * Список должен быть уже отфильтрован по filterText на стороне C++ ИЛИ (как
+   * сделано в этом моке) фильтрация может выполняться на стороне JS — выбрать
+   * единый подход при реальной интеграции, чтобы избежать двойной фильтрации.
+   * @param {string} filterText
+   * @returns {Promise<{group:string, properties:{id:string, name:string,
+   *                     allHave:boolean, countWithProperty:number}[]}[]>}
+   */
+  function getPropertiesList(filterText) {
+    return delay(90).then(function () {
+      const all = [
+        { group: "Общие", properties: [
+          { id: "gen.name", name: "Наименование", allHave: true, countWithProperty: 5 },
+          { id: "gen.layer", name: "Слой", allHave: true, countWithProperty: 5 },
+          { id: "gen.id", name: "Идентификатор ID", allHave: false, countWithProperty: 3 }
+        ]},
+        { group: "IFC", properties: [
+          { id: "ifc.class", name: "IFC Класс", allHave: true, countWithProperty: 5 },
+          { id: "ifc.predefinedtype", name: "PredefinedType", allHave: false, countWithProperty: 4 },
+          { id: "ifc.guid", name: "GlobalId", allHave: true, countWithProperty: 5 }
+        ]},
+        { group: "Геометрия", properties: [
+          { id: "geo.area", name: "Площадь", allHave: true, countWithProperty: 5 },
+          { id: "geo.thickness", name: "Толщина", allHave: false, countWithProperty: 2 },
+          { id: "geo.height", name: "Высота", allHave: true, countWithProperty: 5 }
+        ]},
+        { group: "Нумерация", properties: [
+          { id: "num.floor", name: "Этаж", allHave: true, countWithProperty: 5 },
+          { id: "num.section", name: "Секция", allHave: false, countWithProperty: 1 }
+        ]}
+      ];
+      if (!filterText) return all;
+      let matcher;
+      const rx = /^\/(.*)\/$/.exec(filterText.trim());
+      if (rx) {
+        try { matcher = new RegExp(rx[1], "i"); } catch (e) { matcher = null; }
+      }
+      const test = matcher
+        ? function (s) { return matcher.test(s); }
+        : function (s) { return s.toLowerCase().indexOf(filterText.trim().toLowerCase()) !== -1; };
+      return all
+        .map(function (g) { return { group: g.group, properties: g.properties.filter(function (p) { return test(p.name); }) }; })
+        .filter(function (g) { return g.properties.length > 0; });
+    });
+  }
+
+  /**
+   * AGENT TODO: запросить фактическое значение выбранного свойства для каждого
+   * выделенного элемента. Если значения совпадают — common:true и values
+   * содержит один элемент. Если различаются — common:false и values содержит
+   * запись на каждый уникальный вариант значения (с указанием, у скольких
+   * элементов это значение встречается).
+   * @param {string} propertyId
+   * @returns {Promise<{propertyName:string, common:boolean,
+   *                     values:{value:string, count:number}[]}>}
+   */
+  function getPropertyValue(propertyId) {
+    return delay(70).then(function () {
+      const mockValues = {
+        "gen.id": { common: false, values: [{ value: "ST-014", count: 2 }, { value: "ST-021", count: 1 }, { value: "— не задано —", count: 2 }] },
+        "ifc.predefinedtype": { common: false, values: [{ value: "SOLIDWALL", count: 4 }, { value: "PARAPET", count: 1 }] },
+        "geo.thickness": { common: false, values: [{ value: "250 мм", count: 2 }, { value: "— не задано —", count: 3 }] },
+        "num.section": { common: false, values: [{ value: "А", count: 1 }, { value: "— не задано —", count: 4 }] }
+      };
+      const found = mockValues[propertyId];
+      if (found) return Object.assign({ propertyName: propertyId }, found);
+      return { propertyName: propertyId, common: true, values: [{ value: "значение примера", count: MOCK_SELECTED_COUNT }] };
+    });
+  }
+
+  /**
+   * AGENT TODO: сбросить значение свойства к значению по умолчанию для всех
+   * выделенных элементов (снять оверрайд).
+   * @param {string} propertyId
+   * @returns {Promise<{success:boolean}>}
+   */
+  function resetPropertyToDefault(propertyId) {
+    return delay(120).then(function () { return { success: true }; });
+  }
+
+  /**
+   * AGENT TODO: список свойств, пригодных для использования как
+   * свойство-флаг / свойство-правило / свойство-критерий / свойство разбивки
+   * в блоках вкладки «Нумерация». В реальной интеграции список может отличаться
+   * по каждому блоку (например, только текстовые/числовые свойства для критерия).
+   * @returns {Promise<{id:string, name:string}[]>}
+   */
+  function getNumberingProperties() {
+    return delay(50).then(function () {
+      return [
+        { id: "num.floor", name: "Этаж" },
+        { id: "num.section", name: "Секция" },
+        { id: "ifc.class", name: "IFC Класс" },
+        { id: "gen.layer", name: "Слой" },
+        { id: "geo.area", name: "Площадь" }
+      ];
+    });
+  }
+
+  /**
+   * AGENT TODO: выполнить пересчёт нумерации по текущей конфигурации (флаг,
+   * правило, критерий, разбивка) и вернуть таблицу предпросмотра — присвоенный
+   * номер и значение свойства-критерия для каждого выделенного элемента.
+   * @param {object} config — {flagProperty, ruleProperty, numberFormat, criterionProperty, splitProperty}
+   * @returns {Promise<{number:string, criterionValue:string}[]>}
+   */
+  function getNumberingPreview(config) {
+    return delay(100).then(function () {
+      const base = [
+        { number: "A-01", criterionValue: "Стена наружная — Эт.1" },
+        { number: "A-02", criterionValue: "Стена наружная — Эт.2" },
+        { number: "B-01", criterionValue: "Стена внутренняя — Эт.1" },
+        { number: "B-02", criterionValue: "Стена подвал — Эт.0" },
+        { number: "C-01", criterionValue: "Парапет — Кровля" }
+      ];
+      if (!config.criterionProperty) return [];
+      return base;
+    });
+  }
+
+  /**
+   * AGENT TODO: выполнить (запустить) DSL-скрипт синхронизации, введённый
+   * пользователем на вкладке «Синхронизация», на текущем выделении элементов.
+   * Должен вернуть результат выполнения (успех/ошибка, номер строки ошибки и т.п.)
+   * для отображения пользователю.
+   * @param {string} scriptText
+   * @returns {Promise<{success:boolean, message:string}>}
+   */
+  function executeSyncScript(scriptText) {
+    return delay(200).then(function () {
+      return { success: true, message: "Скрипт применён к " + MOCK_SELECTED_COUNT + " элементам (демо-режим)." };
+    });
+  }
+
+  return {
+    getSelectionInfo: getSelectionInfo,
+    getClassification: getClassification,
+    setClassificationForSelection: setClassificationForSelection,
+    getFilterPresets: getFilterPresets,
+    getPropertiesList: getPropertiesList,
+    getPropertyValue: getPropertyValue,
+    resetPropertyToDefault: resetPropertyToDefault,
+    getNumberingProperties: getNumberingProperties,
+    getNumberingPreview: getNumberingPreview,
+    executeSyncScript: executeSyncScript
+  };
+})();
+
+/* =====================================================================================
+   3. УТИЛИТЫ
+   ===================================================================================== */
+
+// Компактный конструктор DOM-элементов с инлайн-стилями.
+// opts: { style, text, html, attrs:{}, on:{event:handler} }
+function h(tag, opts, children) {
+  opts = opts || {};
+  const e = document.createElement(tag);
+  e.style.boxSizing = "border-box"; // единая политика box-sizing без CSS-блоков
+  if (opts.style) e.style.cssText += opts.style;
+  if (opts.text !== undefined) e.textContent = opts.text;
+  if (opts.html !== undefined) e.innerHTML = opts.html;
+  if (opts.attrs) for (const k in opts.attrs) e.setAttribute(k, opts.attrs[k]);
+  if (opts.on) for (const k in opts.on) e.addEventListener(k, opts.on[k]);
+  (children || []).forEach(function (c) { if (c) e.appendChild(c); });
+  return e;
+}
+
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+// Простая SVG-иконка "цепочка" (замкнутая/разомкнутая) для кнопки сброса свойства.
+function chainIconSvg(broken) {
+  return broken
+    ? '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 12l2-2M6.5 9.5L5 8a2.5 2.5 0 013.5-3.5l1.5 1.5M13.5 10.5L15 12a2.5 2.5 0 01-3.5 3.5l-1.5-1.5" stroke-linecap="round"/></svg>'
+    : '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 12l4-4M6.5 9.5L5 8a2.5 2.5 0 013.5-3.5l1.5 1.5M13.5 10.5L15 12a2.5 2.5 0 01-3.5 3.5l-1.5-1.5" stroke-linecap="round"/></svg>';
+}
+
+function chevronSvg(open) {
+  return '<svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" style="transform:rotate(' + (open ? "0" : "-90") + 'deg);transition:transform var(--ac-transition);"><path d="M5 8l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+}
+
+/* =====================================================================================
+   4. КАРКАС ИНТЕРФЕЙСА: левая навигация + переключение вкладок
+   ===================================================================================== */
+
+const TABS = [
+  { id: "monitor",   label: "Монитор" },
+  { id: "sync",      label: "Синхронизация" },
+  { id: "numbering", label: "Нумерация" },
+  { id: "summary",   label: "Суммирование" },
+  { id: "spec",      label: "Спецификация" }
+];
+
+function buildShell() {
+  const app = document.getElementById("app");
+  clear(app);
+
+  // ---- Левая панель навигации ----
+  const nav = h("nav", {
+    attrs: { id: "left-nav" },
+    style: "width:2.75rem;min-width:2.75rem;flex:0 0 2.75rem;display:flex;flex-direction:column;" +
+           "background:var(--ac-bg-nav);border-right:1px solid var(--ac-border);height:100%;"
+  });
+
+  TABS.forEach(function (tab) {
+    const btn = h("button", {
+      attrs: { "data-tab": tab.id, title: tab.label },
+      style: "appearance:none;border:none;background:transparent;cursor:pointer;" +
+             "flex:1 1 0;min-height:3.5rem;display:flex;align-items:center;justify-content:center;" +
+             "padding:0.5rem 0;position:relative;color:var(--ac-text-secondary);" +
+             "border-left:2px solid transparent;transition:background var(--ac-transition),color var(--ac-transition);",
+      on: {
+        click: function () { setActiveTab(tab.id); },
+        mouseenter: function () { if (STATE.activeTab !== tab.id) btn.style.background = "var(--ac-bg-hover)"; },
+        mouseleave: function () { if (STATE.activeTab !== tab.id) btn.style.background = "transparent"; }
+      }
+    }, [
+      h("span", {
+        text: tab.label,
+        style: "display:inline-block;white-space:nowrap;transform:rotate(-90deg);" + // читается снизу вверх
+               "transform-origin:center;font-size:0.72rem;letter-spacing:0.02em;font-weight:600;"
+      })
+    ]);
+    btn.setAttribute("data-nav-btn", tab.id);
+    nav.appendChild(btn);
+  });
+
+  // Переключатель темы внизу левой панели
+  const themeBtn = h("button", {
+    attrs: { id: "theme-toggle", title: "Переключить тему" },
+    style: "appearance:none;border:none;border-top:1px solid var(--ac-border);background:transparent;" +
+           "cursor:pointer;flex:0 0 2.75rem;display:flex;align-items:center;justify-content:center;" +
+           "color:var(--ac-text-secondary);font-size:1rem;",
+    on: {
+      click: function () { applyTheme(STATE.theme === "light" ? "dark" : "light"); },
+      mouseenter: function () { themeBtn.style.background = "var(--ac-bg-hover)"; },
+      mouseleave: function () { themeBtn.style.background = "transparent"; }
+    }
+  }, [ h("span", { attrs: { id: "theme-toggle-icon" }, text: "\u263D" }) ]);
+  nav.appendChild(themeBtn);
+
+  // ---- Правая рабочая область ----
+  const workspace = h("main", {
+    attrs: { id: "workspace" },
+    style: "flex:1 1 auto;min-width:0;height:100%;overflow:hidden;background:var(--ac-bg-workspace);" +
+           "display:flex;flex-direction:column;color:var(--ac-text-primary);font-size:0.85rem;"
+  });
+
+  app.appendChild(nav);
+  app.appendChild(workspace);
+
+  highlightNav();
+  renderActiveTab();
+}
+
+function highlightNav() {
+  TABS.forEach(function (tab) {
+    const btn = document.querySelector('[data-nav-btn="' + tab.id + '"]');
+    if (!btn) return;
+    const active = tab.id === STATE.activeTab;
+    btn.style.background = active ? "var(--ac-bg-workspace)" : "transparent";
+    btn.style.color = active ? "var(--ac-accent)" : "var(--ac-text-secondary)";
+    btn.style.borderLeft = active ? "2px solid var(--ac-accent)" : "2px solid transparent";
+  });
+}
+
+function setActiveTab(id) {
+  STATE.activeTab = id;
+  highlightNav();
+  renderActiveTab();
+}
+
+function renderActiveTab() {
+  const workspace = document.getElementById("workspace");
+  clear(workspace);
+  switch (STATE.activeTab) {
+    case "monitor":   renderMonitorTab(workspace); break;
+    case "sync":      renderSyncTab(workspace); break;
+    case "numbering": renderNumberingTab(workspace); break;
+    case "summary":   renderPlaceholderTab(workspace); break;
+    case "spec":      renderPlaceholderTab(workspace); break;
+  }
+}
+
+function renderPlaceholderTab(container) {
+  container.appendChild(h("div", {
+    style: "flex:1;display:flex;align-items:center;justify-content:center;"
+  }, [
+    h("span", {
+      text: "[ В РАБОТЕ ]",
+      style: "color:var(--ac-text-tertiary);font-size:0.8rem;letter-spacing:0.05em;font-weight:600;"
+    })
+  ]));
+}
+
+/* =====================================================================================
+   5. ВКЛАДКА «МОНИТОР»
+   ===================================================================================== */
+
+function renderMonitorTab(container) {
+  container.style.padding = "0";
+
+  const root = h("div", { style: "display:flex;flex-direction:column;height:100%;overflow:hidden;" });
+
+  const selectionLine = h("div", {
+    style: "padding:0.6rem 0.75rem 0.2rem;color:var(--ac-text-secondary);font-size:0.72rem;"
+  }, [ h("span", { text: "Загрузка выделения…" }) ]);
+
+  const classificationBlock = h("div", {
+    style: "padding:0.4rem 0.75rem 0.6rem;border-bottom:1px solid var(--ac-divider);" +
+           "max-height:40%;overflow:auto;flex:0 0 auto;"
+  });
+
+  const filterBlock = h("div", { style: "padding:0.6rem 0.75rem;border-bottom:1px solid var(--ac-divider);flex:0 0 auto;position:relative;" });
+
+  const listBlock = h("div", { style: "flex:1 1 auto;min-height:0;overflow:auto;" });
+
+  const valueBlock = h("div", {
+    style: "flex:0 0 auto;border-top:1px solid var(--ac-border);background:var(--ac-bg-elevated);" +
+           "padding:0.6rem 0.75rem;min-height:4rem;max-height:35%;overflow:auto;"
+  });
+
+  root.appendChild(selectionLine);
+  root.appendChild(classificationBlock);
+  root.appendChild(filterBlock);
+  root.appendChild(listBlock);
+  root.appendChild(valueBlock);
+  container.appendChild(root);
+
+  ACBridge.getSelectionInfo().then(function (info) {
+    selectionLine.textContent = "";
+    selectionLine.appendChild(h("span", { text: "Выделено элементов: " + info.count }));
+  });
+
+  renderClassificationBlock(classificationBlock);
+  renderFilterBlock(filterBlock, listBlock);
+  renderPropertyList(listBlock, valueBlock, STATE.monitorFilter);
+  renderValueBlock(valueBlock, null);
+}
+
+function renderClassificationBlock(block) {
+  clear(block);
+  block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
+
+  ACBridge.getClassification().then(function (data) {
+    clear(block);
+
+    block.appendChild(h("div", {
+      text: "Классификация",
+      style: "font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;" +
+             "color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.35rem;"
+    }));
+
+    // Общая (совпадающая) часть пути — дерево
+    const tree = h("div", { style: "display:flex;flex-direction:column;gap:0.15rem;" });
+    data.commonPath.forEach(function (segment, i) {
+      tree.appendChild(h("div", {
+        style: "padding-left:" + (i * 0.9) + "rem;font-size:0.78rem;color:var(--ac-text-primary);" +
+               "display:flex;align-items:center;gap:0.35rem;"
+      }, [
+        h("span", { html: '<svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h4l1.5 2H16v7H4z"/></svg>', style: "color:var(--ac-text-tertiary);display:flex;" }),
+        h("span", { text: segment })
+      ]));
+    });
+    block.appendChild(tree);
+
+    if (data.common) return;
+
+    // Состояние "РАЗНАЯ"
+    const diffRow = h("div", {
+      style: "margin-top:0.4rem;padding:0.35rem 0.5rem;background:var(--ac-warn-soft);" +
+             "border-radius:0.25rem;display:flex;align-items:center;gap:0.4rem;"
+    }, [
+      h("span", { text: "РАЗНАЯ", style: "color:var(--ac-warn);font-weight:700;font-size:0.72rem;letter-spacing:0.03em;" }),
+      h("span", { text: "(" + data.differing.length + " вариантов)", style: "color:var(--ac-text-secondary);font-size:0.7rem;" })
+    ]);
+    block.appendChild(diffRow);
+
+    const diffList = h("div", { style: "margin-top:0.3rem;display:flex;flex-direction:column;gap:0.15rem;padding-left:0.9rem;" });
+    data.differing.forEach(function (d) {
+      diffList.appendChild(h("div", { style: "font-size:0.72rem;color:var(--ac-text-secondary);" }, [
+        h("span", { text: d.elementName, style: "color:var(--ac-text-primary);" }),
+        h("span", { text: "  —  " + d.value })
+      ]));
+    });
+    block.appendChild(diffList);
+
+    // Интерфейс задания единой классификации
+    const applyRow = h("div", { style: "margin-top:0.5rem;display:flex;gap:0.4rem;flex-wrap:wrap;" });
+    const select = h("select", {
+      style: "flex:1 1 10rem;min-width:8rem;padding:0.3rem 0.4rem;font-size:0.75rem;" +
+             "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;"
+    });
+    data.options.forEach(function (opt) {
+      select.appendChild(h("option", { text: opt, attrs: { value: opt } }));
+    });
+    const applyBtn = h("button", {
+      text: "Применить ко всем",
+      style: "padding:0.3rem 0.6rem;font-size:0.75rem;border:none;border-radius:0.25rem;cursor:pointer;" +
+             "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
+      on: {
+        click: function () {
+          applyBtn.disabled = true; applyBtn.textContent = "Применение…";
+          ACBridge.setClassificationForSelection(select.value).then(function () {
+            renderClassificationBlock(block); // перерисовать (в реале — уже единая классификация)
+          });
+        }
+      }
+    });
+    applyRow.appendChild(select);
+    applyRow.appendChild(applyBtn);
+    block.appendChild(applyRow);
+  });
+}
+
+function renderFilterBlock(block, listBlock) {
+  clear(block);
+
+  const row = h("div", { style: "display:flex;gap:0.3rem;" });
+  const input = h("input", {
+    attrs: { type: "text", placeholder: "Фильтр свойств… (или /regex/)", value: STATE.monitorFilter },
+    style: "flex:1 1 auto;min-width:0;padding:0.35rem 0.5rem;font-size:0.78rem;" +
+           "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;",
+    on: {
+      input: function () {
+        STATE.monitorFilter = input.value;
+        renderPropertyList(listBlock, document.getElementById("monitor-value-block-anchor") ? null : listBlock.parentElement.lastChild, STATE.monitorFilter);
+      }
+    }
+  });
+
+  const presetBtn = h("button", {
+    text: "\u25BE",
+    attrs: { title: "Преднастроенные фильтры" },
+    style: "flex:0 0 auto;padding:0.35rem 0.55rem;font-size:0.75rem;cursor:pointer;" +
+           "background:var(--ac-bg-elevated);color:var(--ac-text-secondary);border:1px solid var(--ac-border);border-radius:0.25rem;"
+  });
+
+  const dropdown = h("div", {
+    style: "position:absolute;top:2.4rem;right:0.75rem;left:0.75rem;z-index:5;display:none;" +
+           "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
+           "box-shadow:0 4px 10px var(--ac-shadow-color);overflow:hidden;"
+  });
+
+  presetBtn.addEventListener("click", function () {
+    const willOpen = dropdown.style.display === "none";
+    dropdown.style.display = willOpen ? "block" : "none";
+    if (willOpen && !dropdown.childNodes.length) {
+      ACBridge.getFilterPresets().then(function (presets) {
+        presets.forEach(function (p) {
+          dropdown.appendChild(h("div", {
+            text: p.label,
+            style: "padding:0.4rem 0.6rem;font-size:0.76rem;cursor:pointer;color:var(--ac-text-primary);",
+            on: {
+              click: function () {
+                input.value = p.query;
+                STATE.monitorFilter = p.query;
+                dropdown.style.display = "none";
+                renderPropertyList(listBlock, listBlock.parentElement.querySelector('[data-role="value-block"]'), STATE.monitorFilter);
+              },
+              mouseenter: function (e) { e.target.style.background = "var(--ac-bg-hover)"; },
+              mouseleave: function (e) { e.target.style.background = "transparent"; }
             }
-        };
+          }));
+        });
+      });
+    }
+  });
 
-        window.onload = function() {
-            window.app.init();
-        };
-    </script>
+  row.appendChild(input);
+  row.appendChild(presetBtn);
+  block.appendChild(row);
+  block.appendChild(h("div", {
+    text: "Поддерживаются шаблоны regexp в формате /шаблон/",
+    style: "margin-top:0.25rem;font-size:0.66rem;color:var(--ac-text-tertiary);"
+  }));
+  block.appendChild(dropdown);
+}
+
+function renderPropertyList(listBlock, valueBlock, filterText) {
+  clear(listBlock);
+  listBlock.appendChild(h("div", { text: "Загрузка свойств…", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
+
+  // valueBlock может быть не найден сразу после первичного рендера — берём его из DOM надёжно.
+  const realValueBlock = document.querySelector('[data-role="value-block"]') || valueBlock;
+
+  ACBridge.getPropertiesList(filterText).then(function (groups) {
+    clear(listBlock);
+    if (!groups.length) {
+      listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
+      return;
+    }
+    groups.forEach(function (g) {
+      listBlock.appendChild(h("div", {
+        text: g.group,
+        style: "position:sticky;top:0;background:var(--ac-bg-workspace);padding:0.4rem 0.75rem 0.2rem;" +
+               "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;"
+      }));
+      g.properties.forEach(function (p) {
+        listBlock.appendChild(renderPropertyRow(p, realValueBlock));
+      });
+    });
+  });
+}
+
+function renderPropertyRow(prop, valueBlock) {
+  const isSelected = STATE.monitorSelectedPropertyId === prop.id;
+
+  const row = h("div", {
+    attrs: { "data-prop-row": prop.id },
+    style: "display:flex;align-items:center;gap:0.4rem;padding:0.35rem 0.75rem;cursor:pointer;" +
+           "border-left:2px solid " + (isSelected ? "var(--ac-accent)" : "transparent") + ";" +
+           "background:" + (isSelected ? "var(--ac-bg-hover)" : "transparent") + ";",
+    on: {
+      click: function () {
+        STATE.monitorSelectedPropertyId = prop.id;
+        document.querySelectorAll("[data-prop-row]").forEach(function (r) {
+          const sel = r.getAttribute("data-prop-row") === prop.id;
+          r.style.background = sel ? "var(--ac-bg-hover)" : "transparent";
+          r.style.borderLeft = "2px solid " + (sel ? "var(--ac-accent)" : "transparent");
+        });
+        renderValueBlock(document.querySelector('[data-role="value-block"]'), prop.id);
+      },
+      mouseenter: function () { if (!isSelected) row.style.background = "var(--ac-bg-hover)"; },
+      mouseleave: function () {
+        const stillSelected = STATE.monitorSelectedPropertyId === prop.id;
+        row.style.background = stillSelected ? "var(--ac-bg-hover)" : "transparent";
+      }
+    }
+  });
+
+  const nameSpan = h("span", {
+    text: prop.name,
+    style: "flex:1 1 auto;min-width:0;font-size:0.78rem;" +
+           "color:" + (prop.allHave ? "var(--ac-accent)" : "var(--ac-text-primary)") + ";" +
+           "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+  });
+  row.appendChild(nameSpan);
+
+  if (!prop.allHave) {
+    row.appendChild(h("span", {
+      text: "(" + prop.countWithProperty + "/" + MOCK_SELECTED_COUNT + ")",
+      style: "flex:0 0 auto;font-size:0.68rem;color:var(--ac-text-tertiary);"
+    }));
+  }
+
+  const resetBtn = h("button", {
+    attrs: { title: "Сбросить значение по умолчанию" },
+    html: chainIconSvg(false),
+    style: "flex:0 0 auto;border:none;background:transparent;cursor:pointer;color:var(--ac-text-tertiary);" +
+           "display:flex;align-items:center;padding:0.15rem;border-radius:0.2rem;",
+    on: {
+      click: function (e) {
+        e.stopPropagation();
+        resetBtn.innerHTML = chainIconSvg(true);
+        ACBridge.resetPropertyToDefault(prop.id).then(function () {
+          setTimeout(function () { resetBtn.innerHTML = chainIconSvg(false); }, 500);
+        });
+      },
+      mouseenter: function () { resetBtn.style.color = "var(--ac-danger)"; },
+      mouseleave: function () { resetBtn.style.color = "var(--ac-text-tertiary)"; }
+    }
+  });
+  row.appendChild(resetBtn);
+
+  return row;
+}
+
+function renderValueBlock(block, propertyId) {
+  if (!block) return;
+  block.setAttribute("data-role", "value-block");
+  clear(block);
+
+  if (!propertyId) {
+    block.appendChild(h("div", {
+      text: "Выберите свойство в списке выше, чтобы увидеть значение.",
+      style: "color:var(--ac-text-tertiary);font-size:0.74rem;"
+    }));
+    return;
+  }
+
+  block.appendChild(h("div", { text: "Загрузка значения…", style: "color:var(--ac-text-tertiary);font-size:0.74rem;" }));
+
+  ACBridge.getPropertyValue(propertyId).then(function (data) {
+    clear(block);
+    block.appendChild(h("div", {
+      text: "Значение свойства",
+      style: "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.3rem;"
+    }));
+
+    if (data.common) {
+      block.appendChild(h("div", { text: data.values[0].value, style: "font-size:0.85rem;color:var(--ac-text-primary);" }));
+      return;
+    }
+
+    block.appendChild(h("span", { text: "РАЗНОЕ", style: "color:var(--ac-warn);font-weight:700;font-size:0.78rem;" }));
+    const list = h("div", { style: "margin-top:0.3rem;display:flex;flex-direction:column;gap:0.15rem;" });
+    data.values.forEach(function (v) {
+      list.appendChild(h("div", { style: "font-size:0.75rem;color:var(--ac-text-primary);display:flex;justify-content:space-between;gap:0.5rem;" }, [
+        h("span", { text: v.value }),
+        h("span", { text: "×" + v.count, style: "color:var(--ac-text-tertiary);flex:0 0 auto;" })
+      ]));
+    });
+    block.appendChild(list);
+  });
+}
+
+/* =====================================================================================
+   6. ВКЛАДКА «СИНХРОНИЗАЦИЯ»
+   ---------------------------------------------------------------------------------
+   contenteditable-редактор с подсветкой синтаксиса DSL на лету через Vanilla JS
+   (регулярные выражения оборачивают токены в <span style="color:...">).
+   ===================================================================================== */
+
+const SYNC_TOKEN_RE = /("(?:[^"\\]|\\.)*")|(<[^<>]*>)|(\(\s*\d+\s*,\s*[^)]+?\s*\))|\b(Sync_from|Sync_to|Sync_flag|Renum|Sum|Sync_reset)\b|\b(Property|Coord|Glob|IFC|Morph|Material|MEP|Class|File)(:)|\b(empty|trim_empty|def|uniq|sum|max|min|FullName)\b|([{};])/g;
+
+function tokenizeSync(text) {
+  let result = "";
+  let lastIndex = 0;
+  text.replace(SYNC_TOKEN_RE, function (match, str, expr, range, cmd, ns, nsColon, kw, brack, offset) {
+    result += escapeHtml(text.slice(lastIndex, offset));
+    if (str !== undefined) result += '<span style="color:var(--ac-code-string)">' + escapeHtml(str) + "</span>";
+    else if (expr !== undefined) result += '<span style="color:var(--ac-code-expr)">' + escapeHtml(expr) + "</span>";
+    else if (range !== undefined) result += '<span style="color:var(--ac-code-range)">' + escapeHtml(range) + "</span>";
+    else if (cmd !== undefined) result += '<span style="color:var(--ac-code-command);font-weight:600">' + escapeHtml(cmd) + "</span>";
+    else if (ns !== undefined) result += '<span style="color:var(--ac-code-namespace)">' + escapeHtml(ns + nsColon) + "</span>";
+    else if (kw !== undefined) result += '<span style="color:var(--ac-code-keyword)">' + escapeHtml(kw) + "</span>";
+    else if (brack !== undefined) result += '<span style="color:var(--ac-code-bracket)">' + escapeHtml(brack) + "</span>";
+    lastIndex = offset + match.length;
+    return match;
+  });
+  result += escapeHtml(text.slice(lastIndex));
+  return result.length ? result : "<br>";
+}
+
+function getCaretOffset(root) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return 0;
+  const range = sel.getRangeAt(0);
+  if (!root.contains(range.startContainer)) return 0;
+  const preRange = range.cloneRange();
+  preRange.selectNodeContents(root);
+  preRange.setEnd(range.endContainer, range.endOffset);
+  return preRange.toString().length;
+}
+
+function setCaretOffset(root, offset) {
+  const sel = window.getSelection();
+  const range = document.createRange();
+  let remaining = offset;
+  let target = null, targetOffset = 0;
+  (function walk(el) {
+    for (let i = 0; i < el.childNodes.length; i++) {
+      if (target) return;
+      const child = el.childNodes[i];
+      if (child.nodeType === Node.TEXT_NODE) {
+        if (remaining <= child.textContent.length) { target = child; targetOffset = remaining; return; }
+        remaining -= child.textContent.length;
+      } else {
+        walk(child);
+      }
+    }
+  })(root);
+  if (!target) { target = root; targetOffset = root.childNodes.length; }
+  range.setStart(target, targetOffset);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+const SYNC_LEGEND = [
+  { label: "Команды", varName: "--ac-code-command" },
+  { label: "Пространства имён", varName: "--ac-code-namespace" },
+  { label: "Ключевые слова", varName: "--ac-code-keyword" },
+  { label: "Строки", varName: "--ac-code-string" },
+  { label: "Выражения", varName: "--ac-code-expr" },
+  { label: "Скобки / диапазоны", varName: "--ac-code-bracket" }
+];
+
+const SYNC_SNIPPETS = ["Sync_from", "Sync_to", "Sync_flag", "Renum", "Sum", "Sync_reset"];
+
+const DEFAULT_SYNC_SCRIPT =
+  'Sync_from{ Property:Тип; empty }\n' +
+  'Sync_to{ Coord:X; trim_empty }\n' +
+  'Renum{ Property:Этаж; Property:Секция }\n' +
+  'Sum{ Property:Площадь; sum; (1, nrow) }';
+
+function renderSyncTab(container) {
+  const root = h("div", { style: "display:flex;flex-direction:column;height:100%;overflow:hidden;" });
+
+  // Легенда токенов
+  const legend = h("div", {
+    style: "display:flex;flex-wrap:wrap;gap:0.5rem 0.8rem;padding:0.6rem 0.75rem;border-bottom:1px solid var(--ac-divider);flex:0 0 auto;"
+  });
+  SYNC_LEGEND.forEach(function (item) {
+    legend.appendChild(h("span", { style: "display:inline-flex;align-items:center;gap:0.3rem;font-size:0.68rem;color:var(--ac-text-secondary);" }, [
+      h("span", { style: "width:0.6rem;height:0.6rem;border-radius:50%;background:var(" + item.varName + ");display:inline-block;" }),
+      h("span", { text: item.label })
+    ]));
+  });
+
+  // Тулбар быстрой вставки команд
+  const toolbar = h("div", { style: "display:flex;flex-wrap:wrap;gap:0.3rem;padding:0.5rem 0.75rem;border-bottom:1px solid var(--ac-divider);flex:0 0 auto;" });
+
+  // Область редактора
+  const editorWrap = h("div", { style: "flex:1 1 auto;min-height:0;overflow:auto;padding:0.6rem 0.75rem;" });
+  const editor = h("div", {
+    attrs: { contenteditable: "true", spellcheck: "false", "data-role": "sync-editor" },
+    style: "outline:none;font-family:'Cascadia Code','Consolas',monospace;font-size:0.8rem;line-height:1.55;" +
+           "white-space:pre-wrap;word-break:break-word;min-height:100%;color:var(--ac-text-primary);" +
+           "background:var(--ac-code-bg);border:1px solid var(--ac-border);border-radius:0.3rem;padding:0.6rem 0.7rem;"
+  });
+  editor.textContent = DEFAULT_SYNC_SCRIPT;
+  editor.innerHTML = tokenizeSync(editor.textContent);
+
+  editor.addEventListener("input", function () {
+    const offset = getCaretOffset(editor);
+    const text = editor.textContent;
+    editor.innerHTML = tokenizeSync(text);
+    setCaretOffset(editor, offset);
+  });
+
+  SYNC_SNIPPETS.forEach(function (cmd) {
+    toolbar.appendChild(h("button", {
+      text: cmd,
+      style: "font-size:0.7rem;padding:0.25rem 0.5rem;border-radius:0.25rem;cursor:pointer;" +
+             "background:var(--ac-bg-elevated);color:var(--ac-code-command);border:1px solid var(--ac-border);font-family:monospace;",
+      on: {
+        click: function () {
+          editor.focus();
+          const insertion = cmd + "{  }";
+          editor.textContent = editor.textContent + (editor.textContent.endsWith("\n") || !editor.textContent ? "" : "\n") + insertion;
+          editor.innerHTML = tokenizeSync(editor.textContent);
+          setCaretOffset(editor, editor.textContent.length - 2);
+        }
+      }
+    }));
+  });
+
+  // Нижняя панель управления
+  const footer = h("div", {
+    style: "flex:0 0 auto;border-top:1px solid var(--ac-border);background:var(--ac-bg-elevated);" +
+           "padding:0.5rem 0.75rem;display:flex;align-items:center;gap:0.5rem;"
+  });
+  const statusText = h("span", { text: "", style: "font-size:0.7rem;color:var(--ac-text-secondary);flex:1 1 auto;" });
+  const runBtn = h("button", {
+    text: "Выполнить",
+    style: "padding:0.35rem 0.8rem;font-size:0.78rem;border:none;border-radius:0.25rem;cursor:pointer;" +
+           "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
+    on: {
+      click: function () {
+        runBtn.disabled = true; runBtn.textContent = "Выполняется…";
+        // AGENT TODO: ACBridge.executeSyncScript должен реально применить DSL-скрипт
+        // к выделению в Archicad — см. комментарий к функции выше.
+        ACBridge.executeSyncScript(editor.textContent).then(function (result) {
+          runBtn.disabled = false; runBtn.textContent = "Выполнить";
+          statusText.textContent = result.message;
+          statusText.style.color = result.success ? "var(--ac-text-secondary)" : "var(--ac-danger)";
+        });
+      }
+    }
+  });
+  footer.appendChild(statusText);
+  footer.appendChild(runBtn);
+
+  editorWrap.appendChild(editor);
+  root.appendChild(legend);
+  root.appendChild(toolbar);
+  root.appendChild(editorWrap);
+  root.appendChild(footer);
+  container.appendChild(root);
+}
+
+/* =====================================================================================
+   7. ВКЛАДКА «НУМЕРАЦИЯ»
+   ---------------------------------------------------------------------------------
+   Каскадное раскрытие: Блок 1 всегда развёрнут, Блоки 2–4 в пассивном состоянии
+   показывают только текстовую сводку и разворачиваются по клику.
+   ===================================================================================== */
+
+function renderNumberingTab(container) {
+  const root = h("div", { style: "display:flex;flex-direction:column;height:100%;overflow:auto;padding:0.6rem 0.75rem;gap:0.5rem;" });
+
+  ACBridge.getNumberingProperties().then(function (props) {
+    root.appendChild(renderNumberingBlock1(props));
+    root.appendChild(renderNumberingBlock2(props));
+    root.appendChild(renderNumberingBlock3(props));
+    const preview = renderNumberingBlock4();
+    root.appendChild(preview);
+    refreshNumberingPreview(preview);
+  });
+
+  container.appendChild(root);
+}
+
+function numberingSelect(props, currentValue, onChange, includeEmptyLabel) {
+  const select = h("select", {
+    style: "width:100%;padding:0.3rem 0.4rem;font-size:0.76rem;background:var(--ac-bg-input);" +
+           "color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;",
+    on: { change: function () { onChange(select.value || null); } }
+  });
+  if (includeEmptyLabel) select.appendChild(h("option", { text: includeEmptyLabel, attrs: { value: "" } }));
+  props.forEach(function (p) {
+    select.appendChild(h("option", { text: p.name, attrs: { value: p.id } }));
+  });
+  if (currentValue) select.value = currentValue;
+  return select;
+}
+
+function blockShell(title, isOpen, summaryText, onToggle) {
+  const wrap = h("div", { style: "border:1px solid var(--ac-border);border-radius:0.35rem;background:var(--ac-bg-elevated);overflow:hidden;flex:0 0 auto;" });
+  const header = h("div", {
+    style: "display:flex;align-items:center;gap:0.4rem;padding:0.5rem 0.6rem;cursor:pointer;",
+    on: { click: onToggle }
+  }, [
+    h("span", { html: chevronSvg(isOpen), style: "color:var(--ac-text-tertiary);display:flex;flex:0 0 auto;" }),
+    h("span", { text: title, style: "font-size:0.76rem;font-weight:700;color:var(--ac-text-primary);flex:0 0 auto;" }),
+    h("span", { text: summaryText || "", style: "font-size:0.72rem;color:var(--ac-text-tertiary);flex:1 1 auto;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" })
+  ]);
+  wrap.appendChild(header);
+  return wrap;
+}
+
+function codePreview(text) {
+  return h("div", {
+    text: text,
+    style: "margin-top:0.4rem;font-family:monospace;font-size:0.72rem;color:var(--ac-text-secondary);" +
+           "background:var(--ac-code-bg);border:1px solid var(--ac-border);border-radius:0.25rem;padding:0.4rem 0.5rem;word-break:break-all;"
+  });
+}
+
+function renderNumberingBlock1(props) {
+  const cfg = STATE.numberingConfig;
+  const wrap = blockShell("1. Флаг", true, null, function () {});
+  const body = h("div", { style: "padding:0 0.6rem 0.6rem;" }, [
+    h("div", { text: "Свойство-флаг для элементов", style: "font-size:0.7rem;color:var(--ac-text-secondary);margin-bottom:0.25rem;" }),
+    numberingSelect(props, cfg.flagProperty, function (v) {
+      cfg.flagProperty = v;
+      refreshNumberingPreview(document.querySelector('[data-role="numbering-preview"]'));
+    }, "— выбрать свойство —")
+  ]);
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function renderNumberingBlock2(props) {
+  const cfg = STATE.numberingConfig;
+  let open = STATE.numberingOpenBlocks.flag;
+  const summary = function () { return cfg.ruleProperty ? ("Renum_flag по: " + (props.find(function (p) { return p.id === cfg.ruleProperty; }) || {}).name) : "не задано"; };
+
+  const wrap = blockShell("2. Редактор флага (Renum_flag)", open, summary(), function () {
+    STATE.numberingOpenBlocks.flag = !STATE.numberingOpenBlocks.flag;
+    const idx = Array.prototype.indexOf.call(wrap.parentElement.children, wrap);
+    wrap.replaceWith(renderNumberingBlock2(props));
+  });
+
+  if (!open) return wrap;
+
+  const body = h("div", { style: "padding:0 0.6rem 0.6rem;display:flex;flex-direction:column;gap:0.4rem;" });
+  body.appendChild(h("div", { text: "Свойство-правило", style: "font-size:0.7rem;color:var(--ac-text-secondary);" }));
+  body.appendChild(numberingSelect(props, cfg.ruleProperty, function (v) { cfg.ruleProperty = v; updatePreview(); }, "— выбрать свойство —"));
+
+  body.appendChild(h("div", { text: "Формат номера", style: "font-size:0.7rem;color:var(--ac-text-secondary);margin-top:0.2rem;" }));
+  const formatSelect = h("select", {
+    style: "width:100%;padding:0.3rem 0.4rem;font-size:0.76rem;background:var(--ac-bg-input);" +
+           "color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;",
+    on: { change: function () { cfg.numberFormat = formatSelect.value; updatePreview(); redrawPreviewCode(); } }
+  });
+  ["NULL", "SPACE", "ALLNULL", "без суффикса"].forEach(function (f) {
+    formatSelect.appendChild(h("option", { text: f, attrs: { value: f } }));
+  });
+  formatSelect.value = cfg.numberFormat;
+  body.appendChild(formatSelect);
+
+  const preview = codePreview(buildFlagCode(props));
+  body.appendChild(preview);
+
+  function redrawPreviewCode() { preview.textContent = buildFlagCode(props); }
+  function updatePreview() { redrawPreviewCode(); refreshNumberingPreview(document.querySelector('[data-role="numbering-preview"]')); }
+
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function buildFlagCode(props) {
+  const cfg = STATE.numberingConfig;
+  const ruleName = cfg.ruleProperty ? "Property:" + (props.find(function (p) { return p.id === cfg.ruleProperty; }) || { name: "?" }).name : "…";
+  return "Renum_flag{ " + ruleName + "; " + cfg.numberFormat + " }";
+}
+
+function renderNumberingBlock3(props) {
+  const cfg = STATE.numberingConfig;
+  let open = STATE.numberingOpenBlocks.ruleEditor;
+  const summary = function () { return cfg.criterionProperty ? ("Renum по: " + (props.find(function (p) { return p.id === cfg.criterionProperty; }) || {}).name) : "не задано"; };
+
+  const wrap = blockShell("3. Редактор правила (Renum)", open, summary(), function () {
+    STATE.numberingOpenBlocks.ruleEditor = !STATE.numberingOpenBlocks.ruleEditor;
+    wrap.replaceWith(renderNumberingBlock3(props));
+  });
+
+  if (!open) return wrap;
+
+  const body = h("div", { style: "padding:0 0.6rem 0.6rem;display:flex;flex-direction:column;gap:0.4rem;" });
+  body.appendChild(h("div", { text: "Свойство-критерий (обязательно)", style: "font-size:0.7rem;color:var(--ac-text-secondary);" }));
+  body.appendChild(numberingSelect(props, cfg.criterionProperty, function (v) { cfg.criterionProperty = v; update(); }, "— выбрать свойство —"));
+
+  body.appendChild(h("div", { text: "Свойство для разбивки (опционально)", style: "font-size:0.7rem;color:var(--ac-text-secondary);margin-top:0.2rem;" }));
+  body.appendChild(numberingSelect(props, cfg.splitProperty, function (v) { cfg.splitProperty = v; update(); }, "— без разбивки —"));
+
+  const preview = codePreview(buildRuleCode(props));
+  body.appendChild(preview);
+
+  function update() {
+    preview.textContent = buildRuleCode(props);
+    refreshNumberingPreview(document.querySelector('[data-role="numbering-preview"]'));
+  }
+
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function buildRuleCode(props) {
+  const cfg = STATE.numberingConfig;
+  const crit = cfg.criterionProperty ? "Property:" + (props.find(function (p) { return p.id === cfg.criterionProperty; }) || { name: "?" }).name : "…";
+  const split = cfg.splitProperty ? "; Property:" + (props.find(function (p) { return p.id === cfg.splitProperty; }) || { name: "?" }).name : "";
+  return "Renum{ " + crit + split + " }";
+}
+
+function renderNumberingBlock4() {
+  const wrap = h("div", {
+    attrs: { "data-role": "numbering-preview" },
+    style: "border:1px solid var(--ac-border);border-radius:0.35rem;background:var(--ac-bg-elevated);" +
+           "flex:0 0 auto;padding:0.5rem 0.6rem;max-height:11rem;overflow:auto;"
+  });
+  wrap.appendChild(h("div", {
+    text: "4. Предпросмотр",
+    style: "font-size:0.76rem;font-weight:700;color:var(--ac-text-primary);margin-bottom:0.35rem;"
+  }));
+  wrap.appendChild(h("div", { attrs: { "data-role": "numbering-preview-body" }, text: "" }));
+  return wrap;
+}
+
+function refreshNumberingPreview(previewWrap) {
+  if (!previewWrap) return;
+  const body = previewWrap.querySelector('[data-role="numbering-preview-body"]');
+  clear(body);
+  body.appendChild(h("div", { text: "Пересчёт…", style: "font-size:0.72rem;color:var(--ac-text-tertiary);" }));
+
+  ACBridge.getNumberingPreview(STATE.numberingConfig).then(function (rows) {
+    clear(body);
+    if (!rows.length) {
+      body.appendChild(h("div", { text: "Задайте свойство-критерий, чтобы увидеть предпросмотр.", style: "font-size:0.72rem;color:var(--ac-text-tertiary);" }));
+      return;
+    }
+    const table = h("table", { style: "width:100%;border-collapse:collapse;font-size:0.72rem;" });
+    const thead = h("tr", {}, [
+      h("th", { text: "Номер", style: "text-align:left;padding:0.2rem 0.4rem;color:var(--ac-text-tertiary);border-bottom:1px solid var(--ac-border);font-weight:600;" }),
+      h("th", { text: "Значение свойства-критерия", style: "text-align:left;padding:0.2rem 0.4rem;color:var(--ac-text-tertiary);border-bottom:1px solid var(--ac-border);font-weight:600;" })
+    ]);
+    table.appendChild(thead);
+    rows.forEach(function (r) {
+      table.appendChild(h("tr", {}, [
+        h("td", { text: r.number, style: "padding:0.2rem 0.4rem;color:var(--ac-accent);font-family:monospace;border-bottom:1px solid var(--ac-divider);" }),
+        h("td", { text: r.criterionValue, style: "padding:0.2rem 0.4rem;color:var(--ac-text-primary);border-bottom:1px solid var(--ac-divider);" })
+      ]));
+    });
+    body.appendChild(table);
+  });
+}
+
+/* =====================================================================================
+   8. ЗАПУСК
+   ===================================================================================== */
+document.addEventListener("DOMContentLoaded", function () {
+  applyTheme(STATE.theme); // светлая тема по умолчанию
+  buildShell();
+});
+</script>
 </body>
 </html>
