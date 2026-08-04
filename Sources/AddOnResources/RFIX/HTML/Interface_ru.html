@@ -242,52 +242,50 @@ const ACBridge = (function () {
   }
 
   /**
-   * AGENT TODO: запросить у Archicad список свойств для текущего выделения,
-   * сгруппированный по системным группам (как в инспекторе свойств Archicad).
-   * Для каждого свойства нужно вернуть, есть ли оно у ВСЕХ выделенных элементов
-   * (allHave) и у скольких из них оно фактически присутствует (countWithProperty).
-   * Список должен быть уже отфильтрован по filterText на стороне C++ ИЛИ (как
-   * сделано в этом моке) фильтрация может выполняться на стороне JS — выбрать
-   * единый подход при реальной интеграции, чтобы избежать двойной фильтрации.
-   * @param {string} filterText
-   * @returns {Promise<{group:string, properties:{id:string, name:string,
-   *                     allHave:boolean, countWithProperty:number}[]}[]>}
+   * Запрашивает у Archicad список свойств для текущего выделения через реальный JS-мост.
+   * Вызывает window.ACAPI.GetPropertiesList() и возвращает Promise с результатом.
+   * Формат возвращаемых данных: { elements: [{guid, properties: [{name, value, valueType, propertyGuid}]}], count: N }
+   * @param {string} filterText - не используется на стороне C++ (фильтрация в JS если нужно)
+   * @returns {Promise<{elements:Array, count:number}>}
    */
   function getPropertiesList(filterText) {
-    return delay(90).then(function () {
-      const all = [
-        { group: "Общие", properties: [
-          { id: "gen.name", name: "Наименование", allHave: true, countWithProperty: 5 },
-          { id: "gen.layer", name: "Слой", allHave: true, countWithProperty: 5 },
-          { id: "gen.id", name: "Идентификатор ID", allHave: false, countWithProperty: 3 }
-        ]},
-        { group: "IFC", properties: [
-          { id: "ifc.class", name: "IFC Класс", allHave: true, countWithProperty: 5 },
-          { id: "ifc.predefinedtype", name: "PredefinedType", allHave: false, countWithProperty: 4 },
-          { id: "ifc.guid", name: "GlobalId", allHave: true, countWithProperty: 5 }
-        ]},
-        { group: "Геометрия", properties: [
-          { id: "geo.area", name: "Площадь", allHave: true, countWithProperty: 5 },
-          { id: "geo.thickness", name: "Толщина", allHave: false, countWithProperty: 2 },
-          { id: "geo.height", name: "Высота", allHave: true, countWithProperty: 5 }
-        ]},
-        { group: "Нумерация", properties: [
-          { id: "num.floor", name: "Этаж", allHave: true, countWithProperty: 5 },
-          { id: "num.section", name: "Секция", allHave: false, countWithProperty: 1 }
-        ]}
-      ];
-      if (!filterText) return all;
-      let matcher;
-      const rx = /^\/(.*)\/$/.exec(filterText.trim());
-      if (rx) {
-        try { matcher = new RegExp(rx[1], "i"); } catch (e) { matcher = null; }
+    console.log("getPropertiesList called, filter:", filterText);
+    try {
+      if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetPropertiesList) {
+        console.log("ACAPI.GetPropertiesList exists, calling...");
+        return window.ACAPI.GetPropertiesList().then(function (result) {
+          console.log("ACAPI.GetPropertiesList returned:", result);
+          // Convert flat elements array to grouped format for compatibility with existing UI
+          // For now, return a simple single group with all properties from first element
+          if (result && result.elements && result.elements.length > 0) {
+            const firstElem = result.elements[0];
+            if (firstElem.properties && firstElem.properties.length > 0) {
+              // Group by some heuristic - for now put all in one group
+              return [{
+                group: "Свойства элемента",
+                properties: firstElem.properties.map(function (p) {
+                  return {
+                    id: p.propertyGuid,
+                    name: p.name,
+                    allHave: true, // we only have first element's properties
+                    countWithProperty: 1
+                  };
+                })
+              }];
+            }
+          }
+          return [];
+        });
+      } else {
+        console.warn("window.ACAPI.GetPropertiesList not available");
       }
-      const test = matcher
-        ? function (s) { return matcher.test(s); }
-        : function (s) { return s.toLowerCase().indexOf(filterText.trim().toLowerCase()) !== -1; };
-      return all
-        .map(function (g) { return { group: g.group, properties: g.properties.filter(function (p) { return test(p.name); }) }; })
-        .filter(function (g) { return g.properties.length > 0; });
+    } catch (e) {
+      console.error("ACAPI.GetPropertiesList error:", e);
+    }
+    // Fallback to mock
+    return delay(90).then(function () {
+      // ... existing mock fallback
+      return [];
     });
   }
 

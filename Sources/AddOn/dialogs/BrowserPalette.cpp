@@ -100,8 +100,9 @@ void BrowserPalette::UpdateSelectionInfoInUI () {
     Int32 count = (Int32)selectedElements.GetSize ();
     DBprnt ("UpdateSelectionInfoInUI: count=" + GS::ValueToUniString (count));
     // Пушим данные в JS через ExecuteJS
-    GS::UniString jsCall = GS::UniString ("if (typeof refreshSelectionInfoText === 'function') refreshSelectionInfoText(") +
-                                         GS::ValueToUniString (count) + GS::UniString (");");
+    GS::UniString jsCall =
+        GS::UniString ("if (typeof refreshSelectionInfoText === 'function') refreshSelectionInfoText(") +
+        GS::ValueToUniString (count) + GS::UniString (");");
     browser.ExecuteJS (jsCall.ToCStr ().Get ());
     DBprnt ("UpdateSelectionInfoInUI: executed JS: " + jsCall);
 }
@@ -134,37 +135,106 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     DBprnt ("BrowserPalette::RegisterACAPIJavaScriptObject () — starting");
     DG::JSObject *jsACAPI = new DG::JSObject ("ACAPI");
 
-    // Регистрируем функцию для получения свойств (вызывается из HTML кнопки)
-    jsACAPI->AddItem (new DG::JSFunction ("GetPropertyDefinitions", [] (GS::Ref<DG::JSBase>) {
-        // Получаем свойства из кэша аддона
-        if (!ParamHelpers::isPropertyDefinitionRead ()) {
-            DBprnt ("Property cache not loaded");
-            // Возвращаем пустой массив
-            GS::Ref<DG::JSArray> emptyArray = new DG::JSArray ();
-            return emptyArray;
+    // Регистрируем функцию для получения свойств выделенных элементов (новая команда GetPropertiesList)
+    jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [] (GS::Ref<DG::JSBase>) {
+        GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+
+        GS::Ref<DG::JSObject> result = new DG::JSObject ();
+        GS::Ref<DG::JSArray> elementsArray = new DG::JSArray ();
+
+        if (selectedElements.IsEmpty ()) {
+            result->AddItem ("elements", elementsArray);
+            result->AddItem ("count", new DG::JSValue (0));
+            return result;
         }
 
-        auto &cache = PROPERTYCACHE ();
-
-        // Создаем JS массив для возврата свойств
-        GS::Ref<DG::JSArray> jsArray = new DG::JSArray ();
-
-        // Итерируем по свойствам в кэше (GS::HashTable возвращает пары указателей)
-        for (const auto &pair : cache.property) {
-            // pair.key и pair.value — это указатели, нужно разыменовать
-            const GS::UniString &rawName = *pair.key;
-            const ParamValue &paramValue = *pair.value;
-
-            // Добавляем имя свойства в массив
-            if (!paramValue.name.IsEmpty ()) {
-                jsArray->AddItem (new DG::JSValue (paramValue.name.ToCStr ().Get ()));
-            } else {
-                jsArray->AddItem (new DG::JSValue (rawName.ToCStr ().Get ()));
+        for (const API_Guid &elemGuid : selectedElements) {
+            GS::Array<API_PropertyDefinition> definitions;
+            GSErrCode err =
+                ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+            if (err != NoError || definitions.IsEmpty ()) {
+                continue;
             }
+
+            GS::Array<API_Property> properties;
+            err = ACAPI_Element_GetPropertyValues (elemGuid, definitions, properties);
+            if (err != NoError) {
+                continue;
+            }
+
+            GS::Ref<DG::JSObject> elementObj = new DG::JSObject ();
+            elementObj->AddItem ("guid", new DG::JSValue (APIGuidToString (elemGuid).ToCStr ().Get ()));
+
+            GS::Ref<DG::JSArray> propertiesArray = new DG::JSArray ();
+
+            for (const API_Property &prop : properties) {
+                GS::Ref<DG::JSObject> propertyObj = new DG::JSObject ();
+
+                if (!prop.definition.name.IsEmpty ()) {
+                    propertyObj->AddItem ("name", new DG::JSValue (prop.definition.name.ToCStr ().Get ()));
+                }
+
+                ParamValue pvalue;
+                if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {
+                    GS::UniString valueStr;
+                    switch (pvalue.val.type) {
+                    case API_PropertyIntegerValueType:
+                        valueStr = GS::UniString::Printf ("%d", pvalue.val.intValue);
+                        break;
+                    case API_PropertyRealValueType:
+                        valueStr = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
+                        break;
+                    case API_PropertyStringValueType:
+                        valueStr = pvalue.val.uniStringValue;
+                        break;
+                    case API_PropertyBooleanValueType:
+                        valueStr = pvalue.val.boolValue ? "true" : "false";
+                        break;
+                    case API_PropertyGuidValueType:
+                        valueStr = APIGuidToString (pvalue.val.guidval).ToCStr ().Get ();
+                        break;
+                    default:
+                        valueStr = "unknown";
+                        break;
+                    }
+                    propertyObj->AddItem ("value", new DG::JSValue (valueStr.ToCStr ().Get ()));
+                }
+
+                const char *typeStr = "unknown";
+                switch (prop.definition.valueType) {
+                case API_PropertyIntegerValueType:
+                    typeStr = "integer";
+                    break;
+                case API_PropertyRealValueType:
+                    typeStr = "real";
+                    break;
+                case API_PropertyStringValueType:
+                    typeStr = "string";
+                    break;
+                case API_PropertyBooleanValueType:
+                    typeStr = "boolean";
+                    break;
+                case API_PropertyGuidValueType:
+                    typeStr = "guid";
+                    break;
+                case API_PropertyUndefinedValueType:
+                    typeStr = "undefined";
+                    break;
+                }
+                propertyObj->AddItem ("valueType", new DG::JSValue (typeStr));
+                propertyObj->AddItem ("propertyGuid",
+                                      new DG::JSValue (APIGuidToString (prop.definition.guid).ToCStr ().Get ()));
+
+                propertiesArray->AddItem (propertyObj);
+            }
+
+            elementObj->AddItem ("properties", propertiesArray);
+            elementsArray->AddItem (elementObj);
         }
 
-        DBprnt ("GetPropertyDefinitions: returned " + GS::ValueToUniString (cache.property.GetSize ()) + " properties");
-        return jsArray;
+        result->AddItem ("elements", elementsArray);
+        result->AddItem ("count", new DG::JSValue ((Int32)elementsArray->GetItemArray ().GetSize ()));
+        return result;
     }));
 
     // Регистрируем функцию для получения количества выделенных элементов
