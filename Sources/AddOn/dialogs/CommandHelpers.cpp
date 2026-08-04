@@ -14,67 +14,82 @@ static void ExtractSourceInfo (const GS::UniString &rawName, GS::UniString &sour
 
     if (rawName.BeginsWith (PROPERTYNAMEPREFIX)) {
         sourceType = "Property";
-        sourceName = rawName.GetSubstring (PROPERTYNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName = rawName.GetSubstring (PROPERTYNAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - PROPERTYNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (GDLNAMEPREFIX)) {
         sourceType = "GDL";
-        sourceName = rawName.GetSubstring (GDLNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (GDLNAMEPREFIX.GetLength (), rawName.GetLength () - GDLNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (COORDNAMEPREFIX)) {
         sourceType = "Coord";
-        sourceName = rawName.GetSubstring (COORDNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (COORDNAMEPREFIX.GetLength (), rawName.GetLength () - COORDNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (FORMULANAMEPREFIX)) {
         sourceType = "Formula";
-        sourceName = rawName.GetSubstring (FORMULANAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName = rawName.GetSubstring (FORMULANAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - FORMULANAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (IDNAMEPREFIX)) {
         sourceType = "ID";
-        sourceName = rawName.GetSubstring (IDNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName = rawName.GetSubstring (IDNAMEPREFIX.GetLength (), rawName.GetLength () - IDNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (MATERIALNAMEPREFIX)) {
         sourceType = "Material";
-        sourceName = rawName.GetSubstring (MATERIALNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName = rawName.GetSubstring (MATERIALNAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - MATERIALNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (FILENAMEPREFIX)) {
         sourceType = "File";
-        sourceName = rawName.GetSubstring (FILENAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (FILENAMEPREFIX.GetLength (), rawName.GetLength () - FILENAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (CLASSNAMEPREFIX)) {
         sourceType = "Classification";
-        sourceName = rawName.GetSubstring (CLASSNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (CLASSNAMEPREFIX.GetLength (), rawName.GetLength () - CLASSNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (MORPHNAMEPREFIX)) {
         sourceType = "Morph";
-        sourceName = rawName.GetSubstring (MORPHNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (MORPHNAMEPREFIX.GetLength (), rawName.GetLength () - MORPHNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (INFONAMEPREFIX)) {
         sourceType = "Info";
-        sourceName = rawName.GetSubstring (INFONAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (INFONAMEPREFIX.GetLength (), rawName.GetLength () - INFONAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (IFCNAMEPREFIX)) {
         sourceType = "IFC";
-        sourceName = rawName.GetSubstring (IFCNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (IFCNAMEPREFIX.GetLength (), rawName.GetLength () - IFCNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (GLOBNAMEPREFIX)) {
         sourceType = "Glob";
-        sourceName = rawName.GetSubstring (GLOBNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (GLOBNAMEPREFIX.GetLength (), rawName.GetLength () - GLOBNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (ATTRIBNAMEPREFIX)) {
         sourceType = "Attrib";
-        sourceName = rawName.GetSubstring (ATTRIBNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (ATTRIBNAMEPREFIX.GetLength (), rawName.GetLength () - ATTRIBNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (LISTDATANAMEPREFIX)) {
         sourceType = "Listdata";
-        sourceName = rawName.GetSubstring (LISTDATANAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName = rawName.GetSubstring (LISTDATANAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - LISTDATANAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (ELEMENTNAMEPREFIX)) {
         sourceType = "Element";
-        sourceName = rawName.GetSubstring (ELEMENTNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName = rawName.GetSubstring (ELEMENTNAMEPREFIX.GetLength (),
+                                           rawName.GetLength () - ELEMENTNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     } else if (rawName.BeginsWith (MEPNAMEPREFIX)) {
         sourceType = "MEP";
-        sourceName = rawName.GetSubstring (MEPNAMEPREFIX.GetLength (), rawName.GetLength () - 1);
+        sourceName =
+            rawName.GetSubstring (MEPNAMEPREFIX.GetLength (), rawName.GetLength () - MEPNAMEPREFIX.GetLength ());
         sourceName.ReplaceAll (BRACEEND, "");
     }
 }
@@ -84,14 +99,14 @@ static void ExtractSourceInfo (const GS::UniString &rawName, GS::UniString &sour
 // -----------------------------------------------------------------------------
 static GS::UniString ExtractFormatString (const GS::UniString &fullCommand) {
     GS::UniString formatStr = "";
-    UIndex dotPos = fullCommand.FindLast (CHARFORMULAEND); // ищем после '>'
+    UIndex dotPos = fullCommand.FindLast (CHARFORMULAEND);
     if (dotPos != MaxUSize) {
         // Ищем точку после закрывающей скобки формулы
         UIndex formatStart = fullCommand.FindFirst (DOT, dotPos);
         if (formatStart != MaxUSize) {
             UIndex braceEnd = fullCommand.FindFirst (BRACEEND, formatStart);
             if (braceEnd != MaxUSize) {
-                formatStr = fullCommand.GetSubstring (formatStart, braceEnd - 1);
+                formatStr = fullCommand.GetSubstring (formatStart, braceEnd - formatStart);
             }
         }
     } else {
@@ -100,7 +115,7 @@ static GS::UniString ExtractFormatString (const GS::UniString &fullCommand) {
         if (formatStart != MaxUSize) {
             UIndex braceEnd = fullCommand.FindFirst (BRACEEND, formatStart);
             if (braceEnd != MaxUSize && braceEnd > formatStart) {
-                formatStr = fullCommand.GetSubstring (formatStart, braceEnd - 1);
+                formatStr = fullCommand.GetSubstring (formatStart, braceEnd - formatStart);
             }
         }
     }
@@ -140,7 +155,7 @@ static void ExtractTargetInfo (const GS::UniString &fullCommand, GS::UniString &
         return;
     }
 
-    GS::UniString inside = fullCommand.GetSubstring (braceStart + 1, braceEnd - 1);
+    GS::UniString inside = fullCommand.GetSubstring (braceStart + 1, braceEnd - braceStart - 1);
     // Параметры разделены ; - первый параметр это цель для TO команд
     GS::Array<GS::UniString> parts;
     GS::Array<GS::UniString> scratch;
@@ -155,19 +170,24 @@ static void ExtractTargetInfo (const GS::UniString &fullCommand, GS::UniString &
     // Определяем тип цели по префиксу
     if (targetParam.BeginsWith (PROPERTYPREF)) {
         targetType = "Property";
-        targetName = targetParam.GetSubstring (PROPERTYPREF.GetLength (), targetParam.GetLength () - 1);
+        targetName =
+            targetParam.GetSubstring (PROPERTYPREF.GetLength (), targetParam.GetLength () - PROPERTYPREF.GetLength ());
     } else if (targetParam.BeginsWith (GDLNAMEPREFIX)) {
         targetType = "GDL";
-        targetName = targetParam.GetSubstring (GDLNAMEPREFIX.GetLength (), targetParam.GetLength () - 1);
+        targetName = targetParam.GetSubstring (GDLNAMEPREFIX.GetLength (),
+                                               targetParam.GetLength () - GDLNAMEPREFIX.GetLength ());
     } else if (targetParam.BeginsWith (COORDPREF)) {
         targetType = "Coord";
-        targetName = targetParam.GetSubstring (COORDPREF.GetLength (), targetParam.GetLength () - 1);
+        targetName =
+            targetParam.GetSubstring (COORDPREF.GetLength (), targetParam.GetLength () - COORDPREF.GetLength ());
     } else if (targetParam.BeginsWith (CLASSPREF)) {
         targetType = "Classification";
-        targetName = targetParam.GetSubstring (CLASSPREF.GetLength (), targetParam.GetLength () - 1);
+        targetName =
+            targetParam.GetSubstring (CLASSPREF.GetLength (), targetParam.GetLength () - CLASSPREF.GetLength ());
     } else if (targetParam.BeginsWith (ATTRIBPREF)) {
         targetType = "Attrib";
-        targetName = targetParam.GetSubstring (ATTRIBPREF.GetLength (), targetParam.GetLength () - 1);
+        targetName =
+            targetParam.GetSubstring (ATTRIBPREF.GetLength (), targetParam.GetLength () - ATTRIBPREF.GetLength ());
     } else if (targetParam.BeginsWith ("{id}") || targetParam.BeginsWith ("{ID}")) {
         targetType = "ID";
         targetName = "id";
@@ -196,27 +216,16 @@ ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &descri
         if (cmd.commandType == "Sync" && cmd.isValid) {
             // Это команда синхронизации — разбираем подробно
             SyncRuleInfo ruleInfo;
-            ruleInfo.commandType = "Sync"; // будет уточнен ниже
+            ruleInfo.commandType = "Sync";
             ruleInfo.fullCommand = cmd.fullCommand;
             ruleInfo.parameters = cmd.parameters;
 
-            // Определяем направление синхронизации по префиксу fullCommand
+            // Определяем направление синхронизации по fullCommand
             GS::UniString fullCmdLower = cmd.fullCommand.ToLowerCase ();
-            if (fullCmdLower.BeginsWith ("sync_from{")) {
-                ruleInfo.commandType = "Sync_from";
-            } else if (fullCmdLower.BeginsWith ("sync_to{")) {
-                ruleInfo.commandType = "Sync_to";
-            } else if (fullCmdLower.BeginsWith ("sync_from_sub{")) {
-                ruleInfo.commandType = "Sync_from_sub";
+            if (fullCmdLower.BeginsWith ("from_sub{") || fullCmdLower.BeginsWith ("to_sub{")) {
                 ruleInfo.hasSub = true;
-            } else if (fullCmdLower.BeginsWith ("sync_to_sub{")) {
-                ruleInfo.commandType = "Sync_to_sub";
-                ruleInfo.hasSub = true;
-            } else if (fullCmdLower.BeginsWith ("sync_from_guid{")) {
-                ruleInfo.commandType = "Sync_from_GUID";
-                ruleInfo.hasGUID = true;
-            } else if (fullCmdLower.BeginsWith ("sync_to_guid{")) {
-                ruleInfo.commandType = "Sync_to_GUID";
+            }
+            if (fullCmdLower.BeginsWith ("from_guid{") || fullCmdLower.BeginsWith ("to_guid{")) {
                 ruleInfo.hasGUID = true;
             }
 
@@ -238,13 +247,13 @@ ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &descri
                     ExtractSourceInfo (param.rawName, ruleInfo.sourceType, ruleInfo.sourceName);
                 } else if (param.fromGDLparam) {
                     ruleInfo.sourceType = "GDL";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (GDLNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        GDLNAMEPREFIX.GetLength (), param.rawName.GetLength () - GDLNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromCoord) {
                     ruleInfo.sourceType = "Coord";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (COORDNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        COORDNAMEPREFIX.GetLength (), param.rawName.GetLength () - COORDNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.val.hasFormula) {
                     ruleInfo.sourceType = "Formula";
@@ -260,48 +269,48 @@ ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &descri
                     ruleInfo.sourceName = param.val.uniStringValue;
                 } else if (param.fromClassification) {
                     ruleInfo.sourceType = "Classification";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (CLASSNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        CLASSNAMEPREFIX.GetLength (), param.rawName.GetLength () - CLASSNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromMorph) {
                     ruleInfo.sourceType = "Morph";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (MORPHNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        MORPHNAMEPREFIX.GetLength (), param.rawName.GetLength () - MORPHNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromInfo) {
                     ruleInfo.sourceType = "Info";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (INFONAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        INFONAMEPREFIX.GetLength (), param.rawName.GetLength () - INFONAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromIFCProperty) {
                     ruleInfo.sourceType = "IFC";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (IFCNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        IFCNAMEPREFIX.GetLength (), param.rawName.GetLength () - IFCNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromGlob) {
                     ruleInfo.sourceType = "Glob";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (GLOBNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        GLOBNAMEPREFIX.GetLength (), param.rawName.GetLength () - GLOBNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromAttribElement) {
                     ruleInfo.sourceType = "Attrib";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (ATTRIBNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        ATTRIBNAMEPREFIX.GetLength (), param.rawName.GetLength () - ATTRIBNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromListData) {
                     ruleInfo.sourceType = "Listdata";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (LISTDATANAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        LISTDATANAMEPREFIX.GetLength (), param.rawName.GetLength () - LISTDATANAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromElement) {
                     ruleInfo.sourceType = "Element";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (ELEMENTNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        ELEMENTNAMEPREFIX.GetLength (), param.rawName.GetLength () - ELEMENTNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 } else if (param.fromMEP) {
                     ruleInfo.sourceType = "MEP";
-                    ruleInfo.sourceName =
-                        param.rawName.GetSubstring (MEPNAMEPREFIX.GetLength (), param.rawName.GetLength () - 1);
+                    ruleInfo.sourceName = param.rawName.GetSubstring (
+                        MEPNAMEPREFIX.GetLength (), param.rawName.GetLength () - MEPNAMEPREFIX.GetLength ());
                     ruleInfo.sourceName.ReplaceAll (BRACEEND, "");
                 }
 

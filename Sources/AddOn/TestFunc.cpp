@@ -6,6 +6,7 @@
 
     #include "TestFunc.hpp"
 
+    #include "dialogs/CommandHelpers.hpp"
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
     #include "Sync.hpp"
@@ -38,6 +39,7 @@ namespace TestFunc {
         TestParsePrefixes ();
         TestParsePropertyDescription ();
         TestParseSyncStringIndependent ();
+        TestParsePropertyDescriptionToRules ();
         DBprnt ("TEST", "end");
     }
 
@@ -2458,6 +2460,115 @@ namespace TestFunc {
         DBtest (!result, "ParseSyncString no BRACEEND -> false");
 
         DBprnt ("TEST", "TestParseSyncStringIndependent : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест ParsePropertyDescriptionToRules — парсинг описания в структурированные правила
+    // -----------------------------------------------------------------------------
+    void TestParsePropertyDescriptionToRules () {
+        DBprnt ("TEST", "TestParsePropertyDescriptionToRules");
+
+        // Тест 1: простое Sync_from описание
+        {
+            DBprnt ("DescToRules", "Test 1 start");
+            GS::UniString desc = "Sync_from{Property:TestProperty}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBprnt ("DescToRules", "Test 1 after call");
+            DBtest (result.hasSyncRules, "DescToRules Sync_from -> hasSyncRules");
+            DBtest (result.syncRules.GetSize () > 0, "DescToRules Sync_from -> rules not empty");
+            if (result.syncRules.GetSize () > 0) {
+                DBtest (result.syncRules[0].commandType == "Sync" || result.syncRules[0].commandType == "Sync_from",
+                        "DescToRules Sync_from -> commandType");
+                DBtest (result.syncRules[0].sourceType == "Property", "DescToRules Sync_from -> sourceType Property");
+                DBtest (result.syncRules[0].isValid, "DescToRules Sync_from -> isValid");
+                DBtest (!result.syncRules[0].hasSub, "DescToRules Sync_from -> hasSub false");
+                DBtest (!result.syncRules[0].hasGUID, "DescToRules Sync_from -> hasGUID false");
+            }
+        }
+
+        // Тест 2: Sync_from_sub
+        {
+            GS::UniString desc = "Sync_from_sub{Property:SubProp}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "DescToRules Sync_from_sub -> hasSyncRules");
+            if (result.syncRules.GetSize () > 0) {
+                DBtest (result.syncRules[0].hasSub, "DescToRules Sync_from_sub -> hasSub true");
+            }
+        }
+
+        // Тест 3: Sync_to
+        {
+            GS::UniString desc = "Sync_to{Property:TargetProp}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "DescToRules Sync_to -> hasSyncRules");
+            if (result.syncRules.GetSize () > 0) {
+                DBtest (result.syncRules[0].targetType == "Property", "DescToRules Sync_to -> targetType Property");
+            }
+        }
+
+        // Тест 4: Пустое описание
+        {
+            GS::UniString desc = "";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "DescToRules empty -> no sync rules");
+            DBtest (!result.hasOtherCommands, "DescToRules empty -> no other commands");
+        }
+
+        // Тест 5: Описание с командой Renum (не Sync)
+        {
+            GS::UniString desc = "Renum_flag{Property:RenumRule; NULL}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "DescToRules Renum_flag -> no sync rules");
+            DBtest (result.hasOtherCommands, "DescToRules Renum_flag -> has other commands");
+        }
+
+        // Тест 6: Комбинированное описание
+        {
+            GS::UniString desc = "Sync_from{Property:Source}Sync_to{Property:Target}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "DescToRules combined -> hasSyncRules");
+            DBtest (result.syncRules.GetSize () == 2, "DescToRules combined -> 2 rules");
+        }
+
+        // Тест 7: Описание с ignorevals
+        {
+            GS::UniString desc = "Sync_from{Property:TestProperty; empty; trim_empty}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "DescToRules ignorevals -> hasSyncRules");
+            if (result.syncRules.GetSize () > 0) {
+                DBtest (result.syncRules[0].ignoreVals.GetSize () > 0,
+                        "DescToRules ignorevals -> ignoreVals not empty");
+            }
+        }
+
+        // Тест 8: Sync_flag (не создаёт правило)
+        {
+            GS::UniString desc = "Sync_flag";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "DescToRules Sync_flag -> no sync rules");
+            DBtest (!result.hasOtherCommands, "DescToRules Sync_flag -> no other commands");
+        }
+
+        // Тест 9: Несколько правил + remainingText
+        {
+            GS::UniString desc = "Sync_from{Property:Prop1}Some text between Sync_to{Property:Prop2}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "DescToRules multi -> hasSyncRules");
+            DBtest (result.syncRules.GetSize () >= 1, "DescToRules multi -> at least 1 rule");
+        }
+
+        // Тест 10: Описание с GDL параметром
+        {
+            GS::UniString desc = "Sync_from{MyGDLParam}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "DescToRules GDL -> hasSyncRules");
+            if (result.syncRules.GetSize () > 0) {
+                DBtest (result.syncRules[0].sourceType == "GDL", "DescToRules GDL -> sourceType GDL");
+            }
+        }
+
+        DBprnt ("TEST", "TestParsePropertyDescriptionToRules : done");
         return;
     }
 

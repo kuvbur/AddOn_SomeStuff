@@ -84,6 +84,9 @@ namespace TestFunc {
     // Проверяет независимый вызов ParseSyncString (Этап 2 TDD).
     void TestParseSyncStringIndependent ();
 
+    // Проверяет ParsePropertyDescriptionToRules — парсинг описания в структурированные правила.
+    void TestParsePropertyDescriptionToRules ();
+
     // Выводит все встроенные свойства в отладочный журнал.
     void DumpAllBuiltInProperties ();
 

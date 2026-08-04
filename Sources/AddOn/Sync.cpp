@@ -2808,6 +2808,8 @@ bool ParsePropertyDescription (const GS::UniString &description,
         return false;
     }
 
+    DBprnt ("ParsePropDesc", "After all commands processed");
+
     // Обрабатываем найденные команды
     GS::UniString processedText;
 
@@ -2831,7 +2833,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
             // Закрывающая скобка не найдена - команда некорректна
             ParsedPropertyCommand cmd;
             cmd.commandType = cmdPrefix.commandType;
-            cmd.fullCommand = description.GetSubstring (startPos, description.GetLength () - 1);
+            cmd.fullCommand = description.GetSubstring (startPos, description.GetLength () - startPos);
             cmd.parameters = "";
             cmd.isValid = false;
             cmd.errorMessage = "Не найдена закрывающая скобка }";
@@ -2840,8 +2842,8 @@ bool ParsePropertyDescription (const GS::UniString &description,
         }
 
         // Извлекаем полную команду и параметры
-        GS::UniString fullCommand = description.GetSubstring (startPos, braceEnd);
-        GS::UniString parameters = description.GetSubstring (braceStart, braceEnd - 1);
+        GS::UniString fullCommand = description.GetSubstring (startPos, braceEnd - startPos + 1);
+        GS::UniString parameters = description.GetSubstring (braceStart, braceEnd - braceStart);
 
         ParsedPropertyCommand cmd;
         cmd.commandType = cmdPrefix.commandType;
@@ -2852,6 +2854,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
 
         // Дополнительная валидация для Sync команд
         if (cmdPrefix.commandType == "Sync") {
+            DBprnt ("ParsePropDesc", "Before SyncString");
             SyncMode syncdirection = SYNC_NO;
             ParamValue param;
             SkipValues ignorevals;
@@ -2877,7 +2880,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
         UIndex braceStart = lastEnd + lastCmd.prefix.GetLength ();
         UIndex braceEnd = description.FindFirst (BRACEEND, braceStart);
         if (braceEnd != MaxUSize) {
-            remainingText = description.GetSubstring (braceEnd + 1, description.GetLength () - 1);
+            remainingText = description.GetSubstring (braceEnd + 1, description.GetLength () - (braceEnd + 1));
         } else {
             remainingText = "";
         }
@@ -2896,7 +2899,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
         if (braceEnd != MaxUSize) {
             // Добавляем текст между предыдущей командой и этой
             if (startPos > prevEnd) {
-                GS::UniString between = description.GetSubstring (prevEnd, startPos - 1);
+                GS::UniString between = description.GetSubstring (prevEnd, startPos - prevEnd);
                 if (!between.IsEmpty ()) {
                     if (!cleanRemaining.IsEmpty ())
                         cleanRemaining.Append (" ");
@@ -2909,7 +2912,7 @@ bool ParsePropertyDescription (const GS::UniString &description,
 
     // Добавляем текст после последней команды
     if (prevEnd < description.GetLength ()) {
-        GS::UniString afterLast = description.GetSubstring (prevEnd, description.GetLength () - 1);
+        GS::UniString afterLast = description.GetSubstring (prevEnd, description.GetLength () - prevEnd);
         if (!afterLast.IsEmpty ()) {
             if (!cleanRemaining.IsEmpty ())
                 cleanRemaining.Append (" ");
