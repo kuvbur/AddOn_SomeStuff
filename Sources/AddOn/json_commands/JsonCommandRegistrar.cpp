@@ -2,6 +2,7 @@
 
 #include "json_commands/JsonCommandRegistrar.hpp"
 
+#include "json_commands/GetPropertiesListCommand.hpp"
 #include "json_commands/GetPropertyDefinitionsCommand.hpp"
 #include "json_commands/GetSelectionInfoCommand.hpp"
 #include "json_commands/GetSettingsCommand.hpp"
@@ -112,6 +113,17 @@ void RegisterJsonCommands () {
             DBprnt ("Failed to register GetSelectionInfoCommand, error: " + GS::ValueToUniString (err));
         } else {
             DBprnt ("GetSelectionInfoCommand registered successfully!");
+        }
+    }
+
+    // Регистрация команды GetPropertiesList
+    {
+        GS::Owner<GetPropertiesListCommand> cmd = GS::NewOwned<GetPropertiesListCommand> ();
+        GSErrCode err = ACAPI_Install_AddOnCommandHandler (cmd.Pass ());
+        if (err != NoError) {
+            DBprnt ("Failed to register GetPropertiesListCommand, error: " + GS::ValueToUniString (err));
+        } else {
+            DBprnt ("GetPropertiesListCommand registered successfully!");
         }
     }
 }

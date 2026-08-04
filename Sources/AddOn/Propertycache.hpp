@@ -186,6 +186,11 @@ struct PropertyCache {
     bool isMEP_OK;       // Успешно прочитан
     bool isMEPRead_full; // Был запрошен
     #endif
+
+    // Кэш свойств для выделенных элементов (GetPropertiesListCommand)
+    mutable GS::HashTable<API_Guid, GS::Array<GS::ObjectState>> selectionPropertiesCache;
+    mutable bool selectionPropertiesCacheValid = false;
+
     PropertyCache () {
     #if defined(TESTING)
         DBprnt ("=PropertyCache= clear");
@@ -242,6 +247,10 @@ struct PropertyCache {
         isMEP_OK = false;
         isMEPRead_full = false;
     #endif
+
+        // Инициализация кэша свойств выделения
+        selectionPropertiesCache.Clear ();
+        selectionPropertiesCacheValid = false;
     }
     #ifdef ServerMainVers_2900
     void ReadMEP () {

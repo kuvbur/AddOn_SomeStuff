@@ -309,6 +309,42 @@ def test_08_get_selection_info(port):
         return print_result(False, f"Отсутствует поле count в ответе: {addon_resp}")
 
 
+def test_09_get_properties_list(port):
+    """
+    Команда: GetPropertiesList
+    Назначение: Получение значений свойств для выделенных элементов.
+    Ожидаемый ответ: {"elements": [...], "count": N}
+    """
+    print_test_header("GetPropertiesListCommand — значения свойств выделенных элементов")
+    
+    response = call_addon_command(port, "GetPropertiesList")
+    
+    if "error" in response:
+        return print_result(False, f"Ошибка вызова: {response['error']}")
+    
+    addon_resp = extract_response(response)
+    
+    if "elements" in addon_resp:
+        elements = addon_resp["elements"]
+        count = len(elements)
+        if count > 0:
+            print(f"  Элементов: {count}")
+            for i, elem in enumerate(elements[:3]):
+                guid = elem.get("guid", "N/A")[:20]
+                props = elem.get("properties", [])
+                print(f"    [{i+1}] {guid}... — свойств: {len(props)}")
+                for prop in props[:2]:
+                    name = prop.get("name", "N/A")
+                    val = prop.get("value", "N/A")
+                    vtype = prop.get("valueType", "N/A")
+                    print(f"        {name} = {val} ({vtype})")
+            return print_result(True, f"Получены свойства для {count} элементов")
+        else:
+            return print_result(True, "Нет выделенных элементов (OK — пустой ответ)")
+    else:
+        return print_result(False, f"Отсутствует поле elements в ответе: {addon_resp}")
+
+
 def test_07_parse_property_for_element(port):
     """
     Команда: ParsePropertyForElement
@@ -392,8 +428,9 @@ def run_all_tests(port, test_filter=None):
         ("04_SetSettings", test_04_set_settings),
         ("05_SyncAll", test_05_sync_all),
         ("06_MonAll", test_06_mon_all),
-        ("07_ParsePropertyForElement", test_07_parse_property_for_element),
-        ("08_GetSelectionInfo", test_08_get_selection_info),
+        ("07_GetSelectionInfo", test_08_get_selection_info),
+        ("08_GetPropertiesList", test_09_get_properties_list),
+        ("09_ParsePropertyForElement", test_07_parse_property_for_element),
     ]
     
     # Фильтрация

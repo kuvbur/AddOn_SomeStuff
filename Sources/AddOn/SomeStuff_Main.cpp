@@ -82,7 +82,7 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_New:
     case APINotify_NewAndReset:
     case APINotify_Open:
-        Do_ElementMonitor (syncSettings.GetSyncMon());
+        Do_ElementMonitor (syncSettings.GetSyncMon ());
         PROPERTYCACHE ().Update ();
         break;
     case APINotify_Close:
@@ -124,7 +124,7 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
     int dummymode = DUMMY_MODE_UNDEF;
-    if (!syncSettings.GetSyncMon())
+    if (!syncSettings.GetSyncMon ())
         return NoError;
     if (elemType->notifID == APINotifyElement_BeginEvents) {
         PROPERTYCACHE ().compositeCache.Clear ();
@@ -175,30 +175,33 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         // В dummy-режиме важно принудительно включить мониторинг и основные типы синхронизации,
         // иначе обработка остановится на раннем шаге и не дойдёт до нужных подэлементов.
         if (dummymode == DUMMY_MODE_ON) {
-            syncSettings.SetSyncMon(true);
-            syncSettings.SetWallS(true);
-            syncSettings.SetWidoS(true);
-            syncSettings.SetObjS(true);
+            syncSettings.SetSyncMon (true);
+            syncSettings.SetWallS (true);
+            syncSettings.SetWidoS (true);
+            syncSettings.SetObjS (true);
         }
         // После изменения самой навесной стены панели не обрабатываются отдельно,
         // потому что их синхронизация будет выполнена дальше через SyncElement.
-        if (syncSettings.GetLogMon() && elementType != API_CurtainWallPanelID && elementType != API_CurtainWallSegmentID &&
-            elementType != API_CurtainWallFrameID && elementType != API_CurtainWallJunctionID &&
-            elementType != API_CurtainWallAccessoryID) {
-            syncSettings.SetLogMon(false);
+        if (syncSettings.GetLogMon () && elementType != API_CurtainWallPanelID &&
+            elementType != API_CurtainWallSegmentID && elementType != API_CurtainWallFrameID &&
+            elementType != API_CurtainWallJunctionID && elementType != API_CurtainWallAccessoryID) {
+            syncSettings.SetLogMon (false);
             WriteSyncSettingsToPreferences (syncSettings);
         }
-        if (syncSettings.GetLogMon()) {
-            syncSettings.SetCwallS(false);
+        if (syncSettings.GetLogMon ()) {
+            syncSettings.SetCwallS (false);
         }
-        if (!syncSettings.GetLogMon() && elementType == API_CurtainWallID) {
-            syncSettings.SetLogMon(true);
+        if (!syncSettings.GetLogMon () && elementType == API_CurtainWallID) {
+            syncSettings.SetLogMon (true);
             WriteSyncSettingsToPreferences (syncSettings);
         }
         needresync = SyncElement (elemType->elemHead.guid, syncSettings, paramToWrite, dummymode);
         if (!paramToWrite.IsEmpty ()) {
             GS::Array<API_Guid> rereadelem = {};
             rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
+            // ИНВАЛИДАЦИЯ КЭША: при записи свойств сбрасываем кэш GetPropertiesListCommand
+            PROPERTYCACHE ().selectionPropertiesCacheValid = false;
+
             // После первой синхронизации часть элементов может потребовать повторного перечитывания,
             // поэтому выполняем второй проход по той же сущности и собираем дополнительно изменённые GUID.
             if (needresync) {
@@ -278,12 +281,12 @@ void Do_ElementMonitor (bool syncMon) {
 // Синхронизирует состояние пунктов меню с текущими настройками синхронизации.
 // -----------------------------------------------------------------------------
 void MenuSetState (SyncSettings &syncSettings) {
-    MenuItemCheckAC (Menu_MonAll, syncSettings.GetSyncMon());
-    MenuItemCheckAC (Menu_wallS, syncSettings.GetWallS());
-    MenuItemCheckAC (Menu_widoS, syncSettings.GetWidoS());
-    MenuItemCheckAC (Menu_objS, syncSettings.GetObjS());
-    MenuItemCheckAC (Menu_cwallS, syncSettings.GetCwallS());
-    MenuItemCheckAC (Menu_Pallete, syncSettings.GetShowPalette());
+    MenuItemCheckAC (Menu_MonAll, syncSettings.GetSyncMon ());
+    MenuItemCheckAC (Menu_wallS, syncSettings.GetWallS ());
+    MenuItemCheckAC (Menu_widoS, syncSettings.GetWidoS ());
+    MenuItemCheckAC (Menu_objS, syncSettings.GetObjS ());
+    MenuItemCheckAC (Menu_cwallS, syncSettings.GetCwallS ());
+    MenuItemCheckAC (Menu_Pallete, syncSettings.GetShowPalette ());
     if (!isEng ())
         return;
     for (UInt32 i = 0; i < MENU_ITEM_COUNT; i++) {
@@ -330,32 +333,32 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
     case AddOnMenuID:
         switch (menuParams->menuItemRef.itemIndex) {
         case MonAll_CommandID:
-            syncSettings.SetSyncAll(false);
-            syncSettings.SetSyncMon(!syncSettings.GetSyncMon());
-            Do_ElementMonitor (syncSettings.GetSyncMon());
+            syncSettings.SetSyncAll (false);
+            syncSettings.SetSyncMon (!syncSettings.GetSyncMon ());
+            Do_ElementMonitor (syncSettings.GetSyncMon ());
             MonAll (syncSettings);
             break;
         case SyncAll_CommandID:
             msg_rep ("SyncAll", "============== START ==============", NoError, APINULLGuid);
-            syncSettings.SetSyncAll(true);
+            syncSettings.SetSyncAll (true);
             SyncAndMonAll (syncSettings);
-            syncSettings.SetSyncAll(false);
+            syncSettings.SetSyncAll (false);
             msg_rep ("SyncAll", "=============== END ===============", NoError, APINULLGuid);
             break;
         case SyncSelect_CommandID:
             SyncSelected (syncSettings);
             break;
         case wallS_CommandID:
-            syncSettings.SetWallS(!syncSettings.GetWallS());
+            syncSettings.SetWallS (!syncSettings.GetWallS ());
             break;
         case widoS_CommandID:
-            syncSettings.SetWidoS(!syncSettings.GetWidoS());
+            syncSettings.SetWidoS (!syncSettings.GetWidoS ());
             break;
         case objS_CommandID:
-            syncSettings.SetObjS(!syncSettings.GetObjS());
+            syncSettings.SetObjS (!syncSettings.GetObjS ());
             break;
         case cwallS_CommandID:
-            syncSettings.SetCwallS(!syncSettings.GetCwallS());
+            syncSettings.SetCwallS (!syncSettings.GetCwallS ());
             break;
 #ifdef ServerMainVers_2300
         case ReNum_CommandID:
@@ -425,7 +428,6 @@ API_AddonType __ACDLL_CALL CheckEnvironment (API_EnvirParams *envir) {
 #endif
 #ifdef TESTING
     DBprnt ("CheckEnvironment");
-    TestFunc::Test ();
 #endif
     RSGetIndString (&envir->addOnInfo.name, ID_ADDON_INFO + isEng (), AddOnNameID, ACAPI_GetOwnResModule ());
     RSGetIndString (
@@ -461,7 +463,7 @@ GSErrCode __ACENV_CALL Initialize (void) {
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
     MenuSetState (syncSettings);
-    Do_ElementMonitor (syncSettings.GetSyncMon());
+    Do_ElementMonitor (syncSettings.GetSyncMon ());
     MonAll (syncSettings);
 #ifdef ServerMainVers_2700
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New |
@@ -480,6 +482,9 @@ GSErrCode __ACENV_CALL Initialize (void) {
     // Регистрация BrowserPalette
     BrowserPalette::RegisterPaletteControlCallBack ();
     ACAPI_KeepInMemory (true);
+#if defined(TESTING)
+    TestFunc::Test ();
+#endif
 #ifdef ServerMainVers_2700
     return ACAPI_MenuItem_InstallMenuHandler (ID_ADDON_MENU, MenuCommandHandler);
 #else
