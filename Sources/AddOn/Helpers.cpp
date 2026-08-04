@@ -4663,6 +4663,8 @@ GS::Array<API_Guid> ParamHelpers::ElementsWrite (ParamDictElement &paramToWrite)
         if (ParamHelpers::Write (elemGuid, params))
             rereadelem.Push (elemGuid);
     }
+    // ИНВАЛИДАЦИЯ КЭША: при любой записи свойств сбрасываем кэш GetPropertiesListCommand
+    PROPERTYCACHE ().selectionPropertiesCacheValid = false;
 #if defined(TESTING)
     if (!rereadelem.IsEmpty ())
         DBprnt ("ElementsWrite ReRead");

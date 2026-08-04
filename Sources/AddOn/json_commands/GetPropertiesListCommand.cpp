@@ -21,6 +21,10 @@ GS::ObjectState GetPropertiesListCommand::Execute (const GS::ObjectState & /*par
     GS::ObjectState response;
     GS::Array<GS::ObjectState> elementsArray;
 
+    DBprnt ("GetPropertiesList: selectedElements=" + GS::ValueToUniString (selectedElements.GetSize ()));
+    DBprnt ("GetPropertiesList: cacheValid=" + GS::ValueToUniString (cache.selectionPropertiesCacheValid));
+    DBprnt ("GetPropertiesList: cacheSize=" + GS::ValueToUniString (cache.selectionPropertiesCache.GetSize ()));
+
     // Если есть выделенные элементы и кэш валиден
     if (!selectedElements.IsEmpty () && cache.selectionPropertiesCacheValid) {
         // Проверяем, все ли выделенные элементы есть в кэше
@@ -28,11 +32,13 @@ GS::ObjectState GetPropertiesListCommand::Execute (const GS::ObjectState & /*par
         for (const API_Guid &elemGuid : selectedElements) {
             if (!cache.selectionPropertiesCache.ContainsKey (elemGuid)) {
                 allInCache = false;
+                DBprnt ("GetPropertiesList: element NOT in cache: " + APIGuidToString (elemGuid));
                 break;
             }
         }
 
         if (allInCache) {
+            DBprnt ("GetPropertiesList: RETURNING FROM CACHE");
             // Возвращаем из кэша
             for (const API_Guid &elemGuid : selectedElements) {
                 const GS::Array<GS::ObjectState> &cachedProps = cache.selectionPropertiesCache[elemGuid];
@@ -51,6 +57,7 @@ GS::ObjectState GetPropertiesListCommand::Execute (const GS::ObjectState & /*par
         }
     }
 
+    DBprnt ("GetPropertiesList: READING FRESH (cache invalid or elements not in cache)");
     // Кэш невалиден или элементы не в кэше — читаем заново
     cache.selectionPropertiesCache.Clear ();
     cache.selectionPropertiesCacheValid = false;
@@ -153,6 +160,8 @@ GS::ObjectState GetPropertiesListCommand::Execute (const GS::ObjectState & /*par
     }
 
     cache.selectionPropertiesCacheValid = true;
+    DBprnt ("GetPropertiesList: cached " + GS::ValueToUniString (cache.selectionPropertiesCache.GetSize ()) +
+            " elements");
 
     response.Add ("elements", elementsArray);
     response.Add ("count", elementsArray.GetSize ());
