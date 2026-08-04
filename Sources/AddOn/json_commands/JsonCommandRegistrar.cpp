@@ -8,6 +8,7 @@
 #include "json_commands/SetSettingsCommand.hpp"
 #include "json_commands/SyncAllCommand.hpp"
 #include "json_commands/MonAllCommand.hpp"
+#include "json_commands/ParsePropertyForElementCommand.hpp"
 
 void RegisterJsonCommands () {
     // Регистрация команды GetPropertyDefinitions
@@ -88,6 +89,17 @@ void RegisterJsonCommands () {
             DBprnt("Failed to register MonAllCommand, error: " + GS::ValueToUniString(err));
         } else {
             DBprnt("MonAllCommand registered successfully!");
+        }
+    }
+
+    // Регистрация команды ParsePropertyForElement
+    {
+        GS::Owner<ParsePropertyForElementCommand> cmd = GS::NewOwned<ParsePropertyForElementCommand>();
+        GSErrCode err = ACAPI_Install_AddOnCommandHandler(cmd.Pass());
+        if (err != NoError) {
+            DBprnt("Failed to register ParsePropertyForElementCommand, error: " + GS::ValueToUniString(err));
+        } else {
+            DBprnt("ParsePropertyForElementCommand registered successfully!");
         }
     }
 }
