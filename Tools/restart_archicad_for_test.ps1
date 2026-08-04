@@ -593,6 +593,38 @@ try {
             throw "Unable to parse test_results.txt."
         }
     }
+    
+    # =================================================================
+    # JSON COMMANDS TESTING (после C++ тестов, если они не провалены)
+    # =================================================================
+    if ($testResultStatus -eq "PASSED" -or $testResultStatus -eq "UNKNOWN") {
+        Write-Log "Starting JSON commands testing..." Cyan
+        
+        # Ждём инициализации PropertyCache
+        Write-Log "Waiting 15 seconds for PropertyCache initialization..." Yellow
+        Start-Sleep -Seconds 15
+        
+        $jsonTestScript = Join-Path $projectRoot "Tools\test_json_commands.py"
+        if (Test-Path -LiteralPath $jsonTestScript) {
+            $jsonTestOutput = @(& python $jsonTestScript 2>&1)
+            $jsonTestExitCode = $LASTEXITCODE
+            
+            Write-Host ""
+            Write-Host "================ JSON COMMANDS TESTS ================" -ForegroundColor Cyan
+            foreach ($line in $jsonTestOutput) { Write-Host $line }
+            Write-Host "====================================================" -ForegroundColor Cyan
+            Write-Host ""
+            
+            if ($jsonTestExitCode -eq 0) {
+                Write-Log "JSON commands tests: PASSED." Green
+            } else {
+                Write-Log "JSON commands tests: FAILED (exit code: $jsonTestExitCode)." Red
+                $runnerExitCode = $EXIT_TESTS_FAILED
+            }
+        } else {
+            Write-Log "JSON test script not found: $jsonTestScript" Yellow
+        }
+    }
 }
 catch {
     Write-Log "RUNNER ERROR: $($_.Exception.Message)" Red
