@@ -276,6 +276,8 @@ const ACBridge = (function () {
                 groupMap[groupName].push({
                   id: p.propertyGuid,
                   name: p.name,
+                  value: p.value,  // Сохраняем значение свойства
+                  values: [{value: p.value, count: 1}],  // Массив значений для renderPropertyRow
                   group: p.group,  // Сохраняем поле group
                   allHave: true,
                   countWithProperty: 1
