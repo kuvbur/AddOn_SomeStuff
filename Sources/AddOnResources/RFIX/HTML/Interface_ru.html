@@ -796,7 +796,7 @@ function renderPropertyList(listBlock, filterText) {
           click: function() {
             STATE.monitorGroupCollapse[groupName] = !STATE.monitorGroupCollapse[groupName];
             // Re-render the property list
-            renderPropertyList(listBlock, valueBlock, STATE.monitorFilter);
+            renderPropertyList(listBlock, STATE.monitorFilter);
           }
         }
       });
@@ -813,7 +813,7 @@ function renderPropertyList(listBlock, filterText) {
       // Render properties if not collapsed
       if (!isCollapsed) {
         g.properties.forEach(function (p) {
-          listBlock.appendChild(renderPropertyRow(p, realValueBlock));
+          listBlock.appendChild(renderPropertyRow(p));
         });
       }
     });
