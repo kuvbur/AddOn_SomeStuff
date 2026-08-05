@@ -49,6 +49,9 @@
 // AGENT TODO: реальное значение должно приходить из ACBridge.GetSelectionInfo()
 // (будет заменено на window.ACAPI.GetSelectionInfo() после интеграции JS-моста)
 const MOCK_SELECTED_COUNT = 5;
+// Состояние сворачивания групп свойств
+
+
 
 /* =====================================================================================
    1. ТЕМА (светлая / тёмная)
@@ -125,6 +128,7 @@ const STATE = {
   numberingOpenBlocks: { flag: false, ruleEditor: false }, // блок 1 всегда открыт, остальные — по клику
   numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
                       criterionProperty: null, splitProperty: null }
+  monitorGroupCollapse: {}, // Состояние сворачивания групп
 };
 
 function applyTheme(name) {
@@ -787,14 +791,39 @@ function renderPropertyList(listBlock, valueBlock, filterText) {
     }
     // Render groups directly (already grouped by getPropertiesList)
     groups.forEach(function (g) {
-      listBlock.appendChild(h("div", {
-        text: g.group,
+      const groupName = g.group;
+      const isCollapsed = !!STATE.monitorGroupCollapse[groupName];
+      
+      // Group header (clickable)
+      const groupHeader = h("div", {
+        text: groupName,
         style: "position:sticky;top:0;background:var(--ac-bg-workspace);padding:0.4rem 0.75rem 0.2rem;" +
-               "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;"
-      }));
-      g.properties.forEach(function (p) {
-        listBlock.appendChild(renderPropertyRow(p, realValueBlock));
+               "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;" +
+               "cursor:pointer;display:flex;align-items:center;gap:0.3rem;user-select:none;",
+        on: {
+          click: function() {
+            STATE.monitorGroupCollapse[groupName] = !STATE.monitorGroupCollapse[groupName];
+            // Re-render the property list
+            renderPropertyList(listBlock, valueBlock, STATE.monitorFilter);
+          }
+        }
       });
+      
+      // Add chevron icon
+      const chevron = h("span", {
+        html: isCollapsed ? "&#9654;" : "&#9660;",  // ▶ or ▼
+        style: "font-size:0.5rem;transition:transform 0.2s;"
+      });
+      groupHeader.insertBefore(chevron, groupHeader.firstChild);
+      
+      listBlock.appendChild(groupHeader);
+      
+      // Render properties if not collapsed
+      if (!isCollapsed) {
+        g.properties.forEach(function (p) {
+          listBlock.appendChild(renderPropertyRow(p, realValueBlock));
+        });
+      }
     });
   });
 }
