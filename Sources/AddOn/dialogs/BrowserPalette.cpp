@@ -191,16 +191,20 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                     }
 
                     // Получаем имя группы свойства
-                    GS::UniString groupName = "Без группы";
-                    if (prop.definition.groupGuid != APINULLGuid) {
-                        API_PropertyGroup group;
-                        group.guid = prop.definition.groupGuid;
-                        GSErrCode groupErr = ACAPI_Property_GetPropertyGroup (group);
-                        if (groupErr == NoError && !group.name.IsEmpty ()) {
-                            groupName = group.name;
-                        }
-                    }
-                    jsonStr += GS::UniString ("\"group\": \"") + groupName.ToCStr ().Get () + GS::UniString ("\",");
+                                        GS::UniString groupName = "Без группы";
+                                        if (prop.definition.groupGuid != APINULLGuid) {
+                                            API_PropertyGroup group;
+                                            group.guid = prop.definition.groupGuid;
+                                            GSErrCode groupErr = ACAPI_Property_GetPropertyGroup (group);
+                                            DBprnt (GS::UniString ("GetPropertiesList: prop=") + prop.definition.name.ToCStr ().Get () + 
+                                                    GS::UniString (", groupGuid=") + APIGuidToString (prop.definition.groupGuid).ToCStr ().Get () + 
+                                                    GS::UniString (", groupErr=") + GS::ValueToUniString (groupErr) + 
+                                                    GS::UniString (", groupName=") + group.name.ToCStr ().Get ());
+                                            if (groupErr == NoError && !group.name.IsEmpty ()) {
+                                                groupName = group.name;
+                                            }
+                                        }
+                                        jsonStr += GS::UniString ("\"group\": \"") + groupName.ToCStr ().Get () + GS::UniString ("\",");
 
                     ParamValue pvalue;
                     if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {
