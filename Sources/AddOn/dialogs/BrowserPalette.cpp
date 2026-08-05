@@ -105,6 +105,12 @@ void BrowserPalette::UpdateSelectionInfoInUI () {
         GS::ValueToUniString (count) + GS::UniString (");");
     browser.ExecuteJS (jsCall.ToCStr ().Get ());
     DBprnt ("UpdateSelectionInfoInUI: executed JS: " + jsCall);
+
+    // Также перерисовываем список свойств при смене выделения
+    GS::UniString jsCallProps =
+        "if (typeof renderPropertyList === 'function') renderPropertyList(document.getElementById('monitor-list-block'), document.querySelector('[data-role=\"value-block\"]'), '');";
+    browser.ExecuteJS (jsCallProps.ToCStr ().Get ());
+    DBprnt ("UpdateSelectionInfoInUI: executed JS for property list refresh");
 }
 
 void BrowserPalette::InitBrowserControl () {
@@ -183,6 +189,18 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                     } else {
                         jsonStr += GS::UniString ("\"name\": \"\",");
                     }
+
+                    // Получаем имя группы свойства
+                    GS::UniString groupName = "Без группы";
+                    if (prop.definition.groupGuid != APINULLGuid) {
+                        API_PropertyGroup group;
+                        group.guid = prop.definition.groupGuid;
+                        GSErrCode groupErr = ACAPI_Property_GetPropertyGroup (group);
+                        if (groupErr == NoError && !group.name.IsEmpty ()) {
+                            groupName = group.name;
+                        }
+                    }
+                    jsonStr += GS::UniString ("\"group\": \"") + groupName.ToCStr ().Get () + GS::UniString ("\",");
 
                     ParamValue pvalue;
                     if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {

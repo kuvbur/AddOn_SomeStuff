@@ -599,7 +599,7 @@ function renderMonitorTab(container) {
 
   const filterBlock = h("div", { style: "padding:0.6rem 0.75rem;border-bottom:1px solid var(--ac-divider);flex:0 0 auto;position:relative;" });
 
-  const listBlock = h("div", { style: "flex:1 1 auto;min-height:0;overflow:auto;" });
+  const listBlock = h("div", { attrs: { id: "monitor-list-block" }, style: "flex:1 1 auto;min-height:0;overflow:auto;" });
 
   const valueBlock = h("div", {
     style: "flex:0 0 auto;border-top:1px solid var(--ac-border);background:var(--ac-bg-elevated);" +
@@ -775,13 +775,25 @@ function renderPropertyList(listBlock, valueBlock, filterText) {
       listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
       return;
     }
+    // Group properties by group name
+    const groupMap = new Map();
     groups.forEach(function (g) {
+      g.properties.forEach(function (p) {
+        const groupName = p.group || "Без группы";
+        if (!groupMap.has(groupName)) {
+          groupMap.set(groupName, []);
+        }
+        groupMap.get(groupName).push(p);
+      });
+    });
+    // Render groups
+    groupMap.forEach(function (props, groupName) {
       listBlock.appendChild(h("div", {
-        text: g.group,
+        text: groupName,
         style: "position:sticky;top:0;background:var(--ac-bg-workspace);padding:0.4rem 0.75rem 0.2rem;" +
                "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;"
       }));
-      g.properties.forEach(function (p) {
+      props.forEach(function (p) {
         listBlock.appendChild(renderPropertyRow(p, realValueBlock));
       });
     });
