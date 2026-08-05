@@ -267,7 +267,9 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             }
         }
 
-        jsonStr += "], \"count\": 0 }";
+        jsonStr += "], \"count\": " + GS::ValueToUniString ((Int32)selectedElements.GetSize ()) + GS::UniString (" }");
+
+        DBprnt (GS::UniString ("GetPropertiesList: returning JSON: ") + jsonStr);
 
         return new DG::JSValue (jsonStr);
     }));

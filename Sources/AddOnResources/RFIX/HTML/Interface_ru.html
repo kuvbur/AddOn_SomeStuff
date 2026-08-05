@@ -258,22 +258,32 @@ const ACBridge = (function () {
           // Parse JSON string if needed (pull-pattern returns string)
           var data = typeof result === 'string' ? JSON.parse(result) : result;
           // Convert flat elements array to grouped format for compatibility with existing UI
-          // For now, return a simple single group with all properties from first element
+          // Group properties by their group field from C++ response
           if (data && data.elements && data.elements.length > 0) {
             const firstElem = data.elements[0];
             if (firstElem.properties && firstElem.properties.length > 0) {
-              // Group by some heuristic - for now put all in one group
-              return [{
-                group: "Свойства элемента",
-                properties: firstElem.properties.map(function (p) {
-                  return {
-                    id: p.propertyGuid,
-                    name: p.name,
-                    allHave: true, // we only have first element's properties
-                    countWithProperty: 1
-                  };
-                })
-              }];
+              // Group properties by group field from C++ response
+              const groupMap = {};
+              firstElem.properties.forEach(function (p) {
+                const groupName = p.group || "Без группы";
+                if (!groupMap[groupName]) {
+                  groupMap[groupName] = [];
+                }
+                groupMap[groupName].push({
+                  id: p.propertyGuid,
+                  name: p.name,
+                  group: p.group,  // Сохраняем поле group
+                  allHave: true,
+                  countWithProperty: 1
+                });
+              });
+              // Convert to array format expected by renderPropertyList
+              return Object.keys(groupMap).map(function (groupName) {
+                return {
+                  group: groupName,
+                  properties: groupMap[groupName]
+                };
+              });
             }
           }
           return [];
@@ -775,25 +785,14 @@ function renderPropertyList(listBlock, valueBlock, filterText) {
       listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
       return;
     }
-    // Group properties by group name
-    const groupMap = new Map();
+    // Render groups directly (already grouped by getPropertiesList)
     groups.forEach(function (g) {
-      g.properties.forEach(function (p) {
-        const groupName = p.group || "Без группы";
-        if (!groupMap.has(groupName)) {
-          groupMap.set(groupName, []);
-        }
-        groupMap.get(groupName).push(p);
-      });
-    });
-    // Render groups
-    groupMap.forEach(function (props, groupName) {
       listBlock.appendChild(h("div", {
-        text: groupName,
+        text: g.group,
         style: "position:sticky;top:0;background:var(--ac-bg-workspace);padding:0.4rem 0.75rem 0.2rem;" +
                "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;"
       }));
-      props.forEach(function (p) {
+      g.properties.forEach(function (p) {
         listBlock.appendChild(renderPropertyRow(p, realValueBlock));
       });
     });
