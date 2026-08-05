@@ -255,10 +255,12 @@ const ACBridge = (function () {
         console.log("ACAPI.GetPropertiesList exists, calling...");
         return window.ACAPI.GetPropertiesList().then(function (result) {
           console.log("ACAPI.GetPropertiesList returned:", result);
+          // Parse JSON string if needed (pull-pattern returns string)
+          var data = typeof result === 'string' ? JSON.parse(result) : result;
           // Convert flat elements array to grouped format for compatibility with existing UI
           // For now, return a simple single group with all properties from first element
-          if (result && result.elements && result.elements.length > 0) {
-            const firstElem = result.elements[0];
+          if (data && data.elements && data.elements.length > 0) {
+            const firstElem = data.elements[0];
             if (firstElem.properties && firstElem.properties.length > 0) {
               // Group by some heuristic - for now put all in one group
               return [{

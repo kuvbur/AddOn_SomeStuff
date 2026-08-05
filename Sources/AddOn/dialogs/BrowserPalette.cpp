@@ -135,106 +135,119 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     DBprnt ("BrowserPalette::RegisterACAPIJavaScriptObject () — starting");
     DG::JSObject *jsACAPI = new DG::JSObject ("ACAPI");
 
-    // Регистрируем функцию для получения свойств выделенных элементов (новая команда GetPropertiesList)
-    jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [] (GS::Ref<DG::JSBase>) {
+    // Регистрируем функцию для получения свойств выделенных элементов (возвращает JSON-строку для обхода ограничений
+    // pull-паттерна)
+    jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+        // Собираем данные свойств
         GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
 
-        GS::Ref<DG::JSObject> result = new DG::JSObject ();
-        GS::Ref<DG::JSArray> elementsArray = new DG::JSArray ();
+        // Формируем JSON строку вручную
+        GS::UniString jsonStr = "{ \"elements\": [";
 
-        if (selectedElements.IsEmpty ()) {
-            result->AddItem ("elements", elementsArray);
-            result->AddItem ("count", new DG::JSValue (0));
-            return result;
-        }
-
-        for (const API_Guid &elemGuid : selectedElements) {
-            GS::Array<API_PropertyDefinition> definitions;
-            GSErrCode err =
-                ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
-            if (err != NoError || definitions.IsEmpty ()) {
-                continue;
-            }
-
-            GS::Array<API_Property> properties;
-            err = ACAPI_Element_GetPropertyValues (elemGuid, definitions, properties);
-            if (err != NoError) {
-                continue;
-            }
-
-            GS::Ref<DG::JSObject> elementObj = new DG::JSObject ();
-            elementObj->AddItem ("guid", new DG::JSValue (APIGuidToString (elemGuid).ToCStr ().Get ()));
-
-            GS::Ref<DG::JSArray> propertiesArray = new DG::JSArray ();
-
-            for (const API_Property &prop : properties) {
-                GS::Ref<DG::JSObject> propertyObj = new DG::JSObject ();
-
-                if (!prop.definition.name.IsEmpty ()) {
-                    propertyObj->AddItem ("name", new DG::JSValue (prop.definition.name.ToCStr ().Get ()));
+        bool firstElement = true;
+        if (!selectedElements.IsEmpty ()) {
+            for (const API_Guid &elemGuid : selectedElements) {
+                GS::Array<API_PropertyDefinition> definitions;
+                GSErrCode err = ACAPI_Element_GetPropertyDefinitions (
+                    elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+                if (err != NoError || definitions.IsEmpty ()) {
+                    continue;
                 }
 
-                ParamValue pvalue;
-                if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {
-                    GS::UniString valueStr;
-                    switch (pvalue.val.type) {
+                GS::Array<API_Property> properties;
+                err = ACAPI_Element_GetPropertyValues (elemGuid, definitions, properties);
+                if (err != NoError) {
+                    continue;
+                }
+
+                if (!firstElement) {
+                    jsonStr += GS::UniString (",");
+                }
+                firstElement = false;
+
+                jsonStr += GS::UniString ("{ \"guid\": \"") + APIGuidToString (elemGuid).ToCStr ().Get () +
+                           GS::UniString ("\", \"properties\": [");
+
+                bool firstProp = true;
+                for (const API_Property &prop : properties) {
+                    if (!firstProp) {
+                        jsonStr += GS::UniString (",");
+                    }
+                    firstProp = false;
+
+                    jsonStr += GS::UniString ("{");
+
+                    if (!prop.definition.name.IsEmpty ()) {
+                        jsonStr += GS::UniString ("\"name\": \"") + prop.definition.name.ToCStr ().Get () +
+                                   GS::UniString ("\",");
+                    } else {
+                        jsonStr += GS::UniString ("\"name\": \"\",");
+                    }
+
+                    ParamValue pvalue;
+                    if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {
+                        GS::UniString valueStr;
+                        switch (pvalue.val.type) {
+                        case API_PropertyIntegerValueType:
+                            valueStr = GS::UniString::Printf ("%d", pvalue.val.intValue);
+                            break;
+                        case API_PropertyRealValueType:
+                            valueStr = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
+                            break;
+                        case API_PropertyStringValueType:
+                            valueStr = pvalue.val.uniStringValue;
+                            break;
+                        case API_PropertyBooleanValueType:
+                            valueStr = pvalue.val.boolValue ? "true" : "false";
+                            break;
+                        case API_PropertyGuidValueType:
+                            valueStr = APIGuidToString (pvalue.val.guidval).ToCStr ().Get ();
+                            break;
+                        default:
+                            valueStr = "unknown";
+                            break;
+                        }
+                        jsonStr += GS::UniString ("\"value\": \"") + valueStr.ToCStr ().Get () + GS::UniString ("\",");
+                    } else {
+                        jsonStr += "\"value\": \"\",";
+                    }
+
+                    const char *typeStr = "unknown";
+                    switch (prop.definition.valueType) {
                     case API_PropertyIntegerValueType:
-                        valueStr = GS::UniString::Printf ("%d", pvalue.val.intValue);
+                        typeStr = "integer";
                         break;
                     case API_PropertyRealValueType:
-                        valueStr = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
+                        typeStr = "real";
                         break;
                     case API_PropertyStringValueType:
-                        valueStr = pvalue.val.uniStringValue;
+                        typeStr = "string";
                         break;
                     case API_PropertyBooleanValueType:
-                        valueStr = pvalue.val.boolValue ? "true" : "false";
+                        typeStr = "boolean";
                         break;
                     case API_PropertyGuidValueType:
-                        valueStr = APIGuidToString (pvalue.val.guidval).ToCStr ().Get ();
+                        typeStr = "guid";
                         break;
-                    default:
-                        valueStr = "unknown";
+                    case API_PropertyUndefinedValueType:
+                        typeStr = "undefined";
                         break;
                     }
-                    propertyObj->AddItem ("value", new DG::JSValue (valueStr.ToCStr ().Get ()));
+                    jsonStr += GS::UniString ("\"valueType\": \"") + GS::UniString (typeStr) + GS::UniString ("\",");
+
+                    jsonStr += GS::UniString ("\"propertyGuid\": \"") +
+                               APIGuidToString (prop.definition.guid).ToCStr ().Get () + GS::UniString ("\"");
+
+                    jsonStr += "}";
                 }
 
-                const char *typeStr = "unknown";
-                switch (prop.definition.valueType) {
-                case API_PropertyIntegerValueType:
-                    typeStr = "integer";
-                    break;
-                case API_PropertyRealValueType:
-                    typeStr = "real";
-                    break;
-                case API_PropertyStringValueType:
-                    typeStr = "string";
-                    break;
-                case API_PropertyBooleanValueType:
-                    typeStr = "boolean";
-                    break;
-                case API_PropertyGuidValueType:
-                    typeStr = "guid";
-                    break;
-                case API_PropertyUndefinedValueType:
-                    typeStr = "undefined";
-                    break;
-                }
-                propertyObj->AddItem ("valueType", new DG::JSValue (typeStr));
-                propertyObj->AddItem ("propertyGuid",
-                                      new DG::JSValue (APIGuidToString (prop.definition.guid).ToCStr ().Get ()));
-
-                propertiesArray->AddItem (propertyObj);
+                jsonStr += "]}";
             }
-
-            elementObj->AddItem ("properties", propertiesArray);
-            elementsArray->AddItem (elementObj);
         }
 
-        result->AddItem ("elements", elementsArray);
-        result->AddItem ("count", new DG::JSValue ((Int32)elementsArray->GetItemArray ().GetSize ()));
-        return result;
+        jsonStr += "], \"count\": 0 }";
+
+        return new DG::JSValue (jsonStr);
     }));
 
     // Регистрируем функцию для получения количества выделенных элементов
