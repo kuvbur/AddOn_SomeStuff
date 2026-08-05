@@ -122,7 +122,11 @@
 ```
 [x] Этап 1.1 — GetSelectionInfoCommand ✅
 [x] Этап 1.1.1 — Исправление JS-моста (push-pattern) ✅
-[ ] Этап 1.2 — GetPropertiesListCommand (ключевая)
+[x] Этап 1.2 — GetPropertiesListCommand (ключевая) ✅
+    [x] C++ команда с кэшированием и группировкой
+    [x] JS-мост в BrowserPalette
+    [x] HTML: замена мока, группировка по группам, фильтрация
+    [x] Сворачивание/разворачивание групп
 [ ] Этап 1.3 — GetPropertyValueCommand (ключевая)
 [ ] Этап 1.4 — GetClassificationCommand + SetClassificationCommand
 [ ] Этап 1.5 — GetFilterPresetsCommand
@@ -156,6 +160,6 @@
 
 ---
 
-## Last Checkpoint: 686c839 feat: GetSelectionInfoCommand — первая JSON-команда для UI вкладки Монитор
-## Next Step: Этап 1.2 — GetPropertiesListCommand (вторая команда вкладки «Монитор»)
+## Last Checkpoint: 587d774 [step-1.2] Add collapsible groups to property list in BrowserPalette
+## Next Step: Этап 1.3 — GetPropertyValueCommand (третья команда вкладки «Монитор»)
 ## Scope: Sources/AddOn/json_commands/*, dialogs/BrowserPalette.cpp, AddOnResources/RFIX/HTML/Interface_ru.html

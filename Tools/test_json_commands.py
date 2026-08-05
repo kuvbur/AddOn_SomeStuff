@@ -345,6 +345,57 @@ def test_09_get_properties_list(port):
         return print_result(False, f"Отсутствует поле elements в ответе: {addon_resp}")
 
 
+def test_10_get_property_value(port):
+    """
+    Команда: GetPropertyValue
+    Назначение: Получение значения конкретного свойства для выделенных элементов.
+    Ожидаемый ответ: {"propertyName": "...", "common": bool, "values": [{"value": "...", "count": N}]}
+    """
+    print_test_header("GetPropertyValueCommand — значение свойства для выделенных элементов")
+    
+    # Сначала получаем список свойств, чтобы знать какие есть
+    response = call_addon_command(port, "GetPropertiesList")
+    if "error" in response:
+        return print_result(False, f"Ошибка GetPropertiesList: {response['error']}")
+    
+    addon_resp = extract_response(response)
+    
+    if "elements" not in addon_resp or not addon_resp["elements"]:
+        return print_result(True, "Нет выделенных элементов (OK — пустой ответ)")
+    
+    # Берем первый propertyGuid из первого элемента
+    first_elem = addon_resp["elements"][0]
+    props = first_elem.get("properties", [])
+    if not props:
+        return print_result(True, "У элемента нет свойств (OK — пустой ответ)")
+    
+    property_id = props[0].get("propertyGuid", "")
+    if not property_id:
+        return print_result(False, "У свойства нет GUID")
+    
+    print(f"  Тестируем propertyId: {property_id}")
+    
+    # Вызываем GetPropertyValue
+    response = call_addon_command(port, "GetPropertyValue", {"propertyId": property_id})
+    if "error" in response:
+        return print_result(False, f"Ошибка вызова: {response['error']}")
+    
+    addon_resp = extract_response(response)
+    
+    if addon_resp.get("status") == "ok":
+        property_name = addon_resp.get("propertyName", "")
+        common = addon_resp.get("common", False)
+        values = addon_resp.get("values", [])
+        print(f"  propertyName: {property_name}")
+        print(f"  common: {common}")
+        print(f"  values count: {len(values)}")
+        for v in values[:3]:
+            print(f"    value: {v.get('value')}, count: {v.get('count')}")
+        return print_result(True, "Команда выполнена успешно")
+    else:
+        return print_result(False, f"Ответ: {addon_resp}")
+
+
 def test_07_parse_property_for_element(port):
     """
     Команда: ParsePropertyForElement
@@ -430,7 +481,8 @@ def run_all_tests(port, test_filter=None):
         ("06_MonAll", test_06_mon_all),
         ("07_GetSelectionInfo", test_08_get_selection_info),
         ("08_GetPropertiesList", test_09_get_properties_list),
-        ("09_ParsePropertyForElement", test_07_parse_property_for_element),
+        ("09_GetPropertyValue", test_10_get_property_value),
+        ("10_ParsePropertyForElement", test_07_parse_property_for_element),
     ]
     
     # Фильтрация

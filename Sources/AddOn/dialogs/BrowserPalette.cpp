@@ -6,11 +6,14 @@
 
 #include "dialogs/BrowserPalette.hpp"
 
+#include "ACAPinc.h"
 #include "CommonFunction.hpp"
 #include "dialogs/CommandHelpers.hpp"
 #include "dialogs/SyncSettings.hpp"
 #include "Propertycache.hpp"
 #include "Sync.hpp"
+#include "ObjectStateJSONConversion.hpp"
+#include "json_commands/GetPropertyValueCommand.hpp"
 
 static const GS::Guid paletteGuid ("{FEE27B6B-3873-5844-88B6-F0083AA4CD49}");
 
@@ -271,10 +274,120 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
         DBprnt (GS::UniString ("GetPropertiesList: returning JSON: ") + jsonStr);
 
-        return new DG::JSValue (jsonStr);
-    }));
+                return new DG::JSValue (jsonStr);
+            }));
 
-    // Регистрируем функцию для получения количества выделенных элементов
+
+            // Регистрируем функцию для получения значения свойства для выделенных элементов
+            jsACAPI->AddItem (new DG::JSFunction ("GetPropertyValue", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+                if (args == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("status", new DG::JSValue ("error"));
+                    errorObj->AddItem ("message", new DG::JSValue ("Invalid arguments: expected array with propertyId"));
+                    return errorObj;
+                }
+
+                GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
+                if (argsArray == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("status", new DG::JSValue ("error"));
+                    errorObj->AddItem ("message", new DG::JSValue ("First argument must be an array"));
+                    return errorObj;
+                }
+
+                const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
+                if (argsItems.GetSize () < 1) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("status", new DG::JSValue ("error"));
+                    errorObj->AddItem ("message", new DG::JSValue ("Expected propertyId as first argument"));
+                    return errorObj;
+                }
+
+                GS::Ref<DG::JSValue> propertyIdVal = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+                if (propertyIdVal == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("status", new DG::JSValue ("error"));
+                    errorObj->AddItem ("message", new DG::JSValue ("propertyId must be a string"));
+                    return errorObj;
+                }
+
+                GS::UniString propertyId = propertyIdVal->GetString ();
+
+                // Inline implementation (like GetPropertiesList)
+                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+
+                GS::UniString jsonStr = "{ \"values\": [";
+
+                bool firstValue = true;
+                GS::HashTable<GS::UniString, Int32> valueCounts;
+        
+                for (const API_Guid &elemGuid : selectedElements) {
+                    GS::UniString rawName = "Property:" + propertyId;
+                    ParamValue pvalue;
+                    if (ParamHelpers::GetParamValueFromCache (rawName, pvalue)) {
+                        GS::UniString valueStr;
+                        switch (pvalue.val.type) {
+                            case API_PropertyIntegerValueType:
+                                valueStr = GS::UniString::Printf ("%d", pvalue.val.intValue);
+                                break;
+                            case API_PropertyRealValueType:
+                                valueStr = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
+                                break;
+                            case API_PropertyStringValueType:
+                                valueStr = pvalue.val.uniStringValue;
+                                break;
+                            case API_PropertyBooleanValueType:
+                                valueStr = pvalue.val.boolValue ? "true" : "false";
+                                break;
+                            case API_PropertyGuidValueType:
+                                valueStr = APIGuidToString (pvalue.val.guidval).ToCStr ().Get ();
+                                break;
+                            default:
+                                valueStr = "unknown";
+                                break;
+                        }
+                
+                        const Int32* currentCountPtr = valueCounts.GetPtr (valueStr);
+                        Int32 currentCount = currentCountPtr ? *currentCountPtr : 0;
+                        valueCounts.Put (valueStr, currentCount + 1);
+                    }
+                }
+
+                // Формируем JSON
+                                Int32 totalCount = 0;
+                                Int32 uniqueValuesCount = 0;
+                                for (auto it = valueCounts.EnumeratePairs (); it != nullptr; ++it) {
+                #if defined(ServerMainVers_2800) || defined(ServerMainVers_2900)
+                                    const GS::UniString &key = it->key;
+                                    Int32 value = it->value;
+                #else
+                                    const GS::UniString &key = *it->key;
+                                    Int32 value = *it->value;
+                #endif
+                                    if (!firstValue) {
+                                                                            jsonStr += ",";
+                                                                        }
+                                                                        firstValue = false;
+                                                                        jsonStr += GS::UniString ("{\"value\":\"") + key.ToCStr ().Get () + GS::UniString ("\",\"count\":") + GS::ValueToUniString (value) + GS::UniString ("}");
+                                                                        totalCount += value;
+                                                                        uniqueValuesCount++;
+                                                                    }
+
+                jsonStr += "], ";
+
+                                                bool isCommon = (uniqueValuesCount == 1 && totalCount == selectedElements.GetSize ());
+
+                                                jsonStr += GS::UniString ("\"common\": ") + GS::UniString (isCommon ? "true" : "false") + GS::UniString (", ");
+                                                jsonStr += GS::UniString ("\"propertyName\": \"") + propertyId.ToCStr ().Get () + GS::UniString ("\", ");
+                                                jsonStr += GS::UniString ("\"status\": \"ok\" }");
+
+                                DBprnt (GS::UniString ("GetPropertyValue: returning JSON: ") + jsonStr);
+
+                                                            return new DG::JSValue (jsonStr);
+                                                        }));
+
+
+                    // Регистрируем функцию для получения количества выделенных элементов
     jsACAPI->AddItem (new DG::JSFunction ("GetSelectionInfo", [] (GS::Ref<DG::JSBase>) {
         DBprnt ("GetSelectionInfo: function called from JS");
         GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);

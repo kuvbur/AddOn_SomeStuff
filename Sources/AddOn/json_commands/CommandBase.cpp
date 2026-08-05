@@ -48,3 +48,29 @@ GS::ObjectState CreateSuccessResponse()
 {
     return GS::ObjectState("success", true);
 }
+
+GS::ObjectState ReadOnlyCommand::CreateErrorResponse(GSErrCode errorCode, const GS::UniString& errorMessage) const
+{
+    GS::ObjectState os;
+    os.Add("error", GS::ObjectState("code", errorCode));
+    os.Add("message", errorMessage);
+    return os;
+}
+
+GS::ObjectState ReadOnlyCommand::CreateSuccessResponse() const
+{
+    return GS::ObjectState("success", true);
+}
+
+GS::ObjectState ModifyCommand::CreateErrorResponse(GSErrCode errorCode, const GS::UniString& errorMessage) const
+{
+    GS::ObjectState os;
+    os.Add("error", GS::ObjectState("code", errorCode));
+    os.Add("message", errorMessage);
+    return os;
+}
+
+GS::ObjectState ModifyCommand::CreateSuccessResponse() const
+{
+    return GS::ObjectState("success", true);
+}
