@@ -124,6 +124,7 @@ const STATE = {
   theme: "light",              // по умолчанию светлая тема (задано заказчиком)
   activeTab: "monitor",
   monitorFilter: "",
+  monitorValueFilter: "",
   monitorSelectedPropertyId: null,
   numberingOpenBlocks: { flag: false, ruleEditor: false }, // блок 1 всегда открыт, остальные — по клику
   numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
@@ -710,7 +711,10 @@ function renderClassificationBlock(block) {
 function renderFilterBlock(block, listBlock) {
   clear(block);
 
-  const row = h("div", { style: "display:flex;gap:0.3rem;" });
+  const row = h("div", { style: "display:flex;flex-direction:column;gap:0.3rem;" });
+  
+  // Name filter row
+  const nameFilterRow = h("div", { style: "display:flex;gap:0.3rem;" });
   const input = h("input", {
     attrs: { type: "text", placeholder: "Фильтр свойств… (или /regex/)", value: STATE.monitorFilter },
     style: "flex:1 1 auto;min-width:0;padding:0.35rem 0.5rem;font-size:0.78rem;" +
@@ -722,6 +726,23 @@ function renderFilterBlock(block, listBlock) {
       }
     }
   });
+  nameFilterRow.appendChild(input);
+  nameFilterRow.appendChild(presetBtn);
+  
+  // Value filter row
+  const valueFilterRow = h("div", { style: "display:flex;gap:0.3rem;" });
+  const valueInput = h("input", {
+    attrs: { type: "text", placeholder: "Фильтр по значениям… (или /regex/)", value: STATE.monitorValueFilter },
+    style: "flex:1 1 auto;min-width:0;padding:0.35rem 0.5rem;font-size:0.78rem;" +
+           "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;",
+    on: {
+      input: function () {
+        STATE.monitorValueFilter = valueInput.value;
+        renderPropertyList(listBlock, STATE.monitorFilter);
+      }
+    }
+  });
+  valueFilterRow.appendChild(valueInput);
 
   const presetBtn = h("button", {
     text: "\u25BE",
@@ -761,9 +782,8 @@ function renderFilterBlock(block, listBlock) {
     }
   });
 
-  row.appendChild(input);
-  row.appendChild(presetBtn);
-  block.appendChild(row);
+  block.appendChild(nameFilterRow);
+  block.appendChild(valueFilterRow);
   block.appendChild(h("div", {
     text: "Поддерживаются шаблоны regexp в формате /шаблон/",
     style: "margin-top:0.25rem;font-size:0.66rem;color:var(--ac-text-tertiary);"
@@ -775,13 +795,33 @@ function renderPropertyList(listBlock, filterText) {
   clear(listBlock);
   listBlock.appendChild(h("div", { text: "Загрузка свойств…", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
 
-  ACBridge.getPropertiesList(filterText).then(function (groups) {
+  // Use both name filter and value filter from STATE
+  const nameFilter = STATE.monitorFilter;
+  const valueFilter = STATE.monitorValueFilter;
+
+  ACBridge.getPropertiesList(nameFilter).then(function (groups) {
     clear(listBlock);
     if (!groups.length) {
       listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
       return;
     }
     // Render groups directly (already grouped by getPropertiesList)
+        // Apply value filter if provided
+    if (valueFilter) {
+      const valueFilterRegex = valueFilter.startsWith('/') && valueFilter.endsWith('/') 
+        ? new RegExp(valueFilter.slice(1, -1), 'i')
+        : new RegExp(valueFilter.replace(/[.*+?^${}()|[\\]]/g, '\$&'), 'i');
+      
+      groups.forEach(function(g) {
+        g.properties = g.properties.filter(function(p) {
+          return p.values && p.values.some(function(v) { return valueFilterRegex.test(v.value); });
+        });
+      });
+      
+      // Remove empty groups
+      groups = groups.filter(function(g) { return g.properties && g.properties.length > 0; });
+    }
+    
     groups.forEach(function (g) {
       const groupName = g.group;
       const isCollapsed = !!STATE.monitorGroupCollapse[groupName];
