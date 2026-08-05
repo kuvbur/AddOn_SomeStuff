@@ -2,7 +2,8 @@
 
 ## Цель
 
-Реализовать C++ JSON-команды аддона, которые заменят моки `ACBridge` в HTML-интерфейсе вкладки «Монитор». Максимально использовать существующий оптимизированный код чтения свойств (PropertyCache, ParamHelpers).
+Реализовать C++ JSON-команды аддона, которые заменят моки `ACBridge` в HTML-интерфейсе вкладки «Монитор». Максимально использовать существующий оптимизированный код чтс
+ **«Техническое задание: UI Панели Archicad»** (`Sources/AddOnResources/RFIX/HTML/ТЗ интерфейс.md`) — **обязательное ТЗ по интерфейсу**. Любые правки `Interface_ru.html` / `index.html` допускаются **только в соответствии с ТЗ**. Нарушение ТЗ без явного согласия пользователя недопустимо. При каждой правке HTML — **обязательно** запускать валидацию: `powershell -File Tools/test_html.ps1`.
 
 ---
 
@@ -104,8 +105,8 @@
 |--------|----------|--------|
 | `ACAPI.GetSelectionInfo()` | `GetSelectedElements2()` | ✅ |
 | `ACAPI.RefreshSelectionInfoUI()` | Push-pattern (ExecuteJS) | ✅ |
-| `ACAPI.GetPropertiesList(filter)` | JSON-команду | ❌ |
-| `ACAPI.GetPropertyValue(id)` | JSON-команду | ❌ |
+| `ACAPI.GetPropertiesList(filter)` | JSON-команду | ✅ |
+| `ACAPI.GetPropertyValue(id)` | JSON-команду | ✅ |
 | `ACAPI.GetClassification()` | JSON-команду | ❌ |
 | `ACAPI.SetClassification(value)` | JSON-команду | ❌ |
 | `ACAPI.GetFilterPresets()` | JSON-команду | ❌ |
@@ -119,6 +120,8 @@
 
 ## Порядок реализации
 
+### Этап 1: Вкладка «Монитор» (ArchiCAD 25)
+
 ```
 [x] Этап 1.1 — GetSelectionInfoCommand ✅
 [x] Этап 1.1.1 — Исправление JS-моста (push-pattern) ✅
@@ -127,11 +130,54 @@
     [x] JS-мост в BrowserPalette
     [x] HTML: замена мока, группировка по группам, фильтрация
     [x] Сворачивание/разворачивание групп
-[ ] Этап 1.3 — GetPropertyValueCommand (ключевая)
+[x] Этап 1.3 — GetPropertyValueCommand ✅ (оставляем для JSON API)
+    [x] C++ команда с inline реализацией в JS-мосте
+    [x] JS-мост GetPropertyValue в BrowserPalette.cpp
+    [x] Использует ParamHelpers::GetParamValueFromCache для кэшированных значений
+    [x] Возвращает {propertyName, common: bool, values: [{value, count}]}
+    [x] JSON тест: test_10_get_property_value в test_json_commands.py ✅
+[x] Этап 1.3.1 — HTML: показ значений свойств в списке ✅
+    [x] Удален отдельный блок valueBlock
+    [x] Значения отображаются под названием свойства мелким шрифтом
+    [x] Уникальные значения с количеством (×N)
+    [x] Удален renderValueBlock и зависимость от monitorSelectedPropertyId
+    [x] renderPropertyRow обновлен для отображения значений
 [ ] Этап 1.4 — GetClassificationCommand + SetClassificationCommand
 [ ] Этап 1.5 — GetFilterPresetsCommand
 [ ] Этап 1.6 — ResetPropertyToDefaultCommand
-[ ] Тестирование: test_json_commands.py + ArchiCAD
+[ ] Тестирование: test_json_commands.py + ArchiCAD 25
+```
+
+### Этап 2: Вкладка «Синхронизация» (после Монитора)
+
+```
+[ ] Этап 2.1 — ExecuteSyncScriptCommand
+    Назначение: Выполнить DSL скрипт над текущим выделением
+    Вход: { scriptText: string }
+    Выход: { success: bool, message: string, errorLine?: number, errorColumn?: number, errorText?: string }
+    Тип: ModifyCommand (если скрипт меняет элементы) / ReadOnlyCommand (если только чтение)
+    Реализация: парсинг DSL, выполнение над выделением, возврат результата
+```
+
+### Этап 3: Вкладка «Нумерация» (после Синхронизации)
+
+```
+[ ] Этап 3.1 — GetNumberingPropertiesCommand
+    Назначение: Получить допустимые свойства для настроек нумерации
+    Вход: нет
+    Выход: { properties: [{id, name, groupName}] }
+
+[ ] Этап 3.2 — GetNumberingPreviewCommand
+    Назначение: Рассчитать предпросмотр нумерации
+    Вход: { config: NumberingConfig }
+    Выход: { preview: [{elementGuid, elementName, newValue}] }
+
+[ ] Этап 3.3 — ExecuteNumberingCommand (архитектурный задел)
+    Назначение: Реально применить нумерацию в ArchiCAD
+    Вход: { config: NumberingConfig }
+    Выход: { success: bool, changedCount: number }
+    Тип: ModifyCommand (с undo)
+    Примечание: В текущем HTML только предпросмотр, ExecuteNumbering не вызывается. Но закладываем в API.
 ```
 
 ---
@@ -143,6 +189,7 @@
 3. **Минимальные диффы** — новые файлы команд в `json_commands/`, только одна регистрация в `JsonCommandRegistrar.cpp`.
 4. **Ручная проверка сборки** после каждой команды.
 5. **TDD** — сначала тест (RED), потом реализация (GREEN).
+6. **HTML правки строго по ТЗ** — `Sources/AddOnResources/RFIX/HTML/ТЗ интерфейс.md` является обязательным ТЗ. Любые изменения `Interface_ru.html` / `index.html` только в соответствии с ТЗ. При каждой правке HTML — **обязательно** валидация: `powershell -File Tools/test_html.ps1`.
 
 ---
 
@@ -160,6 +207,6 @@
 
 ---
 
-## Last Checkpoint: 587d774 [step-1.2] Add collapsible groups to property list in BrowserPalette
-## Next Step: Этап 1.3 — GetPropertyValueCommand (третья команда вкладки «Монитор»)
+## Last Checkpoint: ee42854 [step-1.3] Add GetPropertyValueCommand with inline implementation
+## Next Step: Этап 1.4 — GetClassificationCommand + SetClassificationCommand
 ## Scope: Sources/AddOn/json_commands/*, dialogs/BrowserPalette.cpp, AddOnResources/RFIX/HTML/Interface_ru.html
