@@ -1,0 +1,20 @@
+{
+  "name": "somestuff-html-validation",
+  "version": "1.0.0",
+  "description": "HTML/JS validation for SomeStuff AddOn BrowserPalette",
+  "private": true,
+  "scripts": {
+    "validate:html": "htmlhint Sources/AddOnResources/RFIX/HTML/Interface_ru.html",
+    "validate:js": "eslint --stdin --stdin-filename=Interface_ru.html < Sources/AddOnResources/RFIX/HTML/Interface_ru.html",
+    "validate:custom": "node Tools/verify.js Sources/AddOnResources/RFIX/HTML/Interface_ru.html",
+    "validate": "npm run validate:html && npm run validate:js && npm run validate:custom"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-plugin-html": "^8.1.4",
+    "htmlhint": "^1.1.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

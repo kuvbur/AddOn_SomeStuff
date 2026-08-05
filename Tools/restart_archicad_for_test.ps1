@@ -31,6 +31,7 @@ $EXIT_TEST_TIMEOUT             = 60
 $EXIT_TESTS_FAILED             = 70
 $EXIT_AC_SHUTDOWN_FAILED       = 80
 $EXIT_CLEANUP_FAILED           = 90
+$EXIT_HTML_VALIDATION_FAILED   = 75
 
 
 # ==============================================================================
@@ -405,7 +406,100 @@ function Get-TestResultStatus {
 
 
 # ==============================================================================
-# 12. ПЕРЕМЕННЫЕ RUNNER
+# 12. HTML ВАЛИДАЦИЯ (запускается ДО билда)
+# ==============================================================================
+
+function Test-HtmlValidation {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $htmlPath = Join-Path $ProjectRoot "Sources\AddOnResources\RFIX\HTML\Interface_ru.html"
+    $verifyScript = Join-Path $ProjectRoot "Tools\verify.js"
+    $packageJson = Join-Path $ProjectRoot "package.json"
+
+    Write-Log "=== HTML VALIDATION START ===" Cyan
+
+    # Проверяем наличие файлов
+    if (-not (Test-Path -LiteralPath $htmlPath)) {
+        Write-Log "HTML file not found: $htmlPath" Red
+        return $false
+    }
+
+    if (-not (Test-Path -LiteralPath $verifyScript)) {
+        Write-Log "verify.js not found: $verifyScript" Red
+        return $false
+    }
+
+    if (-not (Test-Path -LiteralPath $packageJson)) {
+        Write-Log "package.json not found: $packageJson" Red
+        return $false
+    }
+
+    # Проверяем наличие node_modules (npm install)
+    $nodeModules = Join-Path $ProjectRoot "node_modules"
+    if (-not (Test-Path -LiteralPath $nodeModules)) {
+        Write-Log "node_modules not found, running npm install..." Yellow
+        try {
+            Set-Location -LiteralPath $ProjectRoot
+            $npmInstallOutput = @(& npm install 2>&1)
+            $npmExitCode = $LASTEXITCODE
+            foreach ($line in $npmInstallOutput) { Write-Host $line }
+            if ($npmExitCode -ne 0) {
+                Write-Log "npm install failed with exit code: $npmExitCode" Red
+                return $false
+            }
+        }
+        catch {
+            Write-Log "npm install failed to start: $($_.Exception.Message)" Red
+            return $false
+        }
+    }
+
+    # 1. HTMLHint validation
+    Write-Log "Running HTMLHint..." Cyan
+    try {
+        Set-Location -LiteralPath $ProjectRoot
+        $htmlHintOutput = @(& npx htmlhint $htmlPath 2>&1)
+        $htmlHintExitCode = $LASTEXITCODE
+        foreach ($line in $htmlHintOutput) { Write-Host $line }
+        if ($htmlHintExitCode -ne 0) {
+            Write-Log "HTMLHint validation FAILED" Red
+            return $false
+        }
+        Write-Log "HTMLHint: PASSED" Green
+    }
+    catch {
+        Write-Log "HTMLHint failed to run: $($_.Exception.Message)" Red
+        return $false
+    }
+
+    # 2. Custom verify.js validation (ТЗ-проверки)
+    Write-Log "Running custom verify.js (ТЗ checks)..." Cyan
+    try {
+        Set-Location -LiteralPath $ProjectRoot
+        $verifyOutput = @(& node $verifyScript $htmlPath 2>&1)
+        $verifyExitCode = $LASTEXITCODE
+        foreach ($line in $verifyOutput) { Write-Host $line }
+        if ($verifyExitCode -ne 0) {
+            Write-Log "Custom HTML validation FAILED" Red
+            return $false
+        }
+        Write-Log "Custom verify.js: PASSED" Green
+    }
+    catch {
+        Write-Log "verify.js failed to run: $($_.Exception.Message)" Red
+        return $false
+    }
+
+    Write-Log "=== HTML VALIDATION PASSED ===" Green
+    return $true
+}
+
+
+# ==============================================================================
+# 13. ПЕРЕМЕННЫЕ RUNNER
 # ==============================================================================
 
 $runnerExitCode      = $EXIT_SUCCESS
@@ -416,7 +510,7 @@ $buildSucceeded      = $false
 
 
 # ==============================================================================
-# 13. MAIN
+# 14. MAIN
 # ==============================================================================
 
 try {
@@ -468,26 +562,32 @@ try {
     Start-Sleep -Seconds $postCloseCleanupPauseSec
 
     # CLEANUP
-    if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
-        $runnerExitCode = $EXIT_CLEANUP_FAILED
-        throw "Unable to remove Archicad lock file."
-    }
+        if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
+            $runnerExitCode = $EXIT_CLEANUP_FAILED
+            throw "Unable to remove Archicad lock file."
+        }
 
-    if (-not (Remove-FileWithRetry -Path $testResultsPath -Retries $fileDeleteRetries)) {
-        $runnerExitCode = $EXIT_CLEANUP_FAILED
-        throw "Unable to remove old test_results.txt."
-    }
+        if (-not (Remove-FileWithRetry -Path $testResultsPath -Retries $fileDeleteRetries)) {
+            $runnerExitCode = $EXIT_CLEANUP_FAILED
+            throw "Unable to remove old test_results.txt."
+        }
 
-    # ENVIRONMENT
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    $OutputEncoding           = [System.Text.Encoding]::UTF8
-    $env:PYTHONIOENCODING     = "utf-8"
-    $env:VSLANG               = "1033"
+        # HTML VALIDATION (ДО БИЛДА)
+        if (-not (Test-HtmlValidation -ProjectRoot $projectRoot)) {
+            $runnerExitCode = $EXIT_HTML_VALIDATION_FAILED
+            throw "HTML validation failed. Build aborted."
+        }
 
-    # BUILD
-    $previousLocation = Get-Location
+        # ENVIRONMENT
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            $OutputEncoding           = [System.Text.Encoding]::UTF8
+            $env:PYTHONIOENCODING     = "utf-8"
+            $env:VSLANG               = "1033"
 
-    try {
+            # BUILD
+            $previousLocation = Get-Location
+
+            try {
         Set-Location -LiteralPath $projectRoot
         $buildOutput = @(& python $buildScriptPath --configFile config.json --acVersion $acVersion 2>&1)
         $buildExitCode = $LASTEXITCODE
