@@ -253,7 +253,7 @@ const ACBridge = (function () {
    * @param {string} filterText - не используется на стороне C++ (фильтрация в JS если нужно)
    * @returns {Promise<{elements:Array, count:number}>}
    */
-  function getPropertiesList(filterText) {
+    function getPropertiesList(filterText) {
     console.log("getPropertiesList called, filter:", filterText);
     try {
       if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetPropertiesList) {
@@ -262,36 +262,69 @@ const ACBridge = (function () {
           console.log("ACAPI.GetPropertiesList returned:", result);
           // Parse JSON string if needed (pull-pattern returns string)
           var data = typeof result === 'string' ? JSON.parse(result) : result;
-          // Convert flat elements array to grouped format for compatibility with existing UI
-          // Group properties by their group field from C++ response
+          // Aggregate properties across ALL selected elements
           if (data && data.elements && data.elements.length > 0) {
-            const firstElem = data.elements[0];
-            if (firstElem.properties && firstElem.properties.length > 0) {
-              // Group properties by group field from C++ response
-              const groupMap = {};
-              firstElem.properties.forEach(function (p) {
-                const groupName = p.group || "Без группы";
-                if (!groupMap[groupName]) {
-                  groupMap[groupName] = [];
-                }
-                groupMap[groupName].push({
-                  id: p.propertyGuid,
-                  name: p.name,
-                  value: p.value,  // Сохраняем значение свойства
-                  values: [{value: p.value, count: 1}],  // Массив значений для renderPropertyRow
-                  group: p.group,  // Сохраняем поле group
-                  allHave: true,
-                  countWithProperty: 1
+            const totalElements = data.elements.length;
+            
+            // Collect all properties by GUID, aggregating values across elements
+            const propMap = {};
+            data.elements.forEach(function (elem) {
+              if (elem.properties) {
+                elem.properties.forEach(function (p) {
+                  const guid = p.propertyGuid;
+                  if (!propMap[guid]) {
+                    propMap[guid] = {
+                      id: p.propertyGuid,
+                      name: p.name,
+                      group: p.group || "Без группы",
+                      valueType: p.valueType,
+                      values: [],
+                      elementsWithProp: 0
+                    };
+                  }
+                  // Add value from this element
+                  propMap[guid].values.push(p.value);
+                  propMap[guid].elementsWithProp++;
                 });
+              }
+            });
+            
+            // Aggregate unique values with counts for each property
+            const groupMap = {};
+            Object.keys(propMap).forEach(function (guid) {
+              const prop = propMap[guid];
+              const valueCounts = {};
+              prop.values.forEach(function (v) {
+                valueCounts[v] = (valueCounts[v] || 0) + 1;
               });
-              // Convert to array format expected by renderPropertyList
-              return Object.keys(groupMap).map(function (groupName) {
-                return {
-                  group: groupName,
-                  properties: groupMap[groupName]
-                };
+              const uniqueValues = Object.keys(valueCounts).map(function (v) {
+                return { value: v, count: valueCounts[v] };
               });
-            }
+              const allHave = (prop.elementsWithProp === totalElements);
+              const countWithProperty = prop.elementsWithProp;
+              
+              const groupName = prop.group || "Без группы";
+              if (!groupMap[groupName]) {
+                groupMap[groupName] = [];
+              }
+              groupMap[groupName].push({
+                id: guid,
+                name: prop.name,
+                group: prop.group,
+                valueType: prop.valueType,
+                values: uniqueValues,
+                allHave: allHave,
+                countWithProperty: countWithProperty
+              });
+            });
+            
+            // Convert to array format expected by renderPropertyList
+            return Object.keys(groupMap).map(function (groupName) {
+              return {
+                group: groupName,
+                properties: groupMap[groupName]
+              };
+            });
           }
           return [];
         });
@@ -303,22 +336,9 @@ const ACBridge = (function () {
     }
     // Fallback to mock
     return delay(90).then(function () {
-      // ... existing mock fallback
       return [];
     });
-  }
-
-  /**
-   * AGENT TODO: запросить фактическое значение выбранного свойства для каждого
-   * выделенного элемента. Если значения совпадают — common:true и values
-   * содержит один элемент. Если различаются — common:false и values содержит
-   * запись на каждый уникальный вариант значения (с указанием, у скольких
-   * элементов это значение встречается).
-   * @param {string} propertyId
-   * @returns {Promise<{propertyName:string, common:boolean,
-   *                     values:{value:string, count:number}[]}>}
-   */
-  function getPropertyValue(propertyId) {
+  }function getPropertyValue(propertyId) {
     return delay(70).then(function () {
       const mockValues = {
         "gen.id": { common: false, values: [{ value: "ST-014", count: 2 }, { value: "ST-021", count: 1 }, { value: "— не задано —", count: 2 }] },
@@ -711,7 +731,13 @@ function renderClassificationBlock(block) {
 function renderFilterBlock(block, listBlock) {
   clear(block);
 
-  const row = h("div", { style: "display:flex;flex-direction:column;gap:0.3rem;" });
+  // Preset button (defined first so it can be used in name filter row)
+  const presetBtn = h("button", {
+    text: "\u25BE",
+    attrs: { title: "Преднастроенные фильтры" },
+    style: "flex:0 0 auto;padding:0.35rem 0.55rem;font-size:0.75rem;cursor:pointer;" +
+           "background:var(--ac-bg-elevated);color:var(--ac-text-secondary);border:1px solid var(--ac-border);border-radius:0.25rem;"
+  });
   
   // Name filter row
   const nameFilterRow = h("div", { style: "display:flex;gap:0.3rem;" });
@@ -743,13 +769,6 @@ function renderFilterBlock(block, listBlock) {
     }
   });
   valueFilterRow.appendChild(valueInput);
-
-  const presetBtn = h("button", {
-    text: "\u25BE",
-    attrs: { title: "Преднастроенные фильтры" },
-    style: "flex:0 0 auto;padding:0.35rem 0.55rem;font-size:0.75rem;cursor:pointer;" +
-           "background:var(--ac-bg-elevated);color:var(--ac-text-secondary);border:1px solid var(--ac-border);border-radius:0.25rem;"
-  });
 
   const dropdown = h("div", {
     style: "position:absolute;top:2.4rem;right:0.75rem;left:0.75rem;z-index:5;display:none;" +
@@ -800,29 +819,44 @@ function renderPropertyList(listBlock, filterText) {
   const valueFilter = STATE.monitorValueFilter;
 
   ACBridge.getPropertiesList(nameFilter).then(function (groups) {
-    clear(listBlock);
-    if (!groups.length) {
-      listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
-      return;
-    }
-    // Render groups directly (already grouped by getPropertiesList)
-        // Apply value filter if provided
-    if (valueFilter) {
-      const valueFilterRegex = valueFilter.startsWith('/') && valueFilter.endsWith('/') 
-        ? new RegExp(valueFilter.slice(1, -1), 'i')
-        : new RegExp(valueFilter.replace(/[.*+?^${}()|[\\]]/g, '\$&'), 'i');
-      
-      groups.forEach(function(g) {
-        g.properties = g.properties.filter(function(p) {
-          return p.values && p.values.some(function(v) { return valueFilterRegex.test(v.value); });
-        });
-      });
-      
-      // Remove empty groups
-      groups = groups.filter(function(g) { return g.properties && g.properties.length > 0; });
-    }
-    
-    groups.forEach(function (g) {
+          clear(listBlock);
+          if (!groups.length) {
+            listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
+            return;
+          }
+          // Render groups directly (already grouped by getPropertiesList)
+          // Apply name filter if provided
+          if (nameFilter) {
+            const nameFilterRegex = nameFilter.startsWith('/') && nameFilter.endsWith('/')
+              ? new RegExp(nameFilter.slice(1, -1), 'i')
+              : new RegExp(nameFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+            groups.forEach(function(g) {
+              g.properties = g.properties.filter(function(p) {
+                return nameFilterRegex.test(p.name);
+              });
+            });
+
+            // Remove empty groups
+            groups = groups.filter(function(g) { return g.properties && g.properties.length > 0; });
+          }
+          // Apply value filter if provided
+          if (valueFilter) {
+            const valueFilterRegex = valueFilter.startsWith('/') && valueFilter.endsWith('/')
+              ? new RegExp(valueFilter.slice(1, -1), 'i')
+              : new RegExp(valueFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+            groups.forEach(function(g) {
+              g.properties = g.properties.filter(function(p) {
+                return p.values && p.values.some(function(v) { return valueFilterRegex.test(v.value); });
+              });
+            });
+
+            // Remove empty groups
+            groups = groups.filter(function(g) { return g.properties && g.properties.length > 0; });
+          }
+
+          groups.forEach(function (g) {
       const groupName = g.group;
       const isCollapsed = !!STATE.monitorGroupCollapse[groupName];
       
