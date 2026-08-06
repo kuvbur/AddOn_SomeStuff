@@ -731,10 +731,18 @@ function renderClassificationBlock(block) {
 function renderFilterBlock(block, listBlock) {
   clear(block);
 
-  // Preset button (defined first so it can be used in name filter row)
+  // Preset button for name filter (defined first so it can be used in name filter row)
   const presetBtn = h("button", {
     text: "\u25BE",
-    attrs: { title: "Преднастроенные фильтры" },
+    attrs: { title: "Преднастроенные фильтры по имени" },
+    style: "flex:0 0 auto;padding:0.35rem 0.55rem;font-size:0.75rem;cursor:pointer;" +
+           "background:var(--ac-bg-elevated);color:var(--ac-text-secondary);border:1px solid var(--ac-border);border-radius:0.25rem;"
+  });
+  
+  // Preset button for value filter
+  const valuePresetBtn = h("button", {
+    text: "\u25BE",
+    attrs: { title: "Преднастроенные фильтры по значению" },
     style: "flex:0 0 auto;padding:0.35rem 0.55rem;font-size:0.75rem;cursor:pointer;" +
            "background:var(--ac-bg-elevated);color:var(--ac-text-secondary);border:1px solid var(--ac-border);border-radius:0.25rem;"
   });
@@ -769,8 +777,15 @@ function renderFilterBlock(block, listBlock) {
     }
   });
   valueFilterRow.appendChild(valueInput);
+  valueFilterRow.appendChild(valuePresetBtn);
 
   const dropdown = h("div", {
+    style: "position:absolute;top:2.4rem;right:0.75rem;left:0.75rem;z-index:5;display:none;" +
+           "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
+           "box-shadow:0 4px 10px var(--ac-shadow-color);overflow:hidden;"
+  });
+
+  const valueDropdown = h("div", {
     style: "position:absolute;top:2.4rem;right:0.75rem;left:0.75rem;z-index:5;display:none;" +
            "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
            "box-shadow:0 4px 10px var(--ac-shadow-color);overflow:hidden;"
@@ -779,6 +794,7 @@ function renderFilterBlock(block, listBlock) {
   presetBtn.addEventListener("click", function () {
     const willOpen = dropdown.style.display === "none";
     dropdown.style.display = willOpen ? "block" : "none";
+    valueDropdown.style.display = "none";
     if (willOpen && !dropdown.childNodes.length) {
       ACBridge.getFilterPresets().then(function (presets) {
         presets.forEach(function (p) {
@@ -801,6 +817,32 @@ function renderFilterBlock(block, listBlock) {
     }
   });
 
+  valuePresetBtn.addEventListener("click", function () {
+    const willOpen = valueDropdown.style.display === "none";
+    valueDropdown.style.display = willOpen ? "block" : "none";
+    dropdown.style.display = "none";
+    if (willOpen && !valueDropdown.childNodes.length) {
+      ACBridge.getFilterPresets().then(function (presets) {
+        presets.forEach(function (p) {
+          valueDropdown.appendChild(h("div", {
+            text: p.label,
+            style: "padding:0.4rem 0.6rem;font-size:0.76rem;cursor:pointer;color:var(--ac-text-primary);",
+            on: {
+              click: function () {
+                valueInput.value = p.query;
+                STATE.monitorValueFilter = p.query;
+                valueDropdown.style.display = "none";
+                renderPropertyList(listBlock, STATE.monitorFilter);
+              },
+              mouseenter: function (e) { e.target.style.background = "var(--ac-bg-hover)"; },
+              mouseleave: function (e) { e.target.style.background = "transparent"; }
+            }
+          }));
+        });
+      });
+    }
+  });
+
   block.appendChild(nameFilterRow);
   block.appendChild(valueFilterRow);
   block.appendChild(h("div", {
@@ -808,6 +850,7 @@ function renderFilterBlock(block, listBlock) {
     style: "margin-top:0.25rem;font-size:0.66rem;color:var(--ac-text-tertiary);"
   }));
   block.appendChild(dropdown);
+  block.appendChild(valueDropdown);
 }
 
 function renderPropertyList(listBlock, filterText) {
