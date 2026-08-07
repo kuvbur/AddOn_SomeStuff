@@ -184,51 +184,76 @@ const ACBridge = (function () {
   }
 
   /**
-   * AGENT TODO: запросить дерево классификаций для текущего выделения.
-   * Ожидаемое поведение реального моста:
-   *  - обходит все выделенные элементы, находит их классификации в указанной
-   *    системе классификации по умолчанию (или во всех активных системах);
-   *  - если у всех элементов классификация совпадает — common:true и commonPath
-   *    содержит полный путь (например ["IFC 4", "Строительные элементы", "Стены", "Наружная"]);
-   *  - если классификации различаются — common:false, commonPath содержит только
-   *    ту часть пути, что совпадает у всех, а differing перечисляет каждый элемент
-   *    с его конкретным (различающимся) значением;
-   *  - options — список классификаций, которые можно назначить всем выделенным
-   *    элементам одним действием (для выпадающего списка "Применить ко всем").
-   * @returns {Promise<{common:boolean, commonPath:string[],
-   *                     differing:{elementName:string, value:string}[],
-   *                     options:string[]}>}
-   */
-  function getClassification() {
-    return delay(80).then(function () {
-      return {
-        common: false,
-        commonPath: ["IFC 4", "Строительные элементы", "Стены"],
-        differing: [
-          { elementName: "Стена наружная — Эт.1", value: "IfcWall — Наружная несущая" },
-          { elementName: "Стена наружная — Эт.2", value: "IfcWall — Наружная несущая" },
-          { elementName: "Стена внутренняя — Эт.1", value: "IfcWall — Внутренняя перегородка" },
-          { elementName: "Стена подвал — Эт.0", value: "IfcWallStandardCase — Несущая" },
-          { elementName: "Парапет — Кровля", value: "IfcWall — Парапет" }
-        ],
-        options: [
-          "IfcWall — Наружная несущая",
-          "IfcWall — Внутренняя перегородка",
-          "IfcWallStandardCase — Несущая",
-          "IfcWall — Парапет"
-        ]
-      };
-    });
-  }
+     * Получает дерево классификаций для текущего выделения через JS-мост.
+     * Вызывает window.ACAPI.GetClassification() и возвращает Promise с результатом.
+     * @returns {Promise<{common:boolean, commonPath:string[], differing:{classification:string, count:number, total:number}[], options:string[]}>}
+     */
+    function getClassification() {
+      return new Promise(function (resolve) {
+        try {
+          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
+            console.log("ACAPI.GetClassification exists, calling...");
+            window.ACAPI.GetClassification().then(function (result) {
+              console.log("ACAPI.GetClassification returned:", result);
+              // Convert JS arrays from C++ bridge
+              var data = typeof result === 'string' ? JSON.parse(result) : result;
+            
+              // Convert differing format: C++ returns {classification, count, total} but HTML expects {elementName, value}
+              var convertedDiffering = [];
+              if (data && data.differing && data.differing.length > 0) {
+                data.differing.forEach(function (d) {
+                  // Use classification as value, create synthetic elementName
+                  convertedDiffering.push({
+                    elementName: "Элемент " + (d.count || 0),
+                    value: d.classification || d.value || ""
+                  });
+                });
+              }
+            
+              resolve({
+                common: data.common,
+                commonPath: data.commonPath || [],
+                differing: convertedDiffering,
+                options: data.options || []
+              });
+            });
+          } else {
+            console.warn("window.ACAPI.GetClassification not available");
+            resolve({ common: true, commonPath: [], differing: [], options: [] });
+          }
+        } catch (e) {
+          console.error("ACAPI.GetClassification error:", e);
+          resolve({ common: true, commonPath: [], differing: [], options: [] });
+        }
+      });
+    }
 
-  /**
-   * AGENT TODO: назначить единую классификацию всем выделенным элементам.
-   * @param {string} classificationValue — значение из options (см. getClassification)
-   * @returns {Promise<{success:boolean}>}
-   */
-  function setClassificationForSelection(classificationValue) {
-    return delay(150).then(function () { return { success: true }; });
-  }
+    /**
+     * Назначает единую классификацию всем выделенным элементам.
+     * Вызывает window.ACAPI.SetClassification() и возвращает Promise с результатом.
+     * @param {string} classificationValue — значение из options (см. getClassification)
+     * @returns {Promise<{success:boolean}>}
+     */
+    function setClassificationForSelection(classificationValue) {
+      return new Promise(function (resolve) {
+        try {
+          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetClassification) {
+            console.log("ACAPI.SetClassification exists, calling with:", classificationValue);
+            window.ACAPI.SetClassification([classificationValue]).then(function (result) {
+              console.log("ACAPI.SetClassification returned:", result);
+              var data = typeof result === 'string' ? JSON.parse(result) : result;
+              resolve({ success: data.success === true });
+            });
+          } else {
+            console.warn("window.ACAPI.SetClassification not available");
+            resolve({ success: false });
+          }
+        } catch (e) {
+          console.error("ACAPI.SetClassification error:", e);
+          resolve({ success: false });
+        }
+      });
+    }
 
   /**
    * AGENT TODO: вернуть список преднастроенных фильтров свойств (хранятся
@@ -594,7 +619,9 @@ function refreshSelectionInfoText(count) {
 // Теперь просто вызывает C++ функцию, которая сама обновит UI через ExecuteJS
 // Переключение режима автообновления
 function toggleAutoRefresh() {
+  console.log("toggleAutoRefresh called, current state:", STATE.autoRefresh);
   STATE.autoRefresh = !STATE.autoRefresh;
+  console.log("toggleAutoRefresh new state after toggle:", STATE.autoRefresh);
   var btn = document.getElementById("auto-refresh-toggle");
   if (btn) {
     if (STATE.autoRefresh) {
@@ -606,6 +633,13 @@ function toggleAutoRefresh() {
       btn.style.background = "var(--ac-bg-input)";
       btn.style.color = "var(--ac-text-tertiary)";
     }
+  }
+  // Сообщаем C++ о смене флага
+  if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetCatchSelectionChanges) {
+    console.log("Calling SetCatchSelectionChanges with:", STATE.autoRefresh);
+    window.ACAPI.SetCatchSelectionChanges(STATE.autoRefresh);
+  } else {
+    console.log("ACAPI.SetCatchSelectionChanges not available");
   }
   // При включении сразу обновляем интерфейс
   if (STATE.autoRefresh && typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
@@ -637,9 +671,32 @@ function renderMonitorTab(container) {
            "display:flex;align-items:center;gap:0.4rem;"
   }, [
     h("span", { text: "Загрузка выделения…", attrs: { id: "selection-info-text" } }),
+    // Лимит элементов
+    h("span", { text: "≤", style: "font-size:0.72rem;color:var(--ac-text-tertiary);margin-left:0.3rem;" }),
+    h("input", {
+      attrs: { type: "number", id: "max-count-input", value: "10", min: "1", max: "999",
+               title: "Максимальное количество отображаемых элементов" },
+      style: "width:2.8rem;padding:0.05rem 0.25rem;font-size:0.72rem;" +
+             "background:var(--ac-bg-input);color:var(--ac-text-primary);" +
+             "border:1px solid var(--ac-border);border-radius:0.2rem;text-align:center;",
+      on: {
+        change: function () {
+          var val = parseInt(this.value, 10);
+          if (isNaN(val) || val < 1) val = 1;
+          if (val > 999) val = 999;
+          this.value = val;
+          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetMaxSelectionCount) {
+            window.ACAPI.SetMaxSelectionCount(val);
+          }
+          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
+            window.ACAPI.RefreshSelectionInfoUI();
+          }
+        }
+      }
+    }),
     // Кнопка автообновления (слежение за выделением)
     h("button", {
-      html: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3C5.2 3 2.8 4.7 1.5 7.2L3 8H1a7 7 0 0 1 14 0h-2l1.5-.8C13.2 4.7 10.8 3 8 3zm-1 3l1 2-1 2"/><circle cx="8" cy="11" r="2"/></svg>',
+      text: '○',  // Круг для автообновления
       attrs: { id: "auto-refresh-toggle", title: "Автообновление при изменении выделения" },
       style: "flex:0 0 auto;border:none;background:var(--ac-accent);color:var(--ac-accent-contrast);" +
              "cursor:pointer;font-size:0.85rem;" +

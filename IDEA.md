@@ -142,10 +142,13 @@
     [x] Уникальные значения с количеством (×N)
     [x] Удален renderValueBlock и зависимость от monitorSelectedPropertyId
     [x] renderPropertyRow обновлен для отображения значений
-[ ] Этап 1.4 — GetClassificationCommand + SetClassificationCommand
-[ ] Этап 1.5 — GetFilterPresetsCommand
-[ ] Этап 1.6 — ResetPropertyToDefaultCommand
-[ ] Тестирование: test_json_commands.py + ArchiCAD 25
+[x] Этап 1.4 — GetClassificationCommand + SetClassificationCommand ✅
+    [x] C++ команды с inline реализацией в JS-мосте
+    [x] JS-мост GetClassification / SetClassification в BrowserPalette.cpp
+    [x] HTML: замена моков на реальные вызовы window.ACAPI.GetClassification / SetClassification
+[x] Этап 1.5 — GetFilterPresetsCommand
+[x] Этап 1.6 — ResetPropertyToDefaultCommand
+[x] Тестирование: test_json_commands.py + ArchiCAD 25
 ```
 
 ### Этап 2: Вкладка «Синхронизация» (после Монитора)
@@ -207,6 +210,6 @@
 
 ---
 
-## Last Checkpoint: 154b712 [step-fix-monitor-filters] Add preset dropdown for value filter
-## Next Step: Этап 1.4 — GetClassificationCommand + SetClassificationCommand
+## Last Checkpoint: c2c42c8 [step-selection-tracking] Add selection change tracking
+## Next Step: Этап 2.1 — ExecuteSyncScriptCommand (вкладка «Синхронизация»)
 ## Scope: Sources/AddOn/json_commands/*, dialogs/BrowserPalette.cpp, AddOnResources/RFIX/HTML/Interface_ru.html

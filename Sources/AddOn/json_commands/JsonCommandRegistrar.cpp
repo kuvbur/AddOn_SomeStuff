@@ -12,6 +12,8 @@
 #include "json_commands/ParsePropertyForElementCommand.hpp"
 #include "json_commands/SetSettingsCommand.hpp"
 #include "json_commands/SyncAllCommand.hpp"
+#include "json_commands/GetClassificationCommand.hpp"
+#include "json_commands/SetClassificationCommand.hpp"
 
 void RegisterJsonCommands () {
     // Регистрация команды GetPropertyDefinitions
@@ -136,6 +138,28 @@ void RegisterJsonCommands () {
             DBprnt ("Failed to register GetPropertyValueCommand, error: " + GS::ValueToUniString (err));
         } else {
             DBprnt ("GetPropertyValueCommand registered successfully!");
+        }
+    }
+
+    // Регистрация команды GetClassification
+    {
+        GS::Owner<GetClassificationCommand> cmd = GS::NewOwned<GetClassificationCommand> ();
+        GSErrCode err = ACAPI_Install_AddOnCommandHandler (cmd.Pass ());
+        if (err != NoError) {
+            DBprnt ("Failed to register GetClassificationCommand, error: " + GS::ValueToUniString (err));
+        } else {
+            DBprnt ("GetClassificationCommand registered successfully!");
+        }
+    }
+
+    // Регистрация команды SetClassification
+    {
+        GS::Owner<SetClassificationCommand> cmd = GS::NewOwned<SetClassificationCommand> ();
+        GSErrCode err = ACAPI_Install_AddOnCommandHandler (cmd.Pass ());
+        if (err != NoError) {
+            DBprnt ("Failed to register SetClassificationCommand, error: " + GS::ValueToUniString (err));
+        } else {
+            DBprnt ("SetClassificationCommand registered successfully!");
         }
     }
 }
