@@ -130,6 +130,7 @@ const STATE = {
   numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
                         criterionProperty: null, splitProperty: null },
     monitorGroupCollapse: {}, // Состояние сворачивания групп
+    autoRefresh: true          // Автообновление при изменении выделения
 };
 
 function applyTheme(name) {
@@ -591,6 +592,27 @@ function refreshSelectionInfoText(count) {
 
 // Функция для ручного обновления (по клику на кнопку ↻)
 // Теперь просто вызывает C++ функцию, которая сама обновит UI через ExecuteJS
+// Переключение режима автообновления
+function toggleAutoRefresh() {
+  STATE.autoRefresh = !STATE.autoRefresh;
+  var btn = document.getElementById("auto-refresh-toggle");
+  if (btn) {
+    if (STATE.autoRefresh) {
+      btn.style.opacity = "1";
+      btn.style.background = "var(--ac-accent)";
+      btn.style.color = "var(--ac-accent-contrast)";
+    } else {
+      btn.style.opacity = "0.5";
+      btn.style.background = "var(--ac-bg-input)";
+      btn.style.color = "var(--ac-text-tertiary)";
+    }
+  }
+  // При включении сразу обновляем интерфейс
+  if (STATE.autoRefresh && typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
+    window.ACAPI.RefreshSelectionInfoUI();
+  }
+}
+
 function refreshSelectionInfo() {
   if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
     // Вызываем C++ функцию — она сама обновит UI через ExecuteJS
@@ -615,6 +637,18 @@ function renderMonitorTab(container) {
            "display:flex;align-items:center;gap:0.4rem;"
   }, [
     h("span", { text: "Загрузка выделения…", attrs: { id: "selection-info-text" } }),
+    // Кнопка автообновления (слежение за выделением)
+    h("button", {
+      html: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3C5.2 3 2.8 4.7 1.5 7.2L3 8H1a7 7 0 0 1 14 0h-2l1.5-.8C13.2 4.7 10.8 3 8 3zm-1 3l1 2-1 2"/><circle cx="8" cy="11" r="2"/></svg>',
+      attrs: { id: "auto-refresh-toggle", title: "Автообновление при изменении выделения" },
+      style: "flex:0 0 auto;border:none;background:var(--ac-accent);color:var(--ac-accent-contrast);" +
+             "cursor:pointer;font-size:0.85rem;" +
+             "padding:0.15rem 0.3rem;border-radius:0.2rem;display:flex;align-items:center;" +
+             "transition:opacity var(--ac-transition);",
+      on: {
+        click: function () { toggleAutoRefresh(); }
+      }
+    }),
     h("button", {
       text: "↻",
       attrs: { title: "Обновить количество выделенных элементов", id: "refresh-selection-btn" },

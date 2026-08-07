@@ -207,6 +207,6 @@
 
 ---
 
-## Last Checkpoint: ee42854 [step-1.3] Add GetPropertyValueCommand with inline implementation
+## Last Checkpoint: 154b712 [step-fix-monitor-filters] Add preset dropdown for value filter
 ## Next Step: Этап 1.4 — GetClassificationCommand + SetClassificationCommand
 ## Scope: Sources/AddOn/json_commands/*, dialogs/BrowserPalette.cpp, AddOnResources/RFIX/HTML/Interface_ru.html

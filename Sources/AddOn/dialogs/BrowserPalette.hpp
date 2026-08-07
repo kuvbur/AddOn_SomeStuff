@@ -12,37 +12,50 @@
 #include "api_headers/APIEnvir.h"
 
 #include "DGModule.hpp"
-
 #include "Sync.hpp"
 
 #define BrowserPaletteResId 32580
 #define BrowserPaletteMenuResId 32580
 
 // -----------------------------------------------------------------------------
-// Show or Hide Browser Palette
+// Toggle Browser Palette visibility.
 // -----------------------------------------------------------------------------
 void ShowOrHideBrowserPalette ();
 
-// --- Class definition: BrowserPalette ----------------------------------------
+bool ElementCanHaveProperty (const API_ElemTypeID &eltype);
 
+GS::Array<API_Guid> FilterElementsByType (const GS::Array<API_Guid> &elements, USize maxSelectionCount);
+
+// -----------------------------------------------------------------------------
+// BrowserPalette управляет браузерной палитрой, HTML-интерфейсом и мостом JS.
+// -----------------------------------------------------------------------------
 class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
   public:
     enum SelectionModification { RemoveFromSelection, AddToSelection };
-
-    struct ElementInfo {
-        GS::UniString guidStr;
-        GS::UniString typeName;
-        GS::UniString elemID;
-    };
 
   protected:
     enum { BrowserId = 1 };
 
     DG::Browser browser;
 
+    // -------------------------------------------------------------------------
+    // Инициализация браузерного контролла и подключение HTML страницы.
+    // -------------------------------------------------------------------------
     void InitBrowserControl ();
+
+    // -------------------------------------------------------------------------
+    // Регистрация JavaScript объекта ACAPI для вызовов из HTML.
+    // -------------------------------------------------------------------------
     void RegisterACAPIJavaScriptObject ();
-    void UpdateSelectionInfoInUI ();
+
+    // -------------------------------------------------------------------------
+    // Обновление представления выделения в HTML-интерфейсе.
+    // -------------------------------------------------------------------------
+    void UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedElements);
+
+    // -------------------------------------------------------------------------
+    // Вызов проверочной JavaScript-команды для диагностики работы моста.
+    // -------------------------------------------------------------------------
     void Command_Helth ();
 
     virtual void PanelResized (const DG::PanelResizeEvent &ev) override;
@@ -65,6 +78,8 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
 
     void Show ();
     void Hide ();
+
+    GSErrCode ManualGetSelection ();
 
     static GSErrCode RegisterPaletteControlCallBack ();
     static GSErrCode __ACENV_CALL SelectionChangeHandler (const API_Neig *);

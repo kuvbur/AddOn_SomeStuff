@@ -278,6 +278,20 @@ void Do_ElementMonitor (bool syncMon) {
 } // Do_ElementMonitor
 
 // -----------------------------------------------------------------------------
+// Глобальный обработчик изменения выделения.
+// Вызывается ArchiCAD при каждом изменении выбора элементов.
+// Перенаправляет вызов в BrowserPalette::SelectionChangeHandler.
+// -----------------------------------------------------------------------------
+#ifdef ServerMainVers_2800
+static GSErrCode SelectionChangeHandlerProc (const API_Neig *selElemNeig) {
+#else
+static GSErrCode __ACENV_CALL SelectionChangeHandlerProc (const API_Neig *selElemNeig) {
+#endif
+    DBprnt ("SelectionChangeHandlerProc ()");
+    return BrowserPalette::SelectionChangeHandler (selElemNeig);
+}
+
+// -----------------------------------------------------------------------------
 // Синхронизирует состояние пунктов меню с текущими настройками синхронизации.
 // -----------------------------------------------------------------------------
 void MenuSetState (SyncSettings &syncSettings) {
@@ -481,6 +495,12 @@ GSErrCode __ACENV_CALL Initialize (void) {
     RegisterJsonCommands ();
     // Регистрация BrowserPalette
     BrowserPalette::RegisterPaletteControlCallBack ();
+    // Регистрация обработчика изменения выделения
+#ifdef ServerMainVers_2700
+    ACAPI_Notification_CatchSelectionChange (SelectionChangeHandlerProc);
+#else
+    ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
+#endif
     ACAPI_KeepInMemory (true);
 #if defined(TESTING)
     TestFunc::Test ();
