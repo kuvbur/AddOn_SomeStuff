@@ -184,49 +184,58 @@ const ACBridge = (function () {
   }
 
   /**
-     * Получает дерево классификаций для текущего выделения через JS-мост.
-     * Вызывает window.ACAPI.GetClassification() и возвращает Promise с результатом.
-     * @returns {Promise<{common:boolean, commonPath:string[], differing:{classification:string, count:number, total:number}[], options:string[]}>}
-     */
-    function getClassification() {
-      return new Promise(function (resolve) {
-        try {
-          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
-            console.log("ACAPI.GetClassification exists, calling...");
-            window.ACAPI.GetClassification().then(function (result) {
+       * Получает дерево классификаций для текущего выделения через JS-мост.
+       * Вызывает window.ACAPI.GetClassification() и возвращает Promise с результатом.
+       * @returns {Promise<{common:boolean, commonPath:string[], differing:{classification:string, count:number, total:number}[], options:string[]}>}
+       */
+      function getClassification() {
+        return new Promise(function (resolve) {
+          try {
+            if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
+              console.log("ACAPI.GetClassification exists, calling...");
+              var result = window.ACAPI.GetClassification();
               console.log("ACAPI.GetClassification returned:", result);
-              // Convert JS arrays from C++ bridge
-              var data = typeof result === 'string' ? JSON.parse(result) : result;
-            
-              // Convert differing format: C++ returns {classification, count, total} but HTML expects {elementName, value}
-              var convertedDiffering = [];
-              if (data && data.differing && data.differing.length > 0) {
-                data.differing.forEach(function (d) {
-                  // Use classification as value, create synthetic elementName
-                  convertedDiffering.push({
-                    elementName: "Элемент " + (d.count || 0),
-                    value: d.classification || d.value || ""
+              // Handle both Promise (async) and direct object (sync inline implementation)
+              var handleResult = function(data) {
+                if (!data) return;
+                // Convert JS arrays from C++ bridge
+                data = typeof data === 'string' ? JSON.parse(data) : data;
+           
+                // Convert differing format: C++ returns {classification, count, total} but HTML expects {elementName, value}
+                var convertedDiffering = [];
+                if (data && data.differing && data.differing.length > 0) {
+                  data.differing.forEach(function (d) {
+                    // Use classification as value, create synthetic elementName
+                    convertedDiffering.push({
+                      elementName: "Элемент " + (d.count || 0),
+                      value: d.classification || d.value || ""
+                    });
                   });
+                }
+           
+                resolve({
+                  common: data.common,
+                  commonPath: data.commonPath || [],
+                  differing: convertedDiffering,
+                  options: data.options || []
                 });
-              }
+              };
             
-              resolve({
-                common: data.common,
-                commonPath: data.commonPath || [],
-                differing: convertedDiffering,
-                options: data.options || []
-              });
-            });
-          } else {
-            console.warn("window.ACAPI.GetClassification not available");
+              if (result && typeof result.then === 'function') {
+                result.then(handleResult);
+              } else {
+                handleResult(result);
+              }
+            } else {
+              console.warn("window.ACAPI.GetClassification not available");
+              resolve({ common: true, commonPath: [], differing: [], options: [] });
+            }
+          } catch (e) {
+            console.error("ACAPI.GetClassification error:", e);
             resolve({ common: true, commonPath: [], differing: [], options: [] });
           }
-        } catch (e) {
-          console.error("ACAPI.GetClassification error:", e);
-          resolve({ common: true, commonPath: [], differing: [], options: [] });
-        }
-      });
-    }
+        });
+      }
 
     /**
      * Назначает единую классификацию всем выделенным элементам.
@@ -667,58 +676,60 @@ function renderMonitorTab(container) {
   const root = h("div", { style: "display:flex;flex-direction:column;height:100%;overflow:hidden;" });
 
   const selectionLine = h("div", {
-    style: "padding:0.6rem 0.75rem 0.2rem;color:var(--ac-text-secondary);font-size:0.72rem;" +
-           "display:flex;align-items:center;gap:0.4rem;"
-  }, [
-    h("span", { text: "Загрузка выделения…", attrs: { id: "selection-info-text" } }),
-    // Лимит элементов
-    h("span", { text: "≤", style: "font-size:0.72rem;color:var(--ac-text-tertiary);margin-left:0.3rem;" }),
-    h("input", {
-      attrs: { type: "number", id: "max-count-input", value: "10", min: "1", max: "999",
-               title: "Максимальное количество отображаемых элементов" },
-      style: "width:2.8rem;padding:0.05rem 0.25rem;font-size:0.72rem;" +
-             "background:var(--ac-bg-input);color:var(--ac-text-primary);" +
-             "border:1px solid var(--ac-border);border-radius:0.2rem;text-align:center;",
-      on: {
-        change: function () {
-          var val = parseInt(this.value, 10);
-          if (isNaN(val) || val < 1) val = 1;
-          if (val > 999) val = 999;
-          this.value = val;
-          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetMaxSelectionCount) {
-            window.ACAPI.SetMaxSelectionCount(val);
-          }
-          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
-            window.ACAPI.RefreshSelectionInfoUI();
+      style: "padding:0.6rem 0.75rem 0.2rem;color:var(--ac-text-secondary);font-size:0.72rem;" +
+             "display:flex;align-items:center;gap:0.4rem;"
+    }, [
+      h("span", { text: "Загрузка выделения…", attrs: { id: "selection-info-text" } }),
+      // Лимит элементов — выпадающий список
+      h("span", { text: "≤", style: "font-size:0.72rem;color:var(--ac-text-tertiary);margin-left:0.3rem;" }),
+      h("select", {
+        attrs: { id: "max-count-select", title: "Максимальное количество отображаемых элементов" },
+        style: "width:4.5rem;padding:0.1rem 0.3rem;font-size:0.72rem;" +
+               "background:var(--ac-bg-input);color:var(--ac-text-primary);" +
+               "border:1px solid var(--ac-border);border-radius:0.2rem;",
+        on: {
+          change: function () {
+            var val = parseInt(this.value, 10);
+            if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetMaxSelectionCount) {
+              window.ACAPI.SetMaxSelectionCount(val);
+            }
+            if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
+              window.ACAPI.RefreshSelectionInfoUI();
+            }
           }
         }
-      }
-    }),
-    // Кнопка автообновления (слежение за выделением)
-    h("button", {
-      text: '○',  // Круг для автообновления
-      attrs: { id: "auto-refresh-toggle", title: "Автообновление при изменении выделения" },
-      style: "flex:0 0 auto;border:none;background:var(--ac-accent);color:var(--ac-accent-contrast);" +
-             "cursor:pointer;font-size:0.85rem;" +
-             "padding:0.15rem 0.3rem;border-radius:0.2rem;display:flex;align-items:center;" +
-             "transition:opacity var(--ac-transition);",
-      on: {
-        click: function () { toggleAutoRefresh(); }
-      }
-    }),
-    h("button", {
-      text: "↻",
-      attrs: { title: "Обновить количество выделенных элементов", id: "refresh-selection-btn" },
-      style: "margin-left:auto;flex:0 0 auto;border:none;background:transparent;" +
-             "cursor:pointer;font-size:0.85rem;color:var(--ac-text-tertiary);" +
-             "padding:0.1rem 0.3rem;border-radius:0.2rem;",
-      on: {
-        click: function () { refreshSelectionInfo(); },
-        mouseenter: function (e) { e.target.style.color = "var(--ac-accent)"; },
-        mouseleave: function (e) { e.target.style.color = "var(--ac-text-tertiary)"; }
-      }
-    })
-  ]);
+      }, [
+        h("option", { text: "10", attrs: { value: "10", selected: "selected" } }),
+        h("option", { text: "50", attrs: { value: "50" } }),
+        h("option", { text: "100", attrs: { value: "100" } }),
+        h("option", { text: "200", attrs: { value: "200" } }),
+        h("option", { text: "1000", attrs: { value: "1000" } })
+      ]),
+      // Кнопка автообновления (слежение за выделением) — больше
+      h("button", {
+        text: '⟳',  // Стрелка круглая для автообновления
+        attrs: { id: "auto-refresh-toggle", title: "Автообновление при изменении выделения" },
+        style: "flex:0 0 auto;border:none;background:var(--ac-accent);color:var(--ac-accent-contrast);" +
+               "cursor:pointer;font-size:1rem;" +
+               "width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;" +
+               "transition:opacity var(--ac-transition),background var(--ac-transition);",
+        on: {
+          click: function () { toggleAutoRefresh(); }
+        }
+      }),
+      h("button", {
+        text: "↻",
+        attrs: { title: "Обновить количество выделенных элементов", id: "refresh-selection-btn" },
+        style: "margin-left:auto;flex:0 0 auto;border:none;background:transparent;" +
+               "cursor:pointer;font-size:0.85rem;color:var(--ac-text-tertiary);" +
+               "padding:0.1rem 0.3rem;border-radius:0.2rem;",
+        on: {
+          click: function () { refreshSelectionInfo(); },
+          mouseenter: function (e) { e.target.style.color = "var(--ac-accent)"; },
+          mouseleave: function (e) { e.target.style.color = "var(--ac-text-tertiary)"; }
+        }
+      })
+    ]);
 
   const classificationBlock = h("div", {
     style: "padding:0.4rem 0.75rem 0.6rem;border-bottom:1px solid var(--ac-divider);" +
@@ -783,41 +794,47 @@ function renderClassificationBlock(block) {
     block.appendChild(diffRow);
 
     const diffList = h("div", { style: "margin-top:0.3rem;display:flex;flex-direction:column;gap:0.15rem;padding-left:0.9rem;" });
-    data.differing.forEach(function (d) {
-      diffList.appendChild(h("div", { style: "font-size:0.72rem;color:var(--ac-text-secondary);" }, [
-        h("span", { text: d.elementName, style: "color:var(--ac-text-primary);" }),
-        h("span", { text: "  —  " + d.value })
-      ]));
-    });
-    block.appendChild(diffList);
+        data.differing.forEach(function (d) {
+          // C++ возвращает {classification, count, total}, HTML ожидает value
+          var val = d.classification || d.value || "";
+          diffList.appendChild(h("div", { style: "font-size:0.72rem;color:var(--ac-text-secondary);" }, [
+            h("span", { text: d.elementName || ("Элемент " + (d.count || 0)), style: "color:var(--ac-text-primary);" }),
+            h("span", { text: "  —  " + val })
+          ]));
+        });
+        block.appendChild(diffList);
 
-    // Интерфейс задания единой классификации
-    const applyRow = h("div", { style: "margin-top:0.5rem;display:flex;gap:0.4rem;flex-wrap:wrap;" });
-    const select = h("select", {
-      style: "flex:1 1 10rem;min-width:8rem;padding:0.3rem 0.4rem;font-size:0.75rem;" +
-             "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;"
-    });
-    data.options.forEach(function (opt) {
-      select.appendChild(h("option", { text: opt, attrs: { value: opt } }));
-    });
-    const applyBtn = h("button", {
-      text: "Применить ко всем",
-      style: "padding:0.3rem 0.6rem;font-size:0.75rem;border:none;border-radius:0.25rem;cursor:pointer;" +
-             "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
-      on: {
-        click: function () {
-          applyBtn.disabled = true; applyBtn.textContent = "Применение…";
-          ACBridge.setClassificationForSelection(select.value).then(function () {
-            renderClassificationBlock(block); // перерисовать (в реале — уже единая классификация)
+        // Интерфейс задания единой классификации
+        const applyRow = h("div", { style: "margin-top:0.5rem;display:flex;gap:0.4rem;flex-wrap:wrap;" });
+        const select = h("select", {
+          style: "flex:1 1 10rem;min-width:8rem;padding:0.3rem 0.4rem;font-size:0.75rem;" +
+                 "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;"
+        });
+        if (data.options && data.options.length > 0) {
+          data.options.forEach(function (opt) {
+            select.appendChild(h("option", { text: opt, attrs: { value: opt } }))
           });
+        } else {
+          select.appendChild(h("option", { text: "Нет доступных классификаций", attrs: { value: "", disabled: "disabled" } }))
         }
-      }
-    });
-    applyRow.appendChild(select);
-    applyRow.appendChild(applyBtn);
-    block.appendChild(applyRow);
-  });
-}
+        const applyBtn = h("button", {
+          text: "Применить ко всем",
+          style: "padding:0.3rem 0.6rem;font-size:0.75rem;border:none;border-radius:0.25rem;cursor:pointer;" +
+                 "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
+          on: {
+            click: function () {
+              applyBtn.disabled = true; applyBtn.textContent = "Применение…";
+              ACBridge.setClassificationForSelection(select.value).then(function () {
+                renderClassificationBlock(block); // перерисовать (в реале — уже единая классификация)
+              });
+            }
+          }
+        });
+        applyRow.appendChild(select);
+        applyRow.appendChild(applyBtn);
+        block.appendChild(applyRow);
+      });
+    }
 
 function renderFilterBlock(block, listBlock) {
   clear(block);

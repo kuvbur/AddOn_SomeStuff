@@ -64,21 +64,32 @@ namespace ClassificationFunc {
                     continue;
                 }
                 if (!classifications.IsEmpty ()) {
-                    API_ClassificationItem parent = {};
-                    API_ClassificationItem item = {};
-                    AddClassificationItem (item, parent, classifications, system);
-                    if (!has_systemname)
-                        systemdict.Put (systemname, classifications);
-                    if (!has_systemname_full)
-                        systemdict.Put (systemname_full, classifications);
-                    // Если среди загруженных классов найден автокласс, сохраняем его отдельно.
-                    // Это позволяет быстро назначать его элементам без повторного поиска по описаниям.
-                    if (classifications.ContainsKey (autoclassname) && !has_autoclassname) {
-                        ClassificationDict autoclassifications = {};
-                        autoclassifications.Put (autoclassname, classifications.Get (autoclassname));
-                        systemdict.Put (autoclassname, autoclassifications);
-                    }
-                }
+                                API_ClassificationItem parent = {};
+                                API_ClassificationItem item = {};
+                                AddClassificationItem (item, parent, classifications, system);
+                                if (!has_systemname)
+                                    systemdict.Put (systemname, classifications);
+                                if (!has_systemname_full)
+                                    systemdict.Put (systemname_full, classifications);
+                                // Заполняем reversesystemdict для обратного поиска по GUID системы
+                                auto &cache = PROPERTYCACHE ();
+                                auto *revSystemDict = cache.reversesystemdict.GetPtr (system.guid);
+                                if (revSystemDict == nullptr) {
+                                    GS::HashTable<API_Guid, GS::UniString> newDict;
+                                    newDict.Put (APINULLGuid, systemname);
+                                    cache.reversesystemdict.Put (system.guid, newDict);
+                                    revSystemDict = cache.reversesystemdict.GetPtr (system.guid);
+                                } else {
+                                    (*revSystemDict).Put (APINULLGuid, systemname);
+                                }
+                                // Если среди загруженных классов найден автокласс, сохраняем его отдельно.
+                                // Это позволяет быстро назначать его элементам без повторного поиска по описаниям.
+                                if (classifications.ContainsKey (autoclassname) && !has_autoclassname) {
+                                    ClassificationDict autoclassifications = {};
+                                    autoclassifications.Put (autoclassname, classifications.Get (autoclassname));
+                                    systemdict.Put (autoclassname, autoclassifications);
+                                }
+                            }
             }
         }
 #if defined(TESTING)
@@ -116,21 +127,32 @@ namespace ClassificationFunc {
     // При этом отдельно отмечает классы, описание которых похоже на автокласс.
     // -----------------------------------------------------------------------------
     void AddClassificationItem (const API_ClassificationItem &item,
-                                const API_ClassificationItem &parent,
-                                ClassificationDict &classifications,
-                                const API_ClassificationSystem &system) {
-        GS::UniString itemname = item.id.ToLowerCase ();
-        GS::UniString desc = item.description.ToLowerCase ();
-        if (itemname.IsEmpty ())
-            itemname = "@system@";
-        if (!classifications.ContainsKey (itemname)) {
-            ClassificationValues classificationitem = {};
-            classificationitem.item = item;
-            classificationitem.system = system;
-            classificationitem.itemname = itemname;
-            classificationitem.parentname = parent.id.ToLowerCase ();
-            classifications.Put (itemname, classificationitem);
-        }
+                                    const API_ClassificationItem &parent,
+                                    ClassificationDict &classifications,
+                                    const API_ClassificationSystem &system) {
+            GS::UniString itemname = item.id.ToLowerCase ();
+            GS::UniString desc = item.description.ToLowerCase ();
+            if (itemname.IsEmpty ())
+                itemname = "@system@";
+            if (!classifications.ContainsKey (itemname)) {
+                ClassificationValues classificationitem = {};
+                classificationitem.item = item;
+                classificationitem.system = system;
+                classificationitem.itemname = itemname;
+                classificationitem.parentname = parent.id.ToLowerCase ();
+                classifications.Put (itemname, classificationitem);
+
+                // Заполняем reversesystemdict для обратного поиска имени класса по GUID
+                auto &cache = PROPERTYCACHE ();
+                auto *revSystemDict = cache.reversesystemdict.GetPtr (system.guid);
+                if (revSystemDict == nullptr) {
+                    GS::HashTable<API_Guid, GS::UniString> newDict;
+                    newDict.Put (item.guid, item.id);
+                    cache.reversesystemdict.Put (system.guid, newDict);
+                } else {
+                    (*revSystemDict).Put (item.guid, item.id);
+                }
+            }
 
         // Автокласс определяется не по идентификатору, а по описанию элемента.
         // Поэтому здесь проверяется несколько возможных вариантов написания ключевой строки.

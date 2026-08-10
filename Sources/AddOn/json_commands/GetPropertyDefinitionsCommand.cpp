@@ -83,11 +83,11 @@ GS::ObjectState GetPropertyDefinitionsCommand::Execute(const GS::ObjectState& /*
         propertiesArray.Push(propertyObj);
     }
     
-    response.Add("properties", propertiesArray);
+    response.Add ("items", propertiesArray);
     
-    // Добавляем количество свойств (простой вариант)
-    response.Add("count", propertiesArray.GetSize());
-    response.Add("status", "ok");
+        // Добавляем количество свойств (простой вариант)
+        response.Add ("count", propertiesArray.GetSize());
+        response.Add ("status", "ok");
     
     return response;
 }
