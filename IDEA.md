@@ -107,8 +107,8 @@
 | `ACAPI.RefreshSelectionInfoUI()` | Push-pattern (ExecuteJS) | ✅ |
 | `ACAPI.GetPropertiesList(filter)` | JSON-команду | ✅ |
 | `ACAPI.GetPropertyValue(id)` | JSON-команду | ✅ |
-| `ACAPI.GetClassification()` | JSON-команду | ❌ |
-| `ACAPI.SetClassification(value)` | JSON-команду | ❌ |
+| `ACAPI.GetClassification()` | JSON-команду | ✅ (inline в BrowserPalette.cpp) |
+| `ACAPI.SetClassification(value)` | JSON-команду | ✅ (inline в BrowserPalette.cpp) |
 | `ACAPI.GetFilterPresets()` | JSON-команду | ❌ |
 | `ACAPI.ResetPropertyToDefault(id)` | JSON-команду | ❌ |
 

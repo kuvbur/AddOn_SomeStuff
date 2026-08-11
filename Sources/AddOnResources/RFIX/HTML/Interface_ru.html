@@ -184,58 +184,56 @@ const ACBridge = (function () {
   }
 
   /**
-       * Получает дерево классификаций для текущего выделения через JS-мост.
-       * Вызывает window.ACAPI.GetClassification() и возвращает Promise с результатом.
-       * @returns {Promise<{common:boolean, commonPath:string[], differing:{classification:string, count:number, total:number}[], options:string[]}>}
-       */
-      function getClassification() {
-        return new Promise(function (resolve) {
-          try {
-            if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
-              console.log("ACAPI.GetClassification exists, calling...");
-              var result = window.ACAPI.GetClassification();
-              console.log("ACAPI.GetClassification returned:", result);
-              // Handle both Promise (async) and direct object (sync inline implementation)
-              var handleResult = function(data) {
-                if (!data) return;
-                // Convert JS arrays from C++ bridge
-                data = typeof data === 'string' ? JSON.parse(data) : data;
-           
-                // Convert differing format: C++ returns {classification, count, total} but HTML expects {elementName, value}
-                var convertedDiffering = [];
-                if (data && data.differing && data.differing.length > 0) {
-                  data.differing.forEach(function (d) {
-                    // Use classification as value, create synthetic elementName
-                    convertedDiffering.push({
-                      elementName: "Элемент " + (d.count || 0),
-                      value: d.classification || d.value || ""
-                    });
+         * Получает дерево классификаций для текущего выделения через JS-мост.
+         * Вызывает window.ACAPI.GetClassification() и возвращает Promise с результатом.
+         * @returns {Promise<{common:boolean, commonPath:string[], differing:{classification:string, count:number, total:number}[], options:string[]}>}
+         */
+        function getClassification() {
+          return new Promise(function (resolve) {
+            try {
+              console.log("[HTML] getClassification called");
+              if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
+                console.log("[HTML] ACAPI.GetClassification exists, calling...");
+                var result = window.ACAPI.GetClassification();
+                console.log("[HTML] ACAPI.GetClassification returned:", result, "typeof:", typeof result);
+                // Handle both Promise (async) and direct object (sync inline implementation)
+                var handleResult = function(data) {
+                  if (!data) {
+                    console.log("[HTML] handleResult: data is falsy");
+                    return;
+                  }
+                  console.log("[HTML] handleResult: data =", data);
+                  // Convert JS arrays from C++ bridge
+                  data = typeof data === 'string' ? JSON.parse(data) : data;
+                  console.log("[HTML] handleResult: after parse =", data);
+          
+                  // C++ возвращает {common, commonPath, differing:[{classification,count,total}], options}
+                  // Передаём данные как есть, без конвертации
+                  resolve({
+                    common: data.common,
+                    commonPath: data.commonPath || [],
+                    differing: data.differing || [],
+                    options: data.options || []
                   });
-                }
+                };
            
-                resolve({
-                  common: data.common,
-                  commonPath: data.commonPath || [],
-                  differing: convertedDiffering,
-                  options: data.options || []
-                });
-              };
-            
-              if (result && typeof result.then === 'function') {
-                result.then(handleResult);
+                if (result && typeof result.then === 'function') {
+                  console.log("[HTML] result is Promise, awaiting...");
+                  result.then(handleResult);
+                } else {
+                  console.log("[HTML] result is sync object, calling handleResult directly");
+                  handleResult(result);
+                }
               } else {
-                handleResult(result);
+                console.warn("[HTML] window.ACAPI.GetClassification not available");
+                resolve({ common: true, commonPath: [], differing: [], options: [] });
               }
-            } else {
-              console.warn("window.ACAPI.GetClassification not available");
+            } catch (e) {
+              console.error("[HTML] ACAPI.GetClassification error:", e);
               resolve({ common: true, commonPath: [], differing: [], options: [] });
             }
-          } catch (e) {
-            console.error("ACAPI.GetClassification error:", e);
-            resolve({ common: true, commonPath: [], differing: [], options: [] });
-          }
-        });
-      }
+          });
+        }
 
     /**
      * Назначает единую классификацию всем выделенным элементам.
@@ -756,10 +754,12 @@ function renderMonitorTab(container) {
 }
 
 function renderClassificationBlock(block) {
+  console.log("[HTML] renderClassificationBlock called");
   clear(block);
   block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
 
   ACBridge.getClassification().then(function (data) {
+    console.log("[HTML] renderClassificationBlock: received data =", data);
     clear(block);
 
     block.appendChild(h("div", {
@@ -781,7 +781,10 @@ function renderClassificationBlock(block) {
     });
     block.appendChild(tree);
 
-    if (data.common) return;
+    if (data.common) {
+      console.log("[HTML] renderClassificationBlock: data.common is true, returning early");
+      return;
+    }
 
     // Состояние "РАЗНАЯ"
     const diffRow = h("div", {
@@ -795,11 +798,13 @@ function renderClassificationBlock(block) {
 
     const diffList = h("div", { style: "margin-top:0.3rem;display:flex;flex-direction:column;gap:0.15rem;padding-left:0.9rem;" });
         data.differing.forEach(function (d) {
-          // C++ возвращает {classification, count, total}, HTML ожидает value
-          var val = d.classification || d.value || "";
+          console.log("[HTML] renderClassificationBlock: processing differing item =", d);
+          // C++ возвращает {classification, count, total}
+          var val = d.classification || "";
+          var cnt = d.count || 0;
           diffList.appendChild(h("div", { style: "font-size:0.72rem;color:var(--ac-text-secondary);" }, [
-            h("span", { text: d.elementName || ("Элемент " + (d.count || 0)), style: "color:var(--ac-text-primary);" }),
-            h("span", { text: "  —  " + val })
+            h("span", { text: val, style: "color:var(--ac-text-primary);font-weight:600;" }),
+            h("span", { text: "  —  " + cnt + " элем. из " + (d.total || 0) })
           ]));
         });
         block.appendChild(diffList);
