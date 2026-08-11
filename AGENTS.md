@@ -15,7 +15,6 @@ Repo rules for AddOn_SomeStuff. `SOUL.md` = global behavior, read first — this
 ```text
 Sources/AddOn/                  C++ source
 Sources/AddOn/api_headers/      ArchiCAD API headers
-Sources/AddOn/json_commands/    JSON command handlers
 Sources/AddOn/third_party/      Embedded third-party libs
 Sources/AddOnResources/         Resources
 Sources/MacDarkModeIcon/        macOS assets

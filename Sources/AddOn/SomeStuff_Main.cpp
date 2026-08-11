@@ -12,7 +12,6 @@
 
 #include "dialogs/BrowserPalette.hpp"
 #include "Dimensions.hpp"
-#include "json_commands/JsonCommandRegistrar.hpp"
 #include "pk/Revision.hpp"
 #include "Propertycache.hpp"
 #include "Roombook.hpp"
@@ -494,8 +493,6 @@ GSErrCode __ACENV_CALL Initialize (void) {
                                     ProjectEventHandlerProc);
 #endif
 
-    // Регистрация JSON команд
-    RegisterJsonCommands ();
     // Регистрация BrowserPalette
     BrowserPalette::RegisterPaletteControlCallBack ();
     // Регистрация обработчика изменения выделения

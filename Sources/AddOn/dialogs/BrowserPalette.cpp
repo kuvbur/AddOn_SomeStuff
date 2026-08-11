@@ -11,8 +11,6 @@
 #include "CommonFunction.hpp"
 #include "dialogs/CommandHelpers.hpp"
 #include "dialogs/SyncSettings.hpp"
-#include "json_commands/GetPropertyValueCommand.hpp"
-#include "ObjectStateJSONConversion.hpp"
 #include "Propertycache.hpp"
 #include "Sync.hpp"
 
