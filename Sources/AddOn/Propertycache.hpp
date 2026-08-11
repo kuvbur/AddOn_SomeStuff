@@ -110,8 +110,8 @@ struct PropertyCache {
     ParamDictValue glob;
     ParamDict file;                                                             // Прочитанные файлы
     GS::HashTable<GS::UniString, GS::Array<GS::Array<GS::UniString>>> filedata; // Данные в файлах
-    ClassificationFunc::SystemDict systemdict;
-    UnicGuidByGuidString reversesystemdict;
+    ClassificationFunc::SystemDict systemdict;                                  // Словарь систем с вложенными классами
+    UnicGuidByGuidString reversesystemdict; // Получение имени класса по GUID классификации и GUID класса в нём
     GS::HashTable<API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
     bool hasLayerNameInDimRules;
@@ -595,6 +595,10 @@ struct PropertyCache {
         if (systemdict.IsEmpty ())
             isClassification_OK = false;
         if (isClassification_OK) {
+    #if defined(TESTING)
+            DBprnt ("=PropertyCache= ReadClassification - set reversesystemdict start");
+            Int32 n = 0;
+    #endif
             for (ClassificationFunc::SystemDict::PairIterator cIt = systemdict.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
                 ClassificationFunc::ClassificationDict &cd = cIt->value;
@@ -606,13 +610,19 @@ struct PropertyCache {
                 if (!cd.ContainsKey ("@system@"))
                     continue;
                 API_Guid &systemguid = cd.Get ("@system@").system.guid;
-                if (!reversesystemdict.ContainsKey (systemguid)) {
+
+                auto *revSystemDict = reversesystemdict.GetPtr (systemguid);
+
+                if (revSystemDict == nullptr) {
                     UnicGuidString d = {};
                     d.Put (APINULLGuid, systemname);
-                    reversesystemdict.Add (systemguid, d);
+                    reversesystemdict.Add (systemguid, std::move (d));
                 } else {
                     continue;
                 }
+                revSystemDict = reversesystemdict.GetPtr (systemguid);
+                if (revSystemDict == nullptr)
+                    continue;
                 for (ClassificationFunc::ClassificationDict::PairIterator cItt = cd.EnumeratePairs (); cItt != NULL;
                      ++cItt) {
     #ifdef ServerMainVers_2800
@@ -623,10 +633,16 @@ struct PropertyCache {
                     GS::UniString classname = *cItt->key;
     #endif
                     API_Guid &classguid = cl.item.guid;
-                    UnicGuidString &d = reversesystemdict.Get (systemguid);
-                    d.Put (classguid, classname);
+                    revSystemDict->Put (classguid, classname);
+    #if defined(TESTING)
+                    n++;
+    #endif
                 }
             }
+    #if defined(TESTING)
+            DBprnt ("=PropertyCache= ReadClassification - set reversesystemdict end , write " +
+                    GS::UniString::Printf ("%d", n));
+    #endif
         }
     #if defined(TESTING)
         if (!isClassification_OK)
