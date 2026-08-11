@@ -8,6 +8,9 @@
 #include "Propertycache.hpp"
 #include "api_headers/ResourceIds.hpp"
 
+// -----------------------------------------------------------------------------
+// Реализация диалога выбора правил спецификации.
+// -----------------------------------------------------------------------------
 RuleSelectDialog::RuleSelectDialog (RuleSelectData &rulelist)
     : DG::ModalDialog (ACAPI_GetOwnResModule (), ID_ADDON_RULE_DLG, ACAPI_GetOwnResModule ()),
       closeButton (GetReference (), CloseButtonId), okButton (GetReference (), OkButtonId),
@@ -47,6 +50,9 @@ RuleSelectDialog::~RuleSelectDialog () {
     Detach (*this);
 }
 
+// -----------------------------------------------------------------------------
+// Обновление размеров вкладок и позиционирования элементов списка.
+// -----------------------------------------------------------------------------
 void RuleSelectDialog::SetSize () {
     short width = ListBox.GetItemWidth ();
     short NameTab_w = width - ChekboxTab_w - QtyTab_w;
@@ -65,6 +71,9 @@ void RuleSelectDialog::SetSize () {
         QtyTab, pos, pos + QtyTab_w, DG::ListBox::Center, DG::ListBox::NoTruncate, false, true);
 }
 
+// -----------------------------------------------------------------------------
+// Инициализация таблицы правил и заполнение списка значениями из RuleSelectData.
+// -----------------------------------------------------------------------------
 void RuleSelectDialog::InitListBox () {
     ListBox.SetTabFieldCount (itemCount);
     ListBox.SetHeaderItemCount (itemCount);
@@ -123,6 +132,9 @@ void RuleSelectDialog::InitListBox () {
     }
 }
 
+// -----------------------------------------------------------------------------
+// Переключение иконки чекбокса и обновление состояния правила.
+// -----------------------------------------------------------------------------
 void RuleSelectDialog::SetIcon (short dwListItem) {
     DG::Icon myIcon = ListBox.GetTabItemIcon (dwListItem, ChekboxTab);
     bool bWasChecked = (myIcon.GetResourceId () == DG::ListBox::CheckedIcon);
@@ -140,6 +152,10 @@ void RuleSelectDialog::SetIcon (short dwListItem) {
     ListBox.DeselectItem (dwListItem);
 }
 
+// -----------------------------------------------------------------------------
+// Обработка клика по элементу списка правил. Если клик выполнен по чекбоксу,
+// переключается состояние правила.
+// -----------------------------------------------------------------------------
 void RuleSelectDialog::ListBoxClicked (const DG::ListBoxClickEvent &ev) {
     short pos = ev.GetMouseOffset ().GetX ();
     short begCheckBox = ListBox.GetTabFieldBeginPosition (ChekboxTab);
@@ -150,6 +166,10 @@ void RuleSelectDialog::ListBoxClicked (const DG::ListBoxClickEvent &ev) {
     }
 }
 
+// -----------------------------------------------------------------------------
+// Обработка изменения размера диалога. Перемещает кнопки и изменяет размеры
+// списка с правилами.
+// -----------------------------------------------------------------------------
 void RuleSelectDialog::PanelResized (const DG::PanelResizeEvent &ev) {
     short dh = ev.GetHorizontalChange ();
     short dv = ev.GetVerticalChange ();
@@ -161,6 +181,9 @@ void RuleSelectDialog::PanelResized (const DG::PanelResizeEvent &ev) {
     }
 }
 
+// -----------------------------------------------------------------------------
+// Обработка нажатий кнопок диалога: закрыть или подтвердить выбор.
+// -----------------------------------------------------------------------------
 void RuleSelectDialog::ButtonClicked (const DG::ButtonClickEvent &ev) {
     if (ev.GetSource () == &closeButton) {
         PostCloseRequest (Cancel);

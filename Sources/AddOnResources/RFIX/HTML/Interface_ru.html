@@ -754,15 +754,22 @@ function renderMonitorTab(container) {
 }
 
 function renderClassificationBlock(block) {
-  console.log("[HTML] renderClassificationBlock called");
+console.log("[HTML] renderClassificationBlock called");
+clear(block);
+block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
+
+ACBridge.getClassification().then(function (data) {
+  console.log("[HTML] renderClassificationBlock: received data =", data);
   clear(block);
-  block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
 
-  ACBridge.getClassification().then(function (data) {
-    console.log("[HTML] renderClassificationBlock: received data =", data);
-    clear(block);
+  // ВРЕМЕННЫЙ ОТЛАДОЧНЫЙ БЛОК — показывает сырые данные от C++
+  const debugRaw = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:#f0f0f0;border-radius:0.25rem;" }, [
+    h("summary", { text: "DEBUG: Raw data from C++", style: "cursor:pointer;font-size:0.7rem;color:#666;" }),
+    h("pre", { text: JSON.stringify(data, null, 2), style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;" })
+  ]);
+  block.appendChild(debugRaw);
 
-    block.appendChild(h("div", {
+  block.appendChild(h("div", {
       text: "Классификация",
       style: "font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;" +
              "color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.35rem;"
@@ -781,8 +788,9 @@ function renderClassificationBlock(block) {
     });
     block.appendChild(tree);
 
+    // Если классификация общая для всех — показываем только дерево, без "РАЗНАЯ"
     if (data.common) {
-      console.log("[HTML] renderClassificationBlock: data.common is true, returning early");
+      console.log("[HTML] renderClassificationBlock: data.common is true, showing only tree");
       return;
     }
 

@@ -1,5 +1,4 @@
 //------------ kuvbur 2022 ------------
-#pragma once
 #if !defined(COMMANDHELPERS_HPP)
     #define COMMANDHELPERS_HPP
 

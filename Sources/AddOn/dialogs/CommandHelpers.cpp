@@ -188,7 +188,7 @@ static void ExtractTargetInfo (const GS::UniString &fullCommand, GS::UniString &
         targetType = "Attrib";
         targetName =
             targetParam.GetSubstring (ATTRIBPREF.GetLength (), targetParam.GetLength () - ATTRIBPREF.GetLength ());
-    } else if (targetParam.BeginsWith ("{id}") || targetParam.BeginsWith ("{ID}")) {
+    } else if (targetParam.BeginsWith ("id") || targetParam.BeginsWith ("ID")) {
         targetType = "ID";
         targetName = "id";
     }

@@ -476,6 +476,9 @@ GSErrCode __ACENV_CALL Initialize (void) {
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
+    // Принудительно сохраняем настройки, чтобы обновить версию PreferencesVersion
+    // и записать новые поля (catchSelectionChanges, maxSelectionCount).
+    WriteSyncSettingsToPreferences (syncSettings);
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.GetSyncMon ());
     MonAll (syncSettings);

@@ -327,6 +327,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         GS::HashTable<GS::UniString, Int32> valueCounts;
 
         for (const API_Guid &elemGuid : selectedElements) {
+            (void)elemGuid; // подавление warning unused variable
             GS::UniString rawName = "Property:" + propertyId;
             ParamValue pvalue;
             if (ParamHelpers::GetParamValueFromCache (rawName, pvalue)) {
@@ -620,7 +621,23 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
                             // Убедимся, что классификации загружены в кэш
                             DBprnt ("GetClassification: [4] calling ReadSystemDict");
-                            if (!ClassificationFunc::ReadSystemDict ()) {
+                            auto &cache = PROPERTYCACHE ();
+                            // Принудительно инициализируем классификацию, если она не загружена
+                            if (!cache.isClassificationRead) {
+                                DBprnt ("GetClassification: [4.1] forcing ReadClassification");
+                                cache.ReadClassification ();
+                            }
+                            bool readResult = ClassificationFunc::ReadSystemDict ();
+                            DBprnt (GS::UniString::Printf ("GetClassification: [5] ReadSystemDict result = %d, isClassification_OK = %d",
+                                                           readResult, cache.isClassification_OK));
+
+                            // ПРЯМАЯ ПРОВЕРКА: вызываем GetAllClassification и смотрим результат
+                            GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict> testSystemDict;
+                            GSErrCode directErr = ClassificationFunc::GetAllClassification (testSystemDict);
+                            DBprnt (GS::UniString::Printf ("GetClassification: [5.1] DIRECT GetAllClassification err=%d, size=%d",
+                                                           directErr, testSystemDict.GetSize ()));
+
+                            if (!readResult) {
                                 DBprnt ("GetClassification: [5] failed to load classification system");
                                 GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
                                 errorObj->AddItem ("common", new DG::JSValue (true));
@@ -628,11 +645,16 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                                 errorObj->AddItem ("differing", new DG::JSArray ());
                                 errorObj->AddItem ("options", new DG::JSArray ());
                                 errorObj->AddItem ("status", new DG::JSValue ("error"));
+                                errorObj->AddItem ("debug_error", new DG::JSValue ("ReadSystemDict failed"));
+                                // Диагностика для ошибки
+                                errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_13_38_V3"));
+                                errorObj->AddItem ("diag_isClassificationRead", new DG::JSValue (cache.isClassificationRead));
+                                errorObj->AddItem ("diag_isClassification_OK", new DG::JSValue (cache.isClassification_OK));
                                 return errorObj;
                             }
                             DBprnt ("GetClassification: [6] ReadSystemDict succeeded");
 
-                            auto &cache = PROPERTYCACHE ();
+                            // auto &cache = PROPERTYCACHE (); // УЖЕ ОБЪЯВЛЕНО ВЫШЕ
                             DBprnt (GS::UniString::Printf ("GetClassification: [7] systemdict size = %d", cache.systemdict.GetSize ()));
                             DBprnt (GS::UniString::Printf ("GetClassification: [8] reversesystemdict size = %d", cache.reversesystemdict.GetSize ()));
 
@@ -645,7 +667,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                                 GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
                                 GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
                                 DBprnt (GS::UniString::Printf ("GetClassification: [9] element has %d classifications, err=%d", systemItemPairs.GetSize (), err));
-                                if (err != NoError) {
+                                if (err != NoError || systemItemPairs.IsEmpty ()) {
                                     continue; // Элемент без классификации или ошибка
                                 }
 
@@ -682,45 +704,66 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
                             DBprnt (GS::UniString::Printf ("GetClassification: [11] classificationCounts size = %d", classificationCounts.GetSize ()));
 
-                // Определяем общий путь классификации (все элементы имеют одинаковые классы)
-                bool isCommon = true;
-                GS::Array<GS::UniString> commonPath;
-                GS::Array<GS::ObjectState> differing;
+            // Определяем общий путь классификации (все элементы имеют одинаковые классы)
+            bool isCommon = true;
+            GS::Array<GS::UniString> commonPathSegments; // сегменты общего пути (для дерева)
+            GS::Array<GS::ObjectState> differing;
 
             if (classificationCounts.IsEmpty ()) {
                 // Ни у одного элемента нет классификации
                 isCommon = true;
-                commonPath = GS::Array<GS::UniString> ();
+                commonPathSegments = GS::Array<GS::UniString> ();
+                DBprnt ("GetClassification: [12] classificationCounts is EMPTY - no classifications found");
             } else {
-                // Проверяем, есть ли классы, которые есть у всех элементов
-                GS::Array<GS::Pair<API_Guid, API_Guid>> allKeys;
-                classificationCounts.EnumerateKeys ([&allKeys] (const GS::Pair<API_Guid, API_Guid> &key) -> bool {
-                    allKeys.Push (key);
-                    return true;
-                });
+                // Собираем классы, которые есть у ВСЕХ элементов (count == selectedElements.GetSize())
+                GS::Array<GS::UniString> commonFullNames; // полные имена общих классов
 
-                for (const auto &key : allKeys) {
-                    Int32 count = classificationCounts.Get (key);
-                    if (count == selectedElements.GetSize ()) {
-                        // Этот класс есть у всех элементов
-                        GS::UniString displayName;
-                        if (classificationDisplayNames.GetPtr (key)) {
-                            displayName = *classificationDisplayNames.GetPtr (key);
-                        }
-                        commonPath.Push (displayName);
+                DBprnt (GS::UniString::Printf ("GetClassification: [12] iterating classificationCounts, size=%d", classificationCounts.GetSize ()));
+
+                // Итерация по classificationCounts — правильный паттерн для GS::HashTable
+                for (auto it = classificationCounts.EnumeratePairs (); it != nullptr; ++it) {
+#if defined(ServerMainVers_2800) || defined(ServerMainVers_2900)
+                    const GS::Pair<API_Guid, API_Guid> &key = it->key;
+                    Int32 count = it->value;
+#else
+                    const GS::Pair<API_Guid, API_Guid> &key = *it->key;
+                    Int32 count = *it->value;
+#endif
+                    GS::UniString displayName;
+                    if (classificationDisplayNames.GetPtr (key)) {
+                        displayName = *classificationDisplayNames.GetPtr (key);
                     } else {
-                        // Класс не у всех элементов
+                        displayName = "Unknown";
+                    }
+
+                    DBprnt (GS::UniString::Printf ("GetClassification: key=%s, count=%d, total=%d, name=%s",
+                                                   APIGuidToString (key.second).ToCStr ().Get (), count,
+                                                   selectedElements.GetSize (), displayName.ToCStr ().Get ()));
+
+                    if (count == selectedElements.GetSize ()) {
+                        commonFullNames.Push (displayName);
+                    } else {
                         isCommon = false;
                         GS::ObjectState diffObj;
-                        GS::UniString displayName;
-                        if (classificationDisplayNames.GetPtr (key)) {
-                            displayName = *classificationDisplayNames.GetPtr (key);
-                        }
                         diffObj.Add ("classification", displayName);
                         diffObj.Add ("count", count);
                         diffObj.Add ("total", selectedElements.GetSize ());
                         differing.Push (diffObj);
                     }
+                }
+
+                // Формируем commonPathSegments как сегменты пути из первого общего класса
+                if (!commonFullNames.IsEmpty ()) {
+                    // GetFullName возвращает "System > Group > Item", разбиваем по " > "
+                    GS::UniString firstName = commonFullNames[0];
+                    GS::Array<GS::UniString> segments;
+                    firstName.Split (" > ", &segments);
+                    for (const GS::UniString &seg : segments) {
+                        if (!seg.IsEmpty ()) {
+                            commonPathSegments.Push (seg);
+                        }
+                    }
+                    DBprnt (GS::UniString::Printf ("GetClassification: commonPathSegments count = %d", commonPathSegments.GetSize ()));
                 }
             }
 
@@ -739,12 +782,42 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 }
             }
 
+            DBprnt (GS::UniString::Printf ("GetClassification: [result] isCommon=%d, commonPathSegments=%d, differing=%d",
+                                             isCommon, commonPathSegments.GetSize (), differing.GetSize ()));
+
+            // Отладка: выводим первые элементы differing
+            for (const auto& d : differing) {
+                GS::UniString cls;
+                Int32 cnt, tot;
+                d.Get ("classification", cls);
+                d.Get ("count", cnt);
+                d.Get ("total", tot);
+                DBprnt (GS::UniString::Printf ("  differing item: classification=%s, count=%d, total=%d",
+                                               cls.ToCStr ().Get (), cnt, tot));
+            }
+
             // Формируем JS результат
             GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
             jsResult->AddItem ("common", new DG::JSValue (isCommon));
+            // Количество выделенных элементов — для отладки
+            jsResult->AddItem ("selectedCount", new DG::JSValue ((Int32)selectedElements.GetSize ()));
+            // Диагностика системы классификации
+            jsResult->AddItem ("diag_systemdictSize", new DG::JSValue ((Int32)cache.systemdict.GetSize ()));
+            jsResult->AddItem ("diag_reversesystemdictSize", new DG::JSValue ((Int32)cache.reversesystemdict.GetSize ()));
+            jsResult->AddItem ("diag_isClassification_OK", new DG::JSValue (cache.isClassification_OK));
+            jsResult->AddItem ("diag_isClassificationRead", new DG::JSValue (cache.isClassificationRead));
+
+            // ВРЕМЕННАЯ МЕТКА ВЕРСИИ — чтобы убедиться, что новый код загружен
+            jsResult->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_13_20_V2"));
+
+            // DEBUG: добавляем отладочные поля в ответ
+            jsResult->AddItem ("debug_classificationCountsSize", new DG::JSValue ((Int32)classificationCounts.GetSize ()));
+            jsResult->AddItem ("debug_systemdictSize", new DG::JSValue ((Int32)cache.systemdict.GetSize ()));
+            jsResult->AddItem ("debug_reversesystemdictSize", new DG::JSValue ((Int32)cache.reversesystemdict.GetSize ()));
+            jsResult->AddItem ("debug_selectedCount", new DG::JSValue ((Int32)selectedElements.GetSize ()));
 
             GS::Ref<DG::JSArray> commonPathArray = new DG::JSArray ();
-            for (const GS::UniString &s : commonPath) {
+            for (const GS::UniString &s : commonPathSegments) {
                 commonPathArray->AddItem (new DG::JSValue (s.ToCStr ().Get ()));
             }
             jsResult->AddItem ("commonPath", commonPathArray);
@@ -782,6 +855,10 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             errorObj->AddItem ("differing", new DG::JSArray ());
             errorObj->AddItem ("options", new DG::JSArray ());
             errorObj->AddItem ("status", new DG::JSValue ("error"));
+            errorObj->AddItem ("debug_error", new DG::JSValue ("std::exception"));
+            errorObj->AddItem ("debug_exception", new DG::JSValue (e.what ()));
+            // Диагностика в catch
+            errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_14_10_CATCH"));
             return errorObj;
         } catch (...) {
             DBprnt ("GetClassification: unknown exception caught");
@@ -791,6 +868,9 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             errorObj->AddItem ("differing", new DG::JSArray ());
             errorObj->AddItem ("options", new DG::JSArray ());
             errorObj->AddItem ("status", new DG::JSValue ("error"));
+            errorObj->AddItem ("debug_error", new DG::JSValue ("unknown exception"));
+            // Диагностика в catch
+            errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_14_10_CATCH2"));
             return errorObj;
         }
     }));

@@ -800,6 +800,7 @@ GS::Array<API_Guid> GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool o
         return GS::Array<API_Guid> ();
     }
     GS::Array<API_Guid> guidArray;
+    guidArray.SetCapacity (selNeigs.GetSize ());
 #ifndef ServerMainVers_2300
     USize nSel = BMGetHandleSize ((GSHandle)selNeigs) / sizeof (API_Neig);
     for (USize i = 0; i < nSel; i++) {

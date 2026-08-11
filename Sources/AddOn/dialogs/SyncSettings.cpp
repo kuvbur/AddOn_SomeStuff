@@ -7,7 +7,7 @@
 
 #include <vector>
 
-static const Int32 PreferencesVersion = 4;
+static const Int32 PreferencesVersion = 5;
 
 GS::ClassInfo SyncSettings::classInfo ("SyncSettings",
                                        GS::Guid ("B45089A9-B372-460B-B145-80E6EBF107C3"),
@@ -26,7 +26,9 @@ SyncSettings::SyncSettings ()
     , objS (true)
     , cwallS (true)
     , logMon (false)
-    , showpalette (false) {}
+    , showpalette (false)
+    , catchSelectionChanges (true)
+    , maxSelectionCount (10) {}
 
 SyncSettings SyncSettings::CreateDefault () {
     return SyncSettings ();
@@ -101,6 +103,22 @@ bool SyncSettings::GetShowPalette () const {
 void SyncSettings::SetShowPalette (bool value) {
     showpalette = value;
 }
+
+bool SyncSettings::GetCatchSelectionChanges () const {
+    return catchSelectionChanges;
+}
+
+void SyncSettings::SetCatchSelectionChanges (bool value) {
+    catchSelectionChanges = value;
+}
+
+USize SyncSettings::GetMaxSelectionCount () const {
+    return maxSelectionCount;
+}
+
+void SyncSettings::SetMaxSelectionCount (USize value) {
+    maxSelectionCount = value;
+}
 // --------------------------------------------------------------------
 // Сериализация / десериализация.
 // --------------------------------------------------------------------
@@ -114,6 +132,8 @@ GSErrCode SyncSettings::Read (GS::IChannel &ic) {
     ic.Read (cwallS);
     ic.Read (logMon);
     ic.Read (showpalette);
+    ic.Read (catchSelectionChanges);
+    ic.Read (maxSelectionCount);
     return ic.GetInputStatus ();
 }
 
@@ -127,6 +147,8 @@ GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
     oc.Write (cwallS);
     oc.Write (logMon);
     oc.Write (showpalette);
+    oc.Write (catchSelectionChanges);
+    oc.Write (maxSelectionCount);
     return oc.GetOutputStatus ();
 }
 // --------------------------------------------------------------------
@@ -139,6 +161,11 @@ static bool ReadSyncSettings (SyncSettings &syncSettings) {
     GSSize bytes = 0;
     err = ACAPI_GetPreferences (&version, &bytes, nullptr);
     if (err != NoError || version == 0 || bytes == 0) {
+        return false;
+    }
+    // Проверяем, что версия сохранённых настроек совпадает с текущей.
+    // Если версия старая — не читаем, вернём false, чтобы использовались дефолты.
+    if (version != PreferencesVersion) {
         return false;
     }
 

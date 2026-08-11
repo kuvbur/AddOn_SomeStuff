@@ -7,71 +7,81 @@
 #include "MemoryOChannel.hpp"
 #include "Object.hpp"
 // --------------------------------------------------------------------
-/// SyncSettings хранит флаги, определяющие поведение синхронизации и мониторинга.
-/// Класс поддерживает сериализацию в память Archicad через Preferences и
-/// загрузку/сохранение настроек из единого кэша.
+// SyncSettings хранит флаги, определяющие поведение синхронизации и мониторинга.
+// Класс поддерживает сериализацию в память Archicad через Preferences и
+// загрузку/сохранение настроек из единого кэша.
 // --------------------------------------------------------------------
 class SyncSettings : public GS::Object {
     DECLARE_CLASS_INFO;
 
   public:
-    /// Конструктор с разумными значениями по умолчанию.
+    // Конструктор с разумными значениями по умолчанию.
     SyncSettings ();
 
-    /// Возвращает стандартный набор настроек по умолчанию.
+    // Возвращает стандартный набор настроек по умолчанию.
     static SyncSettings CreateDefault ();
 
-    /// Возвращает стандартный набор настроек и включает `syncAll`.
+    // Возвращает стандартный набор настроек и включает `syncAll`.
     static SyncSettings CreateWithSyncAll ();
 
-    /// Считывает настройки из канала памяти или предпочтений Archicad.
+    // Считывает настройки из канала памяти или предпочтений Archicad.
     virtual GSErrCode Read (GS::IChannel &ic) override;
 
-    /// Сериализует настройки в канал памяти или предпочтений Archicad.
+    // Сериализует настройки в канал памяти или предпочтений Archicad.
     virtual GSErrCode Write (GS::OChannel &oc) const override;
 
-    /// Доступ к сохранённым флагам синхронизации.
-    /// Флаг, определяющий выполнение полной синхронизации всех доступных элементов.
+    // Доступ к сохранённым флагам синхронизации.
+    // Флаг, определяющий выполнение полной синхронизации всех доступных элементов.
     bool GetSyncAll () const;
     void SetSyncAll (bool value);
 
-    /// Флаг включения мониторинга изменений элементов.
+    // Флаг включения мониторинга изменений элементов.
     bool GetSyncMon () const;
     void SetSyncMon (bool value);
 
-    /// Флаг обработки стен и связанных элементов.
+    // Флаг обработки стен и связанных элементов.
     bool GetWallS () const;
     void SetWallS (bool value);
 
-    /// Флаг обработки окон, дверей и Skylight.
+    // Флаг обработки окон, дверей и Skylight.
     bool GetWidoS () const;
     void SetWidoS (bool value);
 
-    /// Флаг обработки объектов, светильников и зон.
+    // Флаг обработки объектов, светильников и зон.
     bool GetObjS () const;
     void SetObjS (bool value);
 
-    /// Флаг обработки curtain wall и связанных сегментов.
+    // Флаг обработки curtain wall и связанных сегментов.
     bool GetCwallS () const;
     void SetCwallS (bool value);
 
-    /// Включает режим логирования мониторинга.
+    // Включает режим логирования мониторинга.
     bool GetLogMon () const;
     void SetLogMon (bool value);
 
-    /// Показывать ли палитру браузера.
-    bool GetShowPalette () const;
-    void SetShowPalette (bool value);
+    // Показывать ли палитру браузера.
+        bool GetShowPalette () const;
+        void SetShowPalette (bool value);
 
-  private:
-    bool syncAll;
-    bool syncMon;
-    bool wallS;
-    bool widoS;
-    bool objS;
-    bool cwallS;
-    bool logMon;
-    bool showpalette;
+        // Включить отслеживание изменений выделения (автообновление интерфейса).
+        bool GetCatchSelectionChanges () const;
+        void SetCatchSelectionChanges (bool value);
+
+        // Максимальное количество отображаемых элементов при множественном выделении.
+        USize GetMaxSelectionCount () const;
+        void SetMaxSelectionCount (USize value);
+
+      private:
+        bool syncAll;
+        bool syncMon;
+        bool wallS;
+        bool widoS;
+        bool objS;
+        bool cwallS;
+        bool logMon;
+        bool showpalette;
+        bool catchSelectionChanges;
+        USize maxSelectionCount;
 };
 
 #if defined(ServerMainVers_2500)
