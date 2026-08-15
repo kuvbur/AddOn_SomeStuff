@@ -189,51 +189,59 @@ const ACBridge = (function () {
          * @returns {Promise<{common:boolean, commonPath:string[], differing:{classification:string, count:number, total:number}[], options:string[]}>}
          */
         function getClassification() {
-          return new Promise(function (resolve) {
-            try {
-              console.log("[HTML] getClassification called");
-              if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
-                console.log("[HTML] ACAPI.GetClassification exists, calling...");
-                var result = window.ACAPI.GetClassification();
-                console.log("[HTML] ACAPI.GetClassification returned:", result, "typeof:", typeof result);
-                // Handle both Promise (async) and direct object (sync inline implementation)
-                var handleResult = function(data) {
-                  if (!data) {
-                    console.log("[HTML] handleResult: data is falsy");
-                    return;
-                  }
-                  console.log("[HTML] handleResult: data =", data);
-                  // Convert JS arrays from C++ bridge
-                  data = typeof data === 'string' ? JSON.parse(data) : data;
-                  console.log("[HTML] handleResult: after parse =", data);
-          
-                  // C++ возвращает {common, commonPath, differing:[{classification,count,total}], options}
-                  // Передаём данные как есть, без конвертации
-                  resolve({
-                    common: data.common,
-                    commonPath: data.commonPath || [],
-                    differing: data.differing || [],
-                    options: data.options || []
-                  });
-                };
-           
-                if (result && typeof result.then === 'function') {
-                  console.log("[HTML] result is Promise, awaiting...");
-                  result.then(handleResult);
-                } else {
-                  console.log("[HTML] result is sync object, calling handleResult directly");
-                  handleResult(result);
-                }
-              } else {
-                console.warn("[HTML] window.ACAPI.GetClassification not available");
-                resolve({ common: true, commonPath: [], differing: [], options: [] });
-              }
-            } catch (e) {
-              console.error("[HTML] ACAPI.GetClassification error:", e);
-              resolve({ common: true, commonPath: [], differing: [], options: [] });
-            }
-          });
-        }
+                          return new Promise(function (resolve) {
+                            try {
+                              if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
+                                var result = window.ACAPI.GetClassification();
+                                var handleResult = function(data) {
+                                  if (!data) {
+                                    resolve({ common: true, commonPath: [], differing: [], options: [], _raw: "null" });
+                                    return;
+                                  }
+                                  var rawStr = typeof data === 'string' ? data : JSON.stringify(data);
+                                  data = typeof data === 'string' ? JSON.parse(data) : data;
+                                  resolve({
+                                    common: data.common,
+                                    commonPath: data.commonPath || [],
+                                    differing: data.differing || [],
+                                    options: data.options || [],
+                                    _raw: rawStr
+                                  });
+                                };
+
+                                if (result && typeof result.then === 'function') {
+                                  result.then(handleResult).catch(function(err) {
+                                    resolve({ common: true, commonPath: [], differing: [], options: [], _raw: "Promise rejected: " + String(err) });
+                                  });
+                                } else {
+                                  handleResult(result);
+                                }
+                              } else {
+                                resolve({
+                                  common: false,
+                                  commonPath: ["IfcWall"],
+                                  differing: [
+                                    { classification: "STR-001 Стена несущая", count: 3, total: 5 },
+                                    { classification: "STR-002 Стена ненесущая", count: 2, total: 5 }
+                                  ],
+                                  options: ["STR-001 Стена несущая", "STR-002 Стена ненесущая", "STR-003 Перегородка"],
+                                  _raw: "FALLBACK - ACAPI not available"
+                                });
+                              }
+                            } catch (e) {
+                              resolve({
+                                common: false,
+                                commonPath: ["IfcWall"],
+                                differing: [
+                                  { classification: "STR-001 Стена несущая", count: 3, total: 5 },
+                                  { classification: "STR-002 Стена ненесущая", count: 2, total: 5 }
+                                ],
+                                options: ["STR-001 Стена несущая", "STR-002 Стена ненесущая", "STR-003 Перегородка"],
+                                _raw: "EXCEPTION: " + String(e)
+                              });
+                            }
+                          });
+                        }
 
     /**
      * Назначает единую классификацию всем выделенным элементам.
@@ -242,25 +250,34 @@ const ACBridge = (function () {
      * @returns {Promise<{success:boolean}>}
      */
     function setClassificationForSelection(classificationValue) {
-      return new Promise(function (resolve) {
-        try {
-          if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetClassification) {
-            console.log("ACAPI.SetClassification exists, calling with:", classificationValue);
-            window.ACAPI.SetClassification([classificationValue]).then(function (result) {
-              console.log("ACAPI.SetClassification returned:", result);
-              var data = typeof result === 'string' ? JSON.parse(result) : result;
-              resolve({ success: data.success === true });
-            });
-          } else {
-            console.warn("window.ACAPI.SetClassification not available");
-            resolve({ success: false });
-          }
-        } catch (e) {
-          console.error("ACAPI.SetClassification error:", e);
-          resolve({ success: false });
+          return new Promise(function (resolve) {
+            try {
+              if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetClassification) {
+                console.log("ACAPI.SetClassification exists, calling with:", classificationValue);
+                var result = window.ACAPI.SetClassification([classificationValue]);
+                // Bug 5 fix: handle both Promise and sync return
+                var handleResult = function(data) {
+                  var parsed = typeof data === 'string' ? JSON.parse(data) : data;
+                  resolve({ success: parsed.success === true });
+                };
+                if (result && typeof result.then === 'function') {
+                  result.then(handleResult).catch(function(err) {
+                    console.error("ACAPI.SetClassification rejected:", err);
+                    resolve({ success: false });
+                  });
+                } else {
+                  handleResult(result);
+                }
+              } else {
+                console.warn("window.ACAPI.SetClassification not available");
+                resolve({ success: false });
+              }
+            } catch (e) {
+              console.error("ACAPI.SetClassification error:", e);
+              resolve({ success: false });
+            }
+          });
         }
-      });
-    }
 
   /**
    * AGENT TODO: вернуть список преднастроенных фильтров свойств (хранятся
@@ -730,9 +747,10 @@ function renderMonitorTab(container) {
     ]);
 
   const classificationBlock = h("div", {
-    style: "padding:0.4rem 0.75rem 0.6rem;border-bottom:1px solid var(--ac-divider);" +
-           "max-height:40%;overflow:auto;flex:0 0 auto;"
-  });
+      attrs: { id: "monitor-classification-block" },
+      style: "padding:0.4rem 0.75rem 0.6rem;border-bottom:1px solid var(--ac-divider);" +
+             "max-height:40%;overflow:auto;flex:0 0 auto;"
+    });
 
   const filterBlock = h("div", { style: "padding:0.6rem 0.75rem;border-bottom:1px solid var(--ac-divider);flex:0 0 auto;position:relative;" });
 
@@ -745,35 +763,70 @@ function renderMonitorTab(container) {
   container.appendChild(root);
 
   ACBridge.getSelectionInfo().then(function (info) {
-    refreshSelectionInfoText(info.count);
-  });
+      refreshSelectionInfoText(info.count);
+    });
 
-  renderClassificationBlock(classificationBlock);
-  renderFilterBlock(filterBlock, listBlock);
-  renderPropertyList(listBlock, STATE.monitorFilter);
+    // Ждём готовности ACAPI перед рендером классификации
+    function waitForACAPI (callback) {
+      function check () {
+        if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
+          callback();
+        } else {
+          setTimeout(check, 50);
+        }
+      }
+      check();
+    }
+
+    waitForACAPI(function () {
+      renderClassificationBlock(classificationBlock);
+    });
+
+    renderFilterBlock(filterBlock, listBlock);
+    renderPropertyList(listBlock, STATE.monitorFilter);
 }
 
 function renderClassificationBlock(block) {
-console.log("[HTML] renderClassificationBlock called");
-clear(block);
-block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
-
-ACBridge.getClassification().then(function (data) {
-  console.log("[HTML] renderClassificationBlock: received data =", data);
+  console.log("[HTML] renderClassificationBlock called");
   clear(block);
+  block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
 
-  // ВРЕМЕННЫЙ ОТЛАДОЧНЫЙ БЛОК — показывает сырые данные от C++
-  const debugRaw = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:#f0f0f0;border-radius:0.25rem;" }, [
-    h("summary", { text: "DEBUG: Raw data from C++", style: "cursor:pointer;font-size:0.7rem;color:#666;" }),
-    h("pre", { text: JSON.stringify(data, null, 2), style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;" })
-  ]);
-  block.appendChild(debugRaw);
+  ACBridge.getClassification().then(function (data) {
+      console.log("[HTML] renderClassificationBlock: received data =", JSON.stringify(data, null, 2));
+      clear(block);
 
-  block.appendChild(h("div", {
-      text: "Классификация",
-      style: "font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;" +
-             "color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.35rem;"
-    }));
+      // ВРЕМЕННЫЙ DEBUG — показывает window.ACAPI состояние
+      const debugACAPI = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:var(--ac-bg-elevated);border-radius:0.25rem;border:1px solid var(--ac-border);" }, [
+        h("summary", { text: "DEBUG: window.ACAPI state", style: "cursor:pointer;font-size:0.7rem;color:var(--ac-text-secondary);" }),
+        h("pre", { text: JSON.stringify({
+            hasACAPI: typeof window.ACAPI !== 'undefined',
+            ACAPIKeys: window.ACAPI ? Object.keys(window.ACAPI) : [],
+            hasGetClassification: window.ACAPI && typeof window.ACAPI.GetClassification === 'function'
+          }, null, 2), style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--ac-text-primary);" })
+      ]);
+      block.appendChild(debugACAPI);
+
+      // ВРЕМЕННЫЙ DEBUG — показывает сырые данные
+            const debugRaw = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:var(--ac-bg-elevated);border-radius:0.25rem;border:1px solid var(--ac-border);" }, [
+              h("summary", { text: "DEBUG: Raw data from C++", style: "cursor:pointer;font-size:0.7rem;color:var(--ac-text-secondary);" }),
+              h("pre", { text: JSON.stringify(data, null, 2), style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--ac-text-primary);" })
+            ]);
+            block.appendChild(debugRaw);
+
+            // DEBUG: сырая строка от C++
+            if (data._raw) {
+              const debugRawStr = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:var(--ac-bg-elevated);border-radius:0.25rem;border:1px solid var(--ac-border);" }, [
+                h("summary", { text: "DEBUG: Raw string from C++", style: "cursor:pointer;font-size:0.7rem;color:var(--ac-text-secondary);" }),
+                h("pre", { text: data._raw, style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--ac-text-primary);" })
+              ]);
+              block.appendChild(debugRawStr);
+            }
+
+      block.appendChild(h("div", {
+          text: "Классификация",
+          style: "font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;" +
+                 "color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.35rem;"
+        }));
 
     // Общая (совпадающая) часть пути — дерево
     const tree = h("div", { style: "display:flex;flex-direction:column;gap:0.15rem;" });

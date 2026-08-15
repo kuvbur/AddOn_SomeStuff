@@ -116,6 +116,12 @@ void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedEleme
         "if (typeof renderPropertyList === 'function') renderPropertyList(document.getElementById('monitor-list-block'), document.querySelector('[data-role=\"value-block\"]'), '');";
     browser.ExecuteJS (jsCallProps.ToCStr ().Get ());
     DBprnt ("UpdateSelectionInfoInUI: executed JS for property list refresh");
+
+    // Также перерисовываем классификацию при смене выделения
+    GS::UniString jsCallClassif =
+        "if (typeof renderClassificationBlock === 'function') renderClassificationBlock(document.getElementById('monitor-classification-block'));";
+    browser.ExecuteJS (jsCallClassif.ToCStr ().Get ());
+    DBprnt ("UpdateSelectionInfoInUI: executed JS for classification refresh");
 }
 
 void BrowserPalette::InitBrowserControl () {
@@ -599,108 +605,116 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     }));
 
     // Регистрируем функцию для получения классификации выделенных элементов (inline implementation)
-        jsACAPI->AddItem (new DG::JSFunction ("GetClassification", [] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
-            try {
-                DBprnt ("GetClassification: [1] function called from JS");
+    jsACAPI->AddItem (new DG::JSFunction ("GetClassification", [] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+        try {
+            DBprnt ("GetClassification: [1] function called from JS");
 
-                            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
-                            DBprnt (GS::UniString::Printf ("GetClassification: [2] selectedElements count = %d", selectedElements.GetSize ()));
+            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+            DBprnt (GS::UniString::Printf ("GetClassification: [2] selectedElements count = %d",
+                                           selectedElements.GetSize ()));
 
-                            if (selectedElements.IsEmpty ()) {
-                                DBprnt ("GetClassification: [3] no selected elements, returning empty");
-                                GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
-                                jsResult->AddItem ("common", new DG::JSValue (true));
-                                jsResult->AddItem ("commonPath", new DG::JSArray ());
-                                jsResult->AddItem ("differing", new DG::JSArray ());
-                                jsResult->AddItem ("options", new DG::JSArray ());
-                                jsResult->AddItem ("status", new DG::JSValue ("ok"));
-                                return jsResult;
-                            }
+            if (selectedElements.IsEmpty ()) {
+                DBprnt ("GetClassification: [3] no selected elements, returning empty");
+                GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
+                jsResult->AddItem ("common", new DG::JSValue (true));
+                jsResult->AddItem ("commonPath", new DG::JSArray ());
+                jsResult->AddItem ("differing", new DG::JSArray ());
+                jsResult->AddItem ("options", new DG::JSArray ());
+                jsResult->AddItem ("status", new DG::JSValue ("ok"));
+                return jsResult;
+            }
 
-                            // Убедимся, что классификации загружены в кэш
-                            DBprnt ("GetClassification: [4] calling ReadSystemDict");
-                            auto &cache = PROPERTYCACHE ();
-                            // Принудительно инициализируем классификацию, если она не загружена
-                            if (!cache.isClassificationRead) {
-                                DBprnt ("GetClassification: [4.1] forcing ReadClassification");
-                                cache.ReadClassification ();
-                            }
-                            bool readResult = ClassificationFunc::ReadSystemDict ();
-                            DBprnt (GS::UniString::Printf ("GetClassification: [5] ReadSystemDict result = %d, isClassification_OK = %d",
-                                                           readResult, cache.isClassification_OK));
+            // Убедимся, что классификации загружены в кэш
+            DBprnt ("GetClassification: [4] calling ReadSystemDict");
+            auto &cache = PROPERTYCACHE ();
+            // Принудительно инициализируем классификацию, если она не загружена
+            if (!cache.isClassificationRead) {
+                DBprnt ("GetClassification: [4.1] forcing ReadClassification");
+                cache.ReadClassification ();
+            }
+            bool readResult = ClassificationFunc::ReadSystemDict ();
+            DBprnt (
+                GS::UniString::Printf ("GetClassification: [5] ReadSystemDict result = %d, isClassification_OK = %d",
+                                       readResult,
+                                       cache.isClassification_OK));
 
-                            // ПРЯМАЯ ПРОВЕРКА: вызываем GetAllClassification и смотрим результат
-                            GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict> testSystemDict;
-                            GSErrCode directErr = ClassificationFunc::GetAllClassification (testSystemDict);
-                            DBprnt (GS::UniString::Printf ("GetClassification: [5.1] DIRECT GetAllClassification err=%d, size=%d",
-                                                           directErr, testSystemDict.GetSize ()));
+            // ПРЯМАЯ ПРОВЕРКА: вызываем GetAllClassification и смотрим результат
+            GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict> testSystemDict;
+            GSErrCode directErr = ClassificationFunc::GetAllClassification (testSystemDict);
+            DBprnt (GS::UniString::Printf ("GetClassification: [5.1] DIRECT GetAllClassification err=%d, size=%d",
+                                           directErr,
+                                           testSystemDict.GetSize ()));
 
-                            if (!readResult) {
-                                DBprnt ("GetClassification: [5] failed to load classification system");
-                                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                                errorObj->AddItem ("common", new DG::JSValue (true));
-                                errorObj->AddItem ("commonPath", new DG::JSArray ());
-                                errorObj->AddItem ("differing", new DG::JSArray ());
-                                errorObj->AddItem ("options", new DG::JSArray ());
-                                errorObj->AddItem ("status", new DG::JSValue ("error"));
-                                errorObj->AddItem ("debug_error", new DG::JSValue ("ReadSystemDict failed"));
-                                // Диагностика для ошибки
-                                errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_13_38_V3"));
-                                errorObj->AddItem ("diag_isClassificationRead", new DG::JSValue (cache.isClassificationRead));
-                                errorObj->AddItem ("diag_isClassification_OK", new DG::JSValue (cache.isClassification_OK));
-                                return errorObj;
-                            }
-                            DBprnt ("GetClassification: [6] ReadSystemDict succeeded");
+            if (!readResult) {
+                DBprnt ("GetClassification: [5] failed to load classification system");
+                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                errorObj->AddItem ("common", new DG::JSValue (true));
+                errorObj->AddItem ("commonPath", new DG::JSArray ());
+                errorObj->AddItem ("differing", new DG::JSArray ());
+                errorObj->AddItem ("options", new DG::JSArray ());
+                errorObj->AddItem ("status", new DG::JSValue ("error"));
+                errorObj->AddItem ("debug_error", new DG::JSValue ("ReadSystemDict failed"));
+                // Диагностика для ошибки
+                errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_13_38_V3"));
+                errorObj->AddItem ("diag_isClassificationRead", new DG::JSValue (cache.isClassificationRead));
+                errorObj->AddItem ("diag_isClassification_OK", new DG::JSValue (cache.isClassification_OK));
+                return errorObj;
+            }
+            DBprnt ("GetClassification: [6] ReadSystemDict succeeded");
 
-                            // auto &cache = PROPERTYCACHE (); // УЖЕ ОБЪЯВЛЕНО ВЫШЕ
-                            DBprnt (GS::UniString::Printf ("GetClassification: [7] systemdict size = %d", cache.systemdict.GetSize ()));
-                            DBprnt (GS::UniString::Printf ("GetClassification: [8] reversesystemdict size = %d", cache.reversesystemdict.GetSize ()));
+            DBprnt (GS::UniString::Printf ("GetClassification: [7] systemdict size = %d", cache.systemdict.GetSize ()));
+            DBprnt (GS::UniString::Printf ("GetClassification: [8] reversesystemdict size = %d",
+                                           cache.reversesystemdict.GetSize ()));
 
-                            // Собираем классификацию для каждого выделенного элемента
-                            GS::HashTable<GS::Pair<API_Guid, API_Guid>, Int32> classificationCounts; // systemGuid+itemGuid -> count
-                            GS::HashTable<GS::Pair<API_Guid, API_Guid>, GS::UniString>
-                                classificationDisplayNames; // systemGuid+itemGuid -> display name
+            // Собираем классификацию для каждого выделенного элемента
+            GS::HashTable<GS::Pair<API_Guid, API_Guid>, Int32> classificationCounts; // systemGuid+itemGuid -> count
+            GS::HashTable<GS::Pair<API_Guid, API_Guid>, GS::UniString>
+                classificationDisplayNames; // systemGuid+itemGuid -> display name
 
-                            for (const API_Guid &elemGuid : selectedElements) {
-                                GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
-                                GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
-                                DBprnt (GS::UniString::Printf ("GetClassification: [9] element has %d classifications, err=%d", systemItemPairs.GetSize (), err));
-                                if (err != NoError || systemItemPairs.IsEmpty ()) {
-                                    continue; // Элемент без классификации или ошибка
-                                }
+            for (const API_Guid &elemGuid : selectedElements) {
+                GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
+                GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
+                DBprnt (GS::UniString::Printf (
+                    "GetClassification: [9] element has %d classifications, err=%d", systemItemPairs.GetSize (), err));
+                if (err != NoError || systemItemPairs.IsEmpty ()) {
+                    continue; // Элемент без классификации или ошибка
+                }
 
-                                for (const auto &pair : systemItemPairs) {
-                                    const GS::Pair<API_Guid, API_Guid> key = pair;
-                                    const Int32 *currentCountPtr = classificationCounts.GetPtr (key);
-                                    Int32 currentCount = currentCountPtr ? *currentCountPtr : 0;
-                                    classificationCounts.Put (key, currentCount + 1);
+                for (const auto &pair : systemItemPairs) {
+                    const GS::Pair<API_Guid, API_Guid> key = pair;
+                    const Int32 *currentCountPtr = classificationCounts.GetPtr (key);
+                    Int32 currentCount = currentCountPtr ? *currentCountPtr : 0;
+                    classificationCounts.Put (key, currentCount + 1);
 
-                                    // Получаем отображаемое имя для этого класса
-                                    if (!classificationDisplayNames.ContainsKey (key)) {
-                                        // Ищем класс в systemdict по GUID
-                                        GS::UniString displayName;
-                                        bool found = false;
-                                        for (const auto& sysPair : cache.systemdict) {
-                                            for (const auto& classPair : *sysPair.value) {
-                                                if (classPair.value->item.guid == pair.second) {
-                                                    ClassificationFunc::GetFullName(
-                                                        classPair.value->item, *sysPair.value, displayName);
-                                                    classificationDisplayNames.Put(key, displayName);
-                                                    found = true;
-                                                    break;
-                                                }
-                                            }
-                                            if (found) break;
-                                        }
-                                        if (!found) {
-                                            classificationDisplayNames.Put(key, GS::UniString("Unknown"));
-                                        }
-                                        DBprnt (GS::UniString::Printf ("GetClassification: [10] found class for key -> %s", displayName.ToCStr().Get()));
-                                    }
+                    // Получаем отображаемое имя для этого класса
+                    if (!classificationDisplayNames.ContainsKey (key)) {
+                        // Ищем класс в systemdict по GUID
+                        GS::UniString displayName;
+                        bool found = false;
+                        for (const auto &sysPair : cache.systemdict) {
+                            for (const auto &classPair : *sysPair.value) {
+                                if (classPair.value->item.guid == pair.second) {
+                                    ClassificationFunc::GetFullName (
+                                        classPair.value->item, *sysPair.value, displayName);
+                                    classificationDisplayNames.Put (key, displayName);
+                                    found = true;
+                                    break;
                                 }
                             }
+                            if (found)
+                                break;
+                        }
+                        if (!found) {
+                            classificationDisplayNames.Put (key, GS::UniString ("Unknown"));
+                        }
+                        DBprnt (GS::UniString::Printf ("GetClassification: [10] found class for key -> %s",
+                                                       displayName.ToCStr ().Get ()));
+                    }
+                }
+            }
 
-                            DBprnt (GS::UniString::Printf ("GetClassification: [11] classificationCounts size = %d", classificationCounts.GetSize ()));
+            DBprnt (GS::UniString::Printf ("GetClassification: [11] classificationCounts size = %d",
+                                           classificationCounts.GetSize ()));
 
             // Определяем общий путь классификации (все элементы имеют одинаковые классы)
             bool isCommon = true;
@@ -716,7 +730,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 // Собираем классы, которые есть у ВСЕХ элементов (count == selectedElements.GetSize())
                 GS::Array<GS::UniString> commonFullNames; // полные имена общих классов
 
-                DBprnt (GS::UniString::Printf ("GetClassification: [12] iterating classificationCounts, size=%d", classificationCounts.GetSize ()));
+                DBprnt (GS::UniString::Printf ("GetClassification: [12] iterating classificationCounts, size=%d",
+                                               classificationCounts.GetSize ()));
 
                 // Итерация по classificationCounts — правильный паттерн для GS::HashTable
                 for (auto it = classificationCounts.EnumeratePairs (); it != nullptr; ++it) {
@@ -735,8 +750,10 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                     }
 
                     DBprnt (GS::UniString::Printf ("GetClassification: key=%s, count=%d, total=%d, name=%s",
-                                                   APIGuidToString (key.second).ToCStr ().Get (), count,
-                                                   selectedElements.GetSize (), displayName.ToCStr ().Get ()));
+                                                   APIGuidToString (key.second).ToCStr ().Get (),
+                                                   count,
+                                                   selectedElements.GetSize (),
+                                                   displayName.ToCStr ().Get ()));
 
                     if (count == selectedElements.GetSize ()) {
                         commonFullNames.Push (displayName);
@@ -761,7 +778,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                             commonPathSegments.Push (seg);
                         }
                     }
-                    DBprnt (GS::UniString::Printf ("GetClassification: commonPathSegments count = %d", commonPathSegments.GetSize ()));
+                    DBprnt (GS::UniString::Printf ("GetClassification: commonPathSegments count = %d",
+                                                   commonPathSegments.GetSize ()));
                 }
             }
 
@@ -770,81 +788,75 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             auto &systemdict = cache.systemdict;
             for (const auto &sysPair : systemdict) {
                 const ClassificationFunc::ClassificationDict *classDict = sysPair.value;
-                if (classDict == nullptr) continue;
+                if (classDict == nullptr)
+                    continue;
                 for (const auto &classPair : *classDict) {
                     const ClassificationFunc::ClassificationValues *cv = classPair.value;
-                    if (cv == nullptr) continue;
+                    if (cv == nullptr)
+                        continue;
                     GS::UniString fullName;
                     ClassificationFunc::GetFullName (cv->item, *classDict, fullName);
                     options.Push (fullName);
                 }
             }
 
-            DBprnt (GS::UniString::Printf ("GetClassification: [result] isCommon=%d, commonPathSegments=%d, differing=%d",
-                                             isCommon, commonPathSegments.GetSize (), differing.GetSize ()));
+            DBprnt (
+                GS::UniString::Printf ("GetClassification: [result] isCommon=%d, commonPathSegments=%d, differing=%d",
+                                       isCommon,
+                                       commonPathSegments.GetSize (),
+                                       differing.GetSize ()));
 
             // Отладка: выводим первые элементы differing
-            for (const auto& d : differing) {
+            for (const auto &d : differing) {
                 GS::UniString cls;
                 Int32 cnt, tot;
                 d.Get ("classification", cls);
                 d.Get ("count", cnt);
                 d.Get ("total", tot);
-                DBprnt (GS::UniString::Printf ("  differing item: classification=%s, count=%d, total=%d",
-                                               cls.ToCStr ().Get (), cnt, tot));
+                DBprnt (GS::UniString::Printf (
+                    "  differing item: classification=%s, count=%d, total=%d", cls.ToCStr ().Get (), cnt, tot));
             }
 
-            // Формируем JS результат
-            GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
-            jsResult->AddItem ("common", new DG::JSValue (isCommon));
-            // Количество выделенных элементов — для отладки
-            jsResult->AddItem ("selectedCount", new DG::JSValue ((Int32)selectedElements.GetSize ()));
-            // Диагностика системы классификации
-            jsResult->AddItem ("diag_systemdictSize", new DG::JSValue ((Int32)cache.systemdict.GetSize ()));
-            jsResult->AddItem ("diag_reversesystemdictSize", new DG::JSValue ((Int32)cache.reversesystemdict.GetSize ()));
-            jsResult->AddItem ("diag_isClassification_OK", new DG::JSValue (cache.isClassification_OK));
-            jsResult->AddItem ("diag_isClassificationRead", new DG::JSValue (cache.isClassificationRead));
+            // Формируем JS результат (возвращаем JSON-строку, как делает GetPropertiesList)
+                        GS::UniString jsonStr = "{";
 
-            // ВРЕМЕННАЯ МЕТКА ВЕРСИИ — чтобы убедиться, что новый код загружен
-            jsResult->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_13_20_V2"));
+                        jsonStr += "\"common\": " + GS::UniString (isCommon ? "true" : "false") + ",";
 
-            // DEBUG: добавляем отладочные поля в ответ
-            jsResult->AddItem ("debug_classificationCountsSize", new DG::JSValue ((Int32)classificationCounts.GetSize ()));
-            jsResult->AddItem ("debug_systemdictSize", new DG::JSValue ((Int32)cache.systemdict.GetSize ()));
-            jsResult->AddItem ("debug_reversesystemdictSize", new DG::JSValue ((Int32)cache.reversesystemdict.GetSize ()));
-            jsResult->AddItem ("debug_selectedCount", new DG::JSValue ((Int32)selectedElements.GetSize ()));
+                        jsonStr += "\"commonPath\": [";
+                        for (UIndex i = 0; i < commonPathSegments.GetSize (); ++i) {
+                            if (i > 0) jsonStr += ",";
+                            jsonStr += "\"" + commonPathSegments[i] + "\"";
+                        }
+                        jsonStr += "],";
 
-            GS::Ref<DG::JSArray> commonPathArray = new DG::JSArray ();
-            for (const GS::UniString &s : commonPathSegments) {
-                commonPathArray->AddItem (new DG::JSValue (s.ToCStr ().Get ()));
-            }
-            jsResult->AddItem ("commonPath", commonPathArray);
+                        jsonStr += "\"differing\": [";
+                        for (UIndex i = 0; i < differing.GetSize (); ++i) {
+                            if (i > 0) jsonStr += ",";
+                            jsonStr += "{";
+                            GS::UniString classification;
+                            Int32 count, total;
+                            differing[i].Get ("classification", classification);
+                            differing[i].Get ("count", count);
+                            differing[i].Get ("total", total);
+                            jsonStr += "\"classification\": \"" + classification + "\",";
+                            jsonStr += "\"count\": " + GS::ValueToUniString (count) + ",";
+                            jsonStr += "\"total\": " + GS::ValueToUniString (total);
+                            jsonStr += "}";
+                        }
+                        jsonStr += "],";
 
-            GS::Ref<DG::JSArray> differingArray = new DG::JSArray ();
-            for (const GS::ObjectState &diff : differing) {
-                GS::Ref<DG::JSObject> diffObj = new DG::JSObject ();
-                GS::UniString classification;
-                Int32 count, total;
-                if (diff.Get ("classification", classification))
-                    diffObj->AddItem ("classification", new DG::JSValue (classification.ToCStr ().Get ()));
-                if (diff.Get ("count", count))
-                    diffObj->AddItem ("count", new DG::JSValue (count));
-                if (diff.Get ("total", total))
-                    diffObj->AddItem ("total", new DG::JSValue (total));
-                differingArray->AddItem (diffObj);
-            }
-            jsResult->AddItem ("differing", differingArray);
+                        jsonStr += "\"options\": [";
+                        for (UIndex i = 0; i < options.GetSize (); ++i) {
+                            if (i > 0) jsonStr += ",";
+                            jsonStr += "\"" + options[i] + "\"";
+                        }
+                        jsonStr += "],";
 
-            GS::Ref<DG::JSArray> optionsArray = new DG::JSArray ();
-            for (const GS::UniString &s : options) {
-                optionsArray->AddItem (new DG::JSValue (s.ToCStr ().Get ()));
-            }
-            jsResult->AddItem ("options", optionsArray);
+                        jsonStr += "\"status\": \"ok\"";
+                        jsonStr += "}";
 
-            jsResult->AddItem ("status", new DG::JSValue ("ok"));
-
-            DBprnt ("GetClassification: returning result");
-            return jsResult;
+                        DBprnt ("GetClassification: returning JSON: " + jsonStr);
+                        return new DG::JSValue (jsonStr);
         } catch (const std::exception &e) {
             DBprnt (GS::UniString ("GetClassification: std::exception: ") + e.what ());
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
