@@ -35,12 +35,41 @@ static GS::UniString LoadHtmlFromResource () {
     GS::UniString resourceData;
     const Int32 bisEng = ID_ADDON_HTML + isEng ();
     GSHandle data = RSLoadResource ('DATA', ACAPI_GetOwnResModule (), bisEng);
-    GSSize handleSize = BMhGetSize (data);
-    if (data != nullptr) {
-        resourceData.Append (*data, handleSize);
-        BMhKill (&data);
+    // Проверка на null ДО вызова BMhGetSize — иначе UB при отсутствии ресурса
+    if (data == nullptr) {
+        DBprnt ("LoadHtmlFromResource: resource not found");
+        return resourceData;
     }
+    const GSSize handleSize = BMhGetSize (data);
+    resourceData.Append (*data, handleSize);
+    BMhKill (&data);
     return resourceData;
+}
+
+// -----------------------------------------------------------------------------
+// Экранирование строки для безопасной вставки в JSON вручную собранных ответов.
+// Без экранирования кавычки/обратные слэши/переводы строк в значениях ломают JSON.
+// -----------------------------------------------------------------------------
+static GS::UniString EscapeJsonString (const GS::UniString &s) {
+    GS::UniString r;
+    r.SetCapacity (s.GetLength ());
+    for (UIndex i = 0; i < s.GetLength (); ++i) {
+        const GS::UniChar c = s[i];
+        if (c == '"') {
+            r.Append ("\\\"");
+        } else if (c == '\\') {
+            r.Append ("\\\\");
+        } else if (c == '\n') {
+            r.Append ("\\n");
+        } else if (c == '\r') {
+            r.Append ("\\r");
+        } else if (c == '\t') {
+            r.Append ("\\t");
+        } else {
+            r.Append (c);
+        }
+    }
+    return r;
 }
 
 // --- Class definition: BrowserPalette ----------------------------------------
@@ -198,8 +227,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                     jsonStr += GS::UniString ("{");
 
                     if (!prop.definition.name.IsEmpty ()) {
-                        jsonStr += GS::UniString ("\"name\": \"") + prop.definition.name.ToCStr ().Get () +
-                                   GS::UniString ("\",");
+                        jsonStr += GS::UniString ("\"name\": \"") +
+                                   EscapeJsonString (prop.definition.name).ToCStr ().Get () + GS::UniString ("\",");
                     } else {
                         jsonStr += GS::UniString ("\"name\": \"\",");
                     }
@@ -219,7 +248,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                             groupName = group.name;
                         }
                     }
-                    jsonStr += GS::UniString ("\"group\": \"") + groupName.ToCStr ().Get () + GS::UniString ("\",");
+                    jsonStr += GS::UniString ("\"group\": \"") + EscapeJsonString (groupName).ToCStr ().Get () +
+                               GS::UniString ("\",");
 
                     ParamValue pvalue;
                     if (ParamHelpers::ConvertToParamValue (pvalue, prop)) {
@@ -244,7 +274,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                             valueStr = "unknown";
                             break;
                         }
-                        jsonStr += GS::UniString ("\"value\": \"") + valueStr.ToCStr ().Get () + GS::UniString ("\",");
+                        jsonStr += GS::UniString ("\"value\": \"") + EscapeJsonString (valueStr).ToCStr ().Get () +
+                                   GS::UniString ("\",");
                     } else {
                         jsonStr += "\"value\": \"\",";
                     }
@@ -323,6 +354,12 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         }
 
         GS::UniString propertyId = propertyIdVal->GetString ();
+        // propertyId из HTML — GUID определения свойства (prop.propertyGuid)
+
+        // Читаем значения свойства по каждому выделенному элементу.
+        // ВАЖНО: cache.property хранит только ОПРЕДЕЛЕНИЯ свойств (без значений по элементам),
+        // поэтому читаем значения напрямую через ACAPI_Element_GetPropertyValue.
+        API_Guid propertyGuid = APIGuidFromString (propertyId.ToCStr ().Get ());
 
         // Inline implementation (like GetPropertiesList)
         GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
@@ -335,36 +372,46 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         GS::HashTable<GS::UniString, Int32> valueCounts;
 
         for (const API_Guid &elemGuid : selectedElements) {
-            (void)elemGuid; // подавление warning unused variable
-            GS::UniString rawName = "Property:" + propertyId;
-            ParamValue pvalue;
-            if (ParamHelpers::GetParamValueFromCache (rawName, pvalue)) {
-                GS::UniString valueStr;
-                switch (pvalue.val.type) {
-                case API_PropertyIntegerValueType:
-                    valueStr = GS::UniString::Printf ("%d", pvalue.val.intValue);
-                    break;
-                case API_PropertyRealValueType:
-                    valueStr = GS::UniString::Printf ("%.3f", pvalue.val.doubleValue);
-                    break;
-                case API_PropertyStringValueType:
-                    valueStr = pvalue.val.uniStringValue;
-                    break;
-                case API_PropertyBooleanValueType:
-                    valueStr = pvalue.val.boolValue ? "true" : "false";
-                    break;
-                case API_PropertyGuidValueType:
-                    valueStr = APIGuidToString (pvalue.val.guidval).ToCStr ().Get ();
-                    break;
-                default:
-                    valueStr = "unknown";
-                    break;
-                }
-
-                const Int32 *currentCountPtr = valueCounts.GetPtr (valueStr);
-                Int32 currentCount = currentCountPtr ? *currentCountPtr : 0;
-                valueCounts.Put (valueStr, currentCount + 1);
+            API_Property property;
+            GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
+            if (err != NoError || property.status != API_Property_HasValue) {
+                continue;
             }
+            // Значение может быть одиночным или списочным — берём первый вариант
+            const API_Variant *variant = nullptr;
+            if (property.value.variantStatus == API_VariantStatusNormal &&
+                property.value.singleVariant.variant.type != API_PropertyUndefinedValueType) {
+                variant = &property.value.singleVariant.variant;
+            } else if (!property.value.listVariant.variants.IsEmpty ()) {
+                variant = &property.value.listVariant.variants[0];
+            }
+            if (variant == nullptr) {
+                continue;
+            }
+            GS::UniString valueStr;
+            switch (variant->type) {
+            case API_PropertyIntegerValueType:
+                valueStr = GS::UniString::Printf ("%d", variant->intValue);
+                break;
+            case API_PropertyRealValueType:
+                valueStr = GS::UniString::Printf ("%.3f", variant->doubleValue);
+                break;
+            case API_PropertyStringValueType:
+                valueStr = variant->uniStringValue;
+                break;
+            case API_PropertyBooleanValueType:
+                valueStr = variant->boolValue ? "true" : "false";
+                break;
+            case API_PropertyGuidValueType:
+                valueStr = APIGuidToString (variant->guidValue);
+                break;
+            default:
+                continue; // значение отсутствует/не поддерживается
+            }
+
+            const Int32 *currentCountPtr = valueCounts.GetPtr (valueStr);
+            Int32 currentCount = currentCountPtr ? *currentCountPtr : 0;
+            valueCounts.Put (valueStr, currentCount + 1);
         }
 
         // Формируем JSON
@@ -382,8 +429,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 jsonStr += ",";
             }
             firstValue = false;
-            jsonStr += GS::UniString ("{\"value\":\"") + key.ToCStr ().Get () + GS::UniString ("\",\"count\":") +
-                       GS::ValueToUniString (value) + GS::UniString ("}");
+            jsonStr += GS::UniString ("{\"value\":\"") + EscapeJsonString (key).ToCStr ().Get () +
+                       GS::UniString ("\",\"count\":") + GS::ValueToUniString (value) + GS::UniString ("}");
             totalCount += value;
             uniqueValuesCount++;
         }
@@ -393,7 +440,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         bool isCommon = (uniqueValuesCount == 1 && totalCount == selectedElements.GetSize ());
 
         jsonStr += GS::UniString ("\"common\": ") + GS::UniString (isCommon ? "true" : "false") + GS::UniString (", ");
-        jsonStr += GS::UniString ("\"propertyName\": \"") + propertyId.ToCStr ().Get () + GS::UniString ("\", ");
+        jsonStr += GS::UniString ("\"propertyName\": \"") + EscapeJsonString (propertyId).ToCStr ().Get () +
+                   GS::UniString ("\", ");
         jsonStr += GS::UniString ("\"status\": \"ok\" }");
 
         DBprnt (GS::UniString ("GetPropertyValue: returning JSON: ") + jsonStr);
@@ -415,7 +463,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         return result;
     }));
 
-    // Задание ограничения количества отображаемых элементов из HTML (≤ select)
+    // Задание ограничения количества отображаемых элементов из HTML (≤ select).
+    // ВАЖНО: возвращаем DG::JSValue (не nullptr) — nullptr из JSFunction роняет CEF-мост.
     jsACAPI->AddItem (
         new DG::JSFunction ("SetMaxSelectionCount", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
             UInt32 value = 0; // 0 = без ограничения
@@ -432,7 +481,28 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             }
             maxSelectionCount = value;
             DBprnt ("SetMaxSelectionCount: limit set to " + GS::ValueToUniString (value));
-            return GS::Ref<DG::JSBase> (nullptr);
+            return GS::Ref<DG::JSBase> (new DG::JSValue (true));
+        }));
+
+    // Включение/выключение автообновления при смене выделения
+    jsACAPI->AddItem (
+        new DG::JSFunction ("SetCatchSelectionChanges", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+            bool enable = false;
+            if (args != nullptr) {
+                GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
+                if (argsArray != nullptr && argsArray->GetItemArray ().GetSize () >= 1) {
+                    GS::Ref<DG::JSValue> val = GS::DynamicCast<DG::JSValue> (argsArray->GetItemArray ()[0]);
+                    if (val != nullptr) {
+                        enable = val->GetBool ();
+                    }
+                }
+            }
+            SyncSettings syncSettings;
+            LoadSyncSettingsFromPreferences (syncSettings, true);
+            syncSettings.SetCatchSelectionChanges (enable);
+            WriteSyncSettingsToPreferences (syncSettings);
+            DBprnt ("SetCatchSelectionChanges: " + GS::UniString (enable ? "true" : "false"));
+            return GS::Ref<DG::JSBase> (new DG::JSValue (true));
         }));
 
     // Отладочная функция — проверяет, что JS-мост работает
@@ -444,14 +514,14 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         return result;
     }));
 
-    // Обновление количества выделенных элементов в UI (вызывается из JS)
+    // Обновление количества выделенных элементов в UI (вызывается из JS).
+    // Возвращаем DG::JSValue (не nullptr) — nullptr из JSFunction роняет CEF-мост.
     jsACAPI->AddItem (new DG::JSFunction ("RefreshSelectionInfoUI", [this] (GS::Ref<DG::JSBase>) {
         DBprnt ("RefreshSelectionInfoUI: called from JS");
         // Обновляем UI через push (ExecuteJS)
         GS::Array<API_Guid> selectedElements;
         UpdateSelectionInfoInUI (selectedElements);
-        // Возвращаем пустое значение, так как UI уже обновлён
-        return GS::Ref<DG::JSBase> (nullptr);
+        return GS::Ref<DG::JSBase> (new DG::JSValue (true));
     }));
 
     // Регистрируем функцию для парсинга описания свойства
@@ -666,13 +736,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                                        readResult,
                                        cache.isClassification_OK));
 
-            // ПРЯМАЯ ПРОВЕРКА: вызываем GetAllClassification и смотрим результат
-            GS::HashTable<GS::UniString, ClassificationFunc::ClassificationDict> testSystemDict;
-            GSErrCode directErr = ClassificationFunc::GetAllClassification (testSystemDict);
-            DBprnt (GS::UniString::Printf ("GetClassification: [5.1] DIRECT GetAllClassification err=%d, size=%d",
-                                           directErr,
-                                           testSystemDict.GetSize ()));
-
             if (!readResult) {
                 DBprnt ("GetClassification: [5] failed to load classification system");
                 GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
@@ -682,8 +745,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 errorObj->AddItem ("options", new DG::JSArray ());
                 errorObj->AddItem ("status", new DG::JSValue ("error"));
                 errorObj->AddItem ("debug_error", new DG::JSValue ("ReadSystemDict failed"));
-                // Диагностика для ошибки
-                errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_13_38_V3"));
                 errorObj->AddItem ("diag_isClassificationRead", new DG::JSValue (cache.isClassificationRead));
                 errorObj->AddItem ("diag_isClassification_OK", new DG::JSValue (cache.isClassification_OK));
                 return errorObj;
@@ -854,7 +915,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             for (UIndex i = 0; i < commonPathSegments.GetSize (); ++i) {
                 if (i > 0)
                     jsonStr += ",";
-                jsonStr += "\"" + commonPathSegments[i] + "\"";
+                jsonStr += GS::UniString ("\"") + EscapeJsonString (commonPathSegments[i]).ToCStr ().Get () + "\"";
             }
             jsonStr += "],";
 
@@ -868,7 +929,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 differing[i].Get ("classification", classification);
                 differing[i].Get ("count", count);
                 differing[i].Get ("total", total);
-                jsonStr += "\"classification\": \"" + classification + "\",";
+                jsonStr += GS::UniString ("\"classification\": \"") +
+                           EscapeJsonString (classification).ToCStr ().Get () + GS::UniString ("\",");
                 jsonStr += "\"count\": " + GS::ValueToUniString (count) + ",";
                 jsonStr += "\"total\": " + GS::ValueToUniString (total);
                 jsonStr += "}";
@@ -879,7 +941,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             for (UIndex i = 0; i < options.GetSize (); ++i) {
                 if (i > 0)
                     jsonStr += ",";
-                jsonStr += "\"" + options[i] + "\"";
+                jsonStr += GS::UniString ("\"") + EscapeJsonString (options[i]).ToCStr ().Get () + "\"";
             }
             jsonStr += "],";
 
@@ -898,8 +960,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             errorObj->AddItem ("status", new DG::JSValue ("error"));
             errorObj->AddItem ("debug_error", new DG::JSValue ("std::exception"));
             errorObj->AddItem ("debug_exception", new DG::JSValue (e.what ()));
-            // Диагностика в catch
-            errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_14_10_CATCH"));
             return errorObj;
         } catch (...) {
             DBprnt ("GetClassification: unknown exception caught");
@@ -910,8 +970,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             errorObj->AddItem ("options", new DG::JSArray ());
             errorObj->AddItem ("status", new DG::JSValue ("error"));
             errorObj->AddItem ("debug_error", new DG::JSValue ("unknown exception"));
-            // Диагностика в catch
-            errorObj->AddItem ("_build_id", new DG::JSValue ("BUILD_2026_08_11_14_10_CATCH2"));
             return errorObj;
         }
     }));
@@ -1021,39 +1079,46 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                     return errorObj;
                 }
 
-                // Назначаем классификацию каждому выделенному элементу
+                // Назначаем классификацию каждому выделенному элементу.
+                // Изменение модели — оборачиваем в undo-команду (Ctrl+Z отменяет разом).
                 Int32 successCount = 0;
                 Int32 errorCount = 0;
 
-                for (const API_Guid &elemGuid : selectedElements) {
-                    // Сначала проверяем, есть ли уже эта классификация у элемента
-                    GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
-                    GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
-                    if (err != NoError) {
-                        // Если ошибка при чтении, пробуем просто добавить
-                    }
+                const GSErrCode undoErr = ACAPI_CallUndoableCommand ("Set Classification", [&] () -> GSErrCode {
+                    for (const API_Guid &elemGuid : selectedElements) {
+                        // Сначала проверяем, есть ли уже эта классификация у элемента
+                        GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
+                        GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
+                        if (err != NoError) {
+                            // Если ошибка при чтении, пробуем просто добавить
+                        }
 
-                    bool alreadyHas = false;
-                    for (const auto &pair : systemItemPairs) {
-                        if (pair.first == targetSystemGuid && pair.second == targetItemGuid) {
-                            alreadyHas = true;
-                            break;
+                        bool alreadyHas = false;
+                        for (const auto &pair : systemItemPairs) {
+                            if (pair.first == targetSystemGuid && pair.second == targetItemGuid) {
+                                alreadyHas = true;
+                                break;
+                            }
+                        }
+
+                        if (alreadyHas) {
+                            successCount++;
+                            continue;
+                        }
+
+                        // Добавляем классификацию
+                        err = ACAPI_Element_AddClassificationItem (elemGuid, targetItemGuid);
+                        if (err == NoError) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                            msg_rep ("SetClassificationCommand", "ACAPI_Element_AddClassificationItem", err, elemGuid);
                         }
                     }
-
-                    if (alreadyHas) {
-                        successCount++;
-                        continue;
-                    }
-
-                    // Добавляем классификацию
-                    err = ACAPI_Element_AddClassificationItem (elemGuid, targetItemGuid);
-                    if (err == NoError) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                        msg_rep ("SetClassificationCommand", "ACAPI_Element_AddClassificationItem", err, elemGuid);
-                    }
+                    return NoError;
+                });
+                if (undoErr != NoError) {
+                    DBprnt ("SetClassification: ACAPI_CallUndoableCommand error " + GS::ValueToUniString (undoErr));
                 }
 
                 GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
@@ -1081,8 +1146,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
     browser.RegisterAsynchJSObject (jsACAPI);
 }
-
-void BrowserPalette::Command_Helth () { browser.ExecuteJS ("Command_Helth ()"); }
 
 // -----------------------------------------------------------------------------
 // Принудительное обновление информации о выделении из C++.

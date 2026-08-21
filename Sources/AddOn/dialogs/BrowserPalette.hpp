@@ -53,11 +53,6 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     // -------------------------------------------------------------------------
     void UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedElements);
 
-    // -------------------------------------------------------------------------
-    // Вызов проверочной JavaScript-команды для диагностики работы моста.
-    // -------------------------------------------------------------------------
-    void Command_Helth ();
-
     virtual void PanelResized (const DG::PanelResizeEvent &ev) override;
     virtual void PanelCloseRequested (const DG::PanelCloseRequestEvent &ev, bool *accepted) override;
 
