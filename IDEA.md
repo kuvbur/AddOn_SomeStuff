@@ -193,6 +193,6 @@
 
 ---
 
-## Last Checkpoint: d7940e3 [checkpoint] Сохранение текущих изменений перед удалением JSON команд
-## Next Step: Очистка упоминаний JSON команд в документации и проверка сборки
-## Scope: Sources/AddOn/json_commands/ (удалено), Tools/test_json_commands.py (удалено), Sources/AddOn/SomeStuff_Main.cpp, Sources/AddOn/dialogs/BrowserPalette.cpp, IDEA.md
+## Last Checkpoint: da5b6a6 [fix-limit-setter-noargs] Replace SetMaxSelectionCount(args) with argument-less SetLimit<N> family
+## Next Step: Чекпоинт cleanup-html-debug (DEBUG-блоки и console.* удалены из Interface_ru.html, runtime OK); затем Этап 1.5 GetFilterPresets
+## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html; незакоммиченный ReNum.cpp — вне задачи
