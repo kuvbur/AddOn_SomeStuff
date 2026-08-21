@@ -167,18 +167,13 @@ const ACBridge = (function () {
    */
   function getSelectionInfo() {
     // Пробуем вызвать C++ JS-мост
-    console.log("getSelectionInfo called");
     try {
       if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetSelectionInfo) {
-        console.log("ACAPI.GetSelectionInfo exists, calling...");
         var r = window.ACAPI.GetSelectionInfo();
-        console.log("ACAPI.GetSelectionInfo returned:", r);
         return Promise.resolve({ count: (r && typeof r.count === 'number') ? r.count : MOCK_SELECTED_COUNT });
-      } else {
-        console.warn("window.ACAPI.GetSelectionInfo not available");
       }
     } catch (e) {
-      console.error("ACAPI.GetSelectionInfo error:", e);
+      // Мост недоступен — используем мок (консоль в ArchiCAD не просматривается)
     }
     return Promise.resolve({ count: MOCK_SELECTED_COUNT });
   }
@@ -189,59 +184,55 @@ const ACBridge = (function () {
          * @returns {Promise<{common:boolean, commonPath:string[], differing:{classification:string, count:number, total:number}[], options:string[]}>}
          */
         function getClassification() {
-                          return new Promise(function (resolve) {
-                            try {
-                              if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
-                                var result = window.ACAPI.GetClassification();
-                                var handleResult = function(data) {
-                                  if (!data) {
-                                    resolve({ common: true, commonPath: [], differing: [], options: [], _raw: "null" });
-                                    return;
-                                  }
-                                  var rawStr = typeof data === 'string' ? data : JSON.stringify(data);
-                                  data = typeof data === 'string' ? JSON.parse(data) : data;
-                                  resolve({
-                                    common: data.common,
-                                    commonPath: data.commonPath || [],
-                                    differing: data.differing || [],
-                                    options: data.options || [],
-                                    _raw: rawStr
-                                  });
-                                };
+          return new Promise(function (resolve) {
+            try {
+              if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetClassification) {
+                var result = window.ACAPI.GetClassification();
+                var handleResult = function(data) {
+                  if (!data) {
+                    resolve({ common: true, commonPath: [], differing: [], options: [] });
+                    return;
+                  }
+                  data = typeof data === 'string' ? JSON.parse(data) : data;
+                  resolve({
+                    common: data.common,
+                    commonPath: data.commonPath || [],
+                    differing: data.differing || [],
+                    options: data.options || []
+                  });
+                };
 
-                                if (result && typeof result.then === 'function') {
-                                  result.then(handleResult).catch(function(err) {
-                                    resolve({ common: true, commonPath: [], differing: [], options: [], _raw: "Promise rejected: " + String(err) });
-                                  });
-                                } else {
-                                  handleResult(result);
-                                }
-                              } else {
-                                resolve({
-                                  common: false,
-                                  commonPath: ["IfcWall"],
-                                  differing: [
-                                    { classification: "STR-001 Стена несущая", count: 3, total: 5 },
-                                    { classification: "STR-002 Стена ненесущая", count: 2, total: 5 }
-                                  ],
-                                  options: ["STR-001 Стена несущая", "STR-002 Стена ненесущая", "STR-003 Перегородка"],
-                                  _raw: "FALLBACK - ACAPI not available"
-                                });
-                              }
-                            } catch (e) {
-                              resolve({
-                                common: false,
-                                commonPath: ["IfcWall"],
-                                differing: [
-                                  { classification: "STR-001 Стена несущая", count: 3, total: 5 },
-                                  { classification: "STR-002 Стена ненесущая", count: 2, total: 5 }
-                                ],
-                                options: ["STR-001 Стена несущая", "STR-002 Стена ненесущая", "STR-003 Перегородка"],
-                                _raw: "EXCEPTION: " + String(e)
-                              });
-                            }
-                          });
-                        }
+                if (result && typeof result.then === 'function') {
+                  result.then(handleResult).catch(function() {
+                    resolve({ common: true, commonPath: [], differing: [], options: [] });
+                  });
+                } else {
+                  handleResult(result);
+                }
+              } else {
+                resolve({
+                  common: false,
+                  commonPath: ["IfcWall"],
+                  differing: [
+                    { classification: "STR-001 Стена несущая", count: 3, total: 5 },
+                    { classification: "STR-002 Стена ненесущая", count: 2, total: 5 }
+                  ],
+                  options: ["STR-001 Стена несущая", "STR-002 Стена ненесущая", "STR-003 Перегородка"]
+                });
+              }
+            } catch (e) {
+              resolve({
+                common: false,
+                commonPath: ["IfcWall"],
+                differing: [
+                  { classification: "STR-001 Стена несущая", count: 3, total: 5 },
+                  { classification: "STR-002 Стена ненесущая", count: 2, total: 5 }
+                ],
+                options: ["STR-001 Стена несущая", "STR-002 Стена ненесущая", "STR-003 Перегородка"]
+              });
+            }
+          });
+        }
 
     /**
      * Назначает единую классификацию всем выделенным элементам.
@@ -253,7 +244,6 @@ const ACBridge = (function () {
           return new Promise(function (resolve) {
             try {
               if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetClassification) {
-                console.log("ACAPI.SetClassification exists, calling with:", classificationValue);
                 var result = window.ACAPI.SetClassification([classificationValue]);
                 // Bug 5 fix: handle both Promise and sync return
                 var handleResult = function(data) {
@@ -262,18 +252,15 @@ const ACBridge = (function () {
                 };
                 if (result && typeof result.then === 'function') {
                   result.then(handleResult).catch(function(err) {
-                    console.error("ACAPI.SetClassification rejected:", err);
                     resolve({ success: false });
                   });
                 } else {
                   handleResult(result);
                 }
               } else {
-                console.warn("window.ACAPI.SetClassification not available");
                 resolve({ success: false });
               }
             } catch (e) {
-              console.error("ACAPI.SetClassification error:", e);
               resolve({ success: false });
             }
           });
@@ -304,12 +291,9 @@ const ACBridge = (function () {
    * @returns {Promise<{elements:Array, count:number}>}
    */
     function getPropertiesList(filterText) {
-    console.log("getPropertiesList called, filter:", filterText);
     try {
       if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetPropertiesList) {
-        console.log("ACAPI.GetPropertiesList exists, calling...");
         return window.ACAPI.GetPropertiesList().then(function (result) {
-          console.log("ACAPI.GetPropertiesList returned:", result);
           // Parse JSON string if needed (pull-pattern returns string)
           var data = typeof result === 'string' ? JSON.parse(result) : result;
           // Aggregate properties across ALL selected elements
@@ -378,11 +362,9 @@ const ACBridge = (function () {
           }
           return [];
         });
-      } else {
-        console.warn("window.ACAPI.GetPropertiesList not available");
       }
     } catch (e) {
-      console.error("ACAPI.GetPropertiesList error:", e);
+      // Мост недоступен — fallback к моку ниже (консоль в ArchiCAD не просматривается)
     }
     // Fallback to mock
     return delay(90).then(function () {
@@ -643,9 +625,7 @@ function refreshSelectionInfoText(count) {
 // Теперь просто вызывает C++ функцию, которая сама обновит UI через ExecuteJS
 // Переключение режима автообновления
 function toggleAutoRefresh() {
-  console.log("toggleAutoRefresh called, current state:", STATE.autoRefresh);
   STATE.autoRefresh = !STATE.autoRefresh;
-  console.log("toggleAutoRefresh new state after toggle:", STATE.autoRefresh);
   var btn = document.getElementById("auto-refresh-toggle");
   if (btn) {
     if (STATE.autoRefresh) {
@@ -660,10 +640,7 @@ function toggleAutoRefresh() {
   }
   // Сообщаем C++ о смене флага
   if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetCatchSelectionChanges) {
-    console.log("Calling SetCatchSelectionChanges with:", STATE.autoRefresh);
     window.ACAPI.SetCatchSelectionChanges(STATE.autoRefresh);
-  } else {
-    console.log("ACAPI.SetCatchSelectionChanges not available");
   }
   // При включении сразу обновляем интерфейс
   if (STATE.autoRefresh && typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
@@ -710,8 +687,6 @@ function renderMonitorTab(container) {
             var setterName = "SetLimit" + val;
             if (typeof window.ACAPI !== 'undefined' && window.ACAPI[setterName]) {
               window.ACAPI[setterName]();
-            } else {
-              console.warn("ACAPI." + setterName + " not available");
             }
             if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
               window.ACAPI.RefreshSelectionInfoUI();
@@ -801,40 +776,11 @@ function renderMonitorTab(container) {
 }
 
 function renderClassificationBlock(block) {
-  console.log("[HTML] renderClassificationBlock called");
   clear(block);
   block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
 
   ACBridge.getClassification().then(function (data) {
-      console.log("[HTML] renderClassificationBlock: received data =", JSON.stringify(data, null, 2));
       clear(block);
-
-      // ВРЕМЕННЫЙ DEBUG — показывает window.ACAPI состояние
-      const debugACAPI = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:var(--ac-bg-elevated);border-radius:0.25rem;border:1px solid var(--ac-border);" }, [
-        h("summary", { text: "DEBUG: window.ACAPI state", style: "cursor:pointer;font-size:0.7rem;color:var(--ac-text-secondary);" }),
-        h("pre", { text: JSON.stringify({
-            hasACAPI: typeof window.ACAPI !== 'undefined',
-            ACAPIKeys: window.ACAPI ? Object.keys(window.ACAPI) : [],
-            hasGetClassification: window.ACAPI && typeof window.ACAPI.GetClassification === 'function'
-          }, null, 2), style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--ac-text-primary);" })
-      ]);
-      block.appendChild(debugACAPI);
-
-      // ВРЕМЕННЫЙ DEBUG — показывает сырые данные
-            const debugRaw = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:var(--ac-bg-elevated);border-radius:0.25rem;border:1px solid var(--ac-border);" }, [
-              h("summary", { text: "DEBUG: Raw data from C++", style: "cursor:pointer;font-size:0.7rem;color:var(--ac-text-secondary);" }),
-              h("pre", { text: JSON.stringify(data, null, 2), style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--ac-text-primary);" })
-            ]);
-            block.appendChild(debugRaw);
-
-            // DEBUG: сырая строка от C++
-            if (data._raw) {
-              const debugRawStr = h("details", { style: "margin-bottom:0.5rem;padding:0.3rem;background:var(--ac-bg-elevated);border-radius:0.25rem;border:1px solid var(--ac-border);" }, [
-                h("summary", { text: "DEBUG: Raw string from C++", style: "cursor:pointer;font-size:0.7rem;color:var(--ac-text-secondary);" }),
-                h("pre", { text: data._raw, style: "font-size:0.65rem;white-space:pre-wrap;max-height:200px;overflow:auto;color:var(--ac-text-primary);" })
-              ]);
-              block.appendChild(debugRawStr);
-            }
 
       block.appendChild(h("div", {
           text: "Классификация",
@@ -857,7 +803,6 @@ function renderClassificationBlock(block) {
 
     // Если классификация общая для всех — показываем только дерево, без "РАЗНАЯ"
     if (data.common) {
-      console.log("[HTML] renderClassificationBlock: data.common is true, showing only tree");
       return;
     }
 
@@ -873,7 +818,6 @@ function renderClassificationBlock(block) {
 
     const diffList = h("div", { style: "margin-top:0.3rem;display:flex;flex-direction:column;gap:0.15rem;padding-left:0.9rem;" });
         data.differing.forEach(function (d) {
-          console.log("[HTML] renderClassificationBlock: processing differing item =", d);
           // C++ возвращает {classification, count, total}
           var val = d.classification || "";
           var cnt = d.count || 0;
