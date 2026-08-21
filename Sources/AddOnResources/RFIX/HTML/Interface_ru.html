@@ -705,8 +705,13 @@ function renderMonitorTab(container) {
         on: {
           change: function () {
             var val = parseInt(this.value, 10);
-            if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetMaxSelectionCount) {
-              window.ACAPI.SetMaxSelectionCount(val);
+            // Вызов моста БЕЗ аргументов: SetLimit10/SetLimit50/... — передача
+            // аргументов через RegisterAsynchJSObject роняет CEF-мост
+            var setterName = "SetLimit" + val;
+            if (typeof window.ACAPI !== 'undefined' && window.ACAPI[setterName]) {
+              window.ACAPI[setterName]();
+            } else {
+              console.warn("ACAPI." + setterName + " not available");
             }
             if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
               window.ACAPI.RefreshSelectionInfoUI();

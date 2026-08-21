@@ -464,25 +464,27 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     }));
 
     // Задание ограничения количества отображаемых элементов из HTML (≤ select).
-    // ВАЖНО: возвращаем DG::JSValue (не nullptr) — nullptr из JSFunction роняет CEF-мост.
-    jsACAPI->AddItem (
-        new DG::JSFunction ("SetMaxSelectionCount", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-            UInt32 value = 0; // 0 = без ограничения
-            if (args != nullptr) {
-                GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
-                if (argsArray != nullptr && argsArray->GetItemArray ().GetSize () >= 1) {
-                    GS::Ref<DG::JSValue> val = GS::DynamicCast<DG::JSValue> (argsArray->GetItemArray ()[0]);
-                    if (val != nullptr && val->GetType () == DG::JSValue::UINTEGER) {
-                        value = val->GetUInteger ();
-                    } else if (val != nullptr) {
-                        value = (UInt32)val->GetInteger ();
-                    }
+    // ВАЖНО: функции БЕЗ аргументов — передача аргументов через RegisterAsynchJSObject
+    // роняет CEF-мост (краш до входа в лямбду). Набор опций селекта фиксирован,
+    // поэтому регистрируем по одной функции на каждое значение.
+    auto addLimitSetter = [this, &jsACAPI] (UInt32 limit) {
+        const GS::UniString name = GS::UniString ("SetLimit") + GS::ValueToUniString ((Int32)limit);
+        jsACAPI->AddItem (
+            new DG::JSFunction (name.ToCStr ().Get (), [this, limit] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+                try {
+                    maxSelectionCount = limit;
+                    DBprnt ("SetLimit: max selection count set to " + GS::ValueToUniString (limit));
+                } catch (...) {
+                    DBprnt ("SetLimit: exception for limit " + GS::ValueToUniString (limit));
                 }
-            }
-            maxSelectionCount = value;
-            DBprnt ("SetMaxSelectionCount: limit set to " + GS::ValueToUniString (value));
-            return GS::Ref<DG::JSBase> (new DG::JSValue (true));
-        }));
+                return GS::Ref<DG::JSBase> (new DG::JSValue (true));
+            }));
+    };
+    addLimitSetter (10);
+    addLimitSetter (50);
+    addLimitSetter (100);
+    addLimitSetter (200);
+    addLimitSetter (1000);
 
     // Включение/выключение автообновления при смене выделения
     jsACAPI->AddItem (
