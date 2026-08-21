@@ -155,9 +155,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
     // Регистрируем функцию для получения свойств выделенных элементов (возвращает JSON-строку для обхода ограничений
     // pull-паттерна)
-    jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+    jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [this] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
         // Собираем данные свойств
         GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+        // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
+        selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
 
         // Формируем JSON строку вручную
         GS::UniString jsonStr = "{ \"elements\": [";
@@ -288,7 +290,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     }));
 
     // Регистрируем функцию для получения значения свойства для выделенных элементов
-    jsACAPI->AddItem (new DG::JSFunction ("GetPropertyValue", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+    jsACAPI->AddItem (new DG::JSFunction ("GetPropertyValue", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
         if (args == nullptr) {
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
             errorObj->AddItem ("status", new DG::JSValue ("error"));
@@ -324,6 +326,8 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
         // Inline implementation (like GetPropertiesList)
         GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+        // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
+        selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
 
         GS::UniString jsonStr = "{ \"values\": [";
 
@@ -398,9 +402,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     }));
 
     // Регистрируем функцию для получения количества выделенных элементов
-    jsACAPI->AddItem (new DG::JSFunction ("GetSelectionInfo", [] (GS::Ref<DG::JSBase>) {
+    jsACAPI->AddItem (new DG::JSFunction ("GetSelectionInfo", [this] (GS::Ref<DG::JSBase>) {
         DBprnt ("GetSelectionInfo: function called from JS");
         GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+        // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
+        selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
         Int32 count = (Int32)selectedElements.GetSize ();
         DBprnt ("GetSelectionInfo: GetSelectedElements2 returned " + GS::ValueToUniString (count) + " elements");
         GS::Ref<DG::JSObject> result = new DG::JSObject ();
@@ -408,6 +414,26 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         DBprnt ("GetSelectionInfo: returning count=" + GS::ValueToUniString (count));
         return result;
     }));
+
+    // Задание ограничения количества отображаемых элементов из HTML (≤ select)
+    jsACAPI->AddItem (
+        new DG::JSFunction ("SetMaxSelectionCount", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+            UInt32 value = 0; // 0 = без ограничения
+            if (args != nullptr) {
+                GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
+                if (argsArray != nullptr && argsArray->GetItemArray ().GetSize () >= 1) {
+                    GS::Ref<DG::JSValue> val = GS::DynamicCast<DG::JSValue> (argsArray->GetItemArray ()[0]);
+                    if (val != nullptr && val->GetType () == DG::JSValue::UINTEGER) {
+                        value = val->GetUInteger ();
+                    } else if (val != nullptr) {
+                        value = (UInt32)val->GetInteger ();
+                    }
+                }
+            }
+            maxSelectionCount = value;
+            DBprnt ("SetMaxSelectionCount: limit set to " + GS::ValueToUniString (value));
+            return GS::Ref<DG::JSBase> (nullptr);
+        }));
 
     // Отладочная функция — проверяет, что JS-мост работает
     jsACAPI->AddItem (new DG::JSFunction ("Ping", [] (GS::Ref<DG::JSBase>) {
@@ -605,11 +631,13 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     }));
 
     // Регистрируем функцию для получения классификации выделенных элементов (inline implementation)
-    jsACAPI->AddItem (new DG::JSFunction ("GetClassification", [] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+    jsACAPI->AddItem (new DG::JSFunction ("GetClassification", [this] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
         try {
             DBprnt ("GetClassification: [1] function called from JS");
 
             GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+            // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
+            selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
             DBprnt (GS::UniString::Printf ("GetClassification: [2] selectedElements count = %d",
                                            selectedElements.GetSize ()));
 
@@ -818,45 +846,48 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             }
 
             // Формируем JS результат (возвращаем JSON-строку, как делает GetPropertiesList)
-                        GS::UniString jsonStr = "{";
+            GS::UniString jsonStr = "{";
 
-                        jsonStr += "\"common\": " + GS::UniString (isCommon ? "true" : "false") + ",";
+            jsonStr += "\"common\": " + GS::UniString (isCommon ? "true" : "false") + ",";
 
-                        jsonStr += "\"commonPath\": [";
-                        for (UIndex i = 0; i < commonPathSegments.GetSize (); ++i) {
-                            if (i > 0) jsonStr += ",";
-                            jsonStr += "\"" + commonPathSegments[i] + "\"";
-                        }
-                        jsonStr += "],";
+            jsonStr += "\"commonPath\": [";
+            for (UIndex i = 0; i < commonPathSegments.GetSize (); ++i) {
+                if (i > 0)
+                    jsonStr += ",";
+                jsonStr += "\"" + commonPathSegments[i] + "\"";
+            }
+            jsonStr += "],";
 
-                        jsonStr += "\"differing\": [";
-                        for (UIndex i = 0; i < differing.GetSize (); ++i) {
-                            if (i > 0) jsonStr += ",";
-                            jsonStr += "{";
-                            GS::UniString classification;
-                            Int32 count, total;
-                            differing[i].Get ("classification", classification);
-                            differing[i].Get ("count", count);
-                            differing[i].Get ("total", total);
-                            jsonStr += "\"classification\": \"" + classification + "\",";
-                            jsonStr += "\"count\": " + GS::ValueToUniString (count) + ",";
-                            jsonStr += "\"total\": " + GS::ValueToUniString (total);
-                            jsonStr += "}";
-                        }
-                        jsonStr += "],";
+            jsonStr += "\"differing\": [";
+            for (UIndex i = 0; i < differing.GetSize (); ++i) {
+                if (i > 0)
+                    jsonStr += ",";
+                jsonStr += "{";
+                GS::UniString classification;
+                Int32 count, total;
+                differing[i].Get ("classification", classification);
+                differing[i].Get ("count", count);
+                differing[i].Get ("total", total);
+                jsonStr += "\"classification\": \"" + classification + "\",";
+                jsonStr += "\"count\": " + GS::ValueToUniString (count) + ",";
+                jsonStr += "\"total\": " + GS::ValueToUniString (total);
+                jsonStr += "}";
+            }
+            jsonStr += "],";
 
-                        jsonStr += "\"options\": [";
-                        for (UIndex i = 0; i < options.GetSize (); ++i) {
-                            if (i > 0) jsonStr += ",";
-                            jsonStr += "\"" + options[i] + "\"";
-                        }
-                        jsonStr += "],";
+            jsonStr += "\"options\": [";
+            for (UIndex i = 0; i < options.GetSize (); ++i) {
+                if (i > 0)
+                    jsonStr += ",";
+                jsonStr += "\"" + options[i] + "\"";
+            }
+            jsonStr += "],";
 
-                        jsonStr += "\"status\": \"ok\"";
-                        jsonStr += "}";
+            jsonStr += "\"status\": \"ok\"";
+            jsonStr += "}";
 
-                        DBprnt ("GetClassification: returning JSON: " + jsonStr);
-                        return new DG::JSValue (jsonStr);
+            DBprnt ("GetClassification: returning JSON: " + jsonStr);
+            return new DG::JSValue (jsonStr);
         } catch (const std::exception &e) {
             DBprnt (GS::UniString ("GetClassification: std::exception: ") + e.what ());
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
@@ -886,164 +917,167 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     }));
 
     // Регистрируем функцию для назначения классификации выделенным элементам (inline implementation)
-    jsACAPI->AddItem (new DG::JSFunction ("SetClassification", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-        try {
-            if (args == nullptr) {
-                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                errorObj->AddItem ("success", new DG::JSValue (false));
-                errorObj->AddItem ("message",
-                                   new DG::JSValue ("Invalid arguments: expected array with classificationValue"));
-                return errorObj;
-            }
+    jsACAPI->AddItem (
+        new DG::JSFunction ("SetClassification", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+            try {
+                if (args == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message",
+                                       new DG::JSValue ("Invalid arguments: expected array with classificationValue"));
+                    return errorObj;
+                }
 
-            GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
-            if (argsArray == nullptr) {
-                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                errorObj->AddItem ("success", new DG::JSValue (false));
-                errorObj->AddItem ("message", new DG::JSValue ("First argument must be an array"));
-                return errorObj;
-            }
+                GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
+                if (argsArray == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("First argument must be an array"));
+                    return errorObj;
+                }
 
-            const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
-            if (argsItems.GetSize () < 1) {
-                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                errorObj->AddItem ("success", new DG::JSValue (false));
-                errorObj->AddItem ("message", new DG::JSValue ("Expected classificationValue as first argument"));
-                return errorObj;
-            }
+                const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
+                if (argsItems.GetSize () < 1) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("Expected classificationValue as first argument"));
+                    return errorObj;
+                }
 
-            GS::Ref<DG::JSValue> classificationValueVal = GS::DynamicCast<DG::JSValue> (argsItems[0]);
-            if (classificationValueVal == nullptr) {
-                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                errorObj->AddItem ("success", new DG::JSValue (false));
-                errorObj->AddItem ("message", new DG::JSValue ("classificationValue must be a string"));
-                return errorObj;
-            }
+                GS::Ref<DG::JSValue> classificationValueVal = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+                if (classificationValueVal == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("classificationValue must be a string"));
+                    return errorObj;
+                }
 
-            GS::UniString classificationValue = classificationValueVal->GetString ();
-            DBprnt ("SetClassification: called with classificationValue=" + classificationValue);
+                GS::UniString classificationValue = classificationValueVal->GetString ();
+                DBprnt ("SetClassification: called with classificationValue=" + classificationValue);
 
-            // Получаем GUID-ы выделенных элементов
-            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+                // Получаем GUID-ы выделенных элементов
+                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+                // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
+                selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
 
-            if (selectedElements.IsEmpty ()) {
-                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                errorObj->AddItem ("success", new DG::JSValue (false));
-                errorObj->AddItem ("message", new DG::JSValue ("No elements selected"));
-                return errorObj;
-            }
+                if (selectedElements.IsEmpty ()) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("No elements selected"));
+                    return errorObj;
+                }
 
-            // Убедимся, что классификации загружены в кэш
-            if (!ClassificationFunc::ReadSystemDict ()) {
-                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                errorObj->AddItem ("success", new DG::JSValue (false));
-                errorObj->AddItem ("message", new DG::JSValue ("Failed to load classification systems"));
-                return errorObj;
-            }
+                // Убедимся, что классификации загружены в кэш
+                if (!ClassificationFunc::ReadSystemDict ()) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("Failed to load classification systems"));
+                    return errorObj;
+                }
 
-            auto &cache = PROPERTYCACHE ();
+                auto &cache = PROPERTYCACHE ();
 
-            // Ищем класс по полному имени во всех системах
-            API_Guid targetSystemGuid = APINULLGuid;
-            API_Guid targetItemGuid = APINULLGuid;
-            bool found = false;
+                // Ищем класс по полному имени во всех системах
+                API_Guid targetSystemGuid = APINULLGuid;
+                API_Guid targetItemGuid = APINULLGuid;
+                bool found = false;
 
-            for (const auto &sysPair : cache.systemdict) {
-                const ClassificationFunc::ClassificationDict *classDict = sysPair.value;
-                for (const auto &classPair : *classDict) {
-                    const ClassificationFunc::ClassificationValues *cv = classPair.value;
-                    GS::UniString fullName;
-                    ClassificationFunc::GetFullName (cv->item, *classDict, fullName);
-                    if (fullName == classificationValue) {
-                        targetSystemGuid = cv->system.guid;
-                        targetItemGuid = cv->item.guid;
-                        found = true;
+                for (const auto &sysPair : cache.systemdict) {
+                    const ClassificationFunc::ClassificationDict *classDict = sysPair.value;
+                    for (const auto &classPair : *classDict) {
+                        const ClassificationFunc::ClassificationValues *cv = classPair.value;
+                        GS::UniString fullName;
+                        ClassificationFunc::GetFullName (cv->item, *classDict, fullName);
+                        if (fullName == classificationValue) {
+                            targetSystemGuid = cv->system.guid;
+                            targetItemGuid = cv->item.guid;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found)
                         break;
+                }
+
+                if (!found) {
+                    // Попробуем найти по GUID, если передан в формате "systemGuid:itemGuid"
+                    GS::Array<GS::UniString> parts;
+                    classificationValue.Split (":", &parts);
+                    if (parts.GetSize () == 2) {
+                        targetSystemGuid = APIGuidFromString (parts[0].ToCStr ().Get ());
+                        targetItemGuid = APIGuidFromString (parts[1].ToCStr ().Get ());
+                        if (targetSystemGuid != APINULLGuid && targetItemGuid != APINULLGuid) {
+                            found = true;
+                        }
                     }
                 }
-                if (found)
-                    break;
-            }
 
-            if (!found) {
-                // Попробуем найти по GUID, если передан в формате "systemGuid:itemGuid"
-                GS::Array<GS::UniString> parts;
-                classificationValue.Split (":", &parts);
-                if (parts.GetSize () == 2) {
-                    targetSystemGuid = APIGuidFromString (parts[0].ToCStr ().Get ());
-                    targetItemGuid = APIGuidFromString (parts[1].ToCStr ().Get ());
-                    if (targetSystemGuid != APINULLGuid && targetItemGuid != APINULLGuid) {
-                        found = true;
+                if (!found) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message",
+                                       new DG::JSValue (GS::UniString ("Classification not found: ") +
+                                                        classificationValue.ToCStr ().Get ()));
+                    return errorObj;
+                }
+
+                // Назначаем классификацию каждому выделенному элементу
+                Int32 successCount = 0;
+                Int32 errorCount = 0;
+
+                for (const API_Guid &elemGuid : selectedElements) {
+                    // Сначала проверяем, есть ли уже эта классификация у элемента
+                    GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
+                    GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
+                    if (err != NoError) {
+                        // Если ошибка при чтении, пробуем просто добавить
+                    }
+
+                    bool alreadyHas = false;
+                    for (const auto &pair : systemItemPairs) {
+                        if (pair.first == targetSystemGuid && pair.second == targetItemGuid) {
+                            alreadyHas = true;
+                            break;
+                        }
+                    }
+
+                    if (alreadyHas) {
+                        successCount++;
+                        continue;
+                    }
+
+                    // Добавляем классификацию
+                    err = ACAPI_Element_AddClassificationItem (elemGuid, targetItemGuid);
+                    if (err == NoError) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                        msg_rep ("SetClassificationCommand", "ACAPI_Element_AddClassificationItem", err, elemGuid);
                     }
                 }
-            }
 
-            if (!found) {
+                GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
+                jsResult->AddItem ("success", new DG::JSValue (errorCount == 0));
+                jsResult->AddItem ("successCount", new DG::JSValue (successCount));
+                jsResult->AddItem ("errorCount", new DG::JSValue (errorCount));
+                jsResult->AddItem ("status", new DG::JSValue (errorCount == 0 ? "ok" : "partial"));
+
+                DBprnt ("SetClassification: returning result");
+                return jsResult;
+            } catch (const std::exception &e) {
+                DBprnt (GS::UniString ("SetClassification: std::exception: ") + e.what ());
                 GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
                 errorObj->AddItem ("success", new DG::JSValue (false));
-                errorObj->AddItem ("message",
-                                   new DG::JSValue (GS::UniString ("Classification not found: ") +
-                                                    classificationValue.ToCStr ().Get ()));
+                errorObj->AddItem ("message", new DG::JSValue (e.what ()));
+                return errorObj;
+            } catch (...) {
+                DBprnt ("SetClassification: unknown exception caught");
+                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                errorObj->AddItem ("success", new DG::JSValue (false));
+                errorObj->AddItem ("message", new DG::JSValue ("Unknown error"));
                 return errorObj;
             }
-
-            // Назначаем классификацию каждому выделенному элементу
-            Int32 successCount = 0;
-            Int32 errorCount = 0;
-
-            for (const API_Guid &elemGuid : selectedElements) {
-                // Сначала проверяем, есть ли уже эта классификация у элемента
-                GS::Array<GS::Pair<API_Guid, API_Guid>> systemItemPairs;
-                GSErrCode err = ACAPI_Element_GetClassificationItems (elemGuid, systemItemPairs);
-                if (err != NoError) {
-                    // Если ошибка при чтении, пробуем просто добавить
-                }
-
-                bool alreadyHas = false;
-                for (const auto &pair : systemItemPairs) {
-                    if (pair.first == targetSystemGuid && pair.second == targetItemGuid) {
-                        alreadyHas = true;
-                        break;
-                    }
-                }
-
-                if (alreadyHas) {
-                    successCount++;
-                    continue;
-                }
-
-                // Добавляем классификацию
-                err = ACAPI_Element_AddClassificationItem (elemGuid, targetItemGuid);
-                if (err == NoError) {
-                    successCount++;
-                } else {
-                    errorCount++;
-                    msg_rep ("SetClassificationCommand", "ACAPI_Element_AddClassificationItem", err, elemGuid);
-                }
-            }
-
-            GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
-            jsResult->AddItem ("success", new DG::JSValue (errorCount == 0));
-            jsResult->AddItem ("successCount", new DG::JSValue (successCount));
-            jsResult->AddItem ("errorCount", new DG::JSValue (errorCount));
-            jsResult->AddItem ("status", new DG::JSValue (errorCount == 0 ? "ok" : "partial"));
-
-            DBprnt ("SetClassification: returning result");
-            return jsResult;
-        } catch (const std::exception &e) {
-            DBprnt (GS::UniString ("SetClassification: std::exception: ") + e.what ());
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("success", new DG::JSValue (false));
-            errorObj->AddItem ("message", new DG::JSValue (e.what ()));
-            return errorObj;
-        } catch (...) {
-            DBprnt ("SetClassification: unknown exception caught");
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("success", new DG::JSValue (false));
-            errorObj->AddItem ("message", new DG::JSValue ("Unknown error"));
-            return errorObj;
-        }
-    }));
+        }));
 
     browser.RegisterAsynchJSObject (jsACAPI);
 }

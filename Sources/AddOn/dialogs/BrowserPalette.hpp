@@ -67,6 +67,11 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
 
     static GS::Ref<BrowserPalette> instance;
 
+    // -------------------------------------------------------------------------
+    // Ограничение количества отображаемых элементов (задаётся из HTML, ≤ select).
+    // -------------------------------------------------------------------------
+    UInt32 maxSelectionCount = 10;
+
     BrowserPalette ();
 
   public:

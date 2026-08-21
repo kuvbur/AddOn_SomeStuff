@@ -711,6 +711,15 @@ function renderMonitorTab(container) {
             if (typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {
               window.ACAPI.RefreshSelectionInfoUI();
             }
+            // Перерисовываем список свойств и классификацию с новым лимитом
+            var listBlock = document.getElementById("monitor-list-block");
+            if (listBlock && typeof renderPropertyList === 'function') {
+              renderPropertyList(listBlock, STATE.monitorFilter);
+            }
+            var classifBlock = document.getElementById("monitor-classification-block");
+            if (classifBlock && typeof renderClassificationBlock === 'function') {
+              renderClassificationBlock(classifBlock);
+            }
           }
         }
       }, [
