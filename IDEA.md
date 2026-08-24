@@ -193,11 +193,35 @@
 
 ---
 
-## Last Checkpoint: [fix-catch-selection-noargs] Replace SetCatchSelectionChanges(args) with argument-less Enable/Disable pair (runtime OK)
-## Next Step: Этап 1.5 GetFilterPresets; Hotfix 2026-08-24 завершён (см. ниже), секцию перенести в Archive при следующем обновлении плана
+## Last Checkpoint: 1241122 [fix-jsvalue-args] Parse bridge string args via JSValue; DynamicCast<JSArray> crashed the bridge
+## Next Step: Этап 1.5 GetFilterPresets. Бэклог пожеланий: (1) подсветка+приближение элемента на плане при клике на строку значения свойства (×1 ×2 …) — найти элемент с конкретным значением при множественном выделении; (2) мёртвые ParsePropertyDescription/ParsePropertyForElement — починить (JSValue-парсинг) или удалить
 ## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html; незакоммиченный ReNum.cpp — вне задачи
 
-## Hotfix 2026-08-24: краш при нажатии кнопки отключения автообработки (IN_PROGRESS)
+## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (IN_PROGRESS)
+
+Факт: официальный пример DevKit AC25 (Examples/Browser_Control/Src/BrowserPalette.cpp:110) использует JSFunction СО строковым аргументом — теория «аргументы всегда крашат» не доказана. Проверяем эмпирически.
+
+- [x] Шаг 1: диагностические зонды в мост (v1, v2) + авто-вызов из HTML при старте
+- [x] Шаг 2: runtime-прогон → **корень найден**: аргументы приходят нормально (как одиночный JSValue); крашит именно `GS::DynamicCast<DG::JSArray>` на аргументе (зонд A с кастом к JSValue прошёл, зонд B с кастом к JSArray упал внутри лямбды)
+- [x] Шаг 3: фикс по результатам — обычные сигнатуры со строкой, парсинг через DynamicCast<JSValue>
+- [x] Шаг 4: зонды удалены; GetPropertyValue/SetClassification переписаны на JSValue-парсинг; HTML: SetClassification(строка) без [обёртки]
+- [x] Шаг 5: рантайм-тест пользователя пройден (проверка палитры — ошибок нет) → чекпоинт 1241122 → память/скилл обновлены
+
+## Результаты ревью моста (2026-08-24)
+
+Корень всех крашей серии: `GS::DynamicCast<DG::JSArray>` на аргументе JSFunction ломает CEF-мост. Каст к `JSValue` безопасен (зонд A). Официальный пример DevKit Browser_Control парсит строковый аргумент именно через JSValue.
+
+| # | Находка | Статус |
+|---|---|---|
+| R1 | GetPropertyValue: DynamicCast<JSArray> → латентный краш | ✅ исправлен (JSValue) |
+| R2 | SetClassification: DynamicCast<JSArray> + HTML звал с [массивом] | ✅ исправлен (обе стороны) |
+| R3 | ParsePropertyDescription/ParsePropertyForElement: тот же JSArray-парсинг, НО HTML их не вызывает — мёртвый код | ⏸ не тронут (вне задачи; удалить или починить отдельной задачей) |
+| R4 | Полнота моста: все вызовы HTML зарегистрированы (5 прямых + SetLimit*/Enable-Disable динамические) | ✅ ок |
+| R5 | Возвраты nullptr из лямбд | ✅ не обнаружены |
+| R6 | SetClassification мутирует модель внутри ACAPI_CallUndoableCommand | ✅ ок |
+| R7 | JSON-ответы экранируются EscapeJsonString | ✅ ок |
+
+## Hotfix 2026-08-24: краш при нажатии кнопки отключения автообработки (DONE, коммит 32fc4a8)
 
 - [x] BrowserPalette.cpp: SetCatchSelectionChanges(args) → пара EnableCatchSelectionChanges / DisableCatchSelectionChanges без аргументов (паттерн SetLimit<N>)
 - [x] Interface_ru.html: toggleAutoRefresh вызывает window.ACAPI.Enable/DisableCatchSelectionChanges() без аргументов
