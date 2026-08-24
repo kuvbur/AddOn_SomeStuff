@@ -193,9 +193,9 @@
 
 ---
 
-## Last Checkpoint: a08d06f [fix-restore-suspend-groups] Restore Suspend Groups state after ReNum/Sync writes (438 ok / 0 err)
-## Next Step: Пожелание: подсветка+приближение элемента при клике на строку значения свойства (×1 ×2 …) — сначала LightRAG по выделению/зуму. Затем Этап 1.5 GetFilterPresets / Этап 2 Синхронизация
-## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html; ревью-хвосты P1/P2/P3 закрыты (4ca38e0, 47b06e5, a08d06f)
+## Last Checkpoint: 3fd665d [feat-highlight-elements] Highlight and zoom to elements on value row click (438 ok / 0 err)
+## Next Step: Ручная проверка подсветки/приближения Дмитрием (клик по строке значения ×N). Затем Этап 1.5 GetFilterPresets / Этап 2 Синхронизация (ParseProperty* мост готов)
+## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html
 
 ## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (DONE)
 
