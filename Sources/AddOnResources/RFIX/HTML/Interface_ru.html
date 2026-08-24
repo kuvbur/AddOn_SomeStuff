@@ -244,7 +244,8 @@ const ACBridge = (function () {
           return new Promise(function (resolve) {
             try {
               if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetClassification) {
-                var result = window.ACAPI.SetClassification([classificationValue]);
+                // Строка БЕЗ обёртки в массив — мост передаёт одиночный аргумент как JSValue
+                var result = window.ACAPI.SetClassification(classificationValue);
                 // Bug 5 fix: handle both Promise and sync return
                 var handleResult = function(data) {
                   var parsed = typeof data === 'string' ? JSON.parse(data) : data;

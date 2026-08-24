@@ -322,34 +322,14 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 
     // Регистрируем функцию для получения значения свойства для выделенных элементов
     jsACAPI->AddItem (new DG::JSFunction ("GetPropertyValue", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-        if (args == nullptr) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("status", new DG::JSValue ("error"));
-            errorObj->AddItem ("message", new DG::JSValue ("Invalid arguments: expected array with propertyId"));
-            return errorObj;
-        }
-
-        GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
-        if (argsArray == nullptr) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("status", new DG::JSValue ("error"));
-            errorObj->AddItem ("message", new DG::JSValue ("First argument must be an array"));
-            return errorObj;
-        }
-
-        const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
-        if (argsItems.GetSize () < 1) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("status", new DG::JSValue ("error"));
-            errorObj->AddItem ("message", new DG::JSValue ("Expected propertyId as first argument"));
-            return errorObj;
-        }
-
-        GS::Ref<DG::JSValue> propertyIdVal = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+        // Аргумент приходит как одиночная строка — GUID определения свойства.
+        // ВАЖНО: DynamicCast<JSArray> на аргументе крашит мост (зонды 2026-08-24),
+        // безопасен только каст к JSValue.
+        GS::Ref<DG::JSValue> propertyIdVal = GS::DynamicCast<DG::JSValue> (args);
         if (propertyIdVal == nullptr) {
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
             errorObj->AddItem ("status", new DG::JSValue ("error"));
-            errorObj->AddItem ("message", new DG::JSValue ("propertyId must be a string"));
+            errorObj->AddItem ("message", new DG::JSValue ("Expected propertyId as string argument"));
             return errorObj;
         }
 
@@ -985,35 +965,14 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     jsACAPI->AddItem (
         new DG::JSFunction ("SetClassification", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
             try {
-                if (args == nullptr) {
-                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                    errorObj->AddItem ("success", new DG::JSValue (false));
-                    errorObj->AddItem ("message",
-                                       new DG::JSValue ("Invalid arguments: expected array with classificationValue"));
-                    return errorObj;
-                }
-
-                GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
-                if (argsArray == nullptr) {
-                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                    errorObj->AddItem ("success", new DG::JSValue (false));
-                    errorObj->AddItem ("message", new DG::JSValue ("First argument must be an array"));
-                    return errorObj;
-                }
-
-                const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
-                if (argsItems.GetSize () < 1) {
-                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-                    errorObj->AddItem ("success", new DG::JSValue (false));
-                    errorObj->AddItem ("message", new DG::JSValue ("Expected classificationValue as first argument"));
-                    return errorObj;
-                }
-
-                GS::Ref<DG::JSValue> classificationValueVal = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+                // Аргумент приходит как одиночная строка — полное имя классификации.
+                // ВАЖНО: DynamicCast<JSArray> на аргументе крашит мост (зонды 2026-08-24),
+                // безопасен только каст к JSValue.
+                GS::Ref<DG::JSValue> classificationValueVal = GS::DynamicCast<DG::JSValue> (args);
                 if (classificationValueVal == nullptr) {
                     GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
                     errorObj->AddItem ("success", new DG::JSValue (false));
-                    errorObj->AddItem ("message", new DG::JSValue ("classificationValue must be a string"));
+                    errorObj->AddItem ("message", new DG::JSValue ("Expected classificationValue as string argument"));
                     return errorObj;
                 }
 
