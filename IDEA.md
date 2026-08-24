@@ -193,8 +193,8 @@
 
 ---
 
-## Last Checkpoint: 3fd665d [feat-highlight-elements] Highlight and zoom to elements on value row click (438 ok / 0 err)
-## Next Step: Ручная проверка подсветки/приближения Дмитрием (клик по строке значения ×N). Затем Этап 1.5 GetFilterPresets / Этап 2 Синхронизация (ParseProperty* мост готов)
+## Last Checkpoint: 84664fe [fix-highlight-no-select] Highlight via APIIo_HighlightElementsID, selection untouched (438 ok / 0 err)
+## Next Step: Ручная проверка Дмитрием: клик по строке значения — подсветка цветом + зум, выделение не меняется.
 ## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html
 
 ## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (DONE)
