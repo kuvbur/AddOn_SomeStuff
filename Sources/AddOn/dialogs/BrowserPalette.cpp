@@ -511,40 +511,21 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         return GS::Ref<DG::JSBase> (new DG::JSValue (true));
     }));
 
-    // Регистрируем функцию для парсинга описания свойства
+    // Регистрируем функцию для парсинга описания свойства.
+    // Контракт для будущей вкладки «Синхронизация» (ТЗ интерфейс.md §10):
+    // вход  — строка описания правила;
+    // выход — JSON-строка {ok, hasCommands, remainingText, commands:[...]}.
+    // ВАЖНО: аргумент приходит как одиночный JSValue (DynamicCast<JSArray>
+    // крашит мост), ответ отдаём JSON-строкой — вложенные DG::JSObject/JSArray
+    // CEF теряет при передаче в JS.
     jsACAPI->AddItem (new DG::JSFunction ("ParsePropertyDescription", [] (GS::Ref<DG::JSBase> args) {
-        // args[0] = description string
-        if (args == nullptr) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("Invalid arguments: expected array with description string"));
-            return errorObj;
-        }
-
-        // Проверяем, что args - это JSArray
-        GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
-        if (argsArray == nullptr) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("First argument must be an array"));
-            return errorObj;
-        }
-
-        const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
-        if (argsItems.GetSize () < 1) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("Missing description argument"));
-            return errorObj;
-        }
-
-        // Получаем строку из JSValue
-        GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+        // args = description string
+        GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (args);
         if (descValue == nullptr) {
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
             errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("First argument must be a string"));
-            return errorObj;
+            errorObj->AddItem ("error", new DG::JSValue ("Expected description as string argument"));
+            return GS::Ref<DG::JSBase> (errorObj);
         }
 
         GS::UniString description = descValue->GetString ();
@@ -554,137 +535,143 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         GS::UniString remainingText;
         bool hasCommands = ParsePropertyDescription (description, commands, remainingText);
 
-        // Формируем результат
-        GS::Ref<DG::JSObject> result = new DG::JSObject ();
-        result->AddItem ("ok", new DG::JSValue (true));
-        result->AddItem ("hasCommands", new DG::JSValue (hasCommands));
-        result->AddItem ("remainingText", new DG::JSValue (remainingText.ToCStr ().Get ()));
-
-        GS::Ref<DG::JSArray> commandsArray = new DG::JSArray ();
+        // Формируем JSON-ответ (вложенные объекты не сериализуются через CEF)
+        GS::UniString jsonStr =
+            GS::UniString ("{ \"ok\": true, \"hasCommands\": ") + (hasCommands ? "true" : "false") + ", ";
+        jsonStr += GS::UniString ("\"remainingText\": \"") + EscapeJsonString (remainingText).ToCStr ().Get () +
+                   GS::UniString ("\", ");
+        jsonStr += GS::UniString ("\"commands\": [");
+        bool firstCmd = true;
         for (const auto &cmd : commands) {
-            GS::Ref<DG::JSObject> cmdObj = new DG::JSObject ();
-            cmdObj->AddItem ("commandType", new DG::JSValue (cmd.commandType.ToCStr ().Get ()));
-            cmdObj->AddItem ("fullCommand", new DG::JSValue (cmd.fullCommand.ToCStr ().Get ()));
-            cmdObj->AddItem ("parameters", new DG::JSValue (cmd.parameters.ToCStr ().Get ()));
-            cmdObj->AddItem ("isValid", new DG::JSValue (cmd.isValid));
-            cmdObj->AddItem ("errorMessage", new DG::JSValue (cmd.errorMessage.ToCStr ().Get ()));
-            commandsArray->AddItem (cmdObj);
+            if (!firstCmd)
+                jsonStr += ",";
+            firstCmd = false;
+            jsonStr += GS::UniString ("{\"commandType\":\"") + EscapeJsonString (cmd.commandType).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"fullCommand\":\"") + EscapeJsonString (cmd.fullCommand).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"parameters\":\"") + EscapeJsonString (cmd.parameters).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"isValid\":") + (cmd.isValid ? "true" : "false");
+            jsonStr += GS::UniString (",\"errorMessage\":\"") + EscapeJsonString (cmd.errorMessage).ToCStr ().Get () +
+                       GS::UniString ("\"}");
         }
-        result->AddItem ("commands", commandsArray);
+        jsonStr += "]}";
 
-        return result;
+        return GS::Ref<DG::JSBase> (new DG::JSValue (jsonStr));
     }));
 
-    // Регистрируем функцию для парсинга описания свойства с привязкой к элементу
+    // Регистрируем функцию для парсинга описания свойства с привязкой к элементу.
+    // Контракт для будущей вкладки «Синхронизация» (ТЗ интерфейс.md §10):
+    // вход  — строка описания правила, строка GUID элемента;
+    // выход — JSON-строка {ok, hasSyncRules, hasOtherCommands, remainingText,
+    //         syncRules:[...], otherCommands:[...]}.
+    // ВАЖНО: оба аргумента приходят как одиночные JSValue (DynamicCast<JSArray>
+    // крашит мост), ответ отдаём JSON-строкой — вложенные DG::JSObject/JSArray
+    // CEF теряет при передаче в JS.
+    // Два аргумента передаются из JS одним JSON-массивом: ParsePropertyForElement(
+    // JSON.stringify([description, elemGuid])) и разбираются здесь вручную.
     jsACAPI->AddItem (new DG::JSFunction ("ParsePropertyForElement", [] (GS::Ref<DG::JSBase> args) {
-        // args[0] = description string, args[1] = elemGuid string
-        if (args == nullptr) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error",
-                               new DG::JSValue ("Invalid arguments: expected array with [description, elemGuid]"));
-            return errorObj;
-        }
-
-        // Проверяем, что args - это JSArray
-        GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
-        if (argsArray == nullptr) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("First argument must be an array"));
-            return errorObj;
-        }
-
-        const GS::Array<GS::Ref<DG::JSBase>> &argsItems = argsArray->GetItemArray ();
-        if (argsItems.GetSize () < 2) {
-            GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
-            errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("Missing arguments: expected [description, elemGuid]"));
-            return errorObj;
-        }
-
-        // Получаем строку описания
-        GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (argsItems[0]);
+        GS::Ref<DG::JSValue> descValue = GS::DynamicCast<DG::JSValue> (args);
         if (descValue == nullptr) {
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
             errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("First argument must be a string (description)"));
-            return errorObj;
+            errorObj->AddItem ("error", new DG::JSValue ("Expected string argument with JSON payload"));
+            return GS::Ref<DG::JSBase> (errorObj);
         }
-
-        // Получаем GUID элемента
-        GS::Ref<DG::JSValue> guidValue = GS::DynamicCast<DG::JSValue> (argsItems[1]);
-        if (guidValue == nullptr) {
+        // payload = JSON.stringify([description, elemGuid]) — разбираем без JSON-парсера:
+        // строка имеет вид ["<desc>","<guid>"]; извлекаем содержимое между кавычками.
+        const GS::UniString payload = descValue->GetString ();
+        const USize q1 = payload.FindFirst ('"');
+        const USize q2 = (q1 == MaxUSize) ? MaxUSize : payload.FindFirst ('"', q1 + 1);
+        const USize q3 = (q2 == MaxUSize) ? MaxUSize : payload.FindFirst ('"', q2 + 1);
+        const USize q4 = (q3 == MaxUSize) ? MaxUSize : payload.FindFirst ('"', q3 + 1);
+        if (q1 == MaxUSize || q2 == MaxUSize || q3 == MaxUSize || q4 == MaxUSize) {
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
             errorObj->AddItem ("ok", new DG::JSValue (false));
-            errorObj->AddItem ("error", new DG::JSValue ("Second argument must be a string (elemGuid)"));
-            return errorObj;
+            errorObj->AddItem ("error", new DG::JSValue ("Payload must be a JSON array [description, elemGuid]"));
+            return GS::Ref<DG::JSBase> (errorObj);
         }
+        GS::UniString description = payload.GetSubstring (q1 + 1, q2 - q1 - 1);
+        GS::UniString elemGuidStr = payload.GetSubstring (q3 + 1, q4 - q3 - 1);
 
-        GS::UniString description = descValue->GetString ();
-        GS::UniString elemGuidStr = guidValue->GetString ();
         API_Guid elemGuid = APIGuidFromString (elemGuidStr.ToCStr (0, MaxUSize, GChCode));
 
         if (elemGuid == APINULLGuid) {
             GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
             errorObj->AddItem ("ok", new DG::JSValue (false));
             errorObj->AddItem ("error", new DG::JSValue ("Invalid GUID format"));
-            return errorObj;
+            return GS::Ref<DG::JSBase> (errorObj);
         }
 
-        // Парсим описание через новую функцию
+        // Парсим описание через существующую функцию
         ParsePropertyResult parseResult = ParsePropertyDescriptionToRules (description);
 
-        // Формируем результат
-        GS::Ref<DG::JSObject> result = new DG::JSObject ();
-        result->AddItem ("ok", new DG::JSValue (true));
-        result->AddItem ("hasSyncRules", new DG::JSValue (parseResult.hasSyncRules));
-        result->AddItem ("hasOtherCommands", new DG::JSValue (parseResult.hasOtherCommands));
-        result->AddItem ("remainingText", new DG::JSValue (parseResult.remainingText.ToCStr ().Get ()));
-
-        // syncRules массив
-        GS::Ref<DG::JSArray> syncRulesArray = new DG::JSArray ();
+        // Формируем JSON-ответ (вложенные объекты не сериализуются через CEF)
+        GS::UniString jsonStr =
+            GS::UniString ("{ \"ok\": true, \"hasSyncRules\": ") + (parseResult.hasSyncRules ? "true" : "false") +
+            GS::UniString (", \"hasOtherCommands\": ") + (parseResult.hasOtherCommands ? "true" : "false") + ", ";
+        jsonStr += GS::UniString ("\"remainingText\": \"") +
+                   EscapeJsonString (parseResult.remainingText).ToCStr ().Get () + GS::UniString ("\", ");
+        jsonStr += "\"syncRules\": [";
+        bool firstRule = true;
         for (const auto &rule : parseResult.syncRules) {
-            GS::Ref<DG::JSObject> ruleObj = new DG::JSObject ();
-            ruleObj->AddItem ("commandType", new DG::JSValue (rule.commandType.ToCStr ().Get ()));
-            ruleObj->AddItem ("fullCommand", new DG::JSValue (rule.fullCommand.ToCStr ().Get ()));
-            ruleObj->AddItem ("parameters", new DG::JSValue (rule.parameters.ToCStr ().Get ()));
-            ruleObj->AddItem ("sourceType", new DG::JSValue (rule.sourceType.ToCStr ().Get ()));
-            ruleObj->AddItem ("sourceName", new DG::JSValue (rule.sourceName.ToCStr ().Get ()));
-            ruleObj->AddItem ("targetType", new DG::JSValue (rule.targetType.ToCStr ().Get ()));
-            ruleObj->AddItem ("targetName", new DG::JSValue (rule.targetName.ToCStr ().Get ()));
-            ruleObj->AddItem ("formatString", new DG::JSValue (rule.formatString.ToCStr ().Get ()));
-            ruleObj->AddItem ("isValid", new DG::JSValue (rule.isValid));
-            ruleObj->AddItem ("errorMessage", new DG::JSValue (rule.errorMessage.ToCStr ().Get ()));
-            ruleObj->AddItem ("hasSub", new DG::JSValue (rule.hasSub));
-            ruleObj->AddItem ("hasGUID", new DG::JSValue (rule.hasGUID));
-            ruleObj->AddItem ("guidSourceProperty", new DG::JSValue (rule.guidSourceProperty.ToCStr ().Get ()));
-
-            // ignoreVals
-            GS::Ref<DG::JSArray> ignoreValsArray = new DG::JSArray ();
+            if (!firstRule)
+                jsonStr += ",";
+            firstRule = false;
+            jsonStr += GS::UniString ("{\"commandType\":\"") + EscapeJsonString (rule.commandType).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"fullCommand\":\"") + EscapeJsonString (rule.fullCommand).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"parameters\":\"") + EscapeJsonString (rule.parameters).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"sourceType\":\"") + EscapeJsonString (rule.sourceType).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"sourceName\":\"") + EscapeJsonString (rule.sourceName).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"targetType\":\"") + EscapeJsonString (rule.targetType).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"targetName\":\"") + EscapeJsonString (rule.targetName).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"formatString\":\"") + EscapeJsonString (rule.formatString).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"isValid\":") + (rule.isValid ? "true" : "false");
+            jsonStr += GS::UniString (",\"errorMessage\":\"") + EscapeJsonString (rule.errorMessage).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"hasSub\":") + (rule.hasSub ? "true" : "false");
+            jsonStr += GS::UniString (",\"hasGUID\":") + (rule.hasGUID ? "true" : "false");
+            jsonStr += GS::UniString (",\"guidSourceProperty\":\"") +
+                       EscapeJsonString (rule.guidSourceProperty).ToCStr ().Get () + GS::UniString ("\"");
+            jsonStr += ",\"ignoreVals\":[";
+            bool firstIv = true;
             for (const auto &iv : rule.ignoreVals) {
-                ignoreValsArray->AddItem (new DG::JSValue (iv.ToCStr ().Get ()));
+                if (!firstIv)
+                    jsonStr += ",";
+                firstIv = false;
+                jsonStr += GS::UniString ("\"") + EscapeJsonString (iv).ToCStr ().Get () + GS::UniString ("\"");
             }
-            ruleObj->AddItem ("ignoreVals", ignoreValsArray);
-
-            syncRulesArray->AddItem (ruleObj);
+            jsonStr += "}";
         }
-        result->AddItem ("syncRules", syncRulesArray);
-
-        // otherCommands массив
-        GS::Ref<DG::JSArray> otherCommandsArray = new DG::JSArray ();
+        jsonStr += "], ";
+        jsonStr += "\"otherCommands\": [";
+        bool firstOc = true;
         for (const auto &cmd : parseResult.otherCommands) {
-            GS::Ref<DG::JSObject> cmdObj = new DG::JSObject ();
-            cmdObj->AddItem ("commandType", new DG::JSValue (cmd.commandType.ToCStr ().Get ()));
-            cmdObj->AddItem ("fullCommand", new DG::JSValue (cmd.fullCommand.ToCStr ().Get ()));
-            cmdObj->AddItem ("parameters", new DG::JSValue (cmd.parameters.ToCStr ().Get ()));
-            cmdObj->AddItem ("isValid", new DG::JSValue (cmd.isValid));
-            cmdObj->AddItem ("errorMessage", new DG::JSValue (cmd.errorMessage.ToCStr ().Get ()));
-            otherCommandsArray->AddItem (cmdObj);
+            if (!firstOc)
+                jsonStr += ",";
+            firstOc = false;
+            jsonStr += GS::UniString ("{\"commandType\":\"") + EscapeJsonString (cmd.commandType).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"fullCommand\":\"") + EscapeJsonString (cmd.fullCommand).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"parameters\":\"") + EscapeJsonString (cmd.parameters).ToCStr ().Get () +
+                       GS::UniString ("\"");
+            jsonStr += GS::UniString (",\"isValid\":") + (cmd.isValid ? "true" : "false");
+            jsonStr += GS::UniString (",\"errorMessage\":\"") + EscapeJsonString (cmd.errorMessage).ToCStr ().Get () +
+                       GS::UniString ("\"}");
         }
-        result->AddItem ("otherCommands", otherCommandsArray);
+        jsonStr += "]}";
 
-        return result;
+        return GS::Ref<DG::JSBase> (new DG::JSValue (jsonStr));
     }));
 
     // Регистрируем функцию для получения классификации выделенных элементов (inline implementation)
