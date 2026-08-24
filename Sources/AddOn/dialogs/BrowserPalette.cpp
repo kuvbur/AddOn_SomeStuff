@@ -429,11 +429,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         return new DG::JSValue (jsonStr);
     }));
 
-    // Подсветка (выделение) и приближение элементов из HTML.
+    // Подсветка и приближение элементов из HTML БЕЗ смены выделения
+    // (паттерн Spec.cpp: APIIo_HighlightElementsID).
     // Контракт: вход — JSON-массив GUID'ов в виде строки '["{...}","{...}"]';
-    // выход — true. Элементы ЗАМЕНЯЮТ текущее выделение (ACAPI_Element_Select
-    // с add=false после DeselectAll) и камера зумится на них
-    // (APIDo_ZoomToElementsID, par1: const GS::Array<API_Guid>*).
+    // выход — true. Элементы подсвечиваются цветом (HashTable GUID->API_RGBAColor),
+    // камера зумится на них (APIDo_ZoomToElementsID, par1: const GS::Array<API_Guid>*).
     jsACAPI->AddItem (new DG::JSFunction ("HighlightElements", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
         GS::Ref<DG::JSValue> payload = GS::DynamicCast<DG::JSValue> (args);
         if (payload == nullptr) {
@@ -464,22 +464,36 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return GS::Ref<DG::JSBase> (new DG::JSValue (false));
         }
 
-        // Заменяем текущее выделение найденными элементами.
-        ACAPI_Element_DeselectAll ();
-        GS::Array<API_Neig> selNeigs;
+        // Подсветка цветом, выделение не трогаем. Версионные обёртки как в Spec.cpp.
+        GS::HashTable<API_Guid, API_RGBAColor> hlElems;
+        const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
         for (const API_Guid &guid : guids)
-            selNeigs.PushNew (guid);
-        const GSErrCode selErr = ACAPI_Element_Select (selNeigs, true);
-        if (selErr != NoError) {
-            DBprnt (GS::UniString ("HighlightElements: select error ") + GS::ValueToUniString (selErr));
+            hlElems.Add (guid, hlColor);
+#ifdef ServerMainVers_2700
+        GSErrCode hlErr = ACAPI_UserInput_ClearElementHighlight ();
+        if (hlErr == NoError)
+            hlErr = ACAPI_UserInput_SetElementHighlight (hlElems);
+#else
+    #ifdef ServerMainVers_2600
+        GSErrCode hlErr = ACAPI_Interface_ClearElementHighlight ();
+        if (hlErr == NoError)
+            hlErr = ACAPI_Interface_SetElementHighlight (hlElems);
+    #else
+        // Вызов без par1 снимает предыдущую подсветку
+        ACAPI_Interface (APIIo_HighlightElementsID);
+        const GSErrCode hlErr = ACAPI_Interface (APIIo_HighlightElementsID, &hlElems);
+    #endif
+#endif
+        if (hlErr != NoError) {
+            DBprnt (GS::UniString ("HighlightElements: highlight error ") + GS::ValueToUniString (hlErr));
         }
 
-        // Приближаем камеру к элементам.
+        // Приближаем камеру к элементам без смены выделения.
         const GSErrCode zoomErr = ACAPI_Automate (APIDo_ZoomToElementsID, &guids);
         if (zoomErr != NoError) {
             DBprnt (GS::UniString ("HighlightElements: zoom error ") + GS::ValueToUniString (zoomErr));
         }
-        return GS::Ref<DG::JSBase> (new DG::JSValue (selErr == NoError && zoomErr == NoError));
+        return GS::Ref<DG::JSBase> (new DG::JSValue (hlErr == NoError && zoomErr == NoError));
     }));
 
     // Регистрируем функцию для получения количества выделенных элементов

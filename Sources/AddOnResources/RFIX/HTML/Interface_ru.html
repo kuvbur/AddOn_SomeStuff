@@ -395,11 +395,12 @@ const ACBridge = (function () {
   }
 
   /**
-   * Подсветка (выделение + приближение) элементов на плане по их GUID'ам.
-   * Вызывает window.ACAPI.HighlightElements() — C++ заменяет текущее выделение
-   * переданными элементами и зумит камеру на них.
+   * Подсветка цветом и приближение элементов на плане по их GUID'ам.
+   * Вызывает window.ACAPI.HighlightElements() — C++ подсвечивает элементы
+   * (APIIo_HighlightElementsID, как в Spec.cpp) и зумит камеру;
+   * текущее выделение НЕ меняется.
    * @param {string[]} guids - массив GUID'ов элементов
-   * @returns {Promise<boolean>} true при успехе выделения и зума
+   * @returns {Promise<boolean>} true при успехе подсветки и зума
    */
   function highlightElements(guids) {
     try {
@@ -1172,7 +1173,7 @@ function renderPropertyRow(prop) {
       const valueRow = h("div", {
         style: "font-size:0.65rem;color:var(--ac-text-secondary);padding-left:0.5rem;display:flex;align-items:center;gap:0.3rem;" +
                "cursor:pointer;border-radius:0.2rem;",
-        title: "Выделить и приблизить элементы с этим значением",
+        title: "Подсветить и приблизить элементы с этим значением",
         on: {
           click: function (e) {
             e.stopPropagation();
