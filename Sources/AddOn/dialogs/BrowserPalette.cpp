@@ -429,6 +429,59 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         return new DG::JSValue (jsonStr);
     }));
 
+    // Подсветка (выделение) и приближение элементов из HTML.
+    // Контракт: вход — JSON-массив GUID'ов в виде строки '["{...}","{...}"]';
+    // выход — true. Элементы ЗАМЕНЯЮТ текущее выделение (ACAPI_Element_Select
+    // с add=false после DeselectAll) и камера зумится на них
+    // (APIDo_ZoomToElementsID, par1: const GS::Array<API_Guid>*).
+    jsACAPI->AddItem (new DG::JSFunction ("HighlightElements", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+        GS::Ref<DG::JSValue> payload = GS::DynamicCast<DG::JSValue> (args);
+        if (payload == nullptr) {
+            return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+        }
+        const GS::UniString jsonGuids = payload->GetString ();
+
+        // Разбираем GUID'ы без JSON-парсера: содержимое между кавычками.
+        GS::Array<API_Guid> guids;
+        USize searchFrom = 0;
+        while (true) {
+            const USize q1 = jsonGuids.FindFirst ('"', searchFrom);
+            if (q1 == MaxUSize)
+                break;
+            const USize q2 = jsonGuids.FindFirst ('"', q1 + 1);
+            if (q2 == MaxUSize)
+                break;
+            const GS::UniString guidStr = jsonGuids.GetSubstring (q1 + 1, q2 - q1 - 1);
+            const API_Guid guid = APIGuidFromString (guidStr.ToCStr (0, MaxUSize, GChCode));
+            if (guid != APINULLGuid)
+                guids.Push (guid);
+            searchFrom = q2 + 1;
+        }
+
+        DBprnt (GS::UniString ("HighlightElements: parsed ") + GS::ValueToUniString ((Int32)guids.GetSize ()) +
+                " guids");
+        if (guids.IsEmpty ()) {
+            return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+        }
+
+        // Заменяем текущее выделение найденными элементами.
+        ACAPI_Element_DeselectAll ();
+        GS::Array<API_Neig> selNeigs;
+        for (const API_Guid &guid : guids)
+            selNeigs.PushNew (guid);
+        const GSErrCode selErr = ACAPI_Element_Select (selNeigs, true);
+        if (selErr != NoError) {
+            DBprnt (GS::UniString ("HighlightElements: select error ") + GS::ValueToUniString (selErr));
+        }
+
+        // Приближаем камеру к элементам.
+        const GSErrCode zoomErr = ACAPI_Automate (APIDo_ZoomToElementsID, &guids);
+        if (zoomErr != NoError) {
+            DBprnt (GS::UniString ("HighlightElements: zoom error ") + GS::ValueToUniString (zoomErr));
+        }
+        return GS::Ref<DG::JSBase> (new DG::JSValue (selErr == NoError && zoomErr == NoError));
+    }));
+
     // Регистрируем функцию для получения количества выделенных элементов
     jsACAPI->AddItem (new DG::JSFunction ("GetSelectionInfo", [this] (GS::Ref<DG::JSBase>) {
         DBprnt ("GetSelectionInfo: function called from JS");

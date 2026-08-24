@@ -314,11 +314,17 @@ const ACBridge = (function () {
                       group: p.group || "Без группы",
                       valueType: p.valueType,
                       values: [],
+                      // guid'ы элементов, у которых встретилось каждое значение
+                      valueElementGuids: {},
                       elementsWithProp: 0
                     };
                   }
                   // Add value from this element
                   propMap[guid].values.push(p.value);
+                  if (!propMap[guid].valueElementGuids[p.value]) {
+                    propMap[guid].valueElementGuids[p.value] = [];
+                  }
+                  propMap[guid].valueElementGuids[p.value].push(elem.guid);
                   propMap[guid].elementsWithProp++;
                 });
               }
@@ -348,6 +354,9 @@ const ACBridge = (function () {
                 group: prop.group,
                 valueType: prop.valueType,
                 values: uniqueValues,
+                // GUID'ы элементов по каждому уникальному значению — для
+                // подсветки/приближения при клике на строку значения
+                valueElementGuids: prop.valueElementGuids,
                 allHave: allHave,
                 countWithProperty: countWithProperty
               });
@@ -383,6 +392,23 @@ const ACBridge = (function () {
       if (found) return Object.assign({ propertyName: propertyId }, found);
       return { propertyName: propertyId, common: true, values: [{ value: "значение примера", count: MOCK_SELECTED_COUNT }] };
     });
+  }
+
+  /**
+   * Подсветка (выделение + приближение) элементов на плане по их GUID'ам.
+   * Вызывает window.ACAPI.HighlightElements() — C++ заменяет текущее выделение
+   * переданными элементами и зумит камеру на них.
+   * @param {string[]} guids - массив GUID'ов элементов
+   * @returns {Promise<boolean>} true при успехе выделения и зума
+   */
+  function highlightElements(guids) {
+    try {
+      if (typeof window.ACAPI !== 'undefined' && window.ACAPI.HighlightElements && guids && guids.length > 0) {
+        // Аргументы в мост передаются одним значением — JSON-строкой массива
+        return Promise.resolve(window.ACAPI.HighlightElements(JSON.stringify(guids)));
+      }
+    } catch (e) { /* bridge not ready */ }
+    return Promise.resolve(false);
   }
 
   /**
@@ -456,6 +482,7 @@ const ACBridge = (function () {
     getFilterPresets: getFilterPresets,
     getPropertiesList: getPropertiesList,
     getPropertyValue: getPropertyValue,
+    highlightElements: highlightElements,
     resetPropertyToDefault: resetPropertyToDefault,
     getNumberingProperties: getNumberingProperties,
     getNumberingPreview: getNumberingPreview,
@@ -1143,7 +1170,20 @@ function renderPropertyRow(prop) {
   if (prop.values && prop.values.length > 0) {
     prop.values.forEach(function (v) {
       const valueRow = h("div", {
-        style: "font-size:0.65rem;color:var(--ac-text-secondary);padding-left:0.5rem;display:flex;align-items:center;gap:0.3rem;"
+        style: "font-size:0.65rem;color:var(--ac-text-secondary);padding-left:0.5rem;display:flex;align-items:center;gap:0.3rem;" +
+               "cursor:pointer;border-radius:0.2rem;",
+        title: "Выделить и приблизить элементы с этим значением",
+        on: {
+          click: function (e) {
+            e.stopPropagation();
+            const guids = (prop.valueElementGuids && prop.valueElementGuids[v.value]) || [];
+            if (guids.length > 0) {
+              ACBridge.highlightElements(guids);
+            }
+          },
+          mouseenter: function () { valueRow.style.background = "var(--ac-bg-hover)"; },
+          mouseleave: function () { valueRow.style.background = "transparent"; }
+        }
       });
       valueRow.appendChild(h("span", {
         text: v.value,
