@@ -61,6 +61,9 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     clock_t start, finish;
     double duration;
     start = clock ();
+    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
+    GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
+
     // Получаем выбранные элементы (только видимые, только из модели)
     GS::Array<API_Guid> guidArray = GetSelectedElements (true, false, syncSettings, true, false, false);
     if (guidArray.IsEmpty ())
@@ -85,8 +88,6 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
         msg_rep ("ReNumSelected", "No data to write", NoError, APINULLGuid);
         return NoError;
     }
-    const Int32 iseng = ID_ADDON_STRINGS + isEng ();
-    GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
     UInt32 qtywrite = paramToWriteelem.GetSize ();
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite);
     short i = 2;
@@ -97,6 +98,11 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     #else
     ACAPI_Interface (APIIo_SetNextProcessPhaseID, &subtitle, &i);
     #endif
+
+    #if defined(TESTING)
+    DBprnt ("Write start");
+    #endif
+
     #ifdef ServerMainVers_2300
     bool suspGrp = false;
         #ifdef ServerMainVers_2700
@@ -121,21 +127,22 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
         msg_rep ("ReNumSelected", "ACAPI_Environment - APITool_SuspendGroups", err, APINULLGuid);
         err = NoError;
     }
-
-    #if defined(TESTING)
-    DBprnt ("Write start");
-    #endif
     err = ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
         ParamHelpers::ElementsWrite (paramToWriteelem);
         return NoError;
     });
+    if (err != NoError) {
+        if (err == APIERR_REFUSEDCMD) {
+            ParamHelpers::ElementsWrite (paramToWriteelem);
+            msg_rep ("ReNumSelected", "Undo is disabled", err, APINULLGuid);
+        } else {
+            msg_rep ("ReNumSelected", "ACAPI_CallUndoableCommand", err, APINULLGuid);
+            return err;
+        }
+    }
     #if defined(TESTING)
     DBprnt ("Write end");
     #endif
-    if (err != NoError) {
-        msg_rep ("ReNumSelected", "ACAPI_CallUndoableCommand", err, APINULLGuid);
-        return err;
-    }
     SyncArray (syncSettings, guidArray);
     finish = clock ();
     duration = (double)(finish - start) / CLOCKS_PER_SEC;
@@ -779,7 +786,7 @@ void ReNumOneRule (RenumRule &rule,
         TypeValues &tv = i.second;
         // Обрабатываем только добавляемые (RENUM_ADD) и новые (RENUM_NORMAL) элементы
         for (int renumTypeInt = RENUM_ADD; renumTypeInt <= RENUM_NORMAL; renumTypeInt++) {
-        RenumMode renumType = static_cast<RenumMode> (renumTypeInt);
+            RenumMode renumType = static_cast<RenumMode> (renumTypeInt);
             if (tv.count (renumType) == 0)
                 continue;
             // Для ADDZEROS/ADDSPACE берём максимум позиций в текущей разбивке
