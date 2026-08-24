@@ -67,6 +67,13 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     // -------------------------------------------------------------------------
     UInt32 maxSelectionCount = 10;
 
+    // -------------------------------------------------------------------------
+    // Флаг подавления обновления палитры при программной подсветке/зуме:
+    // APIIo_HighlightElementsID и APIDo_ZoomToElementsID транслируются как
+    // смена выделения, и цепочка SelectionChangeHandler сбрасывает выделение.
+    // -------------------------------------------------------------------------
+    static bool suppressSelectionRefresh;
+
     BrowserPalette ();
 
   public:

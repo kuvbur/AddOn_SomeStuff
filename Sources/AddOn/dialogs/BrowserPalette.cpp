@@ -17,6 +17,7 @@
 static const GS::Guid paletteGuid ("{FEE27B6B-3873-5844-88B6-F0083AA4CD49}");
 
 GS::Ref<BrowserPalette> BrowserPalette::instance;
+bool BrowserPalette::suppressSelectionRefresh = false;
 
 // -----------------------------------------------------------------------------
 // Show or Hide Browser Palette
@@ -464,6 +465,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return GS::Ref<DG::JSBase> (new DG::JSValue (false));
         }
 
+        // Подсветка и зум могут транслироваться как смена выделения — на время
+        // операции подавляем обновление палитры, чтобы выделение пользователя
+        // не сбрасывалось через цепочку SelectionChangeHandler.
+        suppressSelectionRefresh = true;
+
         // Подсветка цветом, выделение не трогаем. Версионные обёртки как в Spec.cpp.
         GS::HashTable<API_Guid, API_RGBAColor> hlElems;
         const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
@@ -493,6 +499,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         if (zoomErr != NoError) {
             DBprnt (GS::UniString ("HighlightElements: zoom error ") + GS::ValueToUniString (zoomErr));
         }
+        suppressSelectionRefresh = false;
         return GS::Ref<DG::JSBase> (new DG::JSValue (hlErr == NoError && zoomErr == NoError));
     }));
 
@@ -1184,6 +1191,10 @@ GSErrCode BrowserPalette::ManualGetSelection () {
 // -----------------------------------------------------------------------------
 GSErrCode __ACENV_CALL BrowserPalette::SelectionChangeHandler (const API_Neig * /*selElemNeig*/) {
     DBprnt ("BrowserPalette::SelectionChangeHandler ()");
+    // Программная подсветка/зум транслируются как смена выделения — игнорируем,
+    // чтобы не сбрасывать пользовательское выделение.
+    if (suppressSelectionRefresh)
+        return NoError;
     if (!HasInstance () || !GetInstance ().IsVisible ())
         return NoError;
 
