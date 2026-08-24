@@ -193,11 +193,11 @@
 
 ---
 
-## Last Checkpoint: 1241122 [fix-jsvalue-args] Parse bridge string args via JSValue; DynamicCast<JSArray> crashed the bridge
-## Next Step: Этап 1.5 GetFilterPresets. Бэклог пожеланий: (1) подсветка+приближение элемента на плане при клике на строку значения свойства (×1 ×2 …) — найти элемент с конкретным значением при множественном выделении; (2) мёртвые ParsePropertyDescription/ParsePropertyForElement — починить (JSValue-парсинг) или удалить
-## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html; незакоммиченный ReNum.cpp — вне задачи
+## Last Checkpoint: 4ca38e0 [fix-tosub-expansion] Fix dead to_sub branch in SyncAddSubelement + TDD tests (438 ok / 0 err)
+## Next Step: Ревью-хвосты по схеме TDD: P3 (мёртвые ParseProperty* — чинить JSValue-парсингом или удалить), P2 (восстановление групп после SuspendGroups — сначала верифицировать API). Пожелание из бэклога: подсветка+приближение элемента при клике на строку значения свойства (×1 ×2 …)
+## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Sources/AddOn/Sync.cpp; ReNum.cpp зафиксирован в e44b30a
 
-## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (IN_PROGRESS)
+## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (DONE)
 
 Факт: официальный пример DevKit AC25 (Examples/Browser_Control/Src/BrowserPalette.cpp:110) использует JSFunction СО строковым аргументом — теория «аргументы всегда крашат» не доказана. Проверяем эмпирически.
 
