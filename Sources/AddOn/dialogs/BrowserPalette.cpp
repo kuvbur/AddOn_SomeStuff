@@ -486,26 +486,31 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     addLimitSetter (200);
     addLimitSetter (1000);
 
-    // Включение/выключение автообновления при смене выделения
-    jsACAPI->AddItem (
-        new DG::JSFunction ("SetCatchSelectionChanges", [] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
-            bool enable = false;
-            if (args != nullptr) {
-                GS::Ref<DG::JSArray> argsArray = GS::DynamicCast<DG::JSArray> (args);
-                if (argsArray != nullptr && argsArray->GetItemArray ().GetSize () >= 1) {
-                    GS::Ref<DG::JSValue> val = GS::DynamicCast<DG::JSValue> (argsArray->GetItemArray ()[0]);
-                    if (val != nullptr) {
-                        enable = val->GetBool ();
-                    }
+    // Включение/выключение автообновления при смене выделения.
+    // ВАЖНО: функции БЕЗ аргументов — передача аргументов в JSFunction через
+    // RegisterAsynchJSObject роняет CEF-мост (краш до входа в лямбду),
+    // поэтому регистрируем по одной функции на каждое значение.
+    auto addCatchSetter = [&jsACAPI] (bool enable) {
+        const GS::UniString name =
+            GS::UniString (enable ? "EnableCatchSelectionChanges" : "DisableCatchSelectionChanges");
+        jsACAPI->AddItem (
+            new DG::JSFunction (name.ToCStr ().Get (), [enable] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+                try {
+                    SyncSettings syncSettings;
+                    LoadSyncSettingsFromPreferences (syncSettings, true);
+                    syncSettings.SetCatchSelectionChanges (enable);
+                    WriteSyncSettingsToPreferences (syncSettings);
+                    DBprnt (GS::UniString (enable ? "EnableCatchSelectionChanges: ok"
+                                                  : "DisableCatchSelectionChanges: ok"));
+                } catch (...) {
+                    DBprnt (GS::UniString (enable ? "EnableCatchSelectionChanges: exception"
+                                                  : "DisableCatchSelectionChanges: exception"));
                 }
-            }
-            SyncSettings syncSettings;
-            LoadSyncSettingsFromPreferences (syncSettings, true);
-            syncSettings.SetCatchSelectionChanges (enable);
-            WriteSyncSettingsToPreferences (syncSettings);
-            DBprnt ("SetCatchSelectionChanges: " + GS::UniString (enable ? "true" : "false"));
-            return GS::Ref<DG::JSBase> (new DG::JSValue (true));
-        }));
+                return GS::Ref<DG::JSBase> (new DG::JSValue (true));
+            }));
+    };
+    addCatchSetter (true);
+    addCatchSetter (false);
 
     // Отладочная функция — проверяет, что JS-мост работает
     jsACAPI->AddItem (new DG::JSFunction ("Ping", [] (GS::Ref<DG::JSBase>) {

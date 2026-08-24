@@ -638,9 +638,12 @@ function toggleAutoRefresh() {
       btn.style.color = "var(--ac-text-tertiary)";
     }
   }
-  // Сообщаем C++ о смене флага
-  if (typeof window.ACAPI !== 'undefined' && window.ACAPI.SetCatchSelectionChanges) {
-    window.ACAPI.SetCatchSelectionChanges(STATE.autoRefresh);
+  // Сообщаем C++ о смене флага.
+  // Вызов БЕЗ аргументов: передача аргументов в JSFunction через
+  // RegisterAsynchJSObject роняет CEF-мост (краш ArchiCAD)
+  var catchSetter = STATE.autoRefresh ? "EnableCatchSelectionChanges" : "DisableCatchSelectionChanges";
+  if (typeof window.ACAPI !== 'undefined' && window.ACAPI[catchSetter]) {
+    window.ACAPI[catchSetter]();
   }
   // При включении сразу обновляем интерфейс
   if (STATE.autoRefresh && typeof window.ACAPI !== 'undefined' && window.ACAPI.RefreshSelectionInfoUI) {

@@ -193,6 +193,14 @@
 
 ---
 
-## Last Checkpoint: da5b6a6 [fix-limit-setter-noargs] Replace SetMaxSelectionCount(args) with argument-less SetLimit<N> family
-## Next Step: Чекпоинт cleanup-html-debug (DEBUG-блоки и console.* удалены из Interface_ru.html, runtime OK); затем Этап 1.5 GetFilterPresets
-## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html; незакоммиченный ReNum.cpp — вне задачи
+## Last Checkpoint: [fix-catch-selection-noargs] Replace SetCatchSelectionChanges(args) with argument-less Enable/Disable pair (runtime OK)
+## Next Step: Этап 1.5 GetFilterPresets; Hotfix 2026-08-24 завершён (см. ниже), секцию перенести в Archive при следующем обновлении плана
+## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html; незакоммиченный ReNum.cpp — вне задачи
+
+## Hotfix 2026-08-24: краш при нажатии кнопки отключения автообработки (IN_PROGRESS)
+
+- [x] BrowserPalette.cpp: SetCatchSelectionChanges(args) → пара EnableCatchSelectionChanges / DisableCatchSelectionChanges без аргументов (паттерн SetLimit<N>)
+- [x] Interface_ru.html: toggleAutoRefresh вызывает window.ACAPI.Enable/DisableCatchSelectionChanges() без аргументов
+- [x] Валидация: Tools/test_html.ps1 → сборка AC25 → runtime restart_archicad_for_test.ps1
+- Причина: передача аргументов в JSFunction через RegisterAsynchJSObject роняет ArchiCAD до входа в лямбду (тот же паттерн, что 2026-08-21 с SetMaxSelectionCount; лог test_results.txt не содержал записи SetCatchSelectionChanges — лямбда не выполнялась)
+- Результат: runtime-тест 2026-08-24 пройден — 3 клика (Disable/Enable/Disable), все с «ok» в test_results.txt, краша нет
