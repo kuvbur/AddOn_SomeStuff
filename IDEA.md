@@ -193,9 +193,9 @@
 
 ---
 
-## Last Checkpoint: 4ca38e0 [fix-tosub-expansion] Fix dead to_sub branch in SyncAddSubelement + TDD tests (438 ok / 0 err)
-## Next Step: Ревью-хвосты по схеме TDD: P3 (мёртвые ParseProperty* — чинить JSValue-парсингом или удалить), P2 (восстановление групп после SuspendGroups — сначала верифицировать API). Пожелание из бэклога: подсветка+приближение элемента при клике на строку значения свойства (×1 ×2 …)
-## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Sources/AddOn/Sync.cpp; ReNum.cpp зафиксирован в e44b30a
+## Last Checkpoint: 47b06e5 [fix-parse-bridge] ParseProperty* bridge fns: JSValue args + JSON response (438 ok / 0 err)
+## Next Step: P2 — восстановление групп после APITool_SuspendGroups (сначала верифицировать API через LightRAG/тест). Пожелание: подсветка+приближение элемента при клике на строку значения свойства. Затем Этап 1.5 GetFilterPresets / Этап 2 Синхронизация
+## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Sources/AddOn/Sync.cpp; ReNum.cpp в e44b30a
 
 ## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (DONE)
 
