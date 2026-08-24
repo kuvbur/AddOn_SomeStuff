@@ -193,8 +193,8 @@
 
 ---
 
-## Last Checkpoint: 84664fe [fix-highlight-no-select] Highlight via APIIo_HighlightElementsID, selection untouched (438 ok / 0 err)
-## Next Step: Ручная проверка Дмитрием: клик по строке значения — подсветка цветом + зум, выделение не меняется.
+## Last Checkpoint: 16f2b82 [fix-keep-selection] Suppress palette refresh during programmatic highlight+zoom (438 ok / 0 err)
+## Next Step: Ручная проверка Дмитрием: клик по строке значения — подсветка цветом + зум, выделение остаётся прежним.
 ## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html
 
 ## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (DONE)
