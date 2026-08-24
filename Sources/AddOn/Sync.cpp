@@ -263,6 +263,20 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
     #endif
 #endif
             rereadelem = ParamHelpers::ElementsWrite (paramToWrite);
+// Восстанавливаем режим Suspend Groups: тумблер On/Off (док. AC25),
+// выключаем только если включили его сами и он всё ещё включён.
+#ifdef ServerMainVers_2300
+            if (!suspGrp) {
+                bool suspNow = false;
+    #ifdef ServerMainVers_2700
+                if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
+                    ACAPI_Grouping_Tool (rereadelem, APITool_SuspendGroups, nullptr);
+    #else
+                if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
+                    ACAPI_Element_Tool (rereadelem, APITool_SuspendGroups, nullptr);
+    #endif
+            }
+#endif
             finish = clock ();
             duration = (double)(finish - start) / CLOCKS_PER_SEC;
             GS::UniString time = title + GS::UniString::Printf (" %.3f s", duration);
