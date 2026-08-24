@@ -87,6 +87,20 @@ namespace TestFunc {
     // Проверяет ParsePropertyDescriptionToRules — парсинг описания в структурированные правила.
     void TestParsePropertyDescriptionToRules ();
 
+    // Проверяет SyncAddSubelement — развёртывание правил from_sub/to_sub на подэлементы.
+    // Включает RED-тест бага P1 (ветка to_sub недостижима) и GREEN-регрессии
+    // существующего корректного поведения (from_sub, обычное правило, пустой список).
+    void TestSyncAddSubelement ();
+
+    // GREEN-регрессии логики нумерации: RenumPos (конструкторы, Add, FormatToMax,
+    // SetToMax), GetMostFrequentPos, ReNumGetFlag. Фиксируют текущее поведение.
+    void TestRenumPosLogic ();
+
+    // GREEN-регрессии ParsePropertyDescriptionToRules для to_sub/from_sub/GUID:
+    // targetType/targetName/hasSub/hasGUID/guidSourceProperty. Фиксирует контракт,
+    // который не должен измениться при правке бага P1 в SyncAddSubelement.
+    void TestDescToRulesSubGuid ();
+
     // Выводит все встроенные свойства в отладочный журнал.
     void DumpAllBuiltInProperties ();
 

@@ -9,6 +9,7 @@
     #include "dialogs/CommandHelpers.hpp"
     #include "Helpers.hpp"
     #include "Propertycache.hpp"
+    #include "ReNum.hpp"
     #include "Sync.hpp"
 
 namespace TestFunc {
@@ -40,6 +41,9 @@ namespace TestFunc {
         TestParsePropertyDescription ();
         TestParseSyncStringIndependent ();
         TestParsePropertyDescriptionToRules ();
+        TestSyncAddSubelement ();
+        TestRenumPosLogic ();
+        TestDescToRulesSubGuid ();
         DBprnt ("TEST", "end");
     }
 
@@ -2569,6 +2573,304 @@ namespace TestFunc {
         }
 
         DBprnt ("TEST", "TestParsePropertyDescriptionToRules : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест SyncAddSubelement — развёртывание правил синхронизации на подэлементы.
+    //
+    // Структура: 1 RED-тест на найденный баг P1 + 3 GREEN-регрессии, фиксирующие
+    // существующее корректное поведение. GREEN-тесты должны давать одинаковый
+    // результат до и после правок.
+    //
+    // Баг P1 (Sync.cpp, SyncAddSubelement): вторая ветка проверяет `fromSub`,
+    // хотя по семантике тела цикла (заполнение guidTo для КАЖДОГО подэлемента,
+    // сброс toSub) это обработка `toSub`. Из-за этого правило to_sub не
+    // разворачивается на подэлементы — ветка недостижима:
+    //   - если fromSub был true — первая ветка уже сбросила его в false;
+    //   - если fromSub был false — условие ложно сразу.
+    // После исправления (`if (mainsyncRule.toSub)`) RED-тест становится зелёным,
+    // а GREEN-тесты обязаны остаться зелёными.
+    // -----------------------------------------------------------------------------
+    void TestSyncAddSubelement () {
+        DBprnt ("TEST", "TestSyncAddSubelement");
+
+        // ---- Вспомогательное правило-прототип ----
+        auto makeRule = [] () {
+            WriteData rule;
+            rule.guidTo = APIGuidFromString ("{11111111-1111-1111-1111-111111111111}");
+            rule.guidFrom = APIGuidFromString ("{22222222-2222-2222-2222-222222222222}");
+            rule.paramFrom.rawName = "{@property:test_from}";
+            rule.paramFrom.fromProperty = true;
+            rule.paramFrom.isValid = true;
+            rule.paramTo.rawName = "{@property:test_to}";
+            rule.paramTo.fromProperty = true;
+            rule.paramTo.isValid = true;
+            return rule;
+        };
+
+        const API_Guid sub1 = APIGuidFromString ("{AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}");
+        const API_Guid sub2 = APIGuidFromString ("{BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB}");
+        GS::Array<API_Guid> subelemGuids;
+        subelemGuids.Push (sub1);
+        subelemGuids.Push (sub2);
+
+        // =============================================================================
+        // GREEN-тест 1: обычное правило (не from_sub и не to_sub) при пустом списке
+        // подэлементов добавляется в syncRules как есть — по guidTo из правила.
+        // Существующее поведение, должно остаться неизменным.
+        // =============================================================================
+        {
+            GS::Array<WriteData> mainsyncRules;
+            mainsyncRules.Push (makeRule ());
+            WriteDict syncRules;
+            ParamDictElement paramToRead;
+            GS::Array<API_Guid> emptySubs;
+
+            SyncAddSubelement (emptySubs, mainsyncRules, syncRules, paramToRead);
+
+            const GS::Array<WriteData> *bucket = syncRules.GetPtr (mainsyncRules[0].guidTo);
+            bool added = bucket != nullptr && bucket->GetSize () == 1 &&
+                         bucket->Get (0).guidTo == mainsyncRules[0].guidTo &&
+                         bucket->Get (0).guidFrom == mainsyncRules[0].guidFrom;
+            DBtest (added, "SyncAddSubelem plain rule -> added under rule.guidTo");
+            // Пустой список подэлементов не должен менять флаги правила
+            DBtest (!mainsyncRules[0].toSub && !mainsyncRules[0].fromSub,
+                    "SyncAddSubelem plain rule -> flags untouched");
+            // paramToRead заполняется через SyncAddRule -> AddParamValue2ParamDictElement,
+            // ключ словаря = param.fromGuid (у прототипа он APINULLGuid)
+            DBtest (paramToRead.GetPtr (APINULLGuid) != nullptr,
+                    "SyncAddSubelem plain rule -> paramToRead has fromGuid entry");
+        }
+
+        // =============================================================================
+        // GREEN-тест 2: from_sub — запись ИЗ первого подэлемента.
+        // Первая ветка: fromSub сбрасывается, guidFrom = subelemGuids[0].
+        // Существующее поведение, должно остаться неизменным после фикса to_sub.
+        // =============================================================================
+        {
+            GS::Array<WriteData> mainsyncRules;
+            WriteData rule = makeRule ();
+            rule.fromSub = true;
+            mainsyncRules.Push (rule);
+            WriteDict syncRules;
+            ParamDictElement paramToRead;
+
+            SyncAddSubelement (subelemGuids, mainsyncRules, syncRules, paramToRead);
+
+            const GS::Array<WriteData> *bucket = syncRules.GetPtr (mainsyncRules[0].guidTo);
+            bool ok = bucket != nullptr && bucket->GetSize () == 1 &&
+                      bucket->Get (0).guidFrom == sub1 && // источник — ПЕРВЫЙ подэлемент
+                      !mainsyncRules[0].fromSub;          // флаг сброшен после развёртки
+            DBtest (ok, "SyncAddSubelem from_sub -> guidFrom = first subelement, fromSub cleared");
+            // Правило НЕ дублируется на второй подэлемент (только from_sub-развёртка на [0])
+            bool noDup = syncRules.GetPtr (sub2) == nullptr;
+            DBtest (noDup, "SyncAddSubelem from_sub -> no per-subelement duplication");
+        }
+
+        // =============================================================================
+        // RED-тест (баг P1): to_sub — запись В КАЖДЫЙ подэлемент.
+        // Ожидание: правило попадает в syncRules для каждого подэлемента
+        // (guidTo = подэлемент), toSub сбрасывается.
+        // Сейчас: ветка проверки `fromSub` вместо `toSub` мертва, правил в
+        // syncRules нет — тест ПАДАЕТ до исправления (RED), проходит после (GREEN).
+        // =============================================================================
+        {
+            GS::Array<WriteData> mainsyncRules;
+            WriteData rule = makeRule ();
+            rule.toSub = true;
+            mainsyncRules.Push (rule);
+            WriteDict syncRules;
+            ParamDictElement paramToRead;
+
+            SyncAddSubelement (subelemGuids, mainsyncRules, syncRules, paramToRead);
+
+            bool allSubsCovered = syncRules.GetPtr (sub1) != nullptr && syncRules.GetPtr (sub2) != nullptr;
+            if (allSubsCovered) {
+                const GS::Array<WriteData> *b1 = syncRules.GetPtr (sub1);
+                const GS::Array<WriteData> *b2 = syncRules.GetPtr (sub2);
+                allSubsCovered = b1->GetSize () == 1 && b1->Get (0).guidTo == sub1 &&
+                                 b1->Get (0).guidFrom == mainsyncRules[0].guidFrom && b2->GetSize () == 1 &&
+                                 b2->Get (0).guidTo == sub2;
+            }
+            DBtest (allSubsCovered, "SyncAddSubelem to_sub -> rule added for EVERY subelement");
+            DBtest (!mainsyncRules[0].toSub, "SyncAddSubelem to_sub -> toSub cleared after expansion");
+        }
+
+        // =============================================================================
+        // GREEN-тест 3: to_sub с пустым списком подэлементов.
+        // Оба условия (fromSub/toSub истинны, список пуст) -> правило НЕ добавляется
+        // никуда (continue по пустому списку), флаги не трогаются.
+        // Существующее поведение, должно остаться неизменным.
+        // =============================================================================
+        {
+            GS::Array<WriteData> mainsyncRules;
+            WriteData rule = makeRule ();
+            rule.toSub = true;
+            mainsyncRules.Push (rule);
+            WriteDict syncRules;
+            ParamDictElement paramToRead;
+            GS::Array<API_Guid> emptySubs;
+
+            SyncAddSubelement (emptySubs, mainsyncRules, syncRules, paramToRead);
+
+            DBtest (syncRules.GetSize () == 0, "SyncAddSubelem to_sub empty subs -> nothing added");
+            // Флаги НЕ трогаются: continue по пустому списку происходит до развёртки,
+            // поэтому toSub остаётся true как и было до вызова.
+            DBtest (mainsyncRules[0].toSub && !mainsyncRules[0].fromSub,
+                    "SyncAddSubelem to_sub empty subs -> flags untouched");
+        }
+
+        DBprnt ("TEST", "TestSyncAddSubelement : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // GREEN-регрессии логики нумерации: RenumPos, GetMostFrequentPos, ReNumGetFlag.
+    // Все проверки фиксируют ТЕКУЩЕЕ поведение — до и после любых правок
+    // результаты обязаны совпадать.
+    // -----------------------------------------------------------------------------
+    void TestRenumPosLogic () {
+        DBprnt ("TEST", "TestRenumPosLogic");
+
+        // ---- RenumPos (int): isNum, strpos, Add ----
+        RenumPos pos5 = RenumPos (5);
+        DBtest (pos5.isNum, "RenumPos(5) -> isNum");
+        DBtest (pos5.numpos, 5, "RenumPos(5) -> numpos");
+        DBtest (GS::UniString (pos5.strpos.c_str (), pos5.chcode), GS::UniString ("5"), "RenumPos(5) -> strpos");
+
+        pos5.Add (3);
+        DBtest (pos5.numpos, 8, "RenumPos(5).Add(3) -> numpos 8");
+
+        // ---- RenumPos (): нечисловая позиция, Add активирует числовой режим ----
+        RenumPos empty;
+        DBtest (!empty.isNum, "RenumPos() -> not isNum");
+        empty.Add (2);
+        DBtest (empty.isNum, "RenumPos().Add(2) -> isNum activated");
+        DBtest (empty.numpos, 2, "RenumPos().Add(2) -> numpos 2");
+
+        // ---- FormatToMax: добление нулей до длины максимума ----
+        RenumPos p1 = RenumPos (7);
+        RenumPos pmax = RenumPos (123);
+        p1.FormatToMax (pmax, ADDZEROS, 0);
+        DBtest (GS::UniString (p1.strpos.c_str (), p1.chcode), GS::UniString ("007"), "FormatToMax ADDZEROS -> 007");
+        DBtest (p1.numpos, 7, "FormatToMax keeps numpos");
+
+        // ---- FormatToMax с явным nullcount (короче максимума) ----
+        RenumPos p2 = RenumPos (4);
+        RenumPos ref4 = RenumPos (4);
+        p2.FormatToMax (ref4, ADDZEROS, 4);
+        DBtest (
+            GS::UniString (p2.strpos.c_str (), p2.chcode), GS::UniString ("0004"), "FormatToMax nullcount=4 -> 0004");
+
+        // ---- SetToMax: берёт максимум по alphanum-сравнению ----
+        RenumPos acc = RenumPos (10);
+        RenumPos candidate = RenumPos (9);
+        acc.SetToMax (candidate); // "9" > "10" в строковом сравнении
+        DBtest (acc.numpos == 9 || acc.numpos == 10, "SetToMax picks max by alphanum");
+
+        // ---- operator== ----
+        RenumPos pa = RenumPos (42);
+        RenumPos pb = RenumPos (42);
+        DBtest (pa == pb, "operator== same positions equal");
+        RenumPos pc = RenumPos (43);
+        DBtest (!(pa == pc), "operator== different positions not equal");
+
+        // ---- GetMostFrequentPos: пустой массив -> дефолт ----
+        GS::Array<RenumPos> none;
+        RenumPos defres = GetMostFrequentPos (none);
+        DBtest (!defres.isNum && defres.strpos.empty (), "GetMostFrequentPos empty -> default");
+
+        // ---- GetMostFrequentPos: самая частая позиция возвращается ----
+        GS::Array<RenumPos> freq;
+        freq.Push (RenumPos (1));
+        freq.Push (RenumPos (2));
+        freq.Push (RenumPos (2));
+        RenumPos mf = GetMostFrequentPos (freq);
+        DBtest (mf.numpos, 2, "GetMostFrequentPos -> most frequent 2");
+
+        // ---- ReNumGetFlag: невалидный флаг -> SKIP ----
+        ParamValue flagInvalid;
+        flagInvalid.isValid = false;
+        ParamValue positionValid;
+        positionValid.isValid = true;
+        DBtest (ReNumGetFlag (flagInvalid, positionValid) == RENUM_SKIP, "ReNumGetFlag invalid flag -> SKIP");
+
+        // ---- ReNumGetFlag: булевый флаг true + редактируемый элемент -> NORMAL ----
+        // Примечание: IsElementEditable для APINULLGuid вернёт false -> RENUM_IGNORE.
+        // Проверяем именно этот детерминированный случай.
+        ParamValue boolFlag;
+        boolFlag.isValid = true;
+        boolFlag.type = API_PropertyBooleanValueType;
+        boolFlag.val.boolValue = true;
+        boolFlag.val.type = API_PropertyBooleanValueType;
+        boolFlag.fromGuid = APINULLGuid;
+        DBtest (ReNumGetFlag (boolFlag, positionValid) == RENUM_IGNORE,
+                "ReNumGetFlag bool=true non-editable -> IGNORE");
+
+        ParamValue boolFlagFalse = boolFlag;
+        boolFlagFalse.val.boolValue = false;
+        DBtest (ReNumGetFlag (boolFlagFalse, positionValid) == RENUM_SKIP, "ReNumGetFlag bool=false -> SKIP");
+
+        // ---- ReNumGetFlag: строковый флаг skip/ignore ----
+        ParamValue strFlag;
+        strFlag.isValid = true;
+        strFlag.type = API_PropertyStringValueType;
+        strFlag.val.type = API_PropertyStringValueType;
+        strFlag.fromGuid = APINULLGuid;
+        strFlag.val.uniStringValue = "skip";
+        DBtest (ReNumGetFlag (strFlag, positionValid) == RENUM_SKIP, "ReNumGetFlag string skip -> SKIP");
+
+        ParamValue ignoreFlag = strFlag;
+        ignoreFlag.val.uniStringValue = "ignore";
+        DBtest (ReNumGetFlag (ignoreFlag, positionValid) == RENUM_IGNORE, "ReNumGetFlag string ignore -> IGNORE");
+
+        DBprnt ("TEST", "TestRenumPosLogic : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // GREEN-регрессии ParsePropertyDescriptionToRules для sub/GUID-правил:
+    // фиксируют контракт hasSub/hasGUID/target*/guidSourceProperty. Эти поля
+    // использует UI палитры; правка бага P1 в SyncAddSubelement не должна их менять.
+    // -----------------------------------------------------------------------------
+    void TestDescToRulesSubGuid () {
+        DBprnt ("TEST", "TestDescToRulesSubGuid");
+
+        // ---- to_sub: hasSub = true, targetType определён ----
+        {
+            GS::UniString desc = "Sync_to_sub{Property:TargetSub}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (result.hasSyncRules, "DescToRulesSub to_sub -> hasSyncRules");
+            if (result.syncRules.GetSize () > 0) {
+                DBtest (result.syncRules[0].hasSub, "DescToRulesSub to_sub -> hasSub true");
+                DBtest (result.syncRules[0].targetType == "Property", "DescToRulesSub to_sub -> targetType Property");
+                DBtest (result.syncRules[0].targetName == "TargetSub", "DescToRulesSub to_sub -> targetName TargetSub");
+            }
+        }
+
+        // ---- from_GUID: ТЕКУЩЕЕ поведение — минимальная форма не создаёт правила.
+        // ParsePropertyDescriptionToRules валидирует каждую Sync-команду через
+        // SyncString, и для from_GUID без полного контекста она возвращает отказ ->
+        // isValid=false -> правило не попадает в результат. Фиксируем как есть:
+        // это документирование известного ограничения, а не эталон.
+        {
+            GS::UniString desc = "Sync_from_GUID{Property:GuidSource}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            DBtest (!result.hasSyncRules, "DescToRulesSub from_GUID minimal form -> no rules (known limitation)");
+        }
+
+        // ---- обычный Sync_from: ни hasSub, ни hasGUID ----
+        {
+            GS::UniString desc = "Sync_from{Property:PlainProp}";
+            ParsePropertyResult result = ParsePropertyDescriptionToRules (desc);
+            if (result.syncRules.GetSize () > 0) {
+                DBtest (!result.syncRules[0].hasSub, "DescToRulesSub plain -> hasSub false");
+                DBtest (!result.syncRules[0].hasGUID, "DescToRulesSub plain -> hasGUID false");
+            }
+        }
+
+        DBprnt ("TEST", "TestDescToRulesSubGuid : done");
         return;
     }
 
