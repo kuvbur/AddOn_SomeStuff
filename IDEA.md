@@ -135,6 +135,24 @@
 [x] Этап 1.6 — ResetPropertyToDefault
 ```
 
+### Этап 1.7 — UI-бэклог вкладки «Монитор» (после подсветки, подтверждена 2026-08-24)
+
+```
+[ ] Этап 1.7.1 — Кэш правил Somestuff + фильтр
+    Назначение: кэшировать распарсенные правила (Sync/Spec) и фильтровать список свойств по наличию правила
+    Вход: нет (правила читаются из описаний свойств через кэш)
+    Выход: мост-данные для UI + ускорение повторных рендеров
+    Метрика до: замерить время GetPropertiesList на выделении из 10 элементов (DBprnt, clock())
+[ ] Этап 1.7.2 — Цветовая маркировка неактивных флагов
+    Назначение: в списке свойств визуально отличать выключенные флаги (flagfindspec=false)
+    Реализация: HTML+CSS по данным моста (без новых вызовов API)
+[ ] Этап 1.7.3 — Pin свойств
+    Назначение: закреплять свойства сверху списка при смене выделения
+    Состояние: STATE.pinnedProperties (JS), порядок сортировки в renderPropertyList
+```
+
+Для каждого пункта: тесты до (GREEN-регрессии текущего поведения) → реализация → тесты после → замер времени (clock() вокруг мост-функций, DBprnt в test_results.txt) → оптимизация если деградация >10%.
+
 ### Этап 2: Вкладка «Синхронизация» (после Монитора)
 
 ```
@@ -193,9 +211,10 @@
 
 ---
 
-## Last Checkpoint: 16f2b82 [fix-keep-selection] Suppress palette refresh during programmatic highlight+zoom (438 ok / 0 err)
-## Next Step: Ручная проверка Дмитрием: клик по строке значения — подсветка цветом + зум, выделение остаётся прежним.
-## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html
+## Last Checkpoint: 3d3379f [docs] Record keep-selection fix checkpoint in IDEA.md
+## Next Step: Этап UI-бэклога (кэш правил Somestuff + фильтр, маркировка неактивных флагов, pin свойств) — тесты до/после, замер производительности, оптимизация. Затем Этап 2.1 ExecuteSyncScriptCommand, затем Этап 3 (Нумерация).
+## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, при необходимости Sync.cpp/Spec.cpp
+## Verified 2026-08-24: подсветка+зум по клику ×N работает, выделение сохраняется (подтверждено Дмитрием, runtime AC25)
 
 ## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (DONE)
 
