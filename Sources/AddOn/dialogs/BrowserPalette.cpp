@@ -132,6 +132,20 @@ void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedEleme
     if (selectedElements.IsEmpty ()) {
         selectedElements = GetSelectedElements2 (false, true);
     }
+    // Защита: при переключении в окно секции/3D ArchiCAD может прислать
+    // виртуальные элементы с APINULLGuid. Не пускаем такие GUID'ы в JS-мост —
+    // иначе ACAPI_Element_GetPropertyDefinitions/Values упадёт на них.
+    if (!selectedElements.IsEmpty ()) {
+        GS::Array<API_Guid> filtered;
+        filtered.SetCapacity (selectedElements.GetSize ());
+        for (const API_Guid &g : selectedElements) {
+            if (g != APINULLGuid)
+                filtered.Push (g);
+        }
+        selectedElements = std::move (filtered);
+    }
+    if (selectedElements.IsEmpty ())
+        return;
     Int32 count = (Int32)selectedElements.GetSize ();
     DBprnt ("UpdateSelectionInfoInUI: count=" + GS::ValueToUniString (count));
     // Пушим данные в JS через ExecuteJS
@@ -1203,7 +1217,8 @@ GSErrCode __ACENV_CALL BrowserPalette::SelectionChangeHandler (const API_Neig * 
     if (!syncSettings.GetCatchSelectionChanges ())
         return NoError;
 
-    // Получаем текущее выделение и обновляем UI
+    // Получаем текущее выделение и обновляем UI.
+    // ManualGetSelection сам фильтрует APINULLGuid через UpdateSelectionInfoInUI.
     GetInstance ().ManualGetSelection ();
     return NoError;
 }
