@@ -448,6 +448,27 @@ static const GS::Array<short> paramTypesList = {IDTYPEINX,
 static const GS::UniString idRawname = "{@id:id}";               // Готовый тег для получения ID элемента
 static const GS::UniString attrlayerRawname = "{@attrib:layer}"; // Готовый тег для получения слоя элемента
 
+// Список канонических префиксов тегов (в нижнем регистре, без '{@' и ':') —
+// для распознавания уже готового ключа '{@prefix:name}' в Name2Rawname (Sync.cpp)
+static const GS::Array<GS::UniString> paramPrefixesList = {"id",
+                                                           "property",
+                                                           "coord",
+                                                           "gdl",
+                                                           "description",
+                                                           "info",
+                                                           "ifc",
+                                                           "morph",
+                                                           "attrib",
+                                                           "listdata",
+                                                           "material",
+                                                           "glob",
+                                                           "class",
+                                                           "formula",
+                                                           "element",
+                                                           "mep",
+                                                           "file",
+                                                           "flag"};
+
 // Список индексов типов тегов, в которые разрешена обратная запись параметров
 static const GS::Array<short> paramTypesListWrite = {PROPERTYTYPEINX,
                                                      GDLTYPEINX,

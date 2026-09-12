@@ -981,6 +981,105 @@ void SyncAddRule (const WriteData &writeSub, WriteDict &syncRules, ParamDictElem
 #endif
 }
 
+bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
+    if (name.IsEmpty ())
+        return false;
+    GS::UniString paramNamePrefix = "";
+    // FIX (Sync.cpp-2): ключ определения = prefix + имя + BRACEEND. Раньше скобки
+    // дописывались в конец строки в обратном порядке ('...}{'), GetSubstring('{','}')
+    // давал пусто и функция возвращала false.
+    if (!name.Contains (BRACESTART) && !name.Contains (BRACEEND))
+        name = BRACESTART + name + BRACEEND;
+    // FIX (Sync.cpp-7): регистронезависимое распознавание. Contains в GS::UniString
+    // регистрозависим (UniString.hpp:626-627), ContainsIgnoreCase в GSRoot нет —
+    // сверяем нижнюю копию. Префиксы ключей кэша всегда в нижнем регистре.
+    const GS::UniString loweredName = name.ToLowerCase ();
+
+    // 1) Каноническая форма rawname '{@prefix:name}': префикс известен — вход уже
+    //    является ключом кэша, возвращаем как есть (без изменения регистра имени).
+    if (loweredName.BeginsWith (PVALPREFIX) && loweredName.EndsWith (BRACEEND)) {
+        const UIndex colonInx = loweredName.FindFirst (':');
+        if (colonInx != MaxUIndex) {
+            const GS::UniString prefixPart =
+                loweredName.GetSubstring (PVALPREFIX.GetLength (), colonInx - PVALPREFIX.GetLength ());
+            // Канонические префиксы — из Constants.hpp (paramPrefixesList)
+            for (const GS::UniString &known : paramPrefixesList) {
+                if (prefixPart == known) {
+                    rawname = name;
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 2) Содержимое между внешними скобками
+    GS::UniString tparamName = loweredName.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
+    GS::UniString paramName = tparamName;
+    bool synctypefind = false;
+
+    // Тег целиком: {id} (без ':' после префикса)
+    if (tparamName == "id") {
+        paramNamePrefix = IDNAMEPREFIX;
+        synctypefind = true;
+    } else {
+        // 3) Регистронезависимые префиксы. Атрибут: канон 'Attribute:',
+        // алиас пользовательского ввода 'Attrib:' (Constants.hpp: ATTRIBPREF).
+        static const struct PrefRule {
+            const char *pref;                // Префикс в нижнем регистре
+            const GS::UniString &namePrefix; // Канонический '{@...' префикс результата
+        } prefRules[] = {
+            {"property:", PROPERTYNAMEPREFIX},
+            {"coord:", COORDNAMEPREFIX},
+            {"morph:", MORPHNAMEPREFIX},
+            {"info:", INFONAMEPREFIX},
+            {"ifc:", IFCNAMEPREFIX},
+            {"glob:", GLOBNAMEPREFIX},
+            {"class:", CLASSNAMEPREFIX},
+            {"attribute:", ATTRIBNAMEPREFIX},
+            {"attrib:", ATTRIBNAMEPREFIX},
+            {"element:", ELEMENTNAMEPREFIX},
+            {"mep:", MEPNAMEPREFIX},
+            {"file:", FILENAMEPREFIX},
+            {"listdata:", LISTDATANAMEPREFIX},
+            {"description:", GDLNAMEPREFIX},
+            {"desc:", GDLNAMEPREFIX},
+        };
+
+        for (const PrefRule &rule : prefRules) {
+            if (tparamName.BeginsWith (rule.pref)) {
+                paramName = tparamName.GetSubstring (GS::UniString (rule.pref).GetLength (),
+                                                     tparamName.GetLength () - GS::UniString (rule.pref).GetLength ());
+                paramNamePrefix = rule.namePrefix;
+                synctypefind = true;
+                break;
+            }
+        }
+        if (synctypefind == false) {
+            // Координата без префикса: symb_pos_x → {@coord:...}
+            if (tparamName.BeginsWith ("symb_pos_")) {
+                paramNamePrefix = COORDNAMEPREFIX;
+                synctypefind = true;
+            } else {
+                // GDL-параметр без ':' — исходное поведение (дефолт)
+                paramNamePrefix = GDLNAMEPREFIX;
+                synctypefind = true;
+            }
+        }
+    }
+    if (synctypefind == false)
+        return false;
+
+    GS::Array<GS::UniString> params;
+    UInt32 nparam = StringSplt (paramName, SEMICOLON, params, true);
+    if (nparam == 0)
+        return false;
+    paramName = params.Get (0);
+    FormatStringFunc::GetFormatString (paramName);
+    paramName.ReplaceAll (SLASHEKR, SLASH);
+    rawname = paramNamePrefix + paramName.ToLowerCase () + BRACEEND;
+    return true;
+}
+
 // -----------------------------------------------------------------------------
 // Парсит описание свойства, заполняет массив с правилами (GS::Array <WriteData>)
 // -----------------------------------------------------------------------------
@@ -1336,136 +1435,6 @@ bool ParseSyncString (const API_Guid &elemGuid,
         syncRules.Push (std::move (writeOne));
     }
     return hasRule;
-}
-
-bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
-    if (name.IsEmpty ())
-        return false;
-    GS::UniString paramNamePrefix = "";
-    // FIX (Sync.cpp-2): ключ определения = prefix + имя + BRACEEND (см. Propertycache /
-    // NameToRawName). Раньше скобки дописывались в конец строки в обратном порядке —
-    // из 'Property:TestProperty' получалось 'Property:TestProperty}{' вместо
-    // '{Property:TestProperty}', GetSubstring('{','}') давал пусто и функция возвращала false.
-    if (!name.Contains (BRACESTART) && !name.Contains (BRACEEND))
-        name = BRACESTART + name + BRACEEND;
-    bool synctypefind = false;
-    if (synctypefind == false) {
-        if (name.Contains (PROPERTYPREF)) {
-            name.ReplaceAll (PROPERTYPREF, EMPTYSTRING);
-            paramNamePrefix = PROPERTYNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains ("{symb_pos_"))
-            name.ReplaceAll ("{symb_pos_", "{Coord:symb_pos_");
-        if (name.Contains (COORDPREF)) {
-            name.ReplaceAll (COORDPREF, EMPTYSTRING);
-            paramNamePrefix = COORDNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains ("{id}") || name.Contains ("{ID}")) {
-            paramNamePrefix = IDNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (!name.Contains (":") || name.Contains ("escription:") || name.Contains ("esc:")) {
-            if (name.Contains ("escription:") || name.Contains ("esc:")) {
-                name.ReplaceAll ("description:", EMPTYSTRING);
-                name.ReplaceAll ("Description:", EMPTYSTRING);
-                name.ReplaceAll ("desc:", EMPTYSTRING);
-                name.ReplaceAll ("Desc:", EMPTYSTRING);
-            }
-            paramNamePrefix = GDLNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-
-    if (synctypefind == false) {
-        if (name.Contains (MORPHPREF)) {
-            name.ReplaceAll (MORPHPREF, EMPTYSTRING);
-            paramNamePrefix = MORPHNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (INFOPREF)) {
-            name.ReplaceAll (INFOPREF, EMPTYSTRING);
-            paramNamePrefix = INFONAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (IFCPREF)) {
-            name.ReplaceAll (IFCPREF, EMPTYSTRING);
-            paramNamePrefix = IFCNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (GLOBPREF)) {
-            name.ReplaceAll (GLOBPREF, EMPTYSTRING);
-            paramNamePrefix = GLOBNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (CLASSPREF)) {
-            name.ReplaceAll (CLASSPREF, EMPTYSTRING);
-            paramNamePrefix = CLASSNAMEPREFIX;
-            synctypefind = true;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (ATTRIBPREF)) {
-            synctypefind = true;
-            name.ReplaceAll (ATTRIBPREF, EMPTYSTRING);
-            paramNamePrefix = ATTRIBNAMEPREFIX;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (ELEMENTPREF)) {
-            synctypefind = true;
-            name.ReplaceAll (ELEMENTPREF, EMPTYSTRING);
-            paramNamePrefix = ELEMENTNAMEPREFIX;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (MEPPREF)) {
-            synctypefind = true;
-            name.ReplaceAll (MEPPREF, EMPTYSTRING);
-            paramNamePrefix = MEPNAMEPREFIX;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (FILEPREF)) {
-            synctypefind = true;
-            name.ReplaceAll (FILEPREF, EMPTYSTRING);
-            paramNamePrefix = FILENAMEPREFIX;
-        }
-    }
-    if (synctypefind == false) {
-        if (name.Contains (LISTDATAPREF)) {
-            synctypefind = true;
-            name.ReplaceAll (LISTDATAPREF, EMPTYSTRING);
-            paramNamePrefix = LISTDATANAMEPREFIX;
-        }
-    }
-    if (synctypefind == false)
-        return false;
-    GS::Array<GS::UniString> params;
-    GS::UniString tparamName = name.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
-    UInt32 nparam = StringSplt (tparamName, SEMICOLON, params, true);
-    if (nparam == 0)
-        return false;
-    GS::UniString paramName = params.Get (0);
-    FormatStringFunc::GetFormatString (paramName);
-    paramName.ReplaceAll (SLASHEKR, SLASH);
-    rawname = paramNamePrefix + paramName.ToLowerCase () + BRACEEND;
-    return true;
 }
 
 // -----------------------------------------------------------------------------

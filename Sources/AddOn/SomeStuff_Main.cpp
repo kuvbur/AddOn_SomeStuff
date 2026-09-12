@@ -83,10 +83,20 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     switch (notifID) {
     case APINotify_New:
     case APINotify_NewAndReset:
-    case APINotify_Open:
+    case APINotify_Open: {
         Do_ElementMonitor (syncSettings.GetSyncMon ());
         PROPERTYCACHE ().Update ();
+#if defined(TESTING)
+        // C++-тесты — после открытия проекта: IsTestProjectOpen () в DBprnt
+        // отсекает записи до этого момента (Initialize выполняется без проекта).
+        static bool testRunDone = false;
+        if (!testRunDone) {
+            testRunDone = true;
+            TestFunc::Test ();
+        }
+#endif
         break;
+    }
     // После приёма изменений в Teamwork: обновляем кэш свойств вне TW-транзакции
     // (в ReservationChangeHandler это делать нельзя — см. док DevKit-25).
     // Записи БД здесь нет: DimRoundAll на смену БД проекта уже вызывается ниже.
