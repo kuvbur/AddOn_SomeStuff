@@ -48,6 +48,12 @@ static GSErrCode __ACENV_CALL ReservationChangeHandler (const GS::HashTable<API_
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings);
+    // Док DevKit-25 (APIReservationChangeHandlerProc): «In the reservation change handler
+    // try to avoid calling functions that would modify the database.» Хендлер вызывается
+    // синхронно внутри Teamwork-операции (Send/Receive/Reserve), поэтому здесь только
+    // подписка наблюдателей — никакой записи БД и полного обновления кэша.
+    // Рефреш кэша после приёма изменений выполняется в ProjectEventHandlerProc
+    // по APINotify_ReceiveChanges.
     for (GS::HashTable<API_Guid, short>::ConstPairIterator it = reserved.EnumeratePairs (); it != nullptr; ++it) {
 #ifdef ServerMainVers_2800
         AttachObserver ((it->key), syncSettings);
@@ -55,9 +61,6 @@ static GSErrCode __ACENV_CALL ReservationChangeHandler (const GS::HashTable<API_
         AttachObserver (*(it->key), syncSettings);
 #endif
     }
-    PROPERTYCACHE ().Update ();
-    DimRoundAll (syncSettings, false);
-    ACAPI_KeepInMemory (true);
     return NoError;
 }
 
@@ -82,6 +85,12 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     case APINotify_NewAndReset:
     case APINotify_Open:
         Do_ElementMonitor (syncSettings.GetSyncMon ());
+        PROPERTYCACHE ().Update ();
+        break;
+    // После приёма изменений в Teamwork: обновляем кэш свойств вне TW-транзакции
+    // (в ReservationChangeHandler это делать нельзя — см. док DevKit-25).
+    // Записи БД здесь нет: DimRoundAll на смену БД проекта уже вызывается ниже.
+    case APINotify_ReceiveChanges:
         PROPERTYCACHE ().Update ();
         break;
     case APINotify_Close:
@@ -484,12 +493,12 @@ GSErrCode __ACENV_CALL Initialize (void) {
 #ifdef ServerMainVers_2700
     ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New |
                                                   APINotify_NewAndReset | APINotify_Open | APINotify_Close |
-                                                  APINotify_Quit | APINotify_ChangeProjectDB,
+                                                  APINotify_Quit | APINotify_ChangeProjectDB | APINotify_ReceiveChanges,
                                               ProjectEventHandlerProc);
 #else
     ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New |
                                         APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit |
-                                        APINotify_ChangeProjectDB,
+                                        APINotify_ChangeProjectDB | APINotify_ReceiveChanges,
                                     ProjectEventHandlerProc);
 #endif
 
