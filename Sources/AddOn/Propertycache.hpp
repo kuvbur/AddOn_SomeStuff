@@ -111,6 +111,8 @@ struct PropertyCache {
     ParamDict file;                                                             // Прочитанные файлы
     GS::HashTable<GS::UniString, GS::Array<GS::Array<GS::UniString>>> filedata; // Данные в файлах
     ClassificationFunc::SystemDict systemdict;                                  // Словарь систем с вложенными классами
+    GS::Array<GS::UniString>
+        classificationOptions;              // Опции классификаций для BrowserPalette — чистится вместе с systemdict
     UnicGuidByGuidString reversesystemdict; // Получение имени класса по GUID классификации и GUID класса в нём
     GS::HashTable<API_Guid, API_PropertyGroup> propertygroups;
     DimRules dimrules; // Правила для размеров, прочитанные из информации о проекте
@@ -201,6 +203,7 @@ struct PropertyCache {
         glob.Clear ();
         systemdict.Clear ();
         reversesystemdict.Clear ();
+        classificationOptions.Clear (); // Опции классификаций для палитры — не переживают смену проекта/TW-receive
         propertygroups.Clear ();
         dimrules.Clear ();
         unreadedgdlparams.Clear ();
@@ -591,6 +594,7 @@ struct PropertyCache {
     #endif
         systemdict.Clear ();
         reversesystemdict.Clear ();
+        classificationOptions.Clear ();
         isClassificationRead = true;
         if (ClassificationFunc::GetAllClassification (systemdict) == NoError)
             isClassification_OK = true;

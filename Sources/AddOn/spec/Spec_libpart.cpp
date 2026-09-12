@@ -173,7 +173,8 @@ namespace ListData {
         }
         // FIX (ревью 2026-09-12): единица измерения из LISTDATA (unitcode) не сохранялась,
         // arm.unit/elem.unit оставались пустыми.
-        p.unit = unitcode;
+        if (p.unit.IsEmpty ()) // FIX (Spec_libpart.cpp-4): v3 уже прочитал unit из partstring[10] — не затираем
+            p.unit = unitcode;
         p.naen = GS::UniString::Printf ("d%d ", (int)p.diam);
         p.naen.Append (p.klass);
         if (p.isPm) {

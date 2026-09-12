@@ -682,16 +682,11 @@ bool SyncData (const API_Guid &elemGuid,
     API_ElemTypeID elementType;
     if (!IsElementEditable (elemGuid, syncSettings, true, elementType))
         return false;
-    // FIX (Sync.cpp-1): SetAutoclass может вызвать ACAPI_Element_AddClassificationItem —
-    // это модификация модели, которая должна выполняться в undo-области, иначе
-    // добавленная классификация не отменяется пользователем (undo-область записи
-    // свойств открывается позже, вокруг SyncAll/SyncSelected записи).
-    const GSErrCode errAutoclass = ACAPI_CallUndoableCommand ("SetAutoclass", [&] () -> GSErrCode {
-        ClassificationFunc::SetAutoclass (elemGuid);
-        return NoError;
-    });
-    if (errAutoclass != NoError)
-        msg_rep ("SyncData", "SetAutoclass", errAutoclass, elemGuid);
+    // FIX (ревью, повторная проверка Sync.cpp-1): ACAPI_CallUndoableCommand запрещён
+    // в обработчике событий базы элементов (док DevKit-25): уведомления приходят изнутри
+    // уже открытой транзакции. В меню-путях (SyncAll/SyncSelected) вокруг записи
+    // уже открыта undo-область (Sync.cpp:244/508).
+    ClassificationFunc::SetAutoclass (elemGuid);
     err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
     if (err != NoError) {
         msg_rep ("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);

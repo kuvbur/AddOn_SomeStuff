@@ -1037,7 +1037,9 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             // FIX (BrowserPalette.cpp-3): словарь классификаций кэширован и в течение
             // сессии не меняется — полный список полных имён строим один раз и
             // переиспользуем (GetClassification вызывается на каждое изменение выделения).
-            static GS::Array<GS::UniString> optionsCache;
+            // Кэш живёт в PropertyCache и чистится вместе с systemdict (смена проекта, TW-receive):
+            //   Propertycache.hpp: classificationOptions.Clear () в Update () и ReadClassification ().
+            GS::Array<GS::UniString> &optionsCache = cache.classificationOptions;
             if (optionsCache.IsEmpty ()) {
                 auto &systemdict = cache.systemdict;
                 for (const auto &sysPair : systemdict) {

@@ -32,9 +32,8 @@ namespace TestFunc {
         TestAddProperty ();
         TestPropertyHelpersToString ();
         TestStringSplt ();
-        //      TestName2Rawname ();  // отключён — баг в Name2Rawname (Sync.cpp:1323-1326), порядок скобок {/} нарушен
-        //      TestName2RawnameWithBrackets ();  // отключён — тот же баг в Name2Rawname: возвращает false для уже
-        //      обёрнутых строк
+        TestName2Rawname (); // Sync.cpp-2 исправлен (порядок скобок { })
+        TestName2RawnameWithBrackets ();
         TestSyncString ();
         TestSyncStringRealRules ();
         TestParsePrefixes ();

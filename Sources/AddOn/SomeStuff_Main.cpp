@@ -240,9 +240,10 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
                     ParamHelpers::WriteInfo (paramToWrite);
                 }
             }
-            // Вызов после цикла сохранён: он обслуживает словарь второго прохода (строка выше),
-            // а при пустом словаре WriteInfo выходит сразу.
-            ParamHelpers::WriteInfo (paramToWrite);
+            // Только если цикл не выполнялся: иначе fromInfo последнего элемента
+            // уже записаны внутри цикла (SomeStuff_Main.cpp-3).
+            if (rereadelem.IsEmpty ())
+                ParamHelpers::WriteInfo (paramToWrite);
         }
         break;
     default:
