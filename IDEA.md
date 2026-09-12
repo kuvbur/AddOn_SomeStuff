@@ -212,7 +212,7 @@
 ---
 
 ## Last Checkpoint: f0909f0 [prefs-2026-09-12] Настройки — в локальный файл вместо prefs проекта; остаток находок ревью BrowserPalette
-## Next Step: Задача «настройки локально + остаток находок ревью BrowserPalette (сессия 20260911_190542_a855f4)»: код готов, AC25 Build succeeded, HTML-валидация PASSED. Осталось: RUNTIME-тест в TW (Дмитрий) — настройки выживают перезапуск AC, в TW нет локальных изменений от палитры, Send/Receive. LSP не проверен (clangd MCP не стартует). AC22–24/26–29 не собирались.
+## Next Step: Runtime AC25 выполнен: HTML PASSED, сборка Build succeeded, ArchiCAD запущен, `test_results.txt` создан, локальный файл `C:/Users/da-rogojin/AppData/Roaming/GRAPHISOFT/SomeStuff/SyncSettings.dat` найден и записан; `=== ERROR IN TEST ===` не найден, но runner пометил C++-тесты как UNKNOWN из-за отсутствующего recognised status marker. Остался TW-тест (Send/Receive несколькими пользователями) и LSP/сборки AC22–24/26–29.
 ## Scope: Sources/AddOn/dialogs/SyncSettings.cpp/.hpp, Sources/AddOn/SomeStuff_Main.cpp, Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html
 ## Verified 2026-08-24: подсветка+зум по клику ×N работает, выделение сохраняется (подтверждено Дмитрием, runtime AC25)
 
@@ -282,7 +282,7 @@
 
 ### Статус реализации (2026-09-12, сессия 20260911_190542_a855f4)
 
-Реализовано и собрано (AC25 Build succeeded, Debug SomeStuff.apx). Runtime-тест НЕ выполнен.
+Реализовано и собрано (AC25 Build succeeded, Debug SomeStuff.apx). Runtime AC25 выполнен: HTML PASSED, ArchiCAD запущен, `test_results.txt` создан, `=== ERROR IN TEST ===` не найден; runner пометил C++-тесты как UNKNOWN из-за отсутствующего recognised status marker. TW-тест не выполнен.
 
 Принятые допущения (открытые вопросы закрыты умолчаниями плана; откат = правка одной строки):
 1. Папка: `API_GraphisoftPrefsFolderID` → fallback `API_ApplicationPrefsFolderID` → `API_UserDocumentsFolderID`, подпапка `SomeStuff`.
