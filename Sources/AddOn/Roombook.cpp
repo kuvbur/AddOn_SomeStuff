@@ -679,15 +679,15 @@ namespace Roombook
         }
         for (UnicGuidByGuid::PairIterator cIt = exsistotdelements.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
-            UnicGuid guids = cIt->value;
+            const UnicGuid &guids = cIt->value; // FIX (Roombook.cpp-8): только чтение — копия не нужна
             API_Guid zoneguid = cIt->key;
     #else
-            UnicGuid guids = *cIt->value;
+            const UnicGuid &guids = *cIt->value; // FIX (Roombook.cpp-8): только чтение — копия не нужна
             API_Guid zoneguid = *cIt->key;
     #endif
             GS::HashTable<API_Guid, TypeOtd> otd_elements;
             // Список всех элементов отделки
-            for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
+            for (UnicGuid::ConstPairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
     #ifdef ServerMainVers_2800
                 API_Guid guid = cItt->key;
                 bool isvisible = cItt->value;
@@ -1202,159 +1202,8 @@ namespace Roombook
         return area;
     }
 
-    // 2. Определение типа поверхности по вектору нормали
-    TypeOtd ClassifySurfaceType (const API_Coord3D &normal) {
-        double len = std::sqrt (normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-        if (len < 1e-6)
-            return NoSet;
-        double nz = normal.z / len;
-        if (nz > 0.999)
-            return Floor; // Смотрит строго вверх
-        if (nz < -0.999)
-            return Ceil; // Смотрит строго вниз
-        if (std::abs (nz) < 0.01)
-            return Wall_Main; // Вертикальная стена
-        return Sloped;        // Наклонная плоскость
-    }
-
-    // 3. Главная функция сбора плоскостей Зоны
-    GSErrCode GetZone3DPolygons_StrictAPI (const API_Elem_Head &elemHead,
-                                           GS::Array<OtdZoneSurfacePolygon> &outSurfaces) {
-        outSurfaces.Clear ();
-
-        // Шаг 1: Получаем базовую 3D-информацию об элементе
-        API_ElemInfo3D info3D;
-        GSErrCode err = ACAPI_Element_Get3DInfo (elemHead, &info3D);
-        if (err != NoError)
-            return err;
-
-        // Сквозные счетчики смещений для плоской базы данных компонента внутри элемента
-        Int32 pgonOffset = 1;
-        Int32 pedgOffset = 1;
-        Int32 edgeOffset = 1;
-        Int32 vertOffset = 1;
-        Int32 vectOffset = 1;
-        API_Component3D pgonComp;
-        API_Component3D vectComp;
-        API_Component3D pedgComp;
-        API_Component3D edgeComp;
-        API_Component3D vertComp;
-        API_Component3D bodyComp;
-        for (Int32 bIdx = info3D.fbody; bIdx <= info3D.lbody; ++bIdx) {
-            BNClear (bodyComp);
-            bodyComp.header.typeID = API_BodyID;
-            bodyComp.header.index = bIdx;
-            err = ACAPI_3D_GetComponent (&bodyComp);
-            if (err != NoError)
-                continue;
-
-            // Фиксируем количество подобъектов в текущем теле из структуры API_BodyType
-            Int32 numPgons = bodyComp.body.nPgon;
-
-            // Шаг 3: Итерируемся по полигонам (Pgon) текущего тела
-            for (Int32 pIdx = 0; pIdx < numPgons; ++pIdx) {
-                Int32 currentPgonIdx = pgonOffset + pIdx;
-                BNClear (pgonComp);
-                pgonComp.header.typeID = API_PgonID;
-                pgonComp.header.index = currentPgonIdx;
-
-                err = ACAPI_3D_GetComponent (&pgonComp);
-                if (err != NoError)
-                    continue;
-                OtdZoneSurfacePolygon surface;
-
-                // Получаем понятное имя покрытия (материала) из атрибутов проекта
-                API_Attribute attrib;
-                attrib.header.typeID = API_MaterialID;
-    #ifdef ServerMainVers_2700
-                attrib.header.index = ACAPI_CreateAttributeIndex ((Int32)pgonComp.pgon.iumat);
-    #else
-                attrib.header.index = (Int32)pgonComp.pgon.iumat;
-    #endif
-                surface.material.material = pgonComp.pgon.iumat;
-                // if (ACAPI_Attribute_Get (&attrib) == NoError) { //TODO Возникает исключение при запуске!
-                //     surface.material.smaterial = attrib.header.name;
-                // }
-                //  Извлекаем нормаль полигона через API_VectType
-                Int32 signedVectIdx = pgonComp.pgon.ivect;
-                Int32 absVectIdx = GS::Abs (signedVectIdx);
-                if (absVectIdx > 0) {
-                    BNClear (vectComp);
-                    vectComp.header.typeID = API_VectID;
-                    vectComp.header.index =
-                        vectOffset + (absVectIdx - 1); // Индексация внутри тела относительная (от 1)
-
-                    if (ACAPI_3D_GetComponent (&vectComp) == NoError) {
-                        // Если ivect отрицательный — инвертируем направление нормали
-                        double sign = (signedVectIdx > 0) ? 1.0 : -1.0;
-                        surface.normal.x = vectComp.vect.x * sign;
-                        surface.normal.y = vectComp.vect.y * sign;
-                        surface.normal.z = vectComp.vect.z * sign;
-                    }
-                }
-                surface.type = ClassifySurfaceType (surface.normal);
-
-                // Диапазон ребер полигона (fpedg и lpedg возвращаются относительно структуры текущего тела)
-                Int32 startPedg = pgonComp.pgon.fpedg;
-                Int32 endPedg = pgonComp.pgon.lpedg;
-
-                // Шаг 4: Проходим по ребрам полигона (Pedg)
-                for (Int32 peIdx = startPedg; peIdx <= endPedg; ++peIdx) {
-                    BNClear (pedgComp);
-                    pedgComp.header.typeID = API_PedgID;
-                    pedgComp.header.index = pedgOffset + (peIdx - 1);
-
-                    if (ACAPI_3D_GetComponent (&pedgComp) != NoError)
-                        continue;
-
-                    Int32 signedEdgeIdx = pedgComp.pedg.pedg;
-                    if (signedEdgeIdx == 0)
-                        continue; // 0 по описанию — маркер начала нового отверстия (Hole)
-
-                    // Шаг 5: Достаем ребро (Edge)
-
-                    BNClear (edgeComp);
-                    edgeComp.header.typeID = API_EdgeID;
-                    edgeComp.header.index = edgeOffset + (GS::Abs (signedEdgeIdx) - 1);
-
-                    if (ACAPI_3D_GetComponent (&edgeComp) != NoError)
-                        continue;
-
-                    // Согласно знаку pedg, выбираем правильное направление обхода ребра через vert1/vert2
-                    Int32 localVertIdx = (signedEdgeIdx > 0) ? edgeComp.edge.vert1 : edgeComp.edge.vert2;
-
-                    // Шаг 6: Получаем глобальные координаты вершины (Vert)
-
-                    BNClear (vertComp);
-                    vertComp.header.typeID = API_VertID;
-                    vertComp.header.index = vertOffset + (localVertIdx - 1);
-
-                    if (ACAPI_3D_GetComponent (&vertComp) != NoError)
-                        continue;
-
-                    API_Coord3D vertexCoord;
-                    vertexCoord.x = vertComp.vert.x;
-                    vertexCoord.y = vertComp.vert.y;
-                    vertexCoord.z = vertComp.vert.z;
-
-                    surface.vertices.Push (std::move (vertexCoord));
-                }
-
-                // Если полигон успешно собран, рассчитываем площадь и сохраняем
-                if (surface.vertices.GetSize () >= 3 && surface.type != NoSet)
-                    outSurfaces.Push (std::move (surface));
-            }
-
-            // Смещаем глобальные индексы плоской структуры на объем обработанного тела
-            pgonOffset += bodyComp.body.nPgon;
-            pedgOffset += bodyComp.body.nPedg;
-            edgeOffset += bodyComp.body.nEdge;
-            vertOffset += bodyComp.body.nVert;
-            vectOffset += bodyComp.body.nVect;
-        }
-
-        return NoError;
-    }
+    // FIX (Roombook.cpp-6): ClassifySurfaceType и GetZone3DPolygons_StrictAPI удалены —
+    // их единственный потребитель (запись roominfo.zonesurf) убран, данные нигде не читались.
 
     // -----------------------------------------------------------------------------
     // Получение информации из зоны о полгионах и находящейся в ней элементах
@@ -1388,11 +1237,10 @@ namespace Roombook
             return false;
         }
 
-        if (GetZone3DPolygons_StrictAPI (zoneelement.header, roominfo.zonesurf) != NoError) {
-            msg_rep ("CollectRoomInfo err", "GetZone3DPolygons_StrictAPI", err, zoneGuid);
-            roominfo.isValid = false;
-            return false;
-        }
+        // FIX (Roombook.cpp-6): вызов GetZone3DPolygons_StrictAPI удалён — он строил всю
+        // 3D-примитивную базу зоны (ACAPI_Element_Get3DInfo + обход body→pgon→pedg→edge→vert)
+        // ради записи в roominfo.zonesurf, которая нигде не читалась; ранняя пометка
+        // isValid = false всё равно перезаписывается ниже (roominfo.isValid = flag).
 
         API_ElementMemo zonememo = {};
         err = ACAPI_Element_GetMemo (zoneelement.header.guid, &zonememo);
@@ -1951,9 +1799,10 @@ namespace Roombook
             return;
         }
         for (const auto &pair : collisions.AsConst ()) {
-            API_Guid classguid = APINULLGuid;
-            if (Class_IsElementFinClass (pair.second.collidedElemGuid, finclassguids, classguid))
-                continue;
+            // FIX (Roombook.cpp-7): allslabs уже отфильтрован выше (только плиты, для которых
+            // Class_IsElementFinClass вернул false), повторная проверка классификации
+            // плиты из пары коллизий не может сработать — убрана вместе с запросом
+            // ACAPI_Element_GetClassificationItems на каждую пару коллизий.
             const API_Guid &zoneGuid = pair.first.collidedElemGuid;
             const API_Guid &slabGuid = pair.second.collidedElemGuid;
             if (GS::Array<API_Guid> *slabsPtr = slabsinzone.GetPtr (zoneGuid)) {

@@ -1385,24 +1385,49 @@ bool EvalExpression (GS::UniString &unistring_expression) {
                     }
                 }
 
-                // Вычисляем математическое выражение через ExprTk
+                // FIX (ревью 2026-09-12, Sync.cpp-5): exprtk::parser + compile выполнялись на
+                // каждый вызов EvalExpression, т.е. на каждый элемент при синхронизации, хотя
+                // формула правила одинакова для всех элементов. К моменту этой строки значения
+                // уже подставлены в текст выражения (ReplaceParamInExpression), поэтому успешно
+                // скомпилированное выражение всегда чисто литеральное (без пользовательских
+                // переменных) и его результат детерминирован. Мемоизируем результат вычисления
+                // по тексту выражения: повторные вызовы с тем же текстом (та же формула на всех
+                // элементах выделения) переиспользуют результат без компиляции. Контракт вызовов
+                // не меняется: форматирование (fstring) по-прежнему применяется на каждом вызове.
                 typedef double T;
                 typedef exprtk::expression<T> expression_t;
                 typedef exprtk::parser<T> parser_t;
 
-                expression_t expression;
-                parser_t parser;
-                if (parser.compile (expression_string, expression)) {
-                    const T result = expression.value ();
-                    if (!std::isnan (result)) {
-                        rezult_txt = FormatStringFunc::NumToString (result, fstring);
-                    }
-                }
+                struct ExprResult {
+                    bool ok = false;
+                    double value = 0.0;
+                };
+
+                static GS::HashTable<GS::UniString, ExprResult> exprResultCache;
+                if (exprResultCache.GetSize () > 4096)
+                    exprResultCache.Clear (); // защита от неограниченного роста на длинной сессии
+
+                const GS::UniString cacheKey (expression_string.c_str (), chcode);
+                ExprResult result;
+                if (const ExprResult *cachedPtr = exprResultCache.GetPtr (cacheKey)) {
+                    result = *cachedPtr;
+                } else {
+                    expression_t expression;
+                    parser_t parser;
+                    result.ok = parser.compile (expression_string, expression);
+                    if (result.ok)
+                        result.value = expression.value ();
+                    result.ok = result.ok && !std::isnan (result.value);
 #if defined(TESTING)
-                else {
-                    DBprnt ("ExprTk Compile Error in formula:", expression_string.c_str ());
-                }
+                    if (!result.ok) {
+                        DBprnt ("ExprTk Compile Error in formula:", expression_string.c_str ());
+                    }
 #endif
+                    exprResultCache.Put (cacheKey, result);
+                }
+                if (result.ok) {
+                    rezult_txt = FormatStringFunc::NumToString (result.value, fstring);
+                }
             }
         }
         // Формируем токен для удаления

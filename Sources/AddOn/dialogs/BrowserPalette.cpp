@@ -667,15 +667,6 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     addCatchSetter (true);
     addCatchSetter (false);
 
-    // Отладочная функция — проверяет, что JS-мост работает
-    jsACAPI->AddItem (new DG::JSFunction ("Ping", [] (GS::Ref<DG::JSBase>) {
-        DBprnt ("Ping: JavaScript Bridge is working!");
-        GS::Ref<DG::JSObject> result = new DG::JSObject ();
-        result->AddItem ("ok", new DG::JSValue (true));
-        result->AddItem ("message", new DG::JSValue ("Bridge is alive"));
-        return result;
-    }));
-
     // Обновление количества выделенных элементов в UI (вызывается из JS).
     // Возвращаем DG::JSValue (не nullptr) — nullptr из JSFunction роняет CEF-мост.
     jsACAPI->AddItem (new DG::JSFunction ("RefreshSelectionInfoUI", [this] (GS::Ref<DG::JSBase>) {
@@ -1042,22 +1033,28 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 }
             }
 
-            // Собираем список всех доступных классификаций (опции для выбора)
-            GS::Array<GS::UniString> options;
-            auto &systemdict = cache.systemdict;
-            for (const auto &sysPair : systemdict) {
-                const ClassificationFunc::ClassificationDict *classDict = sysPair.value;
-                if (classDict == nullptr)
-                    continue;
-                for (const auto &classPair : *classDict) {
-                    const ClassificationFunc::ClassificationValues *cv = classPair.value;
-                    if (cv == nullptr)
+            // Собираем список всех доступных классификаций (опции для выбора).
+            // FIX (BrowserPalette.cpp-3): словарь классификаций кэширован и в течение
+            // сессии не меняется — полный список полных имён строим один раз и
+            // переиспользуем (GetClassification вызывается на каждое изменение выделения).
+            static GS::Array<GS::UniString> optionsCache;
+            if (optionsCache.IsEmpty ()) {
+                auto &systemdict = cache.systemdict;
+                for (const auto &sysPair : systemdict) {
+                    const ClassificationFunc::ClassificationDict *classDict = sysPair.value;
+                    if (classDict == nullptr)
                         continue;
-                    GS::UniString fullName;
-                    ClassificationFunc::GetFullName (cv->item, *classDict, fullName);
-                    options.Push (fullName);
+                    for (const auto &classPair : *classDict) {
+                        const ClassificationFunc::ClassificationValues *cv = classPair.value;
+                        if (cv == nullptr)
+                            continue;
+                        GS::UniString fullName;
+                        ClassificationFunc::GetFullName (cv->item, *classDict, fullName);
+                        optionsCache.Push (fullName);
+                    }
                 }
             }
+            const GS::Array<GS::UniString> &options = optionsCache;
 
             DBprnt (
                 GS::UniString::Printf ("GetClassification: [result] isCommon=%d, commonPathSegments=%d, differing=%d",
@@ -1323,7 +1320,10 @@ GSErrCode __ACENV_CALL BrowserPalette::SelectionChangeHandler (const API_Neig * 
         return NoError;
 
     SyncSettings syncSettings;
-    LoadSyncSettingsFromPreferences (syncSettings, true);
+    // FIX (BrowserPalette.cpp-1): true заставляет перечитывать настройки из файла
+    // (блокирующий файловый ввод-вывод) на каждую смену выделения; процессный кэш
+    // обновляется всеми путями записи (WriteSyncSettingsToPreferences) — читаем из него.
+    LoadSyncSettingsFromPreferences (syncSettings, false);
     if (!syncSettings.GetCatchSelectionChanges ())
         return NoError;
 

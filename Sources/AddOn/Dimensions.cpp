@@ -118,6 +118,26 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     GS::UniString content;
     bool flag_write = false;
+    // FIX (ревью 2026-09-12, Dimensions.cpp-1): чтение параметров привязанного элемента поднято
+    // из цикла по правилам — раньше ParamHelpers::Read (полное чтение элемента: заголовок +
+    // ACAPI_Element_Get + свойства) выполнялось по разу на каждое правило каждого размера,
+    // хотя все правила одного размера привязаны к одному и тому же элементу. Объединяем
+    // параметров всех правил в один словарь и читаем один раз на размер (на размерность).
+    ParamDictValue pread_elem_base = {};
+    for (const auto &dimrule : rules) {
+        for (GS::HashTable<GS::UniString, ParamValue>::ConstPairIterator cIt = dimrule.paramDict.EnumeratePairs ();
+             cIt != NULL;
+             ++cIt) {
+#ifdef ServerMainVers_2800
+            if (!pread_elem_base.ContainsKey (cIt->key))
+                pread_elem_base.Put (cIt->key, cIt->value);
+#else
+            if (!pread_elem_base.ContainsKey (*cIt->key))
+                pread_elem_base.Put (*cIt->key, *cIt->value);
+#endif
+        }
+    }
+
     bool opaque = element.dimension.defNote.opaque; // значение фона для всего размера
     for (Int32 k = 1; k < element.dimension.nDimElem; k++) {
         const API_NoteContentType originalContentType = (*memo.dimElems)[k].note.contentType;
@@ -150,6 +170,12 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
         bool is_sameGUID = (ref_elemGuid == bef_elemGuid);
         if (!is_sameGUID)
             ref_elemGuid = APINULLGuid;
+        // Dimensions.cpp-1: свежая копия объединённого словаря на размерность, одно чтение
+        // элемента вместо чтения на каждое правило.
+        ParamDictValue pread_elem_dict = pread_elem_base;
+        const bool pread_elem_need = (ref_elemGuid != APINULLGuid);
+        if (pread_elem_need)
+            ParamHelpers::Read (ref_elemGuid, pread_elem_dict);
         bool is_wall = (elementType == API_WallID);
         for (const auto &dimrule : rules) {
             pen_rounded = dimrule.pen_rounded;
@@ -166,7 +192,8 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
                           custom_txt,
                           flag_change,
                           flag_highlight,
-                          dimrule)) {
+                          dimrule,
+                          pread_elem_need ? &pread_elem_dict : nullptr)) {
                 if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE)
                     flag_change = DIM_CHANGE_OFF;
                 if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
@@ -262,7 +289,8 @@ bool DimParse (const double &dimVal,
                GS::UniString &custom_txt,
                UInt32 &flag_change,
                UInt32 &flag_highlight,
-               const DimRule &dimrule) {
+               const DimRule &dimrule,
+               const ParamDictValue *preadelem) {
     flag_change = DIM_NOCHANGE;
     flag_highlight = DIM_NOCHANGE;
     Int32 round_value = dimrule.round_value;
@@ -303,8 +331,37 @@ bool DimParse (const double &dimVal,
                     pv->isValid = true;
                 }
             }
-            if (need_read_elem) {
-                ParamHelpers::Read (elemGuid, pdictvalue); // Получим значения, если размер привязан к элементу
+            if (preadelem != nullptr && !preadelem->IsEmpty ()) {
+                // Dimensions.cpp-1: значения привязанного элемента предпрочитаны вызывающим
+                // кодом (одно чтение на размер) — переносим их в копию словаря правила без
+                // повторного ParamHelpers::Read. measuredvalue (уже подставлен выше) и прочие
+                // уже заполненные значения не перезатираем — как и Read, который заполняет
+                // только непрочитанные параметры. Отсутствующий ключ — страховочный fallback
+                // на полное чтение.
+                bool all_found = true;
+                for (ParamDictValue::PairIterator cIt = pdictvalue.EnumeratePairs (); cIt != NULL; ++cIt) {
+#ifdef ServerMainVers_2800
+                    ParamValue &param = cIt->value;
+                    const GS::UniString &key = cIt->key;
+#else
+                    ParamValue &param = *cIt->value;
+                    const GS::UniString key = *cIt->key;
+#endif
+                    if (param.isValid)
+                        continue;
+                    if (const ParamValue *preadPtr = preadelem->GetPtr (key)) {
+                        param.val = preadPtr->val;
+                        param.isValid = preadPtr->isValid;
+                    } else {
+                        all_found = false;
+                    }
+                }
+                if (!all_found)
+                    ParamHelpers::Read (elemGuid, pdictvalue);
+            } else if (need_read_elem) {
+                // Fallback: словарь привязанного элемента не подготовлен вызывающим кодом
+                // (вызов вне DimAutoRound) — читаем, как раньше.
+                ParamHelpers::Read (elemGuid, pdictvalue);
             }
             replaced = ParamHelpers::ReplaceParamInExpression (pdictvalue, expression);
         } else {

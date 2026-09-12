@@ -3609,81 +3609,30 @@ void CoordNorthAngle (
             angznorth = 360.0 + angznorth;
         angznorth = round (angznorth * k) / k;
     }
-    double n = 0.0;    //"С"
-    double nw = 45.0;  //"СЗ"
-    double w = 90.0;   //"З"
-    double sw = 135.0; //"ЮЗ"
-    double s = 180.0;  //"Ю"
-    double se = 225.0; //"ЮВ"
-    double e = 270.0;  //"В";
-    double ne = 315.0; //"СB";
-    double nn = 360.0;
+    double n = 0.0; //"С"
+    // FIX (ревью 2026-09-12, Helpers.cpp-7): раньше выполнялось до 32 последовательных проверок
+    // с 16 вызовами RSGetIndString на каждый элемент/сегмент, хотя подходит ровно одно
+    // направление. Теперь направление определяется один раз индексом (0..7) и выполняется
+    // единственный вызов RSGetIndString для нужного языка (iseng уже кэшируется в isEng()).
+    // Семантика сохранена: граничные значения 22.5 + 45*k (is_equal) относятся к предыдущему
+    // направлению, как в исходных is_equal-блоках.
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
-    if (angznorth > nn - 22.5 || angznorth < n + 22.5)
-        angznorthtxt = RSGetIndString (iseng, N_StringID, ACAPI_GetOwnResModule ());
-    if (angznorth > ne - 22.5 && angznorth < ne + 22.5)
-        angznorthtxt = RSGetIndString (iseng, NE_StringID, ACAPI_GetOwnResModule ());
-    if (angznorth > e - 22.5 && angznorth < e + 22.5)
-        angznorthtxt = RSGetIndString (iseng, E_StringID, ACAPI_GetOwnResModule ());
-    if (angznorth > se - 22.5 && angznorth < se + 22.5)
-        angznorthtxt = RSGetIndString (iseng, SE_StringID, ACAPI_GetOwnResModule ());
-    if (angznorth > s - 22.5 && angznorth < s + 22.5)
-        angznorthtxt = RSGetIndString (iseng, S_StringID, ACAPI_GetOwnResModule ());
-    if (angznorth > sw - 22.5 && angznorth < sw + 22.5)
-        angznorthtxt = RSGetIndString (iseng, SW_StringID, ACAPI_GetOwnResModule ());
-    if (angznorth > w - 22.5 && angznorth < w + 22.5)
-        angznorthtxt = RSGetIndString (iseng, W_StringID, ACAPI_GetOwnResModule ());
-    if (angznorth > nw - 22.5 && angznorth < nw + 22.5)
-        angznorthtxt = RSGetIndString (iseng, NW_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, n + 22.5))
-        angznorthtxt = RSGetIndString (iseng, N_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, ne + 22.5))
-        angznorthtxt = RSGetIndString (iseng, NE_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, e + 22.5))
-        angznorthtxt = RSGetIndString (iseng, E_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, se + 22.5))
-        angznorthtxt = RSGetIndString (iseng, SE_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, s + 22.5))
-        angznorthtxt = RSGetIndString (iseng, S_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, sw + 22.5))
-        angznorthtxt = RSGetIndString (iseng, SW_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, w + 22.5))
-        angznorthtxt = RSGetIndString (iseng, W_StringID, ACAPI_GetOwnResModule ());
-    if (is_equal (angznorth, nn - 22.5))
-        angznorthtxt = RSGetIndString (iseng, NW_StringID, ACAPI_GetOwnResModule ());
-
-    if (angznorth > nn - 22.5 || angznorth < n + 22.5)
-        angznorthtxteng = "N";
-    if (angznorth > ne - 22.5 && angznorth < ne + 22.5)
-        angznorthtxteng = "NE";
-    if (angznorth > e - 22.5 && angznorth < e + 22.5)
-        angznorthtxteng = "E";
-    if (angznorth > se - 22.5 && angznorth < se + 22.5)
-        angznorthtxteng = "SE";
-    if (angznorth > s - 22.5 && angznorth < s + 22.5)
-        angznorthtxteng = "S";
-    if (angznorth > sw - 22.5 && angznorth < sw + 22.5)
-        angznorthtxteng = "SW";
-    if (angznorth > w - 22.5 && angznorth < w + 22.5)
-        angznorthtxteng = "W";
-    if (angznorth > nw - 22.5 && angznorth < nw + 22.5)
-        angznorthtxteng = "NW";
-    if (is_equal (angznorth, n + 22.5))
-        angznorthtxteng = "N";
-    if (is_equal (angznorth, ne + 22.5))
-        angznorthtxteng = "NE";
-    if (is_equal (angznorth, e + 22.5))
-        angznorthtxteng = "E";
-    if (is_equal (angznorth, se + 22.5))
-        angznorthtxteng = "SE";
-    if (is_equal (angznorth, s + 22.5))
-        angznorthtxteng = "S";
-    if (is_equal (angznorth, sw + 22.5))
-        angznorthtxteng = "SW";
-    if (is_equal (angznorth, w + 22.5))
-        angznorthtxteng = "W";
-    if (is_equal (angznorth, nn - 22.5))
-        angznorthtxteng = "NW";
+    static const short dirStringID[8] = {
+        N_StringID, NE_StringID, E_StringID, SE_StringID, S_StringID, SW_StringID, W_StringID, NW_StringID};
+    static const char *dirEng[8] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+    Int32 dir = -1;
+    for (Int32 kk = 0; kk < 8 && dir < 0; kk++) {
+        if (is_equal (angznorth, n + 22.5 + 45.0 * kk))
+            dir = kk; // 22.5 -> N, 67.5 -> NE, ..., 337.5 -> NW
+    }
+    if (dir < 0) {
+        dir = (Int32)round (angznorth / 45.0);
+        dir %= 8;
+        if (dir < 0)
+            dir += 8;
+    }
+    angznorthtxt = RSGetIndString (iseng, dirStringID[dir], ACAPI_GetOwnResModule ());
+    angznorthtxteng = dirEng[dir];
 }
 
 // -----------------------------------------------------------------------------

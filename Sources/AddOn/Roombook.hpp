@@ -68,13 +68,6 @@ namespace Roombook {
         GS::UniString rawname_bytype = EMPTYSTRING; // Имя свойства для записи c разбивкой
     };
 
-    struct OtdZoneSurfacePolygon {
-        TypeOtd type;
-        API_Coord3D normal;
-        GS::Array<API_Coord3D> vertices;
-        OtdMaterial material;
-    };
-
     struct GuidByZ {
         double r = 0;
         double zBottom = 0;
@@ -164,7 +157,8 @@ namespace Roombook {
         GS::Array<API_BeamPart> beamPart;                     // Участки балок в зоне
         GS::Array<API_CWSegmentPart> cwSegmentPart;           // Навесные стены в зоне
         GS::Array<API_Niche> niches;                          // Ниши в зоне
-        GS::Array<OtdZoneSurfacePolygon> zonesurf;
+        // FIX (Roombook.cpp-6): поле zonesurf удалено — заполнялось только в CollectRoomInfo
+        // через ACAPI_Element_Get3DInfo (дорогой 3D-проход) и нигде не читалось.
         double height_down = 0;        // Высота панелей
         double height_main = 0;        // Высота основной отделки
         double height_up = 0;          // Высота верхней части отделки

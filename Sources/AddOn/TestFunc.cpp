@@ -1624,10 +1624,10 @@ namespace TestFunc {
             return;
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
-        ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
-            err = ACAPI_Element_SetProperties (elemGuid, propertywrite);
-            return NoError;
-        });
+        err = ACAPI_CallUndoableCommand (
+            undoString, [&] () -> GSErrCode { return ACAPI_Element_SetProperties (elemGuid, propertywrite); });
+        if (err != NoError)
+            msg_rep ("ResetSyncProperty", "ACAPI_Element_SetProperties", err, elemGuid);
     }
 
     void ResetSyncPropertyOne (const API_Guid &elemGuid, GS::Array<API_Property> &propertywrite) {
@@ -1642,13 +1642,14 @@ namespace TestFunc {
             if (!definitions[i].description.IsEmpty ()) {
                 if (definitions[i].description.Contains ("Sync_from")) {
                     API_Property property = {};
-                    if (ACAPI_Element_GetPropertyValue (elemGuid, definitions[i].guid, property) == NoError) {
+                    const GSErrCode errGet = ACAPI_Element_GetPropertyValue (elemGuid, definitions[i].guid, property);
+                    if (errGet == NoError) {
                         if (!property.isDefault) {
                             property.isDefault = true;
                             propertywrite.Push (property);
                         }
                     } else {
-                        msg_rep ("ResetSyncProperty", "ACAPI_Element_GetPropertyValue", err, elemGuid);
+                        msg_rep ("ResetSyncProperty", "ACAPI_Element_GetPropertyValue", errGet, elemGuid);
                     }
                 }
             }
@@ -2766,8 +2767,8 @@ namespace TestFunc {
         // ---- SetToMax: берёт максимум по alphanum-сравнению ----
         RenumPos acc = RenumPos (10);
         RenumPos candidate = RenumPos (9);
-        acc.SetToMax (candidate); // "9" > "10" в строковом сравнении
-        DBtest (acc.numpos == 9 || acc.numpos == 10, "SetToMax picks max by alphanum");
+        acc.SetToMax (candidate); // alphanum: 10 > 9, значение не меняется
+        DBtest (static_cast<double> (acc.numpos), 10.0, "SetToMax keeps greater position (alphanum 10 > 9)");
 
         // ---- operator== ----
         RenumPos pa = RenumPos (42);
