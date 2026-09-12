@@ -243,7 +243,7 @@ void SyncAndMonAll (SyncSettings &syncSettings) {
         GS::UniString undoString = RSGetIndString (iseng, UndoSyncId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
-            short i = 1;
+            Int32 i = 1; // FIX (Sync.cpp-4): APIIo_SetNextProcessPhaseID ожидает Int32* maxval (см. DevKit-25)
 #ifdef ServerMainVers_2700
             bool showPercent = false;
             Int32 maxval = 2;
@@ -508,7 +508,7 @@ GS::Array<API_Guid> SyncArray (const SyncSettings &syncSettings, GS::Array<API_G
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
             start = clock ();
             GS::UniString title = GS::UniString::Printf ("Writing data to %d elements : ", paramToWrite.GetSize ());
-            short i = 1;
+            Int32 i = 1; // FIX (Sync.cpp-4): APIIo_SetNextProcessPhaseID ожидает Int32* maxval (см. DevKit-25)
 #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&subtitle, &maxval, &showPercent);
 #else
@@ -682,7 +682,16 @@ bool SyncData (const API_Guid &elemGuid,
     API_ElemTypeID elementType;
     if (!IsElementEditable (elemGuid, syncSettings, true, elementType))
         return false;
-    ClassificationFunc::SetAutoclass (elemGuid);
+    // FIX (Sync.cpp-1): SetAutoclass может вызвать ACAPI_Element_AddClassificationItem —
+    // это модификация модели, которая должна выполняться в undo-области, иначе
+    // добавленная классификация не отменяется пользователем (undo-область записи
+    // свойств открывается позже, вокруг SyncAll/SyncSelected записи).
+    const GSErrCode errAutoclass = ACAPI_CallUndoableCommand ("SetAutoclass", [&] () -> GSErrCode {
+        ClassificationFunc::SetAutoclass (elemGuid);
+        return NoError;
+    });
+    if (errAutoclass != NoError)
+        msg_rep ("SyncData", "SetAutoclass", errAutoclass, elemGuid);
     err = ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
     if (err != NoError) {
         msg_rep ("SyncData", "ACAPI_Element_GetPropertyDefinitions", err, elemGuid);
@@ -756,7 +765,7 @@ bool SyncData (const API_Guid &elemGuid,
     return SyncNeedResync (paramToRead, property_write_guid);
 }
 
-bool SyncNeedResync (ParamDictElement &paramToRead, UnicGuidString property_write_guid) {
+bool SyncNeedResync (ParamDictElement &paramToRead, const UnicGuidString &property_write_guid) {
     if (property_write_guid.IsEmpty ())
         return false;
     if (paramToRead.IsEmpty ())
@@ -1338,10 +1347,12 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
     if (name.IsEmpty ())
         return false;
     GS::UniString paramNamePrefix = "";
-    if (!name.Contains (BRACEEND))
-        name = name + BRACEEND;
-    if (!name.Contains (BRACESTART))
-        name = name + BRACESTART;
+    // FIX (Sync.cpp-2): ключ определения = prefix + имя + BRACEEND (см. Propertycache /
+    // NameToRawName). Раньше скобки дописывались в конец строки в обратном порядке —
+    // из 'Property:TestProperty' получалось 'Property:TestProperty}{' вместо
+    // '{Property:TestProperty}', GetSubstring('{','}') давал пусто и функция возвращала false.
+    if (!name.Contains (BRACESTART) && !name.Contains (BRACEEND))
+        name = BRACESTART + name + BRACEEND;
     bool synctypefind = false;
     if (synctypefind == false) {
         if (name.Contains (PROPERTYPREF)) {
@@ -2393,7 +2404,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
     } else {
         msg_rep ("SyncShowSubelement", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
     }
-    GS::UniString pname = GetDBName (homedatabaseInfo);
+    GS::UniString pname = (err == NoError) ? GetDBName (homedatabaseInfo) : GS::UniString (); // FIX (Sync.cpp-3)
     int count_inv = 0;
     int count_all = 0;
     int count_otherplan = 0;

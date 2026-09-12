@@ -145,7 +145,9 @@ bool SyncData (const API_Guid &elemGuid,
                ParamDictElement &paramToWrite,
                int dummymode);
 
-bool SyncNeedResync (ParamDictElement &paramToRead, UnicGuidString property_write_guid);
+bool SyncNeedResync (
+    ParamDictElement &paramToRead,
+    const UnicGuidString &property_write_guid); // FIX (Sync.cpp-6): таблица только читается — const& вместо копии
 
 void SyncCalcRule (const WriteDict &syncRules,
                    const GS::Array<API_Guid> &subelemGuids,

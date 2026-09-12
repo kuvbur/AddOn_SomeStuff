@@ -637,6 +637,8 @@ struct PropertyCache {
                     GS::UniString classname = *cItt->key;
     #endif
                     API_Guid &classguid = cl.item.guid;
+                    if (classguid == APINULLGuid) // заполнитель "@system@": не затираем имя системы под APINULLGuid
+                        continue;
                     revSystemDict->Put (classguid, classname);
     #if defined(TESTING)
                     n++;

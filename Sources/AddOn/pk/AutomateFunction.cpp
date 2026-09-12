@@ -50,6 +50,11 @@ namespace AutoFunc {
         cutInfo.nShapes = 4;
         cutInfo.shapes = reinterpret_cast<API_3DCutShapeType **> (
             BMAllocateHandle (cutInfo.nShapes * sizeof (API_3DCutShapeType), ALLOCATE_CLEAR, 0));
+        if (cutInfo.shapes == nullptr) {
+            // Иначе nShapes=4 при shapes==nullptr: потребитель в DoSect разыменует (*cutInfo.shapes)[i]
+            cutInfo.nShapes = 0;
+            return APIERR_MEMFULL;
+        }
         double pa = 0;
         double pb = 0;
         double pc = 0;
@@ -279,11 +284,10 @@ namespace AutoFunc {
                 return err;
             }
             Int32 nCoords = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (Coord);
+            // Раньше цикл начинался с i = 1 и c2 = coords[1], из-за чего сегмент (coords[0], coords[1]) терялся;
+            // теперь c2 примирован на coords[0] и первый сегмент выдаётся вместе с остальными.
+            c2 = {(*memo.coords)[0].x, (*memo.coords)[0].y};
             for (Int32 i = 1; i < nCoords; i++) {
-                if (i == 1) {
-                    c2 = {(*memo.coords)[i].x, (*memo.coords)[i].y};
-                    continue;
-                }
                 c1 = {(*memo.coords)[i].x, (*memo.coords)[i].y};
                 s = {c1, c2};
                 if (s.GetLength () > 0.0001) {
@@ -436,7 +440,8 @@ namespace AutoFunc {
             return err;
         }
 
-        API_DocumentFrom3DType documentFrom3DType;
+        API_DocumentFrom3DType documentFrom3DType =
+            {}; // иначе BMKillHandle ниже освободит мусор из стека при отказе Get
     #ifdef ServerMainVers_2700
         err = ACAPI_View_GetDocumentFrom3DSettings (&dbInfo.databaseUnId, &documentFrom3DType);
     #else

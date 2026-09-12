@@ -213,11 +213,6 @@ namespace Roombook
         // Необходимые для чтения параметры и свойства
         ReadParams windowParams = Param_GetForWindowParams ();
         ReadParams roomParams = Param_GetForRooms ();
-        // FIX (ревью 2026-09-12): п.36 — одна рабочая копия словаря параметров до циклов
-        // по зонам/проёмам (Param_Property_Read мутирует isValid/val); изоляция от исходного
-        // словаря правил сохраняется, повторное копирование на каждую зону/проём устранено.
-        ReadParams roomParamsWork = roomParams;
-        ReadParams windowParamsWork = windowParams;
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (!guidselementToRead.ContainsKey (typeelem))
                 continue;
@@ -291,7 +286,10 @@ namespace Roombook
                 continue; // Если у зоны нет прочитанных параметров - дальше делать
                           // нечего
             // Заполняем данные для зон
-            // FIX (ревью 2026-09-12): п.36 — используется рабочая копия roomParamsWork вместо копии на каждую зону
+            // Копия на каждую зону: Param_Property_Read пропускает параметры с уже
+            // выставленным isValid и не перечитывает val — общая копия тянула бы
+            // значения первой зоны во все остальные.
+            ReadParams roomParamsWork = roomParams;
             Param_SetToRooms (material_dict, otd, paramToRead, roomParamsWork);
             if (!otd.isValid)
                 continue;
@@ -381,8 +379,9 @@ namespace Roombook
                 double si = sin (angz);
                 walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
                 for (OtdOpening &op : otdw.openings) {
-                    // FIX (ревью 2026-09-12): п.36 — используется рабочая копия windowParamsWork вместо копии на каждый
-                    // проём
+                    // Копия на каждый проём: см. комментарий к копии roomParamsWork выше —
+                    // общая копия тянула бы флаги первого проёма во все остальные.
+                    ReadParams windowParamsWork = windowParams;
                     Param_SetToWindows (op, paramToRead, windowParamsWork, otdw);
                     OpeningReveals_Create_One (otd.otdslab,
                                                otdw,
@@ -1603,6 +1602,11 @@ namespace Roombook
     #endif
             return;
         }
+        // FIX (Roombook.cpp-2): линия стены для проектирования рёбер зон фиксируется
+        // один раз до цикла — дальше walledge перезаписывается ребром текущей зоны
+        // (для OtdWall_Add_One), и повторный AsLine () от него давал бы линию ребра
+        // предыдущей зоны вместо линии стены.
+        const GS::Optional<Geometry::Line2D> wallline = walledge.AsLine ();
         for (const API_Guid &zoneGuid : zoneGuids) {
             OtdRoom *roominfoPtr = roomsinfo.GetPtr (zoneGuid);
             if (roominfoPtr == nullptr || !roominfoPtr->isValid) {
@@ -1614,7 +1618,6 @@ namespace Roombook
 
             bool flag_find = false;
             if (const auto *sectorsPtr = roominfoPtr->walledges.GetPtr (elGuid)) {
-                GS::Optional<Geometry::Line2D> wallline = walledge.AsLine ();
                 if (!wallline.HasValue ()) {
     #if defined(TESTING)
                     DBprnt ("OtdWall_Create_FromWall err", "!wallline.HasValue ()");
@@ -1681,7 +1684,10 @@ namespace Roombook
                     if (wpart.guid != elGuid)
                         continue;
                     UInt32 inxedge = wpart.roomEdge - 1;
-                    if (inxedge > roominfoPtr->edges.GetSize ()) {
+                    // FIX (Roombook.cpp-3): roomEdge 1-базовый, допустимый диапазон
+                    // индекса — [0, GetSize () - 1]; нестрогая проверка пропускала
+                    // чтение одного Sector за концом массива.
+                    if (inxedge >= roominfoPtr->edges.GetSize ()) {
     #if defined(TESTING)
                         DBprnt ("OtdWall_Create_FromWall err", "inxedge > roomedges.restedges.GetSize ()");
     #endif
@@ -1988,7 +1994,10 @@ namespace Roombook
                 continue;
             // Проверяем отметки
             bool is_floor = (zBottom <= roominfoPtr->zBottom && zUp >= roominfoPtr->zBottom);
-            bool is_ceil = (zBottom <= roominfoPtr->zBottom + roominfoPtr->height);
+            // FIX (Roombook.cpp-4): у проверки потолка нужна и нижняя граница, иначе
+            // плита, целиком лежащая ниже зоны, проходит is_ceil и попадает в ceilslab.
+            bool is_ceil = (zBottom <= roominfoPtr->zBottom + roominfoPtr->height &&
+                            zUp >= roominfoPtr->zBottom + roominfoPtr->height);
             if (is_floor) {
                 roominfoPtr->floorslab.Push (elGuid);
             } else if (is_ceil) {
@@ -4616,14 +4625,22 @@ namespace Roombook
         wallelement.header.floorInd = edges.floorInd;
         wallelement.wall.bottomOffset = GetOffsetFromStory (edges.zBottom, edges.floorInd, storyLevels);
     #ifdef ServerMainVers_2700
+        // FIX (Roombook.cpp-5): oppMat тоже нужно пометить, иначе противоположная
+        // поверхность остаётся с материалом по умолчанию (как в ветке AC25 ниже).
         API_AttributeIndex ematerial = ACAPI_CreateAttributeIndex (edges.material.material);
         wallelement.wall.refMat.hasValue = true;
+        wallelement.wall.oppMat.hasValue = true;
         wallelement.wall.sidMat.hasValue = true;
         wallelement.wall.refMat.value = ematerial;
         wallelement.wall.oppMat.value = ematerial;
         wallelement.wall.sidMat.value = ematerial;
     #else
+        // FIX (Roombook.cpp-5): в AC25 API_OverriddenAttribute = {attributeIndex;
+        // overridden; filler_1[3]}, и attributeIndex игнорируется, пока overridden ==
+        // false. Для oppMat флаг был пропущен — противоположная поверхность оставалась
+        // с материалом по умолчанию.
         wallelement.wall.refMat.overridden = true;
+        wallelement.wall.oppMat.overridden = true;
         wallelement.wall.sidMat.overridden = true;
         wallelement.wall.refMat.attributeIndex = edges.material.material;
         wallelement.wall.oppMat.attributeIndex = edges.material.material;

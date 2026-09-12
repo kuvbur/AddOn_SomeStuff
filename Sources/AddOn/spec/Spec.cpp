@@ -1335,11 +1335,17 @@ namespace Spec {
             if (!p.ContainsKey (rawname))
                 return false;
             ParamDictValue paramDict = {}; // Словарь параметров в формуле
-            ParamValue formula = p.Get (rawname);
+            // FIX (ревью 2026-09-12): без const& формула (ParamValue с API_Property +
+            // API_PropertyDefinition) глубоко копировалась дважды на каждый вызов.
+            // Копируем только строку-выражение: ParseParamName мутирует переданную
+            // строку (expression = std::move(result)), ссылку на значение из словаря
+            // передавать нельзя.
+            const ParamValue &formula = p.Get (rawname);
             paramDict.Add (rawname, formula);
-            ParamHelpers::ParseParamName (formula.val.uniStringValue, paramDict);
+            GS::UniString formula_expression = formula.val.uniStringValue;
+            ParamHelpers::ParseParamName (formula_expression, paramDict);
             if (!ListData::AddLibdataToParamValueDict (
-                    elemguid, n_layer, paramListDataToRead, formula.val.uniStringValue, paramDict)) {
+                    elemguid, n_layer, paramListDataToRead, formula_expression, paramDict)) {
                 pvalue.val.type = API_PropertyStringValueType;
                 pvalue.val.uniStringValue = "";
                 pvalue.val.doubleValue = 0;
@@ -2003,7 +2009,11 @@ namespace Spec {
                         GS::UniString n_row_txt = name.GetSubstring ('[', ']', 0);
                         double doubleValue = 0;
                         Int32 n_row = 10;
-                        if (UniStringToDouble (n_row_txt, doubleValue)) {
+                        // FIX (ревью 2026-09-12): значение из суффикса "[N]" попадает в счётчик
+                        // цикла развёртки (min_row) — ограничиваем разумной границей, опечатка
+                        // вида [100000] приводила к выделению сотен МБ и зависанию.
+                        if (UniStringToDouble (n_row_txt, doubleValue) && doubleValue >= 1 &&
+                            doubleValue <= max_group_mat) {
                             n_row = (GS::Int32)doubleValue;
                         }
                         if (min_row == 0)
@@ -2515,7 +2525,12 @@ namespace Spec {
                             param.Add (rawname, paramTo);
                         }
                     }
-                    const GSSize nParams = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
+                    // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — у объекта без
+                    // GDL-параметров params == nullptr, разыменование нулевого хэндла
+                    // (аналогично GetSizePlaceElement выше).
+                    const GSSize nParams = (memo.params == nullptr)
+                                               ? 0
+                                               : BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
                     for (GSIndex ii = 0; ii < nParams; ++ii) {
                         API_AddParType &actParam = (*memo.params)[ii];
                         GS::UniString name = GS::UniString (actParam.name);

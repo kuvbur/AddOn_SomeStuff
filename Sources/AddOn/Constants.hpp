@@ -4,44 +4,44 @@
 #if !defined(CONST_HPP)
     #define CONST_HPP // Include guard macro
 
-    #define Menu_MonAll 1   // Команда меню: мониторинг всех элементов
-    #define Menu_SyncAll 2  // Команда меню: синхронизация всех элементов
-    #define Menu_SyncSelect 3  // Команда меню: синхронизация выбранных элементов
-    #define Menu_wallS 4    // Команда меню: выборка стен
-    #define Menu_widoS 5    // Команда меню: выборка окон/дверей
-    #define Menu_objS 6     // Команда меню: выборка объектов
-    #define Menu_cwallS 7   // Команда меню: выборка несущих стен
-    #define Menu_ReNum 8    // Команда меню: перенумерация элементов
-    #define Menu_Sum 9      // Команда меню: суммирование значений
-    #define Menu_RunParam 10  // Команда меню: запуск параметров
-    #define Menu_Spec 11    // Команда меню: спецификация
-    #define Menu_ShowSub 12 // Команда меню: показать подэлементы
-    #define Menu_SetRevision 13  // Команда меню: установить ревизию
-    #define Menu_SetSub 14  // Команда меню: установить подпозицию
-    #define Menu_RoomBook 15  // Команда меню: экспликация помещений
-    #define Menu_AutoProfile 16  // Команда меню: автоматический профиль
-    #define Menu_AutoLay 17  // Команда меню: автоматический раскрой
-    #define Menu_Pallete 18  // Команда меню: открыть палитру
+    #define Menu_MonAll 1       // Команда меню: мониторинг всех элементов
+    #define Menu_SyncAll 2      // Команда меню: синхронизация всех элементов
+    #define Menu_SyncSelect 3   // Команда меню: синхронизация выбранных элементов
+    #define Menu_wallS 4        // Команда меню: выборка стен
+    #define Menu_widoS 5        // Команда меню: выборка окон/дверей
+    #define Menu_objS 6         // Команда меню: выборка объектов
+    #define Menu_cwallS 7       // Команда меню: выборка несущих стен
+    #define Menu_ReNum 8        // Команда меню: перенумерация элементов
+    #define Menu_Sum 9          // Команда меню: суммирование значений
+    #define Menu_RunParam 10    // Команда меню: запуск параметров
+    #define Menu_Spec 11        // Команда меню: спецификация
+    #define Menu_ShowSub 12     // Команда меню: показать подэлементы
+    #define Menu_SetRevision 13 // Команда меню: установить ревизию
+    #define Menu_SetSub 14      // Команда меню: установить подпозицию
+    #define Menu_RoomBook 15    // Команда меню: экспликация помещений
+    #define Menu_AutoProfile 16 // Команда меню: автоматический профиль
+    #define Menu_AutoLay 17     // Команда меню: автоматический раскрой
+    #define Menu_Pallete 18     // Команда меню: открыть палитру
 
-static const Int32 MonAll_CommandID = 1;      // ID команды мониторинга всех элементов
-static const Int32 SyncAll_CommandID = 2;     // ID команды синхронизации всех элементов
-static const Int32 SyncSelect_CommandID = 3;  // ID команды синхронизации выбранных элементов
-static const Int32 wallS_CommandID = 4;       // ID команды выборки стен
-static const Int32 widoS_CommandID = 5;       // ID команды выборки окон/дверей
-static const Int32 objS_CommandID = 6;        // ID команды выборки объектов
-static const Int32 cwallS_CommandID = 7;      // ID команды выборки несущих стен
-static const Int32 ReNum_CommandID = 8;       // ID команды перенумерации
-static const Int32 Sum_CommandID = 9;         // ID команды суммирования
-static const Int32 RunParam_CommandID = 10;   // ID команды запуска параметров
-static const Int32 Spec_CommandID = 11;       // ID команды спецификации
-static const Int32 ShowSub_CommandID = 12;    // ID команды показа подэлементов
+static const Int32 MonAll_CommandID = 1;       // ID команды мониторинга всех элементов
+static const Int32 SyncAll_CommandID = 2;      // ID команды синхронизации всех элементов
+static const Int32 SyncSelect_CommandID = 3;   // ID команды синхронизации выбранных элементов
+static const Int32 wallS_CommandID = 4;        // ID команды выборки стен
+static const Int32 widoS_CommandID = 5;        // ID команды выборки окон/дверей
+static const Int32 objS_CommandID = 6;         // ID команды выборки объектов
+static const Int32 cwallS_CommandID = 7;       // ID команды выборки несущих стен
+static const Int32 ReNum_CommandID = 8;        // ID команды перенумерации
+static const Int32 Sum_CommandID = 9;          // ID команды суммирования
+static const Int32 RunParam_CommandID = 10;    // ID команды запуска параметров
+static const Int32 Spec_CommandID = 11;        // ID команды спецификации
+static const Int32 ShowSub_CommandID = 12;     // ID команды показа подэлементов
 static const Int32 SetRevision_CommandID = 13; // ID команды установки ревизии
-static const Int32 SetSub_CommandID = 14;     // ID команды установки подпозиции
-static const Int32 RoomBook_CommandID = 15;   // ID команды экспликации помещений
-static const Int32 Auto3D_CommandID = 16;     // ID команды автоматического профиля
-static const Int32 AutoLay_CommandID = 17;    // ID команды автоматического раскроя
-static const Int32 Pallete_CommandID = 18;    // ID команды открытия палитры
-static const UInt32 MENU_ITEM_COUNT = 17;     // Количество элементов меню
+static const Int32 SetSub_CommandID = 14;      // ID команды установки подпозиции
+static const Int32 RoomBook_CommandID = 15;    // ID команды экспликации помещений
+static const Int32 Auto3D_CommandID = 16;      // ID команды автоматического профиля
+static const Int32 AutoLay_CommandID = 17;     // ID команды автоматического раскроя
+static const Int32 Pallete_CommandID = 18;     // ID команды открытия палитры
+static const UInt32 MENU_ITEM_COUNT = 18;      // Количество пунктов меню (ID_ADDON_MENU: 1..18)
 
     // --- Адаптация типов под старые версии Archicad (Archicad 22) ---
     #ifndef ServerMainVers_2300
@@ -146,17 +146,16 @@ static const Int32 SpecParamPlaceNotFoundId = 65; // Не найдено мес�
 static const Int32 SpecFlagOff = 66;              // Флаг спецификации выключен
 
 // --- Внутренние пути свойств материалов ---
-static const GS::UniString MAT_SOME_STUFF_TH = // Путь к свойству толщины стройматериала
-    "@property:buildingmaterialproperties/some_stuff_th"; // Путь к свойству толщины стройматериала
-static const GS::UniString MAT_SOME_STUFF_UNITS = // Путь к свойству единиц измерения
+static const GS::UniString MAT_SOME_STUFF_TH =               // Путь к свойству толщины стройматериала
+    "@property:buildingmaterialproperties/some_stuff_th";    // Путь к свойству толщины стройматериала
+static const GS::UniString MAT_SOME_STUFF_UNITS =            // Путь к свойству единиц измерения
     "@property:buildingmaterialproperties/some_stuff_units"; // Путь к свойству единиц измерения
-static const GS::UniString MAT_SOME_STUFF_KZAP = // Путь к свойству коэффициента запаса
-    "@property:buildingmaterialproperties/some_stuff_kzap"; // Путь к свойству коэффициента запаса
+static const GS::UniString MAT_SOME_STUFF_KZAP =             // Путь к свойству коэффициента запаса
+    "@property:buildingmaterialproperties/some_stuff_kzap";  // Путь к свойству коэффициента запаса
 
 // --- Граничные значения размеров массивов ---
 const GS::Int32 max_group_mat = 50;  // Максимальное количество материалов у одного элемента
 const GS::Int32 max_group_lib = 100; // Максимальное количество библиотечных компонентов у одного элемента
-
 
 // Префикс для свойств, читаемых из параметров элемента.
 static const GS::UniString PROPERTYPREF = "Property:";
@@ -221,19 +220,19 @@ enum SyncMode {
 // Модуль перенумерации элементов по правилам, заданным в свойствах проекта.
 // Типы нумерации (см. RenumElement.state)
 enum RenumMode {
-    RENUM_SKIP = -1,   // Исключить из обработки
-    RENUM_IGNORE = 0,  // Не менять позицию, но добавлять похожие элементы
-    RENUM_ADD = 1,     // Не менять позицию, если нет пропусков
-    RENUM_NORMAL = 2   // Обычная нумерация/перенумерация
+    RENUM_SKIP = -1,  // Исключить из обработки
+    RENUM_IGNORE = 0, // Не менять позицию, но добавлять похожие элементы
+    RENUM_ADD = 1,    // Не менять позицию, если нет пропусков
+    RENUM_NORMAL = 2  // Обычная нумерация/перенумерация
 };
 
 // Типы простановки нулей для СТРОКОВОГО (API_PropertyStringValueType) свойства (см. RenumRule.nulltype)
 enum ZeroPaddingMode {
-    NOZEROS = 0,       // Не добавлять нули в текстовое свойство
-    ADDZEROS = 1,      // Добавлять нули с учётом разбивки
-    ADDMAXZEROS = 2,   // Добавлять нули по максимальному количеству без учёта разбивки
-    ADDSPACE = 3,      // Добавлять пробелы с учётом разбивки
-    ADDMAXSPACE = 4    // Добавлять пробелы по максимальному количеству без учёта разбивки
+    NOZEROS = 0,     // Не добавлять нули в текстовое свойство
+    ADDZEROS = 1,    // Добавлять нули с учётом разбивки
+    ADDMAXZEROS = 2, // Добавлять нули по максимальному количеству без учёта разбивки
+    ADDSPACE = 3,    // Добавлять пробелы с учётом разбивки
+    ADDMAXSPACE = 4  // Добавлять пробелы по максимальному количеству без учёта разбивки
 };
 
 // Режимы суммирования значений для правил суммирования.
@@ -309,7 +308,7 @@ static const GS::UniString FILENAMEPREFIX = "{@file:"; // Префикс тег�
 static const short FILETYPEINX = 17;                   // Индекс типа: Файл
 
 static const GS::UniString FLAGNAMEPREFIX = "{@flag:"; // Префикс тега флага
-static const short FLAGTYPEINX = 18; // Индекс типа: Флаг
+static const short FLAGTYPEINX = 18;                   // Индекс типа: Флаг
 
 // --- Константы спецсимволов, разделителей и единиц измерения ---
 static const GS::UniString DOT = ".";                             // Точка (строка)
@@ -385,19 +384,19 @@ static const GS::UniString PROP_TH_MIN = "@property:th_min";               // С
 static const GS::UniString PROP_BMAT_INX = "@property:bmat_inx";           // Свойство: Индекс стройматериала
 static const GS::UniString PROP_CUTFILL_INX = "@property:cutfill_inx";     // Свойство: Индекс штриховки сечения
 static const GS::UniString PROP_SOME_STUFF_TH = "@property:some_stuff_th"; // Свойство: Кастомная толщина
-static const GS::UniString PROP_SOME_STUFF_UNITS = // Свойство: Кастомные единицы измерения
-    "@property:some_stuff_units";                                        // Свойство: Кастомные единицы измерения
-static const GS::UniString PROP_UNIT = "@property:unit";                 // Свойство: Единица измерения
-static const GS::UniString PROP_KZAP = "@property:kzap";                 // Свойство: Коэффициент запаса
-static const GS::UniString PROP_AREA = "@property:area";                 // Свойство: Площадь
-static const GS::UniString PROP_VOLUME = "@property:volume";             // Свойство: Объем
-static const GS::UniString PROP_QTY = "@property:qty";                   // Свойство: Количество
-static const GS::UniString PROP_UNIT_PREFIX = "@property:unit_prefix";   // Свойство: Префикс единицы измерения
-static const GS::UniString PROP_LENGTH = "@property:length";             // Свойство: Длина
-static const GS::UniString PROP_AREA_SECTION = "@property:area_section"; // Свойство: Площадь сечения
-static const GS::UniString PROP_WIDTH = "@property:width";               // Свойство: Ширина
-static const GS::UniString MAT_BUILDING_MATERIAL_ID = // Путь к ID стройматериала
-    "@property:BuildingMaterialProperties/Building Material ID"; // Путь к ID стройматериала
+static const GS::UniString PROP_SOME_STUFF_UNITS =                         // Свойство: Кастомные единицы измерения
+    "@property:some_stuff_units";                                          // Свойство: Кастомные единицы измерения
+static const GS::UniString PROP_UNIT = "@property:unit";                   // Свойство: Единица измерения
+static const GS::UniString PROP_KZAP = "@property:kzap";                   // Свойство: Коэффициент запаса
+static const GS::UniString PROP_AREA = "@property:area";                   // Свойство: Площадь
+static const GS::UniString PROP_VOLUME = "@property:volume";               // Свойство: Объем
+static const GS::UniString PROP_QTY = "@property:qty";                     // Свойство: Количество
+static const GS::UniString PROP_UNIT_PREFIX = "@property:unit_prefix";     // Свойство: Префикс единицы измерения
+static const GS::UniString PROP_LENGTH = "@property:length";               // Свойство: Длина
+static const GS::UniString PROP_AREA_SECTION = "@property:area_section";   // Свойство: Площадь сечения
+static const GS::UniString PROP_WIDTH = "@property:width";                 // Свойство: Ширина
+static const GS::UniString MAT_BUILDING_MATERIAL_ID =                      // Путь к ID стройматериала
+    "@property:BuildingMaterialProperties/Building Material ID";           // Путь к ID стройматериала
 
 // --- Строковые ключи свойств компонентов/материалов (@material:) ---
 static const GS::UniString MAT_N = "@material:n";                                     // Материал: Номер/Позиция
@@ -415,16 +414,16 @@ static const GS::UniString MAT_AREA_SECTION = "@material:area_section";         
 static const GS::UniString MAT_WIDTH = "@material:width";                             // Материал: Ширина
 
 // --- Полные путевые свойства строительных материалов в системе Archicad ---
-static const GS::UniString MAT_BUILDING_MATERIAL_NAME = // Наименование стройматериала
-    "@property:BuildingMaterialProperties/Building Material Name"; // Наименование стройматериала
-static const GS::UniString MAT_BUILDING_MATERIAL_DESCRIPTION = // Описание стройматериала
-    "@property:BuildingMaterialProperties/Building Material Description"; // Описание стройматериала
-static const GS::UniString MAT_BUILDING_MATERIAL_DENSITY = // Плотность стройматериала
-    "@property:BuildingMaterialProperties/Building Material Density"; // Плотность стройматериала
-static const GS::UniString MAT_BUILDING_MATERIAL_MANUFACTURER = // Производитель стройматериала
+static const GS::UniString MAT_BUILDING_MATERIAL_NAME =                    // Наименование стройматериала
+    "@property:BuildingMaterialProperties/Building Material Name";         // Наименование стройматериала
+static const GS::UniString MAT_BUILDING_MATERIAL_DESCRIPTION =             // Описание стройматериала
+    "@property:BuildingMaterialProperties/Building Material Description";  // Описание стройматериала
+static const GS::UniString MAT_BUILDING_MATERIAL_DENSITY =                 // Плотность стройматериала
+    "@property:BuildingMaterialProperties/Building Material Density";      // Плотность стройматериала
+static const GS::UniString MAT_BUILDING_MATERIAL_MANUFACTURER =            // Производитель стройматериала
     "@property:BuildingMaterialProperties/Building Material Manufacturer"; // Производитель стройматериала
-static const GS::UniString MAT_BUILDING_MATERIAL_CUTFILL = // Штриховка сечения стройматериала
-    "@property:BuildingMaterialProperties/Building Material CutFill"; // Штриховка сечения стройматериала
+static const GS::UniString MAT_BUILDING_MATERIAL_CUTFILL =                 // Штриховка сечения стройматериала
+    "@property:BuildingMaterialProperties/Building Material CutFill";      // Штриховка сечения стройматериала
 
 // --- Массивы допустимых типов для операций сбора/записи данных ---
 
@@ -450,7 +449,11 @@ static const GS::UniString idRawname = "{@id:id}";               // Готовы
 static const GS::UniString attrlayerRawname = "{@attrib:layer}"; // Готовый тег для получения слоя элемента
 
 // Список индексов типов тегов, в которые разрешена обратная запись параметров
-static const GS::Array<short> paramTypesListWrite = {
-    PROPERTYTYPEINX, GDLTYPEINX, IDTYPEINX, CLASSTYPEINX, ATTRIBTYPEINX, COORDTYPEINX}; // Список типов тегов, разрешённых для записи
+static const GS::Array<short> paramTypesListWrite = {PROPERTYTYPEINX,
+                                                     GDLTYPEINX,
+                                                     IDTYPEINX,
+                                                     CLASSTYPEINX,
+                                                     ATTRIBTYPEINX,
+                                                     COORDTYPEINX}; // Список типов тегов, разрешённых для записи
 
 #endif

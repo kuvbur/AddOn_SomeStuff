@@ -236,8 +236,9 @@ ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &descri
             SyncMode syncdirection = SYNC_NO;
             API_ElemTypeID elementType = API_ObjectID;
 
+            // Разбор для UI: координатные правила и правила классификации не должны отбраковываться
             bool ok = SyncString (
-                elementType, cmd.fullCommand, syncdirection, param, ignorevals, stringformat, true, false, false);
+                elementType, cmd.fullCommand, syncdirection, param, ignorevals, stringformat, true, true, true);
 
             if (ok) {
                 ruleInfo.isValid = true;

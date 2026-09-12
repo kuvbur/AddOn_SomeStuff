@@ -462,9 +462,9 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
                 summ.val.type = paramvalue->val.type;
             }
             if (rule.sum_type == TEXT_SUM) {
-                summ.val.uniStringValue = summ.val.uniStringValue + paramvalue->val.uniStringValue;
+                summ.val.uniStringValue.Append (paramvalue->val.uniStringValue);
                 if (j < eleminpos.GetSize () - 1)
-                    summ.val.uniStringValue = summ.val.uniStringValue + delimetr;
+                    summ.val.uniStringValue.Append (delimetr);
             } else {
                 if (rule.sum_type == NUM_SUM) {
                     summ.val.doubleValue = summ.val.doubleValue + paramvalue->val.doubleValue;

@@ -151,7 +151,7 @@ namespace FormatStringFunc {
         if (formatstring.Contains (KSTRING))
             formatstring.ReplaceAll (KSTRING, EMPTYSTRING);
         if (formatstring.Contains ("4"))
-            formatstring.ReplaceAll ("3", EMPTYSTRING);
+            formatstring.ReplaceAll ("4", EMPTYSTRING);
         if (formatstring.IsEmpty ())
             return true;
         for (UInt32 i = 4; i < 10; i++) {
@@ -1216,9 +1216,9 @@ bool ParamHelpers::ReadMorphParam (const API_Guid &guid, ParamDictValue &pdictva
             double dy = (y2 - y1) * (y2 - y1);
             double dz = (z2 - z1) * (z2 - z1);
             double dl = DoubleM2IntMM (sqrt (dx + dy + dz)) / 1000.0;
-            double dlx = DoubleM2IntMM (sqrt (dy + dx)) / 1000.0;
-            double dly = DoubleM2IntMM (sqrt (dx + dz)) / 1000.0;
-            double dlz = DoubleM2IntMM (sqrt (dx + dy)) / 1000.0;
+            double dlx = DoubleM2IntMM (sqrt (dx + dy)) / 1000.0; // проекция на плоскость XY
+            double dly = DoubleM2IntMM (sqrt (dx + dz)) / 1000.0; // проекция на плоскость XZ
+            double dlz = DoubleM2IntMM (sqrt (dy + dz)) / 1000.0; // проекция на плоскость YZ
             L = L + dl;
             Lx = Lx + dlx;
             Ly = Ly + dly;
@@ -1497,7 +1497,7 @@ GS::UniString ParamHelpers::NameToRawName (const GS::UniString &name, FormatStri
         return EMPTYSTRING;
     GS::UniString rawname_prefix = "";
     GS::UniString name_ = name.ToLowerCase ();
-    if (name_.Contains (BRACESTART) && name_.Contains (BRACESTART))
+    if (name_.Contains (BRACESTART) && name_.Contains (BRACEEND))
         name_ = name_.GetSubstring (CHARBRACESTART, CHARBRACEEND, 0);
     // Ищём строку с указанием формата вывода (метры/миллиметры)
     GS::UniString stringformat = FormatStringFunc::GetFormatString (name_);
@@ -2417,7 +2417,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
             API_ElementMemo memo = {};
             if (ACAPI_Element_GetMemo (owner.header.guid, &memo, APIMemoMask_CWallSegments) == NoError) {
                 Int32 size = BMGetPtrSize (reinterpret_cast<GSPtr> (memo.cWallSegments)) / sizeof (API_CWSegmentType);
-                if (size >= inx_segment) {
+                if (size > inx_segment) {
                     sx = memo.cWallSegments[inx_segment].begC.x + offx;
                     sy = memo.cWallSegments[inx_segment].begC.y + offy;
                     ex = memo.cWallSegments[inx_segment].endC.x + offx;
@@ -3173,7 +3173,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
             bool bsymb_pos_s_correct_hard = bsymb_pos_ex_correct_hard && bsymb_pos_ey_correct_hard;
             bool bsymb_pos_correct_hard = bsymb_pos_e_correct_hard && bsymb_pos_s_correct_hard;
             ParamHelpers::AddBoolValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "l_correct_hard", bl_correct, true);
+                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "l_correct_hard", bl_correct_hard, true);
             ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord,
                                                         element.header.guid,
                                                         COORDNAMEPREFIX,
@@ -5284,10 +5284,11 @@ void ParamHelpers::WriteGDL (const API_Guid &elemGuid, ParamDictValue &params) {
 
         case APIParT_CString:
             static GS::uchar_t strValuePtr[MaxStrValueLength];
-            GS::ucscpy (strValuePtr,
-                        pValuePtr->val.uniStringValue
-                            .ToUStr (0, GS::Min (pValuePtr->val.uniStringValue.GetLength (), (USize)MaxStrValueLength))
-                            .Get ());
+            GS::ucscpy (
+                strValuePtr,
+                pValuePtr->val.uniStringValue
+                    .ToUStr (0, GS::Min (pValuePtr->val.uniStringValue.GetLength (), (USize)(MaxStrValueLength - 1)))
+                    .Get ());
             chgParam.uStrValue = strValuePtr;
             break;
 

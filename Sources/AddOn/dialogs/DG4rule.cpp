@@ -1,12 +1,13 @@
 
-#include "api_headers/APIEnvir.h"
-
 #include "ACAPinc.h" // also includes APIdefs.h
 
-#include "APIdefs.h"
-#include "dialogs/DG4rule.hpp"
-#include "Propertycache.hpp"
+#include "api_headers/APIEnvir.h"
 #include "api_headers/ResourceIds.hpp"
+
+#include "dialogs/DG4rule.hpp"
+
+#include "APIdefs.h"
+#include "Propertycache.hpp"
 
 // -----------------------------------------------------------------------------
 // Реализация диалога выбора правил спецификации.
@@ -107,7 +108,7 @@ void RuleSelectDialog::InitListBox () {
     const DG::Icon &unicon = DG::Icon (SysResModule, DG::ListBox::UncheckedIcon);
 
     for (const auto &rulename : rulelist.rules) {
-#ifdef ServerMainVers_2800
+#if defined(ServerMainVers_2800) || defined(ServerMainVers_2900)
         const GS::UniString &rname = rulename.key;
 #else
         const GS::UniString &rname = *rulename.key;

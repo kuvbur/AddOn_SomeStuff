@@ -37,6 +37,14 @@ namespace Revision {
 #endif
         if (err != NoError) {
             msg_rep ("SetRevision", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
+            if (store == 1) { // снять сохранённые настройки вида перед ранним возвратом
+                store = 0;
+#ifdef ServerMainVers_2700
+                ACAPI_View_StoreViewSettings (store);
+#else
+                ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
+#endif
+            }
             return;
         }
 #ifdef ServerMainVers_2700
@@ -46,6 +54,14 @@ namespace Revision {
 #endif
         if (err != NoError) {
             msg_rep ("SetRevision", "APIDb_GetCurrentWindowID", err, APINULLGuid);
+            if (store == 1) { // снять сохранённые настройки вида перед ранним возвратом
+                store = 0;
+#ifdef ServerMainVers_2700
+                ACAPI_View_StoreViewSettings (store);
+#else
+                ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
+#endif
+            }
             return;
         }
         GetAllChangesMarker (layout_note_guid);
@@ -1050,11 +1066,11 @@ namespace Revision {
                     GS::UniString t = (*memo.params)[i].value.uStr;
                     if (!t.IsEqual (nuch)) {
                         flag_write = true;
-                        // FIX (ревью 2026-09-12): обрезка до API_UAddParStrLen (256) —
-                        // ucscpy в фиксированный буфер uStr без ограничения
-                        // переполнял его (образец: Spec.cpp:2525-2534).
-                        GS::ucscpy ((*memo.params)[i].value.uStr,
-                                    nuch.ToUStr (0, GS::Min (nuch.GetLength (), (USize)API_UAddParStrLen)).Get ());
+                        // FIX (ревью 2026-09-12): обрезка до API_UAddParStrLen - 1 (255) —
+                        // ucscpy копирует и завершающий NUL, буфер uStr[API_UAddParStrLen]
+                        GS::ucscpy (
+                            (*memo.params)[i].value.uStr,
+                            nuch.ToUStr (0, GS::Min (nuch.GetLength (), (USize)(API_UAddParStrLen - 1))).Get ());
                     }
                     find_nuch = true;
                 }
@@ -1062,9 +1078,11 @@ namespace Revision {
                     GS::UniString t = (*memo.params)[i].value.uStr;
                     if (!t.IsEqual (nizm)) {
                         flag_write = true;
-                        // FIX (ревью 2026-09-12): обрезка до API_UAddParStrLen (256).
-                        GS::ucscpy ((*memo.params)[i].value.uStr,
-                                    nizm.ToUStr (0, GS::Min (nizm.GetLength (), (USize)API_UAddParStrLen)).Get ());
+                        // FIX (ревью 2026-09-12): обрезка до API_UAddParStrLen - 1 (255) —
+                        // ucscpy копирует и завершающий NUL.
+                        GS::ucscpy (
+                            (*memo.params)[i].value.uStr,
+                            nizm.ToUStr (0, GS::Min (nizm.GetLength (), (USize)(API_UAddParStrLen - 1))).Get ());
                     }
                     find_izm = true;
                 }

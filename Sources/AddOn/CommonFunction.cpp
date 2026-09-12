@@ -201,7 +201,9 @@ GS::UniString TextToQRCode (const GS::UniString &text, const int error_lvl) {
             b1.set (3, qr.getModule (x, y + 3));
             int d = b1.to_ulong ();
             if (d < 10) {
-                qr_txt = qr_txt + GS::UniString::Printf ("%d", d);
+                // FIX (ревью 2026-09-12): Append вместо operator+ — без копирования
+                // накопленного префикса на каждый модуль QR-кода.
+                qr_txt.Append (GS::UniString::Printf ("%d", d));
             } else {
                 if (d == 10)
                     qr_txt.Append ("A");
@@ -239,6 +241,24 @@ GS::UniString TextToQRCode (const GS::UniString &text) {
         }
     }
     return "ERROR: data Too long";
+}
+
+// -----------------------------------------------------------------------------
+// Проверяет, относится ли текущий открытый проект к тестовому файлу.
+// -----------------------------------------------------------------------------
+static bool IsTestProjectOpen () {
+    API_ProjectInfo projectInfo = {};
+    GSErrCode err = NoError;
+#ifdef ServerMainVers_2700
+    err = ACAPI_ProjectOperation_Project (&projectInfo);
+#else
+    err = ACAPI_Environment (APIEnv_ProjectID, &projectInfo);
+#endif
+    if (err != NoError || projectInfo.untitled || projectInfo.projectName == nullptr) {
+        return false;
+    }
+
+    return projectInfo.projectName->ToLowerCase ().Contains ("test");
 }
 
 // -----------------------------------------------------------------------------
@@ -280,14 +300,16 @@ void DBprnt (double a, GS::UniString reportString) {
     #endif
 
     // Запись в файл test_results.txt
-    std::ofstream testFile ("test_results.txt", std::ios::app);
-    if (testFile.is_open ()) {
-        testFile << "== SMSTF == ";
-        if (!reportString_str.empty ()) {
-            testFile << reportString_str << " : ";
+    if (IsTestProjectOpen ()) {
+        std::ofstream testFile ("test_results.txt", std::ios::app);
+        if (testFile.is_open ()) {
+            testFile << "== SMSTF == ";
+            if (!reportString_str.empty ()) {
+                testFile << reportString_str << " : ";
+            }
+            testFile << var_str << std::endl;
+            testFile.close ();
         }
-        testFile << var_str << std::endl;
-        testFile.close ();
     }
 #else
     UNUSED_VARIABLE (a);
@@ -332,15 +354,17 @@ void DBprnt (GS::UniString msg, GS::UniString reportString) {
     #endif
 
     // Запись в файл test_results.txt
-    std::ofstream testFile ("test_results.txt", std::ios::app);
-    if (testFile.is_open ()) {
-        testFile << "== SMSTF == ";
-        testFile << var_str;
-        if (!reportString_str.empty ()) {
-            testFile << " : " << reportString_str;
+    if (IsTestProjectOpen ()) {
+        std::ofstream testFile ("test_results.txt", std::ios::app);
+        if (testFile.is_open ()) {
+            testFile << "== SMSTF == ";
+            testFile << var_str;
+            if (!reportString_str.empty ()) {
+                testFile << " : " << reportString_str;
+            }
+            testFile << std::endl;
+            testFile.close ();
         }
-        testFile << std::endl;
-        testFile.close ();
     }
 #else
     UNUSED_VARIABLE (msg);
@@ -1922,16 +1946,18 @@ bool ElemHead_To_Neig (API_Neig *neig, const API_Elem_Head *elemHead) {
     }
 #else
     BNZeroMemory (neig, sizeof (API_Neig));
-    API_Elem_Head *elemHeadNonConst = const_cast<API_Elem_Head *> (elemHead);
+    // FIX (ревью 2026-09-12): локальная копия заголовка вместо const_cast —
+    // обнуление по указателю вызывающего портило его объект (см. AC26+-ветку).
+    API_Elem_Head head = *elemHead;
     neig->guid = elemHead->guid;
     // FIX (ревью 2026-09-12): typeID из заголовка всегда, дозаполнение через
     // ACAPI_Element_GetHeader — только для Zombie (см. комментарий в AC26+-ветке).
-    typeID = elemHeadNonConst->typeID;
-    if (elemHeadNonConst->typeID == API_ZombieElemID && neig->guid != APINULLGuid) {
-        BNZeroMemory (elemHeadNonConst, sizeof (API_Elem_Head));
-        elemHeadNonConst->guid = neig->guid;
-        ACAPI_Element_GetHeader (elemHeadNonConst);
-        typeID = elemHeadNonConst->typeID;
+    typeID = head.typeID;
+    if (head.typeID == API_ZombieElemID && neig->guid != APINULLGuid) {
+        BNZeroMemory (&head, sizeof (API_Elem_Head));
+        head.guid = neig->guid;
+        ACAPI_Element_GetHeader (&head);
+        typeID = head.typeID;
     }
 #endif
     switch (typeID) {
@@ -2685,8 +2711,11 @@ namespace GDLHelpers {
                     actParam.value.real = pp->num;
                     break;
                 case APIParT_CString:
-                    GS::ucscpy (actParam.value.uStr,
-                                pp->str.ToUStr (0, GS::Min (pp->str.GetLength (), (USize)API_UAddParStrLen)).Get ());
+                    // FIX (ревью 2026-09-12): ucscpy копирует завершающий NUL, буфер —
+                    // uStr[API_UAddParStrLen], поэтому обрезаем до API_UAddParStrLen - 1.
+                    GS::ucscpy (
+                        actParam.value.uStr,
+                        pp->str.ToUStr (0, GS::Min (pp->str.GetLength (), (USize)(API_UAddParStrLen - 1))).Get ());
                     break;
                 default:
                     break;
@@ -2719,6 +2748,10 @@ namespace GDLHelpers {
                     origArrHdl = (double **)actParam.value.array;
                     newArrHdl = (double **)BMAllocateHandle (
                         actParam.dim1 * actParam.dim2 * sizeof (double), ALLOCATE_CLEAR, 0);
+                    // FIX (ревью 2026-09-12): BMAllocateHandle может вернуть nullptr —
+                    // handle не подменяем, старый массив остаётся валидным.
+                    if (newArrHdl == nullptr)
+                        break;
                     for (Int32 k = 0; k < actParam.dim1; k++)
                         for (Int32 j = 0; j < actParam.dim2; j++)
                             (*newArrHdl)[k * actParam.dim2 + j] = pp->arr_num[k * actParam.dim2 + j];

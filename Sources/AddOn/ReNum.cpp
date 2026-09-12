@@ -90,7 +90,7 @@ GSErrCode ReNumSelected (SyncSettings &syncSettings) {
     }
     UInt32 qtywrite = paramToWriteelem.GetSize ();
     GS::UniString subtitle = GS::UniString::Printf ("Writing data to %d elements", qtywrite);
-    short i = 2;
+    Int32 i = 2; // APIIo_SetNextProcessPhaseID ожидает Int32* maxval (см. DevKit-25)
     #ifdef ServerMainVers_2700
     bool showPercent = false;
     Int32 maxval = 2;

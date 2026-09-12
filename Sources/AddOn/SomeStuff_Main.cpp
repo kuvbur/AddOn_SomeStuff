@@ -234,8 +234,14 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
                     paramToWrite.Clear ();
                     needresync = SyncElement (rereadelem[i], syncSettings, paramToWrite, dummymode);
                     ParamHelpers::ElementsWrite (paramToWrite);
+                    // WriteInfo должен выполняться для КАЖДОГО перечитанного элемента:
+                    // словарь очищается в начале следующей итерации, вызов после цикла
+                    // работал только со словарём последнего элемента.
+                    ParamHelpers::WriteInfo (paramToWrite);
                 }
             }
+            // Вызов после цикла сохранён: он обслуживает словарь второго прохода (строка выше),
+            // а при пустом словаре WriteInfo выходит сразу.
             ParamHelpers::WriteInfo (paramToWrite);
         }
         break;
@@ -317,8 +323,8 @@ void MenuSetState (SyncSettings &syncSettings) {
     MenuItemCheckAC (Menu_Pallete, syncSettings.GetShowPalette ());
     if (!isEng ())
         return;
-    for (UInt32 i = 0; i < MENU_ITEM_COUNT; i++) {
-        SetPaletteMenuText (i);
+    for (UInt32 i = 1; i <= MENU_ITEM_COUNT; i++) { // пункты меню нумеруются с 1 (itemIndex 1-базовый)
+        SetPaletteMenuText (static_cast<short> (i));
     }
 }
 
@@ -354,7 +360,14 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
     #endif
 #endif
     const Int32 AddOnMenuID = ID_ADDON_MENU;
-    PROPERTYCACHE ().Update ();
+    // Переключатели флагов мониторинга к свойствам не обращаются — кэш не пересобираем
+    const bool monitoringToggle =
+        (menuParams->menuItemRef.menuResID == AddOnMenuID) &&
+        (menuParams->menuItemRef.itemIndex == wallS_CommandID || menuParams->menuItemRef.itemIndex == widoS_CommandID ||
+         menuParams->menuItemRef.itemIndex == objS_CommandID || menuParams->menuItemRef.itemIndex == cwallS_CommandID);
+    if (!monitoringToggle) {
+        PROPERTYCACHE ().Update ();
+    }
     // Все команды add-on приходят через один обработчик меню, поэтому здесь
     // выполняется маршрутизация по ID пункта меню.
     switch (menuParams->menuItemRef.menuResID) {

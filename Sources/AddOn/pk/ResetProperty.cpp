@@ -54,6 +54,13 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition> &def
 #else
     err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &origDB, nullptr);
 #endif
+    // FIX (ревью 2026-09-12): результат «запомнить текущую БД» сразу перезаписывался
+    // следующим вызовом, ошибка терялась, и обнулённый origDB уходил в
+    // APIDb_ChangeCurrentDatabaseID — возврат в исходную БД становился невозможным.
+    if (err != NoError) {
+        msg_rep ("ResetPropertyElement2Defult", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
+        return flag_reset; // без валидной origDB вернуть исходную БД невозможно
+    }
 #ifdef ServerMainVers_2700
     err = ACAPI_Navigator_GetCurrLayerComb (&layerCombIndex);
 #else
@@ -264,7 +271,12 @@ GSErrCode ResetOneElemen (const API_Guid elemGuid, const GS::Array<API_PropertyD
             }
         }
         if (!properties_to_reset.IsEmpty ()) {
-            err = ACAPI_Element_SetProperties (elemGuid, properties_to_reset);
+            // FIX (ревью 2026-09-12): запись свойств выполняется по каждой базе проекта —
+            // по SDK модификация БД должна идти в области undoable-команды, иначе она
+            // отклоняется (APIERR_REFUSEDCMD/APIERR_UNDOEMPTY) либо не отменяется.
+            err = ACAPI_CallUndoableCommand ("Reset properties", [&] () -> GSErrCode {
+                return ACAPI_Element_SetProperties (elemGuid, properties_to_reset);
+            });
             // Если не получилось - выведем ошибку.
             if (err != NoError)
                 msg_rep ("ResetOneElemen", "ACAPI_Element_SetProperties", err, elemGuid);
@@ -312,7 +324,8 @@ UInt32 ResetElementsDefault (const GS::Array<API_PropertyDefinition> &definition
     flag_reset = flag_reset + (ResetOneElemenDefault (API_BeamID, definitions_to_reset, 0) == NoError);
     flag_reset = flag_reset + (ResetOneElemenDefault (API_WindowID, definitions_to_reset, 0) == NoError);
     flag_reset = flag_reset + (ResetOneElemenDefault (API_DoorID, definitions_to_reset, 0) == NoError);
-    flag_reset = flag_reset + (ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 0) == NoError);
+    // FIX (ревью 2026-09-12): дубль вызова для (API_ObjectID, вариация 0) удалён —
+    // сброс дефолтов для этого инструмента уже выполнен в начале списка.
     flag_reset = flag_reset + (ResetOneElemenDefault (API_LampID, definitions_to_reset, 0) == NoError);
     flag_reset = flag_reset + (ResetOneElemenDefault (API_SlabID, definitions_to_reset, 0) == NoError);
     flag_reset = flag_reset + (ResetOneElemenDefault (API_RoofID, definitions_to_reset, 0) == NoError);
@@ -389,14 +402,20 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId,
             }
         }
         if (properties_to_reset.GetSize () > 0) {
+            // FIX (ревью 2026-09-12): запись дефолтов — тоже модификация БД,
+            // выполняем в области undoable-команды (см. ResetOneElemen).
 #ifdef ServerMainVers_2600
             // FIX (ревью 2026-09-12): передаём properties_to_reset, а не properties —
             // AC26+-ветка перезаписывала все свойства, включая не подлежащие
             // сбросу (рассинхрон с AC25-веткой).
-            err = ACAPI_Element_SetPropertiesOfDefaultElem (type, properties_to_reset);
+            err = ACAPI_CallUndoableCommand ("Reset properties", [&] () -> GSErrCode {
+                return ACAPI_Element_SetPropertiesOfDefaultElem (type, properties_to_reset);
+            });
 #else
-            err = ACAPI_Element_SetPropertiesOfDefaultElem (
-                typeId, static_cast<API_ElemVariationID> (variationID), properties_to_reset);
+            err = ACAPI_CallUndoableCommand ("Reset properties", [&] () -> GSErrCode {
+                return ACAPI_Element_SetPropertiesOfDefaultElem (
+                    typeId, static_cast<API_ElemVariationID> (variationID), properties_to_reset);
+            });
 #endif // AC_26
             if (err != NoError)
                 msg_rep ("ResetOneElemenDefault", "ACAPI_Element_SetPropertiesOfDefaultElem", err, APINULLGuid);

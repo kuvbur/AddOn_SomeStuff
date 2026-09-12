@@ -52,7 +52,9 @@ namespace ListData {
         key.Append (ATSIGN);
         key.Append (p.klass);
         key.Append (ATSIGN);
-        key.Append (GS::UniString::Printf ("%d_", p.diam));
+        // FIX (ревью 2026-09-12): Arm::diam — double, "%d" в вариадическом Printf
+        // читал мусор; приведение как в AddArm ("d%d", (int)p.diam).
+        key.Append (GS::UniString::Printf ("%d_", (int)p.diam));
         key.Append (ATSIGN);
         if (p.isPm) {
             key.Append (GS::UniString::Printf ("%f_", p.dlin));
@@ -169,6 +171,9 @@ namespace ListData {
         if (version == 4) {
             return;
         }
+        // FIX (ревью 2026-09-12): единица измерения из LISTDATA (unitcode) не сохранялась,
+        // arm.unit/elem.unit оставались пустыми.
+        p.unit = unitcode;
         p.naen = GS::UniString::Printf ("d%d ", (int)p.diam);
         p.naen.Append (p.klass);
         if (p.isPm) {
@@ -237,6 +242,10 @@ namespace ListData {
         s.qty += _qty;
         if (!is_equal (ves, 0))
             s.ves = ves;
+        // FIX (ревью 2026-09-12): единица измерения из LISTDATA (unitcode) не сохранялась,
+        // subpos.unit оставался пустым. Не затираем уже заполненное значение.
+        if (s.unit.IsEmpty ())
+            s.unit = unitcode;
     }
 
     void AddProkat (LibElement &paramListDataToRead,
@@ -270,6 +279,9 @@ namespace ListData {
         if (version == 4) {
             return;
         }
+        // FIX (ревью 2026-09-12): единица измерения из LISTDATA (unitcode) не сохранялась,
+        // prokat.unit/elem.unit выводили марку стали (obozn_mater).
+        p.unit = unitcode;
         p.naen = p.tip_profile;
         p.naen.Append (SPACESTRING);
         if (p.isPm) {
@@ -353,11 +365,12 @@ namespace ListData {
             return;
         GS::Array<GS::UniString> partstring = {};
         UInt32 n = StringSplt (name, SEMICOLON, partstring, false);
-        if (n < 1)
-            return;
-        GS::UniString tip_el = "";
-        if (version == 3 || version == 4)
-            tip_el = partstring[1];
+        // FIX (ревью 2026-09-12): при filter_empty == false StringSplt всегда возвращает
+        // минимум 1, проверка n < 1 недостижима. Поле с обозначением — partstring[1]:
+        // нужен n >= 2, иначе (имя без ';') чтение partstring[1] уходило за границу массива.
+        if (n < 2)
+            return; // нет поля с обозначением
+        GS::UniString tip_el = partstring[1];
         if (tip_el.IsEmpty () || tip_el.GetLength () != 2)
             return;
         if (tip_el == "10")
@@ -466,7 +479,7 @@ namespace ListData {
             ParamHelpers::AddStringValueToParamDictValue (
                 params, elemguid, LISTDATANAMEPREFIX, "prokat.tip_profile", prokat.tip_profile, true);
             ParamHelpers::AddStringValueToParamDictValue (
-                params, elemguid, LISTDATANAMEPREFIX, "prokat.unit", prokat.obozn_mater, true);
+                params, elemguid, LISTDATANAMEPREFIX, "prokat.unit", prokat.unit, true);
             ParamHelpers::AddStringValueToParamDictValue (
                 params, elemguid, LISTDATANAMEPREFIX, "prokat.naen", prokat.naen, true);
             ParamHelpers::AddDoubleValueToParamDictValue (
@@ -480,7 +493,7 @@ namespace ListData {
             ParamHelpers::AddStringValueToParamDictValue (
                 params, elemguid, LISTDATANAMEPREFIX, "elem.obozn", prokat.obozn, true);
             ParamHelpers::AddStringValueToParamDictValue (
-                params, elemguid, LISTDATANAMEPREFIX, "elem.unit", prokat.obozn_mater, true);
+                params, elemguid, LISTDATANAMEPREFIX, "elem.unit", prokat.unit, true);
             ParamHelpers::AddStringValueToParamDictValue (
                 params, elemguid, LISTDATANAMEPREFIX, "elem.naen", prokat.naen, true);
             if (prokat.isPm) {

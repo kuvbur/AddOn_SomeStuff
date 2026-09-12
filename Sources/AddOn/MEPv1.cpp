@@ -570,7 +570,10 @@ namespace MEPv1 {
         if (nodeElement.IsOk ()) {
             ReadRoutingElementData (nodeElement->GetRoutingElementId (), flag, paramByType, transtableID);
         }
-        if (ParamValue *pval = paramByType.GetPtr (rawnamedescription)) {
+        { // FIX (MEPv1.cpp-1): диаметры и форма сечения — out-параметры по ссылке,
+            // потребитель ReadTransitionPreferenceTable сравнивает их со строками
+            // таблицы предпочтений; заполнять нужно всегда, независимо от наличия
+            // параметра {@mep:description} в словаре.
             ACAPI::Result<Port> port_1 = Port::Get (element->GetWiderPortID ());
             if (port_1.IsErr ()) {
                 ACAPI_WriteReport (port_1.UnwrapErr ().text.c_str (), false);

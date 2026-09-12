@@ -55,6 +55,7 @@ namespace ListData {
         double ves_t = 0;                        // Вес погонный
         double ves = 0;                          // Вес ед.
         bool isPm = false;                       // В п.м.
+        GS::UniString unit = EMPTYSTRING;        // Ед. измерения
         GS::UniString key = EMPTYSTRING;         // Уникальный код
     };
 

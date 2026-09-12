@@ -68,6 +68,8 @@ namespace ParamHelpers {
         USize n_col = 0;
         while (std::getline (stream, lineStr)) {
             GS::Array<GS::UniString> lines;
+            if (!lineStr.empty () && lineStr.back () == '\r') // CRLF-файл: getline убирает только '\n'
+                lineStr.pop_back ();
             GSCharCode chcode = GetCharCode (lineStr);
             s = GS::UniString (lineStr.c_str (), chcode);
             if (separatorString.IsEmpty ()) {
@@ -80,7 +82,7 @@ namespace ParamHelpers {
             s.Split (separatorString, GS::UniString::KeepEmptyParts, &lines);
             if (lines.IsEmpty ())
                 continue;
-            if (n_col < 2) {
+            if (n_col < 2 && lines.GetSize () > 1) {
                 n_col = lines.GetSize ();
             }
             if (n_col != lines.GetSize ()) {
@@ -128,11 +130,13 @@ namespace ParamHelpers {
     GS::UniString GetLayerFromCache (const API_AttributeIndex &layerinx) {
         auto &cache = PROPERTYCACHE ();
         if (cache.isAttributeRead && cache.isAttribute_OK) {
+            GS::UniString rawName = ATTRIBNAMEPREFIX + "layer_inx_" +
 #ifdef ServerMainVers_2700
-            GS::UniString rawName = "layer_inx_" + GS::UniString::Printf ("%d", layerinx.ToInt32_Deprecated ());
+                                    GS::UniString::Printf ("%d", layerinx.ToInt32_Deprecated ());
 #else
-            GS::UniString rawName = "layer_inx_" + GS::UniString::Printf ("%d", layerinx);
+                                    GS::UniString::Printf ("%d", layerinx);
 #endif
+            rawName.Append (BRACEEND);
             if (const auto *ptr = cache.attrib.GetPtr (rawName)) {
                 if (ptr->isValid) {
                     return ptr->val.uniStringValue;
@@ -465,6 +469,7 @@ namespace ParamHelpers {
         pvalue.name = name;
         pvalue.rawName = rawName;
         ParamHelpers::ConvertDoubleToParamValue (pvalue, rawName, apiGeoLocation.geoReferenceData.scale);
+        propertyParams.Add (rawName, pvalue);
     #if defined(TESTING)
         DBprnt ("   GetGeoLocationToParamDict end");
     #endif
@@ -789,6 +794,8 @@ namespace ParamHelpers {
                     if (!propertyParams.ContainsKey (rawName))
                         break;
                 }
+                if (propertyParams.ContainsKey (rawName))
+                    continue; // все 20 слотов sync_name заняты — Add не перезапишет, свойство бы молча потерялось
                 definision.name = name;
                 ParamValue pvalue = {};
                 pvalue.rawName = rawName;
