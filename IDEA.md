@@ -2,11 +2,14 @@
 
 ## Task
 
-UI вкладки «Монитор» — **Этап 1.7** (UI-бэклог после подсветки, подтверждён 2026-08-24):
+UI вкладки «Монитор» — остаток работ:
 
-1. **1.7.1** — кэш распарсенных правил SomeStuff (Sync/Spec) + фильтр списка свойств по наличию правила
-2. **1.7.2** — цветовая маркировка неактивных флагов (`flagfindspec=false`)
-3. **1.7.3** — Pin свойств (закрепление сверху списка при смене выделения)
+1. **1.5 `GetFilterPresets`** — реальный список преднастроенных фильтров отображения свойств
+   (взамен мока `ACBridge.getFilterPresets`, HTML:276)
+2. **1.6 `ResetPropertyToDefault`** — сброс свойства к значению по умолчанию для выделенных
+   (взамен мока `ACBridge.resetPropertyToDefault(propertyId)`, HTML:421)
+3. **1.7.1–1.7.3** — кэш распарсенных правил SomeStuff (Sync/Spec) + фильтр списка свойств по наличию
+   правила; цветовая маркировка неактивных флагов (`flagfindspec=false`); Pin свойств
 
 **ТЗ по интерфейсу** — `Sources/AddOnResources/RFIX/HTML/ТЗ интерфейс.md` (обязательное). Правки
 `Interface_ru.html` / `index.html` — только по ТЗ; после каждой правки HTML валидация
@@ -32,12 +35,21 @@ IN_PROGRESS — код Этапа 1.7 не начат. Открыт остато
 
 ## Next Step
 
-Этап 1.7.1: снять baseline времени `GetPropertiesList` на выделении из 10 элементов
-(`clock()` вокруг мост-функций + `DBprnt` → `test_results.txt`), затем кэш правил Sync/Spec и фильтр
-списка свойств по наличию правила.
+Пункты 1.5/1.6 — замена моков `ACBridge.getFilterPresets` / `resetPropertyToDefault` на инлайн-функции
+моста (быстрый вход). Далее 1.7.1: baseline времени `GetPropertiesList` на выделении из 10 элементов
+(`clock()` вокруг мост-функций + `DBprnt` → `test_results.txt`) → кэш правил Sync/Spec + фильтр списка
+свойств по наличию правила.
 
 ## Plan
 
+- [ ] 1.5 `GetFilterPresets` — преднастроенные фильтры отображения свойств: вход нет →
+      `{presets: [{label, query}]}` (`query` — подстрока или regex `/шаблон/`); источник — конфиг плагина/кэш.
+      Заменяет мок `ACBridge.getFilterPresets` (HTML:276), потребители — кнопки фильтра по имени (HTML:953)
+      и по значению (HTML:979), ТЗ §5.3
+- [ ] 1.6 `ResetPropertyToDefault` — сброс свойства к значению по умолчанию для всех выделенных:
+      `{propertyId}` → `{success}`; заменяет мок `ACBridge.resetPropertyToDefault` (HTML:421), кнопка сброса
+      в строке свойства (HTML:1144), ТЗ §5.11 (в т.ч. «Сброс свойства реально изменяет Archicad») —
+      запись внутри `ACAPI_CallUndoableCommand`
 - [ ] 1.7.1 Кэш правил SomeStuff + фильтр (правила читаются из описаний свойств через кэш; выход — мост-данные для UI + ускорение повторных рендеров)
 - [ ] 1.7.2 Цветовая маркировка неактивных флагов — HTML+CSS по данным моста, без новых вызовов API
 - [ ] 1.7.3 Pin свойств — `STATE.pinnedProperties` (JS), порядок сортировки в `renderPropertyList`
@@ -95,6 +107,6 @@ IN_PROGRESS — код Этапа 1.7 не начат. Открыт остато
 ---
 
 ## Last Checkpoint: 1625cf1 [Sync.cpp-7] Name2Rawname: регистронезависимость + каноническая форма {@prefix:name}
-## Next Step: Этап 1.7.1 — baseline `GetPropertiesList` (clock/DBprnt) → кэш правил Sync/Spec + фильтр списка свойств
+## Next Step: 1.5/1.6 — замена моков ACBridge.getFilterPresets/resetPropertyToDefault на инлайн-функции моста; далее 1.7.1 (baseline GetPropertiesList → кэш правил Sync/Spec + фильтр)
 ## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Sources/AddOn/TestFunc.cpp/.hpp, IDEA.md
 ## Verified 2026-08-24: подсветка+зум по клику ×N работает, выделение сохраняется (подтверждено Дмитрием, runtime AC25)

@@ -107,7 +107,7 @@ COMPLETED (код). Открыто: runtime-проверка TW (в `IDEA.md` �
 
 ---
 
-## Вкладка «Монитор»: инлайн-функции JS-моста (Этапы 1.1–1.6, 2026-08)
+## Вкладка «Монитор»: инлайн-функции JS-моста (Этапы 1.1–1.4, 2026-08)
 
 ### Task
 
@@ -116,7 +116,8 @@ COMPLETED (код). Открыто: runtime-проверка TW (в `IDEA.md` �
 
 ### Status
 
-COMPLETED (runtime подтверждён 2026-08-24, AC25). Этапы 1.5 и 1.6 не реализованы (см. ниже).
+COMPLETED (runtime подтверждён 2026-08-24, AC25). Этапы 1.5 (`GetFilterPresets`) и 1.6
+(`ResetPropertyToDefault`) в этот блок не входят — они нужны и перенесены в активный план `IDEA.md`.
 
 ### Реализовано
 
@@ -127,8 +128,8 @@ COMPLETED (runtime подтверждён 2026-08-24, AC25). Этапы 1.5 и 1
 | `GetPropertyValue` | `{propertyId}` → `{propertyName, common, values:[{value,count}]}` | ✅ зарегистрирована; прямых вызовов в `Interface_ru.html` не найдено (2026-09-12) |
 | `GetClassification` | → `{common, commonPath[], differing[{elementName,value}], options[]}` | ✅ |
 | `SetClassification` | `{classificationValue}` → `{success}` | ✅ (`ACAPI_Element_SetClassification` внутри `ACAPI_CallUndoableCommand`) |
-| `GetFilterPresets` | → `{presets:[{label,query}]}` | ❌ в коде отсутствует (в старом плане ошибочно стояло `[x]`) |
-| `ResetPropertyToDefault` | `{propertyId}` → `{success}` | ❌ в коде отсутствует (в старом плане ошибочно стояло `[x]`) |
+| `GetFilterPresets` | → `{presets:[{label,query}]}` | ⏸ в коде нет — активный план `IDEA.md`, пункт 1.5 (в старом плане ошибочно стояло `[x]`) |
+| `ResetPropertyToDefault` | `{propertyId}` → `{success}` | ⏸ в коде нет — активный план `IDEA.md`, пункт 1.6 (в старом плане ошибочно стояло `[x]`) |
 
 Дополнительно зарегистрированы: `HighlightElements`, `ParsePropertyDescription`, `ParsePropertyForElement`
 (два последних HTML не вызывает — мёртвый код, зарегистрированы после реворка `47b06e5`),
