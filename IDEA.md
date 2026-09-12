@@ -211,7 +211,7 @@
 
 ---
 
-## Last Checkpoint: (см. коммит «[prefs-2026-09-12] …» ниже в git log)
+## Last Checkpoint: f0909f0 [prefs-2026-09-12] Настройки — в локальный файл вместо prefs проекта; остаток находок ревью BrowserPalette
 ## Next Step: Задача «настройки локально + остаток находок ревью BrowserPalette (сессия 20260911_190542_a855f4)»: код готов, AC25 Build succeeded, HTML-валидация PASSED. Осталось: RUNTIME-тест в TW (Дмитрий) — настройки выживают перезапуск AC, в TW нет локальных изменений от палитры, Send/Receive. LSP не проверен (clangd MCP не стартует). AC22–24/26–29 не собирались.
 ## Scope: Sources/AddOn/dialogs/SyncSettings.cpp/.hpp, Sources/AddOn/SomeStuff_Main.cpp, Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html
 ## Verified 2026-08-24: подсветка+зум по клику ×N работает, выделение сохраняется (подтверждено Дмитрием, runtime AC25)
