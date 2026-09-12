@@ -2,10 +2,17 @@
 #define SYNCSETTINGS_HPP
 #include "ACAPinc.h"
 
-// Хранение и сериализацию настроек синхронизации add-on в памяти и в настройках Archicad.
+// --------------------------------------------------------------------
+// Хранение и сериализация настроек аддона.
+// Настройки лежат в ЛОКАЛЬНОМ файле пользователя (папка Graphisoft prefs,
+// подпапка SomeStuff, файл SyncSettings.dat) — НЕ в preferences проекта:
+// ACAPI_SetPreferences пишет блоб аддона в файл проекта и в Teamwork это
+// вызывает постоянные локальные изменения. См. dialogs/SyncSettings.cpp.
+// --------------------------------------------------------------------
 #include "MemoryIChannel.hpp"
 #include "MemoryOChannel.hpp"
 #include "Object.hpp"
+
 // --------------------------------------------------------------------
 // SyncSettings хранит флаги, определяющие поведение синхронизации и мониторинга.
 // Класс поддерживает сериализацию в память Archicad через Preferences и
@@ -60,28 +67,28 @@ class SyncSettings : public GS::Object {
     void SetLogMon (bool value);
 
     // Показывать ли палитру браузера.
-        bool GetShowPalette () const;
-        void SetShowPalette (bool value);
+    bool GetShowPalette () const;
+    void SetShowPalette (bool value);
 
-        // Включить отслеживание изменений выделения (автообновление интерфейса).
-        bool GetCatchSelectionChanges () const;
-        void SetCatchSelectionChanges (bool value);
+    // Включить отслеживание изменений выделения (автообновление интерфейса).
+    bool GetCatchSelectionChanges () const;
+    void SetCatchSelectionChanges (bool value);
 
-        // Максимальное количество отображаемых элементов при множественном выделении.
-        USize GetMaxSelectionCount () const;
-        void SetMaxSelectionCount (USize value);
+    // Максимальное количество отображаемых элементов при множественном выделении.
+    USize GetMaxSelectionCount () const;
+    void SetMaxSelectionCount (USize value);
 
-      private:
-        bool syncAll;
-        bool syncMon;
-        bool wallS;
-        bool widoS;
-        bool objS;
-        bool cwallS;
-        bool logMon;
-        bool showpalette;
-        bool catchSelectionChanges;
-        USize maxSelectionCount;
+  private:
+    bool syncAll;
+    bool syncMon;
+    bool wallS;
+    bool widoS;
+    bool objS;
+    bool cwallS;
+    bool logMon;
+    bool showpalette;
+    bool catchSelectionChanges;
+    USize maxSelectionCount;
 };
 
 #if defined(ServerMainVers_2500)
@@ -94,15 +101,16 @@ using MemoryOChannel = IO::MemoryOChannel;
 
 // --------------------------------------------------------------------
 // Кэш настроек
-// Возвращает единственный экземпляр настроек, загруженный из кэша или из предпочтений.
+// Возвращает единственный экземпляр настроек, загруженный из локального файла
+// (при его отсутствии — одноразовая миграция из старых preferences проекта).
 // --------------------------------------------------------------------
 SyncSettings &GetSyncSettingsCache (bool forceReload);
 // --------------------------------------------------------------------
-// Загружает настройки из предпочтений Archicad в переданный объект.
+// Загружает настройки из кэша (forceReload — перечитать локальный файл).
 // --------------------------------------------------------------------
 bool LoadSyncSettingsFromPreferences (SyncSettings &syncSettings, bool forceReload = false);
 // --------------------------------------------------------------------
-// Сохраняет настройки синхронизации в предпочтения Archicad.
+// Сохраняет настройки синхронизации в локальный файл (без записи в план).
 // --------------------------------------------------------------------
 bool WriteSyncSettingsToPreferences (const SyncSettings &syncSettings);
 

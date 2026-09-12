@@ -23,13 +23,21 @@ bool BrowserPalette::suppressSelectionRefresh = false;
 // Show or Hide Browser Palette
 // -----------------------------------------------------------------------------
 void ShowOrHideBrowserPalette () {
-    if (BrowserPalette::HasInstance () && BrowserPalette::GetInstance ().IsVisible ()) {
+    const bool wasVisible = BrowserPalette::HasInstance () && BrowserPalette::GetInstance ().IsVisible ();
+    if (wasVisible) {
         BrowserPalette::GetInstance ().Hide ();
     } else {
         if (!BrowserPalette::HasInstance ())
             BrowserPalette::CreateInstance ();
         BrowserPalette::GetInstance ().Show ();
     }
+    // FIX (план 2026-09-12, Шаг 2.3): состояние палитры сохраняется только здесь —
+    // это явное действие пользователя. Show/Hide (в т.ч. из APIPalMsg_HidePalette_*,
+    // которые приходят вокруг каждой операции ввода) настройки больше не пишут.
+    SyncSettings syncSettings;
+    LoadSyncSettingsFromPreferences (syncSettings, true);
+    syncSettings.SetShowPalette (!wasVisible);
+    WriteSyncSettingsToPreferences (syncSettings);
 }
 
 static GS::UniString LoadHtmlFromResource () {
@@ -104,27 +112,34 @@ BrowserPalette &BrowserPalette::GetInstance () {
     return *instance;
 }
 
-void BrowserPalette::Show () {
+void BrowserPalette::Show (bool reloadContent) {
     DBprnt ("BrowserPalette::Show () called");
     DG::Palette::Show ();
-    SyncSettings syncSettings;
-    LoadSyncSettingsFromPreferences (syncSettings, true);
-    syncSettings.SetShowPalette (true);
-    MenuItemCheckAC (Menu_Pallete, syncSettings.GetShowPalette ());
-    WriteSyncSettingsToPreferences (syncSettings);
-    browser.ReloadIgnoreCache ();
-    DBprnt ("BrowserPalette::Show () — after ReloadIgnoreCache");
+    MenuItemCheckAC (Menu_Pallete, true);
+    // FIX (план 2026-09-12, Шаг 2.3): записи настроек из Show/Hide убраны — они
+    // вызываются на каждый APIPalMsg_HidePalette_Begin/End (вокруг каждой
+    // операции ввода) и раньше писали блоб аддона в файл проекта. Сохранение
+    // состояния палитры осталось только в ShowOrHideBrowserPalette (команда меню).
+    if (reloadContent) {
+        // Перезагрузка HTML сбрасывает состояние вкладки/фильтра, поэтому при
+        // показе из APIPalMsg_HidePalette_End (reloadContent=false) контент не
+        // перезагружаем — страница уже загружена.
+        browser.ReloadIgnoreCache ();
+        DBprnt ("BrowserPalette::Show () — after ReloadIgnoreCache");
+    } else {
+        // Перезагрузки нет, поэтому данные в панели обновляем вручную — раньше
+        // это делал onLoadingStateChange после ReloadIgnoreCache.
+        GS::Array<API_Guid> selectedElements;
+        UpdateSelectionInfoInUI (selectedElements);
+    }
     // Обновляем информацию о выделении после загрузки страницы
     // onLoadingStateChange вызовет RegisterACAPIJavaScriptObject и UpdateSelectionInfoInUI
 }
 
 void BrowserPalette::Hide () {
     DG::Palette::Hide ();
-    SyncSettings syncSettings;
-    LoadSyncSettingsFromPreferences (syncSettings, true);
-    syncSettings.SetShowPalette (false);
-    MenuItemCheckAC (Menu_Pallete, syncSettings.GetShowPalette ());
-    WriteSyncSettingsToPreferences (syncSettings);
+    // Записи настроек здесь нет — см. комментарий в Show ().
+    MenuItemCheckAC (Menu_Pallete, false);
 }
 
 void BrowserPalette::UpdateSelectionInfoInUI (GS::Array<API_Guid> &selectedElements) {
@@ -537,8 +552,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             // Подсветка цветом, выделение не трогаем. Версионные обёртки как в Spec.cpp.
             GS::HashTable<API_Guid, API_RGBAColor> hlElems;
             const API_RGBAColor hlColor = {1.0, 0.65, 0.0, 1.0};
+            // FIX (ревью 2026-09-11, п.1 + ревью 2026-09-12): Put вместо Add —
+            // Add при повторном GUID в payload возвращает false и НЕ перезаписывает
+            // запись (GS/HashTable.hpp:826-834); Put перезаписывает всегда.
             for (const API_Guid &guid : guids)
-                hlElems.Add (guid, hlColor);
+                hlElems.Put (guid, hlColor);
 #ifdef ServerMainVers_2700
             GSErrCode hlErr = ACAPI_UserInput_ClearElementHighlight ();
             if (hlErr == NoError)
@@ -1375,8 +1393,12 @@ GSErrCode __ACENV_CALL BrowserPalette::PaletteControlCallBack (Int32,
         break;
 
     case APIPalMsg_HidePalette_End:
-        if (HasInstance () && !GetInstance ().IsVisible ())
-            GetInstance ().Show ();
+        if (HasInstance () && !GetInstance ().IsVisible ()) {
+            // FIX (план 2026-09-12, Шаг 2.3 + ревью п.3): сообщение приходит
+            // вокруг каждой операции ввода — показываем палитру без перезагрузки
+            // HTML и без записи настроек.
+            GetInstance ().Show (false);
+        }
         break;
 
     case APIPalMsg_DisableItems_Begin:

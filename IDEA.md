@@ -211,9 +211,9 @@
 
 ---
 
-## Last Checkpoint: bbbe71a checkpoint: до правок по ревью 2026-09-12b (GLM-instructions)
-## Next Step: Задача «ревью 2026-09-12b»: ревью применённых правок завершено (3 субагента), исправлены 4 дефекта (ElemHead_To_Neig typeID, восстановлен MenuSetState, доделан п.55 store-сброс, GetMarkerPos порядок guard'ов); 4 субагента реализуют остаток (Roombook suspend/PERF, BrowserPalette 25/26/37-70, Dimensions/Helpers/CommonFunction minor+perf, прочие minor/perf). Затем: clang-format → LSP → сборка AC25 → отчёт. Отдельная TW/prefs-задача ниже — НЕ смешивать.
-## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, при необходимости Sync.cpp/Spec.cpp
+## Last Checkpoint: (см. коммит «[prefs-2026-09-12] …» ниже в git log)
+## Next Step: Задача «настройки локально + остаток находок ревью BrowserPalette (сессия 20260911_190542_a855f4)»: код готов, AC25 Build succeeded, HTML-валидация PASSED. Осталось: RUNTIME-тест в TW (Дмитрий) — настройки выживают перезапуск AC, в TW нет локальных изменений от палитры, Send/Receive. LSP не проверен (clangd MCP не стартует). AC22–24/26–29 не собирались.
+## Scope: Sources/AddOn/dialogs/SyncSettings.cpp/.hpp, Sources/AddOn/SomeStuff_Main.cpp, Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html
 ## Verified 2026-08-24: подсветка+зум по клику ×N работает, выделение сохраняется (подтверждено Дмитрием, runtime AC25)
 
 ## Задача 2026-08-24 №2: фикс SetClassification/GetPropertyValue + ревью моста (DONE)
@@ -269,7 +269,8 @@
 - [x] 2026-09-12: Устойчивость ошибок: `SyncSettings.cpp:211-227` — при сбое `ACAPI_SetPreferences` кэш не обновляется, результат `bool` не проверяется ни в одном месте → запись повторяется на каждом следующем событии.
 - [x] 2026-09-12: Кэш настроек `SyncSettings.cpp:194-203` не инвалидируется при открытии проекта (док: prefs из плана перекрывают app-prefs) → observer/палитра пишут в файл stale-копию целиком. Платформа: `ACAPI_GetPreferences` без `ACAPI_GetPreferences_Platform`.
 - [x] 2026-09-12: Проверка PropertyCache (`Propertycache.hpp/.cpp`): потоковых гонок нет — все вызовы в главном потоке (допущение, не проверено); реентерабельность `Update()` из хендлеров (SomeStuff_Main.cpp:88,94,351) + указатели из `GetPtr` через очистку таблиц; `isCacheContainsParamValue` (Propertycache.cpp:286-315) — false-negative при частично прочитанном `glob`; `ReadLibraryFile` (Propertycache.cpp:43-47) — мёртвая проверка nullptr после `new[]`, необработанный `std::bad_alloc`.
-- [ ] СОГЛАСОВАТЬ с Дмитрием минимальный фикс: убрать записи prefs из автоматических путей (Show/Hide палитры, observer, Initialize), затем AC25-сборка + runtime TW-тест
+- [x] СОГЛАСОВАТЬ с Дмитрием минимальный фикс: убрать записи prefs из автоматических путей (Show/Hide палитры, observer, Initialize), затем AC25-сборка + runtime TW-тест
+      → 2026-09-12 (сессия 20260911_190542_a855f4): Дмитрий выбрал «применить и план настроек, и остаток находок ревью». Реализовано (см. ниже).
 - [x] 2026-09-12: НАЙДЕНО решение «настройки локально на машине, без записи в файл проекта» (SDK-проверено):
       - путь: `ACAPI_Environment (APIEnv_GetSpecFolderID, &id, &folder)` + `API_SpecFolderID` (APIdefs_Environment.h:1621-1634). Документация `Structures/API_SpecFolderID.html`: `API_ApplicationPrefsFolderID` — «the folder into which the application writes its preferences», `API_GraphisoftPrefsFolderID` — «general preferences of GRAPHISOFT applications» (обе per-user/локальные); `API_UserDocumentsFolderID` — папка вывода по умолчанию (fallback).
       - запись/чтение файла: `IO::File` — `IO::File (loc, IO::File::OnNotFound::Create)` + `Open (IO::File::OpenMode::WriteEmptyMode)` + `WriteBin` + `Close` (пример Tapir/Config.cpp, DeveloperTools.cpp через LightRAG); enum режимов `Modules/InputOutput/File.hpp`: ReadMode/WriteMode/WriteEmptyMode/ReadWriteMode/AppendMode. `IO::File` наследует `GS::IChannel`/`GS::OChannel` → блоб `SyncSettings::Write/Read` можно писать напрямую в файл.
@@ -279,35 +280,41 @@
 
 ## План изменений (2026-09-12, сверено через LightRAG + хедеры DevKit-25)
 
-### Шаг 1. Локальное хранилище настроек — `dialogs/SyncSettings.cpp`
-1.1 Хелпер пути (static):
-    `API_SpecFolderID id = API_GraphisoftPrefsFolderID;` → `ACAPI_Environment (APIEnv_GetSpecFolderID, &id, &loc)`; при ошибке fallback: `API_ApplicationPrefsFolderID` → `API_UserDocumentsFolderID`.
-    `IO::Folder folder (loc); err = folder.CreateFolder (IO::Name ("SomeStuff"));` — `IO::Folder::TargetExists` считать успехом (Folder.hpp:125); затем `loc.AppendToLocal (IO::Name ("SomeStuff"))` и `loc.AppendToLocal (IO::Name ("SyncSettings.dat"))`.
-1.2 `ReadSyncSettings (SyncSettings&)` — читать локальный файл:
-    `IO::File file (loc, IO::File::OnNotFound::Fail);` (File.hpp:125) → `file.Open (IO::File::ReadMode)` → `file.GetDataLength (&size)` (File.hpp:176) → буфер → `file.ReadBin (buf, size)` → `file.Close()` → `MemoryIChannel ic (buf, size)` → `syncSettings.Read (ic)`. Перед десериализацией проверять заголовок (magic + `PreferencesVersion` + размер).
-    `ACAPI_GetPreferences` (ACAPinc.h:325) остаётся ТОЛЬКО для одноразовой миграции.
-1.3 `WriteSyncSettingsToPreferences` (SyncSettings.cpp:211-227) — писать локальный файл, а не проект:
-    `MemoryOChannel oc; syncSettings.Write (oc);` → `IO::File file (loc, IO::File::OnNotFound::Create); file.Open (IO::File::WriteEmptyMode); file.WriteBin (data, size); file.Close();` (File.hpp:140/155, пример LibPart_Test:942). Убрать `ACAPI_SetPreferences` (ACAPinc.h:323) из кода полностью.
-    Не писать, если blob не изменился с прошлой записи (in-memory сравнение) — снимает лишний I/O из observer-путей.
-1.4 Миграция: локального файла нет → один раз прочитать старые значения по образцу DevKit `Database_Control::InitPreferences` (проверка version/size, при необходимости `ACAPI_GetPreferences_Platform`, ACAPinc.h:327) → сразу записать локальный файл → prefs больше не трогать.
-1.5 Проверять результат записи/чтения во всех местах (сейчас `bool` игнорируется везде) и логировать ошибку в test_results.txt; кэш настроек обновлять только при успешной записи.
+### Статус реализации (2026-09-12, сессия 20260911_190542_a855f4)
 
-### Шаг 2. Убрать автоматические записи (причина «дописывания в файл»)
-2.1 `SomeStuff_Main.cpp:197,204` (ElementEventHandlerProc, флип `logMon`) — не persist (решение: только in-memory).
-2.2 `SomeStuff_Main.cpp:489` (Initialize) — убрать безусловную запись; писать только при миграции/смене версии.
-2.3 `BrowserPalette.cpp:114,127` (Show/Hide из `APIPalMsg_HidePalette_Begin/End`, см. `:1281/1286`) — убрать запись; `showpalette` сохранять только по явной команде меню.
-2.4 `SomeStuff_Main.cpp:437` (MenuCommandHandler) и `BrowserPalette.cpp:570` (JS Enable/DisableCatchSelectionChanges) — оставить: это явные действия пользователя, но писать теперь в локальный файл.
+Реализовано и собрано (AC25 Build succeeded, Debug SomeStuff.apx). Runtime-тест НЕ выполнен.
+
+Принятые допущения (открытые вопросы закрыты умолчаниями плана; откат = правка одной строки):
+1. Папка: `API_GraphisoftPrefsFolderID` → fallback `API_ApplicationPrefsFolderID` → `API_UserDocumentsFolderID`, подпапка `SomeStuff`.
+2. Миграция: одноразовое чтение старых prefs проекта при отсутствии локального файла (version == 5), затем запись локального файла; после этого `ACAPI_SetPreferences` не вызывается нигде.
+3. `logMon`: только в памяти (записи из `ElementEventHandlerProc` убраны).
+4. Файл: один общий `SyncSettings.dat` на все версии AC (заголовок magic+версия+размер отсекает несовпадение; при несовпадении — дефолты). Если нужно per-version — имя файла меняется в одной строке (`SyncSettingsFileName`).
+
+### Шаг 1. Локальное хранилище настроек — `dialogs/SyncSettings.cpp` (ВЫПОЛНЕНО)
+- [x] 1.1 Хелпер пути `GetSyncSettingsFolderLocation` (Graphisoft prefs → Application prefs → User documents + `IO::Folder::CreateFolder(IO::Name("SomeStuff"))`, `TargetExists` = успех).
+- [x] 1.2 `ReadSyncSettingsFromFile` — `IO::File(loc)` → `Open(ReadMode)` → `GetDataLength` → `ReadBin` → `Close` → `MemoryIChannel`; заголовок magic 'SSS1' + PreferencesVersion + размер блоба проверяется ДО десериализации.
+- [x] 1.3 `WriteSyncSettingsToPreferences` пишет локальный файл (`OnNotFound::Create` + `WriteEmptyMode` + `WriteBin`, паттерн Tapir/DeveloperTools.cpp); `ACAPI_SetPreferences` из кода убран; повторная запись идентичного блоба пропускается (memcmp с последним записанным).
+- [x] 1.4 Миграция `ReadSyncSettingsFromLegacyPreferences` (бывший код на `ACAPI_GetPreferences`) — вызывается только при отсутствии/несовпадении локального файла, результат сразу пишется в файл.
+- [x] 1.5 Результаты записи/чтения проверяются, ошибки идут в `msg_rep`/`DBprnt` (в т.ч. `loc.ToDisplayText()`); кэш настроек обновляется только после успешной записи.
+
+### Шаг 2. Убрать автоматические записи (ВЫПОЛНЕНО)
+- [x] 2.1 `SomeStuff_Main.cpp` (`ElementEventHandlerProc`): оба `WriteSyncSettingsToPreferences` (флип `logMon`) убраны — флаги переключаются только в локальной копии для текущего события.
+- [x] 2.2 `SomeStuff_Main.cpp` (`Initialize`): безусловная запись убрана.
+- [x] 2.3 `BrowserPalette.cpp`: записи из `Show()`/`Hide()` убраны; `Show(bool reloadContent)` — из `APIPalMsg_HidePalette_End` вызывается `Show(false)` без перезагрузки HTML (вместо этого ручной `UpdateSelectionInfoInUI`); `showpalette` сохраняется только в `ShowOrHideBrowserPalette` (команда меню) и в `PanelCloseRequested` (закрытие крестиком).
+- [x] 2.4 `MenuCommandHandler` (SomeStuff_Main.cpp) и JS `Enable/DisableCatchSelectionChanges` — оставлены (явные действия пользователя), пишут теперь в локальный файл.
 
 ### Шаг 3. Валидация
-- clang-format → LSP (SyncSettings.cpp / SomeStuff_Main.cpp / BrowserPalette.cpp) → сборка AC25 (`python Tools\BuildAddOn.py -c config.json -v 25`) → runtime `restart_archicad_for_test.ps1`; вывести в лог путь к файлу настроек (`loc.ToDisplayText()`).
-- Проверки: настройки выживают перезапуск AC; в TW при работе с палитрой больше нет локальных изменений/запросов отправки; Receive/Send у нескольких пользователей.
-- Негативные: нет прав на запись в папку (fallback), пустой/битый файл настроек (заголовок), файл от другой версии (version mismatch → дефолты).
+- [x] clang-format выполнен; HTML-валидация `Tools/test_html.ps1` — PASSED (после правки Interface_ru.html)
+- [x] Сборка AC25: Build succeeded
+- [ ] LSP: clangd MCP не стартует (`Clangd process failed to start`) — compile_commands.json перегенерирован (`--lsp -v 25`), проверка LSP не выполнена
+- [ ] Runtime-тест (TW): настройки выживают перезапуск AC; в TW нет локальных изменений от палитры; Send/Receive несколькими пользователями
+- [ ] Не проверено: сборки AC22–24/26–29 (в репозитории только DevKit-25; `IO::File`/`IO::Folder` в остальных версиях не верифицированы)
 
-### Открытые вопросы (нужно решение Дмитрия)
-1. Папка: `API_GraphisoftPrefsFolderID` (общая для продуктов GRAPHISOFT, переживает смену версии AC) или `API_ApplicationPrefsFolderID` (в пределах версии AC). Рекомендация: GraphisoftPrefs + подпапка `SomeStuff`.
-2. Старые проекты: делать одноразовую миграцию значений из prefs или начать с дефолтов?
-3. `logMon`: только в памяти (рекомендация) или все же сохранять в локальный файл?
-4. Файл на пользователя/машину — per-AC-версия (`-25`) или один общий для всех версий?
+### Открытые вопросы (закрыты допущениями выше)
+1. Папка: `API_GraphisoftPrefsFolderID` (общая для продуктов GRAPHISOFT, переживает смену версии AC) или `API_ApplicationPrefsFolderID` (в пределах версии AC). Принято: GraphisoftPrefs + подпапка `SomeStuff`.
+2. Старые проекты: делать одноразовую миграцию значений из prefs или начать с дефолтов? Принято: миграция.
+3. `logMon`: только в памяти (принято) или сохранять в локальный файл?
+4. Файл на пользователя/машину — per-AC-версия или один общий. Принято: один общий.
 
 ### Проверено при составлении плана
 - В AC25 **нет** `ACAPI_ProjectSettings_GetSpecFolder` (встречается только в более новых SDK/Speckle); доступен только `ACAPI_Environment (APIEnv_GetSpecFolderID, …)` — проверено grep по хедерам и по списку доков.

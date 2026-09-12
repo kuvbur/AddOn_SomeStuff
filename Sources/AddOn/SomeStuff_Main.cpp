@@ -194,18 +194,20 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         }
         // После изменения самой навесной стены панели не обрабатываются отдельно,
         // потому что их синхронизация будет выполнена дальше через SyncElement.
+        // FIX (план 2026-09-12, Шаг 2.1): флаги logMon/cwall ниже переключаются
+        // только в локальной копии настроек для текущего события — записи
+        // настроек в observer-пути убраны (раньше каждое событие элемента писало
+        // блоб аддона в файл проекта; в TW это давало постоянные локальные изменения).
         if (syncSettings.GetLogMon () && elementType != API_CurtainWallPanelID &&
             elementType != API_CurtainWallSegmentID && elementType != API_CurtainWallFrameID &&
             elementType != API_CurtainWallJunctionID && elementType != API_CurtainWallAccessoryID) {
             syncSettings.SetLogMon (false);
-            WriteSyncSettingsToPreferences (syncSettings);
         }
         if (syncSettings.GetLogMon ()) {
             syncSettings.SetCwallS (false);
         }
         if (!syncSettings.GetLogMon () && elementType == API_CurtainWallID) {
             syncSettings.SetLogMon (true);
-            WriteSyncSettingsToPreferences (syncSettings);
         }
         needresync = SyncElement (elemType->elemHead.guid, syncSettings, paramToWrite, dummymode);
         if (!paramToWrite.IsEmpty ()) {
@@ -509,9 +511,10 @@ GSErrCode __ACENV_CALL Initialize (void) {
 #endif
     SyncSettings syncSettings;
     LoadSyncSettingsFromPreferences (syncSettings, true);
-    // Принудительно сохраняем настройки, чтобы обновить версию PreferencesVersion
-    // и записать новые поля (catchSelectionChanges, maxSelectionCount).
-    WriteSyncSettingsToPreferences (syncSettings);
+    // FIX (план 2026-09-12, Шаг 2.2): безусловная запись настроек при старте
+    // убрана — запись из этого пути более не модифицирует файл проекта.
+    // Актуальная версия настроек фиксируется в локальном файле при первой же
+    // записи/миграции (см. dialogs/SyncSettings.cpp).
     MenuSetState (syncSettings);
     Do_ElementMonitor (syncSettings.GetSyncMon ());
     MonAll (syncSettings);

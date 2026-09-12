@@ -83,7 +83,10 @@ class BrowserPalette final : public DG::Palette, public DG::PanelObserver {
     static void CreateInstance ();
     static BrowserPalette &GetInstance ();
 
-    void Show ();
+    // reloadContent = false — показ без перезагрузки HTML (путь
+    // APIPalMsg_HidePalette_End: страница уже загружена, перезагрузка сбрасывала
+    // активную вкладку/фильтр).
+    void Show (bool reloadContent = true);
     void Hide ();
 
     GSErrCode ManualGetSelection ();
