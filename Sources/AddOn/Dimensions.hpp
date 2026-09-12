@@ -23,10 +23,15 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
 // DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
 // Разбирает значение размера и формирует текст с учётом правил округления и форматирования.
+// FIX (ревью 2026-09-12): п.32 — полная копия dimrule.paramDict (HashTable<UniString, ParamValue>)
+// на каждый размер × каждое правило больше не создаётся ради одного значения measuredvalue;
+// п.62 — входной content больше не мутируется, вычисленный текст возвращается через
+// out-параметр custom_txt — следующее правило сравнивает с исходным текстом размера.
 bool DimParse (const double &dimVal,
                const API_Guid &elemGuid,
                const API_NoteContentType &contentType,
-               GS::UniString &content,
+               const GS::UniString &content,
+               GS::UniString &custom_txt,
                UInt32 &flag_change,
                UInt32 &flag_highlight,
                const DimRule &dimrule);

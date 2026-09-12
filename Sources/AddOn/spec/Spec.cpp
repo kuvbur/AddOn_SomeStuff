@@ -613,22 +613,26 @@ namespace Spec {
 #endif
             if (!rule.is_Valid)
                 continue;
-            if (!paramdict_favorite.ContainsKey (rule.favorite_name)) {
+            // FIX (ревью 2026-09-12, PERF): пары ContainsKey+Get заменены на
+            // один GetPtr — двойной lookup по одному ключу.
+            GS::HashTable<GS::UniString, GS::UniString> *pRuleFavorite = paramdict_favorite.GetPtr (rule.favorite_name);
+            if (pRuleFavorite == nullptr) {
                 GS::HashTable<GS::UniString, GS::UniString> paramdict = {};
                 err = GetElementForPlaceProperties (rule.favorite_name, paramdict);
                 paramdict_favorite.Add (rule.favorite_name, paramdict);
+                pRuleFavorite = paramdict_favorite.GetPtr (rule.favorite_name);
             }
-            if (!paramdict_favorite.ContainsKey (rule.favorite_name))
+            if (pRuleFavorite == nullptr)
                 continue;
             for (const auto &rawname : rule.out_paramrawname) {
-                if (!paramdict_favorite.Get (rule.favorite_name).ContainsKey (rawname)) {
+                if (!pRuleFavorite->ContainsKey (rawname)) {
                     rule.is_Valid = false;
                     if (!error_name.ContainsKey (rawname))
                         error_name.Add (rawname, true);
                 }
             }
             for (const auto &rawname : rule.out_sum_paramrawname) {
-                if (!paramdict_favorite.Get (rule.favorite_name).ContainsKey (rawname)) {
+                if (!pRuleFavorite->ContainsKey (rawname)) {
                     rule.is_Valid = false;
                     if (!error_name.ContainsKey (rawname))
                         error_name.Add (rawname, true);
@@ -637,8 +641,7 @@ namespace Spec {
             if (!rule.is_Valid)
                 continue;
             bool flag_find = false;
-            GS::HashTable<GS::UniString, GS::UniString> &rule_favorite_name =
-                paramdict_favorite.Get (rule.favorite_name);
+            GS::HashTable<GS::UniString, GS::UniString> &rule_favorite_name = *pRuleFavorite;
             for (const auto &cItt : rule_favorite_name) {
 #ifdef ServerMainVers_2800
                 const GS::UniString rawname = cItt.key;
@@ -700,9 +703,11 @@ namespace Spec {
                 GetElementByPropertyDescription (subguid_pvalue.definition, rule.subguid_rulevalue.ToLowerCase ());
             if (!selected_elements.IsEmpty ()) {
                 for (const API_Guid &exsist_element : exsist_elements) {
-                    if (!selected_elements.ContainsKey (exsist_elements[i]))
+                    // FIX (ревью 2026-09-12): тело цикла использовало посторонний
+                    // индекс i (переменную фаз прогресса) — out-of-bounds/дубли.
+                    if (!selected_elements.ContainsKey (exsist_element))
                         continue;
-                    rule.exsist_elements.Push (exsist_elements[i]);
+                    rule.exsist_elements.Push (exsist_element);
                 }
             } else {
                 rule.exsist_elements = exsist_elements;
@@ -751,7 +756,9 @@ namespace Spec {
         bool rule_from_one = false;
         if (!SpecDG (rules, rule_from_one)) {
             msg_rep ("ReNumSelected", "Execution interrupted by user", NoError, APINULLGuid);
-            return false;
+            // FIX (ревью 2026-09-12): return false в GSErrCode означал NoError —
+            // отмена пользователя сообщалась вызывающему как успех.
+            return APIERR_CANCEL;
         }
         ParamHelpers::ElementsRead (paramToRead, paramCompositeToRead, paramListDataToRead, true, true);
         // Массив со словарями элементов для создания по правилам
@@ -964,6 +971,20 @@ namespace Spec {
             }
 #endif // !AC_22
             ParamHelpers::ElementsWrite (paramOut);
+            // FIX (ревью 2026-09-12): восстановление тумблера SuspendGroups —
+            // включили сами (suspGrp==false), возвращаем обратно (образец: Sync.cpp).
+#ifdef ServerMainVers_2300
+            if (!suspGrp) {
+                bool suspNow = false;
+    #ifdef ServerMainVers_2700
+                if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
+                    ACAPI_Grouping_Tool (elements_delete, APITool_SuspendGroups, nullptr);
+    #else
+                if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
+                    ACAPI_Element_Tool (elements_delete, APITool_SuspendGroups, nullptr);
+    #endif
+            }
+#endif
             return NoError;
         });
         if (has_v2) {
@@ -1448,6 +1469,8 @@ namespace Spec {
         GS::HashTable<GS::UniString, GS::UniString> out_param = {}; // Ключ - уникальные значения, значение - выходящие
                                                                     // параметры
         for (const API_Guid &elemguid : rule.elements) {
+            // FIX (ревью 2026-09-12, PERF): результат фильтра не зависит от
+            // группы — ACAPI_Element_Filter вынесен из цикла по группам.
             if (rule.only_visible) {
                 if (!ACAPI_Element_Filter (
                         elemguid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay))
@@ -2313,6 +2336,10 @@ namespace Spec {
         double somestuff_spec_hrow = 0;
         double somestuff_spec_bcol = 0;
         Int32 show_type = 0;
+        // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — у объекта без
+        // GDL-параметров params == nullptr, разыменование нулевого хэндла.
+        if (memot.params == nullptr)
+            return false;
         const GSSize nParams = BMGetHandleSize ((GSHandle)memot.params) / sizeof (API_AddParType);
         for (GSIndex ii = 0; ii < nParams; ++ii) {
             API_AddParType &actParam = (*memot.params)[ii];

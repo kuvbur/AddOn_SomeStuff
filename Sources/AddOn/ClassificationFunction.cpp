@@ -62,23 +62,27 @@ namespace ClassificationFunc {
                              "ACAPI_Classification_GetClassificationSystemRootItems",
                              err,
                              system.guid);
+                    // FIX (ревью 2026-09-12): сбой одной системы не должен гасить
+                    // весь кэш классификаций — сбрасываем err локально.
+                    err = NoError;
                     continue;
                 }
                 if (!classifications.IsEmpty ()) {
                     API_ClassificationItem parent = {};
                     API_ClassificationItem item = {};
                     AddClassificationItem (item, parent, classifications, system);
-                    if (!has_systemname)
-                        systemdict.Put (systemname, classifications);
-                    if (!has_systemname_full)
-                        systemdict.Put (systemname_full, classifications);
-                    // Если среди загруженных классов найден автокласс, сохраняем его отдельно.
-                    // Это позволяет быстро назначать его элементам без повторного поиска по описаниям.
+                    // FIX (ревью 2026-09-12, PERF): автокласс формируем до move,
+                    // последний Put выполняем перемещением — вторая полная
+                    // глубокая копия словаря из тысяч записей устранена.
                     if (classifications.ContainsKey (autoclassname) && !has_autoclassname) {
                         ClassificationDict autoclassifications = {};
                         autoclassifications.Put (autoclassname, classifications.Get (autoclassname));
                         systemdict.Put (autoclassname, autoclassifications);
                     }
+                    if (!has_systemname)
+                        systemdict.Put (systemname, classifications);
+                    if (!has_systemname_full)
+                        systemdict.Put (systemname_full, std::move (classifications));
                 }
             }
         }
@@ -135,8 +139,10 @@ namespace ClassificationFunc {
 
         // Автокласс определяется не по идентификатору, а по описанию элемента.
         // Поэтому здесь проверяется несколько возможных вариантов написания ключевой строки.
-        if (desc.ToLowerCase ().Contains ("some_stuff_class") || desc.ToLowerCase ().Contains ("somestuff_class") ||
-            desc.ToLowerCase ().Contains ("somestuffclass")) {
+        // FIX (ревью 2026-09-12, PERF): desc уже приведён к нижнему регистру выше —
+        // убраны три повторных ToLowerCase (копия строки на каждый элемент).
+        if (desc.Contains ("some_stuff_class") || desc.Contains ("somestuff_class") ||
+            desc.Contains ("somestuffclass")) {
             ClassificationValues classificationitem = {};
             classificationitem.item = item;
             classificationitem.system = system;
@@ -153,16 +159,23 @@ namespace ClassificationFunc {
                       const ClassificationDict &classifications,
                       GS::UniString &fullname) {
         GS::UniString itemname = item.id.ToLowerCase ();
-        if (classifications.ContainsKey (itemname)) {
+        // FIX (ревью 2026-09-12, PERF): до 6-7 lookup хэш-таблицы на каждый
+        // уровень рекурсии — получаем значение один раз через GetPtr.
+        const ClassificationValues *itemPtr = classifications.GetPtr (itemname);
+        if (itemPtr != nullptr) {
             if (fullname.IsEmpty ()) {
-                fullname = classifications.Get (itemname).item.id;
+                fullname = itemPtr->item.id;
             } else {
-                fullname = classifications.Get (itemname).item.id + "/" + fullname;
+                fullname = itemPtr->item.id + "/" + fullname;
             }
             // Если у класса есть родитель, рекурсивно добавляем его имя перед текущим.
-            GS::UniString parentname = classifications.Get (itemname).parentname;
-            if (!parentname.IsEmpty () && classifications.ContainsKey (parentname)) {
-                GetFullName (classifications.Get (parentname).item, classifications, fullname);
+            const GS::UniString &parentname = itemPtr->parentname;
+            // FIX (ревью 2026-09-12): guard от бесконечной рекурсии — при
+            // совпадении id родителя и потомка стек переполнялся.
+            if (!parentname.IsEmpty () && parentname != itemname && classifications.ContainsKey (parentname)) {
+                const ClassificationValues *parentPtr = classifications.GetPtr (parentname);
+                if (parentPtr != nullptr)
+                    GetFullName (parentPtr->item, classifications, fullname);
             }
         }
     }
@@ -217,6 +230,11 @@ namespace ClassificationFunc {
     }
 
     API_ClassificationItem FindClass (const GS::Pair<API_Guid, API_Guid> &classitem) {
+
+        // FIX (ревью 2026-09-12): кэш должен быть гарантированно загружен
+        // (по образцу перегрузки FindClass (systemname, classname)).
+        if (!ReadSystemDict ())
+            return {};
 
         auto &cache = PROPERTYCACHE ();
 

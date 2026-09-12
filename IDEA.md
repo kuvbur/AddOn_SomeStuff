@@ -211,8 +211,8 @@
 
 ---
 
-## Last Checkpoint: 3d3379f [docs] Record keep-selection fix checkpoint in IDEA.md
-## Next Step: Этап UI-бэклога (кэш правил Somestuff + фильтр, маркировка неактивных флагов, pin свойств) — тесты до/после, замер производительности, оптимизация. Затем Этап 2.1 ExecuteSyncScriptCommand, затем Этап 3 (Нумерация).
+## Last Checkpoint: bbbe71a checkpoint: до правок по ревью 2026-09-12b (GLM-instructions)
+## Next Step: Задача «ревью 2026-09-12b»: ревью применённых правок завершено (3 субагента), исправлены 4 дефекта (ElemHead_To_Neig typeID, восстановлен MenuSetState, доделан п.55 store-сброс, GetMarkerPos порядок guard'ов); 4 субагента реализуют остаток (Roombook suspend/PERF, BrowserPalette 25/26/37-70, Dimensions/Helpers/CommonFunction minor+perf, прочие minor/perf). Затем: clang-format → LSP → сборка AC25 → отчёт. Отдельная TW/prefs-задача ниже — НЕ смешивать.
 ## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, при необходимости Sync.cpp/Spec.cpp
 ## Verified 2026-08-24: подсветка+зум по клику ×N работает, выделение сохраняется (подтверждено Дмитрием, runtime AC25)
 

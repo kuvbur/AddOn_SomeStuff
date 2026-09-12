@@ -109,10 +109,14 @@ namespace ListData {
         Mat p = {};
         GS::UniString subpos = "";
         if (version == 3) {
-            if (partstring.GetSize () < 10) {
+            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [10];
+            // при размере ровно 10 доступ partstring[10] выходил за границу.
+            if (partstring.GetSize () < 11) {
                 return;
             }
-            GS::UniString subpos = partstring[0];
+            // FIX (ревью 2026-09-12): локальное объявление затеняло внешнюю subpos —
+            // GetSubposKey всегда получал пустую строку, материалы v3 смешивались.
+            subpos = partstring[0];
             p.pos = partstring[2];
             p.tip_konstr = GetParam (partstring[5], "tk");
             p.naen = partstring[7];
@@ -146,7 +150,8 @@ namespace ListData {
         Arm p = {};
         GS::UniString subpos = "";
         if (version == 3) {
-            if (partstring.GetSize () < 8) {
+            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [9].
+            if (partstring.GetSize () < 10) {
                 return;
             }
             subpos = partstring[0];
@@ -201,7 +206,8 @@ namespace ListData {
         double ves = 0;           // Масса ед.
         GS::UniString unit = "";  // Ед. измерения
         if (version == 3) {
-            if (partstring.GetSize () < 9) {
+            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [9].
+            if (partstring.GetSize () < 10) {
                 return;
             }
             subpos = partstring[0];
@@ -241,7 +247,8 @@ namespace ListData {
         Prokat p = {};
         GS::UniString subpos = "";
         if (version == 3) {
-            if (partstring.GetSize () < 14) {
+            // FIX (ревью 2026-09-12): guard поднят до maxIndex+1 — читается [14].
+            if (partstring.GetSize () < 15) {
                 return;
             }
             subpos = partstring[0];

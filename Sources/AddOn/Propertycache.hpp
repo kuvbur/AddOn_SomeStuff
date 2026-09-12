@@ -408,8 +408,9 @@ struct PropertyCache {
     }
 
     bool AddFile (GS::UniString &fileName) {
-        if (file.ContainsKey (fileName))
-            return file.Get (fileName);
+        // FIX (ревью 2026-09-12): ContainsKey+Get → один GetPtr (двойной lookup).
+        if (const bool *cached = file.GetPtr (fileName))
+            return *cached;
         GS::Array<GS::Array<GS::UniString>> data = {};
         bool flag = ParamHelpers::ReadLibraryFile (fileName, data);
         file.Add (fileName, flag);
@@ -502,8 +503,9 @@ struct PropertyCache {
         hasLayerNameInDimRules = false;
         if (isInfo_OK) {
             dimrules.Clear ();
-            if (info.ContainsKey (autotextkey)) {
-                GS::UniString autotext = info.Get (autotextkey).val.uniStringValue;
+            // FIX (ревью 2026-09-12): ContainsKey+Get → один GetPtr (двойной lookup).
+            if (const ParamValue *autotextval = info.GetPtr (autotextkey)) {
+                GS::UniString autotext = autotextval->val.uniStringValue;
                 hasDimAutotext = DimReadPref (dimrules, autotext, hasLayerNameInDimRules);
     #if defined(TESTING)
                 if (hasDimAutotext) {
@@ -607,9 +609,11 @@ struct PropertyCache {
                 ClassificationFunc::ClassificationDict &cd = *cIt->value;
                 GS::UniString systemname = *cIt->key;
     #endif
-                if (!cd.ContainsKey ("@system@"))
+                // FIX (ревью 2026-09-12): ContainsKey+Get → один GetPtr (двойной lookup).
+                const ClassificationFunc::ClassificationValues *sysitem = cd.GetPtr ("@system@");
+                if (sysitem == nullptr)
                     continue;
-                API_Guid &systemguid = cd.Get ("@system@").system.guid;
+                API_Guid systemguid = sysitem->system.guid;
 
                 auto *revSystemDict = reversesystemdict.GetPtr (systemguid);
 

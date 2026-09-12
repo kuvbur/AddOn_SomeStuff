@@ -149,8 +149,11 @@ namespace MEPv1 {
         } else {
             ACAPI_WriteReport (element.UnwrapErr ().text.c_str (), false);
         }
-        routingElementDataCache.Put (key, data);
-        return *routingElementDataCache.GetPtr (key);
+        // FIX (ревью 2026-09-12, PERF): повторный GetPtr после Put — двойной
+        // lookup в кэше; используем Add с out-параметром valueInContainer.
+        RoutingElementSharedData *pInserted = nullptr;
+        routingElementDataCache.Add (key, std::move (data), &pInserted);
+        return *pInserted;
     }
 
     void ClearRoutingSubelemCache () {
@@ -165,8 +168,11 @@ namespace MEPv1 {
         }
         GS::Array<API_Guid> result;
         GetSubElementOfRouting (routingGuid, result);
-        routingSubelemCache.Put (routingGuid, result);
-        return *routingSubelemCache.GetPtr (routingGuid);
+        // FIX (ревью 2026-09-12, PERF): повторный GetPtr после Put — двойной
+        // lookup в кэше; используем Add с out-параметром valueInContainer.
+        GS::Array<API_Guid> *pInserted = nullptr;
+        routingSubelemCache.Add (routingGuid, std::move (result), &pInserted);
+        return *pInserted;
     }
 
     bool ReadMEP (const API_Elem_Head &elem_head, ParamDictValue &paramByType) {
@@ -238,6 +244,10 @@ namespace MEPv1 {
         API_Elem_Head elem_head = {};
         elem_head.guid = elemGuid;
         err = ACAPI_Element_GetHeader (&elem_head);
+        // FIX (ревью 2026-09-12): при ошибке GetHeader тип не заполнен —
+        // чтение elem_head.type.typeID шло бы по невалидным данным.
+        if (err != NoError)
+            return;
         if (elem_head.type.typeID != API_ExternalElemID)
             return;
         GS::UniString txttype = "";
@@ -357,7 +367,10 @@ namespace MEPv1 {
                         }
                     }
                 } else {
-                    ACAPI_WriteReport (systems.UnwrapErr ().text.c_str (), false);
+                    // FIX (ревью 2026-09-12): UnwrapErr на успешном Result — UB
+                    // (чтение мусора из union); здесь результат успешный, но
+                    // пустой — физическая система не найдена.
+                    ACAPI_WriteReport ("No physical system found", false);
                 }
             }
         }

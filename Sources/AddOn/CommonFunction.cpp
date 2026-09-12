@@ -3,8 +3,10 @@
 #include <bitset>
 #include <cmath>
 #include <cstdlib>
+#include <exception> // FIX (ревью 2026-09-12): п.87 — std::exception в try/catch
 #include <fstream>
 #include <limits>
+#include <string> // FIX (ревью 2026-09-12): п.87 — std::stoi
 
 #include "api_headers/APIEnvir.h"
 
@@ -779,7 +781,7 @@ void MenuItemCheckAC (short itemInd, bool checked) {
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid> GetSelectedElements2 (bool assertIfNoSel /* = true*/, bool onlyEditable /*= true*/) {
     GSErrCode err;
-    API_SelectionInfo selectionInfo;
+    API_SelectionInfo selectionInfo = {};
     GS::UniString errorString = "Empty";
 #ifndef ServerMainVers_2300
     API_Neig **selNeigs;
@@ -854,7 +856,10 @@ void CallOnSelectedElem2 (void (*function) (const API_Guid &),
 #endif
         }
         long time_end = clock ();
-        GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
+        // FIX (ревью 2026-09-12): п.40 — clock() возвращает тики CLOCKS_PER_SEC, деление на 1000
+        // давало неверные единицы; приведение к double устраняет целочисленное деление.
+        GS::UniString time =
+            GS::UniString::Printf (" %.0f ms", (double)(time_end - time_start) * 1000.0 / CLOCKS_PER_SEC);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
         msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
     } else if (!assertIfNoSel) {
@@ -1053,10 +1058,18 @@ void ReplaceCR (GS::UniString &val, bool clear) {
     GS::UniString p = "\\n";
     if (val.Contains (p)) {
         if (!clear) {
-            for (UInt32 i = 0; i < val.Count (p); i++) {
+            // FIX (ревью 2026-09-12): количество замен фиксируется до цикла —
+            // Count (p) пересчитывается после каждой Delete.
+            const UInt32 cnt = val.Count (p);
+            for (UInt32 i = 0; i < cnt; i++) {
                 UIndex inx = val.FindFirst (p);
-                val.ReplaceFirst (p, EMPTYSTRING);
+                // FIX (ревью 2026-09-12): прежний код (ReplaceFirst на пустую строку
+                // + SetChar(inx, CharCR)) удалял оба символа "\n" и затирал символ,
+                // следующий за переносом — каждый перевод строки «съедал» один
+                // символ данных. Теперь 'n' перезаписывается CR, затем удаляется '\'.
                 val.SetChar (inx, CharCR);
+                // Сдвигаем хвост: удаляем освободившийся '\'
+                val.Delete (inx + 1, 1);
             }
         } else {
             val.ReplaceAll (p, EMPTYSTRING);
@@ -1075,7 +1088,15 @@ void GetNumSymbSpase (GS::UniString &outstring, GS::UniChar symb, char charrepl)
     if (outstring.Contains (symb)) {
         part = outstring.GetSubstring (symb, ' ', 0);
         if (!part.IsEmpty () && part.GetLength () < 4)
-            stringlen = std::atoi (part.ToCStr ());
+            // FIX (ревью 2026-09-12): п.87 — atoi молча возвращает 0 при ошибке разбора,
+            // ошибка неотличима от корректного 0; stoi в try/catch даёт явный контроль.
+            try {
+                stringlen = std::stoi (part.ToCStr (0, MaxUSize, CC_UTF8).Get ());
+            } catch (const std::exception &) {
+                stringlen = 0;
+            } catch (...) {
+                stringlen = 0;
+            }
         if (stringlen > 0)
             part = symb + part;
     }
@@ -1889,6 +1910,10 @@ bool ElemHead_To_Neig (API_Neig *neig, const API_Elem_Head *elemHead) {
     *neig = {};
     neig->guid = elemHead->guid;
     API_ElemType type = elemHead->type;
+    // FIX (ревью 2026-09-12): typeID теперь берётся из заголовка всегда —
+    // ранее заполнялся только при Zombie-типе, из-за чего при валидном входном
+    // типе функция всегда возвращала false (switch уходил в default).
+    typeID = type.typeID;
     if (type == API_ZombieElemID && neig->guid != APINULLGuid) {
         API_Elem_Head elemHeadCopy = {};
         elemHeadCopy.guid = elemHead->guid;
@@ -1899,6 +1924,9 @@ bool ElemHead_To_Neig (API_Neig *neig, const API_Elem_Head *elemHead) {
     BNZeroMemory (neig, sizeof (API_Neig));
     API_Elem_Head *elemHeadNonConst = const_cast<API_Elem_Head *> (elemHead);
     neig->guid = elemHead->guid;
+    // FIX (ревью 2026-09-12): typeID из заголовка всегда, дозаполнение через
+    // ACAPI_Element_GetHeader — только для Zombie (см. комментарий в AC26+-ветке).
+    typeID = elemHeadNonConst->typeID;
     if (elemHeadNonConst->typeID == API_ZombieElemID && neig->guid != APINULLGuid) {
         BNZeroMemory (elemHeadNonConst, sizeof (API_Elem_Head));
         elemHeadNonConst->guid = neig->guid;
@@ -2258,6 +2286,16 @@ GSErrCode ConstructPolygon2DFromElementMemo (const API_ElementMemo &memo, Geomet
     static_assert (sizeof (API_Coord) == sizeof (Coord), "sizeof (API_Coord) != sizeof (Coord)");
     static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
 
+    // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — memo.coords/pends могут
+    // быть nullptr (элемент без полигона), а нулевой размер handle после вычитания
+    // единицы даёт беззнаковый wraparound (гигантский nVertices/nContours).
+    if (memo.coords == nullptr || BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) < sizeof (API_Coord)) {
+        return APIERR_BADPARS;
+    }
+    if (memo.pends == nullptr || BMGetHandleSize (reinterpret_cast<GSHandle> (memo.pends)) < sizeof (Int32)) {
+        return APIERR_BADPARS;
+    }
+
     polygon2DData.nVertices = BMGetHandleSize (reinterpret_cast<GSHandle> (memo.coords)) / sizeof (Coord) - 1;
     polygon2DData.vertices = reinterpret_cast<Coord **> (
         BMAllocateHandle ((polygon2DData.nVertices + 1) * sizeof (Coord), ALLOCATE_CLEAR, 0));
@@ -2336,7 +2374,11 @@ GSErrCode ConvertPolygon2DToAPIPolygon (const Geometry::Polygon2D &polygon, API_
     }
     if (err == NoError && polygon2DData.arcs != nullptr && memo.parcs != nullptr) {
         static_assert (sizeof (API_PolyArc) == sizeof (PolyArcRec), "sizeof (API_PolyArc) != sizeof (PolyArcRec)");
-        BNCopyMemory (*memo.parcs, *polygon2DData.arcs, poly.nArcs * sizeof (API_PolyArc));
+        // FIX (ревью 2026-09-12): симметрия с ConstructPolygon2DFromElementMemo —
+        // там дуги memo.parcs копируются в *arcs + 1 (элемент [0] фиктивный),
+        // значит обратное копирование должно идти тоже с +1, иначе дуги
+        // смещаются на одну позицию.
+        BNCopyMemory (*polygon2DData.arcs + 1, *memo.parcs, poly.nArcs * sizeof (API_PolyArc));
     }
     Geometry::FreePolygon2DData (&polygon2DData);
     return err;
@@ -2551,6 +2593,9 @@ void SetElemTypeID (API_Elem_Head &elementhead, const API_ElemTypeID eltype) {
 // Находит элементы по описанию значения свойства внутри классификации
 // -----------------------------------------------------------------------------
 GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &definition, const GS::UniString value) {
+    // FIX (ревью 2026-09-12): ToLowerCase вычислялся в самом внутреннем цикле —
+    // создаётся копия строки на каждый элемент; вычисляем один раз до циклов.
+    const GS::UniString lowerValue = value.ToLowerCase ();
     GSErrCode error = NoError;
     GS::Array<API_Guid> elements = {};
 #ifndef ServerMainVers_2300
@@ -2586,7 +2631,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &def
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == value.ToLowerCase ())
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase () == lowerValue)
                 elements.Push (elemGuid);
     #else
             if (propertyflag.status != API_Property_HasValue)
@@ -2595,7 +2640,7 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &def
                 continue;
             if (propertyflag.value.singleVariant.variant.uniStringValue.IsEmpty ())
                 continue;
-            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (value))
+            if (propertyflag.value.singleVariant.variant.uniStringValue.ToLowerCase ().IsEqual (lowerValue))
                 elements.Push (elemGuid);
     #endif
         }
@@ -2606,6 +2651,10 @@ GS::Array<API_Guid> GetElementByPropertyDescription (API_PropertyDefinition &def
 
 namespace GDLHelpers {
     bool ParamToMemo (API_ElementMemo &memo, ParamDict &param) {
+        // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — разыменование
+        // нулевого params-хендла у объекта без GDL-параметров.
+        if (memo.params == nullptr)
+            return false;
         const GSSize nParams = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
         GS::UniString rawname;
         for (GSIndex ii = 0; ii < nParams; ++ii) {
@@ -2663,6 +2712,10 @@ namespace GDLHelpers {
                         actParam.dim1 = pp->dim1;
                         actParam.dim2 = pp->dim2;
                     }
+                    // FIX (ревью 2026-09-12): guard против чтения за границей
+                    // arr_num при несогласованных размерах словаря и параметра.
+                    if (pp->arr_num.GetSize () < (USize)actParam.dim1 * actParam.dim2)
+                        break;
                     origArrHdl = (double **)actParam.value.array;
                     newArrHdl = (double **)BMAllocateHandle (
                         actParam.dim1 * actParam.dim2 * sizeof (double), ALLOCATE_CLEAR, 0);

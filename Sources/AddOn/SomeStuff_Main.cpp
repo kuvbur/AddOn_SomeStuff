@@ -138,7 +138,11 @@ GSErrCode __ACENV_CALL ElementEventHandlerProc (const API_NotifyElementType *ele
         PROPERTYCACHE ().compositeCache.Clear ();
         return NoError;
     } else if (elemType->notifID == APINotifyElement_EndEvents) {
-        if (!IsElementThrottled (APINULLGuid)) {
+        // FIX (ревью 2026-09-12, PERF): EndEvents приходит пачками на каждое
+        // редактирование — полный скан всех размеров (DimRoundAll) выполняем
+        // только при наличии правил округления; адресная обработка отдельных
+        // размеров уже идёт через DimAutoRoundOne в обработчике элементов.
+        if (!IsElementThrottled (APINULLGuid) && PROPERTYCACHE ().hasDimAutotext) {
             DimRoundAll (syncSettings, true);
         }
         return NoError;
@@ -433,8 +437,29 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
         break;
     }
     (void)err;
-    DimRoundAll (syncSettings, false);
+    // FIX (ревью 2026-09-12, PERF): DimRoundAll делает полный скан всех размеров
+    // проекта — вызываем только для команд, меняющих элементы/свойства; для
+    // переключателей флагов и палитры пересчёт не нужен.
+    switch (menuParams->menuItemRef.itemIndex) {
+    case SyncAll_CommandID:
+    case SyncSelect_CommandID:
+    case ReNum_CommandID:
+    case Sum_CommandID:
+    case RunParam_CommandID:
+    case Spec_CommandID:
+    case ShowSub_CommandID:
+    case SetRevision_CommandID:
+    case SetSub_CommandID:
+    case RoomBook_CommandID:
+        DimRoundAll (syncSettings, false);
+        break;
+    default:
+        break;
+    }
     WriteSyncSettingsToPreferences (syncSettings);
+    // FIX (ревью 2026-09-12): вызов восстановлен — он был случайно удалён при правке
+    // п.30 (DimRoundAll в switch); без него галочки меню не обновляются после
+    // переключения флагов/палитры до следующего project-события.
     MenuSetState (syncSettings);
     ACAPI_KeepInMemory (true);
 #ifdef TESTING

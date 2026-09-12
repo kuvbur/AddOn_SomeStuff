@@ -1,9 +1,10 @@
 //------------ kuvbur 2022 ------------`
-#include "api_headers/APIEnvir.h"
-
 #include "ACAPinc.h"
 
+#include "api_headers/APIEnvir.h"
+
 #include "Dimensions.hpp"
+
 #include "Propertycache.hpp"
 
 #define DIM_NOCHANGE 0
@@ -66,6 +67,20 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
             const GS::UniString &regexpstring = *cIt->key;
             const DimRule &d = *cIt->value;
 #endif
+            // FIX (ревью 2026-09-12): п.72 — ключ-число может ложно совпасть как подстрока
+            // имени слоя, и правило по этому ключу уже добавлено выше — пропускаем дубли,
+            // чтобы правило не применялось дважды.
+            bool already_added = (regexpstring == kstr);
+            if (!regexpstring.IsEmpty () && !already_added && rules.GetSize () > 0) {
+                for (const auto &r : rules) {
+                    if (r.kstr == regexpstring) {
+                        already_added = true;
+                        break;
+                    }
+                }
+            }
+            if (already_added)
+                continue;
             if (layert.Contains (regexpstring))
                 rules.Push (d);
         }
@@ -126,6 +141,11 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
             continue;
         }
         content = GS::UniString ((*memo.dimElems)[k].note.content);
+        // FIX (ревью 2026-09-12): п.62 — исходный пользовательский текст сохраняется до цикла
+        // по правилам: раньше первое правило мутировало content, и второе правило сравнивало
+        // уже сгенерированный первым правилом текст, а не исходный.
+        const GS::UniString originalContent = content;
+        GS::UniString custom_txt;
         API_Guid ref_elemGuid = (*memo.dimElems)[k].base.base.guid;
         bool is_sameGUID = (ref_elemGuid == bef_elemGuid);
         if (!is_sameGUID)
@@ -142,7 +162,8 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
                 DimParse ((*memo.dimElems)[k].dimVal,
                           ref_elemGuid,
                           originalContentType,
-                          content,
+                          originalContent,
+                          custom_txt,
                           flag_change,
                           flag_highlight,
                           dimrule)) {
@@ -153,7 +174,7 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
                     (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
                     if ((*memo.dimElems)[k].note.contentUStr != nullptr)
                         delete (*memo.dimElems)[k].note.contentUStr;
-                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString (content);
+                    (*memo.dimElems)[k].note.contentUStr = new GS::UniString (custom_txt);
                     (*memo.dimElems)[k].note.opaque = opaque;
                 }
                 if (flag_change == DIM_CHANGE_OFF && originalContentType != API_NoteContent_Measured &&
@@ -230,10 +251,15 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON,
 // DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
+// FIX (ревью 2026-09-12): п.32 — вместо полной копии dimrule.paramDict значение measuredvalue
+// подставляется в копию словаря только при необходимости: копия HashTable на каждый размер
+// × каждое правило была нужна только ради одного значения (округлённое dimValmm_round
+// и так вычисляется внутри функции).
 bool DimParse (const double &dimVal,
                const API_Guid &elemGuid,
                const API_NoteContentType &contentType,
-               GS::UniString &content,
+               const GS::UniString &content,
+               GS::UniString &custom_txt,
                UInt32 &flag_change,
                UInt32 &flag_highlight,
                const DimRule &dimrule) {
@@ -251,25 +277,41 @@ bool DimParse (const double &dimVal,
         dimValmm_round = ceil_mod ((GS::Int32)dimVal_r, round_value);
     }
     double dx = fabs (dimVal_r - dimValmm_round * 1.0); // Разница в размерах в мм
-    GS::UniString custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
+    // FIX (ревью 2026-09-12): п.32/62 — вычисленный текст выносится в out-параметр custom_txt,
+    // входной content больше не мутируется в DimParse (см. комментарий к сигнатуре).
+    custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
     bool flag_expression = false; // В описании найдена формула
     if (!dimrule.expression.IsEmpty ()) {
-        ParamDictValue pdictvalue = dimrule.paramDict;
-        // Добавляем в словарь округлённое значение
-        if (ParamValue *pv = pdictvalue.GetPtr ("{@gdl:measuredvalue}")) {
-            ParamValue pvalue;
-            ParamHelpers::ConvertIntToParamValue (pvalue, "MeasuredValue", dimValmm_round);
-            pv->val = pvalue.val;
-            pv->isValid = true;
-        }
-        if (elemGuid != APINULLGuid) {
-            ParamHelpers::Read (elemGuid, pdictvalue);
-        } // Получим значения, если размер привязан к элементу
+        // FIX (ревью 2026-09-12): п.32 — полная копия HashTable<UniString, ParamValue> на каждый
+        // размер × каждое правило убрана: копия создаётся только когда измеренное значение реально
+        // подставляется в выражение (в словаре правил есть ключ {@gdl:measuredvalue}) или когда
+        // нужно дочитать параметры привязанного элемента.
+        const bool has_measuredvalue = (dimrule.paramDict.GetPtr ("{@gdl:measuredvalue}") != nullptr);
+        const bool need_read_elem = (elemGuid != APINULLGuid);
         GS::UniString expression = dimrule.expression;
-
-        // Заменяем вычисленное
-        if (ParamHelpers::ReplaceParamInExpression (pdictvalue, expression)) {
-
+        bool replaced = false;
+        if (has_measuredvalue || need_read_elem) {
+            // Копия словаря — только при необходимости подстановки measuredvalue или чтения элемента
+            ParamDictValue pdictvalue = dimrule.paramDict;
+            if (has_measuredvalue) {
+                if (ParamValue *pv = pdictvalue.GetPtr ("{@gdl:measuredvalue}")) {
+                    ParamValue pvalue;
+                    // FIX (ревью 2026-09-12): п.32 — округлённое значение (dimValmm_round) вычисляется в этой
+                    // функции и подставляется в копию словаря; отдельный параметр measuredValue не нужен.
+                    ParamHelpers::ConvertIntToParamValue (pvalue, "MeasuredValue", dimValmm_round);
+                    pv->val = pvalue.val;
+                    pv->isValid = true;
+                }
+            }
+            if (need_read_elem) {
+                ParamHelpers::Read (elemGuid, pdictvalue); // Получим значения, если размер привязан к элементу
+            }
+            replaced = ParamHelpers::ReplaceParamInExpression (pdictvalue, expression);
+        } else {
+            // Обычный путь: замена по оригинальному словарю правил без копии
+            replaced = ParamHelpers::ReplaceParamInExpression (dimrule.paramDict, expression);
+        }
+        if (replaced) {
             // Вычисляем значения
             flag_expression = true;
             if (expression.Contains (STRFORMULASTART) && expression.Contains (STRFORMULAEND)) {
@@ -315,8 +357,9 @@ bool DimParse (const double &dimVal,
     }
     if (flag_expression && flag_change == DIM_CHANGE_ON)
         flag_change = DIM_CHANGE_FORCE;
-    if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE)
-        content = custom_txt;
+    // FIX (ревью 2026-09-12): п.62 — входной content (исходный текст размера) больше не
+    // мутируется; вычисленный текст возвращается через out-параметр custom_txt, чтобы
+    // следующие правила сравнивали с оригиналом, а не с результатом предыдущего правила.
     return (flag_change != DIM_NOCHANGE || flag_highlight != DIM_NOCHANGE);
 }
 

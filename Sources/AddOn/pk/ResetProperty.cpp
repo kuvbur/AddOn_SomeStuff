@@ -41,11 +41,19 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition> &def
     UnicGuid doneelemguid; // словарь, куда будут попадать обработанные элементы
     UInt32 flag_reset = 0;
     GSErrCode err = NoError;
-    API_DatabaseID commandID = APIDb_GetCurrentDatabaseID;
     API_AttributeIndex layerCombIndex = {};
 
-// Сейчас будем переключаться между БД
-// Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
+    // FIX (ревью 2026-09-12): сохраняем исходную БД для восстановления —
+    // ранее в APIDb_ChangeCurrentDatabaseID передавался API_DatabaseID (перечисление)
+    // вместо API_DatabaseInfo*, возврат в исходную БД никогда не выполнялся.
+    // Сейчас будем переключаться между БД
+    // Запомним номер текущей БД и комбинацию слоёв для восстановления по окончанию работы
+    API_DatabaseInfo origDB = {};
+#ifdef ServerMainVers_2700
+    err = ACAPI_Database_GetCurrentDatabase (&origDB);
+#else
+    err = ACAPI_Database (APIDb_GetCurrentDatabaseID, &origDB, nullptr);
+#endif
 #ifdef ServerMainVers_2700
     err = ACAPI_Navigator_GetCurrLayerComb (&layerCombIndex);
 #else
@@ -76,16 +84,17 @@ UInt32 ResetPropertyElement2Defult (const GS::Array<API_PropertyDefinition> &def
             ResetElementsInDB (APIDb_GetMasterLayoutDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
         flag_reset = flag_reset + ResetElementsInDB (
                                       APIDb_GetSectionDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
-        flag_reset =
-            flag_reset +
-            ResetElementsInDB (APIDb_GetElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
+        // FIX (ревью 2026-09-12): дубль вызова для ElevationDatabases (строка 71
+        // уже обходит все БД фасадов) удалён — повторный обход без эффекта.
         flag_reset =
             flag_reset + ResetElementsInDB (
                              APIDb_GetInteriorElevationDatabasesID, definitions_to_reset, layerCombIndex, doneelemguid);
 #ifdef ServerMainVers_2700
-// err = ACAPI_Database_ChangeCurrentDatabase(reinterpret_cast<API_DatabaseInfo*> (commandID));
+        // FIX (ревью 2026-09-12): восстановление в исходную БД через сохранённый
+        // API_DatabaseInfo origDB (ранее здесь передавался API_DatabaseID — ошибка).
+        err = ACAPI_Database_ChangeCurrentDatabase (&origDB);
 #else
-        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &commandID, nullptr);
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &origDB, nullptr);
 #endif
         if (err != NoError) {
             msg_rep ("ResetPropertyElement2Defult", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
@@ -242,7 +251,10 @@ GSErrCode ResetOneElemen (const API_Guid elemGuid, const GS::Array<API_PropertyD
         msg_rep ("ResetOneElemen", "ACAPI_Element_GetPropertyValues", err, elemGuid);
     if (err == NoError) {
         for (UInt32 i = 0; i < properties.GetSize (); i++) {
-            API_Property property = properties.Get (i);
+            // FIX (ревью 2026-09-12, PERF): копия структуры с вариантными
+            // строками на каждое свойство каждого элемента заменена ссылкой;
+            // в properties_to_reset пушится копия этого поля.
+            API_Property &property = properties[i];
 
             // Сбрасываем только специальные значения
             if (!property.isDefault) {
@@ -378,7 +390,10 @@ GSErrCode ResetOneElemenDefault (API_ElemTypeID typeId,
         }
         if (properties_to_reset.GetSize () > 0) {
 #ifdef ServerMainVers_2600
-            err = ACAPI_Element_SetPropertiesOfDefaultElem (type, properties);
+            // FIX (ревью 2026-09-12): передаём properties_to_reset, а не properties —
+            // AC26+-ветка перезаписывала все свойства, включая не подлежащие
+            // сбросу (рассинхрон с AC25-веткой).
+            err = ACAPI_Element_SetPropertiesOfDefaultElem (type, properties_to_reset);
 #else
             err = ACAPI_Element_SetPropertiesOfDefaultElem (
                 typeId, static_cast<API_ElemVariationID> (variationID), properties_to_reset);

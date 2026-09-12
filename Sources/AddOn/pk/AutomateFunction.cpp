@@ -323,13 +323,29 @@ namespace AutoFunc {
                 return err;
             }
         }
+        // FIX (ревью 2026-09-12): guard перед разыменованием elemInfoString —
+        // поле может быть nullptr (у элемента без info-строки) — краш.
+        if (memo.elemInfoString == nullptr) {
+            msg_rep ("GetSectLine", "memo.elemInfoString == nullptr", APIERR_BADPARS, element.header.guid);
+            ACAPI_DisposeElemMemoHdls (&memo);
+            return APIERR_BADPARS;
+        }
         id = *memo.elemInfoString;
         Point2D start;
         Point2D end;
         bool find_start = false;
         bool find_end = false;
+        // FIX (ревью 2026-09-12, PERF): подсчёт вхождений p.Count(p[i]) в двойном
+        // цикле заменён на однократный проход по хэш-таблице ключей — координаты
+        // округляются до 3 знаков (та же логика отбора).
+        GS::HashTable<GS::UniString, UInt32> counts;
         for (UInt32 i = 0; i < p.GetSize (); i++) {
-            if (p.Count (p[i]) == 1) {
+            GS::UniString key = GS::UniString::Printf ("%.3f;%.3f", p[i].x, p[i].y);
+            counts[key] = counts[key] + 1;
+        }
+        for (UInt32 i = 0; i < p.GetSize (); i++) {
+            GS::UniString key = GS::UniString::Printf ("%.3f;%.3f", p[i].x, p[i].y);
+            if (counts.Get (key) == 1) {
                 if (!find_start) {
                     start = p[i];
                     find_start = true;
@@ -725,6 +741,28 @@ namespace AutoFunc {
     // Выравнивание одного чертежа
     // Возвращает сдвинутую на ширину чертежа координату
     // -----------------------------------------------------------------------------
+    // FIX (ревью 2026-09-12): общий хелпер восстановления исходной БД/окна —
+    // используется на ранних выходах AlignOneDrawingsByPoints после смены БД.
+    void RestoreStartDatabaseAndWindow (API_DatabaseInfo &databasestart, API_WindowInfo &windowstart) {
+        GSErrCode err = NoError;
+    #ifdef ServerMainVers_2700
+        err = ACAPI_Database_ChangeCurrentDatabase (&databasestart);
+    #else
+        err = ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &databasestart, nullptr);
+    #endif
+        if (err != NoError) {
+            msg_rep ("RestoreStartDatabaseAndWindow", "APIDb_ChangeCurrentDatabaseID", err, APINULLGuid);
+        }
+    #ifdef ServerMainVers_2700
+        err = ACAPI_Window_ChangeWindow (&windowstart);
+    #else
+        err = ACAPI_Automate (APIDo_ChangeWindowID, &windowstart, nullptr);
+    #endif
+        if (err != NoError) {
+            msg_rep ("RestoreStartDatabaseAndWindow", "APIDo_ChangeWindowID", err, APINULLGuid);
+        }
+    }
+
     GSErrCode AlignOneDrawingsByPoints (const API_Guid &elemguid,
                                         API_DatabaseInfo &databasestart,
                                         API_WindowInfo &windowstart,
@@ -758,10 +796,16 @@ namespace AutoFunc {
         err = ACAPI_Element_GetElemList (API_HotspotID, &hotspotList);
         if (err != NoError) {
             msg_rep ("AlignOneDrawingsByPoints", "ACAPI_Element_GetElemList", err, APINULLGuid);
+            // FIX (ревью 2026-09-12): ранний выход после смены БД — возвращаемся
+            // в исходную БД/окно, иначе следующие чертежи обрабатываются в чужой БД.
+            RestoreStartDatabaseAndWindow (databasestart, windowstart);
             return err;
         }
-        if (hotspotList.IsEmpty ())
+        if (hotspotList.IsEmpty ()) {
+            // FIX (ревью 2026-09-12): ранний выход после смены БД (см. выше).
+            RestoreStartDatabaseAndWindow (databasestart, windowstart);
             return APIERR_GENERAL;
+        }
         // Вычисление новых координат
         GS::Array<API_Coord> hotspotcoord;
         API_Element hotspotelem;
@@ -773,6 +817,10 @@ namespace AutoFunc {
         layer = 1;
     #endif
         for (UInt32 i = 0; i < hotspotList.GetSize (); i++) {
+            // FIX (ревью 2026-09-12, PERF): обе крайние точки уже найдены —
+            // досрочно выходим, не читая оставшиеся хотспоты.
+            if (flag_find && hotspotcoord.GetSize () >= 2)
+                break;
             BNZeroMemory (&hotspotelem, sizeof (API_Element));
             hotspotelem.header.guid = hotspotList[i];
             err = ACAPI_Element_Get (&hotspotelem);
@@ -788,8 +836,11 @@ namespace AutoFunc {
                 }
             }
         }
-        if (hotspotcoord.GetSize () < 2 && !flag_find)
+        if (hotspotcoord.GetSize () < 2 && !flag_find) {
+            // FIX (ревью 2026-09-12): ранний выход после смены БД (см. выше).
+            RestoreStartDatabaseAndWindow (databasestart, windowstart);
             return APIERR_GENERAL;
+        }
         double kscale = element.drawing.drawingScale;
         API_Coord leftpos = hotspotcoord[0];
         API_Coord rightpos = hotspotcoord[0];
@@ -897,6 +948,16 @@ namespace AutoFunc {
     #endif
         if (err != NoError) {
             msg_rep ("AlignDrawingsByPoints", "APIDb_GetCurrentDatabaseID", err, APINULLGuid);
+            // FIX (ревью 2026-09-12): store=1 уже установлен — снимаем настройки вида
+            // перед ранним выходом.
+            if (store == 1) {
+                store = 0;
+    #ifdef ServerMainVers_2700
+                ACAPI_View_StoreViewSettings (store);
+    #else
+                ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
+    #endif
+            }
             return;
         }
     #ifdef ServerMainVers_2700
@@ -906,12 +967,33 @@ namespace AutoFunc {
     #endif
         if (err != NoError) {
             msg_rep ("AlignDrawingsByPoints", "APIDb_GetCurrentWindowID", err, APINULLGuid);
+            // FIX (ревью 2026-09-12): store=1 уже установлен — снимаем перед выходом.
+            if (store == 1) {
+                store = 0;
+    #ifdef ServerMainVers_2700
+                ACAPI_View_StoreViewSettings (store);
+    #else
+                ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
+    #endif
+            }
             return;
         }
         // Важно расставлять чертежи по-порядку.
         GS::Array<API_Guid> drawingId = GetDrawingsSort (elems);
-        if (drawingId.IsEmpty ())
+        // FIX (ревью 2026-09-12): восстановление настроек вида (store) должно
+        // выполняться и на ранних выходах ниже — вынесено в общий блок перед
+        // всеми return после точки сохранения (store=1 установлена выше).
+        if (drawingId.IsEmpty ()) {
+            if (store == 1) {
+                store = 0;
+    #ifdef ServerMainVers_2700
+                ACAPI_View_StoreViewSettings (store);
+    #else
+                ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
+    #endif
+            }
             return;
+        }
         GS::Array<API_Coord> coords = {};
         GS::Array<API_Guid> gooddrawings = {};
         for (UInt32 i = 0; i < drawingId.GetSize (); i++) {
@@ -943,10 +1025,19 @@ namespace AutoFunc {
             msg_rep ("AlignOneDrawingsByPoints", "APIDo_ChangeWindowID", err, APINULLGuid);
             return;
         }
-        if (gooddrawings.IsEmpty ())
+        if (gooddrawings.IsEmpty () || coords.IsEmpty ()) {
+            // FIX (ревью 2026-09-12): ранний выход после снятия store — иначе
+            // настройки вида остаются сохранёнными (store=1) до следующей команды.
+            if (store == 1) {
+                store = 0;
+    #ifdef ServerMainVers_2700
+                ACAPI_View_StoreViewSettings (store);
+    #else
+                ACAPI_Database (APIDb_StoreViewSettingsID, (void *)store);
+    #endif
+            }
             return;
-        if (coords.IsEmpty ())
-            return;
+        }
         API_Element element = {};
         API_Element mask = {};
         err = ACAPI_CallUndoableCommand ("Move drawing", [&] () -> GSErrCode {

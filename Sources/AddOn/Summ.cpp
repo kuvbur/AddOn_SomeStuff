@@ -1,13 +1,14 @@
 //------------ kuvbur 2022 ------------
 #include <map>
 
+#include "ACAPinc.h"
+
 #include "api_headers/APIEnvir.h"
 
-#include "ACAPinc.h"
+#include "Summ.hpp"
 
 #include "dialogs/DG4rule.hpp"
 #include "Propertycache.hpp"
-#include "Summ.hpp"
 #include "Sync.hpp"
 
 typedef std::unordered_map<std::string, SortInx> SumCriteria;
@@ -54,7 +55,7 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
     GS::UniString undoString = RSGetIndString (iseng, UndoSumId, ACAPI_GetOwnResModule ());
     UInt32 qtywrite = 0;
-    ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
+    GSErrCode undoErr = ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
         bool suspGrp = false;
 #ifdef ServerMainVers_2300
     #ifdef ServerMainVers_2700
@@ -62,14 +63,35 @@ GSErrCode SumSelected (SyncSettings &syncSettings) {
         if (!suspGrp)
             ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
     #else
-        ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-        if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
+            ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
+            if (!suspGrp) ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
     #endif
 #endif
         ParamHelpers::ElementsWrite (paramToWriteelem);
         qtywrite = paramToWriteelem.GetSize ();
+        // FIX (ревью 2026-09-12): восстановление тумблера SuspendGroups —
+        // включили сами (suspGrp==false), значит возвращаем обратно
+        // (образец: Sync.cpp после записи).
+#ifdef ServerMainVers_2300
+        if (!suspGrp) {
+            bool suspNow = false;
+    #ifdef ServerMainVers_2700
+            if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
+                ACAPI_Grouping_Tool (guidArray, APITool_SuspendGroups, nullptr);
+    #else
+                if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
+                    ACAPI_Element_Tool (guidArray, APITool_SuspendGroups, nullptr);
+    #endif
+        }
+#endif
         return NoError;
     });
+    // FIX (ревью 2026-09-12): при откате команды пост-шаги не выполняются —
+    // раньше отчёт и SyncArray шли как при успешной записи.
+    if (undoErr != NoError) {
+        msg_rep ("SumSelected", "ACAPI_CallUndoableCommand", undoErr, APINULLGuid);
+        return undoErr;
+    }
     ParamHelpers::WriteInfo (paramToWriteelem);
     SyncArray (syncSettings, guidArray);
     finish = clock ();
@@ -200,21 +222,35 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
                      const GS::HashTable<API_Guid, API_PropertyDefinition> &rule_definitions,
                      ParamDictElement &paramToRead,
                      SumRules &rules) {
+    // FIX (ревью 2026-09-12, PERF): результат фильтра не зависит от правила —
+    // вычисляем один раз на элемент, а не для каждого правила × элемента.
+    GS::HashTable<API_Guid, bool> editable;
+    for (const auto &elemGuid : guidArray) {
+        const bool ok =
+            ACAPI_Element_Filter (elemGuid, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
+        editable.Put (elemGuid, ok);
+    }
     for (const auto &cIt : rule_definitions) {
 #ifdef ServerMainVers_2800
-        const API_PropertyDefinition definition = cIt.value;
+        // FIX (ревью 2026-09-12, PERF): определение тяжёлое — берём по
+        // const-ссылке вместо копии структуры на каждый параметр.
+        const API_PropertyDefinition &definition = cIt.value;
 #else
-        const API_PropertyDefinition definition = *cIt.value;
+        const API_PropertyDefinition &definition = *cIt.value;
 #endif
-        if (!rules.ContainsKey (definition.guid)) {
+        // FIX (ревью 2026-09-12, PERF): тройной lookup ContainsKey/ContainsKey/Get
+        // заменён на GetPtr с Add при nullptr и повторным GetPtr.
+        SumRule *rulePtr = rules.GetPtr (definition.guid);
+        if (rulePtr == nullptr) {
             SumRule paramtype = {};
             if (!Sum_Rule (definition, paramtype))
                 continue;
             rules.Add (definition.guid, paramtype);
+            rulePtr = rules.GetPtr (definition.guid);
+            if (rulePtr == nullptr)
+                continue;
         }
-        if (!rules.ContainsKey (definition.guid))
-            continue;
-        SumRule &paramtype = rules.Get (definition.guid);
+        SumRule &paramtype = *rulePtr;
         ParamValue pvalue_position;
         ParamValue pvalue_value;
         ParamValue pvalue_criteria;
@@ -251,8 +287,9 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
         } else {
             if (SumRule *rule = rules.GetPtr (definition.guid)) {
                 for (const auto &elemGuid : guidArray) {
-                    if (!ACAPI_Element_Filter (elemGuid,
-                                               APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace)) {
+                    // FIX (ревью 2026-09-12, PERF): фильтрация вынесена из цикла
+                    // по правилам — берём заранее вычисленный результат.
+                    if (!editable.Get (elemGuid)) {
                         rule->n_ignore += 1;
                         msg_rep ("GetSumRuleFromSelected", "Element not editable", NoError, elemGuid);
                         continue;
@@ -395,9 +432,13 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
     }
     // Проходим по словарю с критериями и суммируем
     for (SumCriteria::iterator i = criteriaList.begin (); i != criteriaList.end (); ++i) {
-        GS::Array<UInt32> eleminpos = i->second.inx;
+        // FIX (ревью 2026-09-12, PERF): массив позиций копировался на каждой
+        // итерации — берём по const-ссылке.
+        const GS::Array<UInt32> &eleminpos = i->second.inx;
         ParamValue summ; // Для суммирования числовых значений
         bool has_sum = false;
+        GS::UniString recordedToString;  // FIX (ревью 2026-09-12, PERF): кэш результата ToString
+        FormatString cachedFormatstring; // FIX (ревью 2026-09-12, PERF): formatstring, по которому вычислен кэш
         for (UInt32 j = 0; j < eleminpos.GetSize (); j++) {
             const API_Guid &elemGuid = rule.elemts[eleminpos[j]];
 
@@ -480,8 +521,22 @@ void Sum_OneRule (SumRule &rule, ParamDictElement &paramToReadelem, ParamDictEle
             if (rule.write_to != SUM_TO_INFO)
                 summ.val.type = paramposition.val.type;
             if (rule.sum_type != TEXT_SUM) {
+                // FIX (ревью 2026-09-12, PERF): ToString(summ) не меняется в цикле,
+                // пока formatstring тот же — вычисляем один раз; при смене
+                // formatstring пересчитываем (поведение идентично прежнему).
                 summ.val.formatstring = paramposition.val.formatstring;
-                summ.val.uniStringValue = ParamHelpers::ToString (summ);
+                if (recordedToString.IsEmpty () ||
+                    cachedFormatstring.stringformat != summ.val.formatstring.stringformat ||
+                    cachedFormatstring.n_zero != summ.val.formatstring.n_zero ||
+                    cachedFormatstring.needRound != summ.val.formatstring.needRound ||
+                    cachedFormatstring.krat != summ.val.formatstring.krat ||
+                    cachedFormatstring.koeff != summ.val.formatstring.koeff ||
+                    cachedFormatstring.trim_zero != summ.val.formatstring.trim_zero ||
+                    cachedFormatstring.forceRaw != summ.val.formatstring.forceRaw) {
+                    recordedToString = ParamHelpers::ToString (summ);
+                    cachedFormatstring = summ.val.formatstring;
+                }
+                summ.val.uniStringValue = recordedToString;
             }
             // Записываем только изменённые значения
             if (paramposition != summ) {

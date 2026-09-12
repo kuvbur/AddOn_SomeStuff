@@ -1,10 +1,11 @@
 //------------ kuvbur 2026 ------------
 #include "ACAPinc.h"
 
+#include "Propertycache.hpp"
+
 #include "CommonFunction.hpp"
 #include "File.hpp"
 #include "Helpers.hpp"
-#include "Propertycache.hpp"
 
 PropertyCache &GetCache () {
     static PropertyCache instance;
@@ -38,20 +39,29 @@ namespace ParamHelpers {
         delete settingsText.location;
         IO::Location fileLoc (locPath);
         IO::File file (fileLoc);
+        // FIX (ревью 2026-09-12): GetDataLength перенесён после успешного
+        // file.Open — на неоткрытом файле результат не гарантирован.
+        err = file.Open (IO::File::ReadMode);
+        if (err != NoError) {
+            msg_rep ("ReadLibraryFile", "Cant read file " + fileName, err, APINULLGuid);
+            return false;
+        }
         UInt64 fSize = 0;
         file.GetDataLength (&fSize);
         char *buff = new char[fSize];
         if (buff == nullptr) {
             msg_rep ("ReadLibraryFile", "buff == nullptr" + fileName, err, APINULLGuid);
+            file.Close ();
             return false;
         }
-        err = file.Open (IO::File::ReadMode);
-        if (err != NoError) {
-            msg_rep ("ReadLibraryFile", "Cant read file " + fileName, err, APINULLGuid);
+        // FIX (ревью 2026-09-12): проверяем код возврата ReadBin — при ошибке
+        // парсился неинициализированный буфер.
+        if (file.ReadBin (buff, (USize)fSize) != NoError) {
+            msg_rep ("ReadLibraryFile", "ReadBin failed " + fileName, err, APINULLGuid);
+            file.Close ();
             delete[] buff;
             return false;
         }
-        file.ReadBin (buff, (USize)fSize);
         file.Close ();
         std::istringstream stream (std::string (buff, fSize));
         GS::UniString separatorString = EMPTYSTRING;
@@ -161,6 +171,9 @@ namespace ParamHelpers {
                 msg_rep ("GetGroupFromCache", "ACAPI_Property_GetPropertyGroups", err, APINULLGuid);
                 return false;
             }
+            // FIX (ревью 2026-09-12): прочитанная группа не сохранялась в кэш —
+            // функция всегда падала в return false ниже и повторяла API-запрос.
+            cache.propertygroups.Put (group.guid, group);
             cache.isGroupProperty_OK = true;
         }
         if (const auto *ptr = cache.propertygroups.GetPtr (guid)) {
@@ -287,31 +300,27 @@ namespace ParamHelpers {
             if (cache.glob.ContainsKey (rawname))
                 return true;
 
+            // FIX (ревью 2026-09-12): ранние `return false` при isXXX_OK ==
+            // false давали противоречие с GetParamValueFromCache (Contains=false
+            // при Get=true) — теперь повторяем ту же цепочку источников
+            // (GeoLocation → SurveyPoint → PlaceSets → LocOrigin) без прерывания.
             if (!cache.isGetGeoLocationRead)
                 cache.ReadGetGeoLocation ();
-            if (!cache.isGetGeoLocation_OK)
-                return false;
             if (cache.glob.ContainsKey (rawname))
                 return true;
 
             if (!cache.isSurveyPointTransformationRead)
                 cache.ReadSurveyPointTransformation ();
-            if (!cache.isSurveyPointTransformation_OK)
-                return false;
             if (cache.glob.ContainsKey (rawname))
                 return true;
 
             if (!cache.isPlaceSetsRead)
                 cache.ReadPlaceSets ();
-            if (!cache.isPlaceSets_OK)
-                return false;
             if (cache.glob.ContainsKey (rawname))
                 return true;
 
             if (!cache.isLocOriginRead)
                 cache.ReadLocOrigin ();
-            if (!cache.isLocOrigin_OK)
-                return false;
             return cache.glob.ContainsKey (rawname);
 
         case ATTRIBTYPEINX:
@@ -664,12 +673,17 @@ namespace ParamHelpers {
 #if defined(TESTING)
         DBprnt ("   GetAllAttributeToParamDict start");
 #endif
-        API_Attribute attrib = {};
         GSErrCode err = NoError;
         GS::Array<API_Attribute> attributes = {};
         GS::UniString rawName;
         GS::UniString attribname;
         err = ACAPI_Attribute_GetAttributesByType (API_LayerID, attributes);
+        // FIX (ревью 2026-09-12): при ошибке получения списка слоёв
+        // возвращался true с пустым кэшем атрибутов — сообщаем и выходим.
+        if (err != NoError) {
+            msg_rep ("GetAllAttributeToParamDict", "ACAPI_Attribute_GetAttributesByType", err, APINULLGuid);
+            return false;
+        }
         for (API_Attribute &attrib : attributes) {
             attribname.Clear ();
             attrib.header.uniStringNamePtr = &attribname;

@@ -79,7 +79,9 @@ namespace Roombook {
         double r = 0;
         double zBottom = 0;
         double zUp = 0;
-        std::string guid;
+        // FIX (ревью 2026-09-12): п.74 — API_Guid напрямую вместо string
+        // (устраняет двойную конвертацию GUID на каждый slab каждой зоны)
+        API_Guid guid = APINULLGuid;
     };
 
     struct MatarialToFavorite {
@@ -331,7 +333,8 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     void Floor_FindInOneRoom (const Stories &storyLevels,
                               API_Guid &elGuid,
-                              GS::Array<API_Guid> &zoneGuids,
+                              // FIX (ревью 2026-09-12): п.73 — const-ссылка в объявлении (массив только читается)
+                              const GS::Array<API_Guid> &zoneGuids,
                               OtdRooms &roomsinfo,
                               UnicGUIDByType &guidselementToRead);
 
@@ -340,10 +343,11 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     void Param_GetForBase (ParamDictValue &paramDict, ParamValue &param_composite);
 
+    // FIX (ревью 2026-09-12): п.36 — ReadParams по неконстантной ссылке (Param_Property_Read мутирует isValid/val)
     void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
                            OtdRoom &roominfo,
                            ParamDictElement &paramToRead,
-                           ReadParams readparams);
+                           ReadParams &readparams);
 
     bool Param_SetToBase (const API_Guid &base_guid,
                           bool base_flipped,
@@ -362,7 +366,11 @@ namespace Roombook {
     // -----------------------------------------------------------------------------
     // Задание прочитанных параметров для окон
     // -----------------------------------------------------------------------------
-    void Param_SetToWindows (OtdOpening &op, ParamDictElement &paramToRead, ReadParams readparams, const OtdWall &otdw);
+    // FIX (ревью 2026-09-12): п.36 — ReadParams по неконстантной ссылке; копия подготавливается вызывающим кодом
+    void Param_SetToWindows (OtdOpening &op,
+                             ParamDictElement &paramToRead,
+                             ReadParams &readparams,
+                             const OtdWall &otdw);
 
     // -----------------------------------------------------------------------------
     // Создание стенок для откосов одного проёма
@@ -424,7 +432,8 @@ namespace Roombook {
     // Удаляет отверстия, не попадающие в диапазон
     // Подгоняет размер отверсий
     // -----------------------------------------------------------------------------
-    bool OtdWall_Delim_One (OtdWall otdn,
+    // FIX (ревью 2026-09-12): п.35 — otdn по const-ссылке (устраняет копию структуры на каждый вызов)
+    bool OtdWall_Delim_One (const OtdWall &otdn,
                             GS::Array<OtdWall> &opw,
                             double height,
                             double zBottom,

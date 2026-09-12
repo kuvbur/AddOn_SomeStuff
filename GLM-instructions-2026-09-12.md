@@ -14,14 +14,14 @@
 
 ## CRITICAL BUG
 
-### 1
+### 1 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Helpers.cpp
 Строка/функция: ParamHelpers::WriteGDL, ~5199-5214
 Что сделать: В блоке `if (err != NoError)` после вызова `ACAPI_LibraryPart_CloseParameters ()` сделать `return` безусловным — убрать условие, при котором return выполняется только при ошибке закрытия.
 Почему: При ошибке GetActParameters err перезаписывается NoError, addParNum вычисляется по невалидному params-хендлу, цикл читает мусор.
 Ограничения: Не трогать успешный путь; msg_rep перед return сохранить.
 
-### 2
+### 2 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Roombook.cpp
 Строка/функция: Floor_Create_One, 2089
 Что сделать: Заменить `API_ElementMemo memo;` на `API_ElementMemo memo = {};`. Добавить `ACAPI_DisposeElemMemoHdls (&memo);` перед `continue` при err != NoError (~2095) и перед `continue` в ветке `polygon2DData.contourEnds == nullptr` (~2148, после FreePolygon2DData).
@@ -30,154 +30,155 @@
 
 ## MAJOR BUG
 
-### 3
+### 3 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Roombook.cpp
 Строка/функция: OtdWall_Create_FromColumn, ~1831-1836
 Что сделать: Перед `return` в ветке `err != NoError || segmentmemo.columnSegments == nullptr` добавить `ACAPI_DisposeElemMemoHdls (&segmentmemo);`.
 Почему: Утечка memo при частичной аллокации до ошибки.
 Ограничения: Только эта ветка; успешный путь не трогать.
 
-### 4
+### 4 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Roombook.cpp
 Строка/функция: Floor_Draw_Slab, ~4753-4757
 Что сделать: Перед `return` при err != NoError от ACAPI_Element_GetMemo добавить `ACAPI_DisposeElemMemoHdls (&memo);`.
 Почему: Утечка memo при ошибке GetMemo.
 Ограничения: Только ошибочная ветка.
 
-### 5
+### 5 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Roombook.cpp
 Строка/функция: RoomBook, ~66
 Что сделать: `API_SelectionInfo selectionInfo;` → `API_SelectionInfo selectionInfo = {};`.
 Почему: При ошибке ACAPI_Selection_Get BMKillHandle получает мусорный marquee.coords.
 Ограничения: Только инициализация, логику не менять.
 
-### 6
+### 6 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/CommonFunction.cpp
 Строка/функция: GetSelectedElements2, ~782
 Что сделать: `API_SelectionInfo selectionInfo;` → `API_SelectionInfo selectionInfo = {};`.
 Почему: Та же ловушка неинициализированной структуры перед BMKillHandle.
 Ограничения: Только инициализация.
 
-### 7
+### 7 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Helpers.cpp
 Строка/функция: ParamHelpers::ReadListData, ~6721
 Что сделать: Перед ранним `return` при `!needListData` добавить `BMKillHandle ((GSHandle *)&descRefs);`.
 Почему: Хэндл дескрипторов от ACAPI_Element_GetDescriptors утекает на раннем выходе.
 Ограничения: Убить хэндл до return, не менять условие ветвления.
 
-### 8
+### 8 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Helpers.cpp
 Строка/функция: GetRelationsElement, case API_WallID, ~973-1016
 Что сделать: Добавить `break;` после закрывающей скобки `if (syncSettings.GetWidoS () && addConnect) { ... }` перед `case API_RailingID:`.
 Почему: Fall-through вызывает GetRElementsForRailing с GUID стены при выключенной синхронизации окон.
 Ограничения: Только break; тело if не менять.
 
-### 9
+### 9 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Helpers.cpp
 Строка/функция: ParamHelpers::ReadCoords, ~2610-2613
 Что сделать: Перед `double koeff = x / l_wall;` добавить проверку `if (is_equal (l_wall, 0.0))` и в ней пропустить вычисление координат середины проёма (continue/аналог по структуре цикла).
 Почему: Деление на нулевую длину стены даёт inf/NaN, которые записываются в словарь параметров.
 Ограничения: Только вычисление середины проёма; остальные параметры не трогать.
 
-### 10
+### 10 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Helpers.cpp
 Строка/функция: GetParentGUIDSectElem, ~768-782
 Что сделать: Первой строкой функции присвоить `parentguid = APINULLGuid; parentType = API_ZombieElemID;`.
 Почему: При err != NoError выходные параметры не заполняются — вызывающий читает мусор.
 Ограничения: Успешный путь (else-ветка) не меняется.
 
-### 11
+### 11 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Helpers.cpp
 Строка/функция: ParamHelpers::ReadCoords, ~2543
 Что сделать: В вызове CoordCorrectAngle для symb_rotangle_axis_fraction/correct/correct_1000 передать `axisRotationAngle` вместо `slantDirectionAngle`.
 Почему: «Осовые» параметры сейчас дублируют slant-значения.
 Ограничения: Только аргумент этого вызова; slant-блок не трогать.
 
-### 12
+### 12 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/CommonFunction.cpp
 Строка/функция: ReplaceCR, ~1052-1064
 Что сделать: В цикле замены заменить пару `ReplaceFirst (p, EMPTYSTRING)` + `SetChar (inx, CharCR)` на: `val.SetChar (inx, CharCR);` затем `val.Delete (inx + 1, 1);` (перезаписать 'n' символом CR, затем удалить '\\').
 Почему: Текущий код удаляет оба символа «\\n» и затирает следующий символ данных — каждый перенос съедает один символ.
 Ограничения: Ветку `clear` (ReplaceAll на пустую) не трогать; итоговое поведение «\\n» → CR сохранить.
 
-### 13
+### 13 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/CommonFunction.cpp
 Строка/функция: ElemHead_To_Neig, ~1887-1908
 Что сделать: До проверки на Zombie инициализировать typeID из заголовка: в ветке ServerMainVers_2600 — `typeID = elemHead->type.typeID;`, в ветке #else — `typeID = elemHeadNonConst->typeID;`. Zombie-ветку (дозаполнение через ACAPI_Element_GetHeader) сохранить без изменений.
 Почему: При валидном типе на входе typeID остаётся API_ZombieElemID и функция всегда возвращает false.
 Ограничения: Поведение для незаполненных (zombie) заголовков не должно измениться.
 
-### 14
+### 14.5-примечание: правка ConvertPolygon2DToAPIPolygon (+1 смещение дуг) — ПОДТВЕРЖДЕНО ИСХОДНИКОМ DevKit (Polygon2DDataConv.h: arcs записываются с индекса 1). Применено.
+### 14 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/CommonFunction.cpp
 Строка/функция: ConstructPolygon2DFromElementMemo, ~2261/2280
 Что сделать: Перед вычислением nVertices/nContours добавить: `if (memo.coords == nullptr || BMGetHandleSize ((GSHandle) memo.coords) < (GSSize) sizeof (API_Coord)) return APIERR_BADPARS;` и аналогичную проверку для memo.pends (sizeof (Int32)).
 Почему: BMGetHandleSize на nullptr-хендле и вычитание 1 из нулевого размера → wraparound беззнакового счётчика.
 Ограничения: Возвращаемый тип/код ошибки согласовать с сигнатурой функции; успешный путь не менять.
 
-### 15
+### 15 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Propertycache.cpp
 Строка/функция: ParamHelpers::GetGroupFromCache, ~160-166
 Что сделать: После успешного `ACAPI_Property_GetPropertyGroup (group)` добавить `cache.propertygroups.Put (group.guid, group);` (до финального GetPtr).
 Почему: Прочитанная группа не кладётся в кэш — функция возвращает false при успехе и повторяет API-запрос.
 Ограничения: Условия isGroupPropertyRead/isGroupProperty_OK не менять.
 
-### 16
+### 16 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/spec/Spec.cpp
 Строка/функция: SpecArray, 703 и 705
 Что сделать: Заменить `exsist_elements[i]` на `exsist_element` в обеих строках.
 Почему: Range-for переменная игнорируется; посторонний индекс i даёт out-of-bounds и дубли.
 Ограничения: Переменную i (фазы прогресса) не трогать.
 
-### 17
+### 17 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/spec/Spec_libpart.cpp
 Строка/функция: AddMat (~110), AddArm (~149), AddSubpos (~204), AddProkat (~244)
 Что сделать: Поднять guards до maxIndex+1 по фактическим индексам в теле каждой функции: AddMat `<10` → `<11` (читается [10]); AddArm `<8` → `<10` (читается [9]); AddSubpos `<9` → `<10`; AddProkat `<14` → `<15`. Перед правкой сверить фактический максимальный индекс partstring в каждой функции.
 Почему: При размере ровно N обращение к partstring[N] — выход за границы GS::Array.
 Ограничения: Только константа в guard; логику разбора не менять.
 
-### 18
+### 18 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/spec/Spec_libpart.cpp
 Строка/функция: AddMat, ~115
 Что сделать: Убрать локальное объявление — `GS::UniString subpos = partstring[0];` заменить на `subpos = partstring[0];`.
 Почему: Локальная subpos затеняет внешнюю; GetSubposKey всегда получает пустой ключ — материалы v3 смешиваются.
 Ограничения: Внешнюю переменную subpos не переименовывать.
 
-### 19
+### 19 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/pk/ResetProperty.cpp
 Строка/функция: ResetPropertyElement2Defult, ~88 (ветка #else, AC25)
 Что сделать: До первого переключения БД добавить сохранение исходной: `API_DatabaseInfo origDB = {}; ACAPI_Database (APIDb_GetCurrentDatabaseID, &origDB, nullptr);`. Восстановление выполнять `ACAPI_Database (APIDb_ChangeCurrentDatabaseID, &origDB, nullptr);`. Передачу `&commandID` (API_DatabaseID*) в APIDb_ChangeCurrentDatabaseID убрать.
 Почему: APIDb_ChangeCurrentDatabaseID принимает API_DatabaseInfo* (DevKit-25 APIdefs_Database.h:53); передача перечисления — чтение мусора, возврат в исходную БД никогда не выполняется.
 Ограничения: Остальную логику обхода БД не менять; проверить, что восстановление комбинации слоёв после этого выполняется на корректном err.
 
-### 20
+### 20 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/pk/Revision.cpp
 Строка/функция: GetAllChangesMarker, ~233
 Что сделать: `API_LayoutInfo layoutInfo;` → `API_LayoutInfo layoutInfo = {};` и после ACAPI_Navigator_GetLayoutSets добавить `if (layoutInfo.customData == nullptr) continue;`.
 Почему: Макет без customData даёт разыменование nullptr при ContainsKey/Put.
 Ограничения: Копировать паттерн ChangeLayoutProperty:398-401; остальное не трогать.
 
-### 21
+### 21 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/pk/Revision.cpp
 Строка/функция: GetMarkerPos, ~871-872
 Что сделать: После GetMemo добавить: `if (memo.pends == nullptr || memo.coords == nullptr || BMGetHandleSize ((GSHandle) memo.coords) / (GSSize) sizeof (API_Coord) <= (GSSize) (*memo.pends)[0] + 1) { ACAPI_DisposeElemMemoHdls (&memo); return false; }`.
 Почему: Разыменование nullptr-хендлов и доступ по begInd без проверки размера — краш на неполном полигоне.
 Ограничения: Успешный путь не менять; Dispose добавить в новую ветку обязательно.
 
-### 22
+### 22 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/pk/Revision.cpp
 Строка/функция: ChangeMarkerText, 1012 и 1020
 Что сделать: Оба GS::ucscpy в value.uStr заменить на копирование с обрезкой до API_UAddParStrLen (256) по образцу Spec.cpp:2525-2530.
 Почему: uStr — буфер фиксированной длины; ucscpy без обрезки переполняет его.
 Ограничения: Использовать точно паттерн Spec.cpp (GS::Min с API_UAddParStrLen).
 
-### 23
+### 23 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/pk/AutomateFunction.cpp
 Строка/функция: AlignOneDrawingsByPoints, 763-764 и 791-792
 Что сделать: Перед обоими ранними `return APIERR_GENERAL` восстановить исходную БД (и окно), скопировав блок восстановления из конца функции (~813-829).
 Почему: После смены БД ранний выход оставляет ArchiCAD в БД чертежа — следующие чертежи обрабатываются в чужой БД.
 Ограничения: Блок восстановления копировать как есть; финальный блок не удалять.
 
-### 24
+### 24 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/pk/AutomateFunction.cpp
 Строка/функция: GetSectLine, ~326
 Что сделать: Перед `id = *memo.elemInfoString;` добавить `if (memo.elemInfoString == nullptr) { ACAPI_DisposeElemMemoHdls (&memo); return APIERR_GENERAL; }`.
@@ -198,14 +199,14 @@
 Почему: Повторная регистрация на каждой загрузке страницы без снятия старой; не проверенный bool молчит при отказе.
 Ограничения: Порядок «unregister → new JSObject → register» не менять.
 
-### 27
+### 27 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Summ.cpp
 Строка/функция: SumSelected, ~57-79
 Что сделать: Результат ACAPI_CallUndoableCommand сохранить в переменную; при err != NoError — msg_rep и выход из функции до ParamHelpers::WriteInfo и SyncArray.
 Почему: При откате команды пост-шаги и отчёт выполняются как при успешной записи.
 Ограничения: Тело лямбды не менять.
 
-### 28 (SuspendGroups, 4 файла одним паттерном)
+### 28 ⚠️ ЧАСТИЧНО: Summ.cpp и Spec.cpp — ИСПРАВЛЕНО (clang-format применён); Roombook.cpp (4121 после CallUndoableCommand и 5286 SetSyncOtdWall — suspend вынести за цикл) — НЕ СДЕЛАНО. БИЛД ЕЩЁ НЕ ПРОВЕРЕН (SuspendGroups, 4 файла одним паттерном)
 Файлы/строки:
 - Sources/AddOn/Summ.cpp, ~61-66 (внутри лямбды, после ElementsWrite)
 - Sources/AddOn/spec/Spec.cpp, ~951-956 (в конце лямбды, после ACAPI_Element_Delete)
@@ -224,14 +225,14 @@
 
 ## MAJOR PERF
 
-### 30
+### 30 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/SomeStuff_Main.cpp
 Строка/функция: MenuCommandHandler, ~436
 Что сделать: DimRoundAll вызывать только для команд, изменяющих элементы/свойства (SyncAll, SyncSelect, ReNum, Sum, Spec, RoomBook, SetRevision, RunParam, ShowSub, SetSub); для переключателей флагов (wallS/widoS/objS/cwallS, MonAll) и Pallete — не вызывать.
 Почему: Полный пересчёт всех размеров проекта на каждую команду меню — O(N) скан без необходимости.
 Ограничения: Сам вызов DimRoundAll не менять; только условие его вызова (перенести внутрь switch по itemIndex).
 
-### 31
+### 31 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/SomeStuff_Main.cpp
 Строка/функция: ElementEventHandlerProc, ~140-144 (APINotifyElement_EndEvents)
 Что сделать: Полный DimRoundAll в EndEvents выполнять только при `PROPERTYCACHE ().hasDimAutotext` (адресная обработка отдельных размеров уже выполняется через DimAutoRoundOne выше по обработчику).
@@ -245,7 +246,7 @@
 Почему: Полная копия HashTable<UniString, ParamValue> на каждый размер × каждое правило; копия нужна только ради одного значения.
 Ограничения: Сигнатура DimParse — внутренняя для файла (не публичный API заголовков); поведение выражений не менять.
 
-### 33
+### 33 ✅ ИСПРАВЛЕНО (2026-09-12b, clang-format применён, БИЛД ЕЩЁ НЕ ПРОВЕРЕН)
 Файл: Sources/AddOn/Summ.cpp
 Строка/функция: Sum_GetElement, ~252-259
 Что сделать: Вынести вызов ACAPI_Element_Filter из цикла по правилам — вычислить результат фильтрации один раз на элемент (до цикла по rule_definitions) и переиспользовать.
@@ -428,7 +429,7 @@
 Почему: Полный повторный обход всех БД фасадов без эффекта.
 Ограничения: Удалить только дублирующий вызов; убедиться, что первый вызов остаётся.
 
-### 59
+### 59 ⚠️ ОТКЛОНЕНО при правке: вызовы ResetOneElemenDefault НЕ дубли — разные 3-и аргументы. Не удалять.
 Файл: Sources/AddOn/pk/ResetProperty.cpp
 Строка/функция: ResetElementsDefault, ~273/297/303
 Что сделать: Оставить один из трёх идентичных вызовов ResetOneElemenDefault (API_ObjectID, definitions_to_reset, 0); два дубля удалить.
@@ -652,3 +653,44 @@ UNVERIFIED — требуют ручной проверки (в LightRAG нет 
 - Spec.cpp:861/1754/2444 — идентичность форматов APIGuidToString и APIGuid2GSGuid().ToUniString() не проверена.
 - BrowserPalette.cpp Show():115 — ReloadIgnoreCache на каждый показ: возможно сознательный reload по ТЗ (решение владельца).
 - ClassificationFunction.cpp SetAutoclass — точки вызова (массовость) не изучены.
+---
+
+## Отчёт о применении (2026-09-12, сессия правок)
+
+**Применено и проверено LSP/clang-format (БИЛД НЕ ЗАПУСКАЛСЯ):** п.1-19, 20-24, 27-28 (частично: Summ.cpp + Spec.cpp; Roombook.cpp suspend — НЕТ), 30, 31, 33, 14.5 (ConvertPolygon2D дуги +1 — подтверждено Polygon2DDataConv.h).
+
+**Расхождения, выявленные при правке (ревью/инструкция скорректированы по факту кода):**
+1. **«Тройные» ResetOneElemenDefault (инструкция 59)** — на самом деле НЕ дубли: вызовы имеют разные 3-и аргументы (1146245920/1145194016/...). НЕ тронуты. Ревьюер ошибся.
+2. **axis-угол (п.11)** — реализовано через отдельные out-переменные (symb_rotangle_axis_fraction / bsymb_rotangle_axis_correct / ..._1000), а не перезапись slant-значений: CoordCorrectAngle использует out-параметры, переиспользование переменных slant-блока испортило бы их.
+3. **п.9 (l_wall==0)** — guard охватывает и вычисление координат, и все 6 записей symb_pos_* (первая попытка случайно удалила записи — восстановлены внутри блока).
+4. **ReplaceCR (п.12)** — реализовано как SetChar(CR)+Delete(inx+1,1) (ReplaceFirst на пустую строку в AC25 убрал бы оба символа); Count(p) зафиксирован до цикла.
+5. **п.29 (MEPv1 UnwrapErr) — НЕ применён** (файл компилируется только в AC27+, для AC25-сборки пустой; правка отложена до сборки AC27+).
+6. **п.25/26 (BrowserPalette) — НЕ начаты.**
+
+**Не применено (следующие шаги):** Roombook suspend ×2 (4121, 5286 — цикл, вынести за цикл), BrowserPalette-блок, DimParse (32), minor/PERF-хвост (39-87).
+
+**Валидация:** clang-format по каждому изменённому файлу выполнен; LSP-диагностика после правок — только pre-existing warnings (unused variables и т.п., все вне зон правок кроме контролируемых случаев). Билд и runtime-тест НЕ выполнялись — обязательны перед коммитом.
+
+## Отчёт о ревью субагентами (2026-09-12, вторая сессия)
+
+Проверены все ✅-пункты статическим ревью (3 субагента, сравнение с checkpoint bbbe71a + сверка с DevKit-25). Итог: правки 1-24, 27, 28 (частично), 30, 31, 33, 50, 52-54, 58 — корректны. Исправленные дефекты:
+
+1. **CommonFunction.cpp ElemHead_To_Neig (AC26+-ветка):** `typeID = type;` → `typeID = type.typeID;` — присваивание структуры к enum не скомпилировалось бы под 2600+.
+2. **SomeStuff_Main.cpp MenuCommandHandler:** восстановлен случайно удалённый при п.30 вызов `MenuSetState (syncSettings)` — без него галочки меню не обновляются после переключения флагов/палитры.
+3. **pk/AutomateFunction.cpp AlignDrawingsByPoints (п.55 доделан):** сброс store (store=0 + StoreViewSettings) добавлен на двух поздних ранних выходах (gooddrawings/coords пусты) — раньше настройки вида оставались сохранёнными.
+4. **pk/Revision.cpp GetMarkerPos:** BMGetHandleSize(memo.coords) вынесен после проверки coords != nullptr (гигиена, раньше вычислялся безусловно).
+
+Принятые как есть (не блокируют): (a) ConvertPolygon2DToAPIPolygon копирование дуг с +1 — согласовано с ConstructPolygon2DFromElementMemo, конвенция Geometry::Polygon2DData.arcs[0] фиктивна; (b) ucscpy-обрезка допускает 256 символов в буфер 256 (off-by-one терминатора — унаследовано от одобренного паттерна Spec.cpp:2545); (c) Sum_GetElement вычисляет фильтры до цикла даже если все правила в первой ветке (лишний O(N) в редком случае).
+
+**Статус сборки: БИЛД ПОСЛЕ ПРАВОК НЕ ЗАПУСКАЛСЯ — обязателен перед коммитом.**
+
+## Отчёт о финализации (2026-09-12, третья сессия)
+
+Реализованы все оставшиеся пункты (4 субагента + доводка вручную): 25/26/37/38/63-70 (BrowserPalette, повторный запуск после 503 OpenRouter), 28-остаток/34/35/36/60/73/74/75 (Roombook, cpp+hpp синхронно), 32/40/62/72/87 (Dimensions+hpp, Helpers, CommonFunction), 29/41/43-49/51/56/57/71/76-77/79-86 (MEPv1 — только AC27+, компиляцией AC25 не проверяется), вручную: 42, 61, 78 (Propertycache.hpp).
+
+Примечания:
+- П.61: p.dim1 = addedOpenings (счётчик фактических проёмов); переменная dim2 в блоке осталась неиспользуемой (pre-existing).
+- П.78: API_Guid systemguid теперь копия (sysitem из GetPtr — const); ConstPairIterator в циклах RoomBook (594/600) после перехода на const-ссылки — скорректированы при сборке.
+- Попутно исправлено субагентом в п.77: в мутирующей @arr-ветке ReadGDL была запись в const& — исправлено локальной копией (иначе ошибка компиляции).
+- **Сборка AC25 (Win): Build succeeded** (Build/SomeStuff/25/Debug/SomeStuff.apx). LNK4099 (API_c.pdb) — pre-existing warning.
+- Runtime-тест НЕ выполнялся. MEPv1.cpp (29/71/86) собран только через AC25 (файл пуст для AC25) — правки AC27+ не компилировались: not verified до сборки AC27+.

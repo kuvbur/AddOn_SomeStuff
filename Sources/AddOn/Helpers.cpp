@@ -766,6 +766,11 @@ GS::Array<API_Guid> GetSelectedElements (bool assertIfNoSel /* = true*/,
 // Возвращает GUID родительского элемента для API_SectElemType
 // -----------------------------------------------------------------------------
 void GetParentGUIDSectElem (const API_Guid &sectElemguid, API_Guid &parentguid, API_ElemTypeID &parentType) {
+    // FIX (ревью 2026-09-12): выходные параметры сбрасываются до обращения к API —
+    // при err != NoError от ACAPI_Element_Get вызывающий получает безопасные
+    // значения (APINULLGuid / API_ZombieElemID) вместо неинициализированного мусора.
+    parentguid = APINULLGuid;
+    parentType = API_ZombieElemID;
     API_Element elem = {};
     elem.header.guid = sectElemguid;
     GSErrCode err = ACAPI_Element_Get (&elem);
@@ -820,7 +825,9 @@ void CallOnSelectedElemSettings (void (*function) (const API_Guid &, const SyncS
 #endif
     }
     long time_end = clock ();
-    GS::UniString time = GS::UniString::Printf (" %.3f s", (time_end - time_start) / 1000);
+    // FIX (ревью 2026-09-12): п.40 — clock() возвращает тики CLOCKS_PER_SEC, деление на 1000
+    // давало неверные единицы; приведение к double устраняет целочисленное деление.
+    GS::UniString time = GS::UniString::Printf (" %.3f s", (double)(time_end - time_start) / CLOCKS_PER_SEC);
     GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
     msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
 }
@@ -862,7 +869,10 @@ void CallOnSelectedElem (void (*function) (const API_Guid &),
 #endif
         }
         long time_end = clock ();
-        GS::UniString time = GS::UniString::Printf (" %d ms", (time_end - time_start) / 1000);
+        // FIX (ревью 2026-09-12): п.40 — clock() возвращает тики CLOCKS_PER_SEC, деление на 1000
+        // давало неверные единицы; приведение к double устраняет целочисленное деление.
+        GS::UniString time =
+            GS::UniString::Printf (" %.0f ms", (double)(time_end - time_start) * 1000.0 / CLOCKS_PER_SEC);
         GS::UniString intString = GS::UniString::Printf (" %d qty", guidArray.GetSize ());
         msg_rep (funcname + " Selected", intString + time, NoError, APINULLGuid);
     } else if (!assertIfNoSel) {
@@ -1008,8 +1018,12 @@ void GetRelationsElement (const API_Guid &elemGuid,
             subelemGuid.SetCapacity (subelemGuid.GetSize () + connectedElements.GetSize ());
             for (const auto &guid : connectedElements)
                 subelemGuid.Push (guid);
-            break;
+            connectedElements.Clear ();
         }
+        // FIX (ревью 2026-09-12): break добавлен — без него fall-through из
+        // case API_WallID в case API_RailingID вызывает GetRElementsForRailing
+        // с guid стены при выключенной синхронизации окон.
+        break;
     case API_RailingID:
         if (syncSettings.GetCwallS ())
             err = GetRElementsForRailing (elemGuid, subelemGuid);
@@ -2540,31 +2554,37 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                                                     true);
         ParamHelpers::AddDoubleValueToParamDictValue (
             pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_axis", axisRotationAngle, true);
-        bsymb_rotangle_correct =
-            CoordCorrectAngle (slantDirectionAngle, tolerance_ang, symb_rotangle_fraction, bsymb_rotangle_correct_1000);
+        // FIX (ревью 2026-09-12): axis-параметры вычислялись от slantDirectionAngle
+        // и дублировали slant-значения — передаём axisRotationAngle; используем
+        // отдельные out-переменные, чтобы не портить slant-значения.
+        double symb_rotangle_axis_fraction = 0.0;
+        bool bsymb_rotangle_axis_correct = false;
+        bool bsymb_rotangle_axis_correct_1000 = false;
+        bsymb_rotangle_axis_correct = CoordCorrectAngle (
+            axisRotationAngle, tolerance_ang, symb_rotangle_axis_fraction, bsymb_rotangle_axis_correct_1000);
         ParamHelpers::AddDoubleValueToParamDictValue (pdictvaluecoord,
                                                       element.header.guid,
                                                       COORDNAMEPREFIX,
                                                       "symb_rotangle_axis_fraction",
-                                                      symb_rotangle_fraction,
+                                                      symb_rotangle_axis_fraction,
                                                       true);
         ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord,
                                                     element.header.guid,
                                                     COORDNAMEPREFIX,
                                                     "symb_rotangle_axis_correct",
-                                                    bsymb_rotangle_correct,
+                                                    bsymb_rotangle_axis_correct,
                                                     true);
         ParamHelpers::AddBoolValueToParamDictValue (pdictvaluecoord,
                                                     element.header.guid,
                                                     COORDNAMEPREFIX,
                                                     "symb_rotangle_axis_correct_1000",
-                                                    bsymb_rotangle_correct_1000,
+                                                    bsymb_rotangle_axis_correct_1000,
                                                     true);
     } else {
         ParamHelpers::AddDoubleValueToParamDictValue (
             pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_slant", 0, true);
         ParamHelpers::AddDoubleValueToParamDictValue (
-            pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_slant_fraction", true, true);
+            pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_slant_fraction", 0.0, true);
         ParamHelpers::AddBoolValueToParamDictValue (
             pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_slant_correct", true, true);
         ParamHelpers::AddBoolValueToParamDictValue (
@@ -2572,7 +2592,7 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
         ParamHelpers::AddDoubleValueToParamDictValue (
             pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_axis", 0, true);
         ParamHelpers::AddDoubleValueToParamDictValue (
-            pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_axis_fraction", true, true);
+            pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_axis_fraction", 0.0, true);
         ParamHelpers::AddBoolValueToParamDictValue (
             pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_rotangle_axis_correct", true, true);
         ParamHelpers::AddBoolValueToParamDictValue (
@@ -2608,44 +2628,52 @@ bool ParamHelpers::ReadCoords (const API_Element &element, ParamDictValue &pdict
                 dy = sy - ey;
             }
             double l_wall = sqrt (dx * dx + dy * dy);
-            double koeff = x / l_wall;
-            double swx = sx + (ex - sx) * koeff;
-            double swy = sy + (ey - sy) * koeff; // Абсолютные координаты середины проёма
-            double swx_lo = swx - lox;
-            double swy_lo = swy - loy; // Координаты относительно ПН середины проёма
-            double swspx = 0;
-            double swspy = 0;
-            if (!cache.isSurveyPointTransformationRead)
-                cache.ReadSurveyPointTransformation ();
-            if (cache.isSurveyPointTransformation_OK) {
-                API_Coord3D vtx = {swx, swy, 0};
-                API_Coord3D v = GetWordCoord3DTM (vtx, cache.surv_point_tm);
-                swspx = v.x;
-                swspy = v.y;
+            // FIX (ревью 2026-09-12): деление на нулевую длину стены (вырожденный
+            // случай begC==endC) давало inf/NaN в словаре параметров.
+            if (!is_equal (l_wall, 0.0)) {
+                double koeff = x / l_wall;
+                double swx = sx + (ex - sx) * koeff;
+                double swy = sy + (ey - sy) * koeff; // Абсолютные координаты середины проёма
+                double swx_lo = swx - lox;
+                double swy_lo = swy - loy; // Координаты относительно ПН середины проёма
+                double swspx = 0;
+                double swspy = 0;
+                if (!cache.isSurveyPointTransformationRead)
+                    cache.ReadSurveyPointTransformation ();
+                if (cache.isSurveyPointTransformation_OK) {
+                    API_Coord3D vtx = {swx, swy, 0};
+                    API_Coord3D v = GetWordCoord3DTM (vtx, cache.surv_point_tm);
+                    swspx = v.x;
+                    swspy = v.y;
+                }
+                bool windoor_in_wall = true;
+                if (x + ww / 2 < tolerance_coord_hard)
+                    windoor_in_wall = false;
+                if (x - ww / 2 - l_wall > tolerance_coord_hard)
+                    windoor_in_wall = false;
+                if (z + hw < tolerance_coord_hard)
+                    windoor_in_wall = false;
+                if (z - zw > tolerance_coord_hard)
+                    windoor_in_wall = false;
+                ParamHelpers::AddBoolValueToParamDictValue (
+                    pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "windoor_in_wall", windoor_in_wall, true);
+                // FIX (ревью 2026-09-12): запись координат середины проёма
+                // только при ненулевой длине стены (внутри guard-блока).
+                ParamHelpers::AddLengthValueToParamDictValue (
+                    pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sx", swx, true);
+                ParamHelpers::AddLengthValueToParamDictValue (
+                    pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sy", swy, true);
+                ParamHelpers::AddLengthValueToParamDictValue (
+                    pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_lo_sx", swx_lo, true);
+                ParamHelpers::AddLengthValueToParamDictValue (
+                    pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_lo_sy", swy_lo, true);
+                ParamHelpers::AddLengthValueToParamDictValue (
+                    pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sx", swspx, true);
+                ParamHelpers::AddLengthValueToParamDictValue (
+                    pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sy", swspy, true);
             }
-            bool windoor_in_wall = true;
-            if (x + ww / 2 < tolerance_coord_hard)
-                windoor_in_wall = false;
-            if (x - ww / 2 - l_wall > tolerance_coord_hard)
-                windoor_in_wall = false;
-            if (z + hw < tolerance_coord_hard)
-                windoor_in_wall = false;
-            if (z - zw > tolerance_coord_hard)
-                windoor_in_wall = false;
-            ParamHelpers::AddBoolValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "windoor_in_wall", windoor_in_wall, true);
-            ParamHelpers::AddLengthValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sx", swx, true);
-            ParamHelpers::AddLengthValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sy", swy, true);
-            ParamHelpers::AddLengthValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_lo_sx", swx_lo, true);
-            ParamHelpers::AddLengthValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_lo_sy", swy_lo, true);
-            ParamHelpers::AddLengthValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sx", swspx, true);
-            ParamHelpers::AddLengthValueToParamDictValue (
-                pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "symb_pos_sp_sy", swspy, true);
+            // FIX (ревью 2026-09-12): конец guard-блока нулевой длины стены — при
+            // вырожденной стене координаты середины проёма не вычисляются.
         } else {
             ParamHelpers::AddBoolValueToParamDictValue (
                 pdictvaluecoord, element.header.guid, COORDNAMEPREFIX, "windoor_in_wall", true, true);
@@ -5202,15 +5230,19 @@ void ParamHelpers::WriteGDL (const API_Guid &elemGuid, ParamDictValue &params) {
 #endif
     if (err != NoError) {
         msg_rep ("ParamHelpers::WriteGDL", "APIAny_GetActParametersID", err, elem_head.guid);
+        // FIX (ревью 2026-09-12): при ошибке GetActParameters параметры закрываются и
+        // выполняется безусловный выход — err от CloseParameters не должен управлять
+        // потоком, иначе ниже идёт чтение мусорного apiParams.params.
+        GSErrCode closeErr = NoError;
 #ifdef ServerMainVers_2700
-        err = ACAPI_LibraryPart_CloseParameters ();
+        closeErr = ACAPI_LibraryPart_CloseParameters ();
 #else
-        err = ACAPI_Goodies (APIAny_CloseParametersID);
+        closeErr = ACAPI_Goodies (APIAny_CloseParametersID);
 #endif
-        if (err != NoError) {
-            msg_rep ("ParamHelpers::WriteGDL", "APIAny_CloseParametersID", err, elem_head.guid);
-            return;
+        if (closeErr != NoError) {
+            msg_rep ("ParamHelpers::WriteGDL", "APIAny_CloseParametersID", closeErr, elem_head.guid);
         }
+        return;
     }
     bool flagFind = false;
     Int32 addParNum = BMGetHandleSize ((GSHandle)apiParams.params) / sizeof (API_AddParType);
@@ -5976,10 +6008,12 @@ bool ParamHelpers::ReadIFC (const API_Guid &elemGuid, ParamDictValue &params) {
     GS::UniString fname = "";
     GS::UniString rawName = "";
     for (UInt32 i = 0; i < properties.GetSize (); i++) {
-        API_IFCProperty property = properties.Get (i);
-        fname = properties.Get (i).head.propertySetName;
+        // FIX (ревью 2026-09-12, PERF): тяжёлая структура с UniString копировалась
+        // трижды на итерацию — берём по const-ссылке.
+        const API_IFCProperty &property = properties[i];
+        fname = property.head.propertySetName;
         fname.Append (SLASH);
-        fname.Append (properties.Get (i).head.propertyName);
+        fname.Append (property.head.propertyName);
 
         rawName = IFCNAMEPREFIX;
         rawName.Append (fname.ToLowerCase ());
@@ -6285,7 +6319,9 @@ bool ParamHelpers::ReadGDL (const API_Element &element,
 #else
         ParamValue &param = *cIt->value;
 #endif
-        GS::UniString rawName = param.rawName;
+        // FIX (ревью 2026-09-12, PERF): копия строки на каждый параметр каждого
+        // элемента — берём по const-ссылке.
+        const GS::UniString &rawName = param.rawName;
         if (param.fromGDLArray) {
             tparams.Clear ();
             UInt32 nparam = StringSplt (rawName, "@arr", tparams, true, &local_scratch);
@@ -6329,7 +6365,9 @@ bool ParamHelpers::ReadGDL (const API_Element &element,
             }
             if (param.val.array_format_out == ARRAY_UNDEF)
                 param.val.array_format_out = ARRAY_SUM;
-            rawName = tparams[0] + BRACEEND;
+            // FIX (ревью 2026-09-12, PERF): локальная копия только здесь, где
+            // имя модифицируется (срезается до "@arr").
+            GS::UniString rawName = tparams[0] + BRACEEND;
 
             if (auto *p = paramnamearray.GetPtr (rawName)) {
                 if (!p->Contains (param.rawName))
@@ -6718,8 +6756,12 @@ bool ParamHelpers::ReadListData (const API_Elem_Head &elem_head,
                 continue;
         }
     }
-    if (!needListData)
+    if (!needListData) {
+        // FIX (ревью 2026-09-12): ранний выход до BMKillHandle — утечка хендла
+        // дескрипторов, полученного от ACAPI_Element_GetDescriptors.
+        BMKillHandle ((GSHandle *)&descRefs);
         return !pdictvalue.IsEmpty ();
+    }
 #if defined(TESTING)
     DBprnt ("          Read Components");
 #endif

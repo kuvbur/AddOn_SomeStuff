@@ -1,18 +1,19 @@
 //------------ kuvbur 2022 ------------
-#include "api_headers/APIEnvir.h"
-
 #include "ACAPinc.h"
 
+#include "api_headers/APIEnvir.h"
+
+#include "Roombook.hpp"
+
 #include "Algorithms.hpp"
-#include "third_party/alphanum.h"
 #include "CommonFunction.hpp"
 #include "Helpers.hpp"
 #include "ProfileAdditionalInfo.hpp"
 #include "ProfileVectorImage.hpp"
 #include "ProfileVectorImageOperations.hpp"
 #include "Propertycache.hpp"
-#include "Roombook.hpp"
 #include "Sync.hpp"
+#include "third_party/alphanum.h"
 #include "VectorImageIterator.hpp"
 
 namespace Roombook
@@ -63,7 +64,7 @@ namespace Roombook
         ProcessWindowGuard pwGuard (funcname, nPhase);
         GS::Array<API_Guid> zones;
         GSErrCode err = NoError;
-        API_SelectionInfo selectionInfo;
+        API_SelectionInfo selectionInfo = {};
         // REFACTOR TARGET:
         // Extract a helper like GetTargetZones() from this block.
         // It should decide between the current selection and the full editable-zone list,
@@ -159,7 +160,7 @@ namespace Roombook
         // После сбора всех связей необходимо очистить временные GUID зон, чтобы не держать
         // устаревшие ссылки на элементы, уже обработанные в предыдущем проходе.
         ClearZoneGUID (elementToRead);
-        GS::Array<API_Guid> zoneGuids;
+        // FIX (ревью 2026-09-12): п.73 — const-ссылка вместо копии массива на каждой итерации (только чтение)
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (auto *elems = elementToRead.GetPtr (typeelem)) {
                 for (UnicElement::PairIterator cIt = (*elems).EnumeratePairs (); cIt != NULL; ++cIt) {
@@ -175,10 +176,10 @@ namespace Roombook
     #endif
     #ifdef ServerMainVers_2800
                     API_Guid guid = cIt->key;
-                    zoneGuids = cIt->value;
+                    const GS::Array<API_Guid> &zoneGuids = cIt->value;
     #else
                     API_Guid guid = *cIt->key;
-                    zoneGuids = *cIt->value;
+                    const GS::Array<API_Guid> &zoneGuids = *cIt->value;
     #endif
                     // Проверяем классификацию, исключаем отделочные элементы
                     API_Guid classguid;
@@ -212,6 +213,11 @@ namespace Roombook
         // Необходимые для чтения параметры и свойства
         ReadParams windowParams = Param_GetForWindowParams ();
         ReadParams roomParams = Param_GetForRooms ();
+        // FIX (ревью 2026-09-12): п.36 — одна рабочая копия словаря параметров до циклов
+        // по зонам/проёмам (Param_Property_Read мутирует isValid/val); изоляция от исходного
+        // словаря правил сохраняется, повторное копирование на каждую зону/проём устранено.
+        ReadParams roomParamsWork = roomParams;
+        ReadParams windowParamsWork = windowParams;
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (!guidselementToRead.ContainsKey (typeelem))
                 continue;
@@ -285,7 +291,8 @@ namespace Roombook
                 continue; // Если у зоны нет прочитанных параметров - дальше делать
                           // нечего
             // Заполняем данные для зон
-            Param_SetToRooms (material_dict, otd, paramToRead, roomParams);
+            // FIX (ревью 2026-09-12): п.36 — используется рабочая копия roomParamsWork вместо копии на каждую зону
+            Param_SetToRooms (material_dict, otd, paramToRead, roomParamsWork);
             if (!otd.isValid)
                 continue;
             // Расчёт пола и потолка
@@ -374,8 +381,9 @@ namespace Roombook
                 double si = sin (angz);
                 walldir_perp = walldir.Get ().ToVector2D ().Rotate (si, co);
                 for (OtdOpening &op : otdw.openings) {
-                    // Заполняем данные для окон
-                    Param_SetToWindows (op, paramToRead, windowParams, otdw);
+                    // FIX (ревью 2026-09-12): п.36 — используется рабочая копия windowParamsWork вместо копии на каждый
+                    // проём
+                    Param_SetToWindows (op, paramToRead, windowParamsWork, otdw);
                     OpeningReveals_Create_One (otd.otdslab,
                                                otdw,
                                                op,
@@ -465,70 +473,74 @@ namespace Roombook
                                 otd.create_wall_elements || otd.create_column_elements || otd.create_reveal_elements)) {
                 zones.Push (otd.zone_guid);
             }
-            if (otd.isValid && paramToRead.ContainsKey (otd.zone_guid)) {
-                GS::Array<GS::UniString> rawnames;
-                GS::UniString msg = "";
-                if (!otd.om_up.rawname.IsEmpty ())
-                    rawnames.Push (otd.om_up.rawname);
-                if (!otd.om_main.rawname.IsEmpty ())
-                    rawnames.Push (otd.om_main.rawname);
-                if (!otd.om_down.rawname.IsEmpty ())
-                    rawnames.Push (otd.om_down.rawname);
-                if (!otd.om_column.rawname.IsEmpty ())
-                    rawnames.Push (otd.om_column.rawname);
-                if (!otd.om_reveals.rawname.IsEmpty ())
-                    rawnames.Push (otd.om_reveals.rawname);
-                if (!otd.om_floor.rawname.IsEmpty ())
-                    rawnames.Push (otd.om_floor.rawname);
-                if (!otd.om_ceil.rawname.IsEmpty ())
-                    rawnames.Push (otd.om_ceil.rawname);
-                if (!otd.om_up.rawname_bytype.IsEmpty ())
-                    rawnames.Push (otd.om_up.rawname_bytype);
-                if (!otd.om_main.rawname_bytype.IsEmpty ())
-                    rawnames.Push (otd.om_main.rawname_bytype);
-                if (!otd.om_down.rawname_bytype.IsEmpty ())
-                    rawnames.Push (otd.om_down.rawname_bytype);
-                if (!otd.om_column.rawname_bytype.IsEmpty ())
-                    rawnames.Push (otd.om_column.rawname_bytype);
-                if (!otd.om_reveals.rawname_bytype.IsEmpty ())
-                    rawnames.Push (otd.om_reveals.rawname_bytype);
-                if (!otd.om_floor.rawname_bytype.IsEmpty ())
-                    rawnames.Push (otd.om_floor.rawname_bytype);
-                if (!otd.om_ceil.rawname_bytype.IsEmpty ())
-                    rawnames.Push (otd.om_ceil.rawname_bytype);
-                if (otd.om_main.rawname.IsEmpty () && otd.om_main.rawname_bytype.IsEmpty ())
-                    msg += "'some_stuff_fin_main_result' ";
-                if (otd.om_down.rawname.IsEmpty () && otd.om_down.rawname_bytype.IsEmpty ())
-                    msg += "'some_stuff_fin_down_result' ";
-                if (otd.om_column.rawname.IsEmpty () && otd.om_column.rawname_bytype.IsEmpty ())
-                    msg += "'some_stuff_fin_column_result' ";
-                if (otd.om_ceil.rawname.IsEmpty () && otd.om_ceil.rawname_bytype.IsEmpty ())
-                    msg += "'some_stuff_fin_ceil_result' ";
-                if (!msg.IsEmpty ()) {
-                    msg_rep ("RoomBook",
-                             "Properties for recording finish layers to the Zone "
-                             "were not "
-                             "found.\nRecording will not be performed. Missing "
-                             "properties: " +
-                                 msg,
-                             NoError,
-                             APINULLGuid);
-                } else {
-                    // Получение форматов столбцов
-                    for (const GS::UniString &rawname : rawnames) {
-                        if (rawname.IsEmpty ())
-                            continue;
-                        if (columnFormat.ContainsKey (rawname))
-                            continue;
-                        if (!paramToRead.Get (otd.zone_guid).ContainsKey (rawname))
-                            continue;
-                        OtdData_GetColumnfFormat (paramToRead.Get (otd.zone_guid).Get (rawname).definition.description,
-                                                  rawname,
-                                                  columnFormat);
+            if (otd.isValid) {
+                // FIX (ревью 2026-09-12): п.75 — один lookup через GetPtr вместо ContainsKey+Get (двойной поиск)
+                const ParamDictValue *roomparams = paramToRead.GetPtr (otd.zone_guid);
+                if (roomparams != nullptr) {
+                    GS::Array<GS::UniString> rawnames;
+                    GS::UniString msg = "";
+                    if (!otd.om_up.rawname.IsEmpty ())
+                        rawnames.Push (otd.om_up.rawname);
+                    if (!otd.om_main.rawname.IsEmpty ())
+                        rawnames.Push (otd.om_main.rawname);
+                    if (!otd.om_down.rawname.IsEmpty ())
+                        rawnames.Push (otd.om_down.rawname);
+                    if (!otd.om_column.rawname.IsEmpty ())
+                        rawnames.Push (otd.om_column.rawname);
+                    if (!otd.om_reveals.rawname.IsEmpty ())
+                        rawnames.Push (otd.om_reveals.rawname);
+                    if (!otd.om_floor.rawname.IsEmpty ())
+                        rawnames.Push (otd.om_floor.rawname);
+                    if (!otd.om_ceil.rawname.IsEmpty ())
+                        rawnames.Push (otd.om_ceil.rawname);
+                    if (!otd.om_up.rawname_bytype.IsEmpty ())
+                        rawnames.Push (otd.om_up.rawname_bytype);
+                    if (!otd.om_main.rawname_bytype.IsEmpty ())
+                        rawnames.Push (otd.om_main.rawname_bytype);
+                    if (!otd.om_down.rawname_bytype.IsEmpty ())
+                        rawnames.Push (otd.om_down.rawname_bytype);
+                    if (!otd.om_column.rawname_bytype.IsEmpty ())
+                        rawnames.Push (otd.om_column.rawname_bytype);
+                    if (!otd.om_reveals.rawname_bytype.IsEmpty ())
+                        rawnames.Push (otd.om_reveals.rawname_bytype);
+                    if (!otd.om_floor.rawname_bytype.IsEmpty ())
+                        rawnames.Push (otd.om_floor.rawname_bytype);
+                    if (!otd.om_ceil.rawname_bytype.IsEmpty ())
+                        rawnames.Push (otd.om_ceil.rawname_bytype);
+                    if (otd.om_main.rawname.IsEmpty () && otd.om_main.rawname_bytype.IsEmpty ())
+                        msg += "'some_stuff_fin_main_result' ";
+                    if (otd.om_down.rawname.IsEmpty () && otd.om_down.rawname_bytype.IsEmpty ())
+                        msg += "'some_stuff_fin_down_result' ";
+                    if (otd.om_column.rawname.IsEmpty () && otd.om_column.rawname_bytype.IsEmpty ())
+                        msg += "'some_stuff_fin_column_result' ";
+                    if (otd.om_ceil.rawname.IsEmpty () && otd.om_ceil.rawname_bytype.IsEmpty ())
+                        msg += "'some_stuff_fin_ceil_result' ";
+                    if (!msg.IsEmpty ()) {
+                        msg_rep ("RoomBook",
+                                 "Properties for recording finish layers to the Zone "
+                                 "were not "
+                                 "found.\nRecording will not be performed. Missing " +
+                                     msg,
+                                 NoError,
+                                 APINULLGuid);
+                    } else {
+                        // Получение форматов столбцов
+                        for (const GS::UniString &rawname : rawnames) {
+                            if (rawname.IsEmpty ())
+                                continue;
+                            if (columnFormat.ContainsKey (rawname))
+                                continue;
+                            // FIX (ревью 2026-09-12): п.75 — повторное Get(otd.zone_guid) заменено
+                            // на указатель roomparams, полученный один раз выше (один lookup)
+                            if (!roomparams->ContainsKey (rawname))
+                                continue;
+                            OtdData_GetColumnfFormat (
+                                roomparams->Get (rawname).definition.description, rawname, columnFormat);
+                        }
+                        // Расчёт площадей
+                        OtdData_CalcForRoom (columnFormat, otd, paramToWrite, paramToRead, dct_bytype);
+                        zones_bytype.Push (otd.zone_guid);
                     }
-                    // Расчёт площадей
-                    OtdData_CalcForRoom (columnFormat, otd, paramToWrite, paramToRead, dct_bytype);
-                    zones_bytype.Push (otd.zone_guid);
                 }
             }
         }
@@ -567,24 +579,25 @@ namespace Roombook
         for (GS::HashTable<API_Guid, UnicGuidByBase>::PairIterator cIt_1 = exsistot_byzone.EnumeratePairs ();
              cIt_1 != NULL;
              ++cIt_1) {
+    // FIX (ревью 2026-09-12): п.34 — только чтение; const-ссылки вместо глубокого копирования трёхуровневых словарей
     #ifdef ServerMainVers_2800
-            UnicGuidByBase byzone = cIt_1->value;
+            const UnicGuidByBase &byzone = cIt_1->value;
     #else
-            UnicGuidByBase byzone = *cIt_1->value;
+            const UnicGuidByBase &byzone = *cIt_1->value;
     #endif
-            for (UnicGuidByBase::PairIterator cIt_21 = byzone.EnumeratePairs (); cIt_21 != NULL; ++cIt_21) {
+            for (UnicGuidByBase::ConstPairIterator cIt_21 = byzone.EnumeratePairs (); cIt_21 != NULL; ++cIt_21) {
     #ifdef ServerMainVers_2800
-                UnicGuidByTypeOtd bytype = cIt_21->value;
+                const UnicGuidByTypeOtd &bytype = cIt_21->value;
     #else
-                UnicGuidByTypeOtd bytype = *cIt_21->value;
+                const UnicGuidByTypeOtd &bytype = *cIt_21->value;
     #endif
-                for (UnicGuidByTypeOtd::PairIterator cIt_2 = bytype.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
+                for (UnicGuidByTypeOtd::ConstPairIterator cIt_2 = bytype.EnumeratePairs (); cIt_2 != NULL; ++cIt_2) {
     #ifdef ServerMainVers_2800
-                    UnicGuid byparent = cIt_2->value;
+                    const UnicGuid &byparent = cIt_2->value;
     #else
-                    UnicGuid byparent = *cIt_2->value;
+                    const UnicGuid &byparent = *cIt_2->value;
     #endif
-                    for (UnicGuid::PairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
+                    for (UnicGuid::ConstPairIterator cIt_3 = byparent.EnumeratePairs (); cIt_3 != NULL; ++cIt_3) {
     #ifdef ServerMainVers_2800
                         API_Guid guid = cIt_3->key;
     #else
@@ -598,7 +611,7 @@ namespace Roombook
         // Перед обновлением элементов их слои временно разблокируются и резервируются.
         // Это нужно, чтобы ArchiCAD позволил изменить существующие элементы без конфликтов.
         if (!reserv_elements.IsEmpty ()) {
-#ifndef ServerMainVers_2400
+    #ifndef ServerMainVers_2400
             GS::PagedArray<API_Guid> reserv;
     #else
             GS::Array<API_Guid> reserv;
@@ -1079,9 +1092,11 @@ namespace Roombook
                      k != abc_material.end ();
                      ++k) {
                     GS::UniString mat = k->second;
-                    if (!dcta.ContainsKey (mat))
+                    // FIX (ревью 2026-09-12): п.75 — один lookup через GetPtr вместо ContainsKey+Get
+                    const double *dcta_area = dcta.GetPtr (mat);
+                    if (dcta_area == nullptr)
                         continue;
-                    double area = dcta.Get (mat);
+                    double area = *dcta_area;
                     mat.Trim ();
                     mat.ReplaceAll ("  ", SPACESTRING);
                     mat.ReplaceAll ("0&#& ", EMPTYSTRING);
@@ -1351,12 +1366,12 @@ namespace Roombook
                           UnicElementByType &elementToRead,
                           GS::HashTable<API_Guid, GS::Array<API_Guid>> &slabsinzone) {
         SyncSettings syncSettings;
-        syncSettings.SetWallS(true);
-        syncSettings.SetSyncAll(true);
-        syncSettings.SetSyncMon(true);
-        syncSettings.SetWidoS(true);
-        syncSettings.SetObjS(true);
-        syncSettings.SetCwallS(true);
+        syncSettings.SetWallS (true);
+        syncSettings.SetSyncAll (true);
+        syncSettings.SetSyncMon (true);
+        syncSettings.SetWidoS (true);
+        syncSettings.SetObjS (true);
+        syncSettings.SetCwallS (true);
         API_Element zoneelement = {};
         zoneelement.header.guid = zoneGuid;
 
@@ -1832,6 +1847,8 @@ namespace Roombook
     #if defined(TESTING)
             DBprnt ("OtdWall_Create_FromColumn err", "ACAPI_Element_GetMemo column");
     #endif
+            // FIX (ревью 2026-09-12): утечка memo при частичной аллокации — Dispose перед выходом.
+            ACAPI_DisposeElemMemoHdls (&segmentmemo);
             return;
         }
         bool flag_find = false;
@@ -1944,11 +1961,13 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Обработка полов и потолков
     // -----------------------------------------------------------------------------
-    void Floor_FindInOneRoom (const Stories &storyLevels,
-                              API_Guid &elGuid,
-                              GS::Array<API_Guid> &zoneGuids,
-                              OtdRooms &roomsinfo,
-                              UnicGUIDByType &guidselementToRead) {
+    void Floor_FindInOneRoom (
+        const Stories &storyLevels,
+        API_Guid &elGuid,
+        // FIX (ревью 2026-09-12): п.73 — const-ссылка вместо неконстантной (массив только читается)
+        const GS::Array<API_Guid> &zoneGuids,
+        OtdRooms &roomsinfo,
+        UnicGUIDByType &guidselementToRead) {
         GSErrCode err = NoError;
         API_Element element = {};
         API_ElementMemo memo = {};
@@ -2072,7 +2091,8 @@ namespace Roombook
             zBottom = std::round (zBottom * 1000) / 1000;
             zUp = std::round (zUp * 1000) / 1000;
             GuidByZ z;
-            z.guid = APIGuid2GSGuid (slabGuid).ToUniString ().ToCStr (0, MaxUSize, CC_Cyrillic).Get ();
+            // FIX (ревью 2026-09-12): п.74 — GUID хранится напрямую, без конвертаций в строку и обратно
+            z.guid = slabGuid;
             if (type == Ceil) {
                 z.r = zBottom;
             } else {
@@ -2085,13 +2105,19 @@ namespace Roombook
         // Сортируем по расстоянию до начала зоны
         std::sort (elems.begin (), elems.end (), [] (const GuidByZ &a, const GuidByZ &b) { return a.r > b.r; });
         for (const auto &el : elems) {
-            API_Guid slabGuid = APIGuidFromString (el.guid.c_str ());
-            API_ElementMemo memo;
+            // FIX (ревью 2026-09-12): п.74 — GUID уже в API_Guid, обратная конвертация из строки не нужна
+            API_Guid slabGuid = el.guid;
+            // FIX (ревью 2026-09-12): memo инициализируется нулями — GetMemo с маской
+            // Polygon заполняет только polygon-поля, Dispose по мусору недопустим.
+            API_ElementMemo memo = {};
             err = ACAPI_Element_GetMemo (slabGuid, &memo, APIMemoMask_Polygon);
             if (err != NoError || memo.coords == nullptr) {
     #if defined(TESTING)
                 DBprnt ("Floor_Create_One err", "ACAPI_Element_GetMemo slab");
     #endif
+                // FIX (ревью 2026-09-12): при ошибке GetMemo возможна частичная
+                // аллокация хендлов — Dispose обязателен перед выходом.
+                ACAPI_DisposeElemMemoHdls (&memo);
                 continue;
             }
             Geometry::Polygon2D slabpolygon;
@@ -2135,8 +2161,8 @@ namespace Roombook
             otdslabs.Push (std::move (otdslab));
             // Удаляем отверстия и вычитаем из комнаты
             reducedroom.RemoveHoles ();
-            double dzBottom = poly.zBottom - el.zBottom;
-            double dzUp = poly.zBottom - el.zBottom;
+            // FIX (ревью 2026-09-12): п.60 — удалены неиспользуемые dzBottom/dzUp (мёртвый код,
+            // dzUp содержал ошибочную копипаст-формулу dzBottom; grep подтверждает отсутствие чтения)
             if (poly.zBottom >= el.zBottom && poly.zBottom <= el.zUp) {
                 // Добавляем отделочные стенки по контуру
                 Geometry::Polygon2DData polygon2DData;
@@ -2145,6 +2171,8 @@ namespace Roombook
                 if (polygon2DData.contourEnds == nullptr) {
                     msg_rep ("Floor_Create_One - error", "polygon2DData.contourEnds == nullptr", NoError, slabGuid);
                     Geometry::FreePolygon2DData (&polygon2DData);
+                    // FIX (ревью 2026-09-12): утечка memo — Dispose перед continue.
+                    ACAPI_DisposeElemMemoHdls (&memo);
                     continue;
                 }
                 UInt32 begInd = (*polygon2DData.contourEnds)[0] + 1;
@@ -2756,10 +2784,12 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Запись прочитанных свойств в зону
     // -----------------------------------------------------------------------------
+    // FIX (ревью 2026-09-12): п.36 — ReadParams по неконстантной ссылке (Param_Property_Read мутирует isValid/val);
+    // рабочая копия словаря готовится вызывающим кодом один раз до цикла по зонам/проёмам.
     void Param_SetToRooms (GS::HashTable<GS::UniString, GS::Int32> &material_dict,
                            OtdRoom &roominfo,
                            ParamDictElement &paramToRead,
-                           ReadParams readparams) {
+                           ReadParams &readparams) {
         API_Guid base_guid = roominfo.zone_guid;
         if (!Param_Property_Read (base_guid, paramToRead, readparams)) {
             msg_rep ("Roombook", "Can't read zone params", NoError, base_guid);
@@ -3253,9 +3283,10 @@ namespace Roombook
     // -----------------------------------------------------------------------------
     // Задание прочитанных параметров для окон
     // -----------------------------------------------------------------------------
+    // FIX (ревью 2026-09-12): п.36 — ReadParams по неконстантной ссылке; копия подготавливается вызывающим кодом
     void Param_SetToWindows (OtdOpening &op,
                              ParamDictElement &paramToRead,
-                             ReadParams readparams,
+                             ReadParams &readparams,
                              const OtdWall &otdw) {
         API_Guid base_guid = op.base_guid;
         if (!paramToRead.ContainsKey (base_guid)) {
@@ -3836,7 +3867,9 @@ namespace Roombook
     // Удаляет отверстия, не попадающие в диапазон
     // Подгоняет размер отверсий
     // -----------------------------------------------------------------------------
-    bool OtdWall_Delim_One (OtdWall otdn,
+    // FIX (ревью 2026-09-12): п.35 — otdn принимается по const-ссылке; локальная копия только
+    // мутируемых полей (zBottom/height/length/type/openings/материалы), финальная вставка со std::move.
+    bool OtdWall_Delim_One (const OtdWall &otdn,
                             GS::Array<OtdWall> &opw,
                             double height,
                             double zBottom,
@@ -3870,9 +3903,11 @@ namespace Roombook
         zDup = zBottom + height;                // Переназначаем для расчётов окон
         double dlower = otdn.zBottom - zBottom; // Разница отметок стены до и после подрезки
         // Удаляем лишние окна, подстраиваем высоту
-        if (!otdn.openings.IsEmpty ()) {
+        // FIX (ревью 2026-09-12): п.35 — мутируем локальную копию, а не копию параметра
+        OtdWall localCopy = otdn;
+        if (!localCopy.openings.IsEmpty ()) {
             GS::Array<OtdOpening> newopenings;
-            for (OtdOpening &op : otdn.openings) {
+            for (OtdOpening &op : localCopy.openings) {
                 // Проём начинается выше стенки
                 if (op.zBottom > zDup || is_equal (op.zBottom, zDup)) {
                     continue;
@@ -3890,15 +3925,16 @@ namespace Roombook
                 if (op.height > min_dim && op.width > min_dim)
                     newopenings.PushNew (op);
             }
-            otdn.openings = newopenings;
+            localCopy.openings = newopenings;
         }
-        otdn.zBottom = zBottom;
-        otdn.height = height;
-        if (!is_equal (otdn.width, 0))
-            otdn.length = height;
-        otdn.type = type;
-        SetMaterialByType (otdn, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
-        opw.PushNew (otdn);
+        localCopy.zBottom = zBottom;
+        localCopy.height = height;
+        if (!is_equal (localCopy.width, 0))
+            localCopy.length = height;
+        localCopy.type = type;
+        SetMaterialByType (localCopy, om_main, om_up, om_down, om_reveals, om_column, om_floor, om_ceil, om_zone);
+        // FIX (ревью 2026-09-12): п.35 — вставка со std::move вместо PushNew с копией
+        opw.Push (std::move (localCopy));
         return true;
     }
 
@@ -4241,6 +4277,20 @@ namespace Roombook
         });
         msg_rep (
             "RoomBook", GS::UniString::Printf ("Create or update %d finishing elements", n_elem), err, APINULLGuid);
+    // FIX (ревью 2026-09-12): п.28 — восстановление тумблера Suspend Groups после команды
+    // (APITool_SuspendGroups — тумблер; выключаем только если включали сами и он ещё включён).
+    #ifdef ServerMainVers_2300
+        if (!suspGrp) {
+            bool suspNow = false;
+        #ifdef ServerMainVers_2700
+            if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
+                ACAPI_Grouping_Tool (deletelist, APITool_SuspendGroups, nullptr);
+        #else
+            if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
+                ACAPI_Element_Tool (deletelist, APITool_SuspendGroups, nullptr);
+        #endif
+        }
+    #endif // !AC_22
     }
 
     // -----------------------------------------------------------------------------
@@ -4458,9 +4508,14 @@ namespace Roombook
             p.arr_num.Push (0);
         } else {
             Int32 dim2 = 0;
+            // FIX (ревью 2026-09-12): счётчик фактически добавленных в arr_num
+            // проёмов — отфильтрованные continue-проёмы не попадают в массив,
+            // dim1 по GetSize() завышен и не соответствует dim1*9 = размеру arr_num.
+            UInt32 addedOpenings = 0;
             for (OtdOpening &op : edges.openings) {
                 if (op.width < min_dim || op.height < min_dim)
                     continue;
+                ++addedOpenings;
                 double objLoc = ac_wall_length - op.objLoc;
                 double halfwidth = op.width / 2;
                 // if (op.has_reveal) {
@@ -4481,7 +4536,7 @@ namespace Roombook
                 p.arr_num.Push (objLoc + halfwidth);
                 p.arr_num.Push (op.lower);
             }
-            p.dim1 = edges.openings.GetSize ();
+            p.dim1 = addedOpenings;
             p.dim2 = 9;
         }
         accsessoryparams.Add ("{@gdl:ac_wd_poly}", p);
@@ -4753,6 +4808,8 @@ namespace Roombook
             err = ACAPI_Element_GetMemo (slabelement.header.guid, &memo, APIMemoMask_Polygon);
             if (err != NoError) {
                 msg_rep ("Floor_Draw_Object", "ACAPI_Element_GetMemo", err, otdslab.otd_guid);
+                // FIX (ревью 2026-09-12): Dispose при ошибке GetMemo (частичная аллокация).
+                ACAPI_DisposeElemMemoHdls (&memo);
                 return;
             }
         }
@@ -5226,6 +5283,32 @@ namespace Roombook
         GS::UniString suffix = "";
         GS::Array<API_Guid> syncguids;
         GS::UniString funcname = "Create link with base element";
+        // FIX (ревью 2026-09-12): п.28 — suspend вынесен за цикл (один toggle до цикла,
+        // восстановление — на всех выходах из функции).
+        bool suspGrp = false;
+    #ifdef ServerMainVers_2700
+        ACAPI_View_IsSuspendGroupOn (&suspGrp);
+        if (!suspGrp)
+            ACAPI_Grouping_Tool (syncguids, APITool_SuspendGroups, nullptr);
+    #else
+        ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp, nullptr);
+        if (!suspGrp)
+            ACAPI_Element_Tool (syncguids, APITool_SuspendGroups, nullptr);
+    #endif
+        // FIX (ревью 2026-09-12): п.28 — восстановление Suspend Groups на всех выходах
+        // (тумблер; выключаем только если включали сами и он ещё включён).
+        auto RestoreSuspendGroups = [&] () {
+            if (!suspGrp) {
+                bool suspNow = false;
+    #ifdef ServerMainVers_2700
+                if (ACAPI_View_IsSuspendGroupOn (&suspNow) == NoError && suspNow)
+                    ACAPI_Grouping_Tool (syncguids, APITool_SuspendGroups, nullptr);
+    #else
+                if (ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspNow, nullptr) == NoError && suspNow)
+                    ACAPI_Element_Tool (syncguids, APITool_SuspendGroups, nullptr);
+    #endif
+            }
+        };
         for (const API_ElemTypeID &typeelem : typeinzone) {
             if (!subelementByparent.ContainsKey (typeelem))
                 continue;
@@ -5272,40 +5355,45 @@ namespace Roombook
             nPhase += 1;
     #ifdef ServerMainVers_2700
             ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-            if (ACAPI_ProcessWindow_IsProcessCanceled ())
+            if (ACAPI_ProcessWindow_IsProcessCanceled ()) {
+                // FIX (ревью 2026-09-12): п.28 — восстановление suspend при раннем выходе
+                RestoreSuspendGroups ();
                 return;
+            }
     #else
             ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
+            if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+                // FIX (ревью 2026-09-12): п.28 — восстановление suspend при раннем выходе
+                RestoreSuspendGroups ();
                 return;
-    #endif
-            bool suspGrp = false;
-    #ifdef ServerMainVers_2700
-            ACAPI_View_IsSuspendGroupOn (&suspGrp);
-            if (!suspGrp)
-                ACAPI_Grouping_Tool (syncguids, APITool_SuspendGroups, nullptr);
-    #else
-            ACAPI_Environment (APIEnv_IsSuspendGroupOnID, &suspGrp);
-            if (!suspGrp)
-                ACAPI_Element_Tool (syncguids, APITool_SuspendGroups, nullptr);
+            }
     #endif
             ACAPI_CallUndoableCommand ("Write property to finishing element", [&] () -> GSErrCode {
                 ParamHelpers::ElementsWrite (paramToWrite);
                 return NoError;
             });
         }
-        if (syncguids.IsEmpty ())
+        if (syncguids.IsEmpty ()) {
+            // FIX (ревью 2026-09-12): п.28 — восстановление suspend при раннем выходе
+            RestoreSuspendGroups ();
             return;
+        }
         funcname = GS::UniString::Printf ("Sync %d finishing element with base and zone", paramToWrite.GetSize ());
         nPhase += 1;
     #ifdef ServerMainVers_2700
         ACAPI_ProcessWindow_SetNextProcessPhase (&funcname, &nPhase);
-        if (ACAPI_ProcessWindow_IsProcessCanceled ())
+        if (ACAPI_ProcessWindow_IsProcessCanceled ()) {
+            // FIX (ревью 2026-09-12): п.28 — восстановление suspend при раннем выходе
+            RestoreSuspendGroups ();
             return;
+        }
     #else
         ACAPI_Interface (APIIo_SetNextProcessPhaseID, &funcname, &nPhase);
-        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr))
+        if (ACAPI_Interface (APIIo_IsProcessCanceledID, nullptr, nullptr)) {
+            // FIX (ревью 2026-09-12): п.28 — восстановление suspend при раннем выходе
+            RestoreSuspendGroups ();
             return;
+        }
     #endif
         SyncSettings syncSettings;
         LoadSyncSettingsFromPreferences (syncSettings);
@@ -5316,6 +5404,8 @@ namespace Roombook
     #endif
             SyncArray (syncSettings, rereadelem);
         }
+        // FIX (ревью 2026-09-12): п.28 — восстановление suspend при обычном выходе из функции
+        RestoreSuspendGroups ();
     }
 
     bool Class_IsElementFinClass (const API_Guid &elGuid, const UnicGuid &finclassguids, API_Guid &classguid) {

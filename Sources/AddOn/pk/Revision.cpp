@@ -230,7 +230,7 @@ namespace Revision {
                 continue;
             API_DatabaseUnId databaseUnId = layoutRVI.Get (id);
             bool flag_write = false;
-            API_LayoutInfo layoutInfo;
+            API_LayoutInfo layoutInfo = {};
 #ifdef ServerMainVers_2700
             err = ACAPI_Navigator_GetLayoutSets (&layoutInfo, &(databaseUnId));
 #else
@@ -238,6 +238,11 @@ namespace Revision {
 #endif
             if (err != NoError) {
                 msg_rep ("GetAllChangesMarker", "APIEnv_GetLayoutSetsID", err, APINULLGuid);
+                continue;
+            }
+            // FIX (ревью 2026-09-12): guard перед доступом к customData — на макете
+            // без customData разыменование nullptr (образец: ChangeLayoutProperty).
+            if (layoutInfo.customData == nullptr) {
                 continue;
             }
             UInt32 n_prop = layout_note_guid.GetSize ();
@@ -407,7 +412,8 @@ namespace Revision {
         GS::UniString annulString = RSGetIndString (iseng, Annul_StringID, ACAPI_GetOwnResModule ());
         // Правильная сортировка по алфавиту
         std::map<std::string, GS::UniString, doj::alphanum_less<std::string>> abc_changes = {};
-        for (auto ch : changes) {
+        for (auto &ch : changes) { // FIX (ревью 2026-09-12): итерация по ссылке — модификации change должны попадать в
+                                   // исходную таблицу
 #ifdef ServerMainVers_2800
             Changes &change = ch.value;
             GS::UniString id = ch.key;
@@ -625,7 +631,8 @@ namespace Revision {
     bool CheckChanges (ChangeMarkerDict &changes, GS::UniString &subsetName, GS::UniString &layoutid) {
         // Проверка данных в изменениях
         bool has_error = false;
-        for (auto ch : changes) {
+        for (auto &ch : changes) { // FIX (ревью 2026-09-12): итерация по ссылке — модификации change должны попадать в
+                                   // исходную таблицу
 #ifdef ServerMainVers_2800
             Changes &change = ch.value;
             GS::UniString id = ch.key;
@@ -776,7 +783,14 @@ namespace Revision {
                     API_Guid guid = layout_note_guid.Get ("somestuff_code_change");
                     if (c.customData.ContainsKey (guid)) {
                         GS::UniString code = c.customData.Get (guid);
-                        ch.code = std::atoi (code.ToCStr ());
+                        // FIX (ревью 2026-09-12): atoi молча возвращал 0 при ошибке
+                        // разбора — теперь неудача отличима от кода 0 и логируется.
+                        try {
+                            ch.code = std::stoi (code.ToCStr ().Get ());
+                        } catch (const std::exception &) {
+                            msg_rep ("GetChangesLayout", "std::stoi (code)", APIERR_BADPARS, APINULLGuid);
+                            ch.code = 0;
+                        }
                     }
                 }
                 ch.markerguid = APINULLGuid;
@@ -868,6 +882,20 @@ namespace Revision {
         API_ElementMemo memo = {};
         err = ACAPI_Element_GetMemo (markerguid, &memo, APIMemoMask_Polygon);
         if (err == NoError) {
+            // FIX (ревью 2026-09-12): guard перед разыменованием pends/coords —
+            // хендлы могут быть nullptr, а begInd — за пределами coords.
+            // nCoords вычисляем только после проверки coords на nullptr.
+            if (memo.pends == nullptr || memo.coords == nullptr) {
+                msg_rep ("GetMarkerPos", "memo polygon is empty", err, markerguid);
+                ACAPI_DisposeElemMemoHdls (&memo);
+                return false;
+            }
+            const GSSize nCoords = BMGetHandleSize ((GSHandle)memo.coords) / (GSSize)sizeof (API_Coord);
+            if (nCoords <= (GSSize)((*memo.pends)[0] + 1)) {
+                msg_rep ("GetMarkerPos", "memo polygon is empty", err, markerguid);
+                ACAPI_DisposeElemMemoHdls (&memo);
+                return false;
+            }
             int begInd = (*memo.pends)[0] + 1;
             startpoint = (*memo.coords)[begInd];
             ACAPI_DisposeElemMemoHdls (&memo);
@@ -896,6 +924,12 @@ namespace Revision {
         bool find_fam = false;
         bool find_code = false;
         if (err == NoError) {
+            // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — у маркера без
+            // GDL-параметров memo.params == nullptr, разыменование нулевого хендла.
+            if (memo.params == nullptr) {
+                ACAPI_DisposeElemMemoHdls (&memo);
+                return false;
+            }
             Int32 addParNum = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
             for (Int32 i = 0; i < addParNum; ++i) {
                 API_AddParType &actualParam = (*memo.params)[i];
@@ -944,7 +978,8 @@ namespace Revision {
         const Int32 iseng = ID_ADDON_STRINGS + isEng ();
         GS::UniString undoString = RSGetIndString (iseng, UndoReNumId, ACAPI_GetOwnResModule ());
         ACAPI_CallUndoableCommand (undoString, [&] () -> GSErrCode {
-            for (auto ch : changes) {
+            for (auto &ch : changes) { // FIX (ревью 2026-09-12): итерация по ссылке — модификации change должны
+                                       // попадать в исходную таблицу
 #ifdef ServerMainVers_2800
                 Changes &change = ch.value;
 #else
@@ -1001,6 +1036,12 @@ namespace Revision {
             bool find_nuch = false;
             bool find_izm = false;
             bool flag_write = false;
+            // FIX (ревью 2026-09-12): guard перед BMGetHandleSize — params может
+            // быть nullptr (см. GetMarkerText).
+            if (memo.params == nullptr) {
+                ACAPI_DisposeElemMemoHdls (&memo);
+                return;
+            }
             Int32 addParNum = BMGetHandleSize ((GSHandle)memo.params) / sizeof (API_AddParType);
             for (Int32 i = 0; i < addParNum; ++i) {
                 API_AddParType &actualParam = (*memo.params)[i];
@@ -1009,7 +1050,11 @@ namespace Revision {
                     GS::UniString t = (*memo.params)[i].value.uStr;
                     if (!t.IsEqual (nuch)) {
                         flag_write = true;
-                        GS::ucscpy ((*memo.params)[i].value.uStr, nuch.ToUStr ());
+                        // FIX (ревью 2026-09-12): обрезка до API_UAddParStrLen (256) —
+                        // ucscpy в фиксированный буфер uStr без ограничения
+                        // переполнял его (образец: Spec.cpp:2525-2534).
+                        GS::ucscpy ((*memo.params)[i].value.uStr,
+                                    nuch.ToUStr (0, GS::Min (nuch.GetLength (), (USize)API_UAddParStrLen)).Get ());
                     }
                     find_nuch = true;
                 }
@@ -1017,7 +1062,9 @@ namespace Revision {
                     GS::UniString t = (*memo.params)[i].value.uStr;
                     if (!t.IsEqual (nizm)) {
                         flag_write = true;
-                        GS::ucscpy ((*memo.params)[i].value.uStr, nizm.ToUStr ());
+                        // FIX (ревью 2026-09-12): обрезка до API_UAddParStrLen (256).
+                        GS::ucscpy ((*memo.params)[i].value.uStr,
+                                    nizm.ToUStr (0, GS::Min (nizm.GetLength (), (USize)API_UAddParStrLen)).Get ());
                     }
                     find_izm = true;
                 }
