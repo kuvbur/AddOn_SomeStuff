@@ -74,6 +74,12 @@ IN_PROGRESS — код Этапа 1.7 не начат. Открыт остато
 - JSON-команды — снято: удалены коммитом `b7a996b`; вся UI-функциональность делается инлайн-функциями
   JS-моста `BrowserPalette` (спецификации в формате `*Command` не актуальны)
 - 2026-09-12: настройки — локальный файл `…/GRAPHISOFT/SomeStuff/SyncSettings.dat`, в prefs проекта не пишем
+- 2026-09-12: проверка платформенной нейтральности `SyncSettings.dat` (интернет + DevKit-25): путь
+  через `APIEnv_GetSpecFolderID` кроссплатформенный (mac `~/Library/Preferences/Graphisoft`, win
+  `%APPDATA%\Graphisoft`); формат файла формально не межплатформенный (GS::OChannel = нативный
+  порядок байт, для переноса есть `IO::SetPlatformOProtocol`), но файл локальный и обе целевые
+  платформы little-endian. Legacy-миграция читает `ACAPI_GetPreferences` без platformSign — оставлено
+  как есть (вне текущего scope)
 - 2026-09-12: цель сборки и тестов — AC25
 - 2026-09-12: снято автором (не фиксить): `Dimensions.cpp:158` `pen_original`; пересоздание элементов отделки
   в Roombook; `Sync.cpp:419-428` накопительный `epm` в SyncElement
