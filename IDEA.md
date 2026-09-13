@@ -20,9 +20,20 @@ UI вкладки «Монитор» — остаток работ:
 ## Status
 
 IN_PROGRESS — код Этапа 1.7 не начат. Открыт остаток ревью 2026-09-12 и runtime-проверки R2–R10.
+Новый пользовательский реквест 2026-09-13 (UI классификации) — выполнен, считается отдельной задачей.
 
 ## Last Completed
 
+- **2026-09-13 — UI классификации (вкладка «Монитор»)**, `Interface_ru.html`:
+  (1) выбор классификации + кнопка «Применить ко всем» теперь видны всегда (в т.ч. при
+  единой классификации и одном выделенном элементе — раньше ранний `return` по `data.common` прятал их);
+  (2) устранены дубли строк в списке — JS-дедуп `uniqueClassificationOptions` (причина: C++
+  кладёт один и тот же словарь системы в `systemdict` и под `systemname`, и под
+  `systemname_full`, GetFullName даёт одинаковые полные имена → каждая запись ×2);
+  (3) выпадающий список переделан в дерево как в Archicad — разворачиваемые узлы (▸/▾),
+  живой поиск по названию с пересчётом вариантов по мере набора и подсветкой совпавших цепочек.
+  Валидация `Tools/test_html.ps1`: HTMLHint PASSED + verify.js PASSED. Логика (дедуп/дерево/
+  фильтр) проверена ad-hoc запуском в node. Runtime НЕ тестировался (нужен живой ArchiCAD).
 - Ревью 2026-09-12 закрыто: `11add7a` + `13ba469` (60 находок), `2a48348` (ревью 2026-09-12b, 87 пунктов),
   `072f975` (вторая проверка), `1625cf1` (Sync.cpp-7: Name2Rawname — регистронезависимость + каноническая форма)
 - `f0909f0` — настройки аддона вынесены из prefs проекта в локальный файл
@@ -118,7 +129,7 @@ IN_PROGRESS — код Этапа 1.7 не начат. Открыт остато
 
 ---
 
-## Last Checkpoint: 1625cf1 [Sync.cpp-7] Name2Rawname: регистронезависимость + каноническая форма {@prefix:name}
-## Next Step: 1.5/1.6 — замена моков ACBridge.getFilterPresets/resetPropertyToDefault на инлайн-функции моста; далее 1.7.1 (baseline GetPropertiesList → кэш правил Sync/Spec + фильтр)
+## Last Checkpoint: ad7e8f5 [UI классификации] dropdown-дерево как в Archicad + дедуп + всегда видимое «Применить ко всем»
+## Next Step: runtime-проверка классификации (древовидный выбор + поиск) в живом ArchiCAD; далее 1.5/1.6 (замена моков getFilterPresets/resetPropertyToDefault), 1.7.1
 ## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Sources/AddOn/TestFunc.cpp/.hpp, IDEA.md
 ## Verified 2026-08-24: подсветка+зум по клику ×N работает, выделение сохраняется (подтверждено Дмитрием, runtime AC25)
