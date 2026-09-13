@@ -802,90 +802,348 @@ function renderMonitorTab(container) {
     renderPropertyList(listBlock, STATE.monitorFilter);
 }
 
+// ---------------------------------------------------------------------------
+// Древовидный выбор классификации (как в Archicad): узлы разворачиваются,
+// при поиске по названию набор видимых вариантов пересчитывается по мере набора.
+// ---------------------------------------------------------------------------
+
+// Убирает дубликаты из списка полных имён. C++ может вернуть каждый класс дважды:
+// один и тот же словарь системы кладётся в кэш и под systemname, и под systemname_full.
+function uniqueClassificationOptions(options) {
+  const seen = new Set();
+  const out = [];
+  (options || []).forEach(function (o) {
+    if (!o || seen.has(o)) return;
+    seen.add(o);
+    out.push(o);
+  });
+  return out;
+}
+
+// Строит дерево из плоского списка полных имён (сегменты пути разделены "/").
+// Узел: { label, fullPath, value, children }. value === полное имя, если узел
+// является реальной выбираемой классификацией (листом в исходном списке).
+function buildClassificationTree(fullPaths) {
+  const tree = [];
+  const map = new Map();
+  fullPaths.forEach(function (path) {
+    const parts = path.split("/");
+    let prefix = "";
+    let list = tree;
+    for (let i = 0; i < parts.length; i++) {
+      prefix = prefix ? prefix + "/" + parts[i] : parts[i];
+      let node = map.get(prefix);
+      if (!node) {
+        node = { label: parts[i], fullPath: prefix, value: undefined, children: [] };
+        map.set(prefix, node);
+        list.push(node);
+      }
+      if (i === parts.length - 1) {
+        node.value = path; // это полное имя — выбираемая классификация
+      }
+      list = node.children;
+    }
+  });
+  return tree;
+}
+
+// Фильтрует дерево по запросу q (поиск по названию / пути, регистронезависимый).
+// При совпадении самого узла оставляем его целиком; иначе — цепочку к совпавшим потомкам.
+function filterClassificationTree(nodes, q) {
+  const ql = q.toLowerCase();
+  const result = [];
+  nodes.forEach(function (n) {
+    const matchSelf = n.fullPath.toLowerCase().indexOf(ql) !== -1;
+    let sub = null;
+    if (n.children && n.children.length) {
+      sub = filterClassificationTree(n.children, q);
+    }
+    if (matchSelf || (sub && sub.length)) {
+      result.push({
+        label: n.label,
+        fullPath: n.fullPath,
+        value: n.value,
+        children: matchSelf ? n.children : (sub || [])
+      });
+    }
+  });
+  return result;
+}
+
+// Рендерит узлы дерева в listEl. opts: { expanded:Set, forceExpand:bool, selected:string,
+// onSelect:function(node), onToggle:function(), depth:number }.
+// Клик по узлу с потомками разворачивает/сворачивает (и просит перерисовать список),
+// клик по листу выбирает его.
+function renderClassificationTree(listEl, nodes, opts) {
+  const depth = opts.depth || 0;
+  nodes.forEach(function (n) {
+    const isGroup = !!(n.children && n.children.length);
+    const selectable = n.value !== undefined;
+    const isExpanded = opts.forceExpand || opts.expanded.has(n.fullPath);
+    const isSelected = n.value === opts.selected;
+
+    const row = h("div", {
+      style: "display:flex;align-items:center;gap:0.3rem;border-radius:0.2rem;font-size:0.74rem;" +
+             "cursor:pointer;color:var(--ac-text-primary);" +
+             (isSelected ? "background:var(--ac-accent-soft);" : ""),
+      on: {
+        mouseenter: function (e) {
+          e.currentTarget.style.background = isSelected ? "var(--ac-accent-soft)" : "var(--ac-bg-hover)";
+        },
+        mouseleave: function (e) {
+          e.currentTarget.style.background = isSelected ? "var(--ac-accent-soft)" : "transparent";
+        }
+      }
+    });
+    row.style.padding = "0.22rem 0.4rem";
+    row.style.paddingLeft = (0.4 + depth * 1.1) + "rem";
+
+    const arrow = h("span", {
+      text: isGroup ? (isExpanded ? "▾" : "▸") : "·",
+      style: "flex:0 0 0.9rem;text-align:center;color:var(--ac-text-tertiary);font-size:0.6rem;user-select:none;"
+    });
+    row.appendChild(arrow);
+
+    const label = h("span", {
+      text: n.label,
+      style: "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" +
+             "color:" + (selectable ? "var(--ac-text-primary)" : "var(--ac-text-secondary)") + ";"
+    });
+    row.appendChild(label);
+
+    row.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (isGroup && !opts.forceExpand) {
+        if (opts.expanded.has(n.fullPath)) {
+          opts.expanded.delete(n.fullPath);
+        } else {
+          opts.expanded.add(n.fullPath);
+        }
+        if (opts.onToggle) opts.onToggle(); // перерисовываем список целиком (с очисткой)
+      } else if (selectable) {
+        opts.onSelect(n);
+      }
+    });
+
+    listEl.appendChild(row);
+
+    if (isGroup && isExpanded) {
+      renderClassificationTree(listEl, n.children, {
+        expanded: opts.expanded,
+        forceExpand: opts.forceExpand,
+        selected: opts.selected,
+        onSelect: opts.onSelect,
+        onToggle: opts.onToggle,
+        depth: depth + 1
+      });
+    }
+  });
+}
+
+// Собирает виджет выбора: триггер + выпадающая панель (поиск + дерево).
+// container — узел, в который добавляется виджет (position:relative);
+// tree — готовое дерево; initialValue — текущая классификация (или "");
+// onChange — вызывается при смене выбора.
+function buildClassificationPicker(container, tree, initialValue, onChange) {
+  const expanded = new Set();
+  let selected = typeof initialValue === "string" && initialValue ? initialValue : null;
+  let query = "";
+
+  const wrapper = h("div", {
+    style: "position:relative;flex:1 1 10rem;min-width:8rem;display:flex;flex-direction:column;"
+  });
+
+  const triggerText = h("span", {
+    text: selected || "— выберите классификацию —",
+    style: "flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" +
+           "color:" + (selected ? "var(--ac-text-primary)" : "var(--ac-text-tertiary)") + ";"
+  });
+
+  const trigger = h("div", {
+    style: "display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.4rem;font-size:0.75rem;" +
+           "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);" +
+           "border-radius:0.25rem;cursor:pointer;",
+    on: {
+      click: function (e) {
+        e.stopPropagation();
+        togglePanel();
+      }
+    }
+  }, [
+    triggerText,
+    h("span", { text: "▾", style: "color:var(--ac-text-tertiary);font-size:0.6rem;" })
+  ]);
+
+  const search = h("input", {
+    attrs: { type: "text", placeholder: "Поиск классификации…" },
+    style: "display:block;width:100%;padding:0.35rem 0.5rem;font-size:0.75rem;" +
+           "background:var(--ac-bg-input);color:var(--ac-text-primary);border:none;" +
+           "border-bottom:1px solid var(--ac-divider);outline:none;",
+    on: {
+      input: function () {
+        query = search.value.trim();
+        renderList();
+      },
+      click: function (e) { e.stopPropagation(); }
+    }
+  });
+
+  const list = h("div", { style: "max-height:11rem;overflow:auto;" });
+
+  const panel = h("div", {
+    style: "position:absolute;top:100%;left:0;right:0;z-index:20;margin-top:0.15rem;display:none;" +
+           "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
+           "box-shadow:0 4px 12px var(--ac-shadow-color);overflow:hidden;"
+  }, [search, list]);
+
+  wrapper.appendChild(trigger);
+  wrapper.appendChild(panel);
+  container.appendChild(wrapper);
+
+  function renderList() {
+    clear(list);
+    renderClassificationTree(list, query ? filterClassificationTree(tree, query) : tree, {
+      expanded: expanded,
+      forceExpand: query.length > 0,
+      selected: selected,
+      onSelect: function (n) { choose(n); },
+      onToggle: function () { renderList(); },
+      depth: 0
+    });
+    if (!list.childNodes.length) {
+      list.appendChild(h("div", {
+        text: "Ничего не найдено",
+        style: "padding:0.4rem 0.6rem;font-size:0.72rem;color:var(--ac-text-tertiary);"
+      }));
+    }
+  }
+
+  function choose(n) {
+    selected = n.value;
+    triggerText.textContent = n.value;
+    triggerText.style.color = "var(--ac-text-primary)";
+    panel.style.display = "none";
+    if (onChange) onChange(selected);
+  }
+
+  function togglePanel() {
+    const willOpen = panel.style.display === "none";
+    if (willOpen) {
+      query = "";
+      if (search.value) search.value = "";
+      renderList();
+    }
+    panel.style.display = willOpen ? "block" : "none";
+  }
+
+  return {
+    triggerTextEl: triggerText,
+    getValue: function () { return selected; }
+  };
+}
+
 function renderClassificationBlock(block) {
   clear(block);
   block.appendChild(h("div", { text: "Загрузка классификации…", style: "color:var(--ac-text-tertiary);font-size:0.75rem;" }));
 
   ACBridge.getClassification().then(function (data) {
-      clear(block);
+    clear(block);
 
-      block.appendChild(h("div", {
-          text: "Классификация",
-          style: "font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;" +
-                 "color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.35rem;"
-        }));
+    block.appendChild(h("div", {
+      text: "Классификация",
+      style: "font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;" +
+             "color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.35rem;"
+    }));
 
-    // Общая (совпадающая) часть пути — дерево
-    const tree = h("div", { style: "display:flex;flex-direction:column;gap:0.15rem;" });
-    data.commonPath.forEach(function (segment, i) {
-      tree.appendChild(h("div", {
-        style: "padding-left:" + (i * 0.9) + "rem;font-size:0.78rem;color:var(--ac-text-primary);" +
-               "display:flex;align-items:center;gap:0.35rem;"
-      }, [
-        h("span", { html: '<svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h4l1.5 2H16v7H4z"/></svg>', style: "color:var(--ac-text-tertiary);display:flex;" }),
-        h("span", { text: segment })
-      ]));
-    });
-    block.appendChild(tree);
-
-    // Если классификация общая для всех — показываем только дерево, без "РАЗНАЯ"
-    if (data.common) {
-      return;
-    }
-
-    // Состояние "РАЗНАЯ"
-    const diffRow = h("div", {
-      style: "margin-top:0.4rem;padding:0.35rem 0.5rem;background:var(--ac-warn-soft);" +
-             "border-radius:0.25rem;display:flex;align-items:center;gap:0.4rem;"
-    }, [
-      h("span", { text: "РАЗНАЯ", style: "color:var(--ac-warn);font-weight:700;font-size:0.72rem;letter-spacing:0.03em;" }),
-      h("span", { text: "(" + data.differing.length + " вариантов)", style: "color:var(--ac-text-secondary);font-size:0.7rem;" })
-    ]);
-    block.appendChild(diffRow);
-
-    const diffList = h("div", { style: "margin-top:0.3rem;display:flex;flex-direction:column;gap:0.15rem;padding-left:0.9rem;" });
-        data.differing.forEach(function (d) {
-          // C++ возвращает {classification, count, total}
-          var val = d.classification || "";
-          var cnt = d.count || 0;
-          diffList.appendChild(h("div", { style: "font-size:0.72rem;color:var(--ac-text-secondary);" }, [
-            h("span", { text: val, style: "color:var(--ac-text-primary);font-weight:600;" }),
-            h("span", { text: "  —  " + cnt + " элем. из " + (d.total || 0) })
-          ]));
-        });
-        block.appendChild(diffList);
-
-        // Интерфейс задания единой классификации
-        const applyRow = h("div", { style: "margin-top:0.5rem;display:flex;gap:0.4rem;flex-wrap:wrap;" });
-        const select = h("select", {
-          style: "flex:1 1 10rem;min-width:8rem;padding:0.3rem 0.4rem;font-size:0.75rem;" +
-                 "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;"
-        });
-        if (data.options && data.options.length > 0) {
-          data.options.forEach(function (opt) {
-            select.appendChild(h("option", { text: opt, attrs: { value: opt } }))
-          });
-        } else {
-          select.appendChild(h("option", { text: "Нет доступных классификаций", attrs: { value: "", disabled: "disabled" } }))
-        }
-        const applyBtn = h("button", {
-          text: "Применить ко всем",
-          style: "padding:0.3rem 0.6rem;font-size:0.75rem;border:none;border-radius:0.25rem;cursor:pointer;" +
-                 "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
-          on: {
-            click: function () {
-              applyBtn.disabled = true; applyBtn.textContent = "Применение…";
-              ACBridge.setClassificationForSelection(select.value).then(function () {
-                renderClassificationBlock(block); // перерисовать (в реале — уже единая классификация)
-              });
-            }
-          }
-        });
-        applyRow.appendChild(select);
-        applyRow.appendChild(applyBtn);
-        block.appendChild(applyRow);
+    // Общий (совпадающий у всех) путь классификации — стрелка-разделитель
+    if (data.commonPath && data.commonPath.length) {
+      const commonSegs = data.commonPath.join("/").split("/");
+      const pathRow = h("div", {
+        style: "display:flex;align-items:center;gap:0.25rem;flex-wrap:wrap;font-size:0.76rem;" +
+               "color:var(--ac-text-primary);margin-bottom:0.3rem;"
       });
+      commonSegs.forEach(function (seg, i) {
+        if (i > 0) {
+          pathRow.appendChild(h("span", { text: "›", style: "color:var(--ac-text-tertiary);" }));
+        }
+        pathRow.appendChild(h("span", { text: seg }));
+      });
+      block.appendChild(pathRow);
     }
+
+    // Состояние "РАЗНАЯ" — видимо только когда классификации различаются
+    if (!data.common) {
+      const diffRow = h("div", {
+        style: "margin-top:0.4rem;padding:0.35rem 0.5rem;background:var(--ac-warn-soft);" +
+               "border-radius:0.25rem;display:flex;align-items:center;gap:0.4rem;"
+      }, [
+        h("span", { text: "РАЗНАЯ", style: "color:var(--ac-warn);font-weight:700;font-size:0.72rem;letter-spacing:0.03em;" }),
+        h("span", { text: "(" + data.differing.length + " вариантов)", style: "color:var(--ac-text-secondary);font-size:0.7rem;" })
+      ]);
+      block.appendChild(diffRow);
+
+      const diffList = h("div", {
+        style: "margin-top:0.3rem;display:flex;flex-direction:column;gap:0.15rem;padding-left:0.9rem;"
+      });
+      data.differing.forEach(function (d) {
+        var val = d.classification || "";
+        var cnt = d.count || 0;
+        diffList.appendChild(h("div", { style: "font-size:0.72rem;color:var(--ac-text-secondary);" }, [
+          h("span", { text: val, style: "color:var(--ac-text-primary);font-weight:600;" }),
+          h("span", { text: "  —  " + cnt + " элем. из " + (d.total || 0) })
+        ]));
+      });
+      block.appendChild(diffList);
+    }
+
+    // Выбор классификации и «Применить ко всем» — показываем всегда (в т.ч. при
+    // единой классификации / одном выделенном элементе).
+    const options = uniqueClassificationOptions(data.options);
+    const tree = buildClassificationTree(options);
+    const initial = data.common ? data.commonPath.join("/") : "";
+
+    const applyRow = h("div", {
+      style: "margin-top:0.5rem;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:flex-start;"
+    });
+
+    let picker = null;
+    const applyBtn = h("button", {
+      text: "Применить ко всем",
+      style: "padding:0.3rem 0.6rem;font-size:0.75rem;border:none;border-radius:0.25rem;cursor:pointer;" +
+             "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
+      on: {
+        click: function () {
+          const value = picker ? picker.getValue() : null;
+          if (!value) return;
+          applyBtn.disabled = true;
+          applyBtn.textContent = "Применение…";
+          ACBridge.setClassificationForSelection(value).then(function () {
+            renderClassificationBlock(block); // перерисовать (в реале — уже единая классификация)
+          });
+        }
+      }
+    });
+    applyBtn.disabled = !options.length || !initial;
+
+    picker = buildClassificationPicker(applyRow, tree, initial, function () {
+      applyBtn.disabled = false;
+    });
+
+    if (!options.length) {
+      // Нет доступных классификаций — выводим пояснение вместо пустого дерева
+      const note = h("div", {
+        text: "Нет доступных классификаций",
+        style: "margin-top:0.25rem;font-size:0.7rem;color:var(--ac-text-tertiary);"
+      });
+      applyRow.appendChild(applyBtn);
+      block.appendChild(applyRow);
+      block.appendChild(note);
+    } else {
+      applyRow.appendChild(applyBtn);
+      block.appendChild(applyRow);
+    }
+  });
+}
 
 function renderFilterBlock(block, listBlock) {
   clear(block);
