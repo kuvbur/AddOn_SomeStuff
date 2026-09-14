@@ -10,7 +10,8 @@ UI вкладки «Монитор» — остаток работ. Работа
 ## План
 
 - [ ] #157 — 1.5 `GetFilterPresets` (пресеты фильтров в `SyncSettings.dat`, bump `PreferencesVersion = 5`)
-- [ ] #155 — 1.6 `ResetPropertyToDefault` (существующий issue, инлайн-функция моста, `ACAPI_CallUndoableCommand`)
+- [ ] #155 — 1.6 `ResetPropertyToDefault` (существующий issue, инлин-функция моста, `ACAPI_CallUndoableCommand`)
+- [x] #154 — `Sum_flag` фильтр в `Summ.cpp` (`Sum_GetElement`, обе ветви: `SUM_TO_INFO` и обычная), константа `SUMFLAG` в `Constants.hpp`
 - [ ] #158 — 1.7.1 кэш правил SomeStuff + фильтр списка свойств (baseline `clock()` → `DBprnt` до реализации)
 - [ ] #159 — 1.7.2 цветовая маркировка неактивных флагов
 - [ ] #160 — 1.7.3 pin свойств

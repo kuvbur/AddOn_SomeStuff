@@ -361,6 +361,7 @@ static const GS::UniString SYNCFLAG = "Sync_flag";                // Поле ф
 static const GS::UniString SYNCCORRECTFLAG = "Sync_correct_flag"; // Поле флага корректировки синхронизации
 static const GS::UniString SYNCCLASSFLAG = "Sync_class_flag";     // Поле флага синхронизации классов
 static const GS::UniString SYNCGUID = "Sync_GUID";                // Поле уникального идентификатора синхронизации
+static const GS::UniString SUMFLAG = "Sum_flag";                  // Поле флага суммирования
 
 // --- Шаблоны форматирования чисел по умолчанию ---
 static const GS::UniString DEFULTREALFSTRING = ".3m";  // Формат по умолчанию для вещественных чисел (3 знака)

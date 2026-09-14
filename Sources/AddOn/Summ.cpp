@@ -270,6 +270,23 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
             GetElementForPropertyDefinition (definitions, _guidArray);
             if (SumRule *rule = rules.GetPtr (definition.guid)) {
                 for (const auto &elemGuid : _guidArray) {
+                    // FIX (#154): Sum_flag — фильтр обработки элемента
+                    // по образцу GetElemStateReverse (для SUM_TO_INFO).
+                    GS::Array<API_PropertyDefinition> elemDefinitions = {};
+                    GSErrCode elemDefErr = ACAPI_Element_GetPropertyDefinitions (
+                        elemGuid, API_PropertyDefinitionFilter_UserDefined, elemDefinitions);
+                    bool skipElement = false;
+                    if (elemDefErr == NoError && !elemDefinitions.IsEmpty ()) {
+                        bool sumFlagFind = false;
+                        bool sumEnabled = GetElemStateReverse (elemGuid, elemDefinitions, SUMFLAG, sumFlagFind);
+                        if (!sumEnabled && sumFlagFind) {
+                            skipElement = true;
+                        }
+                    }
+                    if (skipElement) {
+                        rule->n_ignore += 1;
+                        continue;
+                    }
                     // Дописываем элемент в правило
                     rule->elemts.Push (elemGuid);
                     // Добавляем свойства для чтения в словарь
@@ -292,6 +309,27 @@ bool Sum_GetElement (const GS::Array<API_Guid> &guidArray,
                     if (!editable.Get (elemGuid)) {
                         rule->n_ignore += 1;
                         msg_rep ("GetSumRuleFromSelected", "Element not editable", NoError, elemGuid);
+                        continue;
+                    }
+                    // FIX (#154): Sum_flag — фильтр обработки элемента по
+                    // образцу GetElemStateReverse: если свойство есть — берём
+                    // статус из свойства, если статус не найден — обрабатываем.
+                    // Отключаем только при успешном чтении и явно переданном
+                    // значении false; ошибка чтения или отсутствие свойства —
+                    // элемент обрабатывается (safe default).
+                    GS::Array<API_PropertyDefinition> elemDefinitions = {};
+                    GSErrCode elemDefErr = ACAPI_Element_GetPropertyDefinitions (
+                        elemGuid, API_PropertyDefinitionFilter_UserDefined, elemDefinitions);
+                    bool skipElement = false;
+                    if (elemDefErr == NoError && !elemDefinitions.IsEmpty ()) {
+                        bool sumFlagFind = false;
+                        bool sumEnabled = GetElemStateReverse (elemGuid, elemDefinitions, SUMFLAG, sumFlagFind);
+                        if (!sumEnabled && sumFlagFind) {
+                            skipElement = true;
+                        }
+                    }
+                    if (skipElement) {
+                        rule->n_ignore += 1;
                         continue;
                     }
                     // Дописываем элемент в правило
