@@ -102,6 +102,15 @@ or touch unrelated ones. Never: `clean -fdx`, `commit --amend`, `rebase -i`,
 Never stage: `Build/`, `compile_commands.json`, `Build/LspCompileCommands/`, `Build/DevKit/`.
 Checkpoint mechanics = SOUL.md definition, no repo exceptions.
 
+### 11.1 Issues (GitHub)
+
+Every user wish (feature request) and every bug (found or fixed) → GitHub
+issue in `kuvbur/AddOn_SomeStuff` FIRST (`gh` CLI; workflow — skill
+`addon-somestuff-issues`). Then backlink in `IDEA.md` and
+`Reviews/*.tracker.csv` (column `issue`). Dedup check before create —
+existing issue may already cover the wish (comment there instead).
+Commit that closes the issue: `Refs: #N` in message.
+
 ## 12. IDEA.md
 
 Format/archival rules = SOUL.md.
