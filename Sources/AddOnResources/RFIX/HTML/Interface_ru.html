@@ -274,14 +274,29 @@ const ACBridge = (function () {
    * @returns {Promise<{label:string, query:string}[]>}
    */
   function getFilterPresets() {
-    return delay(40).then(function () {
-      return [
-        { label: "Все свойства", query: "" },
-        { label: "Только IFC", query: "/^IFC:/" },
-        { label: "Только геометрия", query: "/^(Coord|Geo):/" },
-        { label: "Незаполненные", query: "/пусто|empty/" }
-      ];
-    });
+    const fallback = [
+      { label: "Все свойства", query: "" },
+      { label: "Только IFC", query: "/^IFC:/" },
+      { label: "Только геометрия", query: "/^(Coord|Geo):/" },
+      { label: "Незаполненные", query: "/пусто|empty/" }
+    ];
+    try {
+      if (typeof window.ACAPI !== 'undefined' && window.ACAPI.GetFilterPresets) {
+        var result = window.ACAPI.GetFilterPresets();
+        var handleResult = function (data) {
+          var parsed = typeof data === 'string' ? JSON.parse(data) : data;
+          if (Array.isArray(parsed)) return parsed;
+          if (parsed && Array.isArray(parsed.presets)) return parsed.presets;
+          return fallback;
+        };
+        if (result && typeof result.then === 'function') {
+          return result.then(handleResult).catch(function () { return fallback; });
+        }
+        return Promise.resolve(handleResult(result));
+      }
+    } catch (e) {
+    }
+    return delay(40).then(function () { return fallback; });
   }
 
   /**

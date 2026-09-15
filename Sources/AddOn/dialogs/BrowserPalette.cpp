@@ -215,6 +215,31 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     DBprnt ("BrowserPalette::RegisterACAPIJavaScriptObject () — starting");
     DG::JSObject *jsACAPI = new DG::JSObject ("ACAPI");
 
+    jsACAPI->AddItem (new DG::JSFunction ("GetFilterPresets", [] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
+        try {
+            SyncSettings syncSettings;
+            LoadSyncSettingsFromPreferences (syncSettings, false);
+
+            GS::UniString jsonStr = "{\"presets\":[";
+            bool firstPreset = true;
+            for (const FilterPreset &preset : syncSettings.GetFilterPresets ()) {
+                if (!firstPreset)
+                    jsonStr += ",";
+                firstPreset = false;
+                jsonStr += GS::UniString ("{\"label\":\"") + EscapeJsonString (preset.label).ToCStr ().Get () +
+                           GS::UniString ("\",\"query\":\"") + EscapeJsonString (preset.query).ToCStr ().Get () +
+                           GS::UniString ("\"}");
+            }
+            jsonStr += "]}";
+            return new DG::JSValue (jsonStr);
+        } catch (const std::exception &e) {
+            DBprnt (GS::UniString ("GetFilterPresets: std::exception: ") + e.what ());
+        } catch (...) {
+            DBprnt ("GetFilterPresets: unknown exception");
+        }
+        return new DG::JSValue ("{\"presets\":[]}");
+    }));
+
     // Регистрируем функцию для получения свойств выделенных элементов (возвращает JSON-строку для обхода ограничений
     // pull-паттерна)
     jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [this] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {

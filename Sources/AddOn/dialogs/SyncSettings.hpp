@@ -13,6 +13,11 @@
 #include "MemoryOChannel.hpp"
 #include "Object.hpp"
 
+struct FilterPreset {
+    GS::UniString label;
+    GS::UniString query;
+};
+
 // --------------------------------------------------------------------
 // SyncSettings хранит флаги, определяющие поведение синхронизации и мониторинга.
 // Класс поддерживает сериализацию в память Archicad через Preferences и
@@ -78,7 +83,13 @@ class SyncSettings : public GS::Object {
     USize GetMaxSelectionCount () const;
     void SetMaxSelectionCount (USize value);
 
+    const GS::Array<FilterPreset> &GetFilterPresets () const;
+    void SetFilterPresets (const GS::Array<FilterPreset> &value);
+    static GS::Array<FilterPreset> CreateDefaultFilterPresets ();
+
   private:
+    void EnsureFilterPresets ();
+
     bool syncAll;
     bool syncMon;
     bool wallS;
@@ -89,6 +100,7 @@ class SyncSettings : public GS::Object {
     bool showpalette;
     bool catchSelectionChanges;
     USize maxSelectionCount;
+    GS::Array<FilterPreset> filterPresets;
 };
 
 #if defined(ServerMainVers_2500)

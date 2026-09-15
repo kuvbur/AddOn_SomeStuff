@@ -14,7 +14,7 @@
 #include "Location.hpp"
 #include "Name.hpp"
 
-static const Int32 PreferencesVersion = 5;
+static const Int32 PreferencesVersion = 6;
 
 GS::ClassInfo SyncSettings::classInfo ("SyncSettings",
                                        GS::Guid ("B45089A9-B372-460B-B145-80E6EBF107C3"),
@@ -28,7 +28,8 @@ GS::ClassInfo SyncSettings::classInfo ("SyncSettings",
 // --------------------------------------------------------------------
 SyncSettings::SyncSettings ()
     : syncAll (false), syncMon (false), wallS (true), widoS (true), objS (true), cwallS (true), logMon (false),
-      showpalette (false), catchSelectionChanges (true), maxSelectionCount (10) {}
+      showpalette (false), catchSelectionChanges (true), maxSelectionCount (10),
+      filterPresets (CreateDefaultFilterPresets ()) {}
 
 SyncSettings SyncSettings::CreateDefault () { return SyncSettings (); }
 
@@ -78,6 +79,27 @@ USize SyncSettings::GetMaxSelectionCount () const { return maxSelectionCount; }
 
 void SyncSettings::SetMaxSelectionCount (USize value) { maxSelectionCount = value; }
 
+const GS::Array<FilterPreset> &SyncSettings::GetFilterPresets () const { return filterPresets; }
+
+void SyncSettings::SetFilterPresets (const GS::Array<FilterPreset> &value) {
+    filterPresets = value;
+    EnsureFilterPresets ();
+}
+
+GS::Array<FilterPreset> SyncSettings::CreateDefaultFilterPresets () {
+    GS::Array<FilterPreset> presets;
+    presets.Push (FilterPreset{GS::UniString ("Все свойства"), GS::UniString ("")});
+    presets.Push (FilterPreset{GS::UniString ("Только IFC"), GS::UniString ("/^IFC:/")});
+    presets.Push (FilterPreset{GS::UniString ("Только геометрия"), GS::UniString ("/^(Coord|Geo):/")});
+    presets.Push (FilterPreset{GS::UniString ("Незаполненные"), GS::UniString ("/пусто|empty/")});
+    return presets;
+}
+
+void SyncSettings::EnsureFilterPresets () {
+    if (filterPresets.IsEmpty ())
+        filterPresets = CreateDefaultFilterPresets ();
+}
+
 // --------------------------------------------------------------------
 // Сериализация / десериализация.
 // --------------------------------------------------------------------
@@ -93,6 +115,17 @@ GSErrCode SyncSettings::Read (GS::IChannel &ic) {
     ic.Read (showpalette);
     ic.Read (catchSelectionChanges);
     ic.Read (maxSelectionCount);
+    USize filterPresetCount = 0;
+    ic.Read (filterPresetCount);
+    filterPresets.Clear ();
+    for (UIndex i = 0; i < filterPresetCount; ++i) {
+        FilterPreset preset;
+        ic.Read (preset.label);
+        ic.Read (preset.query);
+        filterPresets.Push (preset);
+    }
+    if (ic.GetInputStatus () == NoError)
+        EnsureFilterPresets ();
     return ic.GetInputStatus ();
 }
 
@@ -108,6 +141,11 @@ GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
     oc.Write (showpalette);
     oc.Write (catchSelectionChanges);
     oc.Write (maxSelectionCount);
+    oc.Write (filterPresets.GetSize ());
+    for (const FilterPreset &preset : filterPresets) {
+        oc.Write (preset.label);
+        oc.Write (preset.query);
+    }
     return oc.GetOutputStatus ();
 }
 
