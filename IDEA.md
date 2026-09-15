@@ -9,7 +9,7 @@ UI вкладки «Монитор» — остаток работ. Работа
 
 ## План
 
-- [ ] #157 — 1.5 `GetFilterPresets` (пресеты фильтров в `SyncSettings.dat`, bump `PreferencesVersion = 5`)
+- [x] #157 — 1.5 `GetFilterPresets` (пресеты фильтров в `SyncSettings.dat`, фактический bump `PreferencesVersion = 6`, т.к. `5` уже была в HEAD)
 - [ ] #155 — 1.6 `ResetPropertyToDefault` (существующий issue, инлин-функция моста, `ACAPI_CallUndoableCommand`)
 - [x] #154 — `Sum_flag` фильтр в `Summ.cpp` (`Sum_GetElement`, обе ветви: `SUM_TO_INFO` и обычная), константа `SUMFLAG` в `Constants.hpp`
 - [ ] #158 — 1.7.1 кэш правил SomeStuff + фильтр списка свойств (baseline `clock()` → `DBprnt` до реализации)
@@ -53,5 +53,8 @@ UI вкладки «Монитор» — остаток работ. Работа
 - **Снято автором (не фиксить)**: `Dimensions.cpp:158` `pen_original`; пересоздание элементов
   отделки в Roombook; `Sync.cpp:419-428` накопительный `epm`.
 
-## Last Checkpoint: 2a08586 backlog в issues #157-#171; правило issue-first (AGENTS.md 11.1)
+## Status: IN_PROGRESS
+## Last Completed: #157 — реальный `GetFilterPresets`: пресеты сериализуются в `SyncSettings.dat`, мост BrowserPalette отдаёт `{presets:[...]}`, HTML читает мост с fallback.
+## Next Step: #155 — 1.6 `ResetPropertyToDefault` (инлайн-функция моста, одна undo-область через `ACAPI_CallUndoableCommand`).
+## Last Checkpoint: aa4d833 `[#157] real filter presets bridge`
 ## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Sources/AddOn/TestFunc.cpp/.hpp, IDEA.md
