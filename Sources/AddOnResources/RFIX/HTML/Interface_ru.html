@@ -729,6 +729,15 @@ function renderPlaceholderTab(container) {
 function refreshSelectionInfoText(count) {
   var textEl = document.getElementById("selection-info-text");
   if (textEl) textEl.textContent = "Выделено элементов: " + count;
+  if (count === 0) {
+    // При пустом выделении C++ не вызывает renderPropertyList: сбрасываем список здесь.
+    const listBlock = document.getElementById("monitor-list-block");
+    if (listBlock) {
+      listBlock.monitorRequestId = (listBlock.monitorRequestId || 0) + 1;
+      listBlock.monitorGroups = [];
+      renderLoadedPropertyList(listBlock, []);
+    }
+  }
 }
 
 // Функция для ручного обновления (по клику на кнопку ↻)
@@ -1254,7 +1263,7 @@ function renderFilterBlock(block, listBlock) {
     on: {
       input: function () {
         STATE.monitorFilter = input.value;
-        renderPropertyList(listBlock, STATE.monitorFilter);
+        renderPropertyList(listBlock, STATE.monitorFilter, true);
       }
     }
   });
@@ -1270,7 +1279,7 @@ function renderFilterBlock(block, listBlock) {
     on: {
       input: function () {
         STATE.monitorValueFilter = valueInput.value;
-        renderPropertyList(listBlock, STATE.monitorFilter);
+        renderPropertyList(listBlock, STATE.monitorFilter, true);
       }
     }
   });
@@ -1304,7 +1313,7 @@ function renderFilterBlock(block, listBlock) {
                 input.value = p.query;
                 STATE.monitorFilter = p.query;
                 dropdown.style.display = "none";
-                renderPropertyList(listBlock, STATE.monitorFilter);
+                renderPropertyList(listBlock, STATE.monitorFilter, true);
               },
               mouseenter: function (e) { e.target.style.background = "var(--ac-bg-hover)"; },
               mouseleave: function (e) { e.target.style.background = "transparent"; }
@@ -1330,7 +1339,7 @@ function renderFilterBlock(block, listBlock) {
                 valueInput.value = p.query;
                 STATE.monitorValueFilter = p.query;
                 valueDropdown.style.display = "none";
-                renderPropertyList(listBlock, STATE.monitorFilter);
+                renderPropertyList(listBlock, STATE.monitorFilter, true);
               },
               mouseenter: function (e) { e.target.style.background = "var(--ac-bg-hover)"; },
               mouseleave: function (e) { e.target.style.background = "transparent"; }
@@ -1351,15 +1360,33 @@ function renderFilterBlock(block, listBlock) {
   block.appendChild(valueDropdown);
 }
 
-function renderPropertyList(listBlock, filterText) {
+function renderPropertyList(listBlock, filterText, localOnly) {
+  if (!listBlock) return;
+  if (localOnly === true) {
+    if (listBlock.monitorGroups) renderLoadedPropertyList(listBlock, listBlock.monitorGroups);
+    return;
+  }
+  // Новый запрос инвалидирует старые данные и запоздавшие ответы моста.
+  const requestId = (listBlock.monitorRequestId || 0) + 1;
+  listBlock.monitorRequestId = requestId;
+  listBlock.monitorGroups = null;
   clear(listBlock);
   listBlock.appendChild(h("div", { text: "Загрузка свойств…", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
 
-  // Use both name filter and value filter from STATE
+  ACBridge.getPropertiesList('').then(function (groups) {
+    if (listBlock.monitorRequestId !== requestId) return;
+    listBlock.monitorGroups = groups;
+    renderLoadedPropertyList(listBlock, groups);
+  });
+}
+
+function renderLoadedPropertyList(listBlock, loadedGroups) {
   const nameFilter = STATE.monitorFilter;
   const valueFilter = STATE.monitorValueFilter;
-
-  ACBridge.getPropertiesList(nameFilter).then(function (groups) {
+  // Фильтры заменяют массивы свойств; исходный полный список не изменяем.
+  let groups = loadedGroups.map(function (g) {
+    return { group: g.group, properties: g.properties.slice() };
+  });
           clear(listBlock);
           if (!groups.length) {
             listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
@@ -1411,7 +1438,7 @@ function renderPropertyList(listBlock, filterText) {
           click: function() {
             STATE.monitorGroupCollapse[groupName] = !STATE.monitorGroupCollapse[groupName];
             // Re-render the property list
-            renderPropertyList(listBlock, STATE.monitorFilter);
+            renderPropertyList(listBlock, STATE.monitorFilter, true);
           }
         }
       });
@@ -1432,7 +1459,6 @@ function renderPropertyList(listBlock, filterText) {
         });
       }
     });
-  });
 }
 
 function renderPropertyRow(prop) {
