@@ -94,6 +94,31 @@ function Write-Log {
 }
 
 
+function Write-AIStatus {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$State,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+
+        [ConsoleColor]$Color = [ConsoleColor]::Gray
+    )
+
+    Write-Log "AI_STATUS [$State] $Message" $Color
+}
+
+
+function Set-RunnerFailureReason {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Reason
+    )
+
+    $script:runnerFailureReason = $Reason
+}
+
+
 # ==============================================================================
 # 5. ARCHICAD PROCESS HELPERS
 # ==============================================================================
@@ -148,6 +173,59 @@ function Wait-ArchicadProcessesExit {
 
     $alive = @($ProcessIds | Where-Object { Test-ProcessExists -ProcessId $_ })
     return ($alive.Count -eq 0)
+}
+
+
+function Test-ArchicadProcessIsTestProject {
+    param (
+        [Parameter(Mandatory = $true)]
+        [System.Diagnostics.Process]$Process
+    )
+
+    return ($Process.MainWindowTitle -match "(?i)test")
+}
+
+
+function Test-ArchicadProcessesAreTestProjects {
+    param (
+        [Parameter(Mandatory = $true)]
+        [System.Diagnostics.Process[]]$Processes
+    )
+
+    foreach ($process in $Processes) {
+        Write-Log "Candidate Archicad process: PID=$($process.Id), Name=$($process.ProcessName), Window='$($process.MainWindowTitle)'" Yellow
+
+        if (-not (Test-ArchicadProcessIsTestProject -Process $process)) {
+            Set-RunnerFailureReason "non_test_archicad_process"
+            Write-AIStatus "SAFETY_BLOCK" "reason=non_test_archicad_process action=do_not_close_process pid=$($process.Id) name=$($process.ProcessName) window='$($process.MainWindowTitle)'" Red
+            Write-Log "Attempt to stop a non-test Archicad process. Do not keep trying; report that Archicad cannot be closed because a working project, not a test project, is open." Red
+            Write-Log "Refusing to stop PID=$($process.Id), Name=$($process.ProcessName), Window='$($process.MainWindowTitle)'" Red
+            return $false
+        }
+    }
+
+    return $true
+}
+
+
+function Test-SingleArchicadProcess {
+    param (
+        [Parameter(Mandatory = $true)]
+        [System.Diagnostics.Process[]]$Processes
+    )
+
+    if ($Processes.Count -le 1) {
+        return $true
+    }
+
+    Write-Log "Multiple Archicad processes detected. Refusing to stop any process automatically." Red
+    Set-RunnerFailureReason "multiple_archicad_processes"
+    Write-AIStatus "SAFETY_BLOCK" "reason=multiple_archicad_processes action=do_not_close_any_process count=$($Processes.Count)" Red
+    foreach ($process in $Processes) {
+        Write-Log "Detected Archicad process: PID=$($process.Id), Name=$($process.ProcessName), Window='$($process.MainWindowTitle)'" Red
+    }
+
+    return $false
 }
 
 
@@ -231,11 +309,13 @@ function Stop-TrackedArchicad {
     }
 
     Write-Log "Stopping tracked Archicad process(es). Reason: $Reason" Yellow
+    Write-AIStatus "CLOSING_ARCHICAD" "action=close_tracked_processes reason='$Reason' count=$($ProcessIds.Count)" Yellow
 
     # 8.1. Graceful shutdown
     foreach ($processId in $ProcessIds) {
         $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
         if (-not $process) { continue }
+        Write-Log "Stopping PID=$($process.Id), Name=$($process.ProcessName), Window='$($process.MainWindowTitle)'" Yellow
         try {
             if ($process.MainWindowHandle -ne 0) {
                 $null = $process.CloseMainWindow()
@@ -268,6 +348,8 @@ function Stop-TrackedArchicad {
     # 8.5. Диагностика ошибок
     $alive = @($ProcessIds | Where-Object { Test-ProcessExists -ProcessId $_ })
     if ($alive.Count -gt 0) {
+        Set-RunnerFailureReason "archicad_shutdown_failed"
+        Write-AIStatus "FAILED" "reason=archicad_shutdown_failed action=manual_close_required alive_count=$($alive.Count)" Red
         Write-Log "CRITICAL: tracked Archicad process(es) are still running." Red
         foreach ($processId in $alive) {
             $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
@@ -294,12 +376,23 @@ function Stop-ExistingArchicad {
     }
 
     if (-not $killExistingArchicad) {
+        Set-RunnerFailureReason "automatic_archicad_termination_disabled"
+        Write-AIStatus "SAFETY_BLOCK" "reason=automatic_archicad_termination_disabled action=manual_close_required" Red
         Write-Log "Existing Archicad detected, but automatic termination is disabled." Red
         return $false
     }
 
     $ids = @($processes | Select-Object -ExpandProperty Id)
     Write-Log "Found $($ids.Count) existing Archicad process(es)." Yellow
+    Write-AIStatus "CHECK_EXISTING_ARCHICAD" "found=$($ids.Count) action=validate_before_closing" Yellow
+
+    if (-not (Test-SingleArchicadProcess -Processes $processes)) {
+        return $false
+    }
+
+    if (-not (Test-ArchicadProcessesAreTestProjects -Processes $processes)) {
+        return $false
+    }
 
     if (-not (Stop-TrackedArchicad -ProcessIds $ids -Reason "pre-test cleanup")) {
         return $false
@@ -311,6 +404,14 @@ function Stop-ExistingArchicad {
     if ($remaining.Count -gt 0) {
         Write-Log "Additional Archicad process(es) detected after shutdown." Yellow
         $remainingIds = @($remaining | Select-Object -ExpandProperty Id)
+
+        if (-not (Test-SingleArchicadProcess -Processes $remaining)) {
+            return $false
+        }
+
+        if (-not (Test-ArchicadProcessesAreTestProjects -Processes $remaining)) {
+            return $false
+        }
 
         if (-not (Stop-TrackedArchicad -ProcessIds $remainingIds -Reason "pre-test final cleanup")) {
             return $false
@@ -507,6 +608,7 @@ $archicadStarted     = $false
 $trackedArchicadPids = @()
 $testResultStatus    = "NOT_RUN"
 $buildSucceeded      = $false
+$runnerFailureReason = "none"
 
 
 # ==============================================================================
@@ -514,12 +616,16 @@ $buildSucceeded      = $false
 # ==============================================================================
 
 try {
+    Write-AIStatus "START" "task=restart_archicad_for_test action=validate_environment_then_close_test_archicad_build_launch_and_wait_for_results" Cyan
+
     # CONFIG
     if (-not (Test-Path -LiteralPath $configPath)) {
+        Set-RunnerFailureReason "config_json_not_found"
         throw "config.json not found: $configPath"
     }
 
     if (-not (Test-Path -LiteralPath $buildScriptPath)) {
+        Set-RunnerFailureReason "build_script_not_found"
         throw "BuildAddOn.py not found: $buildScriptPath"
     }
 
@@ -536,6 +642,7 @@ try {
 
     if (-not (Test-Path -LiteralPath $archicadExePath)) {
         $runnerExitCode = $EXIT_CONFIG_ERROR
+        Set-RunnerFailureReason "archicad_exe_not_found"
         throw "ARCHICAD.exe not found at path: '$archicadExePath'. Check 'archicadExePath' or 'acVersion' in config.json."
     }
 
@@ -549,32 +656,42 @@ try {
     $lckFilePath = "$filePath.lck"
 
     if (-not (Test-Path -LiteralPath $filePath)) {
+        Set-RunnerFailureReason "test_pln_not_found"
         throw "Test PLN not found: $filePath"
     }
     Write-Log "Results:       $testResultsPath" Gray
+    Write-AIStatus "CONFIG_OK" "ac_version=$acVersion archicad_exe='$archicadExePath' test_file='$filePath' results_file='$testResultsPath'" Green
 
     # PREVIOUS ARCHICAD
     if (-not (Stop-ExistingArchicad)) {
         $runnerExitCode = $EXIT_PREVIOUS_AC_FAILED
+        if ($runnerFailureReason -eq "none") {
+            Set-RunnerFailureReason "previous_archicad_not_terminated"
+        }
         throw "Unable to guarantee that previous Archicad processes are terminated."
     }
 
     Start-Sleep -Seconds $postCloseCleanupPauseSec
 
     # CLEANUP
+        Write-AIStatus "CLEANUP" "action=remove_lock_and_old_results lock_file='$lckFilePath' results_file='$testResultsPath'" Cyan
         if (-not (Remove-FileWithRetry -Path $lckFilePath -Retries $fileDeleteRetries)) {
             $runnerExitCode = $EXIT_CLEANUP_FAILED
+            Set-RunnerFailureReason "unable_to_remove_archicad_lock_file"
             throw "Unable to remove Archicad lock file."
         }
 
         if (-not (Remove-FileWithRetry -Path $testResultsPath -Retries $fileDeleteRetries)) {
             $runnerExitCode = $EXIT_CLEANUP_FAILED
+            Set-RunnerFailureReason "unable_to_remove_old_test_results"
             throw "Unable to remove old test_results.txt."
         }
 
         # HTML VALIDATION (ДО БИЛДА)
+        Write-AIStatus "HTML_VALIDATION" "action=run_htmlhint_and_custom_verify before_build=true" Cyan
         if (-not (Test-HtmlValidation -ProjectRoot $projectRoot)) {
             $runnerExitCode = $EXIT_HTML_VALIDATION_FAILED
+            Set-RunnerFailureReason "html_validation_failed"
             throw "HTML validation failed. Build aborted."
         }
 
@@ -586,6 +703,7 @@ try {
 
             # BUILD
             $previousLocation = Get-Location
+            Write-AIStatus "BUILD" "action=run_build_script ac_version=$acVersion" Cyan
 
             try {
         Set-Location -LiteralPath $projectRoot
@@ -595,6 +713,7 @@ try {
     catch {
         Set-Location -LiteralPath $previousLocation
         $runnerExitCode = $EXIT_BUILD_FAILED
+        Set-RunnerFailureReason "build_process_failed_to_start"
         throw "Build process failed to start: $($_.Exception.Message)"
     }
 
@@ -604,17 +723,20 @@ try {
 
     if ($buildExitCode -ne 0) {
         $runnerExitCode = $EXIT_BUILD_FAILED
+        Set-RunnerFailureReason "build_failed_exit_code_$buildExitCode"
         throw "Build failed. Python exit code: $buildExitCode"
     }
 
     $buildOutputText = $buildOutput -join "`n"
     if ($buildOutputText -match "Failed to build project") {
         $runnerExitCode = $EXIT_BUILD_FAILED
+        Set-RunnerFailureReason "build_script_reported_failure"
         throw "Build script reported 'Failed to build project'."
     }
 
     $buildSucceeded = $true
     Write-Log "Build completed successfully." Green
+    Write-AIStatus "BUILD_OK" "build_succeeded=true output_addon_expected=true" Green
 
     # ARCHICAD START
     $pidsBefore = @(Get-ArchicadProcessIds)
@@ -627,6 +749,7 @@ try {
         "-DISABLERECOVERYDIALOG"
     )
 
+    Write-AIStatus "LAUNCH_ARCHICAD" "action=start_archicad exe='$archicadExePath' file='$filePath'" Cyan
     $startedProcess = Start-Process -FilePath $archicadExePath -ArgumentList $acArgs -PassThru
     Write-Log "Waiting for Archicad startup (timeout ${archicadLaunchTimeoutSec}s)..." Cyan
 
@@ -634,11 +757,13 @@ try {
 
     if ($newProcesses.Count -eq 0) {
         $runnerExitCode = $EXIT_AC_START_FAILED
+        Set-RunnerFailureReason "archicad_process_not_detected_after_launch"
         throw "Archicad process was not detected after launch."
     }
 
     $trackedArchicadPids = @($newProcesses | Select-Object -ExpandProperty Id)
     $archicadStarted     = $true
+    Write-AIStatus "ARCHICAD_STARTED" "tracked_pids=$($trackedArchicadPids -join ',') action=wait_for_test_results" Green
 
     # TEST WAITING
     Write-Log "Waiting for test_results.txt (timeout ${testResultTimeoutSec}s)..." Cyan
@@ -654,6 +779,7 @@ try {
         $aliveTracked = @($trackedArchicadPids | Where-Object { Test-ProcessExists -ProcessId $_ })
         if ($aliveTracked.Count -eq 0) {
             $runnerExitCode = $EXIT_RUNTIME_ERROR
+            Set-RunnerFailureReason "archicad_terminated_before_test_results"
             throw "Tracked Archicad process terminated unexpectedly before test_results.txt was created."
         }
 
@@ -664,6 +790,7 @@ try {
     if (-not (Test-Path -LiteralPath $testResultsPath)) {
         $testResultStatus = "TIMEOUT"
         $runnerExitCode   = $EXIT_TEST_TIMEOUT
+        Set-RunnerFailureReason "test_results_timeout"
         throw "test_results.txt was not created within $testResultTimeoutSec seconds."
     }
 
@@ -680,16 +807,21 @@ try {
     switch ($testResultStatus) {
         "PASSED" {
             Write-Log "Automated tests: PASSED." Green
+            Write-AIStatus "TESTS_OK" "status=PASSED source='$testResultsPath'" Green
         }
         "FAILED" {
             Write-Log "Automated tests: FAILED." Red
             $runnerExitCode = $EXIT_TESTS_FAILED
+            Set-RunnerFailureReason "automated_tests_failed"
+            Write-AIStatus "TESTS_FAILED" "status=FAILED source='$testResultsPath'" Red
         }
         "UNKNOWN" {
             Write-Log "Test result file exists, but its status is not recognized." Yellow
+            Write-AIStatus "TESTS_UNKNOWN" "status=UNKNOWN source='$testResultsPath' action=manual_log_review_recommended" Yellow
         }
         "ERROR" {
             $runnerExitCode = $EXIT_RUNTIME_ERROR
+            Set-RunnerFailureReason "unable_to_parse_test_results"
             throw "Unable to parse test_results.txt."
         }
     }
@@ -699,6 +831,7 @@ try {
     # =================================================================
     if ($testResultStatus -eq "PASSED" -or $testResultStatus -eq "UNKNOWN") {
         Write-Log "Starting JSON commands testing..." Cyan
+        Write-AIStatus "JSON_TESTS" "action=run_optional_json_command_tests if_script_exists=true" Cyan
         
         # Ждём инициализации PropertyCache
         Write-Log "Waiting 15 seconds for PropertyCache initialization..." Yellow
@@ -717,17 +850,25 @@ try {
             
             if ($jsonTestExitCode -eq 0) {
                 Write-Log "JSON commands tests: PASSED." Green
+                Write-AIStatus "JSON_TESTS_OK" "status=PASSED" Green
             } else {
                 Write-Log "JSON commands tests: FAILED (exit code: $jsonTestExitCode)." Red
                 $runnerExitCode = $EXIT_TESTS_FAILED
+                Set-RunnerFailureReason "json_commands_tests_failed_exit_code_$jsonTestExitCode"
+                Write-AIStatus "JSON_TESTS_FAILED" "status=FAILED exit_code=$jsonTestExitCode" Red
             }
         } else {
             Write-Log "JSON test script not found: $jsonTestScript" Yellow
+            Write-AIStatus "JSON_TESTS_SKIPPED" "reason=script_not_found path='$jsonTestScript'" Yellow
         }
     }
 }
 catch {
     Write-Log "RUNNER ERROR: $($_.Exception.Message)" Red
+    if ($runnerFailureReason -eq "none") {
+        Set-RunnerFailureReason "exception_$($_.Exception.GetType().Name)"
+    }
+    Write-AIStatus "ERROR" "reason=$runnerFailureReason message='$($_.Exception.Message)'" Red
     if ($runnerExitCode -eq $EXIT_SUCCESS) {
         $runnerExitCode = $EXIT_RUNTIME_ERROR
     }
@@ -740,21 +881,28 @@ catch {
 
 Write-Host ""
 
+$archicadProcessCount = @(Get-ArchicadProcesses).Count
+$archicadFinalState = if ($archicadProcessCount -gt 0) { "running" } else { "not_running" }
+
 if ($runnerExitCode -eq $EXIT_SUCCESS) {
+    Write-AIStatus "DONE" "reason=completed build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState" Green
+    Write-Log "AI_RESULT status=success exit_code=0 reason=completed build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState" Green
     Write-Log "==================================================" Green
     Write-Log "AUTOMATED TEST RUNNER: SUCCESS" Green
     Write-Log "Build:    $buildSucceeded" Green
     Write-Log "Tests:    $testResultStatus" Green
-    Write-Log "Archicad: running" Green
+    Write-Log "Archicad: $archicadFinalState" Green
     Write-Log "Exit:     0" Green
     Write-Log "==================================================" Green
 } else {
+    Write-AIStatus "FAILED" "reason=$runnerFailureReason build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState exit_code=$runnerExitCode" Red
+    Write-Log "AI_RESULT status=failed exit_code=$runnerExitCode reason=$runnerFailureReason build=$buildSucceeded tests=$testResultStatus archicad=$archicadFinalState" Red
     Write-Log "==================================================" Red
     Write-Log "AUTOMATED TEST RUNNER: FAILED" Red
     Write-Log "Exit code: $runnerExitCode" Red
     Write-Log "Build:    $buildSucceeded" Red
     Write-Log "Tests:    $testResultStatus" Red
-    Write-Log "Archicad: running" Yellow
+    Write-Log "Archicad: $archicadFinalState" Yellow
     Write-Log "==================================================" Red
 }
 
