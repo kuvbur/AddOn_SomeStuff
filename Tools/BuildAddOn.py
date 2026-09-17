@@ -12,6 +12,15 @@ import zipfile
 import requests
 API_ENDPOINT = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={}'
 
+
+def AIStatus(state, message):
+    print(f'AI_BUILD_STATUS [{state}] {message}', flush=True)
+
+
+def AIResult(status, message):
+    print(f'AI_BUILD_RESULT status={status} {message}', flush=True)
+
+
 def GetLspGenerationParams(workspaceRootFolder, buildPath, devKitFolder, languageCode, optionalParams):
     if shutil.which('clang-cl') is None:
         raise Exception(
@@ -44,6 +53,7 @@ def GetLspGenerationParams(workspaceRootFolder, buildPath, devKitFolder, languag
 
 
 def GenerateCompileCommands(configData, workspaceRootFolder, buildFolder, devKitFolderList):
+    AIStatus('LSP_START', 'mode=lsp action=generate_compile_commands')
     if len(devKitFolderList) != 1:
         raise Exception(
             'Specify exactly one Archicad version with -v for --lsp mode '
@@ -68,11 +78,13 @@ def GenerateCompileCommands(configData, workspaceRootFolder, buildFolder, devKit
 
     result = subprocess.call(lspParams)
     if result != 0:
+        AIStatus('LSP_FAILED', f'reason=cmake_failed exit_code={result} build_path="{buildPath}"')
         raise Exception('Failed to generate compile_commands.json!')
 
     generated = buildPath / 'compile_commands.json'
     target = workspaceRootFolder / 'compile_commands.json'
     shutil.copy(generated, target)
+    AIStatus('LSP_OK', f'generated="{generated}" copied_to="{target}"')
     print(f'compile_commands.json copied to {target}')
 
 def _extract_filename_yadisk_link(direct_link):
@@ -83,6 +95,7 @@ def _extract_filename_yadisk_link(direct_link):
 
 
 def DownloadFromYadisk(url, dest):
+    AIStatus('DOWNLOAD_DEVKIT', f'source=yadisk destination="{dest}"')
     pk_request = requests.get(API_ENDPOINT.format(url))
     direct_link = pk_request.json().get('href')
     if direct_link:
@@ -92,8 +105,10 @@ def DownloadFromYadisk(url, dest):
         with open(filePath, 'wb') as out_file:
             out_file.write(download.content)
         print('Downloaded "{}" to "{}"'.format(url, filePath))
+        AIStatus('DOWNLOAD_DEVKIT_OK', f'file="{filePath}"')
         return filePath
     else:
+        AIStatus('DOWNLOAD_DEVKIT_FAILED', f'source=yadisk url="{url}"')
         print('Failed to download "{}"'.format(url))
         return None
 
@@ -128,6 +143,7 @@ def ParseArguments():
 
 
 def PrepareParameters(args):
+    AIStatus('PREPARE_PARAMETERS', 'action=read_config_and_resolve_versions')
     # Check platform operating system
     platformName = None
     if platform.system() == 'Windows':
@@ -165,10 +181,16 @@ def PrepareParameters(args):
                 if lang not in configLangUpper:
                     raise Exception('Language not supported!')
 
+    AIStatus(
+        'PARAMETERS_OK',
+        f'platform={platformName} addon={addOnName} versions={",".join(acVersionList)} '
+        f'release={args.release} package={args.package} lsp={args.lsp}'
+    )
     return [configData, platformName, addOnName, acVersionList, languageList]
 
 
 def PrepareDirectories(args, configData, platformName, addOnName, acVersionList):
+    AIStatus('PREPARE_DIRECTORIES', 'action=prepare_build_package_and_devkit_paths')
     # Create directory for Build and Package
     workspaceRootFolder = pathlib.Path(
         __file__).parent.absolute().parent.absolute()
@@ -208,6 +230,11 @@ def PrepareDirectories(args, configData, platformName, addOnName, acVersionList)
             else:
                 raise Exception('APIDevKit download link not provided!')
 
+    AIStatus(
+        'DIRECTORIES_OK',
+        f'workspace="{workspaceRootFolder}" build="{buildFolder}" '
+        f'devkits={",".join(devKitFolderList.keys())}'
+    )
     return [workspaceRootFolder, buildFolder, packageRootFolder, devKitFolderList]
 
 
@@ -219,10 +246,13 @@ def DownloadAndUnzip(url, dest):
         fileName = url.split('/')[-1]
         filePath = pathlib.Path(dest, fileName)
         if filePath.exists():
+            AIStatus('DEVKIT_EXISTS', f'file="{filePath}" action=skip_download')
             return
+        AIStatus('DOWNLOAD_DEVKIT', f'file="{fileName}" destination="{dest}"')
         print(f'Downloading {fileName}')
         urllib.request.urlretrieve(url, filePath)
 
+    AIStatus('UNZIP_DEVKIT', f'file="{fileName}" destination="{dest}"')
     print(f'Unzipping {fileName}')
     if platform.system() == 'Windows':
         with zipfile.ZipFile(filePath, 'r') as zip:
@@ -235,6 +265,7 @@ def DownloadAndUnzip(url, dest):
 
 
 def GetInstalledVisualStudioGenerator():
+    AIStatus('DETECT_VISUAL_STUDIO', 'action=run_vswhere')
     vsWherePath = pathlib.Path(
         os.environ["ProgramFiles(x86)"]) / 'Microsoft Visual Studio' / 'Installer' / 'vswhere.exe'
     if not vsWherePath.exists():
@@ -246,10 +277,13 @@ def GetInstalledVisualStudioGenerator():
         raise Exception('No installed Visual Studio detected!')
     vsVersion = vsWhereOutput[0]['installationVersion'].split('.')[0]
     if vsVersion == '18':
+        AIStatus('VISUAL_STUDIO_OK', 'generator="Visual Studio 18 2026"')
         return 'Visual Studio 18 2026'
     if vsVersion == '17':
+        AIStatus('VISUAL_STUDIO_OK', 'generator="Visual Studio 17 2022"')
         return 'Visual Studio 17 2022'
     elif vsVersion == '16':
+        AIStatus('VISUAL_STUDIO_OK', 'generator="Visual Studio 16 2019"')
         return 'Visual Studio 16 2019'
     else:
         raise Exception('Installed Visual Studio version not supported!')
@@ -308,9 +342,22 @@ def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKi
     # Add params to configure cmake
     projGenParams = GetProjectGenerationParams(
         workspaceRootFolder, buildPath, platformName, devKitFolder, version, languageCode, optionalParams)
+    AIStatus(
+        'CMAKE_CONFIGURE',
+        f'version={version} configuration={configuration} language={languageCode or "default"} '
+        f'build_path="{buildPath}" devkit="{devKitFolder}"'
+    )
     projGenResult = subprocess.call(projGenParams)
     if projGenResult != 0:
-        raise Exception('Failed to generate project!')
+        AIStatus(
+            'CMAKE_CONFIGURE_FAILED',
+            f'version={version} configuration={configuration} exit_code={projGenResult} build_path="{buildPath}"'
+        )
+        raise Exception(
+            f'CMake configure failed for Archicad {version}, configuration {configuration}. '
+            f'Build path: {buildPath}. Check the preceding CMake output for the exact reason.'
+        )
+    AIStatus('CMAKE_CONFIGURE_OK', f'version={version} configuration={configuration} build_path="{buildPath}"')
 
     # Add params to build AddOn
     buildParams = [
@@ -318,14 +365,30 @@ def BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder, devKi
         '--build', str(buildPath),
         '--config', configuration
     ]
+    AIStatus(
+        'CMAKE_BUILD',
+        f'version={version} configuration={configuration} language={languageCode or "default"} build_path="{buildPath}"'
+    )
     buildResult = subprocess.call(buildParams)
     if configuration == 'Debug':
+        testPlnDestination = buildPath / f'test_{version}.pln'
+        AIStatus('COPY_TEST_PLN', f'version={version} destination="{testPlnDestination}"')
         shutil.copy(
             workspaceRootFolder / f'Test_file/test_{version}.pln',
-            buildPath / f'test_{version}.pln',
+            testPlnDestination,
         )
     if buildResult != 0:
-        raise Exception('Failed to build project!')
+        AIStatus(
+            'CMAKE_BUILD_FAILED',
+            f'version={version} configuration={configuration} exit_code={buildResult} '
+            f'build_path="{buildPath}" hint="inspect_previous_compiler_or_linker_output"'
+        )
+        raise Exception(
+            f'CMake build failed for Archicad {version}, configuration {configuration}. '
+            f'Build path: {buildPath}. Inspect the preceding compiler/linker output for the exact error; '
+            'if it contains LNK1168 for the .apx file, close Archicad because it is probably locking the add-on.'
+        )
+    AIStatus('CMAKE_BUILD_OK', f'version={version} configuration={configuration} build_path="{buildPath}"')
 
 
 def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolder, buildFolder, devKitFolderList):
@@ -337,14 +400,17 @@ def BuildAddOns(args, configData, platformName, languageList, workspaceRootFolde
     try:
         for version in devKitFolderList:
             devKitFolder = devKitFolderList[version]
+            AIStatus('VERSION_START', f'version={version} devkit="{devKitFolder}" release={args.release}')
             if args.release is True:
                 for languageCode in languageList:
+                    AIStatus('LANGUAGE_START', f'version={version} language={languageCode}')
                     BuildAddOn(configData, platformName, workspaceRootFolder, buildFolder,
                                devKitFolder, version, 'RelWithDebInfo', languageCode)
 
             else:
                 BuildAddOn(configData, platformName, workspaceRootFolder,
                            buildFolder, devKitFolder, version, 'Debug')
+            AIStatus('VERSION_OK', f'version={version}')
 
     except Exception as e:
         raise e
@@ -372,6 +438,11 @@ def GetSubVersion(sourceFolder):
 
 
 def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, platformName, configuration, languageCode=None, isRelease=False):
+    AIStatus(
+        'PACKAGE_COPY',
+        f'version={version} configuration={configuration} language={languageCode or "default"} '
+        f'package_root="{packageRootFolder}"'
+    )
     packageFolder = packageRootFolder / version
     sourceFolder = buildFolder / addOnName / version
     if languageCode is not None:
@@ -405,6 +476,7 @@ def CopyResultToPackage(packageRootFolder, buildFolder, version, addOnName, plat
 
 # Zip packages
 def PackageAddOns(args, addOnName, platformName, acVersionList, languageList, buildFolder, packageRootFolder):
+    AIStatus('PACKAGE_START', f'versions={",".join(acVersionList)} package_root="{packageRootFolder}"')
     # Check7ZInstallation()
     for version in acVersionList:
         if args.release:
@@ -420,6 +492,7 @@ def PackageAddOns(args, addOnName, platformName, acVersionList, languageList, bu
 
 def Main():
     try:
+        AIStatus('START', 'script=BuildAddOn.py action=configure_build_optional_package_or_lsp')
         args = ParseArguments()
 
         [configData, platformName, addOnName, acVersionList,
@@ -432,6 +505,7 @@ def Main():
         if args.lsp:
             GenerateCompileCommands(configData, workspaceRootFolder, buildFolder, devKitFolderList)
             print('LSP config generated!')
+            AIResult('success', f'mode=lsp versions={",".join(devKitFolderList.keys())}')
             sys.exit(0)
 
         BuildAddOns(args, configData, platformName, languageList,
@@ -440,10 +514,16 @@ def Main():
             PackageAddOns(args, addOnName, platformName, acVersionList,
                           languageList, buildFolder, packageRootFolder)
         print('Build succeeded!')
+        AIResult(
+            'success',
+            f'mode=build versions={",".join(devKitFolderList.keys())} '
+            f'release={args.release} package={args.package}'
+        )
         sys.exit(0)
 
     except Exception as e:
         print(e)
+        AIResult('failed', f'reason="{type(e).__name__}" message="{e}"')
         sys.exit(1)
 
 

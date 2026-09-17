@@ -76,12 +76,15 @@ endfunction ()
 
 function (DetectACVersion devKitDir acVersion)
 
+    message (STATUS "AI_CMAKE_STATUS [DETECT_AC_VERSION] devkit='${devKitDir}'")
     set (ACAPIncFileLocation ${devKitDir}/Inc/ACAPinc.h)
     if (EXISTS ${ACAPIncFileLocation})
         file (READ ${ACAPIncFileLocation} ACAPIncContent)
         string (REGEX MATCHALL "#define[ \t]+ServerMainVers_([0-9][0-9])" VersionList ${ACAPIncContent})
         set (${acVersion} ${CMAKE_MATCH_1} PARENT_SCOPE)
+        message (STATUS "AI_CMAKE_STATUS [DETECT_AC_VERSION_OK] version='${CMAKE_MATCH_1}' header='${ACAPIncFileLocation}'")
     else ()
+        message (STATUS "AI_CMAKE_STATUS [DETECT_AC_VERSION_FAILED] reason='ACAPinc.h not found' header='${ACAPIncFileLocation}'")
         message (FATAL_ERROR "Failed to detect Archicad version, please check the value of the AC_API_DEVKIT_DIR variable.")
     endif ()
 
@@ -89,6 +92,7 @@ endfunction ()
 
 function (LinkGSLibrariesToProject acVersion devKitDir addOnName)
 
+    message (STATUS "AI_CMAKE_STATUS [LINK_GS_LIBRARIES] addon='${addOnName}' ac_version='${acVersion}' devkit='${devKitDir}'")
     if (WIN32)
         set_target_properties(${addOnName} PROPERTIES
         VS_DEBUGGER_WORKING_DIRECTORY "$(ProjectDir)"
@@ -136,6 +140,7 @@ endfunction ()
 
 function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder addOnResourcesFolder addOnLanguage)
 
+    message (STATUS "AI_CMAKE_STATUS [GENERATE_ADDON_PROJECT] addon='${addOnName}' ac_version='${acVersion}' language='${addOnLanguage}' sources='${addOnSourcesFolder}' resources='${addOnResourcesFolder}'")
     find_package (Python COMPONENTS Interpreter)
 
     set (ResourceObjectsDir ${CMAKE_BINARY_DIR}/ResourceObjects)
@@ -168,7 +173,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         add_custom_command (
             OUTPUT ${ResourceStampFile}
             DEPENDS ${AddOnResourceFiles} ${AddOnImageFiles}
-            COMMENT "Compiling resources..."
+            COMMENT "AI_CMAKE_STATUS [COMPILE_RESOURCES] platform='WIN' addon='${addOnName}' language='${addOnLanguage}'"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${ResourceObjectsDir}"
             COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/CompileResources.py" "${addOnLanguage}" "${devKitDir}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${ResourceObjectsDir}/${addOnName}.res"
             COMMAND ${CMAKE_COMMAND} -E touch ${ResourceStampFile}
@@ -177,7 +182,7 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
         add_custom_command (
             OUTPUT ${ResourceStampFile}
             DEPENDS ${AddOnResourceFiles} ${AddOnImageFiles}
-            COMMENT "Compiling resources..."
+            COMMENT "AI_CMAKE_STATUS [COMPILE_RESOURCES] platform='MAC' addon='${addOnName}' language='${addOnLanguage}'"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${ResourceObjectsDir}"
             COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/CompileResources.py" "${addOnLanguage}" "${devKitDir}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${addOnName}.bundle/Contents/Resources"
             COMMAND ${CMAKE_COMMAND} -E copy "${devKitDir}/Inc/PkgInfo" "${CMAKE_BINARY_DIR}/$<CONFIG>/${addOnName}.bundle/Contents/PkgInfo"
@@ -273,5 +278,6 @@ function (GenerateAddOnProject acVersion devKitDir addOnName addOnSourcesFolder 
 
     set_source_files_properties (${AddOnSourceFiles} PROPERTIES LANGUAGE CXX)
     SetCompilerOptions (${addOnName} ${acVersion})
+    message (STATUS "AI_CMAKE_STATUS [GENERATE_ADDON_PROJECT_OK] addon='${addOnName}' ac_version='${acVersion}' language='${addOnLanguage}'")
 
 endfunction ()
