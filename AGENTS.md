@@ -1,6 +1,6 @@
 # AGENTS.md — AddOn_SomeStuff
 
-Repo rules for AddOn_SomeStuff. `SOUL.md` = global behavior, read first — this file doesn't repeat it.
+Repo rules for AddOn_SomeStuff. Global Codex behavior is defined outside the repository; this file contains only project-specific rules and does not repeat global instructions.
 
 ## 1. Project
 
@@ -30,28 +30,92 @@ IDEA.md                         Multi-session task state
 ## 3. Workflow
 
 ```
-OpenViking → Sources/AddOn/ only → determine AC version(s) →
-ACAPI_* → LightRAG → root cause → minimal change → clang-format →
-LSP → Build → Runtime (as needed) → git diff → checkpoint → save memory → answer
+IDEA.md → repo knowledge/landmines → Sources/AddOn/ only →
+determine AC version(s) → verify SDK/API → root cause → minimal change →
+clang-format → LSP → Build → Runtime (as needed) → git diff →
+checkpoint → update durable knowledge if needed → answer
 ```
 
-## 4. OpenViking
+## 4. Codex Environment / Project Knowledge
 
-Mandatory, no fallback tool — if unavailable, follow SOUL.md's "tool
-unavailable" rule (say so, fall to source priority, `not verified`).
-Search before: errors, non-trivial bugs, unfamiliar symbols, `ACAPI_*`
-calls, architecture decisions. Save conclusions after non-trivial fixes.
+OpenViking is not available in the Codex runtime used for this repository.
+Do not search for it, request it, or treat its absence as a blocker.
+
+Before investigating errors, non-trivial bugs, unfamiliar symbols,
+`ACAPI_*` calls, or architecture decisions:
+
+1. Read the active state in `IDEA.md`.
+2. Check relevant landmines/constraints in this `AGENTS.md`.
+3. Inspect the actual source and relevant Git history when useful.
+4. Use global Codex engineering memory according to the global instructions.
+
+Project-specific durable findings that outlive the active task belong in
+the appropriate landmine/architecture section of this file. Current task
+state belongs in `IDEA.md`.
 
 ## 5. C++ Navigation
 
-OpenViking → Clangd MCP (locations/defs/refs) → LightRAG (SDK/arch
-context). Only inside `Sources/AddOn/`. Can't establish it → `not verified`, don't guess.
+Use Clangd MCP for definitions/references/locations, then targeted source
+inspection inside `Sources/AddOn/` only. Do not recursively search the
+whole repository or disk for C++ source.
 
-## 6. LightRAG (SDK — authoritative)
+For SDK/API context, **LightRAG is a Hermes skill/workflow, not a native
+Codex tool**. When Hermes skills are available to Codex, first inspect the
+available skills (`skills_list` / `skill_view`) and use the relevant
+LightRAG skill according to its instructions.
 
-Every `ACAPI_*` call: `OpenViking → LightRAG → source/headers/call sites`.
-Down or unhelpful → say so, fall to installed headers/docs, else `not
-verified`. Never borrow behavior from another AC version, Revit, AutoCAD, another IFC lib.
+Do not expect a standalone `lightrag_*` Codex tool unless the current
+environment explicitly provides one.
+
+If the Hermes LightRAG skill is unavailable in the current session, use
+installed SDK headers, official documentation, and existing verified call
+sites. If the required behavior still cannot be established, mark it
+`not verified`; do not guess.
+
+## 6. SDK Verification / Hermes LightRAG Skill
+
+For every `ACAPI_*` call, verify the relevant behavior before changing it.
+
+**LightRAG in this project is provided through Hermes as a skill/workflow.**
+It is not assumed to exist as a native Codex tool.
+
+When running under Hermes + Codex:
+
+1. Inspect available Hermes skills with `skills_list`.
+2. If a LightRAG/Archicad SDK skill is available, read it with `skill_view`.
+3. Follow that skill's procedure for SDK/API lookup.
+4. Confirm important findings against installed SDK headers, official docs,
+   or verified project call sites when appropriate.
+
+Correct local REST calls in this environment:
+
+- LightRAG SDK endpoint: `http://127.0.0.1:9621/query`.
+- Health check: `curl.exe --noproxy 127.0.0.1,localhost -s http://127.0.0.1:9621/health`.
+- Query through PowerShell with `--%` so JSON is not mangled:
+
+```powershell
+curl.exe --% --noproxy 127.0.0.1,localhost -s --max-time 60 -X POST http://127.0.0.1:9621/query -H "Content-Type: application/json" -d "{""query"":""ACAPI_Element_GetElemList"",""mode"":""local"",""only_need_context"":true}"
+```
+
+Use `only_need_context: true` for API lookup. For exact function/type names,
+try `local` first, then `naive`, then `hybrid`, then `global`. For "how to"
+questions without an exact name, start with `hybrid`; for broad concepts,
+start with `global`. If `curl` fails through `http_proxy` / `https_proxy`,
+keep `--noproxy 127.0.0.1,localhost` rather than treating LightRAG as down.
+If one query returns `No relevant context found`, retry with a more exact
+identifier or the next mode before falling back to headers/docs.
+
+Do not spend time searching for a nonexistent standalone LightRAG tool merely
+because the project mentions LightRAG. The authoritative integration path is
+the Hermes skill when that skill is exposed to Codex.
+
+If the Hermes LightRAG skill is unavailable, fall back to:
+
+installed SDK headers → official docs → existing project call sites/source.
+
+If the issue remains unresolved, mark it `not verified`.
+
+Never borrow behavior from another AC version, Revit, AutoCAD, another IFC lib.
 
 Verify before touching an SDK API: signature, params, return, ownership,
 lifetime, pointer/iterator validity, transaction/undo, redraw/notification,
@@ -86,6 +150,15 @@ palette selection — guard with `static suppressSelectionRefresh`.
 `SetElementHighlight` is AC26+/27+ only; on AC25 use `ACAPI_Interface`
 directly (Clear before Set; a call with no `par1` clears).
 
+**Landmine — palette window resize:** a docked palette's width is owned by
+ArchiCAD's dock manager — `SetClientWidth` is ignored while it stays docked
+(observed: 450 → 49 px with the dock, 450 → 35 px without). The working recipe
+is `UnDock()` → `SetClientWidth()` → `Dock()` again, so the palette keeps its
+dock state but adopts the new width (`DG::Palette::IsDocked` / `UnDock` /
+`Dock`; `DGIsPaletteDocked(guid)` also exists). A growing DG dialog also
+reports `GetMinClientWidth() == original width`, so `SetMinClientWidth` must be
+relaxed BEFORE shrinking or the resize is silently clamped.
+
 **Landmine — "Монитор" data source:** property values come only from
 `PROPERTYCACHE()`, never `ACAPI_Property_GetPropertyValue` per element. The
 cache's `property` entry holds definitions only — values are looked up per
@@ -93,7 +166,8 @@ element separately.
 
 ## 7. C++ Editing
 
-Follow SOUL.md Coding rules as-is. No repo-specific additions.
+Follow the global Codex coding instructions. No additional repo-specific
+editing rules beyond this file.
 
 ## 8. Formatting
 
@@ -134,33 +208,76 @@ as a separate task. Never modify `Test_file/*.pln` in a normal test task.
 or touch unrelated ones. Never: `clean -fdx`, `commit --amend`, `rebase -i`,
 `push --force`, `add .`/`add -A` without checking status/diff first.
 Never stage: `Build/`, `compile_commands.json`, `Build/LspCompileCommands/`, `Build/DevKit/`.
-Checkpoint mechanics = SOUL.md definition, no repo exceptions.
+
+Checkpoint = `git add <intended files only>` + `git commit`.
+
+Commit message:
+
+```text
+[step-ref] short description
+Refs: IDEA.md step <n>
+```
+
+Create a checkpoint only after the corresponding step is completed and
+validated. Never checkpoint a broken/unverified state.
 
 ### 11.1 Issues (GitHub)
 
-Every user wish (feature request) and every bug (found or fixed) → GitHub
-issue in `kuvbur/AddOn_SomeStuff` FIRST (`gh` CLI; workflow — skill
-`addon-somestuff-issues`). Then backlink in `IDEA.md` and
-`Reviews/*.tracker.csv` (column `issue`). Dedup check before create —
-existing issue may already cover the wish (comment there instead).
+For code changes only: every user wish (feature request) and every bug
+(found or fixed) → GitHub issue in `kuvbur/AddOn_SomeStuff` FIRST (`gh`
+CLI; workflow — skill `addon-somestuff-issues`). Then backlink in
+`IDEA.md` and `Reviews/*.tracker.csv` (column `issue`). Dedup check before
+create — existing issue may already cover the wish (comment there instead).
 Commit that closes the issue: `Refs: #N` in message.
 
-`gh` is not on PATH by default in this environment:
-`export PATH="$PATH:/c/Program Files/GitHub CLI"`.
+Documentation/instruction-only changes, including `AGENTS.md` and `IDEA.md`
+maintenance, do not require a GitHub issue unless they accompany a code
+change that already requires one.
+
+On native Windows Codex, `gh.exe` is expected on `PATH`; known installation:
+`C:\Program Files\GitHub CLI\gh.exe`.
+
+If GitHub API access fails while `gh` itself is available, check the
+current `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` environment before
+treating authentication as invalid. Do not re-login or replace credentials
+until network access to GitHub API is verified.
+
 `Reviews/` is gitignored — the tracker is local-only (BOM+LF; edit via
 Python `utf-8-sig`, not a plain text write).
 
 ## 12. IDEA.md
 
-Format/archival rules = SOUL.md. Landmines that outlive the current task
-(architecture constraints, crash patterns, version differences) belong in
-this file's §6/§14, not in `IDEA.md`'s "Грабли" — that section is for
-issues specific to the active task and gets archived with it.
+Read `IDEA.md` before starting non-trivial work. Resume the active task
+from its current state and update the Plan before changing code when the
+plan is stale.
+
+Plan markers:
+
+- `[ ]` — not started
+- `[/]` — in progress
+- `[x]` — completed **and validated**
+
+Before ending a work session, update the current state, last completed
+step, next action, and last checkpoint. Completed tasks move to
+`## Archive` (or `IDEA_ARCHIVE.md` if used); keep the active section short.
+
+`## Scope` defines the active task boundary. Work outside it requires a
+separate task. If the repository/task does not establish the target
+ArchiCAD version(s), resolve that before SDK-sensitive edits.
+
+Landmines that outlive the current task (architecture constraints, crash
+patterns, version differences) belong in this file's §6/§14, not in
+`IDEA.md`'s "Грабли" — that section is for issues specific to the active
+task and gets archived with it.
 
 ```markdown
 # Current Task
 
 ## Task
+
+...
+
+## Scope
 
 ...
 
@@ -176,9 +293,14 @@ IN_PROGRESS / WAITING_FOR_TEST / BLOCKED
 
 ...
 
+## Last Checkpoint
+
+...
+
 ## Plan
 
 - [x] ...
+- [/] ...
 - [ ] ...
 
 ## Decisions
@@ -225,13 +347,15 @@ implemented in `Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp`.
 ## 15. Pre-PR Checklist
 
 Only intended files changed · no user changes overwritten · AC version(s)
-known · every `ACAPI_*` checked via LightRAG or marked `not verified` with
-reason · clang-format run · LSP checked · build done for
+known · every touched `ACAPI_*` verified with available SDK evidence
+(Hermes LightRAG skill when available; otherwise installed
+headers/docs/verified call sites) or marked `not verified` with reason ·
+clang-format run · LSP checked · build done for
 version(s)+platform · runtime test done where applicable (HTML changes: ran
 `test_html.ps1`) · verified/compiled/tested reported correctly · no
 generated files staged · no unrelated refactor · memory updated · IDEA.md
-re-read before final write · GitHub issue exists for the change and commit
-references it (`Refs: #N`, see §11.1).
+re-read before final write · for code changes, GitHub issue exists for the
+change and commit references it (`Refs: #N`, see §11.1).
 
 ## 16. Known — do not fix without explicit request
 

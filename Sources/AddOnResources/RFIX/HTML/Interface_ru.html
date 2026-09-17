@@ -130,7 +130,8 @@ const STATE = {
   numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
                         criterionProperty: null, splitProperty: null },
     monitorGroupCollapse: {}, // Состояние сворачивания групп
-    autoRefresh: true          // Автообновление при изменении выделения
+    autoRefresh: true,          // Автообновление при изменении выделения
+    collapsed: false            // Сворачивание боковой панели навигации
 };
 
 function applyTheme(name) {
@@ -561,11 +562,27 @@ function buildShell() {
   clear(app);
 
   // ---- Левая панель навигации ----
+  // Ширина колонки вкладок от свёртывания не зависит: при сворачивании ужимается
+  // само окно палитры (C++ SetPaletteCollapsed), а колонка вкладок остаётся как есть.
   const nav = h("nav", {
     attrs: { id: "left-nav" },
-    style: "width:2.75rem;min-width:2.75rem;flex:0 0 2.75rem;display:flex;flex-direction:column;" +
+    style: "width:2.2rem;min-width:2.2rem;flex:0 0 2.2rem;display:flex;flex-direction:column;" +
            "background:var(--ac-bg-nav);border-right:1px solid var(--ac-border);height:100%;"
   });
+
+  // Кнопка свёртывания/развёртывания навигации (над вкладками)
+  const collapseBtn = h("button", {
+    attrs: { id: "nav-collapse-btn", title: STATE.collapsed ? "Развернуть окно палитры" : "Свернуть окно палитры" },
+    style: "appearance:none;border:none;border-bottom:1px solid var(--ac-border);background:transparent;" +
+           "cursor:pointer;width:100%;height:2.75rem;display:flex;align-items:center;justify-content:center;" +
+           "color:var(--ac-text-secondary);font-size:0.9rem;transition:background var(--ac-transition);",
+    on: {
+      click: function () { toggleNavCollapse(); },
+      mouseenter: function () { collapseBtn.style.background = "var(--ac-bg-hover)"; },
+      mouseleave: function () { collapseBtn.style.background = "transparent"; }
+    }
+  }, [ h("span", { text: STATE.collapsed ? "\u25B6" : "\u25C0" }) ]);
+  nav.appendChild(collapseBtn);
 
   TABS.forEach(function (tab) {
     const btn = h("button", {
@@ -576,46 +593,55 @@ function buildShell() {
              "border-left:2px solid transparent;transition:background var(--ac-transition),color var(--ac-transition);",
       on: {
         click: function () { setActiveTab(tab.id); },
-        mouseenter: function () { if (STATE.activeTab !== tab.id) btn.style.background = "var(--ac-bg-hover)"; },
+        mouseenter: function () {
+          if (STATE.activeTab !== tab.id) btn.style.background = "var(--ac-bg-hover)";
+        },
         mouseleave: function () { if (STATE.activeTab !== tab.id) btn.style.background = "transparent"; }
       }
-    }, [
-      h("span", {
-        text: tab.label,
-        style: "display:inline-block;white-space:nowrap;transform:rotate(-90deg);" + // читается снизу вверх
-               "transform-origin:center;font-size:0.72rem;letter-spacing:0.02em;font-weight:600;"
-      })
-    ]);
+    });
+
+    // Названия вкладок остаются видимыми и в свёрнутом состоянии.
+    btn.appendChild(h("span", {
+      text: tab.label,
+      style: "display:inline-block;white-space:nowrap;transform:rotate(-90deg);" +
+             "transform-origin:center;font-size:0.72rem;letter-spacing:0.02em;font-weight:600;"
+    }));
+
     btn.setAttribute("data-nav-btn", tab.id);
     nav.appendChild(btn);
   });
 
-  // Переключатель темы внизу левой панели
-  const themeBtn = h("button", {
-    attrs: { id: "theme-toggle", title: "Переключить тему" },
-    style: "appearance:none;border:none;border-top:1px solid var(--ac-border);background:transparent;" +
-           "cursor:pointer;flex:0 0 2.75rem;display:flex;align-items:center;justify-content:center;" +
-           "color:var(--ac-text-secondary);font-size:1rem;",
-    on: {
-      click: function () { applyTheme(STATE.theme === "light" ? "dark" : "light"); },
-      mouseenter: function () { themeBtn.style.background = "var(--ac-bg-hover)"; },
-      mouseleave: function () { themeBtn.style.background = "transparent"; }
-    }
-  }, [ h("span", { attrs: { id: "theme-toggle-icon" }, text: "\u263D" }) ]);
-  nav.appendChild(themeBtn);
+  if (!STATE.collapsed) {
+    const themeBtn = h("button", {
+      attrs: { id: "theme-toggle", title: "Переключить тему" },
+      style: "appearance:none;border:none;border-top:1px solid var(--ac-border);background:transparent;" +
+             "cursor:pointer;flex:0 0 2.2rem;display:flex;align-items:center;justify-content:center;" +
+             "color:var(--ac-text-secondary);font-size:1rem;",
+      on: {
+        click: function () { applyTheme(STATE.theme === "light" ? "dark" : "light"); },
+        mouseenter: function () { themeBtn.style.background = "var(--ac-bg-hover)"; },
+        mouseleave: function () { themeBtn.style.background = "transparent"; }
+      }
+    }, [ h("span", { attrs: { id: "theme-toggle-icon" }, text: "\u263D" }) ]);
+    nav.appendChild(themeBtn);
+  }
 
   // ---- Правая рабочая область ----
+  // В свёрнутом состоянии окно палитры ужимается до колонки вкладок, поэтому
+  // рабочую область убираем из потока целиком (иначе она распирает layout).
   const workspace = h("main", {
     attrs: { id: "workspace" },
     style: "flex:1 1 auto;min-width:0;height:100%;overflow:hidden;background:var(--ac-bg-workspace);" +
-           "display:flex;flex-direction:column;color:var(--ac-text-primary);font-size:0.85rem;"
+           "display:" + (STATE.collapsed ? "none" : "flex") + ";flex-direction:column;" +
+           "color:var(--ac-text-primary);font-size:0.85rem;"
   });
 
   app.appendChild(nav);
   app.appendChild(workspace);
 
   highlightNav();
-  renderActiveTab();
+  // Скрытую рабочую область не рендерим — контент построится при развёртывании.
+  if (!STATE.collapsed) renderActiveTab();
 }
 
 function highlightNav() {
@@ -627,6 +653,46 @@ function highlightNav() {
     btn.style.color = active ? "var(--ac-accent)" : "var(--ac-text-secondary)";
     btn.style.borderLeft = active ? "2px solid var(--ac-accent)" : "2px solid transparent";
   });
+}
+
+function toggleNavCollapse() {
+  STATE.collapsed = !STATE.collapsed;
+  buildShell();
+  notifyPaletteCollapsed();
+}
+
+// Ширина вертикальной полосы прокрутки в CSS-пикселях. Измеряем временным
+// элементом: в свёрнутой палитре скроллбар появляется только после ужимания,
+// поэтому в развёрнутом состоянии его так просто не увидеть.
+function measureScrollbarWidth() {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;top:-9999px;left:-9999px;width:100px;height:100px;overflow:scroll;";
+  document.body.appendChild(probe);
+  const width = probe.offsetWidth - probe.clientWidth;
+  document.body.removeChild(probe);
+  return width > 0 ? width : 0;
+}
+
+// Просит C++ ужать/восстановить ОКНО палитры. Доля считается по фактическим
+// пикселям (не зависит от DPI и масштаба CEF): C++ умножает её на текущую ширину окна.
+// Формат аргумента: "<0|1>|<промилле>".
+function notifyPaletteCollapsed() {
+  try {
+    if (typeof window.ACAPI === "undefined" || !window.ACAPI.SetPaletteCollapsed) return;
+    if (!STATE.collapsed) {
+      window.ACAPI.SetPaletteCollapsed("0|0");
+      return;
+    }
+    const nav = document.getElementById("left-nav");
+    const viewportWidth = document.documentElement.clientWidth || 1;
+    // В свёрнутом виде колонка вкладок выше окна, поэтому появляется вертикальный
+    // скроллбар и съедает часть подписей — закладываем его ширину в запрос.
+    const navWidth = (nav ? nav.offsetWidth : 36) + measureScrollbarWidth();
+    const perMille = Math.max(1, Math.min(999, Math.round(navWidth * 1000 / viewportWidth)));
+    window.ACAPI.SetPaletteCollapsed("1|" + perMille);
+  } catch (e) {
+    // Мост недоступен (предпросмотр HTML вне Archicad) — остаёмся в HTML-виде
+  }
 }
 
 function setActiveTab(id) {

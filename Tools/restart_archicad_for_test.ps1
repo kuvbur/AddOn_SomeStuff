@@ -182,7 +182,10 @@ function Test-ArchicadProcessIsTestProject {
         [System.Diagnostics.Process]$Process
     )
 
-    return ($Process.MainWindowTitle -match "(?i)test")
+    $windowTitle = $Process.MainWindowTitle
+    $isTestProject = $windowTitle -match "(?i)test"
+    Write-AIStatus "PROJECT_CHECK" "pid=$($Process.Id) window='$windowTitle' is_test=$isTestProject" Yellow
+    return $isTestProject
 }
 
 

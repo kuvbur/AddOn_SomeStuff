@@ -16,6 +16,16 @@
 
 static const GS::Guid paletteGuid ("{FEE27B6B-3873-5844-88B6-F0083AA4CD49}");
 
+// Минимальная ширина окна палитры в свёрнутом виде (пиксели DG).
+static const short kCollapsedPaletteMinWidth = 14;
+
+static DG::Dialog::FixPoint GetHorizontalResizeFixPoint (const DG::NativeRect &paletteRect) {
+    const DG::NativeRect screenRect = DG::VisibleBoundingRectOfScreens ();
+    const DG::NativeUnit paletteCenter = paletteRect.GetLeft () + paletteRect.GetWidth () / 2;
+    const DG::NativeUnit screenCenter = screenRect.GetLeft () + screenRect.GetWidth () / 2;
+    return paletteCenter > screenCenter ? DG::Dialog::TopRight : DG::Dialog::TopLeft;
+}
+
 GS::Ref<BrowserPalette> BrowserPalette::instance;
 bool BrowserPalette::suppressSelectionRefresh = false;
 
@@ -121,6 +131,24 @@ void BrowserPalette::Show (bool reloadContent) {
     // операции ввода) и раньше писали блоб аддона в файл проекта. Сохранение
     // состояния палитры осталось только в ShowOrHideBrowserPalette (команда меню).
     if (reloadContent) {
+        // HTML перезагружается и теряет состояние свёртывания — возвращаем окно
+        // к развёрнутой ширине, иначе состояние окна и HTML разойдутся.
+        if (expandedClientWidth > 0) {
+            // Тот же приём, что в SetPaletteCollapsed: снять с дока, поменять ширину,
+            // вернуть в док.
+            const bool wasDocked = IsDocked ();
+            const DG::Dialog::FixPoint resizeFixPoint = GetHorizontalResizeFixPoint (GetFrameRect ());
+            if (wasDocked)
+                UnDock ();
+            SetClientWidth (expandedClientWidth, resizeFixPoint);
+            if (expandedMinClientWidth > 0)
+                SetMinClientWidth (expandedMinClientWidth);
+            if (wasDocked)
+                Dock ();
+            expandedClientWidth = 0;
+            expandedMinClientWidth = 0;
+            collapsedClientWidth = 0;
+        }
         // Перезагрузка HTML сбрасывает состояние вкладки/фильтра, поэтому при
         // показе из APIPalMsg_HidePalette_End (reloadContent=false) контент не
         // перезагружаем — страница уже загружена.
@@ -522,6 +550,113 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             return new DG::JSValue (GS::UniString ("{\"status\":\"error\",\"message\":\"unknown exception\"}"));
         }
     }));
+
+    jsACAPI->AddItem (
+        new DG::JSFunction ("ResetPropertyToDefault", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+            try {
+                GS::Ref<DG::JSValue> propertyIdVal = GS::DynamicCast<DG::JSValue> (args);
+                if (propertyIdVal == nullptr) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("Expected propertyId as string argument"));
+                    return errorObj;
+                }
+
+                const GS::UniString propertyId = propertyIdVal->GetString ();
+                const API_Guid propertyGuid = APIGuidFromString (propertyId.ToCStr ().Get ());
+                if (propertyGuid == APINULLGuid) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("Invalid property GUID"));
+                    return errorObj;
+                }
+
+                GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+                selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
+                if (selectedElements.IsEmpty ()) {
+                    GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                    errorObj->AddItem ("success", new DG::JSValue (false));
+                    errorObj->AddItem ("message", new DG::JSValue ("No elements selected"));
+                    return errorObj;
+                }
+
+                Int32 successCount = 0;
+                Int32 alreadyDefaultCount = 0;
+                Int32 errorCount = 0;
+                GS::Array<API_Guid> resetElementGuids;
+                GS::Array<API_Property> resetProperties;
+
+                for (const API_Guid &elemGuid : selectedElements) {
+                    API_Property property = {};
+                    GSErrCode err = ACAPI_Element_GetPropertyValue (elemGuid, propertyGuid, property);
+                    if (err != NoError) {
+                        ++errorCount;
+                        msg_rep ("ResetPropertyToDefault", "ACAPI_Element_GetPropertyValue", err, elemGuid);
+                        continue;
+                    }
+
+                    if (property.isDefault) {
+                        ++alreadyDefaultCount;
+                        continue;
+                    }
+
+                    property.isDefault = true;
+                    property.value.variantStatus = API_VariantStatusNormal;
+                    property.status = API_Property_HasValue;
+
+                    resetElementGuids.Push (elemGuid);
+                    resetProperties.Push (property);
+                }
+
+                if (!resetProperties.IsEmpty ()) {
+                    const GSErrCode undoErr =
+                        ACAPI_CallUndoableCommand ("Reset property to default", [&] () -> GSErrCode {
+                            for (UIndex i = 0; i < resetProperties.GetSize (); ++i) {
+                                GS::Array<API_Property> propertiesToReset;
+                                propertiesToReset.Push (resetProperties[i]);
+                                const GSErrCode err =
+                                    ACAPI_Element_SetProperties (resetElementGuids[i], propertiesToReset);
+                                if (err == NoError) {
+                                    ++successCount;
+                                } else {
+                                    ++errorCount;
+                                    msg_rep ("ResetPropertyToDefault",
+                                             "ACAPI_Element_SetProperties",
+                                             err,
+                                             resetElementGuids[i]);
+                                }
+                            }
+                            return NoError;
+                        });
+
+                    if (undoErr != NoError) {
+                        ++errorCount;
+                        DBprnt ("ResetPropertyToDefault: ACAPI_CallUndoableCommand error " +
+                                GS::ValueToUniString (undoErr));
+                    }
+                }
+
+                GS::Ref<DG::JSObject> jsResult = new DG::JSObject ();
+                jsResult->AddItem ("success", new DG::JSValue (errorCount == 0));
+                jsResult->AddItem ("successCount", new DG::JSValue (successCount));
+                jsResult->AddItem ("alreadyDefaultCount", new DG::JSValue (alreadyDefaultCount));
+                jsResult->AddItem ("errorCount", new DG::JSValue (errorCount));
+                jsResult->AddItem ("status", new DG::JSValue (errorCount == 0 ? "ok" : "partial"));
+                return jsResult;
+            } catch (const std::exception &e) {
+                DBprnt (GS::UniString ("ResetPropertyToDefault: std::exception: ") + e.what ());
+                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                errorObj->AddItem ("success", new DG::JSValue (false));
+                errorObj->AddItem ("message", new DG::JSValue (e.what ()));
+                return errorObj;
+            } catch (...) {
+                DBprnt ("ResetPropertyToDefault: unknown exception");
+                GS::Ref<DG::JSObject> errorObj = new DG::JSObject ();
+                errorObj->AddItem ("success", new DG::JSValue (false));
+                errorObj->AddItem ("message", new DG::JSValue ("Unknown error"));
+                return errorObj;
+            }
+        }));
 
     // Подсветка и приближение элементов из HTML БЕЗ смены выделения
     // (паттерн Spec.cpp: APIIo_HighlightElementsID).
@@ -1312,6 +1447,155 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             }
         }));
 
+    // Свёртывание/развёртывание ОКНА палитры: окно ужимается до ширины колонки
+    // вкладок, HTML при этом скрывает рабочую область (toggleNavCollapse).
+    // Аргумент — строка "<0|1>|<промилле>": флаг свёртывания и доля ширины колонки
+    // вкладок от ширины окна. Доля измеряется в HTML по фактическим пикселям, поэтому
+    // не зависит от DPI и масштаба CEF: целевая ширина = текущая ширина * доля.
+    jsACAPI->AddItem (
+        new DG::JSFunction ("SetPaletteCollapsed", [this] (GS::Ref<DG::JSBase> args) -> GS::Ref<DG::JSBase> {
+            // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
+            try {
+                GS::Ref<DG::JSValue> payload = GS::DynamicCast<DG::JSValue> (args);
+                if (payload == nullptr)
+                    return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+
+                const GS::UniString arg = payload->GetString ();
+                const USize sep = arg.FindFirst ('|');
+                if (sep == MaxUSize)
+                    return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+
+                const bool collapsed = (arg.GetLength () > 0) && (arg[0] == '1');
+
+                // Пошаговая диагностика: где именно теряется ширина при работе с доком.
+                auto logState = [this] (const char *step) {
+                    DBprnt (GS::UniString ("SetPaletteCollapsed[") + GS::UniString (step) +
+                            "]: width=" + GS::ValueToUniString ((Int32)GetClientWidth ()) +
+                            " px, min=" + GS::ValueToUniString ((Int32)GetMinClientWidth ()) +
+                            " px, docked=" + (IsDocked () ? "yes" : "no"));
+                };
+
+                if (collapsed) {
+                    // Промилле разбираем вручную: у GS::UniString нет ToInt32/ToNumber.
+                    const GS::UniString ratioStr = arg.GetSubstring (sep + 1, MaxUSize);
+                    Int32 perMille = 0;
+                    for (UIndex i = 0; i < ratioStr.GetLength (); ++i) {
+                        const GS::UniChar c = ratioStr[i];
+                        // Только сравнения на равенство: у GS::UniChar нет operator< с char
+                        // (арифметика и '<' неоднозначны из-за нескольких операторов приведения).
+                        Int32 digit = -1;
+                        if (c == '0')
+                            digit = 0;
+                        else if (c == '1')
+                            digit = 1;
+                        else if (c == '2')
+                            digit = 2;
+                        else if (c == '3')
+                            digit = 3;
+                        else if (c == '4')
+                            digit = 4;
+                        else if (c == '5')
+                            digit = 5;
+                        else if (c == '6')
+                            digit = 6;
+                        else if (c == '7')
+                            digit = 7;
+                        else if (c == '8')
+                            digit = 8;
+                        else if (c == '9')
+                            digit = 9;
+                        if (digit < 0)
+                            break;
+                        perMille = perMille * 10 + digit;
+                        if (perMille > 1000)
+                            break;
+                    }
+                    if (perMille <= 0 || perMille >= 1000) {
+                        DBprnt ("SetPaletteCollapsed: invalid ratio, ignored");
+                        return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+                    }
+
+                    const short currentWidth = GetClientWidth ();
+                    // Запоминаем ширину и минимум только при первом сворачивании, иначе
+                    // повторный клик запомнил бы уже суженное окно.
+                    if (expandedClientWidth == 0) {
+                        expandedClientWidth = currentWidth;
+                        expandedMinClientWidth = GetMinClientWidth ();
+                    }
+
+                    logState ("collapse/1 before");
+                    DBprnt (GS::UniString ("SetPaletteCollapsed: collapse requested, target=") +
+                            GS::ValueToUniString ((Int32)(short)(((Int32)currentWidth * perMille) / 1000)) +
+                            " px, ratio=" + GS::ValueToUniString (perMille) + " / 1000");
+
+                    // Шириной пристыкованной палитры распоряжается док-менеджер ArchiCAD
+                    // (SetClientWidth там игнорируется), поэтому перед изменением размера
+                    // палитру отстыковываем и сразу пристыковываем обратно — так она
+                    // остаётся в доке, но уже нужной ширины.
+                    short targetWidth = (short)(((Int32)currentWidth * perMille) / 1000);
+                    if (targetWidth < kCollapsedPaletteMinWidth)
+                        targetWidth = kCollapsedPaletteMinWidth;
+                    collapsedClientWidth = targetWidth;
+
+                    // Растущий диалог нельзя ужать ниже минимальной ширины (по умолчанию
+                    // она равна исходной). После ручного изменения размера дока Archicad
+                    // хранит широкий dock-слот, поэтому минимум ослабляем ДО UnDock.
+                    const bool wasDocked = IsDocked ();
+                    const DG::Dialog::FixPoint resizeFixPoint = GetHorizontalResizeFixPoint (GetFrameRect ());
+                    SetMinClientWidth (targetWidth);
+                    if (wasDocked) {
+                        UnDock ();
+                        logState ("collapse/2 after UnDock");
+                    }
+
+                    SetClientWidth (targetWidth, resizeFixPoint);
+                    logState ("collapse/3 after SetClientWidth");
+                    if (wasDocked) {
+                        Dock ();
+                        SetMinClientWidth (targetWidth);
+                        SetClientWidth (targetWidth, resizeFixPoint);
+                        logState ("collapse/4 after Dock");
+                    }
+                    // PanelResized придёт автоматически и подвинет браузерный контрол.
+                } else if (expandedClientWidth > 0) {
+                    // Состояние сбрасываем до вызовов: они могут дёрнуть панель повторно.
+                    const short restoreWidth = expandedClientWidth;
+                    const short restoreMinWidth = expandedMinClientWidth;
+                    expandedClientWidth = 0;
+                    expandedMinClientWidth = 0;
+                    collapsedClientWidth = 0;
+
+                    logState ("expand/1 before");
+                    DBprnt (GS::UniString ("SetPaletteCollapsed: expand requested, restore=") +
+                            GS::ValueToUniString ((Int32)restoreWidth) + " px");
+
+                    // Пристыкованную палитру тоже освобождаем от дока на время изменения
+                    // размера и возвращаем в док после — см. ветку сворачивания.
+                    const bool wasDocked = IsDocked ();
+                    const DG::Dialog::FixPoint resizeFixPoint = GetHorizontalResizeFixPoint (GetFrameRect ());
+                    if (wasDocked) {
+                        UnDock ();
+                        logState ("expand/2 after UnDock");
+                    }
+
+                    SetClientWidth (restoreWidth, resizeFixPoint);
+                    // Минимум возвращаем после ширины: иначе SetClientWidth упрётся в старый.
+                    SetMinClientWidth (restoreMinWidth > 0 ? restoreMinWidth : restoreWidth);
+                    logState ("expand/3 after SetClientWidth");
+                    if (wasDocked) {
+                        Dock ();
+                        logState ("expand/4 after Dock");
+                    }
+                }
+                return GS::Ref<DG::JSBase> (new DG::JSValue (true));
+            } catch (const std::exception &e) {
+                DBprnt (GS::UniString ("SetPaletteCollapsed: std::exception: ") + e.what ());
+            } catch (...) {
+                DBprnt ("SetPaletteCollapsed: unknown exception");
+            }
+            return GS::Ref<DG::JSBase> (new DG::JSValue (false));
+        }));
+
     // FIX (ревью 2026-09-12, п.26): перед повторной регистрацией снимаем старую регистрацию
     // объекта "ACAPI" (регистрация выполняется на каждой загрузке страницы);
     // результат RegisterAsynchJSObject проверяем — раньше отказ молча игнорировался.
@@ -1391,6 +1675,20 @@ void BrowserPalette::PanelResized (const DG::PanelResizeEvent &ev) {
     BeginMoveResizeItems ();
     browser.Resize (ev.GetHorizontalChange (), ev.GetVerticalChange ());
     EndMoveResizeItems ();
+
+    if (expandedClientWidth == 0 || collapsedClientWidth == 0)
+        return;
+
+    const short currentWidth = GetClientWidth ();
+    if (currentWidth <= collapsedClientWidth) {
+        if (currentWidth >= kCollapsedPaletteMinWidth)
+            collapsedClientWidth = currentWidth;
+        return;
+    }
+
+    DBprnt (GS::UniString ("PanelResized: collapsed palette was manually widened from ") +
+            GS::ValueToUniString ((Int32)collapsedClientWidth) + " px to " +
+            GS::ValueToUniString ((Int32)currentWidth) + " px; deferred until next collapse");
 }
 
 void BrowserPalette::PanelCloseRequested (const DG::PanelCloseRequestEvent &, bool *accepted) {

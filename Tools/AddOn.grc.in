@@ -288,8 +288,8 @@
 
 /* --- Dockable browser palette ----------------------------------------------*/
 
-'GDLG'  32580    Palette | topCaption | close | grow   0   0  450  150  "Somestuff @ADDON_VERSION@ @ADDON_SUBVERSION@"  {
-/* [  1] */ Browser			0   0  450  150
+'GDLG'  32580    Palette | topCaption | close | grow   0   0  383  150  "Somestuff @ADDON_VERSION@ @ADDON_SUBVERSION@"  {
+/* [  1] */ Browser			0   0  383  150
 }
 
 'DLGH'  32580  DLG_32580_Browser_Palette {
