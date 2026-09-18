@@ -1448,7 +1448,8 @@ bool SyncString (const API_ElemTypeID &elementType,
                  FormatString &stringformat,
                  bool syncall,
                  bool synccoord,
-                 bool syncclass) {
+                 bool syncclass,
+                 bool checkElementType) {
     // Разбирает одно правило синхронизации и заполняет структуру ParamValue.
     // Функция последовательно:
     // 1. Определяет направление обмена по префиксам SYNC_FROM/SYNC_TO и их подвариантам.
@@ -1866,30 +1867,35 @@ bool SyncString (const API_ElemTypeID &elementType,
 
     // Проверяем, что правило действительно применимо к текущему типу элемента.
     // Некоторые источники данных доступны только для объектов, стен, slabs, morph и т.д.
-    if (param.fromGDLparam) {
-        if (elementType == API_WallID || elementType == API_SlabID || elementType == API_ColumnID ||
-            elementType == API_BeamID || elementType == API_RoofID || elementType == API_ShellID ||
-            elementType == API_BeamSegmentID || elementType == API_ColumnSegmentID || elementType == API_MorphID)
-            synctypefind = false;
-    }
-    if (param.fromGDLdescription) {
-        if (elementType != API_ObjectID)
-            synctypefind = false;
-    }
-    if (param.fromListData) {
-        if (elementType != API_ObjectID)
-            synctypefind = false;
-    }
-    if (param.fromMaterial) {
-        if (!(elementType == API_ObjectID && param.fromQuantity) && elementType != API_WallID &&
-            elementType != API_SlabID && elementType != API_ColumnID && elementType != API_BeamID &&
-            elementType != API_RoofID && elementType != API_BeamSegmentID && elementType != API_ColumnSegmentID &&
-            elementType != API_MeshID && elementType != API_MorphID && elementType != API_ShellID)
-            synctypefind = false;
-    }
-    if (param.fromMorph) {
-        if (elementType != API_MorphID)
-            synctypefind = false;
+    // #184/#185: при разборе описания свойства (ParsePropertyDescriptionToRules) тип
+    // элемента неизвестен и не важен — признак правила у определения один для всех
+    // элементов, поэтому проверка применимости отключается параметром checkElementType.
+    if (checkElementType) {
+        if (param.fromGDLparam) {
+            if (elementType == API_WallID || elementType == API_SlabID || elementType == API_ColumnID ||
+                elementType == API_BeamID || elementType == API_RoofID || elementType == API_ShellID ||
+                elementType == API_BeamSegmentID || elementType == API_ColumnSegmentID || elementType == API_MorphID)
+                synctypefind = false;
+        }
+        if (param.fromGDLdescription) {
+            if (elementType != API_ObjectID)
+                synctypefind = false;
+        }
+        if (param.fromListData) {
+            if (elementType != API_ObjectID)
+                synctypefind = false;
+        }
+        if (param.fromMaterial) {
+            if (!(elementType == API_ObjectID && param.fromQuantity) && elementType != API_WallID &&
+                elementType != API_SlabID && elementType != API_ColumnID && elementType != API_BeamID &&
+                elementType != API_RoofID && elementType != API_BeamSegmentID && elementType != API_ColumnSegmentID &&
+                elementType != API_MeshID && elementType != API_MorphID && elementType != API_ShellID)
+                synctypefind = false;
+        }
+        if (param.fromMorph) {
+            if (elementType != API_MorphID)
+                synctypefind = false;
+        }
     }
 
     // Проверка включенных флагов
@@ -2855,8 +2861,22 @@ bool ParsePropertyDescription (const GS::UniString &description,
             API_ElemTypeID elementType = API_ObjectID;
 
             GS::UniString ruleString = cmd.fullCommand;
-            if (!SyncString (
-                    elementType, ruleString, syncdirection, param, ignorevals, stringformat, true, false, false)) {
+            // #184/#185: проверка применимости к типу элемента отключена — elementType здесь
+            // заглушка (API_ObjectID), а правила материалов (Sync_from{Material:Layers; ...})
+            // иначе помечались невалидными и терялись для палитры.
+            if (!SyncString (elementType,
+                             ruleString,
+                             syncdirection,
+                             param,
+                             ignorevals,
+                             stringformat,
+                             true,
+                             // #184/#185: флаги synccoord/syncclass тоже true — правила координат
+                             // и классификации в описании свойства являются правилами, а их
+                             // применимость к элементу проверяется только при синхронизации.
+                             true,
+                             true,
+                             false)) {
                 cmd.isValid = false;
                 cmd.errorMessage = "SyncString не смог распарсить команду";
             }

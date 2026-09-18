@@ -195,7 +195,8 @@ bool SyncString (const API_ElemTypeID &elementType,
                  FormatString &stringformat,
                  bool syncall,
                  bool synccoord,
-                 bool syncclass);
+                 bool syncclass,
+                 bool checkElementType = true);
 
 // -----------------------------------------------------------------------------
 // Парсит полное описание свойства, выделяя все команды (Sync, Renum, Sum, Spec)

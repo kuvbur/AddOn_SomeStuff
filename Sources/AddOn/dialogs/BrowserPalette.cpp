@@ -407,9 +407,9 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                                    APIGuidToString (prop.definition.guid).ToCStr ().Get () + GS::UniString ("\"");
 
                         // Признак наличия правила SomeStuff в описании — из кэша PROPERTYCACHE (#158)
-                        jsonStr +=
-                            GS::UniString (", \"hasRule\": ") +
-                            (GetPropertyRuleFlag (prop.definition) ? GS::UniString ("true") : GS::UniString ("false"));
+                        const bool propertyHasRule = GetPropertyRuleFlag (prop.definition);
+                        jsonStr += GS::UniString (", \"hasRule\": ") +
+                                   (propertyHasRule ? GS::UniString ("true") : GS::UniString ("false"));
 
                         jsonStr += "}";
                     }

@@ -527,10 +527,28 @@ function h(tag, opts, children) {
   if (opts.on) for (const k in opts.on) e.addEventListener(k, opts.on[k]);
   // Ревью #179 п.7: hover одним параметром вместо пар mouseenter/mouseleave
   // (и без ловушки e.target на вложенных span — сюда всегда приходит сам элемент).
+  // Меняем ТОЛЬКО свойства, перечисленные в hoverStyle: прежняя реализация
+  // перезаписывала весь cssText сохранённым на момент создания значением и стирала
+  // стили, добавленные после создания (отступы строк дерева классификации,
+  // подсветка выбранного свойства) — строки «прыгали» при движении курсора (#183).
   if (opts.hoverStyle) {
-    const base = e.style.cssText;
-    e.addEventListener("mouseenter", function () { e.style.cssText = base + opts.hoverStyle; });
-    e.addEventListener("mouseleave", function () { e.style.cssText = base; });
+    const savedHover = {};
+    e.addEventListener("mouseenter", function () {
+      opts.hoverStyle.split (";").forEach (function (declaration) {
+        const separator = declaration.indexOf (":");
+        if (separator <= 0) return;
+        const property = declaration.slice (0, separator).trim ();
+        if (!property) return;
+        if (!(property in savedHover)) savedHover[property] = e.style.getPropertyValue (property);
+        e.style.setProperty (property, declaration.slice (separator + 1).trim ());
+      });
+    });
+    e.addEventListener ("mouseleave", function () {
+      for (const property in savedHover) {
+        e.style.setProperty (property, savedHover[property]);
+        delete savedHover[property];
+      }
+    });
   }
   // Ревью #179 п.1: клавиатурная доступность кликабельных div'ов.
   if (opts.focusable) {
@@ -1003,8 +1021,8 @@ function filterClassificationTree(nodes, q) {
 
 // Рендерит узлы дерева в listEl. opts: { expanded:Set, forceExpand:bool, selected:string,
 // onSelect:function(node), onToggle:function(), depth:number }.
-// Клик по узлу с потомками разворачивает/сворачивает (и просит перерисовать список),
-// клик по листу выбирает его.
+// Ветвь раскрывается/сворачивается кликом по «+» (arrow), клик по строке выбирает
+// узел-классификацию (#183). При поиске (forceExpand) дерево раскрыто целиком.
 function renderClassificationTree(listEl, nodes, opts) {
   const depth = opts.depth || 0;
   nodes.forEach(function (n) {
@@ -1026,8 +1044,35 @@ function renderClassificationTree(listEl, nodes, opts) {
 
     const arrow = h("span", {
       html: isGroup ? chevronSvg(isExpanded) : "·",
-      style: "flex:0 0 0.9rem;text-align:center;color:var(--ac-text-tertiary);font-size:0.7rem;display:flex;align-items:center;justify-content:center;user-select:none;"
+      style: "flex:0 0 0.9rem;text-align:center;color:var(--ac-text-tertiary);font-size:0.7rem;display:flex;align-items:center;justify-content:center;user-select:none;" +
+             (isGroup ? "cursor:pointer;" : "")
     });
+    // #183: ветвь раскрывается ТОЛЬКО кликом по «+» (стрелке), не кликом по подписи
+    // строки. Узел-ветвь не является классификацией, поэтому подпись ветви не выбирает.
+    function toggleBranch() {
+      if (opts.forceExpand) return; // при поиске дерево раскрыто принудительно
+      if (opts.expanded.has(n.fullPath)) {
+        opts.expanded.delete(n.fullPath);
+      } else {
+        opts.expanded.add(n.fullPath);
+      }
+      if (opts.onToggle) opts.onToggle(); // перерисовываем список целиком (с очисткой)
+    }
+    if (isGroup) {
+      arrow.setAttribute("role", "button");
+      arrow.setAttribute("tabindex", "0");
+      arrow.setAttribute("title", isExpanded ? "Свернуть ветвь" : "Раскрыть ветвь");
+      arrow.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleBranch();
+      });
+      arrow.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          toggleBranch();
+        }
+      });
+    }
     row.appendChild(arrow);
 
     const label = h("span", {
@@ -1039,16 +1084,10 @@ function renderClassificationTree(listEl, nodes, opts) {
 
     row.addEventListener("click", function (e) {
       e.stopPropagation();
-      if (isGroup && !opts.forceExpand) {
-        if (opts.expanded.has(n.fullPath)) {
-          opts.expanded.delete(n.fullPath);
-        } else {
-          opts.expanded.add(n.fullPath);
-        }
-        if (opts.onToggle) opts.onToggle(); // перерисовываем список целиком (с очисткой)
-      } else if (selectable) {
-        opts.onSelect(n);
-      }
+      // #183: раскрытие/сворачивание ветви — только кликом по «+» (см. обработчик
+      // arrow выше). Клик по строке выбирает узел, если он сам является
+      // классификацией (у листа и у промежуточного узла value задан).
+      if (selectable) opts.onSelect(n);
     });
 
     listEl.appendChild(row);
@@ -1151,7 +1190,34 @@ function buildClassificationPicker(container, tree, initialValue, onChange) {
     triggerText.textContent = n.value;
     triggerText.style.color = "var(--ac-text-primary)";
     panel.style.display = "none";
+    setScrollFrameExpanded(false);
     if (onChange) onChange(selected);
+  }
+
+  // #182: панель выбора позиционируется абсолютно ВНУТРИ блока классификации, а блок
+  // имеет max-height:40% + overflow:auto — панель обрезалась границей скролл-фрейма
+  // (замер: видно 29 px из 74). На время раскрытия снимаем ограничение высоты и
+  // обрезку, при закрытии возвращаем исходные значения из inline-стиля блока.
+  // ВАЖНО: виджет собирается до вставки в блок (buildClassificationPicker вызывается
+  // раньше block.appendChild(applyRow)), поэтому предка ищем в момент клика, а не при
+  // сборке — иначе closest() вернёт null и правка молча не сработает.
+  let savedFrameOverflow = null;
+  let savedFrameMaxHeight = null;
+
+  function setScrollFrameExpanded(expanded) {
+    const frame = wrapper.closest ? wrapper.closest("#monitor-classification-block") : null;
+    if (!frame) return;
+    if (expanded === true) {
+      if (savedFrameOverflow === null) {
+        savedFrameOverflow = frame.style.overflow || "";
+        savedFrameMaxHeight = frame.style.maxHeight || "";
+      }
+      frame.style.overflow = "visible";
+      frame.style.maxHeight = "none";
+    } else {
+      frame.style.overflow = savedFrameOverflow === null ? "" : savedFrameOverflow;
+      frame.style.maxHeight = savedFrameMaxHeight === null ? "" : savedFrameMaxHeight;
+    }
   }
 
   function togglePanel() {
@@ -1162,6 +1228,7 @@ function buildClassificationPicker(container, tree, initialValue, onChange) {
       renderList();
     }
     panel.style.display = willOpen ? "block" : "none";
+    setScrollFrameExpanded(willOpen);
   }
 
   return {

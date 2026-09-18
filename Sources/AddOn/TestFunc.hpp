@@ -104,6 +104,11 @@ namespace TestFunc {
     // Проверяет GetPropertyRuleFlag — кэшированный признак правила в описании свойства.
     void TestGetPropertyRuleFlag ();
 
+    // Диагностика #184/#185: воспроизводит путь BrowserPalette::GetPropertiesList на
+    // реальных элементах проекта и печатает длины описаний из двух источников
+    // определения (prop.definition и definitions из GetPropertyDefinitions).
+    void TestPropertyRuleFlagOnProjectElements ();
+
     // Выводит все встроенные свойства в отладочный журнал.
     void DumpAllBuiltInProperties ();
 

@@ -44,6 +44,7 @@ namespace TestFunc {
         TestRenumPosLogic ();
         TestDescToRulesSubGuid ();
         TestGetPropertyRuleFlag ();
+        TestPropertyRuleFlagOnProjectElements ();
         DBprnt ("TEST", "end");
     }
 
@@ -1953,6 +1954,31 @@ namespace TestFunc {
         DBtest (!SyncString (elementType, rule12, syncdirection, param, ignorevals, stringformat, false, false, false),
                 "SyncString no direction -> false");
 
+        // #184/#185: правило состава конструкции из реального проекта —
+        // Sync_from{Material:Layers; "<шаблон>"}. Признак правила в палитре считался через
+        // ParsePropertyDescriptionToRules, который вызывает SyncString с elementType =
+        // API_ObjectID; правило материала при этом отбраковывалось, из-за чего фильтр
+        // «Только с правилами» и синяя маркировка его не видели.
+        const GS::UniString ruleMaterial =
+            "Sync_from{Material:Layers; \"3зн %BuildingMaterialProperties/Building Material Thermal Conductivity.3pm% / \"}";
+
+        param = ParamValue ();
+        syncdirection = SYNC_NO;
+        DBtest (
+            SyncString (API_WallID, ruleMaterial, syncdirection, param, ignorevals, stringformat, true, false, false),
+            "SyncString Sync_from Material:Layers + API_WallID -> true");
+        DBtest (param.fromMaterial, "SyncString Sync_from Material:Layers + API_WallID -> fromMaterial");
+
+        param = ParamValue ();
+        syncdirection = SYNC_NO;
+        // Путь разбора описания в палитре: проверка типов отключена (#184/#185).
+        DBtest (
+            SyncString (
+                API_ObjectID, ruleMaterial, syncdirection, param, ignorevals, stringformat, true, false, false, false),
+            "SyncString Sync_from Material:Layers + API_ObjectID (no type check) -> true");
+        DBtest (param.fromMaterial,
+                "SyncString Sync_from Material:Layers + API_ObjectID (no type check) -> fromMaterial");
+
         DBprnt ("TEST", "TestSyncString : done");
         return;
     }
@@ -2956,6 +2982,114 @@ namespace TestFunc {
                 "RuleCache clears parsed commands for empty description");
         flags.Delete (definition.guid);
         DBprnt ("TEST", "TestGetPropertyRuleFlag : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Диагностика #184/#185: почему мост отдаёт hasRule=false для всех свойств.
+    // Повторяет путь BrowserPalette::GetPropertiesList на реальных элементах проекта
+    // (ACAPI_Element_GetPropertyDefinitions -> ACAPI_Element_GetPropertyValues) и
+    // печатает длины описаний из двух источников определения:
+    //   prop.definition — то, что использовал мост;
+    //   definitions[i]  — тот же источник, что в рабочем пути Sync.cpp:690/1099.
+    // Без этого нельзя отличить «описание не приходит от API» от «в описании нет правил».
+    // Только DBprnt: это измерение, а не проверка — провалов теста оно не создаёт.
+    // -----------------------------------------------------------------------------
+    void TestPropertyRuleFlagOnProjectElements () {
+        DBprnt ("TEST", "TestPropertyRuleFlagOnProjectElements");
+
+        GS::Array<API_Guid> elements;
+        GSErrCode err = ACAPI_Element_GetElemList (API_WallID, &elements);
+        const Int32 wallListError = (Int32)err;
+        if (err != NoError || elements.IsEmpty ()) {
+            err = ACAPI_Element_GetElemList (API_SlabID, &elements);
+        }
+        DBprnt ("TEST",
+                GS::UniString ("RuleFlagProj list: elements=") + GS::ValueToUniString ((Int32)elements.GetSize ()) +
+                    GS::UniString (" wallErr=") + GS::ValueToUniString (wallListError) + GS::UniString (" slabErr=") +
+                    GS::ValueToUniString ((Int32)err));
+        if (err != NoError || elements.IsEmpty ())
+            return;
+
+        // #184/#185: добавляем один объект — правила координат/углов живут на объектах.
+        GS::Array<API_Guid> objectElements;
+        if (ACAPI_Element_GetElemList (API_ObjectID, &objectElements) == NoError && !objectElements.IsEmpty ())
+            elements.Push (objectElements[0]);
+        const USize elementLimit = GS::Min (elements.GetSize (), (USize)3);
+        USize descriptionsDumped = 0; // общий лимит печати описаний на все элементы
+        for (USize elementIndex = 0; elementIndex < elementLimit; ++elementIndex) {
+            const API_Guid elemGuid = elements[elementIndex];
+            GS::Array<API_PropertyDefinition> definitions;
+            err =
+                ACAPI_Element_GetPropertyDefinitions (elemGuid, API_PropertyDefinitionFilter_UserDefined, definitions);
+            if (err != NoError || definitions.IsEmpty ()) {
+                DBprnt ("TEST",
+                        GS::UniString ("RuleFlagProj definitions: err=") + GS::ValueToUniString ((Int32)err) +
+                            GS::UniString (" count=") + GS::ValueToUniString ((Int32)definitions.GetSize ()));
+                continue;
+            }
+
+            USize definitionsWithDescription = 0;
+            for (const API_PropertyDefinition &definition : definitions) {
+                if (!definition.description.IsEmpty ())
+                    ++definitionsWithDescription;
+            }
+
+            GS::Array<API_Property> properties;
+            err = ACAPI_Element_GetPropertyValues (elemGuid, definitions, properties);
+
+            USize propertiesWithDescription = 0;
+            USize rulesFromPropertyDefinition = 0;
+            USize rulesFromArrayDefinition = 0;
+            for (const API_Property &prop : properties) {
+                if (!prop.definition.description.IsEmpty ())
+                    ++propertiesWithDescription;
+
+                const bool ruleFromPropertyDefinition = GetPropertyRuleFlag (prop.definition);
+                if (ruleFromPropertyDefinition)
+                    ++rulesFromPropertyDefinition;
+
+                bool ruleFromArrayDefinition = false;
+                USize arrayDescriptionLength = 0;
+                for (const API_PropertyDefinition &definition : definitions) {
+                    if (definition.guid != prop.definition.guid)
+                        continue;
+                    arrayDescriptionLength = definition.description.GetLength ();
+                    ruleFromArrayDefinition = !definition.description.IsEmpty () && GetPropertyRuleFlag (definition);
+                    break;
+                }
+                if (ruleFromArrayDefinition)
+                    ++rulesFromArrayDefinition;
+
+                // Печатаем сами описания первого элемента: длины у обоих источников
+                // совпадают, поэтому отличить «описание без правила» от «правило другого
+                // формата» можно только по тексту (#184/#185).
+                if (descriptionsDumped < 24 && !prop.definition.description.IsEmpty ()) {
+                    ++descriptionsDumped;
+                    const USize descriptionLimit = 160;
+                    const GS::UniString descriptionText =
+                        prop.definition.description.GetLength () > descriptionLimit
+                            ? prop.definition.description.GetSubstring (0, descriptionLimit) + GS::UniString ("...")
+                            : prop.definition.description;
+                    DBprnt ("TEST",
+                            GS::UniString ("RuleFlagProj desc ") + prop.definition.name + GS::UniString (" len=") +
+                                GS::ValueToUniString ((Int32)prop.definition.description.GetLength ()) +
+                                GS::UniString (" dArray=") + GS::ValueToUniString ((Int32)arrayDescriptionLength) +
+                                GS::UniString (" rule=") + GS::ValueToUniString (ruleFromPropertyDefinition) +
+                                GS::UniString (" [") + descriptionText + GS::UniString ("]"));
+                }
+            }
+
+            DBprnt ("TEST",
+                    GS::UniString ("RuleFlagProj elem=") + APIGuidToString (elemGuid) + GS::UniString (" defs=") +
+                        GS::ValueToUniString ((Int32)definitions.GetSize ()) + GS::UniString (" defsWithDesc=") +
+                        GS::ValueToUniString ((Int32)definitionsWithDescription) + GS::UniString (" props=") +
+                        GS::ValueToUniString ((Int32)properties.GetSize ()) + GS::UniString (" propsWithDesc=") +
+                        GS::ValueToUniString ((Int32)propertiesWithDescription) + GS::UniString (" rulesFromPropDef=") +
+                        GS::ValueToUniString ((Int32)rulesFromPropertyDefinition) +
+                        GS::UniString (" rulesFromArrayDef=") + GS::ValueToUniString ((Int32)rulesFromArrayDefinition));
+        }
+        DBprnt ("TEST", "TestPropertyRuleFlagOnProjectElements : done");
         return;
     }
 

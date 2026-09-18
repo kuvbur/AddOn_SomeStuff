@@ -236,9 +236,12 @@ ParsePropertyResult ParsePropertyDescriptionToRules (const GS::UniString &descri
             SyncMode syncdirection = SYNC_NO;
             API_ElemTypeID elementType = API_ObjectID;
 
-            // Разбор для UI: координатные правила и правила классификации не должны отбраковываться
+            // Разбор для UI: координатные правила и правила классификации не должны отбраковываться.
+            // #184/#185: проверка применимости к типу элемента отключена — тип здесь неизвестен,
+            // а признак правила у определения один для всех элементов (иначе правила материалов
+            // вида Sync_from{Material:Layers; ...} отбраковывались и не попадали в фильтр/маркировку).
             bool ok = SyncString (
-                elementType, cmd.fullCommand, syncdirection, param, ignorevals, stringformat, true, true, true);
+                elementType, cmd.fullCommand, syncdirection, param, ignorevals, stringformat, true, true, true, false);
 
             if (ok) {
                 ruleInfo.isValid = true;
