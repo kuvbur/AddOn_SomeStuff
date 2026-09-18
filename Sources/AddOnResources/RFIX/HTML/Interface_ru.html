@@ -1307,7 +1307,7 @@ function renderFilterBlock(block, listBlock) {
   // Name filter row
   const nameFilterRow = h("div", { style: "display:flex;gap:0.3rem;" });
   const input = h("input", {
-    attrs: { type: "text", placeholder: "Фильтр свойств… (или /regex/)", value: STATE.monitorFilter },
+    attrs: { type: "text", placeholder: "Фильтр по именам… (или /regex/)", value: STATE.monitorFilter },
     style: "flex:1 1 auto;min-width:0;padding:0.35rem 0.5rem;font-size:0.78rem;" +
            "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);border-radius:0.25rem;",
     on: {
