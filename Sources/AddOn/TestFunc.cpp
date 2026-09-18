@@ -43,6 +43,7 @@ namespace TestFunc {
         TestSyncAddSubelement ();
         TestRenumPosLogic ();
         TestDescToRulesSubGuid ();
+        TestGetPropertyRuleFlag ();
         DBprnt ("TEST", "end");
     }
 
@@ -2871,6 +2872,90 @@ namespace TestFunc {
         }
 
         DBprnt ("TEST", "TestDescToRulesSubGuid : done");
+        return;
+    }
+
+    // -----------------------------------------------------------------------------
+    // Тест GetPropertyRuleFlag — кэш признака правила SomeStuff в описании свойства.
+    // Проверяет: первичный расчёт, попадание в кэш (второй вызов без перечитывания),
+    // инвалидацию по изменению описания и отсутствие ложных правил у обычных свойств.
+    // -----------------------------------------------------------------------------
+    void TestGetPropertyRuleFlag () {
+        DBprnt ("TEST", "TestGetPropertyRuleFlag");
+
+        API_PropertyDefinition definition = {};
+        definition.guid = APINULLGuid;
+
+        // ---- Описание с Sync-правилом: признак true ----
+        definition.description = "Sync_from{Property:TestSource}";
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag Sync_from -> true");
+
+        // ---- Второй вызов с тем же описанием: кэш, результат тот же ----
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag Sync_from cached -> true");
+
+        // ---- Инвалидация: описание изменилось -> признак пересчитан (#159: Renum тоже правило) ----
+        definition.description = "Renum_flag{Property:RenumRule; NULL}";
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag changed to Renum_flag -> true");
+
+        // ---- Обычное свойство без команд в описании ----
+        definition.description = "Just a plain description";
+        DBtest (!GetPropertyRuleFlag (definition), "RuleFlag plain description -> false");
+
+        // ---- Пустое описание ----
+        definition.description = "";
+        DBtest (!GetPropertyRuleFlag (definition), "RuleFlag empty description -> false");
+
+        // Spec хранится в otherCommands; Renum/Sum не должны давать ложный признак.
+        definition.description = "Spec_rule{Property:TestSpec}";
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag Spec_rule -> true");
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag Spec_rule cached -> true");
+        definition.description = "Spec_rule_v2{Property:TestSpec}";
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag Spec_rule_v2 -> true");
+        definition.description = "spec_rule_v3{Property:TestSpec}";
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag spec_rule_v3 -> true");
+        definition.description = "Spec_rule{Property:TestSpec";
+        DBtest (!GetPropertyRuleFlag (definition), "RuleFlag incomplete Spec -> false");
+        definition.description = "Sum{Property:TestSum}";
+        DBtest (GetPropertyRuleFlag (definition), "RuleFlag Sum only -> true");
+        definition.description = "";
+        DBtest (!GetPropertyRuleFlag (definition), "RuleFlag cleared after Spec -> false");
+
+        // Проверяем сохранение результата без повторного чтения определений из Archicad.
+        DBprnt ("TEST", "RuleCache content checks start");
+        definition.description = "Sync_from{Property:TestSource}";
+        const ParsePropertyResult expected = ParsePropertyDescriptionToRules (definition.description);
+        GetPropertyRuleFlag (definition);
+        auto &flags = PROPERTYCACHE ().propertyRuleFlags;
+        PropertyRuleFlag *entry = flags.GetPtr (definition.guid);
+        DBtest (entry != nullptr && entry->parsed.hasSyncRules && entry->parsed.syncRules.GetSize () == 1 &&
+                    expected.syncRules.GetSize () == 1 &&
+                    entry->parsed.syncRules[0].fullCommand == expected.syncRules[0].fullCommand &&
+                    entry->parsed.syncRules[0].sourceName == expected.syncRules[0].sourceName &&
+                    entry->parsed.syncRules[0].isValid == expected.syncRules[0].isValid,
+                "RuleCache retains Sync command");
+        // Маркер только в тестовой записи: повторный разбор затёр бы его.
+        if (entry != nullptr)
+            entry->parsed.remainingText = "cache reuse sentinel";
+        GetPropertyRuleFlag (definition);
+        entry = flags.GetPtr (definition.guid);
+        DBtest (entry != nullptr && entry->parsed.remainingText == "cache reuse sentinel",
+                "RuleCache reuses unchanged description");
+        definition.description = "Spec_rule_v2{Property:TestSpec}";
+        GetPropertyRuleFlag (definition);
+        entry = flags.GetPtr (definition.guid);
+        DBtest (entry != nullptr && entry->parsed.syncRules.IsEmpty () && entry->parsed.hasOtherCommands &&
+                    entry->parsed.otherCommands.GetSize () == 1 &&
+                    entry->parsed.otherCommands[0].commandType == "Spec_rule" &&
+                    entry->parsed.remainingText != "cache reuse sentinel",
+                "RuleCache replaces Sync result with Spec");
+        definition.description = "";
+        GetPropertyRuleFlag (definition);
+        entry = flags.GetPtr (definition.guid);
+        DBtest (entry != nullptr && entry->parsed.syncRules.IsEmpty () && entry->parsed.otherCommands.IsEmpty () &&
+                    !entry->parsed.hasSyncRules && !entry->parsed.hasOtherCommands,
+                "RuleCache clears parsed commands for empty description");
+        flags.Delete (definition.guid);
+        DBprnt ("TEST", "TestGetPropertyRuleFlag : done");
         return;
     }
 

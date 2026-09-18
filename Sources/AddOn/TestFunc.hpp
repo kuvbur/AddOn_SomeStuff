@@ -101,6 +101,9 @@ namespace TestFunc {
     // который не должен измениться при правке бага P1 в SyncAddSubelement.
     void TestDescToRulesSubGuid ();
 
+    // Проверяет GetPropertyRuleFlag — кэшированный признак правила в описании свойства.
+    void TestGetPropertyRuleFlag ();
+
     // Выводит все встроенные свойства в отладочный журнал.
     void DumpAllBuiltInProperties ();
 

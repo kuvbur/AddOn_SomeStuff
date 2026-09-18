@@ -4,8 +4,32 @@
 #include "Propertycache.hpp"
 
 #include "CommonFunction.hpp"
+#include "dialogs/CommandHelpers.hpp"
 #include "File.hpp"
 #include "Helpers.hpp"
+
+bool GetPropertyRuleFlag (const API_PropertyDefinition &definition) {
+    auto &cache = PROPERTYCACHE ();
+    if (const PropertyRuleFlag *cached = cache.propertyRuleFlags.GetPtr (definition.guid)) {
+        if (cached->description.IsEqual (definition.description))
+            return cached->hasRule;                       // описание не менялось — переиспользуем результат
+        cache.propertyRuleFlags.Delete (definition.guid); // описание изменилось — запись устарела
+    }
+    // Копия описания в записи — инвалидация при последующем чтении свойства
+    PropertyRuleFlag &entry = cache.propertyRuleFlags.Retrieve (definition.guid);
+    entry.description = definition.description;
+    entry.parsed = ParsePropertyDescriptionToRules (definition.description);
+    const ParsePropertyResult &parsed = entry.parsed;
+    entry.hasRule = parsed.hasSyncRules;
+    // #159: правилом считается любая валидная команда — Sync, Spec_rule, Renum(_flag), Sum
+    for (const auto &command : parsed.otherCommands) {
+        if (command.isValid) {
+            entry.hasRule = true;
+            break;
+        }
+    }
+    return entry.hasRule;
+}
 
 PropertyCache &GetCache () {
     static PropertyCache instance;

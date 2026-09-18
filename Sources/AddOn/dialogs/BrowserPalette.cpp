@@ -4,6 +4,8 @@
 
 // ---------------------------------- Includes ---------------------------------
 
+#include <ctime>
+
 #include "ACAPinc.h"
 
 #include "dialogs/BrowserPalette.hpp"
@@ -273,6 +275,9 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
     jsACAPI->AddItem (new DG::JSFunction ("GetPropertiesList", [this] (GS::Ref<DG::JSBase>) -> GS::Ref<DG::JSBase> {
         // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
         try {
+#if defined(TESTING)
+            const std::clock_t propertiesListStart = std::clock ();
+#endif
             // Собираем данные свойств
             GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
             // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
@@ -401,6 +406,11 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                         jsonStr += GS::UniString ("\"propertyGuid\": \"") +
                                    APIGuidToString (prop.definition.guid).ToCStr ().Get () + GS::UniString ("\"");
 
+                        // Признак наличия правила SomeStuff в описании — из кэша PROPERTYCACHE (#158)
+                        jsonStr +=
+                            GS::UniString (", \"hasRule\": ") +
+                            (GetPropertyRuleFlag (prop.definition) ? GS::UniString ("true") : GS::UniString ("false"));
+
                         jsonStr += "}";
                     }
 
@@ -417,6 +427,14 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
                 GS::UniString ("], \"count\": ") + GS::ValueToUniString (addedElementCount) + GS::UniString (" }");
 
             DBprnt (GS::UniString ("GetPropertiesList: returning JSON: ") + jsonStr);
+#if defined(TESTING)
+            const double propertiesListSeconds =
+                static_cast<double> (std::clock () - propertiesListStart) / CLOCKS_PER_SEC;
+            DBprnt (propertiesListSeconds,
+                    GS::UniString ("GetPropertiesList baseline seconds; selected=") +
+                        GS::ValueToUniString (selectedElements.GetSize ()) + GS::UniString ("; returned=") +
+                        GS::ValueToUniString (addedElementCount));
+#endif
 
             return new DG::JSValue (jsonStr);
         } catch (const std::exception &e) {

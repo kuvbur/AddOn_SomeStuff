@@ -18,6 +18,7 @@
 #include "spec/Spec.hpp"
 #include "Summ.hpp"
 #include "Sync.hpp"
+#include "table/TablesNavigator.hpp"
 #ifdef ServerMainVers_2300
     #include "pk/AutomateFunction.hpp"
     #include "ReNum.hpp"
@@ -81,6 +82,14 @@ static GSErrCode __ACENV_CALL ProjectEventHandlerProc (API_NotifyEventID notifID
     MenuSetState (syncSettings);
     GSErrCode err = NoError;
     switch (notifID) {
+    case APINotify_AllInputFinished:
+        err = TablesNavigator::EnsureNavigatorRoot ();
+#ifdef TESTING
+        if (err != NoError)
+            DBprnt ("TablesNavigator::EnsureNavigatorRoot", "failed");
+#endif
+        err = NoError;
+        break;
     case APINotify_New:
     case APINotify_NewAndReset:
     case APINotify_Open: {
@@ -522,6 +531,8 @@ GSErrCode __ACDLL_CALL RegisterInterface (void) {
 #else
     err = ACAPI_Register_Menu (ID_ADDON_MENU, ID_ADDON_PROMT + isEng (), MenuCode_Tools, MenuFlag_Default);
 #endif
+    if (err == NoError)
+        err = TablesNavigator::RegisterInterface ();
     ACAPI_KeepInMemory (true);
     return err;
 }
@@ -543,14 +554,15 @@ GSErrCode __ACENV_CALL Initialize (void) {
     Do_ElementMonitor (syncSettings.GetSyncMon ());
     MonAll (syncSettings);
 #ifdef ServerMainVers_2700
-    ACAPI_ProjectOperation_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New |
-                                                  APINotify_NewAndReset | APINotify_Open | APINotify_Close |
-                                                  APINotify_Quit | APINotify_ChangeProjectDB | APINotify_ReceiveChanges,
+    ACAPI_ProjectOperation_CatchProjectEvent (APINotify_AllInputFinished | APINotify_ChangeWindow |
+                                                  APINotify_ChangeFloor | APINotify_New | APINotify_NewAndReset |
+                                                  APINotify_Open | APINotify_Close | APINotify_Quit |
+                                                  APINotify_ChangeProjectDB | APINotify_ReceiveChanges,
                                               ProjectEventHandlerProc);
 #else
-    ACAPI_Notify_CatchProjectEvent (APINotify_ChangeWindow | APINotify_ChangeFloor | APINotify_New |
-                                        APINotify_NewAndReset | APINotify_Open | APINotify_Close | APINotify_Quit |
-                                        APINotify_ChangeProjectDB | APINotify_ReceiveChanges,
+    ACAPI_Notify_CatchProjectEvent (APINotify_AllInputFinished | APINotify_ChangeWindow | APINotify_ChangeFloor |
+                                        APINotify_New | APINotify_NewAndReset | APINotify_Open | APINotify_Close |
+                                        APINotify_Quit | APINotify_ChangeProjectDB | APINotify_ReceiveChanges,
                                     ProjectEventHandlerProc);
 #endif
 
@@ -562,6 +574,9 @@ GSErrCode __ACENV_CALL Initialize (void) {
 #else
     ACAPI_Notify_CatchSelectionChange (SelectionChangeHandlerProc);
 #endif
+    GSErrCode navigatorErr = TablesNavigator::Initialize ();
+    if (navigatorErr != NoError)
+        return navigatorErr;
     ACAPI_KeepInMemory (true);
 #if defined(TESTING)
     TestFunc::Test ();

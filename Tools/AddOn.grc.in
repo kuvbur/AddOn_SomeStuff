@@ -138,6 +138,8 @@
 /* [  78] */ 	"Имя свойства"
 /* [  79] */ 	"Кол. эл."
 /* [  80] */ 	"ВНИМАНИЕ!\nБудут обработаны все элементы, для которых применимы правила обрабатываемых свойства"
+/* [  81] */	"SomeStuff Каталоги"
+/* [  82] */	"Новый каталог"
 }
 
 'STR#' ID_ADDON_INFO_ENG "Add-on Name and Description" {
@@ -270,6 +272,8 @@
 /* [  78] */ 	"Property Name"
 /* [  79] */ 	"No. of El"
 /* [  80] */ 	"ATTENTION!\nAll elements, for which the rules of the processed properties are applicable, will be processed"
+/* [  81] */	"SomeStuff Schedules"
+/* [  82] */	"New Schedule"
 }
 
 'GDLG'  32590  Modal | grow         0    0  500  300  "RuleSelect Dialog" {
@@ -286,10 +290,48 @@
 4	""							CenterText_0
 }
 
+/* --- SomeStuff schedules ----------------------------------------------------*/
+
+'GDLG'  ID_ADDON_TABLE_NEW_DLG  Modal | hGrow         0    0  360  108  "New Schedule" {
+/* [  1] */ Button				  280   76   70   26	LargePlain  "OK"
+/* [  2] */ Button				  200   76   70   26	LargePlain  "Cancel"
+/* [  3] */ LeftText			   10   10  120   18	LargePlain  "ID:"
+/* [  4] */ TextEdit			   10   28  120   23	LargePlain  255
+/* [  5] */ LeftText			  140   10  210   18	LargePlain  "Name:"
+/* [  6] */ TextEdit			  140   28  210   23	LargePlain  255
+}
+
+'DLGH'  ID_ADDON_TABLE_NEW_DLG  DLG_SomeStuff_NewSchedule {
+1	""							Button_0
+2	""							Button_1
+3	""							LeftText_0
+4	""							TextEdit_0
+5	""							LeftText_1
+6	""							TextEdit_1
+}
+
+'GDLG'  ID_ADDON_TABLE_EDIT_DLG  Modal | hGrow        0    0  360  108  "Schedule Settings" {
+/* [  1] */ Button				  280   76   70   26	LargePlain  "OK"
+/* [  2] */ Button				  200   76   70   26	LargePlain  "Cancel"
+/* [  3] */ LeftText			   10   10  120   18	LargePlain  "ID:"
+/* [  4] */ TextEdit			   10   28  120   23	LargePlain  255
+/* [  5] */ LeftText			  140   10  210   18	LargePlain  "Name:"
+/* [  6] */ TextEdit			  140   28  210   23	LargePlain  255
+}
+
+'DLGH'  ID_ADDON_TABLE_EDIT_DLG  DLG_SomeStuff_EditSchedule {
+1	""							Button_0
+2	""							Button_1
+3	""							LeftText_0
+4	""							TextEdit_0
+5	""							LeftText_1
+6	""							TextEdit_1
+}
+
 /* --- Dockable browser palette ----------------------------------------------*/
 
-'GDLG'  32580    Palette | topCaption | close | grow   0   0  383  150  "Somestuff @ADDON_VERSION@ @ADDON_SUBVERSION@"  {
-/* [  1] */ Browser			0   0  383  150
+'GDLG'  32580    Palette | topCaption | close | grow   0   0  230  150  "Somestuff @ADDON_VERSION@ @ADDON_SUBVERSION@"  {
+/* [  1] */ Browser			0   0  230  150
 }
 
 'DLGH'  32580  DLG_32580_Browser_Palette {

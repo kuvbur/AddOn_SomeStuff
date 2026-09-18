@@ -17,4 +17,6 @@
 
 // Идентификаторы ресурсов add-on: строки, меню, диалоги и сообщения интерфейса.
 #define ID_ADDON_RULE_DLG		32590
+#define ID_ADDON_TABLE_NEW_DLG	32591
+#define ID_ADDON_TABLE_EDIT_DLG	32592
 #endif

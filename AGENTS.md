@@ -159,6 +159,16 @@ dock state but adopts the new width (`DG::Palette::IsDocked` / `UnDock` /
 reports `GetMinClientWidth() == original width`, so `SetMinClientWidth` must be
 relaxed BEFORE shrinking or the resize is silently clamped.
 
+**Landmine — palette default width / HTML width alignment:** the expanded
+palette's size comes from the RINT dialog template `Tools/AddOn.grc.in`
+(`'GDLG' 32580 Palette … 0 0 <w> <h>` **and** the `Browser 0 0 <w> <h>` control —
+change both), and that same width is what a growing DG dialog reports as
+`GetMinClientWidth()`, i.e. the narrowest the user can drag to. The HTML is
+embedded in the same grc (`'DATA' ID_ADDON_HTML` → `Interface_ru.html`), so an
+HTML edit needs a rebuild too. The HTML `min-width` on `<body>` must stay ≤ that
+width (ТЗ §2 forbids clipping/overflow), and a row that stops fitting at the
+narrower width must be made to wrap, not trimmed of ТЗ-mandated labels.
+
 **Landmine — "Монитор" data source:** property values come only from
 `PROPERTYCACHE()`, never `ACAPI_Property_GetPropertyValue` per element. The
 cache's `property` entry holds definitions only — values are looked up per

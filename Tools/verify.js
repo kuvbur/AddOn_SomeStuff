@@ -103,9 +103,9 @@ if (!/applyTheme\s*\(/.test(src))
 if (!/DOMContentLoaded/.test(src))
   E("Нет DOMContentLoaded — точки запуска приложения.");
 
-// 12. min-width на body или корневом контейнере (>= 250px по ТЗ)
-if (!/min-width\s*:\s*2[0-9]{2}/.test(src) && !/min-width\s*:\s*[3-9][0-9]{2}/.test(src))
-  W("Не найден min-width >= 250px. По ТЗ минимальная ширина 250px должна быть защищена.");
+// 12. min-width на body или корневом контейнере (>= 150px по ТЗ)
+if (!/min-width\s*:\s*1[5-9][0-9]/.test(src) && !/min-width\s*:\s*[2-9][0-9]{2}/.test(src))
+  W("Не найден min-width >= 150px. По ТЗ минимальная ширина панели 150px должна быть защищена.");
 
 // 13. Нет горизонтального scroll на body
 if (/overflow-x\s*:\s*auto/.test(src) || /overflow-x\s*:\s*scroll/.test(src))

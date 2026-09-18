@@ -2,6 +2,7 @@
 #pragma once
 #if !defined(PROPERTYCACHE_HPP)
     #define PROPERTYCACHE_HPP
+    #include "dialogs/CommandHelpers.hpp"
     #include "Helpers.hpp"
 
     #ifdef ServerMainVers_2900
@@ -103,6 +104,14 @@ struct CachedLayer {
     short flagBits = 0;
 };
 
+// Кэшированный признак наличия правила SomeStuff в описании свойства (#158).
+// Копия описания нужна для инвалидации: описание изменилось -> запись устарела.
+struct PropertyRuleFlag {
+    GS::UniString description;
+    ParsePropertyResult parsed;
+    bool hasRule = false;
+};
+
 struct PropertyCache {
     ParamDictValue property;
     ParamDictValue info;
@@ -193,6 +202,9 @@ struct PropertyCache {
     mutable GS::HashTable<API_Guid, GS::Array<GS::ObjectState>> selectionPropertiesCache;
     mutable bool selectionPropertiesCacheValid = false;
 
+    // Кэш правил SomeStuff в описаниях свойств (#158), ключ — GUID определения
+    mutable GS::HashTable<API_Guid, PropertyRuleFlag> propertyRuleFlags;
+
     PropertyCache () {
     #if defined(TESTING)
         DBprnt ("=PropertyCache= clear");
@@ -254,6 +266,7 @@ struct PropertyCache {
         // Инициализация кэша свойств выделения
         selectionPropertiesCache.Clear ();
         selectionPropertiesCacheValid = false;
+        propertyRuleFlags.Clear ();
     }
     #ifdef ServerMainVers_2900
     void ReadMEP () {
@@ -543,6 +556,7 @@ struct PropertyCache {
         DBprnt ("=PropertyCache= ReadPropertyDefinition");
     #endif
         property.Clear ();
+        propertyRuleFlags.Clear (); // Перечитывание определений удаляет и правила удалённых свойств.
         isPropertyDefinitionRead = true;
         isPropertyDefinitionRead_full = true;
         isPropertyDefinition_OK = ParamHelpers::GetAllPropertyDefinitionToParamDict (property);
@@ -710,6 +724,12 @@ GS::UniString GetPropertyNameByGUID (const API_Guid &guid);
 // Получить полное имя свойства (включая имя группы)
 // -----------------------------------------------------------------------------
 GSErrCode GetPropertyFullName (const API_PropertyDefinition &definision, GS::UniString &name);
+
+// -----------------------------------------------------------------------------
+// Кэшированный признак наличия правила SomeStuff в описании свойства (#158).
+// Парсит описание только при промахе кэша или после изменения описания.
+// -----------------------------------------------------------------------------
+bool GetPropertyRuleFlag (const API_PropertyDefinition &definition);
 
 PropertyCache &GetCache ();
 
