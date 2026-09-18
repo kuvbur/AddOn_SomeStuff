@@ -126,6 +126,7 @@ const STATE = {
   monitorFilter: "",
   monitorValueFilter: "",
   monitorRulesOnly: false,
+  pinnedProperties: [],        // #160: id закреплённых свойств «Монитора» (наверху списка)
   monitorSelectedPropertyId: null,
   numberingOpenBlocks: { flag: false, ruleEditor: false }, // блок 1 всегда открыт, остальные — по клику
   numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
@@ -579,6 +580,11 @@ function chainIconSvg(broken) {
   return broken
     ? '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 12l2-2M6.5 9.5L5 8a2.5 2.5 0 013.5-3.5l1.5 1.5M13.5 10.5L15 12a2.5 2.5 0 01-3.5 3.5l-1.5-1.5" stroke-linecap="round"/></svg>'
     : '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 12l4-4M6.5 9.5L5 8a2.5 2.5 0 013.5-3.5l1.5 1.5M13.5 10.5L15 12a2.5 2.5 0 01-3.5 3.5l-1.5-1.5" stroke-linecap="round"/></svg>';
+}
+
+// SVG-иконка "булавка" для закрепления свойства: под углом, когда закреплено (#160).
+function pinIconSvg(pinned) {
+  return '<svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" style="transform:rotate(' + (pinned ? "45" : "0") + 'deg);transition:transform var(--ac-transition);"><path d="M10 2.5v6M10 8.5l3.5 3.5H6.5L10 8.5zM10 12v5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="9.5" r="1" fill="currentColor" stroke="none"/></svg>';
 }
 
 function chevronSvg(open) {
@@ -1560,17 +1566,35 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
             groups = groups.filter(function(g) { return g.properties && g.properties.length > 0; });
           }
 
+          // #160: закреплённые свойства всегда наверху списка — отдельная первая группа.
+          // Закреплённые, не прошедшие фильтры, наверх не выносятся.
+          if (STATE.pinnedProperties.length) {
+            const isPinned = function (p) { return STATE.pinnedProperties.indexOf(p.id) !== -1; };
+            let pinnedProps = [];
+            groups.forEach(function (g) {
+              const pinnedInGroup = g.properties.filter(isPinned);
+              if (pinnedInGroup.length) {
+                pinnedProps = pinnedProps.concat(pinnedInGroup);
+                g.properties = g.properties.filter(function (p) { return !isPinned(p); });
+              }
+            });
+            groups = groups.filter(function (g) { return g.properties.length > 0; });
+            if (pinnedProps.length) groups.unshift({ group: "Закреплённые", properties: pinnedProps });
+          }
+
           groups.forEach(function (g) {
       const groupName = g.group;
       const isCollapsed = !!STATE.monitorGroupCollapse[groupName];
       
-      // Group header (clickable)
+      // Group header (clickable); #160: «Закреплённые» выделяется акцентом.
+      const isPinnedGroup = groupName === "Закреплённые";
       const groupHeader = h("div", {
         text: groupName,
         attrs: { role: "button" },
         focusable: true,
         style: "position:sticky;top:0;background:var(--ac-bg-workspace);padding:0.4rem 0.75rem 0.2rem;" +
-               "font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;" +
+               "font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:" +
+               (isPinnedGroup ? "var(--ac-accent)" : "var(--ac-text-tertiary)") + ";font-weight:700;" +
                "cursor:pointer;display:flex;align-items:center;gap:0.3rem;user-select:none;",
         on: {
           click: function() {
@@ -1589,32 +1613,54 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
       groupHeader.insertBefore(chevron, groupHeader.firstChild);
       
       listBlock.appendChild(groupHeader);
-      
+
       // Render properties if not collapsed
       if (!isCollapsed) {
         g.properties.forEach(function (p) {
           listBlock.appendChild(renderPropertyRow(p));
         });
       }
+
+      // #160: горизонтальная линия-разделитель под всем блоком закреплённых.
+      if (isPinnedGroup) {
+        listBlock.appendChild(h("div", {
+          style: "flex:0 0 auto;height:2px;background:var(--ac-accent);opacity:0.55;"
+        }));
+      }
     });
+}
+
+// #160: переключение закрепления свойства и перерисовка списка «Монитора».
+function togglePinnedProperty(propId) {
+  const idx = STATE.pinnedProperties.indexOf(propId);
+  if (idx === -1) STATE.pinnedProperties.push(propId);
+  else STATE.pinnedProperties.splice(idx, 1);
+  const listBlock = document.getElementById("monitor-list-block");
+  if (listBlock) renderPropertyList(listBlock, STATE.monitorFilter, true);
 }
 
 function renderPropertyRow(prop) {
   const isSelected = STATE.monitorSelectedPropertyId === prop.id;
+  const isPinned = STATE.pinnedProperties.indexOf(prop.id) !== -1;
 
   const row = h("div", {
-    attrs: { "data-prop-row": prop.id, role: "button", "aria-pressed": isSelected ? "true" : "false" },
+    attrs: { "data-prop-row": prop.id, role: "button", "aria-pressed": isSelected ? "true" : "false",
+             "data-pinned": isPinned ? "true" : "false" },
     focusable: true,
     style: "display:flex;flex-direction:column;gap:0.15rem;padding:0.35rem 0.75rem;cursor:pointer;" +
            "border-left:2px solid " + (isSelected ? "var(--ac-accent)" : "transparent") + ";" +
-           "background:" + (isSelected ? "var(--ac-bg-hover)" : "transparent") + ";",
-    hoverStyle: "background:var(--ac-bg-hover);",
+           // #160: закреплённая строка — подложка акцентом; общая линия под всем
+           // блоком закреплённых рисуется отдельным разделителем после группы.
+           "background:" + (isSelected ? "var(--ac-bg-hover)"
+                                       : (isPinned ? "var(--ac-accent-soft)" : "transparent")) + ";",
+    hoverStyle: "background:" + (isPinned ? "var(--ac-accent-soft)" : "var(--ac-bg-hover)") + ";",
     on: {
       click: function () {
         STATE.monitorSelectedPropertyId = prop.id;
         document.querySelectorAll("[data-prop-row]").forEach(function (r) {
           const sel = r.getAttribute("data-prop-row") === prop.id;
-          r.style.background = sel ? "var(--ac-bg-hover)" : "transparent";
+          const pinned = r.getAttribute("data-pinned") === "true";
+          r.style.background = sel ? "var(--ac-bg-hover)" : (pinned ? "var(--ac-accent-soft)" : "transparent");
           r.style.borderLeft = "2px solid " + (sel ? "var(--ac-accent)" : "transparent");
           r.setAttribute("aria-pressed", sel ? "true" : "false");
         });
@@ -1644,6 +1690,17 @@ function renderPropertyRow(prop) {
       style: "flex:0 0 auto;font-size:0.7rem;color:var(--ac-text-tertiary);"
     }));
   }
+
+  const pinBtn = iconButton({
+    html: pinIconSvg(isPinned),
+    title: isPinned ? "Открепить свойство" : "Закрепить свойство наверху списка",
+    hoverColor: "var(--ac-accent)",
+    onClick: function (e) {
+      e.stopPropagation();
+      togglePinnedProperty(prop.id);
+    }
+  });
+  headerRow.appendChild(pinBtn);
 
   const resetBtn = iconButton({
     html: chainIconSvg(false),
