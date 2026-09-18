@@ -174,5 +174,5 @@ UI вкладки «Монитор» — остаток работ. Работа
 ## Status: COMPLETED — #161 реализован и проверен (RED→GREEN); #160 закрыт.
 ## Last Completed: 2026-09-18 23:10 — #161: каноническая ветка Name2Rawname нормализует регистр; RED 1 провал → GREEN 488 ok / 0 ошибок (AC25).
 ## Next Step: коммит #161 (по запросу); runtime-проверка не требуется (покрыто unit-тестами). Далее #163–#171 (runtime R2–R10).
-## Last Checkpoint: 606d0ad `[#160] Монитор: pin (закрепление) свойств с выделением блока` (Interface_ru.html + IDEA.md, Refs: #160). Предыдущий: 9496a6c (#182–#185).
+## Last Checkpoint: 17cb79d `[#161] Sync.cpp-8: Name2Rawname каноническая ветка нормализует регистр` (Sync.cpp + TestFunc.cpp + IDEA.md, Refs: #161). Предыдущий: 606d0ad (#160).
 ## Scope: #160 — только Sources/AddOnResources/RFIX/HTML/Interface_ru.html и IDEA.md. C++ не менялся.
