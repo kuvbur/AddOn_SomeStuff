@@ -1344,7 +1344,10 @@ function renderFilterBlock(block, listBlock) {
     const willOpen = dropdown.style.display === "none";
     dropdown.style.display = willOpen ? "block" : "none";
     valueDropdown.style.display = "none";
-    if (willOpen && !dropdown.childNodes.length) {
+    if (willOpen) {
+      // Перестраиваем при каждом открытии: пункт «Только с правилами» —
+      // переключатель, его активное состояние должно быть актуальным (#180).
+      clear(dropdown);
       ACBridge.getFilterPresets().then(function (presets) {
         presets.forEach(function (p) {
           dropdown.appendChild(h("div", {
@@ -1363,6 +1366,24 @@ function renderFilterBlock(block, listBlock) {
             }
           }));
         });
+        // #180: режим «только с правилами» — пункт-переключатель вместо чекбокса.
+        const rulesActive = STATE.monitorRulesOnly === true;
+        dropdown.appendChild(h("div", {
+          text: (rulesActive ? "\u2713 " : "") + "Только с правилами Sync/Spec",
+          attrs: { role: "button" },
+          focusable: true,
+          style: "padding:0.4rem 0.6rem;font-size:0.76rem;cursor:pointer;color:" +
+                 (rulesActive ? "var(--ac-accent)" : "var(--ac-text-primary)") + ";" +
+                 (rulesActive ? "font-weight:700;" : ""),
+          hoverStyle: "background:var(--ac-bg-hover);",
+          on: {
+            click: function () {
+              STATE.monitorRulesOnly = !STATE.monitorRulesOnly;
+              dropdown.style.display = "none";
+              renderPropertyList(listBlock, STATE.monitorFilter, true);
+            }
+          }
+        }));
       });
     }
   });
@@ -1396,22 +1417,8 @@ function renderFilterBlock(block, listBlock) {
 
   block.appendChild(nameFilterRow);
   block.appendChild(valueFilterRow);
-  const ruleFilterRow = h("label", {
-    style: "display:flex;align-items:center;gap:0.3rem;font-size:0.72rem;color:var(--ac-text-secondary);"
-  });
-  const ruleFilter = h("input", {
-    attrs: { type: "checkbox", "aria-label": "Только свойства с правилами Sync/Spec" },
-    on: {
-      change: function () {
-        STATE.monitorRulesOnly = ruleFilter.checked;
-        renderPropertyList(listBlock, STATE.monitorFilter, true);
-      }
-    }
-  });
-  ruleFilter.checked = STATE.monitorRulesOnly;
-  ruleFilterRow.appendChild(ruleFilter);
-  ruleFilterRow.appendChild(h("span", { text: "Только с правилами Sync/Spec" }));
-  block.appendChild(ruleFilterRow);
+  // #180: чекбокс «Только с правилами Sync/Spec» заменён пунктом-переключателем
+  // в списке пресетов фильтра по имени (см. обработчик presetBtn выше).
   block.appendChild(h("div", {
     text: "Поддерживаются шаблоны regexp в формате /шаблон/",
     style: "margin-top:0.25rem;font-size:0.7rem;color:var(--ac-text-tertiary);"
