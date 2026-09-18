@@ -1769,6 +1769,14 @@ namespace TestFunc {
                 GS::UniString ("{@coord:symb_pos_x}"),
                 "Name2RawnameWithBrackets {@coord:symb_pos_x} -> rawname unchanged");
 
+        // Sync.cpp-8 (#161): каноническая ветка нормализует регистр — ключи кэша
+        // всегда в нижнем регистре, иначе правило молча не находит значение.
+        name = "{@Coord:Symb_Pos_X}";
+        DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@Coord:Symb_Pos_X} -> true");
+        DBtest (rawname,
+                GS::UniString ("{@coord:symb_pos_x}"),
+                "Name2RawnameWithBrackets {@Coord:Symb_Pos_X} -> rawname lowered");
+
         // Тест: уже корректный rawname GDL
         name = "{@gdl:testgdlparam}";
         DBtest (Name2Rawname (name, rawname), "Name2RawnameWithBrackets {@gdl:testgdlparam} -> true");

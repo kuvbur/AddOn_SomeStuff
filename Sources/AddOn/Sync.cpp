@@ -996,7 +996,9 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
     const GS::UniString loweredName = name.ToLowerCase ();
 
     // 1) Каноническая форма rawname '{@prefix:name}': префикс известен — вход уже
-    //    является ключом кэша, возвращаем как есть (без изменения регистра имени).
+    //    является ключом кэша. FIX (Sync.cpp-8, #161): регистр нормализуем — ключи
+    //    словаря параметров всегда в нижнем регистре, иначе правило молча не найдёт
+    //    значение для записи вида '{@Coord:Symb_Pos_X}'.
     if (loweredName.BeginsWith (PVALPREFIX) && loweredName.EndsWith (BRACEEND)) {
         const UIndex colonInx = loweredName.FindFirst (':');
         if (colonInx != MaxUIndex) {
@@ -1005,7 +1007,7 @@ bool Name2Rawname (GS::UniString &name, GS::UniString &rawname) {
             // Канонические префиксы — из Constants.hpp (paramPrefixesList)
             for (const GS::UniString &known : paramPrefixesList) {
                 if (prefixPart == known) {
-                    rawname = name;
+                    rawname = loweredName;
                     return true;
                 }
             }

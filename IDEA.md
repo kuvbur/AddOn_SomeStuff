@@ -49,7 +49,12 @@ UI вкладки «Монитор» — остаток работ. Работа
   закреплённое, выбор строки. **Ручная проверка подтверждена пользователем 2026-09-18.**
   Напоминание: HTML вшит в ресурс (`'DATA' ID_ADDON_HTML`) — правки HTML требуют пересборки.
   Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/160
-- [ ] #161 — Sync.cpp-8: регистр в канонической ветке Name2Rawname (`rawname = name` → `loweredName`)
+- [/] #161 — Sync.cpp-8: регистр в канонической ветке Name2Rawname (`rawname = name` → `loweredName`).
+  Реализовано: Sync.cpp:1010 возвращает `loweredName` (ключи кэша всегда lowercase), комментарий
+  исправлен; тест Sync.cpp-8 добавлен в `TestName2RawnameWithBrackets` (`{@Coord:Symb_Pos_X}` →
+  `{@coord:symb_pos_x}`). RED: 1 провал (test_results.txt:553) → GREEN: 488 `: ok`, 0 ошибок,
+  AC25 Win Debug 2026-09-18 23:08. clang-format пройден.
+  Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/161
 - [x] #162 — ResetProperty.cpp-4: одна undo-область на всю операцию — **закрыто 2026-09-18 как
   неприоритетное: ResetProperty практически не используется (решение автора)**; замечание
   остаётся задокументированным в issue.
@@ -166,8 +171,8 @@ UI вкладки «Монитор» — остаток работ. Работа
 - Прежний отказ не воспроизведён, исправление причины не заявляется. Scope: runner и IDEA.md; UI/C++ не редактировались в этой задаче.
 - Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/173#issuecomment-5716365617
 
-## Status: COMPLETED — #160 подтверждён пользователем, закоммичен (606d0ad) и закрыт на GitHub.
-## Last Completed: 2026-09-18 23:00 — коммит #160.
-## Next Step: по выбору — #162 (одна undo-область ResetProperty) или #161 (регистр Name2Rawname). Приоритеты параллельной сессии 2026-09-18: ручная проверка готовых UI-хвостов (#178, #179, #180, #159, #155) и закрытие после подтверждения; #158 приостановлена (повторный замер не критичен); #186 — неприоритет; #187 — отдельная сессия.
+## Status: COMPLETED — #161 реализован и проверен (RED→GREEN); #160 закрыт.
+## Last Completed: 2026-09-18 23:10 — #161: каноническая ветка Name2Rawname нормализует регистр; RED 1 провал → GREEN 488 ok / 0 ошибок (AC25).
+## Next Step: коммит #161 (по запросу); runtime-проверка не требуется (покрыто unit-тестами). Далее #163–#171 (runtime R2–R10).
 ## Last Checkpoint: 606d0ad `[#160] Монитор: pin (закрепление) свойств с выделением блока` (Interface_ru.html + IDEA.md, Refs: #160). Предыдущий: 9496a6c (#182–#185).
 ## Scope: #160 — только Sources/AddOnResources/RFIX/HTML/Interface_ru.html и IDEA.md. C++ не менялся.
