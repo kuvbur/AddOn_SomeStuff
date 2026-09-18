@@ -32,7 +32,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Archicad — Редактор описаний свойств</title>
 </head>
-<body style="margin:0;padding:0;height:100vh;width:100%;overflow:hidden;min-width:250px;
+<body style="margin:0;padding:0;height:100vh;width:100%;overflow:hidden;min-width:150px;
   font-family:'Segoe UI', -apple-system, Arial, sans-serif;
   -webkit-font-smoothing:antialiased;">
 
@@ -70,7 +70,7 @@ const THEMES = {
     "--ac-bg-input":          "#FFFFFF",
     "--ac-text-primary":      "#1A1D23",
     "--ac-text-secondary":    "#5B6472",
-    "--ac-text-tertiary":     "#8A93A2",
+    "--ac-text-tertiary":     "#646D7B",
     "--ac-text-inverse":      "#FFFFFF",
     "--ac-border":            "#E1E4EA",
     "--ac-divider":           "#ECEEF2",
@@ -98,7 +98,7 @@ const THEMES = {
     "--ac-bg-input":          "#1A1D23",
     "--ac-text-primary":      "#EDEFF3",
     "--ac-text-secondary":    "#A7AFBD",
-    "--ac-text-tertiary":     "#6B7280",
+    "--ac-text-tertiary":     "#8A93A2",
     "--ac-text-inverse":      "#14161A",
     "--ac-border":            "#2C3038",
     "--ac-divider":           "#262A33",
@@ -125,6 +125,7 @@ const STATE = {
   activeTab: "monitor",
   monitorFilter: "",
   monitorValueFilter: "",
+  monitorRulesOnly: false,
   monitorSelectedPropertyId: null,
   numberingOpenBlocks: { flag: false, ruleEditor: false }, // блок 1 всегда открыт, остальные — по клику
   numberingConfig: { flagProperty: null, ruleProperty: null, numberFormat: "NULL",
@@ -329,6 +330,7 @@ const ACBridge = (function () {
                       name: p.name,
                       group: p.group || "Без группы",
                       valueType: p.valueType,
+                      hasRule: p.hasRule === true,
                       values: [],
                       // guid'ы элементов, у которых встретилось каждое значение
                       valueElementGuids: {},
@@ -369,6 +371,7 @@ const ACBridge = (function () {
                 name: prop.name,
                 group: prop.group,
                 valueType: prop.valueType,
+                hasRule: prop.hasRule,
                 values: uniqueValues,
                 // GUID'ы элементов по каждому уникальному значению — для
                 // подсветки/приближения при клике на строку значения
@@ -522,6 +525,25 @@ function h(tag, opts, children) {
   if (opts.html !== undefined) e.innerHTML = opts.html;
   if (opts.attrs) for (const k in opts.attrs) e.setAttribute(k, opts.attrs[k]);
   if (opts.on) for (const k in opts.on) e.addEventListener(k, opts.on[k]);
+  // Ревью #179 п.7: hover одним параметром вместо пар mouseenter/mouseleave
+  // (и без ловушки e.target на вложенных span — сюда всегда приходит сам элемент).
+  if (opts.hoverStyle) {
+    const base = e.style.cssText;
+    e.addEventListener("mouseenter", function () { e.style.cssText = base + opts.hoverStyle; });
+    e.addEventListener("mouseleave", function () { e.style.cssText = base; });
+  }
+  // Ревью #179 п.1: клавиатурная доступность кликабельных div'ов.
+  if (opts.focusable) {
+    e.setAttribute("tabindex", "0");
+    e.addEventListener("focus", function () {
+      e.style.outline = "2px solid var(--ac-accent)";
+      e.style.outlineOffset = "-1px";
+    });
+    e.addEventListener("blur", function () { e.style.outline = ""; e.style.outlineOffset = ""; });
+    e.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); e.click(); }
+    });
+  }
   (children || []).forEach(function (c) { if (c) e.appendChild(c); });
   return e;
 }
@@ -544,6 +566,27 @@ function chainIconSvg(broken) {
 function chevronSvg(open) {
   return '<svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" style="transform:rotate(' + (open ? "0" : "-90") + 'deg);transition:transform var(--ac-transition);"><path d="M5 8l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
+
+// Ревью #179 п.5/10/12: единая иконочная кнопка — один стиль для всех
+// второстепенных кнопок-иконок, hover через hoverStyle, aria-label обязателен.
+function iconButton(opts) {
+  return h("button", {
+    attrs: { title: opts.title, "aria-label": opts.title },
+    html: opts.html,
+    text: opts.text,
+    style: "flex:0 0 auto;border:none;background:transparent;cursor:pointer;" +
+           "color:var(--ac-text-secondary);width:1.6rem;height:1.6rem;border-radius:0.25rem;" +
+           "display:flex;align-items:center;justify-content:center;padding:0;font-size:0.85rem;" +
+           "transition:background var(--ac-transition),color var(--ac-transition);",
+    hoverStyle: "background:var(--ac-bg-hover);color:" + (opts.hoverColor || "var(--ac-text-primary)") + ";",
+    on: { click: opts.onClick }
+  });
+}
+
+// Ревью #179 п.11: общий стиль выпадающих панелей пресетов (раньше дублировался).
+const DROPDOWN_STYLE = "position:absolute;top:2.4rem;right:0.75rem;left:0.75rem;z-index:5;display:none;" +
+  "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
+  "box-shadow:0 4px 10px var(--ac-shadow-color);overflow:hidden;";
 
 /* =====================================================================================
    4. КАРКАС ИНТЕРФЕЙСА: левая навигация + переключение вкладок
@@ -572,14 +615,14 @@ function buildShell() {
 
   // Кнопка свёртывания/развёртывания навигации (над вкладками)
   const collapseBtn = h("button", {
-    attrs: { id: "nav-collapse-btn", title: STATE.collapsed ? "Развернуть окно палитры" : "Свернуть окно палитры" },
+    attrs: { id: "nav-collapse-btn", title: STATE.collapsed ? "Развернуть окно палитры" : "Свернуть окно палитры",
+             "aria-label": STATE.collapsed ? "Развернуть окно палитры" : "Свернуть окно палитры" },
     style: "appearance:none;border:none;border-bottom:1px solid var(--ac-border);background:transparent;" +
            "cursor:pointer;width:100%;height:2.75rem;display:flex;align-items:center;justify-content:center;" +
            "color:var(--ac-text-secondary);font-size:0.9rem;transition:background var(--ac-transition);",
+    hoverStyle: "background:var(--ac-bg-hover);",
     on: {
-      click: function () { toggleNavCollapse(); },
-      mouseenter: function () { collapseBtn.style.background = "var(--ac-bg-hover)"; },
-      mouseleave: function () { collapseBtn.style.background = "transparent"; }
+      click: function () { toggleNavCollapse(); }
     }
   }, [ h("span", { text: STATE.collapsed ? "\u25B6" : "\u25C0" }) ]);
   nav.appendChild(collapseBtn);
@@ -613,14 +656,13 @@ function buildShell() {
 
   if (!STATE.collapsed) {
     const themeBtn = h("button", {
-      attrs: { id: "theme-toggle", title: "Переключить тему" },
+      attrs: { id: "theme-toggle", title: "Переключить тему", "aria-label": "Переключить тему" },
       style: "appearance:none;border:none;border-top:1px solid var(--ac-border);background:transparent;" +
              "cursor:pointer;flex:0 0 2.2rem;display:flex;align-items:center;justify-content:center;" +
-             "color:var(--ac-text-secondary);font-size:1rem;",
+             "color:var(--ac-text-secondary);font-size:1rem;transition:background var(--ac-transition);",
+      hoverStyle: "background:var(--ac-bg-hover);",
       on: {
-        click: function () { applyTheme(STATE.theme === "light" ? "dark" : "light"); },
-        mouseenter: function () { themeBtn.style.background = "var(--ac-bg-hover)"; },
-        mouseleave: function () { themeBtn.style.background = "transparent"; }
+        click: function () { applyTheme(STATE.theme === "light" ? "dark" : "light"); }
       }
     }, [ h("span", { attrs: { id: "theme-toggle-icon" }, text: "\u263D" }) ]);
     nav.appendChild(themeBtn);
@@ -791,13 +833,14 @@ function renderMonitorTab(container) {
 
   const selectionLine = h("div", {
       style: "padding:0.6rem 0.75rem 0.2rem;color:var(--ac-text-secondary);font-size:0.72rem;" +
-             "display:flex;align-items:center;gap:0.4rem;"
+             "display:flex;align-items:center;flex-wrap:wrap;row-gap:0.35rem;gap:0.4rem;"
     }, [
       h("span", { text: "Загрузка выделения…", attrs: { id: "selection-info-text" } }),
       // Лимит элементов — выпадающий список
       h("span", { text: "≤", style: "font-size:0.72rem;color:var(--ac-text-tertiary);margin-left:0.3rem;" }),
       h("select", {
-        attrs: { id: "max-count-select", title: "Максимальное количество отображаемых элементов" },
+        attrs: { id: "max-count-select", title: "Максимальное количество отображаемых элементов",
+                 "aria-label": "Максимальное количество отображаемых элементов" },
         style: "width:4.5rem;padding:0.1rem 0.3rem;font-size:0.72rem;" +
                "background:var(--ac-bg-input);color:var(--ac-text-primary);" +
                "border:1px solid var(--ac-border);border-radius:0.2rem;",
@@ -826,30 +869,28 @@ function renderMonitorTab(container) {
         h("option", { text: "200", attrs: { value: "200" } }),
         h("option", { text: "1000", attrs: { value: "1000" } })
       ]),
-      // Кнопка автообновления (слежение за выделением) — больше
+      // Кнопка автообновления (слежение за выделением) — та же геометрия, что у
+      // iconButton (ревью #179 п.5), состояние (вкл/выкл) красит toggleAutoRefresh.
       h("button", {
-        text: '⟳',  // Стрелка круглая для автообновления
-        attrs: { id: "auto-refresh-toggle", title: "Автообновление при изменении выделения" },
+        text: '⟳',
+        attrs: { id: "auto-refresh-toggle", title: "Автообновление при изменении выделения",
+                 "aria-label": "Автообновление при изменении выделения" },
         style: "flex:0 0 auto;border:none;background:var(--ac-accent);color:var(--ac-accent-contrast);" +
-               "cursor:pointer;font-size:1rem;" +
-               "width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;" +
+               "cursor:pointer;font-size:0.85rem;" +
+               "width:1.6rem;height:1.6rem;border-radius:0.25rem;display:flex;align-items:center;justify-content:center;" +
                "transition:opacity var(--ac-transition),background var(--ac-transition);",
         on: {
           click: function () { toggleAutoRefresh(); }
         }
       }),
-      h("button", {
-        text: "↻",
-        attrs: { title: "Обновить количество выделенных элементов", id: "refresh-selection-btn" },
-        style: "margin-left:auto;flex:0 0 auto;border:none;background:transparent;" +
-               "cursor:pointer;font-size:0.85rem;color:var(--ac-text-tertiary);" +
-               "padding:0.1rem 0.3rem;border-radius:0.2rem;",
-        on: {
-          click: function () { refreshSelectionInfo(); },
-          mouseenter: function (e) { e.target.style.color = "var(--ac-accent)"; },
-          mouseleave: function (e) { e.target.style.color = "var(--ac-text-tertiary)"; }
-        }
-      })
+      h("span", { style: "margin-left:auto;display:flex;flex:1 1 auto;justify-content:flex-end;" }, [
+        iconButton({
+          text: "↻",
+          title: "Обновить количество выделенных элементов",
+          hoverColor: "var(--ac-accent)",
+          onClick: function () { refreshSelectionInfo(); }
+        })
+      ])
     ]);
 
   const classificationBlock = h("div", {
@@ -973,24 +1014,19 @@ function renderClassificationTree(listEl, nodes, opts) {
     const isSelected = n.value === opts.selected;
 
     const row = h("div", {
+      attrs: { role: selectable && !isGroup ? "option" : "button", "aria-selected": isSelected ? "true" : "false" },
+      focusable: true,
       style: "display:flex;align-items:center;gap:0.3rem;border-radius:0.2rem;font-size:0.74rem;" +
              "cursor:pointer;color:var(--ac-text-primary);" +
              (isSelected ? "background:var(--ac-accent-soft);" : ""),
-      on: {
-        mouseenter: function (e) {
-          e.currentTarget.style.background = isSelected ? "var(--ac-accent-soft)" : "var(--ac-bg-hover)";
-        },
-        mouseleave: function (e) {
-          e.currentTarget.style.background = isSelected ? "var(--ac-accent-soft)" : "transparent";
-        }
-      }
+      hoverStyle: isSelected ? "background:var(--ac-accent-soft);" : "background:var(--ac-bg-hover);"
     });
     row.style.padding = "0.22rem 0.4rem";
     row.style.paddingLeft = (0.4 + depth * 1.1) + "rem";
 
     const arrow = h("span", {
-      text: isGroup ? (isExpanded ? "▾" : "▸") : "·",
-      style: "flex:0 0 0.9rem;text-align:center;color:var(--ac-text-tertiary);font-size:0.6rem;user-select:none;"
+      html: isGroup ? chevronSvg(isExpanded) : "·",
+      style: "flex:0 0 0.9rem;text-align:center;color:var(--ac-text-tertiary);font-size:0.7rem;display:flex;align-items:center;justify-content:center;user-select:none;"
     });
     row.appendChild(arrow);
 
@@ -1050,6 +1086,8 @@ function buildClassificationPicker(container, tree, initialValue, onChange) {
   });
 
   const trigger = h("div", {
+    attrs: { role: "button", "aria-haspopup": "listbox" },
+    focusable: true,
     style: "display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.4rem;font-size:0.75rem;" +
            "background:var(--ac-bg-input);color:var(--ac-text-primary);border:1px solid var(--ac-border);" +
            "border-radius:0.25rem;cursor:pointer;",
@@ -1061,14 +1099,14 @@ function buildClassificationPicker(container, tree, initialValue, onChange) {
     }
   }, [
     triggerText,
-    h("span", { text: "▾", style: "color:var(--ac-text-tertiary);font-size:0.6rem;" })
+    h("span", { html: chevronSvg(true), style: "color:var(--ac-text-tertiary);display:flex;" })
   ]);
 
   const search = h("input", {
     attrs: { type: "text", placeholder: "Поиск классификации…" },
     style: "display:block;width:100%;padding:0.35rem 0.5rem;font-size:0.75rem;" +
            "background:var(--ac-bg-input);color:var(--ac-text-primary);border:none;" +
-           "border-bottom:1px solid var(--ac-divider);outline:none;",
+           "border-bottom:1px solid var(--ac-divider);",
     on: {
       input: function () {
         query = search.value.trim();
@@ -1141,7 +1179,7 @@ function renderClassificationBlock(block) {
 
     block.appendChild(h("div", {
       text: "Классификация",
-      style: "font-size:0.68rem;text-transform:uppercase;letter-spacing:0.04em;" +
+      style: "font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;" +
              "color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.35rem;"
     }));
 
@@ -1197,10 +1235,15 @@ function renderClassificationBlock(block) {
     });
 
     let picker = null;
+    const applyHint = h("span", {
+      text: "",
+      style: "font-size:0.7rem;color:var(--ac-text-tertiary);align-self:center;flex:1 1 auto;"
+    });
     const applyBtn = h("button", {
       text: "Применить ко всем",
       style: "padding:0.3rem 0.6rem;font-size:0.75rem;border:none;border-radius:0.25rem;cursor:pointer;" +
-             "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;",
+             "background:var(--ac-accent);color:var(--ac-accent-contrast);font-weight:600;" +
+             "transition:opacity var(--ac-transition);",
       on: {
         click: function () {
           const value = picker ? picker.getValue() : null;
@@ -1213,11 +1256,20 @@ function renderClassificationBlock(block) {
         }
       }
     });
-    applyBtn.disabled = !options.length || !initial;
+    // Ревью #179 п.3: кнопка неактивна только пока не выбрана классификация —
+    // и это объясняется подсказкой, а не молчаливым disabled.
+    function syncApplyState() {
+      const has = !!(picker && picker.getValue());
+      applyBtn.disabled = !has;
+      applyBtn.style.opacity = has ? "1" : "0.45";
+      applyBtn.style.cursor = has ? "pointer" : "not-allowed";
+      applyHint.textContent = has ? "" : "Выберите классификацию из списка";
+    }
 
     picker = buildClassificationPicker(applyRow, tree, initial, function () {
-      applyBtn.disabled = false;
+      syncApplyState();
     });
+    syncApplyState();
 
     if (!options.length) {
       // Нет доступных классификаций — выводим пояснение вместо пустого дерева
@@ -1226,10 +1278,12 @@ function renderClassificationBlock(block) {
         style: "margin-top:0.25rem;font-size:0.7rem;color:var(--ac-text-tertiary);"
       });
       applyRow.appendChild(applyBtn);
+      applyRow.appendChild(applyHint);
       block.appendChild(applyRow);
       block.appendChild(note);
     } else {
       applyRow.appendChild(applyBtn);
+      applyRow.appendChild(applyHint);
       block.appendChild(applyRow);
     }
   });
@@ -1239,19 +1293,15 @@ function renderFilterBlock(block, listBlock) {
   clear(block);
 
   // Preset button for name filter (defined first so it can be used in name filter row)
-  const presetBtn = h("button", {
-    text: "\u25BE",
-    attrs: { title: "Преднастроенные фильтры по имени" },
-    style: "flex:0 0 auto;padding:0.35rem 0.55rem;font-size:0.75rem;cursor:pointer;" +
-           "background:var(--ac-bg-elevated);color:var(--ac-text-secondary);border:1px solid var(--ac-border);border-radius:0.25rem;"
+  const presetBtn = iconButton({
+    html: chevronSvg(true),
+    title: "Преднастроенные фильтры по имени"
   });
-  
+
   // Preset button for value filter
-  const valuePresetBtn = h("button", {
-    text: "\u25BE",
-    attrs: { title: "Преднастроенные фильтры по значению" },
-    style: "flex:0 0 auto;padding:0.35rem 0.55rem;font-size:0.75rem;cursor:pointer;" +
-           "background:var(--ac-bg-elevated);color:var(--ac-text-secondary);border:1px solid var(--ac-border);border-radius:0.25rem;"
+  const valuePresetBtn = iconButton({
+    html: chevronSvg(true),
+    title: "Преднастроенные фильтры по значению"
   });
   
   // Name filter row
@@ -1286,17 +1336,9 @@ function renderFilterBlock(block, listBlock) {
   valueFilterRow.appendChild(valueInput);
   valueFilterRow.appendChild(valuePresetBtn);
 
-  const dropdown = h("div", {
-    style: "position:absolute;top:2.4rem;right:0.75rem;left:0.75rem;z-index:5;display:none;" +
-           "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
-           "box-shadow:0 4px 10px var(--ac-shadow-color);overflow:hidden;"
-  });
+  const dropdown = h("div", { style: DROPDOWN_STYLE });
 
-  const valueDropdown = h("div", {
-    style: "position:absolute;top:2.4rem;right:0.75rem;left:0.75rem;z-index:5;display:none;" +
-           "background:var(--ac-bg-elevated);border:1px solid var(--ac-border);border-radius:0.3rem;" +
-           "box-shadow:0 4px 10px var(--ac-shadow-color);overflow:hidden;"
-  });
+  const valueDropdown = h("div", { style: DROPDOWN_STYLE });
 
   presetBtn.addEventListener("click", function () {
     const willOpen = dropdown.style.display === "none";
@@ -1307,16 +1349,17 @@ function renderFilterBlock(block, listBlock) {
         presets.forEach(function (p) {
           dropdown.appendChild(h("div", {
             text: p.label,
+            attrs: { role: "button" },
+            focusable: true,
             style: "padding:0.4rem 0.6rem;font-size:0.76rem;cursor:pointer;color:var(--ac-text-primary);",
+            hoverStyle: "background:var(--ac-bg-hover);",
             on: {
               click: function () {
                 input.value = p.query;
                 STATE.monitorFilter = p.query;
                 dropdown.style.display = "none";
                 renderPropertyList(listBlock, STATE.monitorFilter, true);
-              },
-              mouseenter: function (e) { e.target.style.background = "var(--ac-bg-hover)"; },
-              mouseleave: function (e) { e.target.style.background = "transparent"; }
+              }
             }
           }));
         });
@@ -1333,16 +1376,17 @@ function renderFilterBlock(block, listBlock) {
         presets.forEach(function (p) {
           valueDropdown.appendChild(h("div", {
             text: p.label,
+            attrs: { role: "button" },
+            focusable: true,
             style: "padding:0.4rem 0.6rem;font-size:0.76rem;cursor:pointer;color:var(--ac-text-primary);",
+            hoverStyle: "background:var(--ac-bg-hover);",
             on: {
               click: function () {
                 valueInput.value = p.query;
                 STATE.monitorValueFilter = p.query;
                 valueDropdown.style.display = "none";
                 renderPropertyList(listBlock, STATE.monitorFilter, true);
-              },
-              mouseenter: function (e) { e.target.style.background = "var(--ac-bg-hover)"; },
-              mouseleave: function (e) { e.target.style.background = "transparent"; }
+              }
             }
           }));
         });
@@ -1352,9 +1396,25 @@ function renderFilterBlock(block, listBlock) {
 
   block.appendChild(nameFilterRow);
   block.appendChild(valueFilterRow);
+  const ruleFilterRow = h("label", {
+    style: "display:flex;align-items:center;gap:0.3rem;font-size:0.72rem;color:var(--ac-text-secondary);"
+  });
+  const ruleFilter = h("input", {
+    attrs: { type: "checkbox", "aria-label": "Только свойства с правилами Sync/Spec" },
+    on: {
+      change: function () {
+        STATE.monitorRulesOnly = ruleFilter.checked;
+        renderPropertyList(listBlock, STATE.monitorFilter, true);
+      }
+    }
+  });
+  ruleFilter.checked = STATE.monitorRulesOnly;
+  ruleFilterRow.appendChild(ruleFilter);
+  ruleFilterRow.appendChild(h("span", { text: "Только с правилами Sync/Spec" }));
+  block.appendChild(ruleFilterRow);
   block.appendChild(h("div", {
     text: "Поддерживаются шаблоны regexp в формате /шаблон/",
-    style: "margin-top:0.25rem;font-size:0.66rem;color:var(--ac-text-tertiary);"
+    style: "margin-top:0.25rem;font-size:0.7rem;color:var(--ac-text-tertiary);"
   }));
   block.appendChild(dropdown);
   block.appendChild(valueDropdown);
@@ -1385,8 +1445,10 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
   const valueFilter = STATE.monitorValueFilter;
   // Фильтры заменяют массивы свойств; исходный полный список не изменяем.
   let groups = loadedGroups.map(function (g) {
-    return { group: g.group, properties: g.properties.slice() };
-  });
+    return { group: g.group, properties: g.properties.filter(function (p) {
+      return !STATE.monitorRulesOnly || p.hasRule === true;
+    }) };
+  }).filter(function (g) { return g.properties.length > 0; });
           clear(listBlock);
           if (!groups.length) {
             listBlock.appendChild(h("div", { text: "Ничего не найдено по фильтру.", style: "padding:0.6rem 0.75rem;color:var(--ac-text-tertiary);font-size:0.75rem;" }));
@@ -1431,8 +1493,10 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
       // Group header (clickable)
       const groupHeader = h("div", {
         text: groupName,
+        attrs: { role: "button" },
+        focusable: true,
         style: "position:sticky;top:0;background:var(--ac-bg-workspace);padding:0.4rem 0.75rem 0.2rem;" +
-               "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;" +
+               "font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;" +
                "cursor:pointer;display:flex;align-items:center;gap:0.3rem;user-select:none;",
         on: {
           click: function() {
@@ -1442,11 +1506,11 @@ function renderLoadedPropertyList(listBlock, loadedGroups) {
           }
         }
       });
-      
-      // Add chevron icon
+
+      // Chevron-иконка (SVG, как в «Нумерации» — ревью #179 п.9)
       const chevron = h("span", {
-        html: isCollapsed ? "&#9654;" : "&#9660;",  // ▶ or ▼
-        style: "font-size:0.5rem;transition:transform 0.2s;"
+        html: chevronSvg(!isCollapsed),
+        style: "display:flex;align-items:center;color:var(--ac-text-tertiary);"
       });
       groupHeader.insertBefore(chevron, groupHeader.firstChild);
       
@@ -1465,10 +1529,12 @@ function renderPropertyRow(prop) {
   const isSelected = STATE.monitorSelectedPropertyId === prop.id;
 
   const row = h("div", {
-    attrs: { "data-prop-row": prop.id },
+    attrs: { "data-prop-row": prop.id, role: "button", "aria-pressed": isSelected ? "true" : "false" },
+    focusable: true,
     style: "display:flex;flex-direction:column;gap:0.15rem;padding:0.35rem 0.75rem;cursor:pointer;" +
            "border-left:2px solid " + (isSelected ? "var(--ac-accent)" : "transparent") + ";" +
            "background:" + (isSelected ? "var(--ac-bg-hover)" : "transparent") + ";",
+    hoverStyle: "background:var(--ac-bg-hover);",
     on: {
       click: function () {
         STATE.monitorSelectedPropertyId = prop.id;
@@ -1476,12 +1542,8 @@ function renderPropertyRow(prop) {
           const sel = r.getAttribute("data-prop-row") === prop.id;
           r.style.background = sel ? "var(--ac-bg-hover)" : "transparent";
           r.style.borderLeft = "2px solid " + (sel ? "var(--ac-accent)" : "transparent");
+          r.setAttribute("aria-pressed", sel ? "true" : "false");
         });
-      },
-      mouseenter: function () { if (!isSelected) row.style.background = "var(--ac-bg-hover)"; },
-      mouseleave: function () {
-        const stillSelected = STATE.monitorSelectedPropertyId === prop.id;
-        row.style.background = stillSelected ? "var(--ac-bg-hover)" : "transparent";
       }
     }
   });
@@ -1491,10 +1553,13 @@ function renderPropertyRow(prop) {
     style: "display:flex;align-items:center;gap:0.4rem;flex:1 1 auto;"
   });
 
+  // #159: синим свойства с правилом SomeStuff (Sync/Spec/Renum/Sum) — договорённость
+  // с заказчиком; allHave больше не красится тем же акцентом (ревью #179 п.4:
+  // один цвет = один смысл), заполненность и так видна по счётчику N/M.
   const nameSpan = h("span", {
     text: prop.name,
     style: "flex:1 1 auto;min-width:0;font-size:0.78rem;" +
-           "color:" + (prop.allHave ? "var(--ac-accent)" : "var(--ac-text-primary)") + ";" +
+           "color:" + (prop.hasRule === true ? "var(--ac-accent)" : "var(--ac-text-primary)") + ";" +
            "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
   });
   headerRow.appendChild(nameSpan);
@@ -1502,25 +1567,20 @@ function renderPropertyRow(prop) {
   if (!prop.allHave) {
     headerRow.appendChild(h("span", {
       text: "(" + prop.countWithProperty + "/" + MOCK_SELECTED_COUNT + ")",
-      style: "flex:0 0 auto;font-size:0.68rem;color:var(--ac-text-tertiary);"
+      style: "flex:0 0 auto;font-size:0.7rem;color:var(--ac-text-tertiary);"
     }));
   }
 
-  const resetBtn = h("button", {
-    attrs: { title: "Сбросить значение по умолчанию" },
+  const resetBtn = iconButton({
     html: chainIconSvg(false),
-    style: "flex:0 0 auto;border:none;background:transparent;cursor:pointer;color:var(--ac-text-tertiary);" +
-           "display:flex;align-items:center;padding:0.15rem;border-radius:0.2rem;",
-    on: {
-      click: function (e) {
-        e.stopPropagation();
-        resetBtn.innerHTML = chainIconSvg(true);
-        ACBridge.resetPropertyToDefault(prop.id).then(function () {
-          setTimeout(function () { resetBtn.innerHTML = chainIconSvg(false); }, 500);
-        });
-      },
-      mouseenter: function () { resetBtn.style.color = "var(--ac-danger)"; },
-      mouseleave: function () { resetBtn.style.color = "var(--ac-text-tertiary)"; }
+    title: "Сбросить значение по умолчанию",
+    hoverColor: "var(--ac-danger)",
+    onClick: function (e) {
+      e.stopPropagation();
+      resetBtn.innerHTML = chainIconSvg(true);
+      ACBridge.resetPropertyToDefault(prop.id).then(function () {
+        setTimeout(function () { resetBtn.innerHTML = chainIconSvg(false); }, 500);
+      });
     }
   });
   headerRow.appendChild(resetBtn);
@@ -1531,19 +1591,24 @@ function renderPropertyRow(prop) {
   if (prop.values && prop.values.length > 0) {
     prop.values.forEach(function (v) {
       const valueRow = h("div", {
-        style: "font-size:0.65rem;color:var(--ac-text-secondary);padding-left:0.5rem;display:flex;align-items:center;gap:0.3rem;" +
+        attrs: { role: "button" },
+        focusable: true,
+        style: "font-size:0.7rem;color:var(--ac-text-secondary);padding-left:0.5rem;display:flex;align-items:center;gap:0.3rem;" +
                "cursor:pointer;border-radius:0.2rem;",
+        hoverStyle: "background:var(--ac-bg-hover);",
         title: "Подсветить и приблизить элементы с этим значением",
         on: {
           click: function (e) {
             e.stopPropagation();
             const guids = (prop.valueElementGuids && prop.valueElementGuids[v.value]) || [];
             if (guids.length > 0) {
-              ACBridge.highlightElements(guids);
+              // Ревью #179 п.8: видимый отклик — успех (мягкий акцент) / неудача моста.
+              ACBridge.highlightElements(guids).then(function (ok) {
+                valueRow.style.background = ok ? "var(--ac-accent-soft)" : "var(--ac-warn-soft)";
+                setTimeout(function () { valueRow.style.background = "transparent"; }, 600);
+              });
             }
-          },
-          mouseenter: function () { valueRow.style.background = "var(--ac-bg-hover)"; },
-          mouseleave: function () { valueRow.style.background = "transparent"; }
+          }
         }
       });
       valueRow.appendChild(h("span", {
@@ -1552,7 +1617,7 @@ function renderPropertyRow(prop) {
       }));
       valueRow.appendChild(h("span", {
         text: "×" + v.count,
-        style: "flex:0 0 auto;color:var(--ac-text-tertiary);font-size:0.6rem;"
+        style: "flex:0 0 auto;color:var(--ac-text-tertiary);font-size:0.7rem;"
       }));
       row.appendChild(valueRow);
     });
@@ -1580,7 +1645,7 @@ function renderValueBlock(block, propertyId) {
     clear(block);
     block.appendChild(h("div", {
       text: "Значение свойства",
-      style: "font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.3rem;"
+      style: "font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--ac-text-tertiary);font-weight:700;margin-bottom:0.3rem;"
     }));
 
     if (data.common) {
@@ -1688,7 +1753,7 @@ function renderSyncTab(container) {
     style: "display:flex;flex-wrap:wrap;gap:0.5rem 0.8rem;padding:0.6rem 0.75rem;border-bottom:1px solid var(--ac-divider);flex:0 0 auto;"
   });
   SYNC_LEGEND.forEach(function (item) {
-    legend.appendChild(h("span", { style: "display:inline-flex;align-items:center;gap:0.3rem;font-size:0.68rem;color:var(--ac-text-secondary);" }, [
+    legend.appendChild(h("span", { style: "display:inline-flex;align-items:center;gap:0.3rem;font-size:0.7rem;color:var(--ac-text-secondary);" }, [
       h("span", { style: "width:0.6rem;height:0.6rem;border-radius:50%;background:var(" + item.varName + ");display:inline-block;" }),
       h("span", { text: item.label })
     ]));

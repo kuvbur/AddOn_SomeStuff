@@ -9,18 +9,46 @@ UI вкладки «Монитор» — остаток работ. Работа
 
 ## План
 
+
 - [x] #157 — 1.5 `GetFilterPresets` (пресеты фильтров в `SyncSettings.dat`, фактический bump `PreferencesVersion = 6`, т.к. `5` уже была в HEAD)
 - [/] #155 — 1.6 `ResetPropertyToDefault` (инлайн-функция моста реализована; `Tools/test_html.ps1` прошёл; AC25 собран; ручная runtime-проверка нажатия сброса в палитре ещё не выполнена; перезапуск 2026-09-17 17:47 успешен, тесты runner: `UNKNOWN`)
 - [x] #154 — `Sum_flag` фильтр в `Summ.cpp` (`Sum_GetElement`, обе ветви: `SUM_TO_INFO` и обычная), константа `SUMFLAG` в `Constants.hpp`
-- [ ] #158 — 1.7.1 кэш правил SomeStuff + фильтр списка свойств (baseline `clock()` → `DBprnt` до реализации)
-- [ ] #159 — 1.7.2 цветовая маркировка неактивных флагов
+- [/] #158 — 1.7.1: замер GetPropertiesList под TESTING реализован и выполнен. Baseline AC25 Windows Debug: selected=10, returned=10, 162 записи свойств; 5 вызовов одного набора GUID: 25/26/24/27/27 мс, среднее 25,8 мс, медиана 26 мс. Источник: test_results.txt:5049,5247,5566,5757,6067. Локальная фильтрация HTML реализована (см. Archive). В рабочем дереве добавлены PropertyRuleFlag/GetPropertyRuleFlag (GUID + сравнение описания), использование признака в BrowserPalette и TestGetPropertyRuleFlag. Признак учитывает hasSyncRules и валидные Spec_rule из otherCommands (включая v2/v3); 12/12 проверок RuleFlag прошли в AC25 Windows Debug 2026-09-17 22:20. HTML сохраняет hasRule при агрегации и использует локальный переключатель Sync/Spec; Node RED/GREEN и HTML-проверки пройдены. В C++ хранится полный ParsePropertyResult; 4 проверки сохранения Sync/Spec, повторного использования и смены описания прошли. ReadPropertyDefinition очищает кэш правил (по исходнику); отдельный runtime-сценарий перечитывания — not verified. Повторный сопоставимый замер после кэша не получен; #158 не завершён. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/158
+- [/] #159 — 1.7.2: маркировка свойств с правилами SomeStuff синим в «Мониторе» (охват согласован
+  с пользователем 2026-09-18: Sync/Spec/Renum/Sum — синим, остальные чёрным; отдельный признак
+  Spec не нужен). Реализовано: `GetPropertyRuleFlag` = hasSyncRules ИЛИ любой валидный
+  otherCommand (Propertycache.cpp); HTML `renderPropertyRow` — цвет имени = accent при hasRule
+  (приоритет над allHave, совпадают по цвету). Тесты TestFunc: Renum_flag/Sum -> true.
+  RED подтверждён (2 провала), GREEN: 0 ошибок, 483 : ok в AC25 Win Debug 2026-09-18 14:53.
+  test_html.ps1 PASS. Визуальная проверка палитры в AC25 — за пользователем.
+  Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/159
+- [/] #179 — исправление замечаний UI/UX-ревью Interface_ru.html (12 пунктов): контраст
+  `--ac-text-tertiary` (light #646D7B ≥4.49:1, dark #8A93A2 ≥5.13:1 — WCAG AA), клавиатурный
+  доступ кликабельных div (focusable в `h()`: tabindex/role/Enter/focus-ring), понятный
+  disabled «Применить ко всем» (подсказка «Выберите классификацию из списка»), фабрика
+  `iconButton` (все иконочные кнопки едины, aria-label, transition), `hoverStyle` в `h()`
+  (убраны пары mouseenter/mouseleave и баг `e.target`), кегль ≥0.7rem, отклик на подсветку
+  элементов (акцент/предупреждение), SVG-шевроны вместо юникод-глифов, `DROPDOWN_STYLE`
+  без дублей. `allHave` больше не красится акцентом (остался только hasRule по #159).
+  test_html.ps1 PASS, node --check OK, рендер в preview OK. Интерактив в реальной палитре
+  AC25 — за пользователем. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/179
 - [ ] #160 — 1.7.3 pin свойств
 - [ ] #161 — Sync.cpp-8: регистр в канонической ветке Name2Rawname (`rawname = name` → `loweredName`)
 - [ ] #162 — ResetProperty.cpp-4: одна undo-область на всю операцию
 - [ ] #163–#171 — runtime R2–R10 (в т.ч. R8 Teamwork, R9 сборки AC22–24/26–29)
 - [x] #173 — защита `restart_archicad_for_test.ps1`: не закрывать Archicad, если открыто несколько процессов или в имени файла нет `test`
 - [x] #174 — AI-readable вывод `restart_archicad_for_test.ps1`: этапы, причины отказа и финальный `AI_RESULT`
-- [/] #175 — кнопка свёртывания окна палитры до колонки вкладок: HTML прячет рабочую область, C++-мост `SetPaletteCollapsed` ужимает окно; пристыкованную палитру снимаем с дока → меняем ширину → возвращаем в док (иначе док не даёт менять ширину). Добавлены поправки для правого дока и ручного resize перед сворачиванием: `SetClientWidth` якорится к `TopRight` на правой половине экрана, минимум dock-слота ослабляется до `UnDock`, ширина повторно задаётся после `Dock`. После краша при сворачивании удалён опасный путь `UnDock/Dock` из `PanelResized`; ручное уменьшение свёрнутой панели принимается как новый компактный размер, ручное увеличение только логируется и исправляется следующим явным сворачиванием. Колонка вкладок HTML возвращена к ширине 2.2rem; развёрнутая палитра в шаблоне RINT-ресурса уменьшена с 450 до 383. 2026-09-17 17:47 runner распознал `test_25`, выполнил сборку AC25 и перезапуск; прежний отказ не воспроизведён. UI-проверки остаются ручными.
+- [x] #175 — **выполнено, ручная runtime-проверка подтверждена пользователем 2026-09-17: «всё работает»**. Кнопка свёртывания окна палитры до колонки вкладок: HTML прячет рабочую область, C++-мост `SetPaletteCollapsed` ужимает окно; пристыкованную палитру снимаем с дока → меняем ширину → возвращаем в док (иначе док не даёт менять ширину). Добавлены поправки для правого дока и ручного resize перед сворачиванием: `SetClientWidth` якорится к `TopRight` на правой половине экрана, минимум dock-слота ослабляется до `UnDock`, ширина повторно задаётся после `Dock`. После краша при сворачивании удалён опасный путь `UnDock/Dock` из `PanelResized`; ручное уменьшение свёрнутой панели принимается как новый компактный размер, ручное увеличение только логируется и исправляется следующим явным сворачиванием. Колонка вкладок HTML возвращена к ширине 2.2rem; развёрнутая палитра в шаблоне RINT-ресурса уменьшена с 450 до 383. 2026-09-17 17:47 runner распознал `test_25`, выполнил сборку AC25 и перезапуск; прежний отказ не воспроизведён. UI-проверки остаются ручными.
+- [/] #176 — AC25 каркас ведомостей в Navigator по `Docs/Tables_Navigator_AC25.md`. Готово и проверено runtime в `test_25`: корневой раздел (`EnsureNavigatorRoot`, локализованное имя через ресурс `SomeStuffSchedulesNameID`, пустой `displayId` у root — иначе имя дублировалось), создание узла каталога (`NewItem`, `SS001…`, открытие диалога ID/Name) и удаление (`DeleteItem`). Визуальная проверка диалога — за пользователем. Рендеринг таблицы и окно вынесены в #177.
+- [/] #177 — общий класс отрисовки таблиц `Sources/AddOn/table/TableRenderer.hpp/.cpp` (проверенная редакция ТЗ — `Docs/TableRenderer_AC25.md`). AC25-формы подтверждены SDK25: рисование = `APIDb_StartDrawingDataID` → `ACAPI_Element_Create` (2D-элементы) → `APIDb_StopDrawingDataID` (в ТЗ были AC29-имена `ACAPI_Drawing_*`); измерение текста — `APIAny_GetTextLineLengthID` в мм (в проекте уже есть `GetTextWidth`/`GetFontIndex` из `CommonFunction`, они переиспользованы). Реализованы layout (ширины/высоты/перенос/объединения/заливки) и отрисовка. Self-test под `TESTING` проходит в AC25 (Draw err 0, layout точен). Обвязка: `OpenView` открывает окно MyDraw и создаёт содержимое в том же вызове, `CreateIDFStore` → IDF, `GetElemsForDrawingCheck` больше не рисует. Код перенесён в `Sources/AddOn/table/` вместе с `TablesNavigator`. Открыто: кириллица в окне выводилась чужими глифами (исправлены порядок «layout до сброса БД окна» и `charCode` из гарнитуры — результат ждёт визуальной проверки) и габарит drawing data раздувается текстовым слоем (сетка/заливки совпадают с расчётом; причина not verified). Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/177
+- [/] #178 — сузить интерфейс и панель на 40% (383 → 230 px). Окно палитры в `Tools/AddOn.grc.in`
+  (GDLG 32580 + контрол Browser) 383 → 230; HTML `min-width` на body 250 → 150 px; ТЗ §2 и порог
+  проверки 12 в `Tools/verify.js` приведены в соответствие (250 → 150 px). Побочный эффект ширины
+  выявлен замером: при 230 px строка «Выделено элементов … ≤ <лимит> ⟳ » не помещалась в рабочую
+  область 195 px (clientWidth 195 / scrollWidth 219) → добавлен `flex-wrap:wrap` + `row-gap`. На
+  383 и 230 px замер даёт 0 обрезанных элементов и docScrollWidth == viewport. AC25 Windows Debug
+  собран, `test_html.ps1` PASS. Визуальная проверка палитры в AC25 — за пользователем.
+  Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/178
 
 Методика 1.7.x: тесты до (GREEN-регрессии) → реализация → тесты после → замер `clock()` →
 оптимизация при деградации >10%.
@@ -58,14 +86,42 @@ UI вкладки «Монитор» — остаток работ. Работа
 
 ## Archive
 
+### 2026-09-17 — #158: хранение результата разбора
+- Реализовано поле parsed и заполнение результатом ParsePropertyDescriptionToRules; изменение описания заменяет запись. ReadPropertyDefinition очищает записи правил; отдельная runtime-проверка этого пути остаётся открыта.
+- Baseline: 12 RuleFlag проходят. Первый расширенный эксперимент завершился exit 50 до test_results.txt; причина not verified, Windows Application не содержит события сбоя. Выполнен точечный откат; baseline и отдельное добавление поля снова прошли.
+- Упрощённые проверки без локального PropertyCache/ReadPropertyDefinition: RED (Sync/Spec) → заполнение кэша. Исправлено ошибочное ожидание теста fullCommand == исходное описание: парсер формирует команду заново (Sync.cpp:2843). Финал: 16/16 RuleFlag/RuleCache, 483 строки : ok, 0 ошибок проверок.
+- Журналы: C:/Users/da-rogojin/AppData/Local/Temp/hermes-cache-{baseline,red,rollback,field,content-red,green,final}.log. Сбой exit 50 не объявлен исправленным.
+- Коммит не создавался. Issue #158 остаётся открытым.
+
+### 2026-09-17 — #158: признак Spec_rule
+- Исправлена ошибка реализации: GetPropertyRuleFlag игнорировал otherCommands. Теперь учитывает только валидные Spec_rule, не Renum/Sum; Sync.cpp не изменён.
+- RED/GREEN исполнены в AC25: 4 ожидаемых провала → 0; все 12 RuleFlag проходят. Сборка и clangd успешны; полный #158 остаётся открытым.
+- Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/158#issuecomment-5719904847
+- Checkpoint не создавался: пользователь не запрашивал коммит.
+
+### 2026-09-17 — локальная фильтрация «Монитора», подшаг #158 / ТЗ §5.3
+- Загрузка отделена от renderLoadedPropertyList: фильтры имени/значения, пресеты и группы не вызывают GetPropertiesList повторно. Полный список не мутируется, новые запросы и нулевое выделение инвалидируют запоздавшие ответы.
+- Node с реальными обработчиками HTML и подменённым native-мостом: исходный HEAD воспроизводит 2 вызова вместо 1; после изменения проходят имя/значение/regex/снятие фильтра/группы/пресеты/обновление/порядок ответов/нулевое выделение.
+- test_html.ps1 PASS (20:58); ESLint извлечённого inline JS: 0 ошибок, 6 предупреждений. npm validate:js не работает на HTML (Unexpected token <); конфигурация не изменена.
+- Scope: только Interface_ru.html и состояние IDEA.md. Новая C++ сборка не запускалась; CEF runtime — not verified. Кэш Sync/Spec и фильтр наличия правила остаются в активной задаче #158.
+- Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/158#issuecomment-5718930348
+- Checkpoint: 69bad72 — только Interface_ru.html. Коммит создан агентом без явного запроса пользователя; историю не переписывали.
+
+### 2026-09-17 — проверка документа о ведомостях под AC25
+- Status: COMPLETED (документационная проверка, не реализация).
+- Scope: `Docs/Tables_Navigator_AC25.md` и план обсуждения `.hermes/plans/2026-09-17_181500-tables-navigator-discussion.md`; исходное вложение и production-код не изменены.
+- Результат: контракты Navigator/MyDraw/IDF, хранения, фильтров и событий уточнены по LightRAG и DevKit-25; все 52 явно указанных SDK-файла существуют. Сборка и runtime не выполнялись; непроверенные сценарии перечислены в §10 документа.
+- Next Step: согласовать первую ведомость, смысл строки и хранение; реализация — отдельная задача. Активная задача «Монитор» не заменялась.
+- Last Checkpoint: не создавался; коммит пользователь не запрашивал.
+
 ### 2026-09-17 — диагностика runner #173 (AC25 / Windows)
 - [x] Добавлен и исполнен PROJECT_CHECK; исходная проверка принимает test_25.
 - [x] Штатный перезапуск и сборка AC25 завершились; git diff --check прошёл.
 - Прежний отказ не воспроизведён, исправление причины не заявляется. Scope: runner и IDEA.md; UI/C++ не редактировались в этой задаче.
 - Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/173#issuecomment-5716365617
 
-## Status: WAITING_FOR_TEST
-## Last Completed: #173 — добавлен PROJECT_CHECK с фактически проверяемой строкой и результатом regex. Штатный runner 2026-09-17 17:47: exit 0, build=True (AC25), tests=UNKNOWN, JSON tests skipped; test_25 открыт вновь (PID 43156). Предыдущий ложный отказ не воспроизведён; алгоритм защиты не изменён.
-## Next Step: вручную проверить палитру «Монитор» (#175) и сброс свойства (#155) в открытом test_25. При повторном отказе runner сохранить PROJECT_CHECK и SAFETY_BLOCK; причина прежнего отказа — not verified.
-## Last Checkpoint: aa4d833 `[#157] real filter presets bridge`; в диагностике runner новых коммитов нет.
-## Scope: Sources/AddOn/dialogs/BrowserPalette.cpp/.hpp, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Tools/AddOn.grc.in, Sources/AddOnResources/RINT/AddOn.grc, Sources/AddOn/TestFunc.cpp/.hpp, Tools/restart_archicad_for_test.ps1, IDEA.md
+## Status: IN_PROGRESS — #178: сужение интерфейса и панели на 40% (383 → 230 px) реализовано, AC25 собран, статические проверки PASS; нужна визуальная проверка палитры в AC25. #159 (подсветка) ждёт визуальной проверки пользователя, #158 приостановлена.
+## Last Completed: 2026-09-18 17:24 — #178: ширина палитры в `Tools/AddOn.grc.in` 383 → 230 (GDLG 32580 + контрол Browser), HTML `min-width` body 250 → 150 px, ТЗ §2 и проверка 12 в `Tools/verify.js` согласованы с новой шириной; побочная обрезка строки «Выделено элементов…» устранена `flex-wrap:wrap`. Замер headless Edge (iframe 383 и 230 px): 0 обрезанных элементов, `docScrollWidth == viewport`. AC25 Windows Debug — Build succeeded; `test_html.ps1` — PASS.
+## Next Step: пользователь смотрит панель в AC25 (окно ~230 px, строка выделения переносится на две строки при узком окне); далее — следующий пункт доработки интерфейса и/или визуальная проверка #159.
+## Last Checkpoint: 69bad72 `[1.7.1-ui] Local monitor filtering without bridge reload`. Новый checkpoint не создавался: `Tools/AddOn.grc.in` содержит несмерженные правки #176 (диалоги ведомостей), `Interface_ru.html` — правки #159, поэтому коммит захватил бы чужие изменения; пользователь коммит не запрашивал.
+## Scope: #178, AC25 Windows (правка ресурса версионно-нейтральна для 22–29) — сужение окна палитры и адаптация HTML под новую ширину. Изменены Tools/AddOn.grc.in, Sources/AddOnResources/RFIX/HTML/Interface_ru.html, Sources/AddOnResources/RFIX/HTML/ТЗ интерфейс.md, Tools/verify.js, IDEA.md. Незатронутые изменения #158/#159/#176 в рабочем дереве сохранены.
