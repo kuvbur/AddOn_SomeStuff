@@ -2,8 +2,70 @@
 
 ## Задача
 
-UI вкладки «Монитор» — остаток работ. Работать по GitHub issues (см. План); целевая версия —
-**AC25** (в репозитории только DevKit-25). ТЗ по интерфейсу —
+#190: хранить настройки аддона в JSON (`SyncSettings.json`) вместо бинарного
+`SyncSettings.dat`. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/190
+
+## Scope
+
+- `Sources/AddOn/dialogs/SyncSettings.cpp` (сериализация/чтение/запись + миграция)
+- `Sources/AddOn/dialogs/SyncSettings.hpp` (только комментарии)
+- `IDEA.md`
+- Внешние функции `LoadSyncSettingsFromPreferences` / `WriteSyncSettingsToPreferences`
+  не меняются — все вызывающие не затронуты.
+
+## Status
+
+IN_PROGRESS — реализация и runtime-проверка выполнены; коммит и закрытие #190 — сейчас.
+
+## Last Completed
+
+2026-09-21 — #190 реализовано и проверено в AC25:
+- SyncSettings.cpp: JSON-сериализация (RapidJSON из DevKit-25), файл
+  `…/GRAPHISOFT/SomeStuff/SyncSettings.json`; чтение по ключам (дефолты/игнор неизвестных),
+  skipIfUnchanged на JSON-строке, миграционная цепочка JSON → старый .dat → legacy prefs.
+- Миграция .dat→json сработала в runtime: файл создан (695 байт, кириллица корректна,
+  пользовательские значения перенесены — catchSelectionChanges=true из .dat версии 6).
+- Обнаружено: `.dat` на диске был версии 6 (HEAD), а в рабочем дереве bump до 7
+  (незакоммиченный) → старый код тоже отвергал файл. Миграционное чтение legacy-источников
+  сделано толерантным (`version > 0 && version <= PreferencesVersion`, раскладка полей v6/v7
+  идентична — проверено diff-ом HEAD).
+- LSP 0 ошибок; сборка AC25 успешна (3 раза); тест-прогон 18:52: 0 «ERROR IN TEST».
+- Важно (обнаружено): BuildAddOn.py НЕ деплоит apx в
+  `…/Roaming/GRAPHISOFT/ARCHICAD 25.0.0 RUS R1/Add-Ons/` — тестовый ArchiCAD грузит
+  аддон оттуда; копию нужно обновлять вручную (иначе тест идёт со старым бинарником).
+
+## Next Step
+
+Коммит [#190] (SyncSettings.cpp/.hpp + IDEA.md, не трогая чужие BrowserPalette.cpp/test_25.pln),
+комментарий в issue #190 и закрытие.
+
+## Last Checkpoint
+
+(в этой задаче ещё не создавался)
+
+## Plan
+
+- [x] JSON-сериализация настроек (RapidJSON из DevKit-25): ключи, дефолты, пресеты
+- [x] Миграция: JSON отсутствует → старый .dat → JSON; затем legacy prefs
+- [x] skipIfUnchanged на сериализованной JSON-строке
+- [x] clang-format + LSP + сборка AC25
+- [x] Runtime-проверка в ArchiCAD (миграция .dat → json, чтение json)
+- [/] Checkpoint + закрытие #190
+
+## Decisions
+
+- `PreferencesVersion = 7` сохраняется для legacy-сравнителей (.dat, prefs проекта);
+  в JSON поле `version` информационное, чтение по ключам — bump не критичен.
+- RapidJSON из DevKit-25, сторонний парсер не добавляется.
+- Имя файла `SyncSettings.json` рядом со старым `SyncSettings.dat`.
+
+## Archive
+
+### 2026-09-21 — «Монитор», остаток работ (активная ветка завершена до #190)
+
+#### Задача
+
+UI вкладки «Монитор». ТЗ по интерфейсу —
 `Sources/AddOnResources/RFIX/HTML/ТЗ интерфейс.md` (обязательное); правки HTML — только по ТЗ,
 после каждой правки `powershell -File Tools/test_html.ps1`.
 
