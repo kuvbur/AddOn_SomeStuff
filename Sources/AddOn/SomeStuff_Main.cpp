@@ -442,7 +442,7 @@ static GSErrCode MenuCommandHandler (const API_MenuParams *menuParams) {
             msg_rep ("Spec", "=============== END ===============", NoError, APINULLGuid);
             break;
         case ShowSub_CommandID:
-            SyncShowSubelement (syncSettings);
+            SyncShowSubelement (syncSettings, true);
             break;
         case SetRevision_CommandID:
             msg_rep ("Revision", "============== START ==============", NoError, APINULLGuid);

@@ -234,7 +234,7 @@ bool SyncSetSubelementScope (const API_Elem_Head &parentelementhead,
 // Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
 // --------------------------------------------------------------------
 // Подсвечивает элементы, связанные через свойства Sync_GUID.
-void SyncShowSubelement (const SyncSettings &syncSettings);
+void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui = false);
 
 // --------------------------------------------------------------------
 // Получение словаря с GUID дочерних объектов для массива объектов

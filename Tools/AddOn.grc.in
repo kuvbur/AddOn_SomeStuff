@@ -290,6 +290,18 @@
 4	""							CenterText_0
 }
 
+'GDLG'  ID_ADDON_OTHER_DB_DLG  Modal | grow         0    0  460  240  "Found elements in other views" {
+/* [  1] */ Button				   20  205  90   25	LargePlain  "Close"
+/* [  2] */ Button				  350  205  90   25	LargeBold   "Show"
+/* [  3] */ SingleSelList		   20   20  420  170	LargePlain  PartialItems VScroll 25 HasHeader 30
+}
+
+'DLGH'  ID_ADDON_OTHER_DB_DLG  DLG_32593_Other_Database_Dialog {
+1	""							Button_0
+2	""							Button_1
+3	""							SingleSelList_0
+}
+
 /* --- SomeStuff schedules ----------------------------------------------------*/
 
 'GDLG'  ID_ADDON_TABLE_NEW_DLG  Modal | hGrow         0    0  360  108  "New Schedule" {
