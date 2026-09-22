@@ -202,3 +202,9 @@
 - Не резолвятся (по 2 попытки, стоп): ReadMEP (MEPv1.cpp:177), RoomBook (Roombook.cpp:56), GetSyncSettingsCache (SyncSettings.cpp:417), ElementEventHandlerProc (Main:141), ResetProperty/SetRevision (известно ранее) — вызывающие известны из callHierarchy MenuCommandHandler и grep, поля в карточках заполнены с пометкой источника
 - Открытия: DimRoundAll дёргается из ТРЁХ обработчиков (меню :489, ElementEvent :165, ProjectEvent :128); GetPropertyRuleFlag — только тестовые вызовы (DISCREPANCIES #9); RoomBook entry — Roombook.cpp:57; LoadSyncSettingsFromPreferences — clangd даёт SyncSettings.cpp:518, grep 429 (два совпадения)
 - Обновлены: Summ, ReNum, Spec, Dimensions, ClassificationFunction, TableRenderer, Propertycache, SomeStuff_Main, SyncSettings, BrowserPalette, Roombook, MEPv1
+
+## Пункты 2-3 закрыты (2026-09-22)
+
+- П.2 (неполное покрытие): TestFunc — все 33 функции из hpp; Helpers — полный API по объявлениям hpp (FormatStringFunc, топ-уровень, ParamHelpers чтение/запись/конвертации, операторы); Roombook — все ~70 функций из documentSymbols по подсистемам. Остаток «неполного покрытия» снят.
+- П.3 (нерезолвящиеся): тела 6 функций разобраны body-scan (Docs/tools/_body_scan.py, brace-matching + whitelist имён проекта) → Docs/_generated/body_scan.json; «Вызывает» заполнены в pk.md (ResetProperty, SetRevision), MEPv1 (ReadMEP: до AC28 false, AC28+ GetMEPData), Roombook (RoomBook — 96 вызовов), SyncSettings (GetSyncSettingsCache → ReadSyncSettings), SomeStuff_Main (ElementEventHandlerProc — диспетчер всей функциональности).
+- Находки: ConvertToProperty с TODO «переписать под ParamValue» (Helpers.hpp:419); дубликат объявления CompareParamDictValue (Helpers.hpp:427/432); у ResetProperty body-scan обрезался по внешней скобке — ResetPropertyElement2Defult подтверждён чтением (:34).

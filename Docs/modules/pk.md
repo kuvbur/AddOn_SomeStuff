@@ -145,7 +145,7 @@
 - Назначение: выполняет сброс пользовательских свойств в режиме add-on. [из комментария]
 - Контракт: **возвращает `false` на AC27+** (`#ifdef ServerMainVers_2700`, строки 15-17) — на этой версии функция неработоспособна (актуальный баг, не задел на будущее); требует прочитанного кэша определений (`isPropertyDefinitionRead`); false — если определений с `Sync_reset` в описаниях нет. [из комментария + по коду]
 - Побочные эффекты: делегирует `ResetPropertyElement2Defult` (**меняет свойства элементов проекта**); читает `PROPERTYCACHE().property`. [по коду]
-- Вызывает: не проверено — clangd callHierarchy/find_references на позиции не резолвятся (2+2 попытки); собрано grep'ом: `Sync.cpp:174` — вызов внутри. [grep по Sources/AddOn]
+- Вызывает: `PROPERTYCACHE()` (:20), `ResetPropertyElement2Defult` (:34), `isPropertyDefinitionRead` (:18), `msg_rep`. [по коду, grep тела — Docs/_generated/body_scan.json]
 - Вызывается из: `SyncAndMonAll` (Sync.cpp:174) — при успехе сброса ранний выход из SyncAndMonAll. [по коду, grep]
 
 ### `ResetPropertyElement2Defult(const GS::Array<API_PropertyDefinition> &definitions_to_reset) -> UInt32`
@@ -193,7 +193,7 @@
 - Назначение: создаёт или обновляет ревизионные маркеры и связанные с ними свойства на листах. [из комментария]
 - Контракт: если свойство-правило не найдено (`GetScheme` false) — `msg_rep` и ранний выход; при ошибке сохранения вида настройки снимаются перед возвратом (2 защитных пути); ошибки получения БД/окна — ранний выход с `msg_rep`. [по коду]
 - Побочные эффекты: **сохраняет/восстанавливает настройки вида и окно** (`ACAPI_View_StoreViewSettings` / `APIDb_StoreViewSettingsID`), **переключает БД и окно** (`ChangeCurrentDatabase`/`ChangeWindow`); изменяет маркеры и свойства листов через `ChangeLayoutProperty`/`ChangeMarkerTextOnLayout`. [по коду]
-- Вызывает: не проверено — clangd callHierarchy/find_references на позиции не резолвятся (внутренние вызовы: GetScheme, GetAllChangesMarker, ChangeLayoutProperty, ChangeMarkerTextOnLayout — по коду, Revision.cpp:17-79); точный список не проверен. [по коду]
+- Вызывает: `GetScheme`, `GetAllChangesMarker`, `ChangeLayoutProperty`, `ChangeMarkerTextOnLayout`, `msg_rep` ×N; SDK: `ACAPI_View_StoreViewSettings`, `ACAPI_Database_GetCurrentDatabase/ChangeCurrentDatabase`, `ACAPI_Window_GetCurrentWindow/ChangeWindow`, `ACAPI_Automate`. [по коду, grep тела — body_scan.json]
 - Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:449, case `SetRevision_CommandID`). [по коду, grep]
 
 ### `Revision::ChangeLayoutProperty(ChangeMarkerDict &changes, GS::HashTable<GS::UniString, API_Guid> &layout_note_guid, API_DatabaseUnId &databaseUnId, GS::UniString &layoutId, LayoutRevisionDict &layoutRVI, NoteByChangeDict &allchanges) -> bool`

@@ -13,7 +13,7 @@
 | Функция | .cpp строка | Назначение |
 |---------|-------------|------------|
 | `ProjectEventHandlerProc` | 73 | События проекта: открытие, закрытие, смена окна/этажа [из комментария] — карточка |
-| `ElementEventHandlerProc` | 142 | События изменения элементов (создание/изменение/удаление) [из комментария] — карточка |
+| `ElementEventHandlerProc` | 142 | События изменения элементов (создание/изменение/удаление) [из комментария] — карточка; clangd не резолвит (2 попытки), тело разобрано grep |
 | `Do_ElementMonitor` | 281 | Вкл/выкл мониторинг изменений элементов [из комментария] |
 | `SelectionChangeHandlerProc` | 326 | Обработчик изменения выделения [из комментария] — карточка |
 | `MenuSetState` | 337 | Состояние пунктов меню по настройкам синхронизации [из комментария] |
@@ -33,9 +33,9 @@
 ### `ElementEventHandlerProc(const API_NotifyElementType *elemType) -> GSErrCode`
 - Расположение: `Sources/AddOn/SomeStuff_Main.cpp:142`
 - Назначение: реакция на создание/изменение/удаление элементов. [из комментария]
-- Контракт: не проверено.
-- Побочные эффекты: синхронизация изменённых элементов (через Sync-цепочку). [по коду]
-- Вызывается из: ArchiCAD (notify) [по коду]
+- Контракт: единый диспетчер — по notifID маршрутизирует события проекта, выделения, меню и элементов. [по коду, grep тела]
+- Побочные эффекты: **вся функциональность аддона** — ветки: `PROPERTYCACHE().Update`, `DimRoundAll` (:165), `DimAutoRoundOne`, `MonAll`, `SyncAndMonAll`, `SyncSelected`, `RunParamSelected`, `SyncShowSubelement`, `SyncSetSubelement`, `ShowOrHideBrowserPalette`, `WriteSyncSettingsToPreferences`, `LoadSyncSettingsFromPreferences`, `Do_ElementMonitor`, `MenuSetState`, `SetPaletteMenuText`, `AttachObserver`; SDK-регистрации (`ACAPI_MenuItem_RegisterMenu`, `ACAPI_Install_MenuHandler`, `ACAPI_Notification_*Catch*`). [по коду, grep тела — body_scan.json]
+- Вызывается из: ArchiCAD (notify/callbacks). [по коду]
 
 ### `ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param) -> GSErrCode`
 - Расположение: `Sources/AddOn/SomeStuff_Main.cpp:73`

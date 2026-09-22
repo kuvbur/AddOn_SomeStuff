@@ -23,8 +23,9 @@
 ### `MEPv1::ReadMEP(const API_Elem_Head &elem_head, ParamDictValue &paramByType) -> bool`
 - Расположение: `Sources/AddOn/MEPv1.cpp` (строка не проверена)
 - Назначение: читает свойства MEP из заголовка элемента в словарь параметров. [из комментария]
-- Контракт: false — элемент не содержит MEP-данных. [по коду; не проверено detail]
-- Побочные эффекты: заполняет paramByType; чтение через MEP-adapter (только чтение). [по коду; не проверено detail]
+- Контракт: **до AC28 всегда `return false`** (`#ifndef ServerMainVers_2800`); AC28+ — делегирует `GetMEPData`. [по коду, MEPv1.cpp:179-183]
+- Побочные эффекты: заполняет paramByType (только чтение). [по коду]
+- Вызывает: `GetMEPData` (AC28+). [по коду, grep тела]
 
 ## Зависимости
 - `ACAPI/MEP*` (27+/28+/29+), `CommonFunction.hpp`, `Helpers.hpp`, `Propertycache.hpp` [по include]

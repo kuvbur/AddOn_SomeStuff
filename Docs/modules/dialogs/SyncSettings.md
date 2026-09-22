@@ -26,6 +26,8 @@
 - Расположение: clangd не резолвит callHierarchy на определении (2 попытки; grep: SyncSettings.cpp:419)
 - Назначение: единственный экземпляр настроек, загруженный из локального файла. [из комментария, hpp:115-119]
 - Контракт: forceReload — перечитать локальный файл; `ReadSyncSettingsFromFile` отвергает файл с mismatched `PreferencesVersion` (AGENTS.md §6 — bump версии при новых настройках). [из AGENTS.md + по коду]
+- Вызывает: `ReadSyncSettings` (чтение локального файла). [по коду, grep тела — body_scan.json]
+- Вызывается из: `LoadSyncSettingsFromPreferences` (SyncSettings.cpp:432), `WriteSyncSettingsToPreferences` (:442). [по коду]
 - Побочные эффекты: глобальное состояние (singleton); чтение файла. [по коду]
 
 ## Инварианты
