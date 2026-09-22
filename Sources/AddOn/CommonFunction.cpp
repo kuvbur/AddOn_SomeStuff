@@ -246,7 +246,7 @@ GS::UniString TextToQRCode (const GS::UniString &text) {
 // -----------------------------------------------------------------------------
 // Проверяет, относится ли текущий открытый проект к тестовому файлу.
 // -----------------------------------------------------------------------------
-static bool IsTestProjectOpen () {
+bool IsTestProjectOpen () {
     API_ProjectInfo projectInfo = {};
     GSErrCode err = NoError;
 #ifdef ServerMainVers_2700

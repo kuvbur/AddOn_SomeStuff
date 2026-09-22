@@ -15,9 +15,24 @@
 
 ## Status
 
-IN_PROGRESS → COMPLETED (коммит f51d8b6 создан; issue #190 закрыт).
+COMPLETED — #190 закрыт 2026-09-22. 2026-09-22 (вечер): проверка логирования чтения
+настроек — исправлено в #191 (см. Last Completed).
 
 ## Last Completed
+
+2026-09-22 — лог msg_rep успешного чтения настроек (#191):
+- Пошаговой диагностикой IO::File подтверждено: чтение всегда успешно (status=0,
+  open=0, size=695, read=0); первый reading — в Initialize ДО открытия проекта,
+  поэтому строка терялась из отчёта сессии и не попадала в test_results.txt.
+- Фикс: лог один раз за сессию при первом чтении с IsTestProjectOpen()==true;
+  IsTestProjectOpen экспортирована из CommonFunction (была static).
+- Подтверждено пользователем: строка появилась в отчёте ArchiCAD; в test_results.txt
+  тоже есть (одна строка, 0 «ERROR IN TEST»). Сборка AC25 успешна.
+- Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/191
+
+2026-09-22 — финальная проверка и закрытие #190: рабочее дерево чистое, все коммиты
+запушены (a4a83b0 squash); код читает/пишет только SomeStuffAddonConfig.json из корня
+prefs, при отсутствии файла — дефолты; миграция удалена. Контрольный комментарий в issue.
 
 2026-09-22 — миграция удалена по решению автора (аддон никем не используется):
 - Удалены ReadSyncSettingsFromLegacyJson/Dat/Preferences и legacy-константы;
@@ -55,12 +70,11 @@ IN_PROGRESS → COMPLETED (коммит f51d8b6 создан; issue #190 зак�
 
 ## Next Step
 
-Коммит [#190] (SyncSettings.cpp/.hpp + IDEA.md, не трогая чужие BrowserPalette.cpp/test_25.pln),
-комментарий в issue #190 и закрытие.
+Задачи #190/#191 завершены; активных шагов нет. Следующие кандидаты: #163–#171 (runtime R2–R10).
 
 ## Last Checkpoint
 
-f51d8b6 `[#190] Настройки хранятся в SyncSettings.json вместо бинарного .dat; миграция .dat→json` (SyncSettings.cpp/.hpp + IDEA.md, Refs: #190).
+fdbd912 `[#191] SyncSettings: msg_rep пути файла настроек логируется при открытом проекте; build_ac.bat запускает тестовый runner` (SyncSettings.cpp, CommonFunction.cpp/.hpp, build_ac.bat, IDEA.md, Refs: #191). До этого a4a83b0 (squash цепочки #190).
 
 ## Plan
 
@@ -69,7 +83,7 @@ f51d8b6 `[#190] Настройки хранятся в SyncSettings.json вме�
 - [x] skipIfUnchanged на сериализованной JSON-строке
 - [x] clang-format + LSP + сборка AC25
 - [x] Runtime-проверка в ArchiCAD (миграция .dat → json, чтение json)
-- [/] Checkpoint + закрытие #190
+- [x] Checkpoint + закрытие #190
 
 ## Decisions
 

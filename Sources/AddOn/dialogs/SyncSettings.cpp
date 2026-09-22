@@ -292,9 +292,12 @@ static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
 
     // Путь к файлу настроек логируем один раз за сессию: чтение вызывается
     // в том числе в observer-путях (forceReload на каждое событие проекта),
-    // повторный вывод только замусорил бы лог.
+    // повторный вывод только замусорил бы лог. Логируем только когда проект
+    // уже открыт: первый успешный reading происходит в Initialize до открытия
+    // проекта, и строка в отчёте сессии тогда теряется (замечено при проверке
+    // #190) — ждём первого чтения в контексте проекта.
     static bool pathLogged = false;
-    if (!pathLogged) {
+    if (!pathLogged && IsTestProjectOpen ()) {
         msg_rep ("ReadSyncSettingsFromFile", "Settings file: " + fileLoc.ToDisplayText (), NoError, APINULLGuid);
         pathLogged = true;
     }
