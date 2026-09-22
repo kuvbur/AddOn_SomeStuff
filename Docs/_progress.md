@@ -146,3 +146,10 @@
 - [x] Фаза 3: модули задокументированы и закоммичены
 - [x] Фаза 4: ARCHITECTURE.md, REPOMAP.md созданы; Mermaid-граф зависимостей — см. ARCHITECTURE.md; сценарии — список предложен, ожидает согласования
 - [x] Фаза 5: сверка выполнена, DISCREPANCIES.md заполнен
+
+## Доработка пилотного pk.md по замечаниям (2026-09-22)
+
+- Проблема 1: все описания в таблицах и карточках pk.md помечены [из комментария]/[по коду]/[не проверено]; `not verified` заменено на `не проверено`
+- Проблема 2: добавлены 16 карточек нетривиальных функций (5 AutoFunc с побочными эффектами, 6 ResetProperty-семейства, 5 Revision); в карточке ResetProperty зафиксирован баг AC27+ (return false) как актуальный
+- Проблема 3 (проверено): строки в прежней таблице были строками .hpp; реальные определения в .cpp (1-based): GetNear 15, GetCuplane 34, Get3DProjectionInfo 149, Get3DDocument 208, GetSectLine 260, DoSect 406, PlaceDocSect 489, ProfileByLine 556, AlignOneDrawingsByPoints 771, GetDrawingsSort 892, AlignDrawingsByPoints 926 — подтверждены grep'ом по AutomateFunction.cpp и согласуются с clangd callHierarchy (MCP отдаёт 0-based)
+- ResetProperty/SetRevision: clangd callHierarchy не резолвится (2 столбца каждый) → помечено `не проверено` в карточках
