@@ -1,0 +1,57 @@
+# ReNum — Перенумерация
+
+> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep).
+
+## Назначение
+Перенумерация позиций по правилам из свойств: числовые и текстовые позиции, нулевое заполнение, группировка по критериям и разделителям. [по коду]
+
+## Файлы
+- `ReNum.cpp/hpp`
+
+## Ключевые типы
+
+| Тип | Описание |
+|-----|----------|
+| `RenumPos` | Позиция: GUID, текст, число, префикс/суффикс, char code [из комментария, ReNum.hpp:11-138] |
+| `RenumElem` | Массив позиций + mostFrequentPos [из комментария] |
+| `RenumRule` | state, oldalgoritm, flag, position, criteria, delimetr, nulltype, nullcount, elemts [из комментария] |
+| `Rules` | `HashTable<API_Guid, RenumRule>` [из комментария] |
+
+## Публичный API
+
+| Функция | .cpp строка | Назначение |
+|---------|-------------|------------|
+| `ReNumSelected` | 56 | Запуск перенумерации выбранных элементов [из комментария] — карточка |
+| `RenumDG` | 172 | Диалог выбора правил; проверяет наличие правила для одного элемента [из комментария] |
+| `GetRenumElements` | 227 | Сбор элементов для перенумерации [из комментария] |
+| `ReNumHasFlag` | 975 | Проверка переключателя флага перенумерации [из комментария] |
+| `ReNumGetFlag` | 1002 | Состояние флага по данным параметров [из комментария] |
+| `ReNum_GetElement` | 406 | Обработка одного элемента: применяет правила [из комментария] |
+| `GetMostFrequentPos` | 614 | Наиболее частая позиция среди вариантов [из комментария] |
+| `GetPos` | 642 | Позиция по критерию и разделителю [из комментария] |
+| `ElementsSeparation` | 852 | Разделение элементов правила по группам [из комментария] |
+| `ReNumOneRule` | 663 | Применение одного правила к набору элементов [из комментария] — карточка |
+
+## Карточки
+
+### `ReNumSelected(SyncSettings &syncSettings) -> GSErrCode`
+- Расположение: `Sources/AddOn/ReNum.cpp:56`
+- Назначение: запускает перенумерацию выбранных элементов по правилам в свойствах. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: **запись позиций в свойства элементов** (ElementsWrite в undoable-команде, :134/:139); читает выделение. [по коду]
+- Вызывает: `GetRenumElements` (:87), `GetRuleFromSelected` (Helpers.cpp:355), `GetSelectedElements` (Helpers.cpp:695), `ElementsWrite` (Helpers.cpp:4625), `SyncArray` (Sync.cpp:456). [из callgraph.json]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:427). [из callgraph.json]
+
+### `ReNumOneRule(RenumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem, bool &has_error)`
+- Расположение: `Sources/AddOn/ReNum.cpp:663`
+- Назначение: применяет одно правило перенумерации к набору элементов. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: **запись новых позиций** в параметры для записи (paramToWriteelem); `has_error` накапливается (FIX 2026-09-12: `has_error = has_error || …`, см. DISCREPANCIES/историю коммита 61153ca). [по коду]
+- Вызывает: `ElementsSeparation` (:674), `GetMostFrequentPos` (:701/721), `GetPos` (:765/780), `AddParamValue2ParamDictElement` (Helpers.cpp:1714); RenumPos::FormatToMax/SetToMax/ToParamValue. [из callgraph.json]
+- Вызывается из: `GetRenumElements` (ReNum.cpp:345). [из callgraph.json]
+
+## Зависимости
+- `Helpers.hpp`, `third_party/alphanum.h` [по include]
+
+## Зависимости (используется в)
+- `SomeStuff_Main.cpp` [по коду]

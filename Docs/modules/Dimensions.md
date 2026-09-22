@@ -1,0 +1,40 @@
+# Dimensions — Округление размеров
+
+> Хеш коммита: 493caf5 (2026-09-22). Строки .cpp не проверены (не фиксировались в этой сессии).
+
+## Назначение
+Округление размеров: правила из информации о проекте (`Addon_Dimenstions`), обработка текста, привязка к типам элементов. [из комментария, Dimensions.hpp:9]
+
+## Файлы
+- `Sources/AddOn/Dimensions.cpp/hpp`
+
+## Публичный API
+
+| Функция | Назначение |
+|---------|------------|
+| `DimAutoRoundOne` | Обрабатывает один элемент: применяет правила к его размерам [из комментария, Dimensions.hpp:11] — карточка |
+| `DimAutoRound` | Обрабатывает один размер: менять текст/цвет или сбросить формат [из комментария, :17] — карточка |
+| `DimParse` | Разбирает значение размера, формирует текст по правилам (flags DIM_CHANGE_*, DIM_HIGHLIGHT_*) [из комментария, hpp:20-41] — карточка |
+| `DimRoundAll` | Округление всех доступных согласно настройкам [из комментария]; вызывается из `MenuCommandHandler` (Main:489), `ElementEventHandlerProc` (Main:165), `ProjectEventHandlerProc` (Main:128) [из callgraph.json] |
+| `DimRoundByType` | Округление размеров одного типа [из комментария, :53] |
+
+## Карточки
+
+### `DimParse(const double &dimVal, ..., GS::UniString &custom_txt, UInt32 &flag_change, UInt32 &flag_highlight, const DimRule &dimrule, const ParamDictValue *preadelem) -> bool`
+- Расположение: строка .cpp не проверена
+- Назначение: разбирает значение размера, формирует текст; решает менять текст/перо. [из комментария]
+- Контракт: FIX 2026-09-12: `preadelem` — предпрочитанный словарь параметров привязанного элемента (nullptr — читать внутри); входной content не мутируется, результат через `custom_txt`; без полной копии dimrule.paramDict на каждый размер. [из комментария, Dimensions.hpp:26-32]
+- Побочные эффекты: формулы (`expression`) через EvalExpression; выходные флаги. [по коду]
+
+### `DimAutoRound(const API_Guid &elemGuid, const SyncSettings &syncSettings) -> GSErrCode`
+- Расположение: строка .cpp не проверена
+- Назначение: обрабатывает один размер: менять текст, цвет или сбросить формат. [из комментария]
+- Побочные эффекты: **меняет текст/перо размера** (`ACAPI_Element_Change`, Dimensions.cpp:266); мемо GetMemo+Dispose (7 путей). [из callgraph.json]
+- Вызывает: `DimParse` (:188), `Read` (Helpers.cpp:5477), `GetLayerFromCache` (Propertycache.cpp:154), `is_equal` ×3. [из callgraph.json]
+- Вызывается из: `DimAutoRoundOne` (:30), `DimRoundByType` (:458). [из callgraph.json]
+
+## Инварианты
+- `pen_original` (было Dimensions.cpp:158, сейчас :49/:184 «Быстрофикс») — не чинить без явного запроса (AGENTS.md §16) [из AGENTS.md, проверено 2026-09-22]
+
+## Зависимости
+- `DG.h`, `dialogs/SyncSettings.hpp`, `Helpers.hpp` [по include]
