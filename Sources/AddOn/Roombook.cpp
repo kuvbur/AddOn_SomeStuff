@@ -31,6 +31,47 @@ namespace Roombook
 
     GS::Int32 nPhase = 1;
 
+    static bool GetTargetZones (GS::Array<API_Guid> &zones) {
+        GSErrCode err = NoError;
+        API_SelectionInfo selectionInfo = {};
+        GS::Array<API_Neig> selNeigs;
+        err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
+        BMKillHandle ((GSHandle *)&selectionInfo.marquee.coords);
+        if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
+            for (const API_Neig &neig : selNeigs) {
+                API_ElemTypeID elementType;
+    #ifdef ServerMainVers_2600
+                API_ElemType elementType_ = Neig_To_ElemID (neig.neigID);
+                elementType = elementType_.typeID;
+    #else
+                elementType = Neig_To_ElemID (neig.neigID);
+    #endif
+                if (elementType == API_ZoneID) {
+                    if (!ACAPI_Element_Filter (neig.guid,
+                                               APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight |
+                                                   APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation))
+                        continue;
+                    zones.Push (neig.guid);
+                }
+            }
+        }
+        if (zones.IsEmpty ()) {
+            err = ACAPI_Element_GetElemList (API_ZoneID,
+                                             &zones,
+                                             APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight |
+                                                 APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation);
+            if (err != NoError) {
+                msg_rep ("RoomBook err", "ACAPI_Element_GetElemList", err, APINULLGuid);
+                return false;
+            }
+        }
+        if (zones.IsEmpty ()) {
+            msg_rep ("RoomBook err", "Zones not found or all not editable", NoError, APINULLGuid);
+            return false;
+        }
+        return true;
+    }
+
     // -----------------------------------------------------------------------------
     // Запись в зону информации об отделке
     // -----------------------------------------------------------------------------
@@ -63,47 +104,8 @@ namespace Roombook
         // Окно прогресса помогает видеть, на каком этапе выполняется расчёт отделки.
         ProcessWindowGuard pwGuard (funcname, nPhase);
         GS::Array<API_Guid> zones;
-        GSErrCode err = NoError;
-        API_SelectionInfo selectionInfo = {};
-        // REFACTOR TARGET:
-        // Extract a helper like GetTargetZones() from this block.
-        // It should decide between the current selection and the full editable-zone list,
-        // while keeping the filtering and error handling in one place.
-        GS::Array<API_Neig> selNeigs;
-        err = ACAPI_Selection_Get (&selectionInfo, &selNeigs, true);
-        BMKillHandle ((GSHandle *)&selectionInfo.marquee.coords);
-        if (err != APIERR_NOSEL && selectionInfo.typeID != API_SelEmpty) {
-            for (const API_Neig &neig : selNeigs) {
-                API_ElemTypeID elementType;
-    #ifdef ServerMainVers_2600
-                API_ElemType elementType_ = Neig_To_ElemID (neig.neigID);
-                elementType = elementType_.typeID;
-    #else
-                elementType = Neig_To_ElemID (neig.neigID);
-    #endif
-                if (elementType == API_ZoneID) {
-                    if (!ACAPI_Element_Filter (neig.guid,
-                                               APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight |
-                                                   APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation))
-                        continue;
-                    zones.Push (neig.guid);
-                }
-            }
-        }
-        if (zones.IsEmpty ()) {
-            err = ACAPI_Element_GetElemList (API_ZoneID,
-                                             &zones,
-                                             APIFilt_IsEditable | APIFilt_OnVisLayer | APIFilt_HasAccessRight |
-                                                 APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation);
-            if (err != NoError) {
-                msg_rep ("RoomBook err", "ACAPI_Element_GetElemList", err, APINULLGuid);
-                return;
-            }
-        }
-        if (zones.IsEmpty ()) {
-            msg_rep ("RoomBook err", "Zones not found or all not editable", NoError, APINULLGuid);
+        if (!GetTargetZones (zones))
             return;
-        }
 
         funcname = GS::UniString::Printf ("Collect info from %d room(s)", zones.GetSize ());
         // REFACTOR TARGET:
@@ -609,6 +611,7 @@ namespace Roombook
         }
         // Перед обновлением элементов их слои временно разблокируются и резервируются.
         // Это нужно, чтобы ArchiCAD позволил изменить существующие элементы без конфликтов.
+        GSErrCode err = NoError;
         if (!reserv_elements.IsEmpty ()) {
     #ifndef ServerMainVers_2400
             GS::PagedArray<API_Guid> reserv;
@@ -675,8 +678,20 @@ namespace Roombook
         UnicGuidByGuid exsistotdelements; // Словарь существующих отделочных элементов с разбивкой по зонам
         int errcode = 0;
         if (!SyncGetParentelement (zones, exsistotdelements, "zone", errcode)) {
+    #if defined(TESTING)
+            // Диагностика #193: существующие элементы отделки не найдены через Sync_GUID zone
+            DBprnt ("Otd_GetOtd_ByZone",
+                    "SyncGetParentelement FAILED, errcode=" + GS::UniString::Printf ("%d", errcode));
+    #endif
             return exsistot_byzone;
         }
+    #if defined(TESTING)
+        // Диагностика #193: сколько зон и элементов отделки найдено по Sync_GUID zone
+        DBprnt ("Otd_GetOtd_ByZone",
+                "SyncGetParentelement OK: zones=" + GS::UniString::Printf ("%u found_otd_zones=%u",
+                                                                           (UInt32)zones.GetSize (),
+                                                                           (UInt32)exsistotdelements.GetSize ()));
+    #endif
         for (UnicGuidByGuid::PairIterator cIt = exsistotdelements.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
             const UnicGuid &guids = cIt->value; // FIX (Roombook.cpp-8): только чтение — копия не нужна
@@ -687,6 +702,10 @@ namespace Roombook
     #endif
             GS::HashTable<API_Guid, TypeOtd> otd_elements;
             // Список всех элементов отделки
+    #if defined(TESTING)
+            // Диагностика #193: почему найденные элементы не попадают в otd_elements
+            UInt32 diag_guids = 0, diag_class_ok = 0, diag_type_fail = 0;
+    #endif
             for (UnicGuid::ConstPairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
     #ifdef ServerMainVers_2800
                 API_Guid guid = cItt->key;
@@ -695,8 +714,14 @@ namespace Roombook
                 API_Guid guid = *cItt->key;
                 bool isvisible = *cItt->value;
     #endif
+    #if defined(TESTING)
+                diag_guids += 1;
+    #endif
                 API_Guid classguid;
                 if (Class_IsElementFinClass (guid, finclassguids, classguid)) {
+    #if defined(TESTING)
+                    diag_class_ok += 1;
+    #endif
                     TypeOtd type_otd = Class_GetOtdTypeByClass (classguid, finclass);
                     API_ElemTypeID type_subguid = GetElemTypeID (guid);
                     bool correct_type = true;
@@ -724,6 +749,10 @@ namespace Roombook
                     }
                     if (!otd_elements.ContainsKey (guid) && correct_type)
                         otd_elements.Add (guid, type_otd);
+    #if defined(TESTING)
+                    if (!correct_type)
+                        diag_type_fail += 1;
+    #endif
                     if (!reserv_elements.ContainsKey (guid)) {
                         if (!ACAPI_Element_Filter (guid, APIFilt_InMyWorkspace)) {
                             reserv_elements.Add (guid, true);
@@ -733,6 +762,15 @@ namespace Roombook
             }
             if (exsistot_byzone.ContainsKey (zoneguid))
                 continue;
+    #if defined(TESTING)
+            // Диагностика #193: сводка по зоне — сколько элементов прошло фильтры
+            DBprnt ("Otd_GetOtd_ByZone",
+                    GS::UniString::Printf ("zone guids=%u class_ok=%u type_fail=%u otd_elements=%u",
+                                           diag_guids,
+                                           diag_class_ok,
+                                           diag_type_fail,
+                                           (UInt32)otd_elements.GetSize ()));
+    #endif
             UnicGuidByBase exsistot_byparent = Otd_GetOtd_Parent (otd_elements, has_base_element);
             exsistot_byzone.Add (zoneguid, exsistot_byparent);
         }
@@ -5205,8 +5243,15 @@ namespace Roombook
                 } else {
                     suffix = "base element";
                 }
-                if (!SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false))
+                if (!SyncSetSubelementScope (parentelementhead, subguids, paramToWrite, suffix, false)) {
+    #if defined(TESTING)
+                    // Диагностика #193: привязка Sync_GUID не записана
+                    DBprnt ("SetSyncOtdWall",
+                            "SyncSetSubelementScope FAILED: suffix=" + suffix +
+                                " subguids=" + GS::UniString::Printf ("%u", (UInt32)subguids.GetSize ()));
+    #endif
                     continue;
+                }
                 for (const auto &g : subguids) {
                     if (!syncguidsdict.ContainsKey (g)) {
                         syncguidsdict.Add (g, true);

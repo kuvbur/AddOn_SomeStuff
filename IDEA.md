@@ -2,6 +2,64 @@
 
 ## Задача
 
+#195: Roombook — начать рефакторинг по комментариям в коде.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/195
+
+## Scope
+
+- `Sources/AddOn/Roombook.cpp`
+- первый шаг из комментария `REFACTOR PLAN`: вынести выбор целевых зон из `RoomBook()`
+- не менять логику пересоздания элементов отделки (AGENTS.md §16)
+
+## Status
+
+WAITING_FOR_TEST — первый refactor-step реализован и собран AC25; runtime-проверка
+Roombook не выполнялась.
+
+## Last Completed
+
+2026-09-22 — #195:
+- В `Sources/AddOn/Roombook.cpp` вынесен `static bool GetTargetZones(...)` из начала
+  `RoomBook()`: выбор зон из текущего selection и fallback на все редактируемые зоны.
+- Сохранены прежние фильтры `APIFilt_IsEditable | APIFilt_OnVisLayer |
+  APIFilt_HasAccessRight | APIFilt_InMyWorkspace | APIFilt_IsVisibleByRenovation`,
+  прежние сообщения `msg_rep` и ранний выход при ошибке/пустом списке.
+- После extraction `GSErrCode err` оставлен локально у Teamwork-reserve блока, где он
+  используется дальше.
+- `clang-format` пройден; LSP config AC25 сгенерирован; AC25 Debug build succeeded.
+- Runtime в Archicad — not performed.
+
+## Next Step
+
+Runtime-проверка Roombook на тестовом PLN; следующий refactor-step — `PrepareRoomProcessingContext()`
+из комментария в `RoomBook()`, но только после синхронизации с параллельными правками.
+
+## Last Checkpoint
+
+Текущий checkpoint #195: `Roombook.cpp` + `IDEA.md`, Refs: #195. Документация
+по ведомостям закоммичена отдельно, без смены активной задачи.
+
+## Plan
+
+- [x] Issue #195 создан
+- [x] Проверен текущий dirty diff, чтобы не перетереть диагностику #193
+- [x] Вынести `GetTargetZones()`
+- [x] clang-format
+- [x] LSP config AC25 + build AC25
+- [x] Обновить IDEA по результату
+- [ ] Runtime-проверка Roombook пользователем/в Archicad
+
+## Decisions
+
+- Первый шаг намеренно малый: только extraction selection/fallback-to-all-zones блока.
+- Версия проверки по умолчанию для этой ветки — AC25, т.к. последние задачи Roombook/runner
+  выполнялись на AC25 и текущие комментарии не требуют другой версии.
+- `Docs/_generated/symbols.json`/`callgraph.json` не оставлялись изменёнными: генератор
+  без clangd MCP использовал regex fallback и попытался заменить callgraph на пустой `[]`;
+  при параллельных source-правках это не подходит для checkpoint.
+
+## Previous Task (#194)
+
 #194: SyncShowSubelement показывает дочерние элементы, но не показывает родительские.
 https://github.com/kuvbur/AddOn_SomeStuff/issues/194
 
