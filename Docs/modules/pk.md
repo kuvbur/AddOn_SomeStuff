@@ -122,7 +122,7 @@
 - Контракт: вход — точка через `ClickAPoint`; ошибки этапов — `msg_rep` (×12); результат собирается в `lines`/созданные документы. [по коду]
 - Побочные эффекты: **создаёт 3D-документы** (DoSect) и размещает оформление (PlaceDocSect); читает выделение (`GetSelectedElements2`); меняет типы элементов (`SetElemTypeID`); `ACAPI_CallCommand`, `ACAPI_Automate` (×2), `ACAPI_Database` (×5), `ACAPI_Environment` (×4), `ACAPI_Element_GetDefaults`, `BMKillHandle`. [по коду]
 - Вызывает: `GetSectLine`, `DoSect`, `PlaceDocSect`, `ClickAPoint`, `GetSelectedElements2`, `SetElemTypeID`, `UniStringToDouble`, `msg_rep` ×12. [из callgraph.json]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:461, команда Auto3D). [из callgraph.json]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:462, команда Auto3D). [из callgraph.json]
 
 ### `AutoFunc::AlignOneDrawingsByPoints(const API_Guid &elemguid, API_DatabaseInfo &databasestart, API_WindowInfo &windowstart, const API_Coord &zeropos, API_Coord &startpos, API_Coord &drawingpos) -> GSErrCode`
 - Расположение: `Sources/AddOn/pk/AutomateFunction.cpp:771`
@@ -138,7 +138,7 @@
 - Контракт: изменение позиций — внутри `ACAPI_CallUndoableCommand` (один undo-регион на все чертежи); пустое выделение — ранний выход; ошибки — `msg_rep` (×6). [по коду]
 - Побочные эффекты: **меняет позиции чертежей на раскладке** (`ACAPI_Element_Change`); читает выделение (`GetSelectedElements2`), ввод точки (`ClickAPoint`), `ACAPI_Automate` (×2), `ACAPI_Database` (×9), `ACAPI_Element_Get`. [по коду]
 - Вызывает: `AlignOneDrawingsByPoints` (:1006), `GetDrawingsSort` (:987), `GetSelectedElements2`, `ClickAPoint`, `msg_rep` ×6. [из callgraph.json]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:464, команда AutoLay). [из callgraph.json]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:465, команда AutoLay). [из callgraph.json]
 
 ### `ResetProperty() -> bool`
 - Расположение: `Sources/AddOn/pk/ResetProperty.cpp:14`
@@ -231,7 +231,7 @@
 - `api_headers/APIEnvir.h` — APIEnvir (для ResetProperty, Revision) [по include]
 
 ## Зависимости (используется в)
-- `SomeStuff_Main.cpp` — через MenuCommandHandler (Auto3D → ProfileByLine :461, AutoLay → AlignDrawingsByPoints :464; команды сброса и ревизий) [из callgraph.json]
+- `SomeStuff_Main.cpp` — через MenuCommandHandler (Auto3D → ProfileByLine :462, AutoLay → AlignDrawingsByPoints :465; команды сброса и ревизий) [из callgraph.json]
 
 ## Инварианты и подводные камни
 - `ResetOneElemen` и `ResetOneElemenDefault` — опечатка в имени (Elemen вместо Element) [по коду]

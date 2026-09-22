@@ -132,14 +132,14 @@
       "call_sites": [{"line": 954}, {"line": 973}, {"line": 1007}, {"line": 1020}, {"line": 1029}, {"line": 1078}]
     },
     {
-      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 365},
+      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 366},
       "callee": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "call_sites": [{"line": 461}]
+      "call_sites": [{"line": 462}]
     },
     {
-      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 365},
+      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 366},
       "callee": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
-      "call_sites": [{"line": 464}]
+      "call_sites": [{"line": 465}]
     },
     {
       "caller": {"name": "Get3DProjectionInfo", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 148},

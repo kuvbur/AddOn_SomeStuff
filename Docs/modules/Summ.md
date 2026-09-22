@@ -33,7 +33,7 @@
 - Контракт: не проверено (тело вне этой сессии не читалось).
 - Побочные эффекты: **меняет свойства элементов или информацию проекта** (через Sum_OneRule); читает выделение. [по коду]
 - Вызывает: не проверено — callHierarchy для Summ не собирался. [не проверено]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:366+) [по коду; строка вызова не проверена]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:433). [по коду, grep]
 
 ### `Sum_OneRule(SumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem)`
 - Расположение: `Sources/AddOn/Summ.cpp:453`

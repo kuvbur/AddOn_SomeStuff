@@ -42,7 +42,7 @@
 - Контракт: не проверено.
 - Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства. [по коду]
 - Вызывает: `GetRuleFromDefaultElem`, `SpecArray` [по коду; detail не проверено]
-- Вызывается из: `MenuCommandHandler` [по коду; строка не проверена]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441). [по коду, grep]
 
 ### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos) -> GSErrCode`
 - Расположение: `Sources/AddOn/spec/Spec.cpp:2427`

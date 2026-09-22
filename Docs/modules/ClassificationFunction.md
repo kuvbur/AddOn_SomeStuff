@@ -15,7 +15,7 @@
 
 | Функция | Назначение |
 |---------|------------|
-| `GetAllClassification` | Загружает все классы из систем в словарь [из комментария, :26] — строки .cpp не проверены |
+| `GetAllClassification` | Загружает все классы из систем в словарь [из комментария]; определение ClassificationFunction.cpp:21, вызывается из Propertycache.hpp:613 (ReadClassification) [по коду, grep] |
 | `GatherAllDescendantOfClassification` | Перебирает потомков класса [из комментария, :29] |
 | `AddClassificationItem` | Добавляет элемент классификации в словарь [из комментария, :34] |
 | `GetFullName` | Полное имя класса с иерархией [из комментария, :42] |

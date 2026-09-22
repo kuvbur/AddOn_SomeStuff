@@ -40,7 +40,7 @@
 - Контракт: не проверено.
 - Побочные эффекты: **запись позиций в свойства элементов** (ReNumOneRule-цепочка); читает выделение. [по коду]
 - Вызывает: `RenumDG` [по коду; detail не проверено]
-- Вызывается из: `MenuCommandHandler` [по коду; строка не проверена]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:427). [по коду, grep]
 
 ### `ReNumOneRule(RenumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem, bool &has_error)`
 - Расположение: `Sources/AddOn/ReNum.cpp:663`

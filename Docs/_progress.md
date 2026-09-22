@@ -171,3 +171,11 @@
   - `Revision::SetRevision()` вызывается из `MenuCommandHandler` (SomeStuff_Main.cpp:449, case SetRevision_CommandID)
   - ChangeMarkerText/ChangeMarkerTextOnLayout/ChangeLayoutProperty внешних вызовов не имеют (только внутри pk/Revision.cpp)
 - Обновлены карточки ResetProperty и SetRevision в pk.md
+
+## Финальный отчёт (2026-09-22, задача документирования завершена)
+
+- Grep-карта вызовов входных функций (все проверены по коду):
+  SumSelected ← Main:433; SyncAndMonAll ← Main:405; SyncSelected ← Main:410 (+Sync.cpp:565/2246); RunParamSelected ← Main:437; SyncShowSubelement ← Main:445; ResetProperty ← Sync.cpp:174; SetRevision ← Main:449; SyncSetSubelement ← Main:453; SpecAll ← Main:441; ReNumSelected ← Main:427; ProfileByLine ← Main:462; AlignDrawingsByPoints ← Main:465; MonAll ← Main:400/555; DimRoundAll ← Main:128/165/489; GetAllClassification ← Propertycache.hpp:613; ReadMEP ← Helpers.cpp:5747 (+Propertycache.cpp:149)
+- Исправлены номера строк SomeStuff_Main: MenuCommandHandler=366, ProfileByLine=462, AlignDrawingsByPoints=465 (pk.md + callgraph.json)
+- Критерии готовности: модулей 23/23, описания с пометками, DISCREPANCIES.md заполнен, вне Docs/ и AGENTS.md изменений нет
+- Открытые пункты (не блокируют): список ключевых сценариев в ARCHITECTURE.md ожидает согласования для sequence-диаграмм; Helpers/TestFunc — неполное покрытие; callHierarchy для остальных модулей не собирался (clangd mis-resolve на определениях — обход grep'ом)
