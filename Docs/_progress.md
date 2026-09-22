@@ -186,3 +186,11 @@
 - Решение: расширять callgraph НЕ на все модули, а точечно под модуль, где профилированием всплыла горячая функция (полный проход ~ тот же объём, что ручной сбор pk; профилирование скорее всего будет по отдельным горячим модулям).
 - Процедура точечного сбора — Docs/tools/UPDATE_PROCEDURE.md §2.
 - generate_symbols.py callgraph не автоматизирует (subprocess к clangd не работает на Windows) — подтверждено, это не недоделка, а ограничение окружения.
+
+## Точечный callgraph Sync (2026-09-22, коммит de8e94b) — первый прогон политики
+
+- Sync выбран как первый горячий модуль (все команды меню и события изменения элементов проходят через него)
+- clangd callHierarchy: все 6 функций резолвятся (MonAll, SyncAndMonAll, SyncByType, SyncElement, SyncData, ParseSyncString). Важно: MCP ждёт 0-based строки — значения из grep (1-based) давать как line-1; col = позиция имени функции
+- 49 новых рёбер; итого 78 в callgraph.json
+- Открытия: MonAll вызывается не только из меню, но и из Initialize (SomeStuff_Main.cpp:555); ParseSyncString активно тестируется (TestParseSyncStringIndependent, 7 вызовов); SyncAndMonAll сначала зовёт ResetProperty и при успехе делает ранний выход
+- Синхронизация координат: в callgraph.json — 0-based (clangd), в modules/*.md — 1-based (grep); правило записано в meta.lines
