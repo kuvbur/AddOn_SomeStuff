@@ -137,9 +137,9 @@ def build_symbols_from_compile(compile_data):
         module = "Core"
         if len(parts) >= 3 and parts[1] == "AddOn":
             if len(parts) == 3:
-                module = parts[2].replace(".cpp", "").replace(".c", "").replace(".hpp", "").replace(".h", "")
-            elif len(parts) >= 4:
-                module = parts[1]
+                module = os.path.splitext(parts[2])[0]
+            else:
+                module = parts[2]
         if not os.path.isfile(fp):
             continue
         try:
@@ -201,9 +201,9 @@ def main():
             parts = rel.split("/")
             if len(parts) >= 3 and parts[1] == "AddOn":
                 if len(parts) == 3:
-                    module = parts[2].replace(".cpp", "").replace(".c", "").replace(".hpp", "")
-                elif len(parts) >= 4:
-                    module = parts[1]
+                    module = os.path.splitext(parts[2])[0]
+                else:
+                    module = parts[2]
             for s in extract_symbols_from_data(result, rel, module):
                 key = (s["name"], s["file"], s["line"])
                 if key not in seen:

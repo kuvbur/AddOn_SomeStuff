@@ -45,6 +45,24 @@
 | `AutoFunc::AlignOneDrawingsByPoints` | `(const API_Guid&, API_DatabaseInfo&, API_WindowInfo&, API_Coord, API_Coord&, API_Coord&)` | 73 | Выравнивает один чертёж по точкам, возвращает новую позицию |
 | `AutoFunc::AlignDrawingsByPoints` | `()` | 83 | Выравнивает все чертежи по hotspot внутри их содержимого |
 
+### «Вызывает» / «Вызывается из» (clangd callHierarchy, AC25)
+
+Только вызовы внутри проекта (Sources/AddOn/); вызовы SDK см. `Docs/_generated/callgraph.json`.
+
+| Функция | Вызывает | Вызывается из |
+|---------|----------|---------------|
+| `GetNear` | — | `GetSectLine` (AutomateFunction.cpp:371) |
+| `GetCuplane` | — | `DoSect` (AutomateFunction.cpp:413) |
+| `Get3DProjectionInfo` | `msg_rep` (CommonFunction.cpp:436) ×5 | `DoSect` (AutomateFunction.cpp:428) |
+| `Get3DDocument` | `msg_rep` ×3 | `DoSect` (AutomateFunction.cpp:436) |
+| `GetSectLine` | `GetNear`, `GetElemTypeID`, `GetWordPoint2DTM`, `is_equal`, `msg_rep` | `ProfileByLine` (AutomateFunction.cpp:644) |
+| `DoSect` | `GetCuplane`, `Get3DProjectionInfo`, `Get3DDocument`, `msg_rep` | `ProfileByLine` (AutomateFunction.cpp:672) |
+| `ProfileByLine` | `GetSectLine`, `DoSect`, `PlaceDocSect`, `ClickAPoint`, `GetSelectedElements2`, `SetElemTypeID`, `UniStringToDouble`, `msg_rep` ×12 | `MenuCommandHandler` (SomeStuff_Main.cpp:461) |
+| `AlignOneDrawingsByPoints` | `RestoreStartDatabaseAndWindow` ×3, `GetElemTypeID`, `msg_rep` ×5 | `AlignDrawingsByPoints` (AutomateFunction.cpp:1005) |
+| `AlignDrawingsByPoints` | `AlignOneDrawingsByPoints`, `GetDrawingsSort`, `GetSelectedElements2`, `ClickAPoint`, `msg_rep` ×6 | `MenuCommandHandler` (SomeStuff_Main.cpp:464) |
+| `ResetProperty` | not verified — clangd не резолвит callHierarchy на позиции определения (ResetProperty.cpp:14) | |
+| `Revision::SetRevision` | not verified — clangd: No call hierarchy available (Revision.cpp:14) | |
+
 ### ResetProperty (ResetProperty.cpp/hpp)
 
 | Функция | Сигнатура | Строка | Назначение |

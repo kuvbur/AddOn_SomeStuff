@@ -1,1 +1,176 @@
-[]
+{
+  "meta": {
+    "generated": "2026-09-22",
+    "source": "clangd callHierarchy (MCP mcp__clangd__get_call_hierarchy) на compile_commands.json (AC25)",
+    "filter": "рёбра только внутри Sources/AddOn/; вызовы SDK (Build/DevKit, MSVC, Windows Kits) исключены и подсчитаны отдельно",
+    "limitation": "docs/tools/generate_symbols.py не может говорить с clangd через subprocess.PIPE на Windows (clangd 22.1.8 не поддерживает --port, pipe даёт Errno 22/пустой greeting); сбор выполнялся напрямую через clangd MCP. Для регенерации запрашивать get_call_hierarchy на позициях определений из symbols.json."
+  },
+  "edges": [
+    {
+      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
+      "callee": {"name": "GetCuplane", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 33},
+      "call_sites": [{"line": 413}]
+    },
+    {
+      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
+      "callee": {"name": "Get3DProjectionInfo", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 148},
+      "call_sites": [{"line": 428}]
+    },
+    {
+      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
+      "callee": {"name": "Get3DDocument", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 207},
+      "call_sites": [{"line": 436}]
+    },
+    {
+      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
+      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
+      "call_sites": [{"line": 420}, {"line": 429}, {"line": 437}, {"line": 450}, {"line": 476}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
+      "call_sites": [{"line": 644}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
+      "call_sites": [{"line": 672}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "PlaceDocSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 488},
+      "call_sites": [{"line": 680}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "ClickAPoint", "file": "Sources/AddOn/CommonFunction.cpp", "line": 1902},
+      "call_sites": [{"line": 562}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "GetSelectedElements2", "file": "Sources/AddOn/CommonFunction.cpp", "line": 805},
+      "call_sites": [{"line": 557}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "SetElemTypeID", "file": "Sources/AddOn/CommonFunction.cpp", "line": 2623},
+      "call_sites": [{"line": 584}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "UniStringToDouble", "file": "Sources/AddOn/CommonFunction.cpp", "line": 985},
+      "call_sites": [{"line": 656}, {"line": 663}]
+    },
+    {
+      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
+      "call_sites": [{"line": 592}, {"line": 604}, {"line": 614}, {"line": 622}, {"line": 631}, {"line": 640}, {"line": 646}, {"line": 681}, {"line": 702}, {"line": 711}, {"line": 721}, {"line": 730}]
+    },
+    {
+      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
+      "callee": {"name": "GetNear", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 14},
+      "call_sites": [{"line": 371}]
+    },
+    {
+      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
+      "callee": {"name": "GetElemTypeID", "file": "Sources/AddOn/CommonFunction.cpp", "line": 2610},
+      "call_sites": [{"line": 274}]
+    },
+    {
+      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
+      "callee": {"name": "GetWordPoint2DTM", "file": "Sources/AddOn/CommonFunction.cpp", "line": 1893},
+      "call_sites": [{"line": 314}, {"line": 315}]
+    },
+    {
+      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
+      "callee": {"name": "is_equal", "file": "Sources/AddOn/CommonFunction.cpp", "line": 970},
+      "call_sites": [{"line": 383}]
+    },
+    {
+      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
+      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
+      "call_sites": [{"line": 302}, {"line": 324}, {"line": 332}, {"line": 396}]
+    },
+    {
+      "caller": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
+      "callee": {"name": "RestoreStartDatabaseAndWindow", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 750},
+      "call_sites": [{"line": 805}, {"line": 810}, {"line": 845}]
+    },
+    {
+      "caller": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
+      "callee": {"name": "GetElemTypeID", "file": "Sources/AddOn/CommonFunction.cpp", "line": 2610},
+      "call_sites": [{"line": 785}]
+    },
+    {
+      "caller": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
+      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
+      "call_sites": [{"line": 782}, {"line": 796}, {"line": 802}, {"line": 873}, {"line": 882}]
+    },
+    {
+      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
+      "callee": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
+      "call_sites": [{"line": 1005}]
+    },
+    {
+      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
+      "callee": {"name": "GetDrawingsSort", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 891},
+      "call_sites": [{"line": 986}]
+    },
+    {
+      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
+      "callee": {"name": "GetSelectedElements2", "file": "Sources/AddOn/CommonFunction.cpp", "line": 805},
+      "call_sites": [{"line": 927}]
+    },
+    {
+      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
+      "callee": {"name": "ClickAPoint", "file": "Sources/AddOn/CommonFunction.cpp", "line": 1902},
+      "call_sites": [{"line": 931}]
+    },
+    {
+      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
+      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
+      "call_sites": [{"line": 954}, {"line": 973}, {"line": 1007}, {"line": 1020}, {"line": 1029}, {"line": 1078}]
+    },
+    {
+      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 365},
+      "callee": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
+      "call_sites": [{"line": 461}]
+    },
+    {
+      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 365},
+      "callee": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
+      "call_sites": [{"line": 464}]
+    },
+    {
+      "caller": {"name": "Get3DProjectionInfo", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 148},
+      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
+      "call_sites": [{"line": 157}, {"line": 169}, {"line": 179}, {"line": 194}, {"line": 198}]
+    },
+    {
+      "caller": {"name": "Get3DDocument", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 207},
+      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
+      "call_sites": [{"line": 226}, {"line": 236}, {"line": 249}]
+    }
+  ],
+  "sdk_edges_summary": {
+    "note": "вызовы SDK/библиотек не развёрнуты в edges; количество на функцию из clangd outgoing_count",
+    "per_function": {
+      "Get3DProjectionInfo": 4,
+      "Get3DDocument": 10,
+      "DoSect": 8,
+      "GetSectLine": 33,
+      "ProfileByLine": 28,
+      "AlignOneDrawingsByPoints": 15,
+      "AlignDrawingsByPoints": 21
+    }
+  },
+  "not_resolved": [
+    {"function": "ResetProperty (Sources/AddOn/pk/ResetProperty.cpp:14)", "reason": "clangd: No call hierarchy available at this position (col 6)"},
+    {"function": "Revision::SetRevision (Sources/AddOn/pk/Revision.cpp:14)", "reason": "clangd: No call hierarchy available at this position (col 10)"}
+  ],
+  "stats": {
+    "project_edges": 29,
+    "functions_queried": 9,
+    "functions_resolved": 7
+  }
+}

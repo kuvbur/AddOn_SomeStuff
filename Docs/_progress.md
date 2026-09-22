@@ -74,3 +74,55 @@
 - Связь между модулями: Helpers → Propertycache → Sync → Core
 - BrowserPalette использует JS bridge для HTML-интерфейса
 - Roombook — самый большой модуль (5686 строк в Namespace)
+
+## Инфраструктура (FIX: compile_commands.json + callgraph)
+
+### Диагностика (Step 1)
+
+**compile_commands.json СОДЕРЖИТ include-пути:**
+- Всего записей: 25 (1 cmake_pch + 24 source)
+- С полем `command` (string): 25/25
+- С полем `arguments` (array): 0/25
+- Всего `/I` флагов: 1464
+- Уникальных путей: 61
+- **Отсутствующих путей: 0** (все существуют на диске)
+
+**clangd диагностика Helpers.cpp:**
+- Errors: 20 (все "Expression result unused" / "Unused variable" — стандартные warning'ы компилятора)
+- Warnings: 3 (unused-includes)
+- **"file not found" errors: 0** — clangd корректно резолвит все заголовки
+
+### Причина пустого callgraph.json
+
+Не в compile_commands.json (он корректен). Причина: `docs/tools/generate_symbols.py` НЕ реализует сбор callgraph — всегда записывает `[]` в `callgraph.json`. Необходимо добавить `textDocument/callHierarchy` запросы.
+
+### Корень проблемы: CMake
+- `CMakeLists.txt` line 23: `set(CMAKE_EXPORT_COMPILE_COMMANDS ON)` — включено
+- `Tools/BuildAddOn.py` имеет `--lsp` флаг: генерирует compile_commands.json через CMake и копирует в корень (BuildAddOn.py lines 56-88)
+- Текущий `compile_commands.json` был сгенерирован CMake в `Build/LspCompileCommands/25/` и скопирован в корень
+- Сгенерированный файл использует `command` (string), не `arguments` (array)
+
+### Версия
+- AC25 (DevKit-25): `D:/SomeStuff_addon/Build/DevKit/APIDevKit-25/`
+
+### Что исправлено / как починено (Steps 2–4)
+
+**compile_commands.json: исправление НЕ потребовалось** — premise задачи (0 include-путей) не подтвердилась. Файл сгенерирован штатно: `BuildAddOn.py --lsp` → CMake (`CMAKE_EXPORT_COMPILE_COMMANDS ON`, CMakeLists.txt:23) → копирование из `Build/LspCompileCommands/25/` в корень. Проверка clangd-диагностикой Helpers.cpp: 0 ошибок "file not found" (20 ошибок — только -Wunused-value/-Wunused-variable, которые clangd трактует как errors, MSVC прощает).
+
+**callgraph.json пустой по другой причине**: `generate_symbols.py` никогда не реализовывал сбор callHierarchy — всегда писал `[]`. Дополнительно скрипт не может общаться с clangd через subprocess.PIPE на Windows (clangd 22.1.8: нет `--port`, pipe даёт пустой greeting / Errno 22; проверено 3 способами). Сбор выполнен напрямую через clangd MCP (`get_call_hierarchy`) на позициях определений из symbols.json.
+
+**Регенерация callgraph** (для будущих запусков): `get_call_hierarchy` на позиции имени функции в определении (колонка имени, не тела); SDK-рёбра фильтровать по пути `Sources/AddOn/`.
+
+### Проверка (Step 3)
+- Helpers.cpp: 0 "file not found" ✓
+- Все 1464 `/I` путей из 24 source-записей существуют на диске ✓
+- callHierarchy работает (clangd MCP): 7 из 9 запрошенных функций pk/ резолвятся
+
+### Список неполных записей
+- `ResetProperty` (ResetProperty.cpp:14), `Revision::SetRevision` (Revision.cpp:14) — clangd: "No call hierarchy available at this position"; не блокирует остальное
+- SDK-рёбра (DevKit/MSVC/Windows Kits) не развёрнуты в edges — только счётчики outgoing_count
+
+### Новая статистика
+- `callgraph.json`: 29 рёбер внутри проекта (было 0), 9 функций опрошено, 7 резолвится
+- `symbols.json`: 8421 символов, 17 модулей (не менялось)
+- `pk.md`: добавлены поля «Вызывает»/«Вызывается из» для 9 функций AutomateFunction (не тронуты остальные разделы)
