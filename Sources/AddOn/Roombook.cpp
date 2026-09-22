@@ -5351,7 +5351,46 @@ namespace Roombook
         // Поиск элементов по-умолчанию
         short count = 0;
         GS::Array<GS::UniString> names;
+    #if defined(TESTING)
+        // Диагностика #192: GetNum возвращает names только корневых избранных?
+        // Логируем count/names/folders по каждому типу, чтобы увидеть,
+        // попадают ли избранные из папок палитры «Избранное» в names.
         for (const auto &type : typeinzone) {
+            short diag_count = 0;
+            GS::Array<GS::UniString> diag_names;
+            GS::Array<API_FavoriteFolderHierarchy> diag_folders;
+            GSErrCode diag_err = Favorite_GetNum (type, &diag_count, &diag_folders, &diag_names);
+            GS::UniString msg = GS::UniString::Printf ("type=%hd err=%lld count=%hd names=%u folders=%u",
+                                                       (short)type,
+                                                       (long long)diag_err,
+                                                       diag_count,
+                                                       (UInt32)diag_names.GetSize (),
+                                                       (UInt32)diag_folders.GetSize ());
+            for (const GS::UniString &n : diag_names)
+                msg += " | '" + n + "'";
+            for (const API_FavoriteFolderHierarchy &f : diag_folders)
+                for (const GS::UniString &fn : f)
+                    msg += " F{" + fn + "}";
+            DBprnt ("Favorite_GetDict", msg);
+        }
+        // Пробник #192: доступно ли избранное по точному имени (тем же вызовом,
+        // которым потом создаётся элемент) и какого оно типа.
+        for (const GS::UniString &probeName :
+             {GS::UniString ("smstf wall"), GS::UniString ("smstf floor"), GS::UniString ("smstf ceil")}) {
+            API_Favorite favorite (probeName);
+            GSErrCode probe_err = ACAPI_Favorite_Get (&favorite);
+            DBprnt ("Favorite_GetDict probe",
+                    probeName + " err=" +
+                        GS::UniString::Printf (
+                            "%lld type=%hd", (long long)probe_err, (short)GetElemTypeID (favorite.element.header)));
+        }
+    #endif
+        // #192: избранные полов/потолков могут быть объектами (API_ObjectID) —
+        // GetNum по API_SlabID их не возвращает, поэтому собираем и объектные.
+        // Favorite_FindName/Floor_Draw уже учитывают favorite.type == API_ObjectID.
+        const API_ElemTypeID favtypes[] = {
+            API_WindowID, API_DoorID, API_WallID, API_ColumnID, API_SlabID, API_ObjectID, API_ZoneID};
+        for (const auto &type : favtypes) {
             if (Favorite_GetNum (type, &count, nullptr, &names) != NoError)
                 continue;
             fav.type = type;
