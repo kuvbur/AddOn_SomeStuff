@@ -19,6 +19,16 @@ IN_PROGRESS → COMPLETED (коммит f51d8b6 создан; issue #190 зак�
 
 ## Last Completed
 
+2026-09-22 — миграция удалена по решению автора (аддон никем не используется):
+- Удалены ReadSyncSettingsFromLegacyJson/Dat/Preferences и legacy-константы;
+  ReadSyncSettings читает только SomeStuffAddonConfig.json из корня prefs,
+  при отсутствии файла — дефолты.
+- Бинарные SyncSettings::Read/Write (канал) сохранены как методы класса
+  (виртуальные, объявлены в hpp), но практических путей чтения старых
+  хранилищ больше нет.
+- LSP 0 ошибок; сборка AC25 успешна; тест-прогон 09:29: 0 «ERROR IN TEST»,
+  SomeStuffAddonConfig.json на месте.
+
 2026-09-22 — доработка #190 по уточнению пользователя:
 - Файл настроек переименован в `SomeStuffAddonConfig.json` и лежит ПРЯМО в базовой папке
   prefs (`…\GRAPHISOFT\`), подпапка SomeStuff больше не создаётся.

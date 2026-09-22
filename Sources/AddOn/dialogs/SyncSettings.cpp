@@ -176,10 +176,6 @@ GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
 // (добавление нового поля не отбрасывает файл целиком, как это было в .dat).
 // --------------------------------------------------------------------
 static const GS::UniString SyncSettingsFileName ("SomeStuffAddonConfig.json");
-// Прежнее расположение (до переезда в корень prefs): подпапка SomeStuff prefs
-static const GS::UniString LegacySyncSettingsFolderName ("SomeStuff");
-static const GS::UniString LegacyJsonFileName ("SyncSettings.json");
-static const GS::UniString LegacyDatFileName ("SyncSettings.dat");
 
 // Возвращает папку файла настроек: Graphisoft prefs → Application prefs →
 // User documents (по убыванию приоритета). Подпапка не создаётся — файл
@@ -294,120 +290,6 @@ static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
     return ReadSyncSettingsFromJsonText (syncSettings, std::string (data.data (), (size_t)fileSize));
 }
 
-// Заголовок старого .dat пишется/читается полями через канал — размер
-// одинаков на всех платформах (без #pragma pack и выравнивания структуры).
-static const UInt32 LegacySyncSettingsFileMagic = 0x53535331; // 'SSS1'
-static const USize LegacySyncSettingsHeaderSize = sizeof (UInt32) + sizeof (Int32) + sizeof (UInt64);
-
-// --------------------------------------------------------------------
-// Одноразовая миграция: чтение прежнего JSON SyncSettings.json из подпапки
-// SomeStuff (формат идентичен текущему, отличается только расположение).
-// --------------------------------------------------------------------
-static bool ReadSyncSettingsFromLegacyJson (SyncSettings &syncSettings) {
-    IO::Location folderLoc;
-    if (!GetSyncSettingsFolderLocation (folderLoc))
-        return false;
-
-    const IO::Location legacyFolder (folderLoc, IO::Name (LegacySyncSettingsFolderName));
-    const IO::Location fileLoc (legacyFolder, IO::Name (LegacyJsonFileName));
-    IO::File file (fileLoc);
-    if (file.GetStatus () != NoError || file.Open (IO::File::ReadMode) != NoError)
-        return false;
-
-    UInt64 fileSize = 0;
-    if (file.GetDataLength (&fileSize) != NoError || fileSize == 0) {
-        file.Close ();
-        return false;
-    }
-
-    std::vector<char> data ((size_t)fileSize);
-    const GSErrCode readErr = file.ReadBin (data.data (), (USize)fileSize);
-    file.Close ();
-    if (readErr != NoError)
-        return false;
-
-    return ReadSyncSettingsFromJsonText (syncSettings, std::string (data.data (), (size_t)fileSize));
-}
-
-// --------------------------------------------------------------------
-// Одноразовая миграция: чтение бинарного SyncSettings.dat (формат до #190).
-// --------------------------------------------------------------------
-static bool ReadSyncSettingsFromLegacyDat (SyncSettings &syncSettings) {
-    IO::Location folderLoc;
-    if (!GetSyncSettingsFolderLocation (folderLoc))
-        return false;
-
-    // Старый .dat лежит в подпапке SomeStuff базовой папки prefs
-    const IO::Location legacyFolder (folderLoc, IO::Name (LegacySyncSettingsFolderName));
-    const IO::Location fileLoc (legacyFolder, IO::Name (LegacyDatFileName));
-    IO::File file (fileLoc);
-    if (file.GetStatus () != NoError || file.Open (IO::File::ReadMode) != NoError)
-        return false;
-
-    UInt64 fileSize = 0;
-    if (file.GetDataLength (&fileSize) != NoError || fileSize <= LegacySyncSettingsHeaderSize) {
-        file.Close ();
-        return false;
-    }
-
-    std::vector<char> data ((size_t)fileSize);
-    const GSErrCode readErr = file.ReadBin (data.data (), (USize)fileSize);
-    file.Close ();
-    if (readErr != NoError)
-        return false;
-
-    MemoryIChannel inputChannel (data.data (), (USize)fileSize);
-    UInt32 magic = 0;
-    Int32 version = 0;
-    UInt64 blobSize = 0;
-    // Заголовок: magic + версия + размер блоба — отсекает чужие/битые файлы
-    // до десериализации.
-    if (inputChannel.Read (magic) != NoError || inputChannel.Read (version) != NoError ||
-        inputChannel.Read (blobSize) != NoError)
-        return false;
-    // Старые версии читаем толерантно (одноразовая миграция): раскладка полей
-    // исторически совпадает с текущей, несоответствие дал бы сам канал.
-    if (magic != LegacySyncSettingsFileMagic || version > PreferencesVersion)
-        return false;
-    if (blobSize == 0 || blobSize != (UInt64)fileSize - (UInt64)LegacySyncSettingsHeaderSize)
-        return false;
-
-    SyncSettings tempsyncSettings;
-    if (tempsyncSettings.Read (inputChannel) != NoError)
-        return false;
-
-    syncSettings = tempsyncSettings;
-    return true;
-}
-
-// --------------------------------------------------------------------
-// Одноразовая миграция: читаем старые значения из preferences проекта
-// (до локального файла настройки хранились там). После успешной миграции
-// ACAPI_SetPreferences не вызывается больше никогда.
-// --------------------------------------------------------------------
-static bool ReadSyncSettingsFromLegacyPreferences (SyncSettings &syncSettings) {
-    Int32 version = PreferencesVersion;
-    GSSize bytes = 0;
-    if (ACAPI_GetPreferences (&version, &bytes, nullptr) != NoError || version == 0 || bytes == 0)
-        return false;
-    // Старые версии читаем толерантно (одноразовая миграция): раскладка полей
-    // исторически совпадает с текущей, отсутствие/лишние байты дал бы сам канал.
-    if (version > PreferencesVersion)
-        return false;
-
-    std::vector<char> data ((size_t)bytes);
-    if (ACAPI_GetPreferences (&version, &bytes, data.data ()) != NoError)
-        return false;
-
-    SyncSettings tempsyncSettings;
-    MemoryIChannel inputChannel (data.data (), (size_t)bytes);
-    if (tempsyncSettings.Read (inputChannel) != NoError)
-        return false;
-
-    syncSettings = tempsyncSettings;
-    return true;
-}
-
 // --------------------------------------------------------------------
 // Сериализация настроек в JSON-текст (UTF-8, человекочитаемое форматирование).
 // --------------------------------------------------------------------
@@ -511,27 +393,10 @@ static bool WriteSyncSettingsToFile (const SyncSettings &syncSettings, bool skip
 // записывается в JSON-файл.
 // --------------------------------------------------------------------
 static bool ReadSyncSettings (SyncSettings &syncSettings) {
-    if (ReadSyncSettingsFromFile (syncSettings))
-        return true;
-
-    bool migrated = false;
-    if (ReadSyncSettingsFromLegacyJson (syncSettings)) {
-        DBprnt ("SyncSettings", "migrating legacy SyncSettings.json to SomeStuffAddonConfig.json");
-        migrated = true;
-    } else if (ReadSyncSettingsFromLegacyDat (syncSettings)) {
-        DBprnt ("SyncSettings", "migrating legacy .dat to SomeStuffAddonConfig.json");
-        migrated = true;
-    } else if (ReadSyncSettingsFromLegacyPreferences (syncSettings)) {
-        DBprnt ("SyncSettings", "migrating legacy prefs to local file");
-        migrated = true;
-    }
-    if (migrated) {
-        // Переносим прочитанные значения в JSON-файл, чтобы в preferences
-        // проекта больше не возвращаться (skipIfUnchanged=false — пишем сразу).
-        WriteSyncSettingsToFile (syncSettings, false);
-        return true;
-    }
-    return false;
+    // Миграция из старых хранилищ (SomeStuff\SyncSettings.json / .dat / prefs
+    // проекта) удалена — аддон ещё не используется другими пользователями
+    // (решение автора, #190).
+    return ReadSyncSettingsFromFile (syncSettings);
 }
 
 // --------------------------------------------------------------------
