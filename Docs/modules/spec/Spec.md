@@ -41,15 +41,16 @@
 - Назначение: создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию. [из комментария]
 - Контракт: не проверено.
 - Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства. [по коду]
-- Вызывает: `GetRuleFromDefaultElem`, `SpecArray` [по коду; detail не проверено]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441). [по коду, grep]
+- Вызывает: `GetRuleFromDefaultElem` (:165), `SpecFilter` (:157/176), `SpecArray` (:185), `GetSelectedElements` (Helpers.cpp:695). [из callgraph.json]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:441). [из callgraph.json]
 
 ### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos) -> GSErrCode`
 - Расположение: `Sources/AddOn/spec/Spec.cpp:2427`
 - Назначение: размещает сформированные элементы в модели и заполняет их параметры. [из комментария]
 - Контракт: не проверено.
 - Побочные эффекты: **создание элементов в проекте** (из избранного `favorite_name`), запись параметров/GUID (`subguid`); изменение сетки размещения (startpos). [по коду]
-- Вызывает: `GetElementForPlace`, `GetElementForPlaceProperties` [по коду; detail не проверено]
+- Вызывает: `GetElementForPlace` (:2461), `UnhideUnlockElementLayer` (CommonFunction.cpp:2472), `StringUnic` (CommonFunction.cpp:1473); создание элементов — `ACAPI_Element_Create` в `ACAPI_CallUndoableCommand` (:2449). [из callgraph.json]
+- Вызывается из: `SpecArray` (Spec.cpp:950). [из callgraph.json]
 
 ## Зависимости
 - `Helpers.hpp`, `Propertycache.hpp`, `CommonFunction.hpp` [по include]

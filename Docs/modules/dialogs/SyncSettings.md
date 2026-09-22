@@ -17,13 +17,13 @@
 | `Read` / `Write` | Сериализация (GS::I/OChannel) [из комментария] |
 | `Get*/Set*` | Доступ к каждому флагу (тривиальные, одной строкой) [из комментария] |
 | `GetSyncSettingsCache(forceReload)` | Единственный экземпляр настроек из локального файла [из комментария, hpp:119] — карточка |
-| `LoadSyncSettingsFromPreferences` | Загрузка из кэша [из комментария, hpp:123] |
-| `WriteSyncSettingsToPreferences` | Сохранение в локальный файл (без записи в план) [из комментария, hpp:127] |
+| `LoadSyncSettingsFromPreferences` | Загрузка из кэша [из комментария]; вызывается из `MenuCommandHandler` (Main:372), сама вызывает `GetSyncSettingsCache` (:432) [из callgraph.json] |
+| `WriteSyncSettingsToPreferences` | Сохранение в локальный файл (без записи в план) [из комментария]; вызывается из `MenuCommandHandler` (Main:494) [из callgraph.json] |
 
 ## Карточки
 
 ### `GetSyncSettingsCache(bool forceReload) -> SyncSettings &`
-- Расположение: `Sources/AddOn/dialogs/SyncSettings.cpp` (строка не проверена)
+- Расположение: clangd не резолвит callHierarchy на определении (2 попытки; grep: SyncSettings.cpp:419)
 - Назначение: единственный экземпляр настроек, загруженный из локального файла. [из комментария, hpp:115-119]
 - Контракт: forceReload — перечитать локальный файл; `ReadSyncSettingsFromFile` отвергает файл с mismatched `PreferencesVersion` (AGENTS.md §6 — bump версии при новых настройках). [из AGENTS.md + по коду]
 - Побочные эффекты: глобальное состояние (singleton); чтение файла. [по коду]

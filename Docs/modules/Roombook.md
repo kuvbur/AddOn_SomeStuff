@@ -8,8 +8,16 @@
 ## Файлы
 - `Roombook.cpp`
 
+## Точка входа
+- `RoomBook` — `Sources/AddOn/Roombook.cpp:57`; вызывается из `MenuCommandHandler` (SomeStuff_Main.cpp:457). [из callgraph.json]
+- Внутренние функции Roombook (1076 символов) — пофункционально не разобраны (см. symbols.json).
+
 ## Зависимости
 - `CommonFunction.hpp`, `Helpers.hpp`, `Propertycache.hpp` [по include]
+
+## Точка входа
+- `RoomBook` — `Sources/AddOn/Roombook.cpp:57`; вызывается из `MenuCommandHandler` (SomeStuff_Main.cpp:457). [из callgraph.json]
+- Внутренние функции Roombook (1076 символов) — пофункционально не разобраны (см. symbols.json).
 
 ## Зависимости (используется в)
 `SomeStuff_Main` [по коду]

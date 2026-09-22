@@ -5,7 +5,7 @@
     "filter": "рёбра только внутри Sources/AddOn/; вызовы SDK (Build/DevKit, MSVC, Windows Kits) исключены и подсчитаны отдельно",
     "limitation": "docs/tools/generate_symbols.py не может говорить с clangd через subprocess.PIPE на Windows (clangd 22.1.8 не поддерживает --port, pipe даёт Errno 22/пустой greeting); сбор выполнялся напрямую через clangd MCP. Для регенерации запрашивать get_call_hierarchy на позициях определений из symbols.json.",
     "lines": "координаты 0-based (clangd LSP); в Docs/modules/*.md строки 1-based (grep) — при сверке добавлять +1",
-    "coverage": "pk/ (29 рёбер, 2026-09-22) + Sync (точечный сбор по политике горячего модуля, 2026-09-22)"
+    "coverage": "pk + Sync + Summ/ReNum/Spec/Dimensions/Classification/Propertycache/Table/Roombook/Main (входные и ключевые функции)"
   },
   "edges": [
     {
@@ -1552,6 +1552,1351 @@
           "line": 1238
         }
       ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "SumSelected",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 28
+      },
+      "call_sites": [
+        {
+          "line": 432
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SumSelected",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 28
+      },
+      "callee": {
+        "name": "GetSumValuesOfElements",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 147
+      },
+      "call_sites": [
+        {
+          "line": 43
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SumSelected",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 28
+      },
+      "callee": {
+        "name": "GetSelectedElements",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 694
+      },
+      "call_sites": [
+        {
+          "line": 39
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SumSelected",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 28
+      },
+      "callee": {
+        "name": "ElementsWrite",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 4624
+      },
+      "call_sites": [
+        {
+          "line": 69
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SumSelected",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 28
+      },
+      "callee": {
+        "name": "WriteInfo",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 4725
+      },
+      "call_sites": [
+        {
+          "line": 94
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SumSelected",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 28
+      },
+      "callee": {
+        "name": "SyncArray",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 455
+      },
+      "call_sites": [
+        {
+          "line": 95
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "GetSumValuesOfElements",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 147
+      },
+      "callee": {
+        "name": "Sum_OneRule",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 452
+      },
+      "call_sites": [
+        {
+          "line": 212
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "Sum_OneRule",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 452
+      },
+      "callee": {
+        "name": "AddParamValue2ParamDictElement",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 1713
+      },
+      "call_sites": [
+        {
+          "line": 581
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "Sum_OneRule",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 452
+      },
+      "callee": {
+        "name": "GetCharCode",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1559
+      },
+      "call_sites": [
+        {
+          "line": 463
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "Sum_OneRule",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 452
+      },
+      "callee": {
+        "name": "StringUnic",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1472
+      },
+      "call_sites": [
+        {
+          "line": 544
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "Sum_OneRule",
+        "file": "Sources/AddOn/Summ.cpp",
+        "line": 452
+      },
+      "callee": {
+        "name": "ToString",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 8767
+      },
+      "call_sites": [
+        {
+          "line": 573
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "ReNumSelected",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 55
+      },
+      "call_sites": [
+        {
+          "line": 426
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumSelected",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 55
+      },
+      "callee": {
+        "name": "GetRenumElements",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 226
+      },
+      "call_sites": [
+        {
+          "line": 86
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumSelected",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 55
+      },
+      "callee": {
+        "name": "GetRuleFromSelected",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 354
+      },
+      "call_sites": [
+        {
+          "line": 75
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumSelected",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 55
+      },
+      "callee": {
+        "name": "GetSelectedElements",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 694
+      },
+      "call_sites": [
+        {
+          "line": 67
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumSelected",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 55
+      },
+      "callee": {
+        "name": "ElementsWrite",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 4624
+      },
+      "call_sites": [
+        {
+          "line": 133
+        },
+        {
+          "line": 138
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumSelected",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 55
+      },
+      "callee": {
+        "name": "SyncArray",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 455
+      },
+      "call_sites": [
+        {
+          "line": 161
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "GetRenumElements",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 226
+      },
+      "callee": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "call_sites": [
+        {
+          "line": 344
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "callee": {
+        "name": "ElementsSeparation",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 851
+      },
+      "call_sites": [
+        {
+          "line": 673
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "callee": {
+        "name": "GetMostFrequentPos",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 613
+      },
+      "call_sites": [
+        {
+          "line": 700
+        },
+        {
+          "line": 720
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "callee": {
+        "name": "GetPos",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 641
+      },
+      "call_sites": [
+        {
+          "line": 764
+        },
+        {
+          "line": 779
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "callee": {
+        "name": "AddParamValue2ParamDictElement",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 1713
+      },
+      "call_sites": [
+        {
+          "line": 832
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "callee": {
+        "name": "FormatToMax",
+        "file": "Sources/AddOn/ReNum.hpp",
+        "line": 57
+      },
+      "call_sites": [
+        {
+          "line": 815
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "callee": {
+        "name": "SetToMax",
+        "file": "Sources/AddOn/ReNum.hpp",
+        "line": 85
+      },
+      "call_sites": [
+        {
+          "line": 709
+        },
+        {
+          "line": 725
+        },
+        {
+          "line": 726
+        },
+        {
+          "line": 766
+        },
+        {
+          "line": 781
+        },
+        {
+          "line": 785
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReNumOneRule",
+        "file": "Sources/AddOn/ReNum.cpp",
+        "line": 662
+      },
+      "callee": {
+        "name": "ToParamValue",
+        "file": "Sources/AddOn/ReNum.hpp",
+        "line": 102
+      },
+      "call_sites": [
+        {
+          "line": 816
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "SpecAll",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 139
+      },
+      "call_sites": [
+        {
+          "line": 440
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SpecAll",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 139
+      },
+      "callee": {
+        "name": "GetRuleFromDefaultElem",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 35
+      },
+      "call_sites": [
+        {
+          "line": 164
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SpecAll",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 139
+      },
+      "callee": {
+        "name": "SpecFilter",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 346
+      },
+      "call_sites": [
+        {
+          "line": 156
+        },
+        {
+          "line": 175
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SpecAll",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 139
+      },
+      "callee": {
+        "name": "SpecArray",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 515
+      },
+      "call_sites": [
+        {
+          "line": 184
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SpecAll",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 139
+      },
+      "callee": {
+        "name": "GetSelectedElements",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 694
+      },
+      "call_sites": [
+        {
+          "line": 152
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SpecArray",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 515
+      },
+      "callee": {
+        "name": "PlaceElements",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 2426
+      },
+      "call_sites": [
+        {
+          "line": 949
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "PlaceElements",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 2426
+      },
+      "callee": {
+        "name": "GetElementForPlace",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 2296
+      },
+      "call_sites": [
+        {
+          "line": 2460
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "PlaceElements",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 2426
+      },
+      "callee": {
+        "name": "UnhideUnlockElementLayer",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 2471
+      },
+      "call_sites": [
+        {
+          "line": 2472
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "PlaceElements",
+        "file": "Sources/AddOn/spec/Spec.cpp",
+        "line": 2426
+      },
+      "callee": {
+        "name": "StringUnic",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1472
+      },
+      "call_sites": [
+        {
+          "line": 2484
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "DimRoundAll",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 425
+      },
+      "call_sites": [
+        {
+          "line": 488
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ElementEventHandlerProc",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 143
+      },
+      "callee": {
+        "name": "DimRoundAll",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 425
+      },
+      "call_sites": [
+        {
+          "line": 164
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ProjectEventHandlerProc",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 74
+      },
+      "callee": {
+        "name": "DimRoundAll",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 425
+      },
+      "call_sites": [
+        {
+          "line": 127
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "DimRoundAll",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 425
+      },
+      "callee": {
+        "name": "DimRoundByType",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 447
+      },
+      "call_sites": [
+        {
+          "line": 433
+        },
+        {
+          "line": 437
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "DimRoundByType",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 447
+      },
+      "callee": {
+        "name": "DimAutoRound",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 35
+      },
+      "call_sites": [
+        {
+          "line": 457
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "DimAutoRoundOne",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 16
+      },
+      "callee": {
+        "name": "DimAutoRound",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 35
+      },
+      "call_sites": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "DimAutoRound",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 35
+      },
+      "callee": {
+        "name": "DimParse",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 284
+      },
+      "call_sites": [
+        {
+          "line": 187
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "DimAutoRound",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 35
+      },
+      "callee": {
+        "name": "Read",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 5476
+      },
+      "call_sites": [
+        {
+          "line": 177
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "DimAutoRound",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 35
+      },
+      "callee": {
+        "name": "GetLayerFromCache",
+        "file": "Sources/AddOn/Propertycache.cpp",
+        "line": 153
+      },
+      "call_sites": [
+        {
+          "line": 59
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "DimAutoRound",
+        "file": "Sources/AddOn/Dimensions.cpp",
+        "line": 35
+      },
+      "callee": {
+        "name": "is_equal",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 970
+      },
+      "call_sites": [
+        {
+          "line": 112
+        },
+        {
+          "line": 151
+        },
+        {
+          "line": 159
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ReadClassification",
+        "file": "Sources/AddOn/Propertycache.hpp",
+        "line": 604
+      },
+      "callee": {
+        "name": "GetAllClassification",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 20
+      },
+      "call_sites": [
+        {
+          "line": 612
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "GetAllClassification",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 20
+      },
+      "callee": {
+        "name": "AddClassificationItem",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 122
+      },
+      "call_sites": [
+        {
+          "line": 56
+        },
+        {
+          "line": 72
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "GetAllClassification",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 20
+      },
+      "callee": {
+        "name": "GatherAllDescendantOfClassification",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 97
+      },
+      "call_sites": [
+        {
+          "line": 57
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SetAutoclass",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 267
+      },
+      "callee": {
+        "name": "ReadSystemDict",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 185
+      },
+      "call_sites": [
+        {
+          "line": 268
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "CreateIDFStore",
+        "file": "Sources/AddOn/table/TablesNavigator.cpp",
+        "line": 503
+      },
+      "callee": {
+        "name": "TableRenderer::ComputeLayout",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 277
+      },
+      "call_sites": [
+        {
+          "line": 524
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "RenderScheduleIntoWindow",
+        "file": "Sources/AddOn/table/TablesNavigator.cpp",
+        "line": 191
+      },
+      "callee": {
+        "name": "TableRenderer::ComputeLayout",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 277
+      },
+      "call_sites": [
+        {
+          "line": 199
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "RunSelfTest",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 992
+      },
+      "callee": {
+        "name": "TableRenderer::ComputeLayout",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 277
+      },
+      "call_sites": [
+        {
+          "line": 999
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "TableRenderer::Draw",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 597
+      },
+      "callee": {
+        "name": "TableRenderer::ComputeLayout",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 277
+      },
+      "call_sites": [
+        {
+          "line": 599
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "CreateIDFStore",
+        "file": "Sources/AddOn/table/TablesNavigator.cpp",
+        "line": 503
+      },
+      "callee": {
+        "name": "TableRenderer::Draw",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 597
+      },
+      "call_sites": [
+        {
+          "line": 542
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "RenderScheduleIntoWindow",
+        "file": "Sources/AddOn/table/TablesNavigator.cpp",
+        "line": 191
+      },
+      "callee": {
+        "name": "TableRenderer::Draw",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 597
+      },
+      "call_sites": [
+        {
+          "line": 206
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "RunSelfTest",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 992
+      },
+      "callee": {
+        "name": "TableRenderer::Draw",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 597
+      },
+      "call_sites": [
+        {
+          "line": 1023
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "TableRenderer::Draw",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 597
+      },
+      "callee": {
+        "name": "DrawFills",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 617
+      },
+      "call_sites": [
+        {
+          "line": 606
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "TableRenderer::Draw",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 597
+      },
+      "callee": {
+        "name": "DrawGrid",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 640
+      },
+      "call_sites": [
+        {
+          "line": 610
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "TableRenderer::Draw",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 597
+      },
+      "callee": {
+        "name": "DrawTexts",
+        "file": "Sources/AddOn/table/TableRenderer.cpp",
+        "line": 710
+      },
+      "call_sites": [
+        {
+          "line": 614
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "TestGetPropertyRuleFlag",
+        "file": "Sources/AddOn/TestFunc.cpp",
+        "line": 2916
+      },
+      "callee": {
+        "name": "GetPropertyRuleFlag",
+        "file": "Sources/AddOn/Propertycache.cpp",
+        "line": 10
+      },
+      "call_sites": [
+        {
+          "line": 2924
+        },
+        {
+          "line": 2927
+        },
+        {
+          "line": 2931
+        },
+        {
+          "line": 2935
+        },
+        {
+          "line": 2939
+        },
+        {
+          "line": 2943
+        },
+        {
+          "line": 2944
+        },
+        {
+          "line": 2946
+        },
+        {
+          "line": 2948
+        },
+        {
+          "line": 2950
+        },
+        {
+          "line": 2952
+        },
+        {
+          "line": 2954
+        },
+        {
+          "line": 2960
+        },
+        {
+          "line": 2972
+        },
+        {
+          "line": 2977
+        },
+        {
+          "line": 2985
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "TestPropertyRuleFlagOnProjectElements",
+        "file": "Sources/AddOn/TestFunc.cpp",
+        "line": 3005
+      },
+      "callee": {
+        "name": "GetPropertyRuleFlag",
+        "file": "Sources/AddOn/Propertycache.cpp",
+        "line": 10
+      },
+      "call_sites": [
+        {
+          "line": 3055
+        },
+        {
+          "line": 3065
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "GetPropertyRuleFlag",
+        "file": "Sources/AddOn/Propertycache.cpp",
+        "line": 10
+      },
+      "callee": {
+        "name": "ParsePropertyDescriptionToRules",
+        "file": "Sources/AddOn/dialogs/CommandHelpers.cpp",
+        "line": 199
+      },
+      "call_sites": [
+        {
+          "line": 20
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "Initialize",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 541
+      },
+      "callee": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "call_sites": [
+        {
+          "line": 586
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "SyncSelected",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 434
+      },
+      "call_sites": [
+        {
+          "line": 409
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "RunParamSelected",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 535
+      },
+      "call_sites": [
+        {
+          "line": 436
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "SyncShowSubelement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 2315
+      },
+      "call_sites": [
+        {
+          "line": 444
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "SyncSetSubelement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 2162
+      },
+      "call_sites": [
+        {
+          "line": 452
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "RoomBook",
+        "file": "Sources/AddOn/Roombook.cpp",
+        "line": 56
+      },
+      "call_sites": [
+        {
+          "line": 456
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "ShowOrHideBrowserPalette",
+        "file": "Sources/AddOn/dialogs/BrowserPalette.cpp",
+        "line": 36
+      },
+      "call_sites": [
+        {
+          "line": 468
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "MenuSetState",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 336
+      },
+      "call_sites": [
+        {
+          "line": 497
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "Do_ElementMonitor",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 280
+      },
+      "call_sites": [
+        {
+          "line": 398
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "LoadSyncSettingsFromPreferences",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 517
+      },
+      "call_sites": [
+        {
+          "line": 371
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "WriteSyncSettingsToPreferences",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 523
+      },
+      "call_sites": [
+        {
+          "line": 493
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "Update",
+        "file": "Sources/AddOn/Propertycache.hpp",
+        "line": 325
+      },
+      "call_sites": [
+        {
+          "line": 388
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "LoadSyncSettingsFromPreferences",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 517
+      },
+      "callee": {
+        "name": "GetSyncSettingsCache",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 417
+      },
+      "call_sites": [
+        {
+          "line": 431
+        }
+      ]
     }
   ],
   "sdk_edges_summary": {
@@ -1580,12 +2925,19 @@
     {
       "function": "Revision::SetRevision (Sources/AddOn/pk/Revision.cpp:14)",
       "reason": "clangd: No call hierarchy available at this position (col 10)"
+    },
+    {
+      "function": "ReadMEP (MEPv1.cpp:177)",
+      "reason": "clangd callHierarchy не резолвит (2 попытки); вызов известен из grep: Helpers.cpp:5747"
+    },
+    {
+      "function": "RoomBook (Roombook.cpp:56), GetSyncSettingsCache (SyncSettings.cpp:417), ElementEventHandlerProc (Main:141)",
+      "reason": "clangd не резолвит (2 попытки); вызывающие известны из callHierarchy MenuCommandHandler и grep"
     }
   ],
   "stats": {
-    "project_edges": 78,
-    "functions_queried": 15,
-    "functions_resolved": 13,
-    "sync_batch": 6
+    "project_edges": 152,
+    "functions_queried": 30,
+    "functions_resolved": 24
   }
 }

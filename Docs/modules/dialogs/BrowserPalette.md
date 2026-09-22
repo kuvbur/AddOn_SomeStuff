@@ -12,7 +12,7 @@
 
 | Функция | Назначение |
 |---------|------------|
-| `ShowOrHideBrowserPalette` | Переключение видимости палитры [из комментария, hpp:23] |
+| `ShowOrHideBrowserPalette` | Переключение видимости палитры [из комментария, hpp:23]; вызывается из `MenuCommandHandler` (Main:469), определение BrowserPalette.cpp:37 [из callgraph.json] |
 | `BrowserPalette::Show` | Показ; reloadContent=false — без перезагрузки HTML (APIPalMsg_HidePalette_End; перезагрузка сбрасывала вкладку/фильтр) [из комментария, hpp:106-109; .cpp:127] |
 | `BrowserPalette::Hide` | Скрытие [из комментария, .cpp:169] |
 | `BrowserPalette::ManualGetSelection` | Ручное получение выделения [из комментария, hpp:112] |

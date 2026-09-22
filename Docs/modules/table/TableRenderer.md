@@ -28,14 +28,18 @@
 ## Карточки
 
 ### `TableRenderer::Draw(const API_Coord &origin) -> GSErrCode`
-- Расположение: `Sources/AddOn/table/TableRenderer.cpp` (строка не проверена)
+- Расположение: `Sources/AddOn/table/TableRenderer.cpp:598` (1-based; clangd 597)
+- Вызывает: `ComputeLayout` (:600), `DrawFills` (:607), `DrawGrid` (:611), `DrawTexts` (:615). [из callgraph.json]
+- Вызывается из: `CreateIDFStore` (TablesNavigator.cpp:543), `RenderScheduleIntoWindow` (TablesNavigator.cpp:207), `RunSelfTest` (:1024). [из callgraph.json]
 - Назначение: рисует таблицу в текущий открытый drawing data store. [из комментария]
 - Контракт: сессия drawing data должна быть открыта вызывающим (APIDb_StartDrawingDataID); пересчитывает layout при изменении входа. [из комментария]
 - Побочные эффекты: **создание элементов в базе проекта** (линии/заливки/тексты через CreateLineElement/CreateFillElement/CreateTextElement). [по коду, hpp:192-205]
 
 ### `TableRenderer::ComputeLayout() -> GSErrCode`
-- Расположение: `Sources/AddOn/table/TableRenderer.cpp` (строка не проверена)
+- Расположение: `Sources/AddOn/table/TableRenderer.cpp:278` (1-based; clangd 277)
 - Назначение: считает геометрию без рисования (columnWidths/rowHeights/CellLayouts в мм). [из комментария + по коду, hpp:163-190]
+- Вызывает: `BuildCellLayouts` (:317), `ComputeColumnWidthsMm` (:319), `ComputeRowHeightsMm` (:325), `WrapCellLayouts` (:323), `ResolveFontIndex` (:303), `RangesOverlap` (:298). [из callgraph.json]
+- Вызывается из: `CreateIDFStore` (TablesNavigator.cpp:525), `RenderScheduleIntoWindow` (TablesNavigator.cpp:200), `RunSelfTest` (:1000), `Draw` (:600). [из callgraph.json]
 - Побочные эффекты: мутирует внутреннюю геометрию; без записи в проект. [по коду]
 
 ## Зависимости

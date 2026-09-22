@@ -38,16 +38,17 @@
 - Расположение: `Sources/AddOn/ReNum.cpp:56`
 - Назначение: запускает перенумерацию выбранных элементов по правилам в свойствах. [из комментария]
 - Контракт: не проверено.
-- Побочные эффекты: **запись позиций в свойства элементов** (ReNumOneRule-цепочка); читает выделение. [по коду]
-- Вызывает: `RenumDG` [по коду; detail не проверено]
-- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:427). [по коду, grep]
+- Побочные эффекты: **запись позиций в свойства элементов** (ElementsWrite в undoable-команде, :134/:139); читает выделение. [по коду]
+- Вызывает: `GetRenumElements` (:87), `GetRuleFromSelected` (Helpers.cpp:355), `GetSelectedElements` (Helpers.cpp:695), `ElementsWrite` (Helpers.cpp:4625), `SyncArray` (Sync.cpp:456). [из callgraph.json]
+- Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:427). [из callgraph.json]
 
 ### `ReNumOneRule(RenumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem, bool &has_error)`
 - Расположение: `Sources/AddOn/ReNum.cpp:663`
 - Назначение: применяет одно правило перенумерации к набору элементов. [из комментария]
 - Контракт: не проверено.
 - Побочные эффекты: **запись новых позиций** в параметры для записи (paramToWriteelem); `has_error` накапливается (FIX 2026-09-12: `has_error = has_error || …`, см. DISCREPANCIES/историю коммита 61153ca). [по коду]
-- Вызывает: `ElementsSeparation`, `GetPos`, `GetMostFrequentPos` [по коду; detail не проверено]
+- Вызывает: `ElementsSeparation` (:674), `GetMostFrequentPos` (:701/721), `GetPos` (:765/780), `AddParamValue2ParamDictElement` (Helpers.cpp:1714); RenumPos::FormatToMax/SetToMax/ToParamValue. [из callgraph.json]
+- Вызывается из: `GetRenumElements` (ReNum.cpp:345). [из callgraph.json]
 
 ## Зависимости
 - `Helpers.hpp`, `third_party/alphanum.h` [по include]

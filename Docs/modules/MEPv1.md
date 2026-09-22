@@ -14,7 +14,7 @@
 |---------|------------|
 | `GetSubElementOfRouting` | Собирает подэлементы маршрутизации для MEP-элемента [из комментария, MEPv1.hpp:102] |
 | `GetSubElement` | Собирает все дочерние элементы MEP-объекта [из комментария, :106] |
-| `ReadMEP` | Читает свойства MEP из заголовка в ParamDictValue [из комментария]; определение MEPv1.cpp:178, вызывается из Helpers.cpp:5747 [по коду, grep] — карточка |
+| `ReadMEP` | Читает свойства MEP из заголовка в ParamDictValue [из комментария]; определение MEPv1.cpp:178 (1-based), вызывается из Helpers.cpp:5748 [grep; clangd не резолвит, 2 попытки] |
 | `ClearRoutingSubelemCache` | Очищает кэш подэлементов [из комментария, :112] |
 | `GetMEPData` и AC28+ Read*PreferenceTable | Чтение таблиц предпочтений MEP (duct/pipe/transition) [из комментария, :114-173] — строки .cpp не проверены |
 

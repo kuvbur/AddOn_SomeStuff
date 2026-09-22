@@ -18,7 +18,7 @@
 | `SelectionChangeHandlerProc` | 326 | Обработчик изменения выделения [из комментария] — карточка |
 | `MenuSetState` | 337 | Состояние пунктов меню по настройкам синхронизации [из комментария] |
 | `SetPaletteMenuText` | 351 | Тексты пунктов меню по языку [из комментария] |
-| `MenuCommandHandler` | 366 | Маршрутизация команд меню по ID [из комментария] — карточка |
+| `MenuCommandHandler` | 366 | Маршрутизация команд меню по ID [из комментария]; вызывается из `Initialize` (Main:587) [из callgraph.json] — карточка |
 
 ## Карточки
 
@@ -27,7 +27,8 @@
 - Назначение: маршрутизирует команды меню add-on по ID пункта. [из комментария]
 - Контракт: не проверено полностью; подтверждённые ветки: `Auto3D_CommandID` → `AutoFunc::ProfileByLine()` (:461), `AutoLay_CommandID` → `AutoFunc::AlignDrawingsByPoints()` (:464). [по коду]
 - Побочные эффекты: каждая ветка делегирует модуль (Sync, Summ, Spec, ReNum, Dimensions, Roombook, pk) со своими эффектами записи. [по коду]
-- Вызывает: ProfileByLine (:461), AlignDrawingsByPoints (:464), и др. [из callgraph.json]
+- Вызывает (карта из callHierarchy, 1-based): `LoadSyncSettingsFromPreferences` (:372), `PROPERTYCACHE().Update` (:389), `Do_ElementMonitor` (:399), `MonAll` (:400), `SyncAndMonAll` (:405), `SyncSelected` (:410), `RunParamSelected` (:437), `SumSelected` (:433), `ReNumSelected` (:427), `SpecAll` (:441), `SyncShowSubelement` (:445), `SyncSetSubelement` (:453), `SetRevision` (:449), `RoomBook` (:457), `ProfileByLine` (:462), `AlignDrawingsByPoints` (:465), `ShowOrHideBrowserPalette` (:469), `DimRoundAll` (:489), `MenuSetState` (:498), `WriteSyncSettingsToPreferences` (:494). [из callgraph.json]
+- Внимание: `RoomBook` определён в Roombook.cpp:57; `LoadSyncSettingsFromPreferences` — clangd даёт SyncSettings.cpp:518 (grep находил 429 — второе совпадение в файле, уточнять при правках). [из callgraph.json + grep]
 
 ### `ElementEventHandlerProc(const API_NotifyElementType *elemType) -> GSErrCode`
 - Расположение: `Sources/AddOn/SomeStuff_Main.cpp:142`

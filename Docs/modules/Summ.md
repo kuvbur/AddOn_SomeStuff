@@ -32,7 +32,8 @@
 - Назначение: запускает суммирование значений свойств для выбранных элементов. [из комментария]
 - Контракт: не проверено (тело вне этой сессии не читалось).
 - Побочные эффекты: **меняет свойства элементов или информацию проекта** (через Sum_OneRule); читает выделение. [по коду]
-- Вызывает: не проверено — callHierarchy для Summ не собирался. [не проверено]
+- Вызывает: `GetSumValuesOfElements` (:44), `GetSelectedElements` (Helpers.cpp:695), `ElementsWrite` (Helpers.cpp:4625), `WriteInfo` (Helpers.cpp:4726), `SyncArray` (Sync.cpp:456). [из callgraph.json]
+- Контракт: обход правил в `ACAPI_CallUndoableCommand` (:58); итоги — в свойство/инфо проекта через WriteInfo. [по коду]
 - Вызывается из: `MenuCommandHandler` (SomeStuff_Main.cpp:433). [по коду, grep]
 
 ### `Sum_OneRule(SumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem)`
@@ -40,7 +41,8 @@
 - Назначение: выполняет суммирование по одному правилу и пишет результат в целевые свойства. [из комментария]
 - Контракт: не проверено.
 - Побочные эффекты: **запись результата в свойство элемента или информацию проекта** (write_to); счётчики n_ignore/n_write. [по коду]
-- Вызывается из: цепочка SumSelected [по коду; точный вызов не проверен]
+- Вызывается из: `GetSumValuesOfElements` (Summ.cpp:213). [из callgraph.json]
+- Вызывает: `AddParamValue2ParamDictElement` (Helpers.cpp:1714), `GetCharCode` (CommonFunction.cpp:1560), `StringUnic` (CommonFunction.cpp:1473), `ToString` (Helpers.cpp:8768). [из callgraph.json]
 
 ## Зависимости
 - `Helpers.hpp`, `DG.h` [по include]

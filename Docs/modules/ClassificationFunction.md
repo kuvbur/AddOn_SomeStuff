@@ -15,7 +15,7 @@
 
 | Функция | Назначение |
 |---------|------------|
-| `GetAllClassification` | Загружает все классы из систем в словарь [из комментария]; определение ClassificationFunction.cpp:21, вызывается из Propertycache.hpp:613 (ReadClassification) [по коду, grep] |
+| `GetAllClassification` | Загружает все классы из систем в словарь [из комментария]; вызывается из `ReadClassification` (Propertycache.hpp:613) [из callgraph.json]; → AddClassificationItem (:57/73), GatherAllDescendant (:58) |
 | `GatherAllDescendantOfClassification` | Перебирает потомков класса [из комментария, :29] |
 | `AddClassificationItem` | Добавляет элемент классификации в словарь [из комментария, :34] |
 | `GetFullName` | Полное имя класса с иерархией [из комментария, :42] |
@@ -29,8 +29,10 @@
 ### `ClassificationFunc::SetAutoclass(const API_Guid elemGuid)`
 - Расположение: `Sources/AddOn/ClassificationFunction.cpp` (строка не проверена)
 - Назначение: назначает элементу автокласс, если у него ещё нет классификации; класс по описанию с `some_stuff_class`. [из комментария]
-- Контракт: не проверено.
-- Побочные эффекты: **меняет классификацию элемента** (ACAPI-запись). [по коду; не проверено detail]
+- Контракт: не классифицированные элементы получают класс из `systemdict` по описанию; ошибки `msg_rep` ×2. [по коду]
+- Побочные эффекты: **меняет классификацию элемента** (`ACAPI_Element_AddClassificationItem`, :294). [из callgraph.json]
+- Вызывает: `ReadSystemDict` (:269), `GetClassificationItems`/`AddClassificationItem` (SDK). [из callgraph.json]
+- Вызывается из: `SyncData` (Sync.cpp:689). [из callgraph.json]
 
 ## Зависимости
 - `Constants.hpp` [по include]

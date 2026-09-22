@@ -194,3 +194,11 @@
 - 49 новых рёбер; итого 78 в callgraph.json
 - Открытия: MonAll вызывается не только из меню, но и из Initialize (SomeStuff_Main.cpp:555); ParseSyncString активно тестируется (TestParseSyncStringIndependent, 7 вызовов); SyncAndMonAll сначала зовёт ResetProperty и при успехе делает ранний выход
 - Синхронизация координат: в callgraph.json — 0-based (clangd), в modules/*.md — 1-based (grep); правило записано в meta.lines
+
+## Полный проход callgraph по оставшимся модулям (2026-09-22)
+
+- Решение «точечно» перевыполнено командой пользователя: прогнан callHierarchy по всем модулям
+- Опрошено 30 функций, резолвится 24; callgraph.json — 152 ребра (было 78)
+- Не резолвятся (по 2 попытки, стоп): ReadMEP (MEPv1.cpp:177), RoomBook (Roombook.cpp:56), GetSyncSettingsCache (SyncSettings.cpp:417), ElementEventHandlerProc (Main:141), ResetProperty/SetRevision (известно ранее) — вызывающие известны из callHierarchy MenuCommandHandler и grep, поля в карточках заполнены с пометкой источника
+- Открытия: DimRoundAll дёргается из ТРЁХ обработчиков (меню :489, ElementEvent :165, ProjectEvent :128); GetPropertyRuleFlag — только тестовые вызовы (DISCREPANCIES #9); RoomBook entry — Roombook.cpp:57; LoadSyncSettingsFromPreferences — clangd даёт SyncSettings.cpp:518, grep 429 (два совпадения)
+- Обновлены: Summ, ReNum, Spec, Dimensions, ClassificationFunction, TableRenderer, Propertycache, SomeStuff_Main, SyncSettings, BrowserPalette, Roombook, MEPv1

@@ -20,6 +20,9 @@
 | 7 | `Helpers.cpp:1761` | `API_ElementMemo memo;` без BNZeroMemory | **Не воспроизводится**: все 7 объявлений в Helpers.cpp — `API_ElementMemo memo = {};` (строки 921, 1184, 2076, 2417, 6482, 9307, 9552). Исправлено |
 | 8 | `Dimensions.cpp:158` — `pen_original` | «не чинить без явного запроса» (AGENTS.md §16) | Подтверждено актуально, номер строки сместился: сейчас `pen_original` читается на Dimensions.cpp:49, быстрофикс на :184 (`pen_original = pen_dimenstion; // Быстрофикс`) |
 
+
+| 9 | `Propertycache.cpp:11` (GetPropertyRuleFlag, #158) | Комментарий: «Парсит описание только при промахе кэша» — подразумевает использование в проде | clangd callHierarchy: все входящие вызовы — только TestFunc (TestGetPropertyRuleFlag ×16, TestPropertyRuleFlagOnProjectElements ×2); в проде функция не вызывается (AC25, compile_commands) | Возможная мёртвая функция в проде — проверить отдельно, не исправлять |
+
 ## Итог
 - Активных расхождений «комментарий ≠ код» с последствиями не найдено; #1 — косметическое.
 - Исторические баги #3–#7 в текущей ветке исправлены.

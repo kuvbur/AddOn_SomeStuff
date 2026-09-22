@@ -15,7 +15,7 @@
 | `DimAutoRoundOne` | Обрабатывает один элемент: применяет правила к его размерам [из комментария, Dimensions.hpp:11] — карточка |
 | `DimAutoRound` | Обрабатывает один размер: менять текст/цвет или сбросить формат [из комментария, :17] — карточка |
 | `DimParse` | Разбирает значение размера, формирует текст по правилам (flags DIM_CHANGE_*, DIM_HIGHLIGHT_*) [из комментария, hpp:20-41] — карточка |
-| `DimRoundAll` | Округление всех доступных согласно настройкам [из комментария]; вызывается из SomeStuff_Main.cpp:128/165/489 [по коду, grep] |
+| `DimRoundAll` | Округление всех доступных согласно настройкам [из комментария]; вызывается из `MenuCommandHandler` (Main:489), `ElementEventHandlerProc` (Main:165), `ProjectEventHandlerProc` (Main:128) [из callgraph.json] |
 | `DimRoundByType` | Округление размеров одного типа [из комментария, :53] |
 
 ## Карточки
@@ -29,7 +29,9 @@
 ### `DimAutoRound(const API_Guid &elemGuid, const SyncSettings &syncSettings) -> GSErrCode`
 - Расположение: строка .cpp не проверена
 - Назначение: обрабатывает один размер: менять текст, цвет или сбросить формат. [из комментария]
-- Побочные эффекты: **меняет текст/перо размера** (memo dimElems). [по коду; detail не проверено]
+- Побочные эффекты: **меняет текст/перо размера** (`ACAPI_Element_Change`, Dimensions.cpp:266); мемо GetMemo+Dispose (7 путей). [из callgraph.json]
+- Вызывает: `DimParse` (:188), `Read` (Helpers.cpp:5477), `GetLayerFromCache` (Propertycache.cpp:154), `is_equal` ×3. [из callgraph.json]
+- Вызывается из: `DimAutoRoundOne` (:30), `DimRoundByType` (:458). [из callgraph.json]
 
 ## Инварианты
 - `pen_original` (было Dimensions.cpp:158, сейчас :49/:184 «Быстрофикс») — не чинить без явного запроса (AGENTS.md §16) [из AGENTS.md, проверено 2026-09-22]

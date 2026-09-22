@@ -25,7 +25,7 @@
 
 | Функция | .cpp строка | Назначение |
 |---------|-------------|------------|
-| `GetPropertyRuleFlag` | 11 | Кэш правил SomeStuff (#158): парсит описание при промахе кэша [из комментария] — карточка |
+| `GetPropertyRuleFlag` | 11 | Кэш правил SomeStuff (#158): парсит описание при промахе кэша [из комментария] — карточка; **вызывается только из TestFunc** (см. DISCREPANCIES #9) |
 | `GetCache` | 34 | Единственный экземпляр кэша [по коду] |
 | `isEng` | 878 | Язык ArchiCAD: для INT возвращает 1000 [из комментария] |
 | `DimReadPref` | 1005 | Чтение правил размеров из информации о проекте (`Addon_Dimenstions`) [из комментария, Propertycache.hpp:23-29] |
@@ -38,7 +38,8 @@
 - Расположение: `Sources/AddOn/Propertycache.cpp:11`
 - Назначение: кэшированный признак наличия правила SomeStuff в описании свойства (#158). [из комментария]
 - Контракт: парсит описание только при промахе кэша или изменении описания (копия description — инвалидация). [из комментария, Propertycache.hpp:107-113, 729-732]
-- Побочные эффекты: мутирует кэш `propertyRuleFlags`. [по коду]
+- Побочные эффекты: мутирует кэш `propertyRuleFlags`; парсит через `ParsePropertyDescriptionToRules` (CommandHelpers.cpp:200). [из callgraph.json]
+- Вызывается из: **только тесты** — `TestGetPropertyRuleFlag` (TestFunc.cpp:2917, 16 вызовов), `TestPropertyRuleFlagOnProjectElements` (:3006, 2). [из callgraph.json]
 
 ### `PropertyCache::Update()`
 - Расположение: `Sources/AddOn/Propertycache.hpp:326` (в теле класса)
