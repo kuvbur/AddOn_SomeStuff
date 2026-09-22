@@ -279,7 +279,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             const std::clock_t propertiesListStart = std::clock ();
 #endif
             // Собираем данные свойств
-            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
             // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
             selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
 
@@ -470,7 +470,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
             API_Guid propertyGuid = APIGuidFromString (propertyId.ToCStr ().Get ());
 
             // Inline implementation (like GetPropertiesList)
-            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
             // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
             selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
 
@@ -777,7 +777,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         // FIX (ревью 2026-09-12, п.70): try/catch — исключение, пересекающее CEF-мост, роняет ArchiCAD.
         try {
             DBprnt ("GetSelectionInfo: function called from JS");
-            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
             // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
             selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
             Int32 count = (Int32)selectedElements.GetSize ();
@@ -1051,7 +1051,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
         try {
             DBprnt ("GetClassification: [1] function called from JS");
 
-            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+            GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
             // Ограничение количества отображаемых элементов задаётся из HTML (≤ select)
             selectedElements = FilterElementsByType (selectedElements, maxSelectionCount);
             DBprnt (GS::UniString::Printf ("GetClassification: [2] selectedElements count = %d",
@@ -1630,7 +1630,7 @@ void BrowserPalette::RegisterACAPIJavaScriptObject () {
 // -----------------------------------------------------------------------------
 GSErrCode BrowserPalette::ManualGetSelection () {
     DBprnt ("BrowserPalette::ManualGetSelection ()");
-    GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, true);
+    GS::Array<API_Guid> selectedElements = GetSelectedElements2 (false, false);
     UpdateSelectionInfoInUI (selectedElements);
     return NoError;
 }
