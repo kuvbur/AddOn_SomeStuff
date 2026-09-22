@@ -1,82 +1,57 @@
 # Propertycache — Кэш свойств и справочных данных
 
+> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep).
+
 ## Назначение
-Кэш свойств, атрибутов, классификаций, геолокации, форматирования и данных MEP для чтения без повторных запросов к API. Главный центральный хранилище данных add-on.
+Кэш свойств, атрибутов, классификаций, геолокации, форматирования и данных MEP для чтения без повторных запросов. [из комментария, Propertycache.hpp:18-19]
 
 ## Файлы
-- `Propertycache.cpp/hpp` — кэш
+- `Propertycache.cpp/hpp`
 
 ## Ключевые типы
 
-| Тип | Назначение |
-|-----|------------|
-| `PropertyCache` | Основной класс-кэш со всеми полями |
-| `CachedLayer` | Данные одного слоя (buildingMaterial, fillThick, flagBits) |
-| `PropertyRuleFlag` | Кэш правил SomeStuff в описаниях свойств (#158) |
-| `MEPDict` / `MEPDicts` | Словари MEP (AC2900) |
-
-## Поля PropertyCache
-
-### Кэши данных
-- `property` — свойства, `info` — информация о проекте, `attrib` — атрибуты, `glob` — глобальные переменные
-- `file` — прочитанные файлы, `filedata` — данные из файлов
-- `systemdict` — системы классификации, `reversesystemdict` — обратное отображение
-- `propertygroups` — группы свойств, `dimrules` — правила размеров
-- `compositeCache` — кэш состава конструкций
-
-### Состояние (bool флаги)
-Каждый кэш имеет пару флагов: `isX_OK` (успешно) и `isXRead` (запрошен). Примеры: `isGetGeoLocation_OK/Read`, `isClassification_OK/Read`, `isMEP_OK/Read`, `isPropertyDefinition_OK/Read`.
-
-### AC2900
-- `mepdict` — MEP данные, `isMEP_OK/Read`
+| Тип | Описание |
+|-----|----------|
+| `PropertyCache` | Основной класс-кэш (property/info/attrib/glob/file/filedata/systemdict/dimrules/compositeCache и др.) [по коду, Propertycache.hpp:115-153] |
+| `CachedLayer` | Данные слоя: buildingMaterial, fillThick, flagBits [по коду, Propertycache.hpp:101-105] |
+| `PropertyRuleFlag` | Кэш правил SomeStuff в описаниях свойств (#158): description + parsed + hasRule [из комментария, Propertycache.hpp:107-113] |
 
 ## Методы PropertyCache
+- `Update()` — полное обновление всех кэшей (glob, geo, survey, placeSets, locOrigin, classification, groups, definitions, attribute, info, files, MEP) [по коду, Propertycache.hpp:326-355]
+- `Read*()` — перечитывание отдельных кэшей [по коду]
+- `AddFile(fileName)` — чтение внешнего файла (FIX 2026-09-12: GetPtr вместо ContainsKey+Get) [из комментария, Propertycache.hpp:426-448]
 
-### Обновление
-- `Update()` — полное обновление всех кэшей (глоб, geo, классификация, свойства, атрибуты, файлы, MEP)
-- Читает данные из Propertycache.cpp Update() → читает из API, кэширует
+## Публичные функции
 
-### Чтение (отдельные кэши)
-- `ReadClassification()` — системы классификации
-- `ReadPropertyDefinition()` — свойства
-- `ReadAttribute()` — атрибуты
-- `ReadInfo()` — информация о проекте
-- `ReadGetGeoLocation()` / `ReadSurveyPointTransformation()` / `ReadPlaceSets()` / `ReadLocOrigin()` — геоданные
-- `ReadFileFromDefinition()` — файлы из описаний свойств
-- `ReadGroupProperty()` — группы свойств
-- `ReadFormatStringForMeasureType()` — форматирование
-- `ReadMEP()` (AC2900) — MEP данные
+| Функция | .cpp строка | Назначение |
+|---------|-------------|------------|
+| `GetPropertyRuleFlag` | 11 | Кэш правил SomeStuff (#158): парсит описание при промахе кэша [из комментария] — карточка |
+| `GetCache` | 34 | Единственный экземпляр кэша [по коду] |
+| `isEng` | 878 | Язык ArchiCAD: для INT возвращает 1000 [из комментария] |
+| `DimReadPref` | 1005 | Чтение правил размеров из информации о проекте (`Addon_Dimenstions`) [из комментария, Propertycache.hpp:23-29] |
+| `DimParsePref` | 1046 | Разбор текста правила размеров [из комментария] |
+| `GetPropertyNameByGUID` / `GetPropertyFullName` | — | Имя свойства по GUID / полное имя с группой [из комментария; строки не проверены] |
 
-## Публичные функции (вне класса)
+## Карточки
 
-| Функция | Назначение |
-|---------|------------|
-| `GetCache()` | Получение единственного экземпляра |
-| `GetPropertyRuleFlag` | Кэш правил SomeStuff (#158) |
-| `GetPropertyNameByGUID` | Имя свойства по GUID |
-| `GetPropertyFullName` | Полное имя свойства (с группой) |
-| `isEng` | Проверка языка ArchiCAD |
-| `PROPERTYCACHE()` | Глобальный accessor (function pointer) |
+### `GetPropertyRuleFlag(const API_PropertyDefinition &definition) -> bool`
+- Расположение: `Sources/AddOn/Propertycache.cpp:11`
+- Назначение: кэшированный признак наличия правила SomeStuff в описании свойства (#158). [из комментария]
+- Контракт: парсит описание только при промахе кэша или изменении описания (копия description — инвалидация). [из комментария, Propertycache.hpp:107-113, 729-732]
+- Побочные эффекты: мутирует кэш `propertyRuleFlags`. [по коду]
+
+### `PropertyCache::Update()`
+- Расположение: `Sources/AddOn/Propertycache.hpp:326` (в теле класса)
+- Назначение: полное обновление всех кэшей с таймированием (clock, лог длительности). [по коду]
+- Контракт: перечитывание определений очищает `propertyRuleFlags` (правила удалённых свойств). [из комментария, Propertycache.hpp:559]
+- Побочные эффекты: **мутирует весь кэш**; вызовы множества ACAPI_* (GetPreferences, классификации, группы свойств и др.). [по коду]
 
 ## Зависимости
-- `Helpers.hpp` — ParamHelpers
-- `dialogs/CommandHelpers.hpp` — SyncRuleInfo, ParsePropertyResult
-- `CommonFunction.hpp` — DBprnt, msg_rep
-- `ClassificationFunction.hpp` — SystemDict
-- `ACAPI/MEP*` (AC2900)
+- `Helpers.hpp`, `dialogs/CommandHelpers.hpp`, `CommonFunction.hpp`, `ClassificationFunction.hpp` [по include]
 
 ## Зависимости (используется в)
-Почти все модули обращаются через `PROPERTYCACHE()`:
-- `Sync` — при чтении свойств
-- `Spec` — правила из свойств
-- `Summ` — суммирование
-- `ResetProperty` — для определений свойств
-- `Helpers` — GetAllAttributeToParamDict и др.
+Sync, Spec, Summ, ResetProperty, Helpers и др. через `PROPERTYCACHE()` [по коду]
 
 ## Инварианты
-- Ключи кэша всегда в нижнем регистре (`ToLowerCase` + `BRACEEND`)
-- Значения свойств берутся только из `PROPERTYCACHE()`, НИКОГДА из `ACAPI_Property_GetPropertyValue`
-- Кэш перечитывается при смене проекта (Update())
-- `selectionPropertiesCache` — mutable, для GetPropertiesListCommand
-- `propertyRuleFlags` — кэш правил (#158), инвалидируется при перечитывании определений
-- FIX (ревью 2026-09-12): `AddFile` и `ReadClassification` содержат оптимизации ContainsKey+Get → GetPtr
+- Ключи кэша всегда в нижнем регистре (`ToLowerCase` + `BRACEEND`) — AGENTS.md §6 [из AGENTS.md]
+- Значения свойств — только из PROPERTYCACHE(), не ACAPI_Property_GetPropertyValue [из AGENTS.md]

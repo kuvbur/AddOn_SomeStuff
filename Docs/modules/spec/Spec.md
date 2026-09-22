@@ -1,56 +1,62 @@
 # spec/Spec — Движок спецификаций
 
+> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep; функции внутри namespace Spec).
+
 ## Назначение
-Генерация спецификаций по правилам: разбор описаний, выбор элементов, группировка, создание/обновление элементов по правилам SomeStuff.
+Генерация спецификаций по правилам: разбор описаний, выбор элементов, группировка, создание/обновление элементов. [из комментария, Spec.hpp:8-9]
 
 ## Файлы
-- `spec/Spec.cpp/hpp` — движок спецификаций (~1000+ строк)
+- `spec/Spec.cpp/hpp`
 
 ## Ключевые типы
 
 | Тип | Описание |
 |-----|----------|
-| `GroupSpec` | Описание группы внутри правила: unic_paramrawname, out_paramrawname, sum_paramrawname, flag_paramrawname |
-| `SpecRule` | Полное правило: rule_name, groups, out_paramrawname, subguid_*, elements, exsist_elements, rule_definitions, flags (isKM, isKZH, delete_old, stop_on_error, only_visible) |
-| `Element` | Временный контейнер: out_param, out_sum_param, subguid_*, elements, exs_guid |
-| `ElementDict` | HashTable<string, Element> — словарь по уникальным параметрам |
-| `SpecRuleDict` | HashTable<string, SpecRule> — словарь правил |
+| `GroupSpec` | unic_paramrawname, out_paramrawname, sum_paramrawname, flag_paramrawname, fromMaterial, fromLibData, n_layer [из комментария, Spec.hpp:13-23] |
+| `SpecRule` | rule_name, groups, out_paramrawname, subguid_paramrawname/rulename/rulevalue, elements, exsist_elements, rule_definitions, favorite_name, flags (isKM, isKZH, delete_old, stop_on_error, only_visible) [из комментария, Spec.hpp:27-47] |
+| `Element` / `ElementDict` | Временный контейнер создаваемого элемента / словарь по сцепке уникальных параметров [из комментария] |
+| `SpecRuleDict` | HashTable<string, SpecRule> [из комментария] |
 
 ## Публичный API
 
-### Основные
-| Функция | Назначение |
-|---------|------------|
-| `SpecAll` | Создание спецификации из выбора/видимых/правил |
-| `SpecArray` | Обработка массива элементов по правилам |
-| `SpecFilter` | Исключение неподходящих типов/БД |
-| `GetRuleFromDefaultElem` | Правила из свойств по умолчанию |
-| `GetRuleFromElement` | Правила из выбранного элемента |
-| `AddRule` | Добавление правила из описания |
-| `GetRuleFromDescription` | Парсинг описания в SpecRule |
+| Функция | .cpp строка | Назначение |
+|---------|-------------|------------|
+| `SpecAll` | 140 | Создание спецификации из выбора/видимых/правил по умолчанию [из комментария] — карточка |
+| `SpecFilter` | ~346 | Исключение неподходящих типов/БД [из комментария; строка не проверена] |
+| `GetRuleFromDefaultElem` | 36 | Правила из свойств элемента по умолчанию [из комментария] |
+| `GetRuleFromElement` | — | Правила из выбранного элемента [из комментария; строка не проверена] |
+| `AddRule` | 1114 | Разбор описания и добавление правила в словарь [из комментария] |
+| `GetRuleFromDescription` | 1833 | Разбор строки описания в SpecRule [из комментария] |
+| `GetParamValue` | — | Чтение одного значения параметра [из комментария; строка не проверена] |
+| `GetElementsForRule` | 1463 | Формирование элементов для одного правила [из комментария] |
+| `GetParamToReadFromRule` | — | Параметры для предварительного чтения [из комментария; строка не проверена] |
+| `GetElementForPlace` | 2297 | Создание/настройка элемента для размещения [из комментария] |
+| `GetSizePlaceElement` | — | Размер элемента по сетке [из комментария; строка не проверена] |
+| `PlaceElements` | 2427 | Размещение сформированных элементов и заполнение параметров [из комментария] — карточка |
 
-### Вспомогательные
-| Функция | Назначение |
-|---------|------------|
-| `GetElementForPlaceProperties` | Свойства для размещения |
-| `GetParamValue` | Чтение значения параметра |
-| `GetElementsForRule` | Элементы для одного правила |
-| `GetParamToReadFromRule` | Параметры для чтения |
-| `GetElementForPlace` | Создание/настройка элемента |
-| `GetSizePlaceElement` | Размер по сетке |
-| `PlaceElements` | Размещение сформированных элементов |
+## Карточки
+
+### `Spec::SpecAll(const SyncSettings &syncSettings) -> GSErrCode`
+- Расположение: `Sources/AddOn/spec/Spec.cpp:140`
+- Назначение: создаёт спецификацию из текущего выбора, всех видимых элементов или правил по умолчанию. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: **создаёт/обновляет/удаляет элементы спецификации** (PlaceElements-цепочка); читает выделение и свойства. [по коду]
+- Вызывает: `GetRuleFromDefaultElem`, `SpecArray` [по коду; detail не проверено]
+- Вызывается из: `MenuCommandHandler` [по коду; строка не проверена]
+
+### `Spec::PlaceElements(GS::Array<ElementDict> &elementstocreate, ParamDictValue &paramToWrite, ParamDictElement &paramOut, Point2D &startpos) -> GSErrCode`
+- Расположение: `Sources/AddOn/spec/Spec.cpp:2427`
+- Назначение: размещает сформированные элементы в модели и заполняет их параметры. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: **создание элементов в проекте** (из избранного `favorite_name`), запись параметров/GUID (`subguid`); изменение сетки размещения (startpos). [по коду]
+- Вызывает: `GetElementForPlace`, `GetElementForPlaceProperties` [по коду; detail не проверено]
 
 ## Зависимости
-- `Helpers.hpp` — ParamHelpers, GetSelectedElements
-- `Propertycache.hpp` — PROPERTYCACHE()
-- `CommonFunction.hpp`
+- `Helpers.hpp`, `Propertycache.hpp`, `CommonFunction.hpp` [по include]
 
 ## Зависимости (используется в)
-- `SomeStuff_Main.cpp` — команда спецификации
-- `TableRenderer` — данные из Spec для таблиц
+- `SomeStuff_Main.cpp` [по коду]
 
 ## Инварианты
-- `SpecRule` содержит пары GUID: elements (обрабатываемые) и exsist_elements (существующие для перезаписи)
-- `stop_on_error = true` — при ошибке прекращает обработку правила
-- `only_visible = true` — обрабатывать только видимые элементы
-- `isKM`/`isKZH` — специальные правила для КМ/КЖ (техничка/ведомость расхода стали)
+- `stop_on_error = true` — остановка обработки правила при ошибке; `only_visible = true` — только видимые [из комментария, Spec.hpp:43-44]
+- `isKM`/`isKZH` — правила для КМ/КЖ [из комментария, Spec.hpp:45-46]

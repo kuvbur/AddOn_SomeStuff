@@ -1,38 +1,46 @@
 # Helpers — Ядро: чтение/запись параметров и свойств
 
-> Хеш коммита: f8f599c (2026-09-22)
+> Хеш коммита: 493caf5 (2026-09-22). **Неполное покрытие**: пофункциональные карточки не приведены (2145 символов — см. symbols.json); ниже — типы и подсистемы из заголовка.
 
-## Назначение модуля
-Ядро add-on: чтение значений из свойств, GDL, IFC, атрибутов, координат, морфов и др. источников в единый `ParamValue`, и запись обратно. Большинство остальных модулей зависят от него. [по коду include-графа]
+## Назначение
+Ядро add-on: чтение из свойств/GDL/IFC/атрибутов/координат/морфов в единый ParamValue и запись обратно; большинство модулей зависят от него. [по коду include-графа]
 
-## Файлы модуля
-- `Sources/AddOn/Helpers.cpp/hpp` (hpp 808 строк; symbols.json — 2145 символов, самый большой модуль)
+## Файлы
+- `Sources/AddOn/Helpers.cpp/hpp` (hpp 808 строк)
 
-## Ключевые типы [по коду, Helpers.hpp:14-63]
+## Ключевые типы [из комментария / по коду, Helpers.hpp:14-63]
 
 | Тип | Описание |
 |-----|----------|
-| `SortGUID` / `SortInx` | Массивы GUID / индексов для сортировки |
-| `OrientedSegments` | Отрезки с точкой начала и направлением подрезки |
-| `SkipValues` | Правила игнорирования значений: ignorevals, skip_empty, skip_trim_empty, reset_to_def |
-| `DimRule` | Правило округления размеров: pen_original/pen_rounded, round_value, flag_change/deletewall/reset/custom, classic_round_mode, expression, layer, paramDict |
-| `DimRules` | `HashTable<UniString, DimRule>` |
+| `SortGUID` / `SortInx` | Массивы GUID / индексов для сортировки [по коду] |
+| `OrientedSegments` | Отрезки с точкой начала и направлением подрезки [из комментария, hpp:26] |
+| `SkipValues` | ignorevals, skip_empty, skip_trim_empty, reset_to_def [из комментария, hpp:34-46] |
+| `DimRule` | pen_original/pen_rounded, round_value, flag_change/deletewall/reset/custom, classic_round_mode, expression, layer, paramDict [из комментария, hpp:48-61] |
+| `DimRules` | HashTable<UniString, DimRule> [по коду, hpp:63] |
 
-## Ключевые namespace/подсистемы [по коду заголовка]
-- `FormatStringFunc` — разбор формата из формулы (`GetFormatStringFromFormula`, ...)
-- `ParamHelpers` — чтение параметров/свойств, определение источника по raw-name (дополнен в Propertycache.hpp)
-- Чтение из источников: Property, GDL, IFC, Material (состав конструкции), Coord, Morph, Info, Glob, ID, Classification, Attrib, ListData, MEP (флаги `from*` в `ParamValue`, CommonFunction.hpp:170-197)
-- Запись значений в свойства/параметры/GDL
+## Подсистемы [по коду заголовка]
+- `FormatStringFunc` — формат из формулы (GetFormatStringFromFormula, hpp:67+)
+- `ParamHelpers` — чтение параметров, источник по raw-name (расширен в Propertycache.hpp)
+- Источники чтения: Property, GDL, IFC, Material, Coord, Morph, Info, Glob, ID, Classification, Attrib, ListData, MEP (флаги from* — CommonFunction.hpp:170-197)
+- Запись в свойства/параметры/GDL
 
-## Публичный API
-Полный перечень функций — `Docs/_generated/symbols.json` (модуль Helpers, 2145 символов). **Пофункциональные записи не приведены — покрытие частичное** (см. `_progress.md`, раздел «Неполное покрытие»).
+## Карточки ключевых функций
+
+### `FormatStringFunc::GetFormatStringFromFormula(...) -> FormatString`
+- Расположение: `Sources/AddOn/Helpers.cpp` (строка не проверена)
+- Назначение: разбор формата строки из формулы. [по коду заголовка]
+- Побочные эффекты: не проверено.
+
+### `ParamHelpers::*` (чтение источников в ParamValue)
+- Расположение: строки .cpp не проверены
+- Назначение: заполнение ParamValue из источников; расширен в Propertycache.hpp:36-98 [по коду]
+- Побочные эффекты: только чтение + заполнение out-структур. [по коду]
 
 ## Зависимости
-- `ClassificationFunction.hpp`, `CommonFunction.hpp`, `dialogs/SyncSettings.hpp`, `spec/Spec_libpart.hpp`, `StringConversion.hpp`
+- `ClassificationFunction.hpp`, `CommonFunction.hpp`, `dialogs/SyncSettings.hpp`, `spec/Spec_libpart.hpp`, `StringConversion.hpp` [по include]
 
-## Зависимые модули (по include)
-Практически все: Sync, Summ, Spec, ReNum, Dimensions, Roombook, MEPv1, Propertycache, pk/*, dialogs/*
+## Зависимые модули
+Sync, Summ, Spec, ReNum, Dimensions, Roombook, MEPv1, Propertycache, pk/*, dialogs/* [по include]
 
-## Инварианты и подводные камни
-- `Helpers.cpp:1761` — `API_ElementMemo` без `BNZeroMemory` перед `ACAPI_Element_GetMemo` (риск краша на панелях навесных стен) [из ревью-заметок; статус не проверен в этой сессии — см. DISCREPANCIES.md]
-- Мемо-инициализация: перед `ACAPI_Element_GetMemo` всегда `BNZeroMemory(&memo, sizeof(memo))` (AGENTS.md §6)
+## Инварианты
+- Мемо: перед `ACAPI_Element_GetMemo` всегда `BNZeroMemory`/`= {}` — все 7 объявлений в Helpers.cpp проверены как `= {}` (2026-09-22, DISCREPANCIES.md #7) [проверено]

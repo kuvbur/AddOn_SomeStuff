@@ -1,22 +1,16 @@
 # Constants — Справочник
 
+> Хеш коммита: 493caf5 (2026-09-22).
+
 ## Назначение
-Константы и идентификаторы ресурсов, используемые во всём add-on.
+Константы и идентификаторы ресурсов add-on. [по коду]
 
 ## Файлы
-- `Constants.hpp` — заголовок с константами (~23 строк)
+- `Constants.hpp` (только заголовок; в symbols.json — «справочник»)
 
 ## Содержимое
-- Идентификаторы строковых ресурсов (MeterStringID, CMeterStringID и др.)
-- Специальные строковые префиксы (`@property:`, `@info:`, `@mep:` и др.)
-- Статические строковые константы (`COMMA`, `EMPTYSTRING` и др.)
-
-## Зависимости
-- `ACAPinc.h`
+- Строковые префиксы источников: `@property:`, `{@info:...}`, `{@mep:...}` [по коду использования]
+- Загружаемые через RSGetIndString: MeterStringID, BuildingMaterial*ID, areastr/volumestr/lengthstr/dontspecstr [по коду, Propertycache.hpp:296-323]
 
 ## Зависимости (используется в)
-- Практически все модули (через `#include "Constants.hpp"`)
-
-## Примечания
-- Большинство значений загружаются через `RSGetIndString` по ID (AC25+ — ACAPI_GetOwnResModule)
-- Prefixed strings: `@property:`, `{@info:...}`, `{@mep:...}` — используются для идентификации источников данных
+Практически все модули [по include]

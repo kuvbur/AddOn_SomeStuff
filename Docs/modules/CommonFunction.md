@@ -1,51 +1,49 @@
 # CommonFunction — Утилиты
 
+> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep; выборочные).
+
 ## Назначение
-Общие вспомогательные структуры и функции: чтение/запись свойств, работа с этажами, форматирование значений, базовые преобразования, отладочный вывод (DBprnt/DBtest), QR-коды, обработка строк.
+Общие вспомогательные структуры и функции: чтение/запись свойств, этажи, форматирование, отладочный вывод, QR, строки. [из комментария, CommonFunction.hpp:47-48]
 
 ## Файлы
-- `CommonFunction.cpp/hpp` — основные утилиты (~513 строк в hpp)
+- `CommonFunction.cpp/hpp` (hpp 513 строк)
 
-## Ключевые структуры
+## Ключевые типы [из комментария]
+`Story`/`Stories` — этажи; `FormatString` — параметры округления/формата; `ParamValueData` — унифицированное значение; `ParamValueComposite`/`ParamComposite` — слои конструкции; `ParamValue` — полное описание параметра с ~20 флагами источника (fromProperty, fromGDLparam, fromMaterial и др.); `ProcessWindowGuard` — RAII окна прогресса (InitProcessWindow/CloseProcessWindow, AC27+ ACAPI_ProcessWindow_*). [из комментария, CommonFunction.hpp:53-232]
 
-| Структура | Назначение |
-|-----------|------------|
-| `Story` | Этаж проекта (index, level) |
-| `Stories` | `GS::Array<Story>` — массив этажей |
-| `FormatString` | Параметры форматирования чисел (н_zero, stringformat, needRound, krat, koeff и др.) |
-| `ParamValueData` | Унифицированное значение параметра (тип, строка, int, double, formula и др.) |
-| `ParamValueComposite` | Данные одного слоя конструкции |
-| `ParamComposite` | Состав конструкции целиком |
-| `ParamValue` | Полное описание параметра с флагами происхождения (fromProperty, fromGDLparam, fromMaterial и 20+ флагов) |
-| `ProcessWindowGuard` | RAII-обёртка для окна прогресса Archicad |
+## Публичный API (выборка)
 
-## Утилиты (выборка)
+| Функция | .cpp строка | Назначение |
+|---------|-------------|------------|
+| `GetUnicGuid` | 29 | Оставляет в массиве только уникальные GUID с сохранением порядка [из комментария] |
+| `GetStories` | 99 | Читает этажи проекта (индекс–уровень) [из комментария] |
+| `TextToQRCode` | 169/231 | Генерация QR-кода из текста [из комментария] |
+| `GetSelectedElements2` | 806 | Выбор элементов без чтения настроек (assertIfNoSel, onlyEditable) [из комментария] |
+| `GetTypeByGUID` | 897 | Тип объекта по GUID [из комментария] |
+| `IsTeamwork` | 1315 | Статус и ID пользователя Teamwork [из комментария] |
+| `EvalExpression` | 1336 | Вычисление выражений в `< >`; невычислимое → пустота [из комментария] |
+| `UnhideUnlockElementLayer` | 2448/2472/2496? | Снятие скрытия/блокировки слоя (3 перегрузки) [из комментария; строки 3-й не проверены] |
+| `DBprnt` / `DBtest` / `msg_rep` | — | Отладочный вывод / тест / сообщение об ошибке [из комментария; строки не проверены] |
+| `StringSplt`, `StringUnic`, `UniStringToDouble`, `round_nzero`, `is_equal`, `check_accuracy` | — | Строки и числа [из комментария; строки не проверены] |
 
-| Функция | Назначение |
-|---------|------------|
-| `DBprnt` / `DBtest` | Отладочный вывод в окно отчёта |
-| `msg_rep` | Сообщение об ошибке с модулем |
-| `GetSelectedElements2` | Выбор элементов без настроек синхронизации |
-| `CallOnSelectedElem2` | Вызов функции для каждого выбранного элемента |
-| `GetStories` | Информация об этажах |
-| `GetFloorIndexAndOffset` / `GetzPos` | Преобразование координат Z ↔ этаж |
-| `TextToQRCode` | Генерация QR-кода |
-| `UniStringToDouble`, `round_nzero`, `is_equal` | Преобразование и сравнение |
-| `StringSplt`, `StringUnic` | Работа со строками |
-| `EvalExpression` | Вычисление выражений в `< >` |
-| `UnhideUnlockElementLayer` | Снятие скрытия/блокировки слоя |
+## Карточки
+
+### `UnhideUnlockElementLayer(const API_Guid &elemGuid)`
+- Расположение: `Sources/AddOn/CommonFunction.cpp:2448`
+- Назначение: если слой элемента скрыт или заблокирован — делает видимым/разблокированным (по GUID → заголовок → индекс слоя). [из комментария, CommonFunction.hpp:467-476]
+- Контракт: 3 перегрузки; по SDK ACAPI_Attribute_Get/Set сбрасывает flags & 1 (hidden) и & 2 (locked). [из комментария]
+- Побочные эффекты: **меняет атрибут слоя** (видимость/блокировка) — влияет на весь слой. [из комментария]
+
+### `EvalExpression(GS::UniString &unistring_expression) -> bool`
+- Расположение: `Sources/AddOn/CommonFunction.cpp:1336`
+- Назначение: вычисление выражений в `< >`; что не может вычислить — заменит на пустоту. [из комментария]
+- Побочные эффекты: мутирует входную строку. [из комментария]
 
 ## Зависимости
-- `ACAPinc.h`, `api_headers/APIEnvir.h`
-- `api_headers/APICommon*.h` (условно по версии)
-- `Constants.hpp`
-- `third_party/alphanum.h` (сортировка)
-- `third_party/exprtk.h` (вычисления)
-- `DG.h`, `Point2D.hpp`, `Polygon2DData.h`
+- `api_headers/*` (APICommon22-29), `Constants.hpp`, `third_party/alphanum.h`, `third_party/exprtk.h`, `DG.h`, `Point2D.hpp` [по include]
 
 ## Зависимости (используется в)
-Практически во всех модулях (Helpers, Sync, Propertycache, Spec, ResetProperty, MEPv1 и др.)
+Практически все модули [по include]
 
 ## Инварианты
-- `ParamValue` содержит ~20 boolean-флагов происхождения данных — каждый должен устанавливаться явно при чтении из конкретного источника
-- `ProcessWindowGuard` корректно работает только один экземпляр за раз (вложенные вызовы проблематичны)
+- `ProcessWindowGuard` — окно прогресса закрывается автоматически даже при исключении [из комментария, CommonFunction.hpp:214-232]

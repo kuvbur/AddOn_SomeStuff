@@ -1,42 +1,25 @@
 # table/TablesNavigator — Каркас ведомостей
 
+> Хеш коммита: 493caf5 (2026-09-22).
+
 ## Назначение
-Каркас пользовательских ведомостей в Navigator/MyDraw. Отделён от Spec/Summ/Monitor для чистоты архитектуры. Первый шаг — фиксация границ подсистемы.
+Каркас пользовательских ведомостей в Navigator/MyDraw; границы подсистемы: определение ведомости, снимок таблицы, renderer, точки регистрации. [из комментария, TablesNavigator.hpp:8-13]
 
-## Файлы
-- `table/TablesNavigator.cpp/hpp` — навигатор таблиц
-
-## Ключевые типы
-
-| Тип | Описание |
-|-----|----------|
-| `ColumnDefinition` | Колонка: id (стабильный ключ), title |
-| `RowIdentity` | Строка: stableKey + sourceElements (одна строка = элемент/группа/агрегат) |
-| `ScheduleDefinition` | Определение ведомости: navigatorGuid, internalId, displayName, columns |
-| `TableCell` | Ячейка: columnId, displayText |
-| `TableRow` | Строка: identity + cells |
-| `TableSnapshot` | Снимок таблицы: definition + rows (отделён от definition для renderer) |
+## Ключевые типы [из комментария, TablesNavigator.hpp:16-64]
+`ColumnDefinition` (id — устойчивый ключ, title); `RowIdentity` (stableKey + sourceElements); `ScheduleDefinition` (payload viewpoint ещё не выбран); `TableCell`/`TableRow`; `TableSnapshot` (отделён от definition).
 
 ## Публичный API
 
 | Функция | Назначение |
 |---------|------------|
-| `RegisterInterface` | Регистрация интерфейса в ArchiCAD |
-| `Initialize` | Инициализация |
-| `EnsureNavigatorRoot` | Гарантия корня Navigator |
-| `IsNavigatorRegistrationEnabled` | Проверка регистрации |
-
-## Проектирование
-- `id` отдельно от `title`: title переименовывается в UI, id — устойчивый ключ
-- `TableSnapshot` отделён от `ScheduleDefinition`: renderer работает одинаково для MyDraw и CreateIDFStore
-- Payload viewpoint/Add-On Object ещё не выбран
+| `RegisterInterface` / `Initialize` / `EnsureNavigatorRoot` / `IsNavigatorRegistrationEnabled` | Точки регистрации в Archicad [из комментария, TablesNavigator.hpp:66-69] — строки .cpp не проверены |
 
 ## Зависимости
-- `ACAPinc.h`
+- `ACAPinc.h` [по include]
 
 ## Зависимости (используется в)
-- `SomeStuff_Main` — регистрация в UI
+`SomeStuff_Main` [по коду]
 
-## Статус
-- Это каркас/заготовка — реальные данные пока не отображаются
-- Связь с TableRenderer — на стадии проектирования
+## Инварианты
+- `id` колонки отдельно от `title` (переименование в UI не ломает ключ) [из комментария, TablesNavigator.hpp:20-21]
+- Ключ строки не равен позиции row и не сводится к одному GUID [из комментария, TablesNavigator.hpp:24-30]

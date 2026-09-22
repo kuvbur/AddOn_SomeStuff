@@ -1,30 +1,38 @@
 # Dimensions — Округление размеров
 
-> Хеш коммита: f8f599c (2026-09-22)
+> Хеш коммита: 493caf5 (2026-09-22). Строки .cpp не проверены (не фиксировались в этой сессии).
 
-## Назначение модуля
-Округление размеров: правила форматирования (читаются из информации о проекте, свойство `Addon_Dimenstions`), обработка текста размеров и привязка к типам элементов. [из комментария, Dimensions.hpp:9]
+## Назначение
+Округление размеров: правила из информации о проекте (`Addon_Dimenstions`), обработка текста, привязка к типам элементов. [из комментария, Dimensions.hpp:9]
 
-## Файлы модуля
+## Файлы
 - `Sources/AddOn/Dimensions.cpp/hpp`
 
 ## Публичный API
 
-| Функция | Сигнатура | Назначение |
-|---------|-----------|------------|
-| `DimAutoRoundOne` | `(const API_Guid&, const SyncSettings&, bool checktype) -> GSErrCode` | Обрабатывает один элемент и применяет к его размерам правила округления [из комментария] |
-| `DimAutoRound` | `(const API_Guid&, const SyncSettings&) -> GSErrCode` | Обрабатывает один размер: менять текст/цвет или сбросить формат [из комментария] |
-| `DimParse` | `(const double& dimVal, const API_Guid&, const API_NoteContentType&, const GS::UniString& content, GS::UniString& custom_txt, UInt32& flag_change, UInt32& flag_highlight, const DimRule&, const ParamDictValue* preadelem) -> bool` | Разбирает значение размера и формирует текст по правилам; flags: DIM_CHANGE_ON/OFF/NOCHANGE, DIM_HIGHLIGHT_ON/OFF/NOCHANGE [из комментария] |
-| `DimRoundAll` | `(const SyncSettings&, bool isUndo)` | Округление всех доступных элементов согласно настройкам [из комментария] |
-| `DimRoundByType` | `(const API_ElemTypeID&, const SyncSettings&) -> bool` | Округление размеров одного типа элементов [из комментария] |
+| Функция | Назначение |
+|---------|------------|
+| `DimAutoRoundOne` | Обрабатывает один элемент: применяет правила к его размерам [из комментария, Dimensions.hpp:11] — карточка |
+| `DimAutoRound` | Обрабатывает один размер: менять текст/цвет или сбросить формат [из комментария, :17] — карточка |
+| `DimParse` | Разбирает значение размера, формирует текст по правилам (flags DIM_CHANGE_*, DIM_HIGHLIGHT_*) [из комментария, hpp:20-41] — карточка |
+| `DimRoundAll` | Округление всех доступных согласно настройкам [из комментария, :47] |
+| `DimRoundByType` | Округление размеров одного типа [из комментария, :53] |
+
+## Карточки
+
+### `DimParse(const double &dimVal, ..., GS::UniString &custom_txt, UInt32 &flag_change, UInt32 &flag_highlight, const DimRule &dimrule, const ParamDictValue *preadelem) -> bool`
+- Расположение: строка .cpp не проверена
+- Назначение: разбирает значение размера, формирует текст; решает менять текст/перо. [из комментария]
+- Контракт: FIX 2026-09-12: `preadelem` — предпрочитанный словарь параметров привязанного элемента (nullptr — читать внутри); входной content не мутируется, результат через `custom_txt`; без полной копии dimrule.paramDict на каждый размер. [из комментария, Dimensions.hpp:26-32]
+- Побочные эффекты: формулы (`expression`) через EvalExpression; выходные флаги. [по коду]
+
+### `DimAutoRound(const API_Guid &elemGuid, const SyncSettings &syncSettings) -> GSErrCode`
+- Расположение: строка .cpp не проверена
+- Назначение: обрабатывает один размер: менять текст, цвет или сбросить формат. [из комментария]
+- Побочные эффекты: **меняет текст/перо размера** (memo dimElems). [по коду; detail не проверено]
+
+## Инварианты
+- `pen_original` (было Dimensions.cpp:158, сейчас :49/:184 «Быстрофикс») — не чинить без явного запроса (AGENTS.md §16) [из AGENTS.md, проверено 2026-09-22]
 
 ## Зависимости
-- `DG.h`, `dialogs/SyncSettings.hpp`, `Helpers.hpp`
-
-## Зависимости (используется в)
-- `SomeStuff_Main` (команды меню), `Propertycache` (DimReadPref/DimParsePref — правила читаются в кэш)
-
-## Инварианты и подводные камни
-- `Dimensions.cpp:158` — `pen_original`: зафиксировано как «не чинить без явного запроса» (AGENTS.md §16) [из AGENTS.md]
-- FIX (ревью 2026-09-12, Dimensions.cpp-1): `preadelem` — предпрочитанный словарь параметров привязанного элемента, читается один раз на размер; `nullptr` — прежнее поведение чтения внутри [из комментария, Dimensions.hpp:26-32]
-- FIX: п.32 — полная копия `dimrule.paramDict` больше не создаётся на каждый размер; п.62 — входной `content` не мутируется, результат через out-параметр `custom_txt` [из комментария, Dimensions.hpp:29-32]
+- `DG.h`, `dialogs/SyncSettings.hpp`, `Helpers.hpp` [по include]

@@ -1,61 +1,50 @@
 # table/TableRenderer — Рендерер таблиц
 
+> Хеш коммита: 493caf5 (2026-09-22).
+
 ## Назначение
-Класс отрисовки таблиц для ведомостей SomeStuff. Считывает геометрию, переносит текст, рисует в уже открытом drawing data store. Не добывает данные (модель, выборку, итогы — задача вызывающей стороны).
+Отрисовка таблиц для ведомостей: считает геометрию (ширины/высоты/перенос), рисует в уже открытый drawing data store; данные не добывает. [из комментария, TableRenderer.hpp:8-24]
 
-## Файлы
-- `table/TableRenderer.cpp/hpp` — рендерер (~210 строк в hpp)
+## Границы класса [из комментария, TableRenderer.hpp:11-24]
+- Вход: данные ячеек + правила объединения/форматирования
+- Рисует в УЖЕ ОТКРЫТЫЙ drawing data store: вложенность сессий Archicad запрещена (APIERR_NESTING), сессией владеет вызывающий
+- НЕ добывает данные (модель/формулы/итоги — TablesNavigator)
+- Единицы: правила в мм бумаги; наружу — модельные единицы (мм * drawingScale / 1000)
 
-## Границы (из комментария в hpp)
-- Вход: данные ячеек + правила форматирования
-- Класс считает геометрию (ширины столбцов, высоты строк, перенос текста)
-- Рисует в УЖЕ ОТКРЫТОМ drawing data store (сессия не принадлежит рендереру)
-- НЕ добывает данные: модель, формулы, выборка — задача вызывающей стороны
-- Единицы: правила в мм бумаги, layout отдаёт в модельных единицах (мм * drawingScale / 1000)
+## Ключевые типы [из комментария, TableRenderer.hpp:27-108]
+`CellData`, `MergedRange`, `ColumnRule`, `RowRule`, `FillRange`, `TableFormattingRules`; внутренний `CellLayout`.
 
-## Ключевые типы
-
-| Тип | Описание |
-|-----|----------|
-| `CellData` | Ячейка: row, col, text, fontIndexOverride, hAlignOverride, vAlignOverride |
-| `MergedRange` | Объединённый диапазон (rowFrom, rowTo, colFrom, colTo) |
-| `ColumnRule` | Ширина столбца (Auto/Fixed, mm) |
-| `RowRule` | Высота строки (Auto/Fixed, mm) |
-| `FillRange` | Заливка: MergedRange + fillIndex + pens |
-| `TableFormattingRules` | Полные правила форматирования (строки, столбцы, merged, fonts, pads) |
-
-### Внутренние (CellLayout и др.)
-- `CellLayout` — разложенная ячейка (lines, textWidthMm, textHeightMm, fontIndex)
-- `columnWidthsMm`, `rowHeightsMm`, `columnNodesMm`, `rowNodesMm` — геометрия в мм
-- `CellLayouts` — разложенные ячейки (rows * cols)
-
-## Публичный API TableRenderer
+## Публичный API
 
 | Функция | Назначение |
 |---------|------------|
-| `SetCells` | Установка данных ячеек |
-| `SetFormattingRules` | Установка правил форматирования |
-| `SetDrawingScale` | Масштаб drawing data |
-| `ComputeLayout` | Счёт геометрии без рисования |
-| `IsLayoutComputed` | Проверка готовности layout |
-| `SetPrototypeContent` | Демо-содержимое 3x3 (issue #177) |
-| `GetTotalWidth/Height` | Габариты (model units) |
-| `GetColumnWidth/RowHeight` | Размер строки/столбца |
-| `Draw` | Рисование в drawing data store (origin — левый нижний угол) |
-| `RunSelfTest` (TESTING) | Runtime-проверка §7 ТЗ |
+| `SetCells` / `SetFormattingRules` / `SetDrawingScale` | Входные данные [из комментария] |
+| `ComputeLayout` | Считает layout без рисования (для reflow/разбиения) [из комментария] — карточка |
+| `SetPrototypeContent` | Демо 3x3 (issue #177) [из комментария] |
+| `GetTotalWidth/Height`, `GetColumnWidth/RowHeight` | Габариты после ComputeLayout (модельные ед.) [из комментария] |
+| `Draw(const API_Coord &origin)` | Рисование; origin — левый нижний угол; layout пересчитывается сам [из комментария] — карточка |
+| `RunSelfTest` (TESTING) | Runtime-проверка §7 ТЗ, пишет в DBprnt, в базу не пишет [из комментария, hpp:140-143] |
+
+## Карточки
+
+### `TableRenderer::Draw(const API_Coord &origin) -> GSErrCode`
+- Расположение: `Sources/AddOn/table/TableRenderer.cpp` (строка не проверена)
+- Назначение: рисует таблицу в текущий открытый drawing data store. [из комментария]
+- Контракт: сессия drawing data должна быть открыта вызывающим (APIDb_StartDrawingDataID); пересчитывает layout при изменении входа. [из комментария]
+- Побочные эффекты: **создание элементов в базе проекта** (линии/заливки/тексты через CreateLineElement/CreateFillElement/CreateTextElement). [по коду, hpp:192-205]
+
+### `TableRenderer::ComputeLayout() -> GSErrCode`
+- Расположение: `Sources/AddOn/table/TableRenderer.cpp` (строка не проверена)
+- Назначение: считает геометрию без рисования (columnWidths/rowHeights/CellLayouts в мм). [из комментария + по коду, hpp:163-190]
+- Побочные эффекты: мутирует внутреннюю геометрию; без записи в проект. [по коду]
 
 ## Зависимости
-- `ACAPinc.h`
-- Внутренние: шрифтовые и текстовые утилиты из CommonFunction/Helpers
+- `ACAPinc.h`, текстовые утилиты CommonFunction [по коду]
 
 ## Зависимости (используется в)
-- `table/TablesNavigator.cpp` — каркас ведомостей
-- `Roombook` (?) — ведомости отделки
+`TablesNavigator`, ведомости (issue #177) [по коду]
 
 ## Инварианты
-- `ComputeLayout` должен вызываться перед `Draw`
-- Drawing scale: 100 = 1:100, mm → model units: mm * scale / 1000
-- Ячейки — sparse-представление (отсутствующая = пустая)
-- Шрифт задаётся индексом атрибута (API_TextType.font), не именем
-- `defaultFontName` = "" → брать из ACAPI_Element_GetDefaults
-- Типографика в мм: `defaultFontSize = 2.5` (как RoombookSettings::fontsize)
+- Шрифт — индекс атрибута (API_TextType.font) [из комментария, hpp:41-43]
+- defaultFontIndex=0/пустое имя → из ACAPI_Element_GetDefaults [из комментария, hpp:89-90, 102-107]
+- `defaultFontSize = 2.5` мм [из комментария, hpp:92]

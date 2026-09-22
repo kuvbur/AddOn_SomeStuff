@@ -1,41 +1,42 @@
 # ClassificationFunction — Авто-классификация
 
+> Хеш коммита: 493caf5 (2026-09-22).
+
 ## Назначение
-Загрузка систем классификации, поиск классов по имени, назначение автокласса элементам на основе описания свойства (`some_stuff_class`).
+Загрузка систем классификации, поиск классов, назначение автокласса по описанию свойства (`some_stuff_class`). [из комментария, ClassificationFunction.hpp:22-25, 58-61]
 
 ## Файлы
-- `ClassificationFunction.cpp/hpp` — авто-классификация
+- `ClassificationFunction.cpp/hpp`
 
-## Ключевые типы
-
-| Тип | Описание |
-|-----|----------|
-| `ClassificationValues` | Один класс: system, item, parentname, itemname |
-| `ClassificationDict` | `HashTable<string, ClassificationValues>` — классы в системе |
-| `SystemDict` | `HashTable<string, ClassificationDict>` — системы с вложенными классами |
+## Ключевые типы [из комментария, ClassificationFunction.hpp:11-20]
+`ClassificationValues` (system, item, parentname, itemname) → `ClassificationDict` (классы системы) → `SystemDict` (системы).
 
 ## Публичный API
 
 | Функция | Назначение |
 |---------|------------|
-| `GetAllClassification` | Загрузка всех классов из систем в словарь |
-| `GatherAllDescendantOfClassification` | Сбор всех потомков заданного класса |
-| `AddClassificationItem` | Добавление одного класса в словарь |
-| `GetFullName` | Полное имя класса с иерархией |
-| `FindClass` | Поиск класса по имени → GUID |
-| `GetSystemName` | Имя системы по GUID |
-| `FindClass` | Поиск по паре (system GUID, class GUID) |
-| `SetAutoclass` | Назначение автокласса элементу (по `some_stuff_class`) |
-| `ReadSystemDict` | Чтение словаря систем из кэша |
+| `GetAllClassification` | Загружает все классы из систем в словарь [из комментария, :26] — строки .cpp не проверены |
+| `GatherAllDescendantOfClassification` | Перебирает потомков класса [из комментария, :29] |
+| `AddClassificationItem` | Добавляет элемент классификации в словарь [из комментария, :34] |
+| `GetFullName` | Полное имя класса с иерархией [из комментария, :42] |
+| `FindClass` (2 перегрузки) | Поиск класса по имени/GUID [из комментария, :49, :55] |
+| `GetSystemName` | Имя системы по GUID [из комментария, :52] |
+| `SetAutoclass` | Назначает автокласс элементу, если нет классификации (описание `some_stuff_class`) [из комментария, :61] — карточка |
+| `ReadSystemDict` | Читает словарь из кэша или проекта [из комментария, :64] |
+
+## Карточки
+
+### `ClassificationFunc::SetAutoclass(const API_Guid elemGuid)`
+- Расположение: `Sources/AddOn/ClassificationFunction.cpp` (строка не проверена)
+- Назначение: назначает элементу автокласс, если у него ещё нет классификации; класс по описанию с `some_stuff_class`. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: **меняет классификацию элемента** (ACAPI-запись). [по коду; не проверено detail]
 
 ## Зависимости
-- `Constants.hpp`
+- `Constants.hpp` [по include]
 
 ## Зависимости (используется в)
-- `Propertycache` (ReadClassification → systemdict)
-- `BrowserPalette` (показ классификаций)
-- `Helpers` (при выборе элементов)
+`Propertycache` (systemdict), `BrowserPalette`, `Helpers` [по коду]
 
 ## Инварианты
-- `ClassificationDict` использует `itemname` как ключ — он должен быть уникальным в пределах системы
-- `reversesystemdict` в Propertycache — обратное отображение (system GUID + class GUID → имя класса)
+- `itemname` — ключ словаря, должен быть уникальным в системе [из комментария, ClassificationFunction.hpp:15]

@@ -1,47 +1,56 @@
 # ReNum — Перенумерация
 
+> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep).
+
 ## Назначение
-Перенумерация позиций чертежей по правилам, заданным в свойствах. Поддерживает числовые и текстовые позиции, нулевое заполнение, группировку по критериям и разделителям.
+Перенумерация позиций по правилам из свойств: числовые и текстовые позиции, нулевое заполнение, группировка по критериям и разделителям. [по коду]
 
 ## Файлы
-- `ReNum.cpp/hpp` — перенумерация
+- `ReNum.cpp/hpp`
 
 ## Ключевые типы
 
 | Тип | Описание |
 |-----|----------|
-| `RenumPos` | Позиция: GUID, текст, числовая часть, префикс, суффикс, char code |
-| `RenumElem` | Элемент правила: массив позиций + mostFrequentPos |
-| `RenumRule` | Правило: state, oldalgoritm, flag, position, criteria, delimetr, nulltype, nullcount |
-| `Values` | `std::map<string, RenumElem>` (с alphanum сортировкой) |
-| `TypeValues` | `unordered_map<RenumMode, Values>` — по типу нумерации |
-| `Delimetr` | `unordered_map<string, TypeValues>` — по разделителю |
-| `Rules` | `GS::HashTable<API_Guid, RenumRule>` — правила по GUID |
+| `RenumPos` | Позиция: GUID, текст, число, префикс/суффикс, char code [из комментария, ReNum.hpp:11-138] |
+| `RenumElem` | Массив позиций + mostFrequentPos [из комментария] |
+| `RenumRule` | state, oldalgoritm, flag, position, criteria, delimetr, nulltype, nullcount, elemts [из комментария] |
+| `Rules` | `HashTable<API_Guid, RenumRule>` [из комментария] |
 
 ## Публичный API
 
-| Функция | Назначение |
-|---------|------------|
-| `ReNumSelected` | Запуск перенумерации выбранных элементов |
-| `RenumDG` | Диалог выбора правил |
-| `GetRenumElements` | Сбор элементов для перенумерации |
-| `ReNumHasFlag` | Проверка переключателя флага |
-| `ReNumGetFlag` | Состояние флага перенумерации |
-| `ReNum_GetElement` | Обработка одного элемента |
-| `GetMostFrequentPos` | Наиболее частая позиция |
-| `GetPos` | Позиция по критерию и разделителю |
-| `ElementsSeparation` | Разделение элементов по группам |
-| `ReNumOneRule` | Применение одного правила |
+| Функция | .cpp строка | Назначение |
+|---------|-------------|------------|
+| `ReNumSelected` | 56 | Запуск перенумерации выбранных элементов [из комментария] — карточка |
+| `RenumDG` | 172 | Диалог выбора правил; проверяет наличие правила для одного элемента [из комментария] |
+| `GetRenumElements` | 227 | Сбор элементов для перенумерации [из комментария] |
+| `ReNumHasFlag` | 975 | Проверка переключателя флага перенумерации [из комментария] |
+| `ReNumGetFlag` | 1002 | Состояние флага по данным параметров [из комментария] |
+| `ReNum_GetElement` | 406 | Обработка одного элемента: применяет правила [из комментария] |
+| `GetMostFrequentPos` | 614 | Наиболее частая позиция среди вариантов [из комментария] |
+| `GetPos` | 642 | Позиция по критерию и разделителю [из комментария] |
+| `ElementsSeparation` | 852 | Разделение элементов правила по группам [из комментария] |
+| `ReNumOneRule` | 663 | Применение одного правила к набору элементов [из комментария] — карточка |
+
+## Карточки
+
+### `ReNumSelected(SyncSettings &syncSettings) -> GSErrCode`
+- Расположение: `Sources/AddOn/ReNum.cpp:56`
+- Назначение: запускает перенумерацию выбранных элементов по правилам в свойствах. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: **запись позиций в свойства элементов** (ReNumOneRule-цепочка); читает выделение. [по коду]
+- Вызывает: `RenumDG` [по коду; detail не проверено]
+- Вызывается из: `MenuCommandHandler` [по коду; строка не проверена]
+
+### `ReNumOneRule(RenumRule &rule, ParamDictElement &paramToReadelem, ParamDictElement &paramToWriteelem, bool &has_error)`
+- Расположение: `Sources/AddOn/ReNum.cpp:663`
+- Назначение: применяет одно правило перенумерации к набору элементов. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: **запись новых позиций** в параметры для записи (paramToWriteelem); `has_error` накапливается (FIX 2026-09-12: `has_error = has_error || …`, см. DISCREPANCIES/историю коммита 61153ca). [по коду]
+- Вызывает: `ElementsSeparation`, `GetPos`, `GetMostFrequentPos` [по коду; detail не проверено]
 
 ## Зависимости
-- `Helpers.hpp`
-- `third_party/alphanum.h` (натуральная сортировка)
+- `Helpers.hpp`, `third_party/alphanum.h` [по include]
 
 ## Зависимости (используется в)
-- `SomeStuff_Main.cpp` — через MenuCommandHandler
-- `CommonFunction` (GetCharCode, alphanum_less)
-
-## Инварианты
-- `RenumPos` поддерживает как числовые (1, 2, 3), так и текстовые (А, Б, В) позиции
-- `oldalgoritm` флаг в `RenumRule` определяет старый vs новый алгоритм расчёта
-- Сортировка `Values` использует `doj::alphanum_less` — натуральная сортировка (A1, A2, ..., A10, не A1, A10, A2)
+- `SomeStuff_Main.cpp` [по коду]

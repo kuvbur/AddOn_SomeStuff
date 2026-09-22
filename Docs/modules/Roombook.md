@@ -1,25 +1,19 @@
 # Roombook — Спецификация отделки
 
+> Хеш коммита: 493caf5 (2026-09-22).
+
 ## Назначение
-Спецификация отделки: генерация ведомостей отделочных материалов и работ из модели ArchiCAD.
+Спецификация отделки: генерация ведомостей отделочных материалов и работ из модели. [по коду; самый большой модуль (~5600 строк), пофункциональные карточки не приведены — см. symbols.json (1076 символов)]
 
 ## Файлы
-- `Roombook.cpp` — основная логика (~5686 строк — самый большой модуль по namespace)
-- `Roombook.hpp` — объявления
-
-## Статус документирования
-См. `docs/modules/roombook.md` для полной документации (отдельный файл).
+- `Roombook.cpp`
 
 ## Зависимости
-- `CommonFunction.hpp` — GetStories, FormatString, DBprnt
-- `Helpers.hpp` — GetSelectedElements, ParamHelpers
-- `Propertycache.hpp` — PROPERTYCACHE()
-- `TableRenderer` — отображение в виде таблицы
+- `CommonFunction.hpp`, `Helpers.hpp`, `Propertycache.hpp` [по include]
 
 ## Зависимости (используется в)
-- `SomeStuff_Main` — через MenuCommandHandler
-- `TableRenderer` — данные для отображения
+`SomeStuff_Main` [по коду]
 
-## Примечания
-- См. AGENTS.md §16: Roombook — recreation of finish elements — out of scope
-- Самый большой модуль по размеру (~5686 строк в namespace)
+## Инварианты и подводные камни
+- Утечка memo при ошибке GetMemo (:2028-2034) — **исправлена** (FIX 2026-09-12: Dispose перед continue) [из комментария + проверено 2026-09-22]
+- AGENTS.md §16: recreation of finish elements — out of scope [из AGENTS.md]

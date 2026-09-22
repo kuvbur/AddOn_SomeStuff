@@ -153,3 +153,12 @@
 - Проблема 2: добавлены 16 карточек нетривиальных функций (5 AutoFunc с побочными эффектами, 6 ResetProperty-семейства, 5 Revision); в карточке ResetProperty зафиксирован баг AC27+ (return false) как актуальный
 - Проблема 3 (проверено): строки в прежней таблице были строками .hpp; реальные определения в .cpp (1-based): GetNear 15, GetCuplane 34, Get3DProjectionInfo 149, Get3DDocument 208, GetSectLine 260, DoSect 406, PlaceDocSect 489, ProfileByLine 556, AlignOneDrawingsByPoints 771, GetDrawingsSort 892, AlignDrawingsByPoints 926 — подтверждены grep'ом по AutomateFunction.cpp и согласуются с clangd callHierarchy (MCP отдаёт 0-based)
 - ResetProperty/SetRevision: clangd callHierarchy не резолвится (2 столбца каждый) → помечено `не проверено` в карточках
+
+## Применение исправленного шаблона ко всем модулям (2026-09-22, после приёмки пилота)
+
+- Все 23 модуля Docs/modules/*.md переписаны по принятому шаблону пилота:
+  пометки источника [из комментария]/[по коду]/[не проверено] на каждом описании;
+  номера строк — определения в .cpp (проверены grep для Summ, Sync, ReNum, Spec, SomeStuff_Main, CommonFunction, Propertycache; для остальных строка помечена «не проверена» вместо догадки);
+  карточки нетривиальных функций с побочными эффектами (2-5 на модуль: SyncAndMonAll/SyncData/SyncElement, SumSelected/Sum_OneRule, ReNumSelected/ReNumOneRule, SpecAll/PlaceElements, Update/GetPropertyRuleFlag, UnhideUnlockElementLayer/EvalExpression, SetAutoclass, SelectionChangeHandler/Show, GetSyncSettingsCache, TableRenderer::Draw/ComputeLayout, DimParse/DimAutoRound)
+- Helpers и TestFunc — честно помечены как неполное покрытие (2145/682 символов) в шапке и здесь
+- Чего не хватает: callHierarchy для модулей кроме pk (сбор через clangd MCP не выполнялся) — в карточках соответствующие поля помечены [не проверено]

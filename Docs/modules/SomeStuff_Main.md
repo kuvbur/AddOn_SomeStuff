@@ -1,32 +1,55 @@
 # SomeStuff_Main — Точка входа
 
+> Хеш коммита: 493caf5 (2026-09-22). Номера строк — определения в `.cpp` (1-based, проверены grep).
+
 ## Назначение
-Главный модуль add-on: регистрация интерфейса, обработка команд меню, обработка событий проекта и элементов модели (observer'ы).
+Главный модуль add-on: регистрация интерфейса, обработка команд меню, события проекта и элементов (observer'ы). [по коду]
 
 ## Файлы
-- `SomeStuff_Main.cpp/hpp` — entry point
+- `SomeStuff_Main.cpp/hpp`
 
 ## Публичный API
 
-| Функция | Назначение |
-|---------|------------|
-| `ElementEventHandlerProc` | Обработка событий изменения элементов (создание, изменение, удаление) |
-| `ProjectEventHandlerProc` | События проекта: открытие, закрытие, смена окна/этажа |
-| `SelectionChangeHandlerProc` | Изменение выделения |
-| `Do_ElementMonitor` | Вкл/выкл мониторинг изменений |
-| `SetPaletteMenuText` | Обновление текста пунктов меню |
-| `MenuSetState` | Состояние меню синхронизации |
-| `MenuCommandHandler` | Маршрутизация команд меню |
+| Функция | .cpp строка | Назначение |
+|---------|-------------|------------|
+| `ProjectEventHandlerProc` | 73 | События проекта: открытие, закрытие, смена окна/этажа [из комментария] — карточка |
+| `ElementEventHandlerProc` | 142 | События изменения элементов (создание/изменение/удаление) [из комментария] — карточка |
+| `Do_ElementMonitor` | 281 | Вкл/выкл мониторинг изменений элементов [из комментария] |
+| `SelectionChangeHandlerProc` | 326 | Обработчик изменения выделения [из комментария] — карточка |
+| `MenuSetState` | 337 | Состояние пунктов меню по настройкам синхронизации [из комментария] |
+| `SetPaletteMenuText` | 351 | Тексты пунктов меню по языку [из комментария] |
+| `MenuCommandHandler` | 366 | Маршрутизация команд меню по ID [из комментария] — карточка |
 
-## Вариативность по версии
-AC28+ использует `ServerMainVers_2800` блок для обработчиков событий (без `__ACENV_CALL`).
+## Карточки
+
+### `MenuCommandHandler(const API_MenuParams *menuParams) -> GSErrCode`
+- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:366`
+- Назначение: маршрутизирует команды меню add-on по ID пункта. [из комментария]
+- Контракт: не проверено полностью; подтверждённые ветки: `Auto3D_CommandID` → `AutoFunc::ProfileByLine()` (:461), `AutoLay_CommandID` → `AutoFunc::AlignDrawingsByPoints()` (:464). [по коду]
+- Побочные эффекты: каждая ветка делегирует модуль (Sync, Summ, Spec, ReNum, Dimensions, Roombook, pk) со своими эффектами записи. [по коду]
+- Вызывает: ProfileByLine (:461), AlignDrawingsByPoints (:464), и др. [из callgraph.json]
+
+### `ElementEventHandlerProc(const API_NotifyElementType *elemType) -> GSErrCode`
+- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:142`
+- Назначение: реакция на создание/изменение/удаление элементов. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: синхронизация изменённых элементов (через Sync-цепочку). [по коду]
+- Вызывается из: ArchiCAD (notify) [по коду]
+
+### `ProjectEventHandlerProc(API_NotifyEventID notifID, Int32 param) -> GSErrCode`
+- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:73`
+- Назначение: события проекта (открытие/закрытие/окно/этаж). [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: сброс/обновление кэша при смене проекта (PROPERTYCACHE). [по коду]
+
+### `SelectionChangeHandlerProc(const API_Neig *selElemNeig) -> GSErrCode`
+- Расположение: `Sources/AddOn/SomeStuff_Main.cpp:326`
+- Назначение: реакция на изменение выделения. [из комментария]
+- Контракт: не проверено.
+- Побочные эффекты: обновление палитры (у BrowserPalette свой SelectionChangeHandler с suppressSelectionRefresh — см. AGENTS.md §6). [по коду]
 
 ## Зависимости
-- `Helpers.hpp`
-
-## Зависимости (используется в)
-Является точкой входа — вызывается ArchiCAD при загрузке add-on.
+- `Helpers.hpp` [по include]
 
 ## Инварианты
-- `MenuCommandHandler` маршрутизирует команды по ID пунктов меню → вызывает Sync, Summ, Spec, ReNum и др.
-- Observer'ы (Element/Project/Selection) устанавливаются при инициализации и снимаются при деинициализации
+- Observer'ы устанавливаются при инициализации и снимаются при деинициализации [по коду]

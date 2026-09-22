@@ -1,43 +1,28 @@
 # dialogs/DG4rule — Диалог выбора правил
 
-## Назначение
-Модальный диалог с таблицей правил спецификации/нумерации/суммирования: изменение состояния чекбоксов, подтверждение выбора. Используется как общее решение для диалогов выбора правил.
+> Хеш коммита: 493caf5 (2026-09-22).
 
-## Файлы
-- `dialogs/DG4rule.cpp/hpp` — диалог
+## Назначение
+Модальный диалог с таблицей правил (спецификация/нумерация/суммирование): чекбоксы + подтверждение. [из комментария, DG4rule.hpp:30-32]
 
 ## Ключевые типы
-
-| Тип | Описание |
-|-----|----------|
-| `RuleSelectData` | Данные правил: rules (HashTable<string, bool>), qty_elements, color, titleResID, is_warn |
+- `RuleSelectData`: rules (HashTable<string,bool>), qty_elements, color, titleResID, is_warn [из комментария, DG4rule.hpp:12-27]
 
 ## Класс RuleSelectDialog
+Наследование: DG::ModalDialog + 6 observer'ов [из комментария, DG4rule.hpp:33-39]
+Элементы: closeButton (1), okButton (2), ListBox (3), TextBox (4) [из комментария, :42]
 
-Наследование: `DG::ModalDialog`, `DG::PanelObserver`, `DG::ListBoxObserver`, `DG::ButtonItemObserver`, `DG::CheckItemObserver`, `DG::CompoundItemObserver`, `DG::StaticTextObserver`
-
-### Элементы диалога
-- `closeButton` (ID 1), `okButton` (ID 2), `ListBox` (ID 3), `TextBox` (ID 4)
-
-### Методы
 | Метод | Назначение |
 |-------|------------|
-| `ButtonClicked` | Обработка кнопок |
-| `PanelResized` | Перерасчёт при изменении размера |
-| `ListBoxClicked` | Щелчок по строке |
-| `SetSize` | Настройка размеров/позиций |
-| `InitListBox` | Заполнение списка правил + чекбоксы |
-| `SetIcon` | Переключение иконки чекбокса |
-
-### Поля
-- `ChekboxTab` = 1, `NameTab` = 2, `QtyTab` = 3 — вкладки
-- `ChekboxTab_w` = 30, `QtyTab_w` = 50 — ширины
-- `itemCount` = QtyTab — начальный счётчик
+| `ButtonClicked` | Нажатия кнопок [из комментария, :63] |
+| `PanelResized` | Пересчёт размеров при ресайзе [из комментария, :66] |
+| `ListBoxClicked` | Щелчок по строке [из комментария, :69] |
+| `SetSize` | Размеры/позиции элементов [из комментария, :78] |
+| `InitListBox` | Заполнение списка + чекбоксы [из комментария, :81] |
+| `SetIcon` | Иконка чекбокса выбранной строки [из комментария, :84] |
 
 ## Зависимости
-- `DGModule.hpp`, `DGStaticItem.hpp`
+- `DGModule.hpp`, `DGStaticItem.hpp` [по include]
 
 ## Зависимости (используется в)
-- `Spec` — выбор правил
-- `ReNum` — выбор правил перенумерации
-- `Summ` — выбор правил суммирования
+Spec, ReNum, Summ [по коду]

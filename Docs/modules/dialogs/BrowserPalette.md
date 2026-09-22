@@ -1,53 +1,39 @@
 # dialogs/BrowserPalette — UI Entry Point
 
+> Хеш коммита: 493caf5 (2026-09-22). Номера строк .cpp — выборочно проверены.
+
 ## Назначение
-Браузерная палитра с HTML-интерфейсом — основная точка входа UI add-on. Управляет видимостью палитры, отображением свойств, JS-мостом для вызовов из HTML, мониторингом выделения.
+Браузерная палитра с HTML-интерфейсом: видимость, свойства, JS-мост, мониторинг выделения. [по коду]
 
 ## Файлы
-- `dialogs/BrowserPalette.cpp/hpp` — палитра
-- `RFIX/HTML/Interface_ru.html` — HTML-страница (загружается из resources)
-
-## Ключевые типы
-
-| Тип | Описание |
-|-----|----------|
-| `BrowserPalette` | Класс палитры: наследует DG::Palette, DG::PanelObserver |
-| `SelectionModification` | Enum: RemoveFromSelection, AddToSelection |
+- `dialogs/BrowserPalette.cpp/hpp`, HTML: `RFIX/HTML/Interface_ru.html`
 
 ## Публичный API
 
 | Функция | Назначение |
 |---------|------------|
-| `ShowOrHideBrowserPalette` | Переключение видимости палитры |
-| `ElementCanHaveProperty` | Проверка типа элемента |
-| `FilterElementsByType` | Фильтрация по типу с ограничением maxSelectionCount |
-| `BrowserPalette::Show` | Показ (reloadContent = false — без перезагрузки HTML) |
-| `BrowserPalette::Hide` | Скрытие |
-| `BrowserPalette::ManualGetSelection` | Ручное получение выделения |
-| `BrowserPalette::RegisterPaletteControlCallBack` | Регистрация колбэка палитры |
-| `BrowserPalette::SelectionChangeHandler` | Обработчик изменения выделения |
-| `BrowserPalette::GetInstance` | Получение singleton |
+| `ShowOrHideBrowserPalette` | Переключение видимости палитры [из комментария, hpp:23] |
+| `BrowserPalette::Show` | Показ; reloadContent=false — без перезагрузки HTML (APIPalMsg_HidePalette_End; перезагрузка сбрасывала вкладку/фильтр) [из комментария, hpp:106-109; .cpp:127] |
+| `BrowserPalette::Hide` | Скрытие [из комментария, .cpp:169] |
+| `BrowserPalette::ManualGetSelection` | Ручное получение выделения [из комментария, hpp:112] |
+| `BrowserPalette::SelectionChangeHandler` | Обработчик изменения выделения [из комментария, hpp:115] — карточка |
+| `UpdateSelectionInfoInUI` | Обновление представления выделения в HTML [из комментария, .cpp:175] |
+| `RegisterACAPIJavaScriptObject` | Регистрация JS объекта для вызовов из HTML [из комментария, hpp:49] |
 
-## Поля
-- `browser` — DG::Browser для HTML
-- `maxSelectionCount` = 10 — максимум элементов в selection
-- `expandedClientWidth`, `expandedMinClientWidth`, `collapsedClientWidth` — размеры палитры (см. AGENTS.md §6 — palette resize)
-- `suppressSelectionRefresh` (static) — подавление сброса палитры при подсветке (см. AGENTS.md §6 — element highlight)
+## Карточки
 
-## JS Bridge
-- `RegisterACAPIJavaScriptObject` — регистрация JS объекта для вызовов из HTML
-- Парсинг аргументов через `DynamicCast<JSValue>` (НЕ DynamicCast<JSArray> — краш!)
+### `BrowserPalette::SelectionChangeHandler(const API_Neig *) -> GSErrCode`
+- Расположение: `Sources/AddOn/dialogs/BrowserPalette.cpp` (строка не проверена)
+- Назначение: обработка смены выделения, обновление UI. [из комментария]
+- Контракт: защищён `suppressSelectionRefresh` — при программной подсветке (`APIIo_HighlightElementsID`/`APIDo_ZoomToElementsID`) обновление подавляется. [из комментария, hpp:91-95]
+- Побочные эффекты: обновление HTML (execute JS). [по коду]
 
-## Зависимости
-- `Sync.hpp` — SyncSettings, SyncRule
-- `DGModule.hpp`
-- `Helpers.hpp`
-- `RFIX/HTML/Interface_ru.html` — HTML ресурс
-
-## Зависимости (используется в)
-- `SomeStuff_Main.cpp` — создание палитры
+### `BrowserPalette::Show(bool reloadContent)`
+- Расположение: `Sources/AddOn/dialogs/BrowserPalette.cpp:127`
+- Назначение: показ палитры; при reloadContent перечитывает HTML и обновляет выделение (UpdateSelectionInfoInUI, .cpp:163). [по коду]
+- Побочные эффекты: показ окна; при reloadContent — сброс активной вкладки/фильтра (FIX). [из комментария + по коду]
 
 ## Инварианты
-- Palette resize: `UnDock()` → `SetClientWidth()` → `Dock()` (см. AGENTS.md §6)
-- `SelectionChangeHandler` триггерится при programmatic highlight — нужен `suppressSelectionRefresh`
-- HTML перезагружается при Show по умолчанию; reloadContent=false сохраняет состояние
+- Palette resize: `UnDock()` → `SetClientWidth()` → `Dock()`; min width ослаблять перед сжатием (AGENTS.md §6) [из AGENTS.md]
+- JS bridge: `DynamicCast<JSValue>` — `DynamicCast<JSArray>` крашит ArchiCAD (AGENTS.md §6) [из AGENTS.md]
+- Поля ширины: expandedClientWidth/expandedMinClientWidth/collapsedClientWidth (hpp:74-88) [из комментария]
