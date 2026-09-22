@@ -192,7 +192,7 @@ static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
         folderLoc = baseLoc;
         return true;
     }
-    // TODO Добавить в вывод в лог через msg_rep вывод ошибки, что папка настроек не найдена
+    msg_rep ("GetSyncSettingsFolderLocation", "Cant resolve sync settings folder", NoError, APINULLGuid);
     return false;
 }
 
@@ -263,7 +263,7 @@ static bool ReadSyncSettingsFromJsonText (SyncSettings &syncSettings, const std:
 
 // --------------------------------------------------------------------
 // Чтение настроек из локального JSON-файла.
-// Файла нет или он битый → false (вызывающая сторона пробует миграцию).
+// Файла нет или он битый → false (вызывающая сторона использует дефолты).
 // --------------------------------------------------------------------
 static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
     IO::Location folderLoc;
@@ -388,9 +388,9 @@ static bool WriteSyncSettingsToFile (const SyncSettings &syncSettings, bool skip
 }
 
 // --------------------------------------------------------------------
-// Чтение настроек: JSON-файл, при его отсутствии — одноразовая миграция из
-// старого бинарного .dat, затем из preferences проекта; мигрированное сразу
-// записывается в JSON-файл.
+// Чтение настроек: только SomeStuffAddonConfig.json из корня prefs;
+// при отсутствии/битости файла — значения по умолчанию (миграция из старых
+// хранилищ удалена, решение автора #190).
 // --------------------------------------------------------------------
 static bool ReadSyncSettings (SyncSettings &syncSettings) {
     // Миграция из старых хранилищ (SomeStuff\SyncSettings.json / .dat / prefs
