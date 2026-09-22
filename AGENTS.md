@@ -377,3 +377,17 @@ Author already decided these are out of scope:
 
 If a task's root-cause analysis leads here, stop and flag it rather than
 "fixing" it — this is a deliberate choice, not an oversight.
+
+## 17. Документация
+
+Поддерживается в ветке `docs/codebase-map`, собирается скриптами (`Docs/tools/generate_symbols.py` + clangd MCP):
+
+- `Docs/ARCHITECTURE.md` — обзор модулей, слои, Mermaid-граф зависимостей
+- `Docs/REPOMAP.md` — карта репозитория и статистика
+- `Docs/modules/<module>.md` — по одному на модуль (pk — полный шаблон с «Вызывает»/«Вызывается из»)
+- `Docs/DISCREPANCIES.md` — расхождения комментариев и кода (ничего не исправлять без подтверждения)
+- `Docs/_generated/symbols.json` / `callgraph.json` — детерминированные данные из clangd
+- `Docs/_progress.md` — состояние работы документирования (единственный источник для возобновления)
+- `Docs/tools/generate_symbols.py` — генератор symbols.json (callHierarchy собирается через clangd MCP — subprocess.PIPE на Windows не работает)
+
+Правило: при изменении кода актуализировать соответствующий `Docs/modules/<module>.md` и `_generated/`.

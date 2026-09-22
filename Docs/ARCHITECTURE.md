@@ -62,6 +62,49 @@ Sources/AddOn/
 └─────────────────────────────────────────────┘
 ```
 
+## Граф зависимостей модулей
+
+Строится из `#include` и `callgraph.json` (не по догадкам).
+
+```mermaid
+graph TD
+    Main[SomeStuff_Main] --> Sync
+    Main --> Summ
+    Main --> Spec
+    Main --> ReNum
+    Main --> Helpers
+    Main --> BP[dialogs/BrowserPalette]
+    Sync --> Helpers
+    Sync --> PC[Propertycache]
+    Sync --> SS[dialogs/SyncSettings]
+    Summ --> Helpers
+    Spec --> Helpers
+    Spec --> PC
+    ReNum --> Helpers
+    Helpers --> PC
+    Helpers --> CF[CommonFunction]
+    Helpers --> CFu[ClassificationFunction]
+    Helpers --> SL[spec/Spec_libpart]
+    Helpers --> SS
+    PC --> Helpers
+    PC --> CH[dialogs/CommandHelpers]
+    PC --> CFu
+    MEPv1 --> Helpers
+    MEPv1 --> PC
+    Dim[Dimensions] --> Helpers
+    Dim --> SS
+    RB[Roombook] --> Helpers
+    RB --> CF
+    PK[pk: AutomateFunction/ResetProperty/Revision] --> Helpers
+    PK --> CF
+    TR[table/TableRenderer] --> CF
+    TN[table/TablesNavigator]
+    BP --> Sync
+    BP --> Helpers
+    CH[dialogs/CommandHelpers] --> Helpers
+    SS --> CF
+```
+
 ## Ключевые паттерны и правила
 
 ### Настройки (Settings)
@@ -104,3 +147,18 @@ Sources/AddOn/
 - Поддержка: AC 22–29 (определять по задаче через build config, #if блоки или тесты)
 - Условные компиляции: `ServerMainVers_2300`, `ServerMainVers_2700`, `ServerMainVers_2800`
 - `#ifdef AC_25/26/27/28` — для APICommon заголовков в ResetProperty
+
+## Ключевые сценарии (предложены, ожидают согласования)
+
+Список для sequence-диаграмм (фаза 4, рисовать после согласования):
+
+1. Полная синхронизация: меню → SyncAndMonAll → SyncByType → SyncElement → SyncData → запись свойств
+2. Мониторинг изменений: ElementEventHandlerProc → SyncData (throttling через IsElementThrottled)
+3. Спецификация: SpecAll → GetRuleFromDescription → GetElementsForRule → PlaceElements
+4. Перенумерация: ReNumSelected → RenumDG (выбор правил) → ReNumOneRule
+5. Суммирование: SumSelected → Sum_GetElement → Sum_OneRule → запись в свойство/проект
+6. Округление размеров: DimRoundAll → DimAutoRound → DimParse (правила из PROPERTYCACHE)
+7. Палитра: ShowOrHideBrowserPalette → HTML → JS bridge → ManualGetSelection/HighlightElements
+8. Ревизии: SetRevision → обход маркеров → ChangeMarkerText
+9. Выравнивание чертежей: AlignDrawingsByPoints → AlignOneDrawingsByPoints
+10. Сброс свойств: ResetProperty → ResetPropertyElement2Defult → обход БД
