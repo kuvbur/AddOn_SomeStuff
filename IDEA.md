@@ -15,9 +15,18 @@
 
 ## Status
 
-IN_PROGRESS — реализация и runtime-проверка выполнены; коммит и закрытие #190 — сейчас.
+IN_PROGRESS → COMPLETED (коммит f51d8b6 создан; issue #190 закрыт).
 
 ## Last Completed
+
+2026-09-22 — доработка #190 по уточнению пользователя:
+- Файл настроек переименован в `SomeStuffAddonConfig.json` и лежит ПРЯМО в базовой папке
+  prefs (`…\GRAPHISOFT\`), подпапка SomeStuff больше не создаётся.
+- Цепочка миграции: `SomeStuffAddonConfig.json` → старый `SomeStuff\SyncSettings.json` →
+  старый `SomeStuff\SyncSettings.dat` → legacy prefs проекта; мигрированное сразу пишется
+  в новое расположение. Проверено runtime: файл в корне prefs создан, значения
+  (catchSelectionChanges=true, 4 пресета) перенесены из `SomeStuff\SyncSettings.json`.
+- LSP 0 ошибок; сборка AC25 успешна; тест-прогон 09:10: 0 «ERROR IN TEST».
 
 2026-09-21 — #190 реализовано и проверено в AC25:
 - SyncSettings.cpp: JSON-сериализация (RapidJSON из DevKit-25), файл
@@ -41,7 +50,7 @@ IN_PROGRESS — реализация и runtime-проверка выполне�
 
 ## Last Checkpoint
 
-(в этой задаче ещё не создавался)
+f51d8b6 `[#190] Настройки хранятся в SyncSettings.json вместо бинарного .dat; миграция .dat→json` (SyncSettings.cpp/.hpp + IDEA.md, Refs: #190).
 
 ## Plan
 

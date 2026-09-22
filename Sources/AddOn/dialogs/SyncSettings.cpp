@@ -170,16 +170,20 @@ GSErrCode SyncSettings::Write (GS::OChannel &oc) const {
 // давало постоянные локальные изменения («аддон дописывает в файл»).
 // Поэтому настройки хранятся в файле в пользовательской папке настроек
 // (API_GraphisoftPrefsFolderID), а preferences проекта больше не трогаются.
-// Формат — SyncSettings.json (UTF-8): чтение по ключам, неизвестные ключи
-// игнорируются, отсутствующие — дефолты, поэтому поле version информационное
+// Формат — SomeStuffAddonConfig.json (UTF-8) прямо в базовой папке prefs
+// (БЕЗ подпапки SomeStuff): чтение по ключам, неизвестные ключи игнорируются,
+// отсутствующие — дефолты, поэтому поле version информационное
 // (добавление нового поля не отбрасывает файл целиком, как это было в .dat).
 // --------------------------------------------------------------------
-static const GS::UniString SyncSettingsFolderName ("SomeStuff");
-static const GS::UniString SyncSettingsFileName ("SyncSettings.json");
-static const GS::UniString LegacySyncSettingsFileName ("SyncSettings.dat");
+static const GS::UniString SyncSettingsFileName ("SomeStuffAddonConfig.json");
+// Прежнее расположение (до переезда в корень prefs): подпапка SomeStuff prefs
+static const GS::UniString LegacySyncSettingsFolderName ("SomeStuff");
+static const GS::UniString LegacyJsonFileName ("SyncSettings.json");
+static const GS::UniString LegacyDatFileName ("SyncSettings.dat");
 
 // Возвращает папку файла настроек: Graphisoft prefs → Application prefs →
-// User documents (по убыванию приоритета) + подпапка SomeStuff.
+// User documents (по убыванию приоритета). Подпапка не создаётся — файл
+// SomeStuffAddonConfig.json лежит прямо в базовой папке.
 static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
     const API_SpecFolderID folderIds[] = {
         API_GraphisoftPrefsFolderID, API_ApplicationPrefsFolderID, API_UserDocumentsFolderID};
@@ -187,16 +191,9 @@ static bool GetSyncSettingsFolderLocation (IO::Location &folderLoc) {
         IO::Location baseLoc;
         if (ACAPI_Environment (APIEnv_GetSpecFolderID, &folderId, &baseLoc) != NoError)
             continue;
-        IO::Folder folder (baseLoc);
-        const GSErrCode createErr = folder.CreateFolder (IO::Name (SyncSettingsFolderName));
-        // TargetExists — папка уже создана предыдущими запусками, это не ошибка
-        if (createErr != NoError && createErr != IO::Folder::TargetExists)
+        if (baseLoc.GetStatus () != NoError)
             continue;
-        IO::Location candidate (baseLoc, IO::Name (SyncSettingsFolderName));
-        if (candidate.GetStatus () != NoError)
-            continue;
-        folderLoc = candidate;
-        // TODO Добавить в вывод в лог через msg_rep путь к папке настроек
+        folderLoc = baseLoc;
         return true;
     }
     // TODO Добавить в вывод в лог через msg_rep вывод ошибки, что папка настроек не найдена
@@ -303,6 +300,36 @@ static const UInt32 LegacySyncSettingsFileMagic = 0x53535331; // 'SSS1'
 static const USize LegacySyncSettingsHeaderSize = sizeof (UInt32) + sizeof (Int32) + sizeof (UInt64);
 
 // --------------------------------------------------------------------
+// Одноразовая миграция: чтение прежнего JSON SyncSettings.json из подпапки
+// SomeStuff (формат идентичен текущему, отличается только расположение).
+// --------------------------------------------------------------------
+static bool ReadSyncSettingsFromLegacyJson (SyncSettings &syncSettings) {
+    IO::Location folderLoc;
+    if (!GetSyncSettingsFolderLocation (folderLoc))
+        return false;
+
+    const IO::Location legacyFolder (folderLoc, IO::Name (LegacySyncSettingsFolderName));
+    const IO::Location fileLoc (legacyFolder, IO::Name (LegacyJsonFileName));
+    IO::File file (fileLoc);
+    if (file.GetStatus () != NoError || file.Open (IO::File::ReadMode) != NoError)
+        return false;
+
+    UInt64 fileSize = 0;
+    if (file.GetDataLength (&fileSize) != NoError || fileSize == 0) {
+        file.Close ();
+        return false;
+    }
+
+    std::vector<char> data ((size_t)fileSize);
+    const GSErrCode readErr = file.ReadBin (data.data (), (USize)fileSize);
+    file.Close ();
+    if (readErr != NoError)
+        return false;
+
+    return ReadSyncSettingsFromJsonText (syncSettings, std::string (data.data (), (size_t)fileSize));
+}
+
+// --------------------------------------------------------------------
 // Одноразовая миграция: чтение бинарного SyncSettings.dat (формат до #190).
 // --------------------------------------------------------------------
 static bool ReadSyncSettingsFromLegacyDat (SyncSettings &syncSettings) {
@@ -310,7 +337,9 @@ static bool ReadSyncSettingsFromLegacyDat (SyncSettings &syncSettings) {
     if (!GetSyncSettingsFolderLocation (folderLoc))
         return false;
 
-    const IO::Location fileLoc (folderLoc, IO::Name (LegacySyncSettingsFileName));
+    // Старый .dat лежит в подпапке SomeStuff базовой папки prefs
+    const IO::Location legacyFolder (folderLoc, IO::Name (LegacySyncSettingsFolderName));
+    const IO::Location fileLoc (legacyFolder, IO::Name (LegacyDatFileName));
     IO::File file (fileLoc);
     if (file.GetStatus () != NoError || file.Open (IO::File::ReadMode) != NoError)
         return false;
@@ -486,8 +515,11 @@ static bool ReadSyncSettings (SyncSettings &syncSettings) {
         return true;
 
     bool migrated = false;
-    if (ReadSyncSettingsFromLegacyDat (syncSettings)) {
-        DBprnt ("SyncSettings", "migrating legacy .dat to json");
+    if (ReadSyncSettingsFromLegacyJson (syncSettings)) {
+        DBprnt ("SyncSettings", "migrating legacy SyncSettings.json to SomeStuffAddonConfig.json");
+        migrated = true;
+    } else if (ReadSyncSettingsFromLegacyDat (syncSettings)) {
+        DBprnt ("SyncSettings", "migrating legacy .dat to SomeStuffAddonConfig.json");
         migrated = true;
     } else if (ReadSyncSettingsFromLegacyPreferences (syncSettings)) {
         DBprnt ("SyncSettings", "migrating legacy prefs to local file");
