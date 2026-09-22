@@ -2,6 +2,58 @@
 
 ## Задача
 
+#194: SyncShowSubelement показывает дочерние элементы, но не показывает родительские.
+https://github.com/kuvbur/AddOn_SomeStuff/issues/194
+
+## Scope
+
+- `Sources/AddOn/Sync.cpp` (`SyncShowSubelement`)
+
+## Status
+
+WAITING_FOR_TEST — фикс и комментарии реализованы, AC25 собран; runtime-проверка за пользователем.
+
+## Last Completed
+
+2026-09-22 — #194:
+- Причина: общий цикл выбора в `SyncShowSubelement` всегда брал внутренние ключи словаря
+  `parentGuid`. В ветке `SyncGetParentelement` (словарь родитель → дети) это корректно,
+  а в ветке `SyncGetSubelement` (режим «Show Parent Element», словарь родитель → ребёнок)
+  внутренний ключ — тот же выбранный ребёнок → родители (внешние ключи) никогда не попадали
+  в `selNeigs`. Тот же класс copy-paste-ошибок guid/subguid, что в памяти проекта.
+- Фикс (вариант A): флаг `show_parents` в `SyncShowSubelement`; в режиме родителей
+  выбираются внешние ключи, видимость родителя вычисляется `ACAPI_Element_Filter`
+  по трём фильтрам (в словаре хранится видимость ребёнка). `SyncGetSubelement` не менялся.
+- Функция подробно прокомментирована (режимы, шаги 1–5, фильтры, отчёт).
+- clang-format пройден; clangd: новых ошибок нет (5 старых -Wunused вне изменённой области);
+  AC25 Build succeeded. Runtime — not performed (за пользователем).
+
+## Next Step
+
+Runtime-проверка пользователя: выделить дочерний элемент → «показать родительский» и наоборот.
+
+## Last Checkpoint
+
+см. коммиты #193-диагностики и #194 (Sync.cpp, Refs: #193 / #194).
+
+## Plan
+
+- [x] Issue #194 создан (dedup: #193 — другая задача, комментирован не был)
+- [x] Диагноз подтверждён пользователем (внутренние ключи вместо внешних в режиме родителей)
+- [x] Фикс: флаг show_parents + выбор внешних ключей + фильтры видимости родителя
+- [x] Подробные комментарии SyncShowSubelement
+- [x] clang-format + clangd + сборка AC25
+- [ ] Runtime-проверка пользователем (обе команды: дети→родители, родители→дети)
+- [x] Коммиты: #193-диагностика (Sync.cpp) + фикс #194
+
+## Decisions
+
+- Вариант A (флаг в SyncShowSubelement) вместо переворота словаря в SyncGetSubelement —
+  меньше риска для корректной ветки «Show Sub Element».
+- Видимость родителя считается на месте через ACAPI_Element_Filter — словарь не менялся.
+
+## Previous Task (#192)
+
 #192: отделка — пол/потолок не создавались, когда избранные `smstf floor`/`smstf ceil`
 имеют тип объект (API_ObjectID). https://github.com/kuvbur/AddOn_SomeStuff/issues/192
 

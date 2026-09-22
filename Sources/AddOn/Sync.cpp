@@ -2311,7 +2311,18 @@ bool SyncSetSubelementScope (const API_Elem_Head &parentelementhead,
 }
 
 // --------------------------------------------------------------------
-// Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID
+// Подсвечивает элементы, GUID которых указан в свойстве с описанием Sync_GUID.
+// Работает в двух режимах, определяемых тем, что сейчас выделено:
+//  1) Выделены ДОЧЕРНИЕ элементы (у них в свойстве Sync_GUID записан GUID родителя):
+//     SyncGetSubelement читает свойство у выбранных элементов и возвращает словарь
+//     "родитель -> {ребёнок: isvisible}" — показываем РОДИТЕЛЕЙ (внешние ключи).
+//  2) Выделены РОДИТЕЛЬСКИЕ элементы: SyncGetParentelement сканирует все элементы
+//     нужной классификации, читает их Sync_GUID и находит тех, чьи значения содержат
+//     GUID'ы выделенных элементов, возвращая словарь "родитель -> {ребёнок: isvisible}" —
+//     показываем ДЕТЕЙ (внутренние ключи).
+// Обе функции-поставщика возвращают одинаковую форму словаря UnicGuidByGuid
+// ("внешний ключ родителя" -> "hash-map: guid элемента для показа -> isvisible"),
+// но в режиме 1 выбирать нужно внешний ключ, в режиме 2 — внутренний (#194).
 // --------------------------------------------------------------------
 void SyncShowSubelement (const SyncSettings &syncSettings) {
     clock_t start, finish;
@@ -2320,33 +2331,43 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
     GS::UniString fmane = "";
     GSErrCode err = NoError;
 #ifdef ServerMainVers_2300
+    // Шаг 1. Собираем выделение: выбрасываем выноски (API_LabelID); у элементов,
+    // попавших в разрез (API_SectElemID), берём исходный элемент модели, т.к.
+    // у копий в разрезе своих свойств Sync_GUID нет.
     GS::Array<API_Guid> guidArray_all = GetSelectedElements (true, false, syncSettings, false, false, false);
     GS::Array<API_Guid> guidArray = {};
     guidArray.SetCapacity (guidArray_all.GetSize ());
     for (const auto &guid : guidArray_all) {
         API_ElemTypeID elementType;
         if (GetTypeByGUID (guid, elementType) != NoError)
-            continue;
+            continue; // не удалось определить тип — элемент пропускаем
         if (elementType == API_LabelID)
-            continue;
+            continue; // выноски не участвуют в поиске по Sync_GUID
         if (elementType == API_SectElemID) {
             API_Guid parentguid;
             GetParentGUIDSectElem (guid, parentguid, elementType);
-            guidArray.Push (parentguid);
+            guidArray.Push (parentguid); // копия в разрезе заменяется исходным элементом
         } else {
             guidArray.Push (guid);
         }
     }
     if (guidArray.IsEmpty ())
-        return;
+        return; // выделять нечего — тихо выходим
+    // true = режим 1 (выделены дети, показываем родителей);
+    // false = режим 2 (выделены родители, показываем детей).
+    bool show_parents = false;
     GS::Array<API_Neig> selNeigs = {};
     UnicGuidByGuid parentGuid = {};
     ParamDictValue propertyParams = {};
     int errcode = 0;
     if (!SyncGetSubelement (guidArray, parentGuid, EMPTYSTRING, errcode)) {
+        // Свойство Sync_GUID у выделенных не прочиталось — пробуем режим 2.
         if (SyncGetParentelement (guidArray, parentGuid, EMPTYSTRING, errcode)) {
             fmane = "Show Sub Element";
         } else {
+            // Обе стратегии не сработали: errcode из последней функции объясняет причину
+            // (1 = в кэше нет строкового свойства Sync_GUID, 2 = значения не совпали) —
+            // показываем пользователю сообщение и выходим.
             const Int32 iseng = ID_ADDON_STRINGS + isEng ();
             GS::UniString SubElementHotFoundIdString =
                 RSGetIndString (iseng, SubElementHotFoundId, ACAPI_GetOwnResModule ());
@@ -2360,6 +2381,7 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
         }
     } else {
         fmane = "Show Parent Element";
+        show_parents = true; // (#194) режим 1: показывать внешние ключи словаря (родителей)
     }
     API_DatabaseInfo homedatabaseInfo = {};
     API_DatabaseInfo elementdatabaseInfo = {};
@@ -2381,6 +2403,11 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
     int count_all = 0;
     int count_otherplan = 0;
     int count_del = 0;
+    // Шаг 3. Отбираем элементы для выбора. Словарь parentGuid:
+    //   внешний ключ — GUID родителя, внутренняя hash-map — {guid элемента для показа -> isvisible}.
+    // В режиме 2 ("Show Sub Element") выбираем внутренние ключи (детей), isvisible берём из словаря.
+    // В режиме 1 (#194) показываем РОДИТЕЛЕЙ — внешние ключи; видимость родителя в словаре
+    // не хранится (там лежит видимость ребёнка), поэтому вычисляем её здесь фильтрами.
     API_Elem_Head tElemHead = {};
     for (GS::HashTable<API_Guid, UnicGuid>::PairIterator cIt = parentGuid.EnumeratePairs (); cIt != NULL; ++cIt) {
     #ifdef ServerMainVers_2800
@@ -2390,22 +2417,44 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
     #endif
         for (UnicGuid::PairIterator cItt = guids.EnumeratePairs (); cItt != NULL; ++cItt) {
     #ifdef ServerMainVers_2800
-            API_Guid guid = cItt->key;
-            bool isvisible = cItt->value;
+            API_Guid guid;
+            bool isvisible;
+            if (show_parents) {
+                guid = cIt->key; // (#194) родитель — внешний ключ
+                isvisible = ACAPI_Element_Filter (
+                    guid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
+            } else {
+                guid = cItt->key; // ребёнок — внутренний ключ
+                isvisible = cItt->value;
+            }
     #else
-            API_Guid guid = *cItt->key;
-            bool isvisible = *cItt->value;
+            API_Guid guid;
+            bool isvisible;
+            if (show_parents) {
+                guid = *cIt->key; // (#194) родитель — внешний ключ
+                isvisible = ACAPI_Element_Filter (
+                    guid, APIFilt_OnVisLayer | APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay);
+            } else {
+                guid = *cItt->key; // ребёнок — внутренний ключ
+                isvisible = *cItt->value;
+            }
     #endif
             count_all++;
+            // Считается, что элемент может быть не виден (isvisible == false): тогда
+            // проверяем его существование, показываем слой и прогоняем фильтры.
+            // В режиме родителей isvisible всегда вычислен фильтрами выше, т.е. для
+            // невидимых родителей эта ветка отработает штатно.
             if (!isvisible) {
                 BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
                 tElemHead.guid = guid;
                 err = ACAPI_Element_GetHeader (&tElemHead, 0);
-                if (err != NoError) {
+                if (err != NoError) { // элемент удалён — в модели его уже нет
                     msg_rep ("ShowSubelement", "Has been delete", err, guid);
                     count_del++;
                     continue;
                 } else {
+                    // Элемент существует: размораживаем/переводим слой в видимое состояние,
+                    // затем проверяем, что он реально виден на экране.
                     UnhideUnlockElementLayer (tElemHead);
                     if (!ACAPI_Element_Filter (tElemHead.guid, APIFilt_OnVisLayer)) {
                         msg_rep ("ShowSubelement", "Element hide by Layer", err, guid);
@@ -2424,6 +2473,8 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
                     }
                 }
             }
+            // В плане этажа дополнительно проверяем, что элемент лежит на активном этаже;
+            // иначе его нельзя выделить в этом окне — считаем "другой этаж".
             if (isfloorplan) {
                 if (!ACAPI_Element_Filter (guid, APIFilt_OnActFloor)) {
                     BNZeroMemory (&tElemHead, sizeof (API_Elem_Head));
@@ -2438,6 +2489,8 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
                     continue;
                 }
             }
+            // Вне плана этажа (3D-окно и т.п.) проверяем, что элемент принадлежит
+            // текущей базе данных; иначе выделять нельзя — считаем "другой план/БД".
             if (checkdb) {
                 BNZeroMemory (&elementdatabaseInfo, sizeof (API_DatabaseInfo));
     #ifdef ServerMainVers_2700
@@ -2463,6 +2516,8 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
             selNeigs.PushNew (guid);
         }
     }
+    // Шаг 4. Сводка: в fmane — статистика для лога, в errmsg — текст для пользователя
+    // о том, сколько элементов нашлось, но выделить их нельзя (удалены/скрыты/другой этаж).
     fmane = fmane + GS::UniString::Printf (": %d total elements find", count_all);
     GS::UniString errmsg = "";
     const Int32 iseng = ID_ADDON_STRINGS + isEng ();
@@ -2488,6 +2543,8 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
         GS::UniString SubElementTotalString = RSGetIndString (iseng, SubElementTotalId, ACAPI_GetOwnResModule ());
         errmsg = SubElementTotalString + GS::UniString::Printf (" %d, ", count_all) + LINEBRAKE + errmsg;
     }
+    // Нечего выделять (всё скрыто/удалено/в другой БД) — сообщаем и выходим,
+    // не трогая текущее выделение пользователя.
     if (selNeigs.IsEmpty ()) {
         GS::UniString SubElementNoSelectString = RSGetIndString (iseng, SubElementNoSelectId, ACAPI_GetOwnResModule ());
         errmsg = SubElementNoSelectString + LINEBRAKE + errmsg;
@@ -2500,6 +2557,9 @@ void SyncShowSubelement (const SyncSettings &syncSettings) {
             ACAPI_WriteReport (errmsg, true);
         return;
     }
+    // Шаг 5. Выделяем найденные элементы и приближаем к ним; при частичном
+    // результате (errmsg не пуст) ZoomToSelected не делаем, чтобы не дезориентировать
+    // пользователя, и показываем предупреждение.
     #ifdef ServerMainVers_2700
     err = ACAPI_Selection_Select (selNeigs, true);
     if (err == NoError && errmsg.IsEmpty ())
@@ -2565,6 +2625,12 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
         }
     }
     if (classificationforread.IsEmpty ()) {
+    #if defined(TESTING)
+        // Диагностика #193: в кэше нет ни одного строкового свойства Sync_GUID с суффиксом
+        DBprnt ("SyncGetParentelement",
+                "FAILED errcode=1: no Sync_GUID string property with suffix in cache, elems=" +
+                    GS::UniString::Printf ("%u", (UInt32)guidArray.GetSize ()));
+    #endif
         errcode = 1;
         return false;
     }
@@ -2581,6 +2647,12 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
     GS::Array<API_Property> properties;
     GS::Array<GS::UniString> rulestring_param;
     GS::Array<GS::UniString> local_scratch;
+    #if defined(TESTING)
+    // Диагностика #193: сколько элементов просканировано, сколько значений прочитано,
+    // сколько GUID не распарсилось и не совпало с зонами
+    UInt32 diag_elems = 0, diag_values = 0, diag_parse_fail = 0, diag_nomatch = 0, diag_match = 0;
+    GS::UniString diag_sample;
+    #endif
     for (const auto &cls : classificationforread) {
     #ifdef ServerMainVers_2800
         const API_Guid &classificationItemGuid = cls.key;
@@ -2597,6 +2669,9 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
             continue;
         }
         for (const auto &subguid : elemGuids) {
+    #if defined(TESTING)
+            diag_elems += 1;
+    #endif
             properties.Clear ();
             err = ACAPI_Element_GetPropertyValuesByGuid (subguid, propertyDefinitions, properties);
             if (err != NoError) {
@@ -2615,14 +2690,26 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
                     continue;
                 if (prop.value.singleVariant.variant.uniStringValue.IsEmpty ())
                     continue;
+    #if defined(TESTING)
+                diag_values += 1;
+                if (diag_sample.IsEmpty ())
+                    diag_sample = prop.value.singleVariant.variant.uniStringValue;
+    #endif
                 rulestring_param.Clear ();
                 StringSplt (
                     prop.value.singleVariant.variant.uniStringValue, SEMICOLON, rulestring_param, true, &local_scratch);
                 for (const auto &rulestring : rulestring_param) {
                     API_Guid guid = APIGuidFromString (rulestring.ToCStr (0, MaxUSize, GChCode));
-                    if (guid == APINULLGuid)
+                    if (guid == APINULLGuid) {
+    #if defined(TESTING)
+                        diag_parse_fail += 1;
+    #endif
                         continue;
+                    }
                     if (auto *un = parentGuid.GetPtr (guid)) {
+    #if defined(TESTING)
+                        diag_match += 1;
+    #endif
                         find = true;
                         if (!un->ContainsKey (subguid)) {
                             bool isvisible = ACAPI_Element_Filter (subguid,
@@ -2630,12 +2717,31 @@ bool SyncGetParentelement (const GS::Array<API_Guid> &guidArray,
                                                                        APIFilt_IsInStructureDisplay);
                             un->Put (subguid, isvisible);
                         }
+                    } else {
+    #if defined(TESTING)
+                        diag_nomatch += 1;
+    #endif
                     }
                 }
             }
         }
     }
     if (!find) {
+    #if defined(TESTING)
+        // Диагностика #193: свойства прочитаны, но ни один GUID не совпал с зонами
+        DBprnt ("SyncGetParentelement",
+                GS::UniString::Printf (
+                    "FAILED errcode=2: classes=%u elems=%u values=%u parse_fail=%u nomatch=%u match=%u zones=%u",
+                    (UInt32)classificationforread.GetSize (),
+                    diag_elems,
+                    diag_values,
+                    diag_parse_fail,
+                    diag_nomatch,
+                    diag_match,
+                    (UInt32)parentGuid.GetSize ()));
+        if (!diag_sample.IsEmpty ())
+            DBprnt ("SyncGetParentelement", "first value sample: '" + diag_sample + "'");
+    #endif
         parentGuid.Clear ();
         errcode = 2;
     }
@@ -2712,21 +2818,33 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid> &guidArray,
                               const GS::UniString &suffix) {
     ParamDictValue paramDict = {};
     const ParamDictValue &propertyParams = PROPERTYCACHE ().property;
+#if defined(TESTING)
+    UInt32 diag_def_total = 0, diag_def_sync = 0, diag_def_avail = 0;
+#endif
     for (const auto &cItt : propertyParams) {
 #ifdef ServerMainVers_2800
         const ParamValue &param = cItt.value;
 #else
         const ParamValue &param = *cItt.value;
 #endif
+#if defined(TESTING)
+        diag_def_total += 1;
+#endif
         if (!param.definition.description.Contains (SYNCGUID))
             continue; // Проверяем - есть ли у свойства в описании SYNCGUID
         if (!(suffix.IsEmpty () || param.definition.description.Contains (suffix)))
             continue; // Проверяем - есть ли у свойства в описании суффикс
+#if defined(TESTING)
+        diag_def_sync += 1;
+#endif
         if (paramDict.ContainsKey (param.rawName))
             continue; // Проверяем - есть ли уже в словаре свойство с таким именем
         for (const auto &guid : guidArray) {
             if (!ACAPI_Element_IsPropertyDefinitionAvailable (guid, param.definition.guid))
                 continue; // Доступность свойства для элемента
+#if defined(TESTING)
+            diag_def_avail += 1;
+#endif
             if (!paramDict.ContainsKey (param.rawName)) {
                 paramDict.Put (param.rawName, param);
             } else {
@@ -2734,8 +2852,19 @@ bool SyncGetSyncGUIDProperty (const GS::Array<API_Guid> &guidArray,
             }
         }
     }
-    if (paramDict.IsEmpty ())
+    if (paramDict.IsEmpty ()) {
+#if defined(TESTING)
+        // Диагностика #193: почему не найдено ни одного доступного свойства Sync_GUID
+        GS::UniString diag_msg = "SyncGetSyncGUIDProperty FAILED: suffix=" + suffix + " defs_total=";
+        diag_msg += GS::UniString::Printf ("%u defs_sync=%u defs_avail=%u elems=%u",
+                                           diag_def_total,
+                                           diag_def_sync,
+                                           diag_def_avail,
+                                           (UInt32)guidArray.GetSize ());
+        DBprnt ("SyncGetSyncGUIDProperty", diag_msg);
+#endif
         return false;
+    }
     for (const auto &guid : guidArray) {
         ParamHelpers::AddParamDictValue2ParamDictElement (guid, paramDict, paramToRead);
     }
