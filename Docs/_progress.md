@@ -162,3 +162,12 @@
   карточки нетривиальных функций с побочными эффектами (2-5 на модуль: SyncAndMonAll/SyncData/SyncElement, SumSelected/Sum_OneRule, ReNumSelected/ReNumOneRule, SpecAll/PlaceElements, Update/GetPropertyRuleFlag, UnhideUnlockElementLayer/EvalExpression, SetAutoclass, SelectionChangeHandler/Show, GetSyncSettingsCache, TableRenderer::Draw/ComputeLayout, DimParse/DimAutoRound)
 - Helpers и TestFunc — честно помечены как неполное покрытие (2145/682 символов) в шапке и здесь
 - Чего не хватает: callHierarchy для модулей кроме pk (сбор через clangd MCP не выполнялся) — в карточках соответствующие поля помечены [не проверено]
+
+## Grep-fallback для callHierarchy (2026-09-22)
+
+- clangd callHierarchy/find_references на позициях определения ResetProperty.cpp:14 и Revision.cpp:14 не резолвятся (callHierarchy: "No call hierarchy"; find_references: либо пусто, либо 719 чужих ссылок из DevKit-заголовков — неверный символ, по 2 попытки на каждый)
+- Fallback: grep по Sources/AddOn (по предложению пользователя):
+  - `ResetProperty()` вызывается из `SyncAndMonAll` (Sync.cpp:174, при успехе сброса — ранний выход)
+  - `Revision::SetRevision()` вызывается из `MenuCommandHandler` (SomeStuff_Main.cpp:449, case SetRevision_CommandID)
+  - ChangeMarkerText/ChangeMarkerTextOnLayout/ChangeLayoutProperty внешних вызовов не имеют (только внутри pk/Revision.cpp)
+- Обновлены карточки ResetProperty и SetRevision в pk.md
