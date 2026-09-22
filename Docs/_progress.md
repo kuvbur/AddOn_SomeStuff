@@ -208,3 +208,9 @@
 - П.2 (неполное покрытие): TestFunc — все 33 функции из hpp; Helpers — полный API по объявлениям hpp (FormatStringFunc, топ-уровень, ParamHelpers чтение/запись/конвертации, операторы); Roombook — все ~70 функций из documentSymbols по подсистемам. Остаток «неполного покрытия» снят.
 - П.3 (нерезолвящиеся): тела 6 функций разобраны body-scan (Docs/tools/_body_scan.py, brace-matching + whitelist имён проекта) → Docs/_generated/body_scan.json; «Вызывает» заполнены в pk.md (ResetProperty, SetRevision), MEPv1 (ReadMEP: до AC28 false, AC28+ GetMEPData), Roombook (RoomBook — 96 вызовов), SyncSettings (GetSyncSettingsCache → ReadSyncSettings), SomeStuff_Main (ElementEventHandlerProc — диспетчер всей функциональности).
 - Находки: ConvertToProperty с TODO «переписать под ParamValue» (Helpers.hpp:419); дубликат объявления CompareParamDictValue (Helpers.hpp:427/432); у ResetProperty body-scan обрезался по внешней скобке — ResetPropertyElement2Defult подтверждён чтением (:34).
+
+## Пункт 1 закрыт: sequence-диаграммы (2026-09-22)
+
+- Набор 10 сценариев подтверждён пользователем; диаграммы — Docs/SEQUENCES.md (Mermaid, все сообщения из callgraph.json/body_scan.json)
+- ARCHITECTURE.md ссылается на SEQUENCES.md
+- Задача документирования: все фазы и все открытые пункты закрыты (кроме мелких пометок [не проверено] на SDK-вызовах внутри карточек)
