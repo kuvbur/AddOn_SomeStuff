@@ -3,153 +3,1555 @@
     "generated": "2026-09-22",
     "source": "clangd callHierarchy (MCP mcp__clangd__get_call_hierarchy) на compile_commands.json (AC25)",
     "filter": "рёбра только внутри Sources/AddOn/; вызовы SDK (Build/DevKit, MSVC, Windows Kits) исключены и подсчитаны отдельно",
-    "limitation": "docs/tools/generate_symbols.py не может говорить с clangd через subprocess.PIPE на Windows (clangd 22.1.8 не поддерживает --port, pipe даёт Errno 22/пустой greeting); сбор выполнялся напрямую через clangd MCP. Для регенерации запрашивать get_call_hierarchy на позициях определений из symbols.json."
+    "limitation": "docs/tools/generate_symbols.py не может говорить с clangd через subprocess.PIPE на Windows (clangd 22.1.8 не поддерживает --port, pipe даёт Errno 22/пустой greeting); сбор выполнялся напрямую через clangd MCP. Для регенерации запрашивать get_call_hierarchy на позициях определений из symbols.json.",
+    "lines": "координаты 0-based (clangd LSP); в Docs/modules/*.md строки 1-based (grep) — при сверке добавлять +1",
+    "coverage": "pk/ (29 рёбер, 2026-09-22) + Sync (точечный сбор по политике горячего модуля, 2026-09-22)"
   },
   "edges": [
     {
-      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
-      "callee": {"name": "GetCuplane", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 33},
-      "call_sites": [{"line": 413}]
+      "caller": {
+        "name": "DoSect",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 405
+      },
+      "callee": {
+        "name": "GetCuplane",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 33
+      },
+      "call_sites": [
+        {
+          "line": 413
+        }
+      ]
     },
     {
-      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
-      "callee": {"name": "Get3DProjectionInfo", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 148},
-      "call_sites": [{"line": 428}]
+      "caller": {
+        "name": "DoSect",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 405
+      },
+      "callee": {
+        "name": "Get3DProjectionInfo",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 148
+      },
+      "call_sites": [
+        {
+          "line": 428
+        }
+      ]
     },
     {
-      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
-      "callee": {"name": "Get3DDocument", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 207},
-      "call_sites": [{"line": 436}]
+      "caller": {
+        "name": "DoSect",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 405
+      },
+      "callee": {
+        "name": "Get3DDocument",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 207
+      },
+      "call_sites": [
+        {
+          "line": 436
+        }
+      ]
     },
     {
-      "caller": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
-      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
-      "call_sites": [{"line": 420}, {"line": 429}, {"line": 437}, {"line": 450}, {"line": 476}]
+      "caller": {
+        "name": "DoSect",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 405
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 420
+        },
+        {
+          "line": 429
+        },
+        {
+          "line": 437
+        },
+        {
+          "line": 450
+        },
+        {
+          "line": 476
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
-      "call_sites": [{"line": 644}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "GetSectLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 259
+      },
+      "call_sites": [
+        {
+          "line": 644
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "DoSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 405},
-      "call_sites": [{"line": 672}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "DoSect",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 405
+      },
+      "call_sites": [
+        {
+          "line": 672
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "PlaceDocSect", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 488},
-      "call_sites": [{"line": 680}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "PlaceDocSect",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 488
+      },
+      "call_sites": [
+        {
+          "line": 680
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "ClickAPoint", "file": "Sources/AddOn/CommonFunction.cpp", "line": 1902},
-      "call_sites": [{"line": 562}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "ClickAPoint",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1902
+      },
+      "call_sites": [
+        {
+          "line": 562
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "GetSelectedElements2", "file": "Sources/AddOn/CommonFunction.cpp", "line": 805},
-      "call_sites": [{"line": 557}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "GetSelectedElements2",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 805
+      },
+      "call_sites": [
+        {
+          "line": 557
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "SetElemTypeID", "file": "Sources/AddOn/CommonFunction.cpp", "line": 2623},
-      "call_sites": [{"line": 584}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "SetElemTypeID",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 2623
+      },
+      "call_sites": [
+        {
+          "line": 584
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "UniStringToDouble", "file": "Sources/AddOn/CommonFunction.cpp", "line": 985},
-      "call_sites": [{"line": 656}, {"line": 663}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "UniStringToDouble",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 985
+      },
+      "call_sites": [
+        {
+          "line": 656
+        },
+        {
+          "line": 663
+        }
+      ]
     },
     {
-      "caller": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
-      "call_sites": [{"line": 592}, {"line": 604}, {"line": 614}, {"line": 622}, {"line": 631}, {"line": 640}, {"line": 646}, {"line": 681}, {"line": 702}, {"line": 711}, {"line": 721}, {"line": 730}]
+      "caller": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 592
+        },
+        {
+          "line": 604
+        },
+        {
+          "line": 614
+        },
+        {
+          "line": 622
+        },
+        {
+          "line": 631
+        },
+        {
+          "line": 640
+        },
+        {
+          "line": 646
+        },
+        {
+          "line": 681
+        },
+        {
+          "line": 702
+        },
+        {
+          "line": 711
+        },
+        {
+          "line": 721
+        },
+        {
+          "line": 730
+        }
+      ]
     },
     {
-      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
-      "callee": {"name": "GetNear", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 14},
-      "call_sites": [{"line": 371}]
+      "caller": {
+        "name": "GetSectLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 259
+      },
+      "callee": {
+        "name": "GetNear",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 14
+      },
+      "call_sites": [
+        {
+          "line": 371
+        }
+      ]
     },
     {
-      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
-      "callee": {"name": "GetElemTypeID", "file": "Sources/AddOn/CommonFunction.cpp", "line": 2610},
-      "call_sites": [{"line": 274}]
+      "caller": {
+        "name": "GetSectLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 259
+      },
+      "callee": {
+        "name": "GetElemTypeID",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 2610
+      },
+      "call_sites": [
+        {
+          "line": 274
+        }
+      ]
     },
     {
-      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
-      "callee": {"name": "GetWordPoint2DTM", "file": "Sources/AddOn/CommonFunction.cpp", "line": 1893},
-      "call_sites": [{"line": 314}, {"line": 315}]
+      "caller": {
+        "name": "GetSectLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 259
+      },
+      "callee": {
+        "name": "GetWordPoint2DTM",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1893
+      },
+      "call_sites": [
+        {
+          "line": 314
+        },
+        {
+          "line": 315
+        }
+      ]
     },
     {
-      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
-      "callee": {"name": "is_equal", "file": "Sources/AddOn/CommonFunction.cpp", "line": 970},
-      "call_sites": [{"line": 383}]
+      "caller": {
+        "name": "GetSectLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 259
+      },
+      "callee": {
+        "name": "is_equal",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 970
+      },
+      "call_sites": [
+        {
+          "line": 383
+        }
+      ]
     },
     {
-      "caller": {"name": "GetSectLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 259},
-      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
-      "call_sites": [{"line": 302}, {"line": 324}, {"line": 332}, {"line": 396}]
+      "caller": {
+        "name": "GetSectLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 259
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 302
+        },
+        {
+          "line": 324
+        },
+        {
+          "line": 332
+        },
+        {
+          "line": 396
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
-      "callee": {"name": "RestoreStartDatabaseAndWindow", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 750},
-      "call_sites": [{"line": 805}, {"line": 810}, {"line": 845}]
+      "caller": {
+        "name": "AlignOneDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 770
+      },
+      "callee": {
+        "name": "RestoreStartDatabaseAndWindow",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 750
+      },
+      "call_sites": [
+        {
+          "line": 805
+        },
+        {
+          "line": 810
+        },
+        {
+          "line": 845
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
-      "callee": {"name": "GetElemTypeID", "file": "Sources/AddOn/CommonFunction.cpp", "line": 2610},
-      "call_sites": [{"line": 785}]
+      "caller": {
+        "name": "AlignOneDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 770
+      },
+      "callee": {
+        "name": "GetElemTypeID",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 2610
+      },
+      "call_sites": [
+        {
+          "line": 785
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
-      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
-      "call_sites": [{"line": 782}, {"line": 796}, {"line": 802}, {"line": 873}, {"line": 882}]
+      "caller": {
+        "name": "AlignOneDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 770
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 782
+        },
+        {
+          "line": 796
+        },
+        {
+          "line": 802
+        },
+        {
+          "line": 873
+        },
+        {
+          "line": 882
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
-      "callee": {"name": "AlignOneDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 770},
-      "call_sites": [{"line": 1005}]
+      "caller": {
+        "name": "AlignDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 925
+      },
+      "callee": {
+        "name": "AlignOneDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 770
+      },
+      "call_sites": [
+        {
+          "line": 1005
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
-      "callee": {"name": "GetDrawingsSort", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 891},
-      "call_sites": [{"line": 986}]
+      "caller": {
+        "name": "AlignDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 925
+      },
+      "callee": {
+        "name": "GetDrawingsSort",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 891
+      },
+      "call_sites": [
+        {
+          "line": 986
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
-      "callee": {"name": "GetSelectedElements2", "file": "Sources/AddOn/CommonFunction.cpp", "line": 805},
-      "call_sites": [{"line": 927}]
+      "caller": {
+        "name": "AlignDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 925
+      },
+      "callee": {
+        "name": "GetSelectedElements2",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 805
+      },
+      "call_sites": [
+        {
+          "line": 927
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
-      "callee": {"name": "ClickAPoint", "file": "Sources/AddOn/CommonFunction.cpp", "line": 1902},
-      "call_sites": [{"line": 931}]
+      "caller": {
+        "name": "AlignDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 925
+      },
+      "callee": {
+        "name": "ClickAPoint",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1902
+      },
+      "call_sites": [
+        {
+          "line": 931
+        }
+      ]
     },
     {
-      "caller": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
-      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
-      "call_sites": [{"line": 954}, {"line": 973}, {"line": 1007}, {"line": 1020}, {"line": 1029}, {"line": 1078}]
+      "caller": {
+        "name": "AlignDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 925
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 954
+        },
+        {
+          "line": 973
+        },
+        {
+          "line": 1007
+        },
+        {
+          "line": 1020
+        },
+        {
+          "line": 1029
+        },
+        {
+          "line": 1078
+        }
+      ]
     },
     {
-      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 366},
-      "callee": {"name": "ProfileByLine", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 555},
-      "call_sites": [{"line": 462}]
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 366
+      },
+      "callee": {
+        "name": "ProfileByLine",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 555
+      },
+      "call_sites": [
+        {
+          "line": 462
+        }
+      ]
     },
     {
-      "caller": {"name": "MenuCommandHandler", "file": "Sources/AddOn/SomeStuff_Main.cpp", "line": 366},
-      "callee": {"name": "AlignDrawingsByPoints", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 925},
-      "call_sites": [{"line": 465}]
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 366
+      },
+      "callee": {
+        "name": "AlignDrawingsByPoints",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 925
+      },
+      "call_sites": [
+        {
+          "line": 465
+        }
+      ]
     },
     {
-      "caller": {"name": "Get3DProjectionInfo", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 148},
-      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
-      "call_sites": [{"line": 157}, {"line": 169}, {"line": 179}, {"line": 194}, {"line": 198}]
+      "caller": {
+        "name": "Get3DProjectionInfo",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 148
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 157
+        },
+        {
+          "line": 169
+        },
+        {
+          "line": 179
+        },
+        {
+          "line": 194
+        },
+        {
+          "line": 198
+        }
+      ]
     },
     {
-      "caller": {"name": "Get3DDocument", "file": "Sources/AddOn/pk/AutomateFunction.cpp", "line": 207},
-      "callee": {"name": "msg_rep", "file": "Sources/AddOn/CommonFunction.cpp", "line": 436},
-      "call_sites": [{"line": 226}, {"line": 236}, {"line": 249}]
+      "caller": {
+        "name": "Get3DDocument",
+        "file": "Sources/AddOn/pk/AutomateFunction.cpp",
+        "line": 207
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 226
+        },
+        {
+          "line": 236
+        },
+        {
+          "line": 249
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "Initialize",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 541
+      },
+      "callee": {
+        "name": "MonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 63
+      },
+      "call_sites": [
+        {
+          "line": 554
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "MonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 63
+      },
+      "call_sites": [
+        {
+          "line": 399
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 63
+      },
+      "callee": {
+        "name": "MonByType",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 116
+      },
+      "call_sites": [
+        {
+          "line": 89
+        },
+        {
+          "line": 103
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 63
+      },
+      "callee": {
+        "name": "DBprnt",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 322
+      },
+      "call_sites": [
+        {
+          "line": 67
+        },
+        {
+          "line": 109
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 63
+      },
+      "callee": {
+        "name": "msg_rep",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 436
+      },
+      "call_sites": [
+        {
+          "line": 107
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 63
+      },
+      "callee": {
+        "name": "GetSyncMon",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 57
+      },
+      "call_sites": [
+        {
+          "line": 64
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "MenuCommandHandler",
+        "file": "Sources/AddOn/SomeStuff_Main.cpp",
+        "line": 365
+      },
+      "callee": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "call_sites": [
+        {
+          "line": 404
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "SyncByType",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 305
+      },
+      "call_sites": [
+        {
+          "line": 190
+        },
+        {
+          "line": 201
+        },
+        {
+          "line": 211
+        },
+        {
+          "line": 221
+        },
+        {
+          "line": 228
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "SyncArray",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 455
+      },
+      "call_sites": [
+        {
+          "line": 295
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "ResetProperty",
+        "file": "Sources/AddOn/pk/ResetProperty.cpp",
+        "line": 13
+      },
+      "call_sites": [
+        {
+          "line": 173
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "ElementsWrite",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 4624
+      },
+      "call_sites": [
+        {
+          "line": 264
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "WriteInfo",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 4725
+      },
+      "call_sites": [
+        {
+          "line": 290
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "IsDummyModeOn",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 23
+      },
+      "call_sites": [
+        {
+          "line": 183
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "CountUnreadGDLParams",
+        "file": "Sources/AddOn/Propertycache.cpp",
+        "line": 907
+      },
+      "call_sites": [
+        {
+          "line": 236
+        },
+        {
+          "line": 287
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "isEng",
+        "file": "Sources/AddOn/Propertycache.cpp",
+        "line": 877
+      },
+      "call_sites": [
+        {
+          "line": 241
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "GetWallS",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 61
+      },
+      "call_sites": [
+        {
+          "line": 196
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "GetWidoS",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 65
+      },
+      "call_sites": [
+        {
+          "line": 207
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "GetObjS",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 69
+      },
+      "call_sites": [
+        {
+          "line": 185
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncAndMonAll",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 169
+      },
+      "callee": {
+        "name": "GetCwallS",
+        "file": "Sources/AddOn/dialogs/SyncSettings.cpp",
+        "line": 73
+      },
+      "call_sites": [
+        {
+          "line": 217
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncByType",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 305
+      },
+      "callee": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "call_sites": [
+        {
+          "line": 351
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncArray",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 455
+      },
+      "callee": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "call_sites": [
+        {
+          "line": 478
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 382
+      },
+      "callee": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "call_sites": [
+        {
+          "line": 387
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "callee": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "call_sites": [
+        {
+          "line": 410
+        },
+        {
+          "line": 424
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "callee": {
+        "name": "SyncRelationsElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 640
+      },
+      "call_sites": [
+        {
+          "line": 415
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "callee": {
+        "name": "GetTypeByGUID",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 896
+      },
+      "call_sites": [
+        {
+          "line": 398
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "callee": {
+        "name": "GetParentGUIDSectElem",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 767
+      },
+      "call_sites": [
+        {
+          "line": 403
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncElement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 390
+      },
+      "callee": {
+        "name": "GetRelationsElement",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 905
+      },
+      "call_sites": [
+        {
+          "line": 409
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "call_sites": [
+        {
+          "line": 728
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "SyncAddSubelement",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 904
+      },
+      "call_sites": [
+        {
+          "line": 745
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "SyncCalcRule",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 812
+      },
+      "call_sites": [
+        {
+          "line": 753
+        },
+        {
+          "line": 758
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "SyncNeedResync",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 762
+      },
+      "call_sites": [
+        {
+          "line": 759
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "SetAutoclass",
+        "file": "Sources/AddOn/ClassificationFunction.cpp",
+        "line": 267
+      },
+      "call_sites": [
+        {
+          "line": 688
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "ElementsRead",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 5470
+      },
+      "call_sites": [
+        {
+          "line": 752
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "CompareParamDictElement",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 5867
+      },
+      "call_sites": [
+        {
+          "line": 757
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "GetElemState",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 4513
+      },
+      "call_sites": [
+        {
+          "line": 711
+        },
+        {
+          "line": 712
+        },
+        {
+          "line": 713
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "GetElemStateReverse",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 4578
+      },
+      "call_sites": [
+        {
+          "line": 707
+        },
+        {
+          "line": 708
+        },
+        {
+          "line": 709
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "IsElementEditable",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 619
+      },
+      "call_sites": [
+        {
+          "line": 682
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "SubGuid_GetParamValue",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 5821
+      },
+      "call_sites": [
+        {
+          "line": 723
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "SyncData",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 668
+      },
+      "callee": {
+        "name": "AddPropertyDefinition",
+        "file": "Sources/AddOn/Propertycache.hpp",
+        "line": 676
+      },
+      "call_sites": [
+        {
+          "line": 742
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "TestParseSyncStringIndependent",
+        "file": "Sources/AddOn/TestFunc.cpp",
+        "line": 2379
+      },
+      "callee": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "call_sites": [
+        {
+          "line": 2396
+        },
+        {
+          "line": 2417
+        },
+        {
+          "line": 2431
+        },
+        {
+          "line": 2445
+        },
+        {
+          "line": 2460
+        },
+        {
+          "line": 2474
+        },
+        {
+          "line": 2488
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "SyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1444
+      },
+      "call_sites": [
+        {
+          "line": 1336
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "Name2Rawname",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 983
+      },
+      "call_sites": [
+        {
+          "line": 1261
+        },
+        {
+          "line": 1304
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "AddParamDictValue2ParamDictElement",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 1735
+      },
+      "call_sites": [
+        {
+          "line": 1118
+        },
+        {
+          "line": 1356
+        },
+        {
+          "line": 1373
+        },
+        {
+          "line": 1393
+        },
+        {
+          "line": 1404
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "AddValueToParamDictValue",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 1530
+      },
+      "call_sites": [
+        {
+          "line": 1355
+        },
+        {
+          "line": 1385
+        },
+        {
+          "line": 1389
+        },
+        {
+          "line": 1390
+        },
+        {
+          "line": 1391
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "ConvertToParamValue",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 8458
+      },
+      "call_sites": [
+        {
+          "line": 1114
+        },
+        {
+          "line": 1232
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "ParseParamNameMaterial",
+        "file": "Sources/AddOn/Helpers.cpp",
+        "line": 3779
+      },
+      "call_sites": [
+        {
+          "line": 1364
+        },
+        {
+          "line": 1366
+        },
+        {
+          "line": 1368
+        },
+        {
+          "line": 1370
+        },
+        {
+          "line": 1372
+        },
+        {
+          "line": 1380
+        },
+        {
+          "line": 1402
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "GetElemTypeID",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 2583
+      },
+      "call_sites": [
+        {
+          "line": 1270
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "StringSplt",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1620
+      },
+      "call_sites": [
+        {
+          "line": 1258
+        },
+        {
+          "line": 1301
+        }
+      ]
+    },
+    {
+      "caller": {
+        "name": "ParseSyncString",
+        "file": "Sources/AddOn/Sync.cpp",
+        "line": 1087
+      },
+      "callee": {
+        "name": "StringSpltFilter",
+        "file": "Sources/AddOn/CommonFunction.cpp",
+        "line": 1651
+      },
+      "call_sites": [
+        {
+          "line": 1238
+        }
+      ]
     }
   ],
   "sdk_edges_summary": {
@@ -161,16 +1563,29 @@
       "GetSectLine": 33,
       "ProfileByLine": 28,
       "AlignOneDrawingsByPoints": 15,
-      "AlignDrawingsByPoints": 21
+      "AlignDrawingsByPoints": 21,
+      "MonAll": 10,
+      "SyncAndMonAll": 34,
+      "SyncByType": 17,
+      "SyncElement": 10,
+      "SyncData": 22,
+      "ParseSyncString": 48
     }
   },
   "not_resolved": [
-    {"function": "ResetProperty (Sources/AddOn/pk/ResetProperty.cpp:14)", "reason": "clangd: No call hierarchy available at this position (col 6)"},
-    {"function": "Revision::SetRevision (Sources/AddOn/pk/Revision.cpp:14)", "reason": "clangd: No call hierarchy available at this position (col 10)"}
+    {
+      "function": "ResetProperty (Sources/AddOn/pk/ResetProperty.cpp:14)",
+      "reason": "clangd: No call hierarchy available at this position (col 6)"
+    },
+    {
+      "function": "Revision::SetRevision (Sources/AddOn/pk/Revision.cpp:14)",
+      "reason": "clangd: No call hierarchy available at this position (col 10)"
+    }
   ],
   "stats": {
-    "project_edges": 29,
-    "functions_queried": 9,
-    "functions_resolved": 7
+    "project_edges": 78,
+    "functions_queried": 15,
+    "functions_resolved": 13,
+    "sync_batch": 6
   }
 }
