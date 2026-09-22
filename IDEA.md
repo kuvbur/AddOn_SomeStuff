@@ -1,96 +1,59 @@
-# Current Task
+﻿# Current Task
 
 ## Задача
 
-#190: хранить настройки аддона в JSON (`SyncSettings.json`) вместо бинарного
-`SyncSettings.dat`. Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/190
+#192: отделка — пол/потолок не создавались, когда избранные `smstf floor`/`smstf ceil`
+имеют тип объект (API_ObjectID). https://github.com/kuvbur/AddOn_SomeStuff/issues/192
 
 ## Scope
 
-- `Sources/AddOn/dialogs/SyncSettings.cpp` (сериализация/чтение/запись + миграция)
-- `Sources/AddOn/dialogs/SyncSettings.hpp` (только комментарии)
-- `IDEA.md`
-- Внешние функции `LoadSyncSettingsFromPreferences` / `WriteSyncSettingsToPreferences`
-  не меняются — все вызывающие не затронуты.
+- `Sources/AddOn/Roombook.cpp` (`Favorite_GetDict`)
 
 ## Status
 
-COMPLETED — #190 закрыт 2026-09-22. 2026-09-22 (вечер): проверка логирования чтения
-настроек — исправлено в #191 (см. Last Completed).
+COMPLETED — закрыто 2026-09-22, коммит 89448ea, подтверждено пользователем в AC25.
 
 ## Last Completed
 
-2026-09-22 — лог msg_rep успешного чтения настроек (#191):
-- Пошаговой диагностикой IO::File подтверждено: чтение всегда успешно (status=0,
-  open=0, size=695, read=0); первый reading — в Initialize ДО открытия проекта,
-  поэтому строка терялась из отчёта сессии и не попадала в test_results.txt.
-- Фикс: лог один раз за сессию при первом чтении с IsTestProjectOpen()==true;
-  IsTestProjectOpen экспортирована из CommonFunction (была static).
-- Подтверждено пользователем: строка появилась в отчёте ArchiCAD; в test_results.txt
-  тоже есть (одна строка, 0 «ERROR IN TEST»). Сборка AC25 успешна.
-- Issue: https://github.com/kuvbur/AddOn_SomeStuff/issues/191
-
-2026-09-22 — финальная проверка и закрытие #190: рабочее дерево чистое, все коммиты
-запушены (a4a83b0 squash); код читает/пишет только SomeStuffAddonConfig.json из корня
-prefs, при отсутствии файла — дефолты; миграция удалена. Контрольный комментарий в issue.
-
-2026-09-22 — миграция удалена по решению автора (аддон никем не используется):
-- Удалены ReadSyncSettingsFromLegacyJson/Dat/Preferences и legacy-константы;
-  ReadSyncSettings читает только SomeStuffAddonConfig.json из корня prefs,
-  при отсутствии файла — дефолты.
-- Бинарные SyncSettings::Read/Write (канал) сохранены как методы класса
-  (виртуальные, объявлены в hpp), но практических путей чтения старых
-  хранилищ больше нет.
-- LSP 0 ошибок; сборка AC25 успешна; тест-прогон 09:29: 0 «ERROR IN TEST»,
-  SomeStuffAddonConfig.json на месте.
-
-2026-09-22 — доработка #190 по уточнению пользователя:
-- Файл настроек переименован в `SomeStuffAddonConfig.json` и лежит ПРЯМО в базовой папке
-  prefs (`…\GRAPHISOFT\`), подпапка SomeStuff больше не создаётся.
-- Цепочка миграции: `SomeStuffAddonConfig.json` → старый `SomeStuff\SyncSettings.json` →
-  старый `SomeStuff\SyncSettings.dat` → legacy prefs проекта; мигрированное сразу пишется
-  в новое расположение. Проверено runtime: файл в корне prefs создан, значения
-  (catchSelectionChanges=true, 4 пресета) перенесены из `SomeStuff\SyncSettings.json`.
-- LSP 0 ошибок; сборка AC25 успешна; тест-прогон 09:10: 0 «ERROR IN TEST».
-
-2026-09-21 — #190 реализовано и проверено в AC25:
-- SyncSettings.cpp: JSON-сериализация (RapidJSON из DevKit-25), файл
-  `…/GRAPHISOFT/SomeStuff/SyncSettings.json`; чтение по ключам (дефолты/игнор неизвестных),
-  skipIfUnchanged на JSON-строке, миграционная цепочка JSON → старый .dat → legacy prefs.
-- Миграция .dat→json сработала в runtime: файл создан (695 байт, кириллица корректна,
-  пользовательские значения перенесены — catchSelectionChanges=true из .dat версии 6).
-- Обнаружено: `.dat` на диске был версии 6 (HEAD), а в рабочем дереве bump до 7
-  (незакоммиченный) → старый код тоже отвергал файл. Миграционное чтение legacy-источников
-  сделано толерантным (`version > 0 && version <= PreferencesVersion`, раскладка полей v6/v7
-  идентична — проверено diff-ом HEAD).
-- LSP 0 ошибок; сборка AC25 успешна (3 раза); тест-прогон 18:52: 0 «ERROR IN TEST».
-- Важно (обнаружено): BuildAddOn.py НЕ деплоит apx в
-  `…/Roaming/GRAPHISOFT/ARCHICAD 25.0.0 RUS R1/Add-Ons/` — тестовый ArchiCAD грузит
-  аддон оттуда; копию нужно обновлять вручную (иначе тест идёт со старым бинарником).
+2026-09-22 — #192:
+- Причина: `Favorite_GetDict` собирал избранные только по типам typeinzone
+  (Window/Door/Wall/Column/Slab/Zone); объектные `smstf floor`/`smstf ceil` GetNum
+  по API_SlabID не возвращал → словарь без них → пустое имя в Favorite_FindName →
+  Floor_GetDefult_Slab("") тихо выходил, элементы не создавались (лог чистый).
+  «Прежде работало» — избранное было перекрытиями.
+- Фикс: в перебор типов добавлен API_ObjectID (Roombook.cpp, Favorite_GetDict);
+  Favorite_FindName/Floor_Draw уже учитывали favorite.type == API_ObjectID.
+- Диагностика под TESTING: списки favorites по типам (names+folders) и пробник
+  ACAPI_Favorite_Get по точным именам — оставлена для будущих кейсов.
+- Гипотеза «виноваты папки в Избранном» опровергнута диагностикой: GetNum на AC25
+  возвращает и избранные из папок.
+- Сборка AC25 успешна (runner exit 0, 0 «ERROR IN TEST»); runtime подтверждён
+  пользователем (элементы создаются, Missing element names исчезли).
 
 ## Next Step
 
-Задачи #190/#191 завершены; активных шагов нет. Следующие кандидаты: #163–#171 (runtime R2–R10).
+Задача завершена. Следующие кандидаты: #163–#171 (runtime R2–R10).
 
 ## Last Checkpoint
 
-fdbd912 `[#191] SyncSettings: msg_rep пути файла настроек логируется при открытом проекте; build_ac.bat запускает тестовый runner` (SyncSettings.cpp, CommonFunction.cpp/.hpp, build_ac.bat, IDEA.md, Refs: #191). До этого a4a83b0 (squash цепочки #190).
+89448ea `[#192] Отделка: Favorite_GetDict собирает избранные и по API_ObjectID — объектные smstf floor/ceil теперь находятся; диагностика favorites под TESTING` (Roombook.cpp, Refs: #192). До этого fdbd912 (#191).
 
 ## Plan
 
-- [x] JSON-сериализация настроек (RapidJSON из DevKit-25): ключи, дефолты, пресеты
-- [x] Миграция: JSON отсутствует → старый .dat → JSON; затем legacy prefs
-- [x] skipIfUnchanged на сериализованной JSON-строке
-- [x] clang-format + LSP + сборка AC25
-- [x] Runtime-проверка в ArchiCAD (миграция .dat → json, чтение json)
-- [x] Checkpoint + закрытие #190
+- [x] Issue #192 создан
+- [x] Диагностика favorites (GetNum по типам + папки) в Favorite_GetDict под TESTING
+- [x] Фикс: API_ObjectID в переборе Favorite_GetDict
+- [x] clang-format + сборка AC25 (runner exit 0, 0 «ERROR IN TEST»)
+- [x] Runtime-подтверждение пользователем (объектное избранное, элементы создаются)
+- [x] Коммит 89448ea + закрытие #192
 
 ## Decisions
 
-- `PreferencesVersion = 7` сохраняется для legacy-сравнителей (.dat, prefs проекта);
-  в JSON поле `version` информационное, чтение по ключам — bump не критичен.
-- RapidJSON из DevKit-25, сторонний парсер не добавляется.
-- Имя файла `SyncSettings.json` рядом со старым `SyncSettings.dat`.
+- Диагностический вывод favorites оставлен под TESTING (DBprnt) — дешёвый и полезный
+  при следующих вопросах по избранному.
+- Добавление всех объектных избранных в словарь: Favorite_FindName ищет по конкретным
+  именам (default/part/fav_name), произвольные совпадения не влияют.
+
 
 ## Archive
 
