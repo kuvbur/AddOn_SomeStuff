@@ -287,7 +287,18 @@ static bool ReadSyncSettingsFromFile (SyncSettings &syncSettings) {
     if (readErr != NoError)
         return false;
 
-    return ReadSyncSettingsFromJsonText (syncSettings, std::string (data.data (), (size_t)fileSize));
+    if (!ReadSyncSettingsFromJsonText (syncSettings, std::string (data.data (), (size_t)fileSize)))
+        return false;
+
+    // Путь к файлу настроек логируем один раз за сессию: чтение вызывается
+    // в том числе в observer-путях (forceReload на каждое событие проекта),
+    // повторный вывод только замусорил бы лог.
+    static bool pathLogged = false;
+    if (!pathLogged) {
+        msg_rep ("ReadSyncSettingsFromFile", "Settings file: " + fileLoc.ToDisplayText (), NoError, APINULLGuid);
+        pathLogged = true;
+    }
+    return true;
 }
 
 // --------------------------------------------------------------------
