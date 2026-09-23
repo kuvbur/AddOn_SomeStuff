@@ -257,6 +257,9 @@ struct PropertyCache {
 
         hasLayerNameInDimRules = false;
 
+        isFormatStringFormeasureTypeRead = false;
+        isFormatStringFormeasureType_OK = false;
+
     #ifdef ServerMainVers_2900
         mepdict.Clear ();
         isMEP_OK = false;

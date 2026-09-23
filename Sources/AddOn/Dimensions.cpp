@@ -45,6 +45,10 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     // Если нет элементов - выходим
     if (!element.header.hasMemo)
         return err;
+    // Повторно проверим тип - проверка бесплатная, но в DimRoundAll() мы можем вызвать DimAutoRound() на всех
+    // элементах, а не только на размерах
+    if (GetElemTypeID (element.header) != API_DimensionID)
+        return NoError;
     short pen_dimenstion = element.dimension.linPen;
     short pen_original = element.dimension.defNote.notePen;
     short pen_rounded = 0;
@@ -67,9 +71,8 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
             const GS::UniString &regexpstring = *cIt->key;
             const DimRule &d = *cIt->value;
 #endif
-            // FIX (ревью 2026-09-12): п.72 — ключ-число может ложно совпасть как подстрока
-            // имени слоя, и правило по этому ключу уже добавлено выше — пропускаем дубли,
-            // чтобы правило не применялось дважды.
+            // Одно правило по перу уже найдено выше. Не добавляем его повторно,
+            // если числовой ключ совпал с подстрокой имени слоя.
             bool already_added = (regexpstring == kstr);
             if (!regexpstring.IsEmpty () && !already_added && rules.GetSize () > 0) {
                 for (const auto &r : rules) {
@@ -118,11 +121,8 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     GS::UniString content;
     bool flag_write = false;
-    // FIX (ревью 2026-09-12, Dimensions.cpp-1): чтение параметров привязанного элемента поднято
-    // из цикла по правилам — раньше ParamHelpers::Read (полное чтение элемента: заголовок +
-    // ACAPI_Element_Get + свойства) выполнялось по разу на каждое правило каждого размера,
-    // хотя все правила одного размера привязаны к одному и тому же элементу. Объединяем
-    // параметров всех правил в один словарь и читаем один раз на размер (на размерность).
+    // Правила одного размера используют один базовый элемент. Собираем требуемые
+    // параметры в общий словарь, чтобы прочитать элемент только один раз.
     ParamDictValue pread_elem_base = {};
     for (const auto &dimrule : rules) {
         for (GS::HashTable<GS::UniString, ParamValue>::ConstPairIterator cIt = dimrule.paramDict.EnumeratePairs ();
@@ -161,17 +161,16 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
             continue;
         }
         content = GS::UniString ((*memo.dimElems)[k].note.content);
-        // FIX (ревью 2026-09-12): п.62 — исходный пользовательский текст сохраняется до цикла
-        // по правилам: раньше первое правило мутировало content, и второе правило сравнивало
-        // уже сгенерированный первым правилом текст, а не исходный.
+        // Все правила сравниваются с исходным текстом. Изменения memo от предыдущего
+        // правила не должны влиять на решение следующего.
         const GS::UniString originalContent = content;
         GS::UniString custom_txt;
         API_Guid ref_elemGuid = (*memo.dimElems)[k].base.base.guid;
         bool is_sameGUID = (ref_elemGuid == bef_elemGuid);
         if (!is_sameGUID)
             ref_elemGuid = APINULLGuid;
-        // Dimensions.cpp-1: свежая копия объединённого словаря на размерность, одно чтение
-        // элемента вместо чтения на каждое правило.
+        // Для каждой размерной точки нужна своя копия: DimParse помечает
+        // прочитанные параметры valid и не должен менять общий словарь.
         ParamDictValue pread_elem_dict = pread_elem_base;
         const bool pread_elem_need = (ref_elemGuid != APINULLGuid);
         if (pread_elem_need)
@@ -181,7 +180,8 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
             pen_rounded = dimrule.pen_rounded;
             flag_change_rule = dimrule.flag_change;
             short pen = pen_rounded;
-            pen_original = pen_dimenstion; // Быстрофикс
+            // До изменения пера возвращаем значение по умолчанию для всего размера.
+            pen_original = pen_dimenstion;
             bool flag_deletewall =
                 is_wall && is_sameGUID && dimrule.flag_deletewall && (element.dimension.nDimElem > 2);
             if (!flag_deletewall && !dimrule.flag_reset &&
@@ -194,8 +194,11 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
                           flag_highlight,
                           dimrule,
                           pread_elem_need ? &pread_elem_dict : nullptr)) {
+                // Правило может запрещать замену текста. Выражение помечается FORCE,
+                // поскольку его вычисленный результат должен быть записан независимо от флага.
                 if (!flag_change_rule && flag_change != DIM_CHANGE_FORCE)
                     flag_change = DIM_CHANGE_OFF;
+                // Записываем memo только если правило выбрало пользовательский текст.
                 if (flag_change == DIM_CHANGE_ON || flag_change == DIM_CHANGE_FORCE) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.contentType = API_NoteContent_Custom;
@@ -204,6 +207,8 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
                     (*memo.dimElems)[k].note.contentUStr = new GS::UniString (custom_txt);
                     (*memo.dimElems)[k].note.opaque = opaque;
                 }
+                // Возврат к измеренному значению нужен лишь после ранее записанного
+                // пользовательского текста; иначе memo уже соответствует требуемому состоянию.
                 if (flag_change == DIM_CHANGE_OFF && originalContentType != API_NoteContent_Measured &&
                     flag_change_rule) {
                     flag_write = true;
@@ -217,6 +222,8 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
                     pen = pen_rounded;
                 if (flag_highlight == DIM_HIGHLIGHT_OFF)
                     pen = pen_original;
+                // Для подсветки меняем только реально отличающееся перо, чтобы не
+                // создавать событие изменения при уже корректном оформлении.
                 if (flag_highlight != DIM_NOCHANGE && (*memo.dimElems)[k].note.notePen != pen) {
                     flag_write = true;
                     (*memo.dimElems)[k].note.notePen = pen;
@@ -278,10 +285,7 @@ GSErrCode DimAutoRound (const API_Guid &elemGuid, const SyncSettings &syncSettin
 //	flag_highlight - изменять перо текста, сбросить на оригинальное или не менять (DIM_HIGHLIGHT_ON,
 // DIM_HIGHLIGHT_OFF, DIM_NOCHANGE)
 // -----------------------------------------------------------------------------
-// FIX (ревью 2026-09-12): п.32 — вместо полной копии dimrule.paramDict значение measuredvalue
-// подставляется в копию словаря только при необходимости: копия HashTable на каждый размер
-// × каждое правило была нужна только ради одного значения (округлённое dimValmm_round
-// и так вычисляется внутри функции).
+// Подстановка measuredvalue требует копии словаря правила.
 bool DimParse (const double &dimVal,
                const API_Guid &elemGuid,
                const API_NoteContentType &contentType,
@@ -305,15 +309,13 @@ bool DimParse (const double &dimVal,
         dimValmm_round = ceil_mod ((GS::Int32)dimVal_r, round_value);
     }
     double dx = fabs (dimVal_r - dimValmm_round * 1.0); // Разница в размерах в мм
-    // FIX (ревью 2026-09-12): п.32/62 — вычисленный текст выносится в out-параметр custom_txt,
-    // входной content больше не мутируется в DimParse (см. комментарий к сигнатуре).
+    // Возвращаем вычисленный текст отдельно: content остаётся исходным для
+    // сравнения каждого правила.
     custom_txt = GS::UniString::Printf ("%d", dimValmm_round);
     bool flag_expression = false; // В описании найдена формула
     if (!dimrule.expression.IsEmpty ()) {
-        // FIX (ревью 2026-09-12): п.32 — полная копия HashTable<UniString, ParamValue> на каждый
-        // размер × каждое правило убрана: копия создаётся только когда измеренное значение реально
-        // подставляется в выражение (в словаре правил есть ключ {@gdl:measuredvalue}) или когда
-        // нужно дочитать параметры привязанного элемента.
+        // Копия словаря нужна только для подстановки measuredvalue или параметров
+        // привязанного элемента; иначе выражение использует исходные правила.
         const bool has_measuredvalue = (dimrule.paramDict.GetPtr ("{@gdl:measuredvalue}") != nullptr);
         const bool need_read_elem = (elemGuid != APINULLGuid);
         GS::UniString expression = dimrule.expression;
@@ -324,8 +326,7 @@ bool DimParse (const double &dimVal,
             if (has_measuredvalue) {
                 if (ParamValue *pv = pdictvalue.GetPtr ("{@gdl:measuredvalue}")) {
                     ParamValue pvalue;
-                    // FIX (ревью 2026-09-12): п.32 — округлённое значение (dimValmm_round) вычисляется в этой
-                    // функции и подставляется в копию словаря; отдельный параметр measuredValue не нужен.
+                    // В значение параметра передаётся уже округлённое измерение.
                     ParamHelpers::ConvertIntToParamValue (pvalue, "MeasuredValue", dimValmm_round);
                     pv->val = pvalue.val;
                     pv->isValid = true;
@@ -414,9 +415,7 @@ bool DimParse (const double &dimVal,
     }
     if (flag_expression && flag_change == DIM_CHANGE_ON)
         flag_change = DIM_CHANGE_FORCE;
-    // FIX (ревью 2026-09-12): п.62 — входной content (исходный текст размера) больше не
-    // мутируется; вычисленный текст возвращается через out-параметр custom_txt, чтобы
-    // следующие правила сравнивали с оригиналом, а не с результатом предыдущего правила.
+    // Принудительная запись выражения не зависит от обычного разрешения на замену текста.
     return (flag_change != DIM_NOCHANGE || flag_highlight != DIM_NOCHANGE);
 }
 
@@ -448,8 +447,11 @@ void DimRoundAll (const SyncSettings &syncSettings, bool isUndo) {
 bool DimRoundByType (const API_ElemTypeID &typeID, const SyncSettings &syncSettings) {
     GSErrCode err = NoError;
     GS::Array<API_Guid> guidArray = {};
-    err = ACAPI_Element_GetElemList (
-        typeID, &guidArray, APIFilt_IsEditable | APIFilt_HasAccessRight | APIFilt_InMyWorkspace);
+    err = ACAPI_Element_GetElemList (typeID,
+                                     &guidArray,
+                                     APIFilt_InMyWorkspace | APIFilt_HasAccessRight | APIFilt_IsEditable |
+                                         APIFilt_IsVisibleByRenovation | APIFilt_IsInStructureDisplay |
+                                         APIFilt_OnVisLayer);
     if (err != NoError)
         msg_rep ("DimAutoRound", "ACAPI_Element_GetElemList", err, APINULLGuid);
     if (guidArray.IsEmpty ())

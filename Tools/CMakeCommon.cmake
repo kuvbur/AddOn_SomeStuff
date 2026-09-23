@@ -97,7 +97,7 @@ function (LinkGSLibrariesToProject acVersion devKitDir addOnName)
         set_target_properties(${addOnName} PROPERTIES
         VS_DEBUGGER_WORKING_DIRECTORY "$(ProjectDir)"
         VS_DEBUGGER_COMMAND "$ENV{ProgramFiles}/GRAPHISOFT/ARCHICAD ${acVersion}/ARCHICAD.exe"
-        VS_DEBUGGER_COMMAND_ARGUMENTS "$(ProjectDir)test_${acVersion}.pln"
+        VS_DEBUGGER_COMMAND_ARGUMENTS "$(ProjectDir)test_${acVersion}.pln -forceaccessdialog -bringToFront -DISABLERECOVERYDIALOG"
         )
         if (${acVersion} LESS 27)
             target_link_libraries (${addOnName}
