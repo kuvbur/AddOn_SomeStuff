@@ -23,10 +23,11 @@
 Int32 nLib = 0;
 
 #include <chrono>
-// Кэш хранения времени последней синхронизации элемента
+// Кэш времени последней синхронизации элемента и независимая метка обхода размеров.
 static GS::HashTable<API_Guid, std::chrono::steady_clock::time_point> g_ElementSyncCache;
+static std::chrono::steady_clock::time_point g_LastDimensionScan = {};
 
-// Окно тишины (200-300 мс обычно хватает с запасом, чтобы склеить дубликаты событий)
+// Окно подавления повторных уведомлений (500 мс от первого принятого события).
 const std::chrono::milliseconds SYNC_THROTTLE_THRESHOLD (500);
 
 namespace {
@@ -284,6 +285,20 @@ bool IsElementThrottled (const API_Guid &guid) {
     }
     g_ElementSyncCache.Put (guid, now);
     return false;
+}
+
+bool IsDimensionScanThrottled () {
+    const auto now = std::chrono::steady_clock::now ();
+    if (g_LastDimensionScan != std::chrono::steady_clock::time_point{} &&
+        now - g_LastDimensionScan < SYNC_THROTTLE_THRESHOLD)
+        return true;
+    g_LastDimensionScan = now;
+    return false;
+}
+
+void ClearSyncThrottleCache () {
+    g_ElementSyncCache.Clear ();
+    g_LastDimensionScan = {};
 }
 
 // -----------------------------------------------------------------------------
@@ -843,7 +858,8 @@ void RunParam (const API_Guid &elemGuid, const SyncSettings &syncSettings) {
         if (err != NoError)
             return;
     }
-    API_Element element, mask;
+    API_Element element = {};
+    API_Element mask = {};
     ACAPI_ELEMENT_MASK_CLEAR (mask);
     ACAPI_ELEMENT_MASK_SET (mask, API_Elem_Head, renovationStatus);
     element.header = tElemHead;
@@ -2805,13 +2821,18 @@ void SyncShowSubelement (const SyncSettings &syncSettings, bool show_ui) {
     if (err == NoError && errmsg.IsEmpty ())
         ACAPI_Automate (APIDo_ZoomToSelectedID);
     #endif
+
     if (!errmsg.IsEmpty ()) {
-        GS::UniString SubElementHalfString = RSGetIndString (iseng, SubElementHalfId, ACAPI_GetOwnResModule ());
-        errmsg = SubElementHalfString + LINEBRAKE + errmsg;
-        ACAPI_WriteReport (errmsg, true);
+        // TODO это окно не нужно - нужно только ShowOtherDbDialog. Нужно дополнить текстом о том, что часть элементов
+        // не выделена - SubElementHalfId.
+
+        // GS::UniString SubElementHalfString = RSGetIndString (iseng, SubElementHalfId, ACAPI_GetOwnResModule ());
+        // errmsg = SubElementHalfString + LINEBRAKE + errmsg;
+        // ACAPI_WriteReport (errmsg, true);
+
+        if (show_ui)
+            ShowOtherDbDialog (otherDbTargets);
     }
-    if (show_ui)
-        ShowOtherDbDialog (otherDbTargets);
 #else
     fmane = fmane + " not work in AC22";
     ACAPI_WriteReport ("Function not work in AC22", true);

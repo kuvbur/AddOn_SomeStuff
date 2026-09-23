@@ -58,8 +58,12 @@ const GS::UniString ignorevals_def = reinterpret_cast<const char *> ("def");
 // Словарь с параметрами для записи
 typedef GS::HashTable<API_Guid, GS::Array<WriteData>> WriteDict;
 
-// Проверяет, не находится ли элемент в текущем throttled-кэше и не нужно ли пропустить его обработку.
+// Ограничивает повторную синхронизацию одного GUID в коротком каскаде уведомлений.
 bool IsElementThrottled (const API_Guid &guid);
+// Независимо ограничивает полный обход размеров после EndEvents.
+bool IsDimensionScanThrottled ();
+// Сбрасывает метки при смене проекта или отключении наблюдения.
+void ClearSyncThrottleCache ();
 
 // -----------------------------------------------------------------------------
 // Подключение мониторинга
